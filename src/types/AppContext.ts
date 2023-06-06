@@ -1,1 +1,3 @@
-export type AppContext = {};
+export type AppContext = {
+  getUseCases: Function;
+};

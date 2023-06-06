@@ -1,5 +1,6 @@
 import { initPayment } from "./initPayment";
 
 describe("initPayment", () => {
-  it.todo("should do stuff");
+  it("makes a soap request to the pay.gov site")
+
 });

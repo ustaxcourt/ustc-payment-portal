@@ -5,20 +5,10 @@ provider:
   region: us-east-1
 
 functions:
-  myFunction:
-    handler: index.handler
-    vpc:
-      securityGroupIds:
-        - !Ref LambdaSecurityGroup
-      subnetIds:
-        - !Ref PrivateLambdaSubnet
-    environment:
-      VARIABLE_NAME: variable_value
-
-  initPayment: 
-    handler: index.initPayment
+  initPayment:
+    handler: src/initPayment.handler
     events:
-      - http: 
+      - http:
           path: init
           method: post
           cors: true
@@ -130,3 +120,6 @@ resources:
       Properties:
         SubnetId: !Ref PrivateLambdaSubnet
         RouteTableId: !Ref LambdaPrivateRouteTable
+
+plugins:
+  - serverless-esbuild
