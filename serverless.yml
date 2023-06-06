@@ -15,6 +15,19 @@ functions:
     environment:
       VARIABLE_NAME: variable_value
 
+  initPayment: 
+    handler: index.initPayment
+    events:
+      - http: 
+          path: init
+          method: post
+          cors: true
+    vpc:
+      securityGroupIds:
+        - !Ref LambdaSecurityGroup
+      subnetIds:
+        - !Ref PrivateLambdaSubnet
+
 resources:
   Resources:
     LambdaStaticIp:
