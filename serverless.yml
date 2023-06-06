@@ -17,6 +17,11 @@ functions:
 
 resources:
   Resources:
+    LambdaStaticIp:
+      Type: AWS::EC2::EIP
+      Properties:
+        Domain: vpc
+
     LambdaVPC:
       Type: AWS::EC2::VPC
       Properties:
@@ -45,13 +50,8 @@ resources:
           - Key: Name
             Value: PrivateLambdaSubnet
 
-    LambdaRoute:
-      Type: AWS::EC2::Route
-      DependsOn: LambdaGatewayAttachment
-      Properties:
-        RouteTableId: !Ref LambdaRouteTable
-        DestinationCidrBlock: 0.0.0.0/0
-        GatewayId: !Ref LambdaInternetGateway
+    LambdaInternetGateway:
+      Type: AWS::EC2::InternetGateway
 
     LambdaRouteTable:
       Type: AWS::EC2::RouteTable
@@ -61,14 +61,19 @@ resources:
           - Key: Name
             Value: PublicRouteTable
 
-    LambdaInternetGateway:
-      Type: AWS::EC2::InternetGateway
-
     LambdaGatewayAttachment:
       Type: AWS::EC2::VPCGatewayAttachment
       Properties:
         VpcId: !Ref LambdaVPC
         InternetGatewayId: !Ref LambdaInternetGateway
+
+    LambdaRoute:
+      Type: AWS::EC2::Route
+      DependsOn: LambdaGatewayAttachment
+      Properties:
+        RouteTableId: !Ref LambdaRouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        GatewayId: !Ref LambdaInternetGateway
 
     LambdaSecurityGroup:
       Type: AWS::EC2::SecurityGroup
@@ -78,11 +83,6 @@ resources:
         SecurityGroupIngress:
           - CidrIp: 0.0.0.0/0
             IpProtocol: -1
-
-    LambdaStaticIp:
-      Type: AWS::EC2::EIP
-      Properties:
-        Domain: vpc
 
     LambdaNatGateway:
       Type: AWS::EC2::NatGateway
