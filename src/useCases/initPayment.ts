@@ -1,5 +1,5 @@
+import * as soap from "soap";
 import { AppContext } from "../types/AppContext";
-import soap from "soap";
 
 type InitPaymentRequest = {
   trackingId: string;
@@ -26,10 +26,10 @@ type StartOnlineCollectionRequest = {
   };
 };
 
-export const initPayment = async (
+export async function initPayment(
   appContext: AppContext,
   request: InitPaymentRequest
-): Promise<InitPaymentResponse> => {
+): Promise<InitPaymentResponse> {
   const args: StartOnlineCollectionRequest = {
     startOnlineCollection: {
       startOnlineCollectionRequest: {
@@ -44,25 +44,27 @@ export const initPayment = async (
     },
   };
 
-  const soapUrl = "http://localhost";
-  const client = await soap.createClientAsync(soapUrl, {
-    forceSoap12Headers: true,
-  });
-
+  const client = await appContext.getSoapClient();
   const result = await makeSoapRequest(client, args);
+  return result;
+}
 
-  return { token: "asdf123" };
-};
-
-const makeSoapRequest = (
+const makeSoapRequest = async (
   client: soap.Client,
   args: StartOnlineCollectionRequest
-) =>
+): Promise<InitPaymentResponse> =>
   new Promise((resolve, reject) => {
-    try {
-      client.startOnlineCollectionRequest(args, resolve);
-    } catch (err) {
-      console.log("err", err);
-      reject(err);
-    }
+    client.startOnlineCollection(
+      args,
+      function (
+        err: Error,
+        result: { startOnlineCollectionResponse: InitPaymentResponse }
+      ) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(result.startOnlineCollectionResponse);
+        }
+      }
+    );
   });

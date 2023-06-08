@@ -1,8 +1,7 @@
 import { Context, APIGatewayProxyResult, APIGatewayEvent } from "aws-lambda";
-
 import { createAppContext } from "./appContext";
 
-// const appContext = createAppContext();
+const appContext = createAppContext();
 
 export const handler = async (
   event: APIGatewayEvent
@@ -17,17 +16,15 @@ export const handler = async (
       };
     }
     console.log("what is happening");
-    const result = {
-      token: "asdf123",
-    };
-    // const result = await appContext
-    //   .getUseCases()
-    //   .initPayment(appContext, JSON.parse(event.body));
+    const result = await appContext
+      .getUseCases()
+      .initPayment(appContext, JSON.parse(event.body));
     return {
       statusCode: 200,
       body: JSON.stringify(result),
     };
   } catch (err) {
+    console.log(err);
     return {
       statusCode: 500,
       body: JSON.stringify({

@@ -1,0 +1,10 @@
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      NODE_ENV: "development" | "production" | "staging";
+      SOAP_URL: string;
+    }
+  }
+}
+
+export {};

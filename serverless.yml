@@ -1,8 +1,17 @@
 service: ustc-payment-processor
+useDotenv: true
 provider:
   name: aws
   runtime: nodejs18.x
   region: us-east-1
+
+package:
+  individually: true
+
+custom:
+  esbuild:
+    external:
+      - soap
 
 functions:
   initPayment:
@@ -17,6 +26,8 @@ functions:
         - !Ref LambdaSecurityGroup
       subnetIds:
         - !Ref PrivateLambdaSubnet
+    environment:
+      SOAP_URL: ${env:SOAP_URL}
 
 resources:
   Resources:
