@@ -1,4 +1,4 @@
-import { Context, APIGatewayProxyResult, APIGatewayEvent } from "aws-lambda";
+import {  APIGatewayProxyResult, APIGatewayEvent } from "aws-lambda";
 import { createAppContext } from "./appContext";
 
 const appContext = createAppContext();
@@ -17,7 +17,7 @@ export const handler = async (
     }
     const result = await appContext
       .getUseCases()
-      .initPayment(appContext, JSON.parse(event.body));
+      .processPayment(appContext, JSON.parse(event.body));
     return {
       statusCode: 200,
       body: JSON.stringify(result),

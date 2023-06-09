@@ -3,6 +3,7 @@ declare global {
     interface ProcessEnv {
       NODE_ENV: "development" | "production" | "staging";
       SOAP_URL: string;
+      PAYMENT_URL: string;
     }
   }
 }

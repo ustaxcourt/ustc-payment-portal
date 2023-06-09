@@ -28,6 +28,22 @@ functions:
         - !Ref PrivateLambdaSubnet
     environment:
       SOAP_URL: ${env:SOAP_URL}
+      PAYMENT_URL: ${env:PAYMENT_URL}
+  processPayment:
+    handler: src/processPayment.handler
+    events:
+      - http:
+          path: process
+          method: post
+          cors: true
+    vpc:
+      securityGroupIds:
+        - !Ref LambdaSecurityGroup
+      subnetIds:
+        - !Ref PrivateLambdaSubnet
+    environment:
+      SOAP_URL: ${env:SOAP_URL}
+      PAYMENT_URL: ${env:PAYMENT_URL}
 
 resources:
   Resources:
