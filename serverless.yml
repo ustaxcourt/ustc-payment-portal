@@ -1,5 +1,4 @@
 service: ustc-payment-processor
-useDotenv: true
 provider:
   name: aws
   runtime: nodejs18.x
@@ -9,6 +8,9 @@ package:
   individually: true
 
 custom:
+  soapUrl: ${file(./config.${opt:stage, 'dev'}.yml):soapUrl}
+  apiToken: ${file(./config.${opt:stage, 'dev'}.yml):apiToken}
+  paymentUrl: ${file(./config.${opt:stage, 'dev'}.yml):paymentUrl}
   esbuild:
     external:
       - soap
@@ -27,8 +29,10 @@ functions:
       subnetIds:
         - !Ref PrivateLambdaSubnet
     environment:
-      SOAP_URL: ${env:SOAP_URL}
-      PAYMENT_URL: ${env:PAYMENT_URL}
+      STAGE: ${opt:stage, 'dev'}
+      SOAP_URL: ${self:custom.soapUrl}
+      PAYMENT_URL: ${self:custom.paymentUrl}
+      API_TOKEN: ${self:custom.apiToken}
   processPayment:
     handler: src/processPayment.handler
     events:
@@ -42,8 +46,10 @@ functions:
       subnetIds:
         - !Ref PrivateLambdaSubnet
     environment:
-      SOAP_URL: ${env:SOAP_URL}
-      PAYMENT_URL: ${env:PAYMENT_URL}
+      STAGE: ${opt:stage, 'dev'}
+      SOAP_URL: ${self:custom.soapUrl}
+      PAYMENT_URL: ${self:custom.paymentUrl}
+      API_TOKEN: ${self:custom.apiToken}
 
 resources:
   Resources:

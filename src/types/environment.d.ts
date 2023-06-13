@@ -4,6 +4,7 @@ declare global {
       NODE_ENV: "development" | "production" | "staging";
       SOAP_URL: string;
       PAYMENT_URL: string;
+      API_TOKEN: string;
     }
   }
 }

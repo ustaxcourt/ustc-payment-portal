@@ -1,7 +1,7 @@
 import * as soap from "soap";
 import { AppContext } from "../types/AppContext";
 
-type InitPaymentRequest = {
+export type InitPaymentRequest = {
   trackingId: string;
   amount: number;
   appId: string;

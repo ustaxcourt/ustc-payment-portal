@@ -1,0 +1,3 @@
+soapUrl: https://example.com/wsdl
+apiToken: some-token-used-to-connect-to-dev-server
+paymentUrl: https://example.com/path/to/payment/page
