@@ -7,10 +7,19 @@ provider:
 package:
   individually: true
 
+plugins:
+  - serverless-esbuild
+  - serverless-domain-manager
+
 custom:
   soapUrl: ${file(./config.${opt:stage, 'dev'}.yml):soapUrl}
   apiToken: ${file(./config.${opt:stage, 'dev'}.yml):apiToken}
   paymentUrl: ${file(./config.${opt:stage, 'dev'}.yml):paymentUrl}
+  subdomain: ${opt:stage, 'dev'}.payment-portal.ustaxcourt.gov
+  customDomain:
+    domainName: ${self:custom.subdomain}
+    basePath: ""
+    autoDomain: true
   esbuild:
     external:
       - soap
@@ -153,6 +162,3 @@ resources:
       Properties:
         SubnetId: !Ref PrivateLambdaSubnet
         RouteTableId: !Ref LambdaPrivateRouteTable
-
-plugins:
-  - serverless-esbuild

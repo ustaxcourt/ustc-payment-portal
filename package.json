@@ -17,7 +17,7 @@
     "esbuild": "^0.17.19",
     "jest": "^29.5.0",
     "js-yaml": "^4.1.0",
-    "serverless-dotenv-plugin": "^6.0.0",
+    "serverless-domain-manager": "^7.0.4",
     "serverless-esbuild": "^1.45.1",
     "ts-jest": "^29.1.0",
     "typescript": "^5.1.3"
