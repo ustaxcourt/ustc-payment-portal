@@ -9,14 +9,17 @@ export const createAppContext = (): AppContext => {
   return {
     getSoapClient: async (): Promise<soap.Client> => {
       if (!soapClient) {
-        const params = {
-          forceSoap12Headers: true,
-          wsdl_headers: {
-            Authentication: `Bearer ${process.env.API_TOKEN}`,
-          },
-        };
-        soapClient = await soap.createClientAsync(process.env.SOAP_URL, params);
-        if (process.env.STAGE === "dev") {
+        if (process.env.NODE_ENV === "development") {
+          const params = {
+            forceSoap12Headers: true,
+            wsdl_headers: {
+              Authentication: `Bearer ${process.env.API_TOKEN}`,
+            },
+          };
+          soapClient = await soap.createClientAsync(
+            process.env.SOAP_URL!,
+            params
+          );
           soapClient.addSoapHeader({
             Authentication: process.env.API_TOKEN,
           });
