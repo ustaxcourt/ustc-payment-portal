@@ -17,7 +17,7 @@ The application is intended to handle API requests from USTC applications and th
 
 ## Environment Variables
 
-Environment variables are located in `./config.<STAGE>.yml`.
+Environment variables are located in `./config.<NODE_ENV>.yml`.
 
 Stages should be one of `dev`, `stg`, and `prod`. The dev server should be configured to point to the USTC Pay.gov test server, which is managed in a [separate repository](https://github.com/ustaxcourt/ustc-pay-gov-test-server).
 

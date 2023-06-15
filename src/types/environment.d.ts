@@ -5,6 +5,7 @@ declare global {
       SOAP_URL: string;
       PAYMENT_URL: string;
       API_TOKEN: string;
+      CERT_PASSPHRASE: string;
     }
   }
 }

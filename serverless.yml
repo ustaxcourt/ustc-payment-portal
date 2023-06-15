@@ -15,7 +15,9 @@ custom:
   soapUrl: ${file(./config.${opt:stage, 'dev'}.yml):soapUrl}
   apiToken: ${file(./config.${opt:stage, 'dev'}.yml):apiToken}
   paymentUrl: ${file(./config.${opt:stage, 'dev'}.yml):paymentUrl}
-  subdomain: ${opt:stage, 'dev'}.payment-portal.ustaxcourt.gov
+  subdomain: ${file(./config.${opt:stage, 'dev'}.yml):baseUrl}
+  nodeEnv: ${file(./config.${opt:stage, 'dev'}.yml):nodeEnv}
+  certPassphrase: ${file(./config.${opt:stage, 'dev'}.yml):certPassphrase}
   customDomain:
     domainName: ${self:custom.subdomain}
     basePath: ""
@@ -38,10 +40,11 @@ functions:
       subnetIds:
         - !Ref PrivateLambdaSubnet
     environment:
-      STAGE: ${opt:stage, 'dev'}
-      SOAP_URL: ${self:custom.soapUrl}
-      PAYMENT_URL: ${self:custom.paymentUrl}
       API_TOKEN: ${self:custom.apiToken}
+      CERT_PASSPHRASE: ${self:custom.certPassphrase}
+      NODE_ENV: ${self:custom.nodeEnv}
+      PAYMENT_URL: ${self:custom.paymentUrl}
+      SOAP_URL: ${self:custom.soapUrl}
   processPayment:
     handler: src/processPayment.handler
     events:
@@ -55,10 +58,11 @@ functions:
       subnetIds:
         - !Ref PrivateLambdaSubnet
     environment:
-      STAGE: ${opt:stage, 'dev'}
-      SOAP_URL: ${self:custom.soapUrl}
-      PAYMENT_URL: ${self:custom.paymentUrl}
       API_TOKEN: ${self:custom.apiToken}
+      CERT_PASSPHRASE: ${self:custom.certPassphrase}
+      NODE_ENV: ${self:custom.nodeEnv}
+      PAYMENT_URL: ${self:custom.paymentUrl}
+      SOAP_URL: ${self:custom.soapUrl}
 
 resources:
   Resources:
