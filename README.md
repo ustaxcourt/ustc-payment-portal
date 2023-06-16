@@ -23,10 +23,15 @@ Stages should be one of `dev`, `stg`, and `prod`. The dev server should be confi
 
 | Environment Variable | Description                                                                                                      |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `soapUrl`            | The URL of the SOAP Server that handles payment requests made by this portal                                     |
 | `apiToken`           | An optional token that is used to make authorized requests to the development portal                             |
-| `paymentUrl`         | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated |
 | `baseUrl`            | The URL of this payment portal (for running integration tests)                                                   |
+| `certPassphrase`     | The secret password for using the certificate as an httpsAgent                                                   |
+| `nodeEnv`            | The environment or stage for this application (`staging`, `development`, or `production`)                        |
+| `paymentUrl`         | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated |
+| `soapUrl`            | The URL of the SOAP Server that handles payment requests made by this portal                                     |
+| `subdomain`          | The subdomain that the deployed application should assume                                                        |
+| `tcsAppId`           | The identifier granted by Pay.gov for using their service (used for testing)                                     |
+| `flagSoapClient`     | Whether or not `http` or `soap` client for making requests to the Pay.gov server                                 |
 
 ## Deployment
 

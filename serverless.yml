@@ -6,6 +6,8 @@ provider:
 
 package:
   individually: true
+  include:
+    - certs/**
 
 plugins:
   - serverless-esbuild
@@ -15,9 +17,10 @@ custom:
   soapUrl: ${file(./config.${opt:stage, 'dev'}.yml):soapUrl}
   apiToken: ${file(./config.${opt:stage, 'dev'}.yml):apiToken}
   paymentUrl: ${file(./config.${opt:stage, 'dev'}.yml):paymentUrl}
-  subdomain: ${file(./config.${opt:stage, 'dev'}.yml):baseUrl}
+  subdomain: ${file(./config.${opt:stage, 'dev'}.yml):subdomain}
   nodeEnv: ${file(./config.${opt:stage, 'dev'}.yml):nodeEnv}
   certPassphrase: ${file(./config.${opt:stage, 'dev'}.yml):certPassphrase}
+  flagSoapClient: ${file(./config.${opt:stage, 'dev'}.yml):flagSoapClient}
   customDomain:
     domainName: ${self:custom.subdomain}
     basePath: ""
@@ -45,6 +48,7 @@ functions:
       NODE_ENV: ${self:custom.nodeEnv}
       PAYMENT_URL: ${self:custom.paymentUrl}
       SOAP_URL: ${self:custom.soapUrl}
+      FLAG_SOAP_CLIENT: ${self:custom.flagSoapClient}
   processPayment:
     handler: src/processPayment.handler
     events:
@@ -62,6 +66,24 @@ functions:
       CERT_PASSPHRASE: ${self:custom.certPassphrase}
       NODE_ENV: ${self:custom.nodeEnv}
       PAYMENT_URL: ${self:custom.paymentUrl}
+      SOAP_URL: ${self:custom.soapUrl}
+      FLAG_SOAP_CLIENT: ${self:custom.flagSoapClient}
+  testCert:
+    handler: src/testCert.handler
+    events:
+      - http:
+          path: test
+          method: get
+          cors: true
+    vpc:
+      securityGroupIds:
+        - !Ref LambdaSecurityGroup
+      subnetIds:
+        - !Ref PrivateLambdaSubnet
+    environment:
+      API_TOKEN: ${self:custom.apiToken}
+      CERT_PASSPHRASE: ${self:custom.certPassphrase}
+      NODE_ENV: ${self:custom.nodeEnv}
       SOAP_URL: ${self:custom.soapUrl}
 
 resources:

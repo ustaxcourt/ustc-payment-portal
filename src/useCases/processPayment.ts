@@ -12,7 +12,7 @@ type ProcessPaymentResponse = {
 
 type CompleteOnlineCollectionRequest = {
   completeOnlineCollectionRequest: {
-    tcs_appid: string;
+    tcs_app_id: string;
     token: string;
   };
 };
@@ -23,7 +23,7 @@ export async function processPayment(
 ): Promise<ProcessPaymentResponse> {
   const args: CompleteOnlineCollectionRequest = {
     completeOnlineCollectionRequest: {
-      tcs_appid: request.appId,
+      tcs_app_id: request.appId,
       token: request.token,
     },
   };
