@@ -33,14 +33,14 @@ export async function processPayment(
   const result = await makeSoapRequest(client, args);
   console.log(result);
   return {
-    trackingId: result.paygov_tracking_id,
+    trackingId: result.pay_gov_tracking_id,
   };
 }
 
 const makeSoapRequest = async (
   client: soap.Client,
   args: CompleteOnlineCollectionRequest
-): Promise<{ paygov_tracking_id: string }> =>
+): Promise<{ pay_gov_tracking_id: string }> =>
   new Promise((resolve, reject) => {
     client.completeOnlineCollection(
       args,
@@ -48,7 +48,7 @@ const makeSoapRequest = async (
         err: Error,
         result: {
           completeOnlineCollectionResponse: {
-            paygov_tracking_id: string;
+            pay_gov_tracking_id: string;
           };
         }
       ) {
