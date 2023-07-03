@@ -6,7 +6,7 @@ import { StartOnlineCollectionResponse } from "../types/StartOnlineCollectionRes
 
 export class StartOnlineCollectionRequest {
   public agency_tracking_id: string;
-  public transaction_amount: number;
+  public transaction_amount: string;
   public tcs_app_id: string;
   public url_cancel: string;
   public url_success: string;
@@ -16,7 +16,9 @@ export class StartOnlineCollectionRequest {
   constructor(request: RawStartOnlineCollectionRequest) {
     this.agency_tracking_id = request.agency_tracking_id;
     this.tcs_app_id = request.tcs_app_id;
-    this.transaction_amount = request.transaction_amount;
+    this.transaction_amount = (
+      Math.round(request.transaction_amount * 100) / 100
+    ).toFixed(2);
     this.url_cancel = request.url_cancel;
     this.url_success = request.url_success;
   }
@@ -81,33 +83,46 @@ export class StartOnlineCollectionRequest {
       format: true,
     };
     const httpsAgent = appContext.getHttpsAgent();
+    // const extraInformation = {
+    //   account_holder_name: "Cindy Dillow",
+    //   billing_address: "653 General Early Drive",
+    //   billing_address2: "abc",
+    //   billing_city: "Llanfairpwllgwyngyllgogerychwyrndr",
+    //   billing_state: "IL",
+    //   billing_zip: "25425",
+    //   billing_country: "890",
+    //   email_address: "cdillow@ains.com",
+    // };
+
+    const startOnlineCollectionRequest = {
+      tcs_app_id: this.tcs_app_id,
+      agency_tracking_id: this.agency_tracking_id,
+      transaction_type: this.transaction_type,
+      transaction_amount: this.transaction_amount,
+      language: this.language,
+      url_success: "https://google.com", // this.url_success,
+      url_cancel: "https://amazon.com", // this.url_cancel,
+      // ...extraInformation,
+    };
 
     const reqObj = {
-      "S:Envelope": {
-        "S:Header": {},
-        "S:Body": {
-          "ns2:startOnlineCollection": {
-            "tcs:startOnlineCollection": {
-              startOnlineCollectionRequest: {
-                agency_tracking_id: this.agency_tracking_id,
-                transaction_amount: "20.00", // this.transaction_amount,
-                tcs_app_id: this.tcs_app_id,
-                url_cancel: this.url_cancel,
-                url_success: this.url_success,
-                transaction_type: this.transaction_type,
-                language: this.language,
-              },
-            },
-            "@xmlns:ns2": "http://fms.treas.gov/services/tcsonline",
+      "soapenv:Envelope": {
+        "soapenv:Header": {},
+        "soapenv:Body": {
+          "tcs:startOnlineCollection": {
+            startOnlineCollectionRequest,
+            // "@xmlns:ns2": "http://fms.treas.gov/services/tcsonline",
           },
         },
-        "@xmlns:S": "http://schemas.xmlsoap.org/soap/envelope/",
+        "@xmlns:soapenv": "http://schemas.xmlsoap.org/soap/envelope/",
+        "@xmlns:tcs": "http://fms.treas.gov/services/tcsonline",
       },
     };
 
     const builder = new XMLBuilder(xmlOptions);
     const xmlBody = builder.build(reqObj);
 
+    console.log(process.env.SOAP_URL)
     console.log(xmlBody);
 
     const result = await fetch(process.env.SOAP_URL, {
