@@ -1,5 +1,5 @@
-import { ProcessPaymentRequest } from "../../src/useCases/processPayment";
-import { InitPaymentRequest } from "../../src/types/InitPaymentRequest";
+import { ProcessPaymentRequest } from "../../useCases/processPayment";
+import { InitPaymentRequest } from "../../types/InitPaymentRequest";
 import { getConfig } from "./helpers";
 import { v4 as uuidv4 } from "uuid";
 
@@ -16,8 +16,11 @@ describe("make a transaction", () => {
   });
 
   it("should make a request to start a transaction", async () => {
+
+    const randomNumber = Math.floor(Math.random() * 10000);
+
     const request: InitPaymentRequest = {
-      trackingId: uuidv4(),
+      trackingId: `test-${randomNumber}`,
       amount: 20.0,
       appId,
       urlSuccess: "http://example.com",
@@ -41,13 +44,14 @@ describe("make a transaction", () => {
   });
 
   it("should be able to load the paymentUrl", async () => {
+    console.log(paymentRedirect)
     const result = await fetch(paymentRedirect);
     expect(result.status).toBe(200);
   });
 
   it("should be able to process the transaction", async () => {
     const request: ProcessPaymentRequest = {
-      appId: "asdf123",
+      appId,
       token,
     };
 

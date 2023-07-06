@@ -4,7 +4,7 @@
   "description": "",
   "main": "handler.js",
   "scripts": {
-    "test": "npx jest test/integration/transaction.test.ts",
+    "test": "npx jest src/test/integration/transaction.test.ts",
     "build": "tsc"
   },
   "keywords": [],

@@ -1,8 +1,16 @@
+import Joi from 'joi';
 import { XMLBuilder, XMLParser } from "fast-xml-parser";
-import fetch from "node-fetch";
 import { RawStartOnlineCollectionRequest } from "../types/RawStartOnlineCollectionRequest";
 import { AppContext } from "../types/AppContext";
 import { StartOnlineCollectionResponse } from "../types/StartOnlineCollectionResponse";
+
+export const startOnlineCollectionSchema = Joi.object({
+  agency_tracking_id: Joi.string().required(),
+  tcs_app_id: Joi.string().required(),
+  transaction_amount: Joi.number().required(),
+  url_cancel: Joi.string().required(),
+  url_success: Joi.string().required(),
+})
 
 export class StartOnlineCollectionRequest {
   public agency_tracking_id: string;
@@ -77,22 +85,12 @@ export class StartOnlineCollectionRequest {
   async useHttp(
     appContext: AppContext
   ): Promise<StartOnlineCollectionResponse> {
+
     const xmlOptions = {
       ignoreAttributes: false,
       attributeNamePrefix: "@",
       format: true,
     };
-    const httpsAgent = appContext.getHttpsAgent();
-    // const extraInformation = {
-    //   account_holder_name: "Cindy Dillow",
-    //   billing_address: "653 General Early Drive",
-    //   billing_address2: "abc",
-    //   billing_city: "Llanfairpwllgwyngyllgogerychwyrndr",
-    //   billing_state: "IL",
-    //   billing_zip: "25425",
-    //   billing_country: "890",
-    //   email_address: "cdillow@ains.com",
-    // };
 
     const startOnlineCollectionRequest = {
       tcs_app_id: this.tcs_app_id,
@@ -100,9 +98,8 @@ export class StartOnlineCollectionRequest {
       transaction_type: this.transaction_type,
       transaction_amount: this.transaction_amount,
       language: this.language,
-      url_success: "https://google.com", // this.url_success,
-      url_cancel: "https://amazon.com", // this.url_cancel,
-      // ...extraInformation,
+      url_success: this.url_success,
+      url_cancel: this.url_cancel,
     };
 
     const reqObj = {
@@ -111,35 +108,25 @@ export class StartOnlineCollectionRequest {
         "soapenv:Body": {
           "tcs:startOnlineCollection": {
             startOnlineCollectionRequest,
-            // "@xmlns:ns2": "http://fms.treas.gov/services/tcsonline",
           },
         },
         "@xmlns:soapenv": "http://schemas.xmlsoap.org/soap/envelope/",
-        "@xmlns:tcs": "http://fms.treas.gov/services/tcsonline",
+        "@xmlns:tcs": "http://fms.treas.gov/services/tcsonline_3_1"
       },
     };
 
     const builder = new XMLBuilder(xmlOptions);
     const xmlBody = builder.build(reqObj);
 
-    console.log(process.env.SOAP_URL)
-    console.log(xmlBody);
-
-    const result = await fetch(process.env.SOAP_URL, {
-      agent: httpsAgent,
-      method: "POST",
-      headers: {
-        "Content-type": "application/soap+xml",
-      },
-      body: xmlBody,
-    });
+    const result = await appContext.postHttpRequest(appContext, xmlBody);
 
     console.log(result);
     const parser = new XMLParser(xmlOptions);
     const data = await result.text();
-    console.log(data);
+    // console.log(data);
 
     const response = parser.parse(data);
+    console.log(response["S:Envelope"]);
     const tokenResponse = response["S:Envelope"]["S:Body"][
       "ns2:startOnlineCollectionResponse"
     ]["startOnlineCollectionResponse"] as StartOnlineCollectionResponse;
