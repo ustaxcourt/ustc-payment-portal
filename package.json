@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "fast-xml-parser": "^4.2.4",
+    "joi": "^17.9.2",
     "node-fetch": "^2.6.11",
     "soap": "^1.0.0"
   }
