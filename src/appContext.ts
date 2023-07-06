@@ -5,6 +5,7 @@ import { initPayment } from "./useCases/initPayment";
 import { processPayment } from "./useCases/processPayment";
 import { AppContext } from "./types/AppContext";
 import * as https from "https";
+import fetch from "node-fetch";
 
 let soapClient: soap.Client;
 let httpsAgent: https.Agent;
@@ -60,6 +61,20 @@ export const createAppContext = (): AppContext => {
         httpsAgent = new https.Agent(httpsAgentOptions);
       }
       return httpsAgent;
+    },
+    postHttpRequest: async (appContext: AppContext, body: string) => {
+      const httpsAgent = appContext.getHttpsAgent();
+
+      const result = await fetch(process.env.SOAP_URL, {
+        agent: httpsAgent,
+        method: "POST",
+        headers: {
+          "Content-type": "application/soap+xml",
+        },
+        body,
+      });
+
+      return result;
     },
     getUseCases: () => ({
       initPayment,
