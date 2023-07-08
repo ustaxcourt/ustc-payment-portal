@@ -31,7 +31,7 @@ custom:
 
 functions:
   initPayment:
-    handler: src/initPayment.handler
+    handler: src/lambdaHandler.initPaymentHandler
     events:
       - http:
           path: init
@@ -49,8 +49,9 @@ functions:
       PAYMENT_URL: ${self:custom.paymentUrl}
       SOAP_URL: ${self:custom.soapUrl}
       FLAG_SOAP_CLIENT: ${self:custom.flagSoapClient}
+
   processPayment:
-    handler: src/processPayment.handler
+    handler: src/lambdaHandler.processPaymentHandler
     events:
       - http:
           path: process

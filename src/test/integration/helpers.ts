@@ -10,7 +10,7 @@ type YamlConfig = {
 
 export const getConfig = () => {
   const doc = yaml.load(
-    readFileSync(path.resolve(__dirname, "../../config.dev.yml"), "utf-8")
+    readFileSync(path.resolve(__dirname, "../../../config.dev.yml"), "utf-8")
   ) as YamlConfig;
   return doc;
 };

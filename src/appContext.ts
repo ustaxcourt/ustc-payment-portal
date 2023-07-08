@@ -55,8 +55,6 @@ export const createAppContext = (): AppContext => {
           keepAlive: true,
         };
 
-        console.log("ok");
-
         // Create an HTTPS agent using the certificate options
         httpsAgent = new https.Agent(httpsAgentOptions);
       }

@@ -1,7 +1,6 @@
 import { ProcessPaymentRequest } from "../../useCases/processPayment";
 import { InitPaymentRequest } from "../../types/InitPaymentRequest";
 import { getConfig } from "./helpers";
-import { v4 as uuidv4 } from "uuid";
 
 describe("make a transaction", () => {
   let baseUrl: string;
@@ -16,17 +15,16 @@ describe("make a transaction", () => {
   });
 
   it("should make a request to start a transaction", async () => {
-
-    const randomNumber = Math.floor(Math.random() * 10000);
+    const randomNumber = Math.floor(Math.random() * 100000);
 
     const request: InitPaymentRequest = {
-      trackingId: `test-${randomNumber}`,
+      trackingId: `test${randomNumber}`,
       amount: 20.0,
       appId,
-      urlSuccess: "http://example.com",
-      urlCancel: "http://example.com",
+      urlSuccess: "http://example.com/success",
+      urlCancel: "http://example.com/cancel",
     };
-    console.log(request);
+
     const result = await fetch(`${baseUrl}/init`, {
       method: "POST",
       headers: {
@@ -41,12 +39,14 @@ describe("make a transaction", () => {
     paymentRedirect = data.paymentRedirect;
     expect(token).toBeTruthy();
     expect(paymentRedirect).toBeTruthy();
+    console.log(`Received a token: ${token}`);
+    console.log(`Have a payment redirect: ${paymentRedirect}`);
   });
 
   it("should be able to load the paymentUrl", async () => {
-    console.log(paymentRedirect)
     const result = await fetch(paymentRedirect);
     expect(result.status).toBe(200);
+    console.log(`Looking good at the payment redirect: ${paymentRedirect}`);
   });
 
   it("should be able to process the transaction", async () => {
@@ -54,6 +54,10 @@ describe("make a transaction", () => {
       appId,
       token,
     };
+
+    console.log(
+      `Time to process the transaction with this appId ${appId}; token: ${token}`
+    );
 
     const result = await fetch(`${baseUrl}/process`, {
       method: "POST",
@@ -64,6 +68,7 @@ describe("make a transaction", () => {
     });
 
     expect(result.status).toBe(200);
+    console.log(result);
 
     const data = await result.json();
     expect(data.trackingId).toBeTruthy();

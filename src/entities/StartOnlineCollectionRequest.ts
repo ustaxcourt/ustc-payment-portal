@@ -1,4 +1,4 @@
-import Joi from 'joi';
+import Joi from "joi";
 import { XMLBuilder, XMLParser } from "fast-xml-parser";
 import { RawStartOnlineCollectionRequest } from "../types/RawStartOnlineCollectionRequest";
 import { AppContext } from "../types/AppContext";
@@ -10,7 +10,7 @@ export const startOnlineCollectionSchema = Joi.object({
   transaction_amount: Joi.number().required(),
   url_cancel: Joi.string().required(),
   url_success: Joi.string().required(),
-})
+});
 
 export class StartOnlineCollectionRequest {
   public agency_tracking_id: string;
@@ -85,7 +85,6 @@ export class StartOnlineCollectionRequest {
   async useHttp(
     appContext: AppContext
   ): Promise<StartOnlineCollectionResponse> {
-
     const xmlOptions = {
       ignoreAttributes: false,
       attributeNamePrefix: "@",
@@ -111,7 +110,7 @@ export class StartOnlineCollectionRequest {
           },
         },
         "@xmlns:soapenv": "http://schemas.xmlsoap.org/soap/envelope/",
-        "@xmlns:tcs": "http://fms.treas.gov/services/tcsonline_3_1"
+        "@xmlns:tcs": "http://fms.treas.gov/services/tcsonline_3_1",
       },
     };
 
@@ -120,17 +119,13 @@ export class StartOnlineCollectionRequest {
 
     const result = await appContext.postHttpRequest(appContext, xmlBody);
 
-    console.log(result);
     const parser = new XMLParser(xmlOptions);
     const data = await result.text();
-    // console.log(data);
-
+    console.log(data);
     const response = parser.parse(data);
-    console.log(response["S:Envelope"]);
     const tokenResponse = response["S:Envelope"]["S:Body"][
       "ns2:startOnlineCollectionResponse"
     ]["startOnlineCollectionResponse"] as StartOnlineCollectionResponse;
-    console.log(tokenResponse);
     return tokenResponse;
   }
 }
