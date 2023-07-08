@@ -14,7 +14,6 @@ export async function processPayment(
   appContext: AppContext,
   request: ProcessPaymentRequest
 ): Promise<ProcessPaymentResponse> {
-
   const req = new CompleteOnlineCollectionRequest({
     tcs_app_id: request.appId,
     token: request.token,
@@ -23,6 +22,6 @@ export async function processPayment(
   const result = await req.makeSoapRequest(appContext);
 
   return {
-    trackingId: result.pay_gov_tracking_id
+    trackingId: result.paygov_tracking_id,
   };
 }

@@ -6,12 +6,11 @@ import Joi from "joi";
 type RawStartOnlineCollectionRequest = {
   tcs_app_id: string;
   token: string;
-}
+};
 
 type CompleteOnlineCollectionResponse = {
-  pay_gov_tracking_id: string;
-}
-
+  paygov_tracking_id: string;
+};
 
 export class CompleteOnlineCollectionRequest {
   public token: string;
@@ -45,14 +44,14 @@ export class CompleteOnlineCollectionRequest {
         {
           completeOnlineCollectionRequest: {
             tcs_app_id: this.tcs_app_id,
-            token: this.token
+            token: this.token,
           },
         },
         function (
           err: Error,
           result: {
             completeOnlineCollectionResponse: {
-              pay_gov_tracking_id: string;
+              paygov_tracking_id: string;
             };
           }
         ) {
@@ -62,21 +61,18 @@ export class CompleteOnlineCollectionRequest {
             resolve(result.completeOnlineCollectionResponse);
           }
         }
-      )
+      );
     });
   }
-
 
   async useHttp(
     appContext: AppContext
   ): Promise<CompleteOnlineCollectionResponse> {
-
     const xmlOptions = {
       ignoreAttributes: false,
       attributeNamePrefix: "@",
       format: true,
     };
-    const httpsAgent = appContext.getHttpsAgent();
 
     const xmlBody = `
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tcs="http://fms.treas.gov/services/tcsonline_3_1">
@@ -91,19 +87,8 @@ export class CompleteOnlineCollectionRequest {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-    console.log(process.env.SOAP_URL)
-    console.log(xmlBody);
+    const result = await appContext.postHttpRequest(appContext, xmlBody);
 
-    const result = await fetch(process.env.SOAP_URL, {
-      agent: httpsAgent,
-      method: "POST",
-      headers: {
-        "Content-type": "application/soap+xml",
-      },
-      body: xmlBody,
-    });
-
-    console.log(result);
     const parser = new XMLParser(xmlOptions);
     const data = await result.text();
     console.log(data);
@@ -112,9 +97,6 @@ export class CompleteOnlineCollectionRequest {
     const responseData = response["S:Envelope"]["S:Body"][
       "ns2:completeOnlineCollectionResponse"
     ]["completeOnlineCollectionResponse"] as CompleteOnlineCollectionResponse;
-    console.log(responseData);
     return responseData;
   }
-
-
 }
