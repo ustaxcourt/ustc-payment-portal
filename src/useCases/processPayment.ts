@@ -21,6 +21,8 @@ export async function processPayment(
 
   const result = await req.makeSoapRequest(appContext);
 
+  console.log("result from soap request", result);
+
   return {
     trackingId: result.paygov_tracking_id,
   };
