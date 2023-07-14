@@ -1,6 +1,8 @@
-import { Context, APIGatewayProxyResult, APIGatewayEvent } from "aws-lambda";
+import { APIGatewayProxyResult, APIGatewayEvent } from "aws-lambda";
 import { createAppContext } from "./appContext";
-import { ValidationError } from 'joi'
+import { InitPaymentRequest } from "./types/InitPaymentRequest";
+import { handleError } from "./handleError";
+import { authorizeRequest } from "./authorizeRequest";
 
 const appContext = createAppContext();
 
@@ -16,6 +18,11 @@ export const handler = async (
         }),
       };
     }
+
+    const request = JSON.parse(event.body) as InitPaymentRequest;
+
+    authorizeRequest(request);
+
     const result = await appContext
       .getUseCases()
       .initPayment(appContext, JSON.parse(event.body));
@@ -24,17 +31,6 @@ export const handler = async (
       body: JSON.stringify(result),
     };
   } catch (err) {
-    if (err instanceof ValidationError) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify(err)
-      }
-    }
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        message: "error!",
-      }),
-    };
+    return handleError(err);
   }
 };

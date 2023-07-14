@@ -1,4 +1,5 @@
 export type InitPaymentRequest = {
+  authToken: string;
   trackingId: string;
   amount: number;
   appId: string;
