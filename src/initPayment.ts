@@ -1,5 +1,6 @@
 import { Context, APIGatewayProxyResult, APIGatewayEvent } from "aws-lambda";
 import { createAppContext } from "./appContext";
+import { ValidationError } from 'joi'
 
 const appContext = createAppContext();
 
@@ -23,7 +24,12 @@ export const handler = async (
       body: JSON.stringify(result),
     };
   } catch (err) {
-    console.log(err);
+    if (err instanceof ValidationError) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify(err)
+      }
+    }
     return {
       statusCode: 500,
       body: JSON.stringify({

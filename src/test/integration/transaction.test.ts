@@ -1,24 +1,30 @@
-import { ProcessPaymentRequest } from "../../src/useCases/processPayment";
-import { InitPaymentRequest } from "../../src/useCases/initPayment";
+import { ProcessPaymentRequest } from "../../useCases/processPayment";
+import { InitPaymentRequest } from "../../types/InitPaymentRequest";
 import { getConfig } from "./helpers";
+
 describe("make a transaction", () => {
   let baseUrl: string;
   let token: string;
   let paymentRedirect: string;
+  let appId: string;
 
   beforeAll(() => {
     const config = getConfig();
     baseUrl = config.baseUrl;
+    appId = config.tcsAppId;
   });
 
   it("should make a request to start a transaction", async () => {
+    const randomNumber = Math.floor(Math.random() * 100000);
+
     const request: InitPaymentRequest = {
-      trackingId: "asdf123",
-      amount: 20,
-      appId: "asdf123",
-      urlSuccess: "http://example.com",
-      urlCancel: "http://example.com",
+      trackingId: `test${randomNumber}`,
+      amount: 20.0,
+      appId,
+      urlSuccess: "http://example.com/success",
+      urlCancel: "http://example.com/cancel",
     };
+
     const result = await fetch(`${baseUrl}/init`, {
       method: "POST",
       headers: {
@@ -26,7 +32,6 @@ describe("make a transaction", () => {
       },
       body: JSON.stringify(request),
     });
-
     expect(result.status).toBe(200);
 
     const data = await result.json();
@@ -34,18 +39,25 @@ describe("make a transaction", () => {
     paymentRedirect = data.paymentRedirect;
     expect(token).toBeTruthy();
     expect(paymentRedirect).toBeTruthy();
+    console.log(`Received a token: ${token}`);
+    console.log(`Have a payment redirect: ${paymentRedirect}`);
   });
 
   it("should be able to load the paymentUrl", async () => {
     const result = await fetch(paymentRedirect);
     expect(result.status).toBe(200);
+    console.log(`Looking good at the payment redirect: ${paymentRedirect}`);
   });
 
   it("should be able to process the transaction", async () => {
     const request: ProcessPaymentRequest = {
-      appId: "asdf123",
+      appId,
       token,
     };
+
+    console.log(
+      `Time to process the transaction with this appId ${appId}; token: ${token}`
+    );
 
     const result = await fetch(`${baseUrl}/process`, {
       method: "POST",
@@ -56,6 +68,7 @@ describe("make a transaction", () => {
     });
 
     expect(result.status).toBe(200);
+    console.log(result);
 
     const data = await result.json();
     expect(data.trackingId).toBeTruthy();
