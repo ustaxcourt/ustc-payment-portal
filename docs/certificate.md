@@ -67,4 +67,4 @@ Depending on which environments the certificates are to be used, you will need t
   - certs/production-certificate.pem
   - certs/production-privatekey.pem
 
-Then wherever environment variables are configured (currently Amplify), you will want to specify the environment of `NODE_ENV` to match the name of the certificate you wish to use (`production` or `staging`).
+Then in your `config.<env>.yml` file you, you will need to specify the environment of `NODE_ENV` to match the name of the certificate that you wish to use (`production` or `staging`).
