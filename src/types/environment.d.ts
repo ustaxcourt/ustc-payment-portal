@@ -5,6 +5,8 @@ declare global {
       SOAP_URL: string;
       PAYMENT_URL: string;
       API_TOKEN: string;
+      CERT_PASSPHRASE: string;
+      FLAG_SOAP_CLIENT: "http" | "soap";
     }
   }
 }
