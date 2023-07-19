@@ -6,7 +6,6 @@ export const authorizeRequest = (
   request: InitPaymentRequest | ProcessPaymentRequest
 ) => {
   if (!request.authToken || request.authToken != process.env.API_TOKEN) {
-    console.error("unauthorized request", request);
     throw new UnauthorizedError();
   }
 };
