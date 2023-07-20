@@ -4,9 +4,10 @@ import { ValidationError, string } from "joi";
 
 describe("handleError", () => {
   it("returns an object with the statusCode if the statusCode is set and less than 500", () => {
-    const error = new UnauthorizedError(
-      "You are not authorized to view this test"
-    );
+    const error = {
+      statusCode: 403,
+      message: "You are not authorized to view this test",
+    };
     expect(handleError(error)).toMatchObject({
       statusCode: 403,
       body: "You are not authorized to view this test",
