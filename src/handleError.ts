@@ -1,5 +1,4 @@
 import { ValidationError } from "joi";
-import { UnauthorizedError } from "./errors/unauthorized";
 
 export const handleError = (err: any) => {
   console.error(`responding with an error`, err);
