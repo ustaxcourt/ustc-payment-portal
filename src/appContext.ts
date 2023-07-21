@@ -61,17 +61,19 @@ export const createAppContext = (): AppContext => {
       return httpsAgentCache;
     },
     postHttpRequest: async (appContext: AppContext, body: string) => {
-      const httpsAgent = appContext.getHttpsAgent();
+      let httpsAgent: https.Agent | undefined;
+      if (process.env.CERT_PASSPHRASE) {
+        httpsAgent = appContext.getHttpsAgent();
+      }
 
       const result = await fetch(process.env.SOAP_URL, {
-        agent: httpsAgent,
         method: "POST",
         headers: {
           "Content-type": "application/soap+xml",
         },
         body,
+        agent: httpsAgent,
       });
-
       return result;
     },
     getUseCases: () => ({
