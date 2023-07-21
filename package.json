@@ -4,6 +4,7 @@
   "description": "",
   "main": "handler.js",
   "scripts": {
+    "dev": "",
     "test": "npx jest --config jest-unit.config.ts",
     "test:env": "npx jest src/test/integration/transaction.test.ts",
     "build": "tsc"
@@ -20,6 +21,7 @@
     "@types/soap": "^0.21.0",
     "@types/uuid": "^9.0.2",
     "esbuild": "^0.17.19",
+    "express": "^4.18.2",
     "jest": "^29.5.0",
     "js-yaml": "^4.1.0",
     "serverless-domain-manager": "^7.0.4",
