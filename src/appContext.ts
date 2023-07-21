@@ -8,7 +8,7 @@ import * as https from "https";
 import fetch from "node-fetch";
 
 let soapClient: soap.Client;
-let httpsAgent: https.Agent;
+let httpsAgentCache: https.Agent;
 
 export const createAppContext = (): AppContext => {
   return {
@@ -35,7 +35,7 @@ export const createAppContext = (): AppContext => {
       return soapClient;
     },
     getHttpsAgent: () => {
-      if (!httpsAgent) {
+      if (!httpsAgentCache) {
         const privateKeyPath = path.resolve(
           __dirname,
           `../certs/${process.env.NODE_ENV}-privatekey.pem`
@@ -56,9 +56,9 @@ export const createAppContext = (): AppContext => {
         };
 
         // Create an HTTPS agent using the certificate options
-        httpsAgent = new https.Agent(httpsAgentOptions);
+        httpsAgentCache = new https.Agent(httpsAgentOptions);
       }
-      return httpsAgent;
+      return httpsAgentCache;
     },
     postHttpRequest: async (appContext: AppContext, body: string) => {
       const httpsAgent = appContext.getHttpsAgent();

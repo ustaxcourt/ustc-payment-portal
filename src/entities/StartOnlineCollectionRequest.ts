@@ -6,29 +6,29 @@ import { StartOnlineCollectionResponse } from "../types/StartOnlineCollectionRes
 
 export const startOnlineCollectionSchema = Joi.object({
   agency_tracking_id: Joi.string().required(),
-  tcs_app_id: Joi.string().required(),
+  tcsAppId: Joi.string().required(),
   transaction_amount: Joi.number().required(),
-  url_cancel: Joi.string().required(),
-  url_success: Joi.string().required(),
+  urlCancel: Joi.string().required(),
+  urlSuccess: Joi.string().required(),
 });
 
 export class StartOnlineCollectionRequest {
-  public agency_tracking_id: string;
-  public transaction_amount: string;
-  public tcs_app_id: string;
-  public url_cancel: string;
-  public url_success: string;
-  public transaction_type: string = "Sale";
+  public agencyTrackingId: string;
+  public transactionAmount: string;
+  public tcsAppId: string;
+  public urlCancel: string;
+  public urlSuccess: string;
+  public transactionType: string = "Sale";
   public language: string = "en";
 
   constructor(request: RawStartOnlineCollectionRequest) {
-    this.agency_tracking_id = request.agency_tracking_id;
-    this.tcs_app_id = request.tcs_app_id;
-    this.transaction_amount = (
-      Math.round(request.transaction_amount * 100) / 100
+    this.agencyTrackingId = request.agencyTrackingId;
+    this.tcsAppId = request.tcsAppId;
+    this.transactionAmount = (
+      Math.round(request.transactionAmount * 100) / 100
     ).toFixed(2);
-    this.url_cancel = request.url_cancel;
-    this.url_success = request.url_success;
+    this.urlCancel = request.urlCancel;
+    this.urlSuccess = request.urlSuccess;
   }
 
   makeSoapRequest(
@@ -40,7 +40,7 @@ export class StartOnlineCollectionRequest {
       case "soap":
         return this.useSoap(appContext);
       default:
-        throw "Invalid flag";
+        throw new Error("Invalid flag");
     }
   }
 
@@ -53,23 +53,23 @@ export class StartOnlineCollectionRequest {
       client.startOnlineCollection(
         {
           startOnlineCollectionRequest: {
-            agency_tracking_id: this.agency_tracking_id,
-            transaction_amount: this.transaction_amount,
-            tcs_app_id: this.tcs_app_id,
-            url_cancel: this.url_cancel,
-            url_success: this.url_success,
-            transaction_type: this.transaction_type,
+            agency_tracking_id: this.agencyTrackingId,
+            transaction_amount: this.transactionAmount,
+            tcs_app_id: this.tcsAppId,
+            url_cancel: this.urlCancel,
+            url_success: this.urlSuccess,
+            transaction_type: this.transactionType,
             language: this.language,
           },
         },
-        function (
+        (
           err: Error,
           result: {
             startOnlineCollectionResponse: {
               token: string;
             };
           }
-        ) {
+        ) => {
           if (err) {
             reject(err);
           } else {
@@ -92,13 +92,13 @@ export class StartOnlineCollectionRequest {
     };
 
     const startOnlineCollectionRequest = {
-      tcs_app_id: this.tcs_app_id,
-      agency_tracking_id: this.agency_tracking_id,
-      transaction_type: this.transaction_type,
-      transaction_amount: this.transaction_amount,
+      tcs_app_id: this.tcsAppId,
+      agency_tracking_id: this.agencyTrackingId,
+      transaction_type: this.transactionType,
+      transaction_amount: this.transactionAmount,
       language: this.language,
-      url_success: this.url_success,
-      url_cancel: this.url_cancel,
+      url_success: this.urlSuccess,
+      url_cancel: this.urlCancel,
     };
 
     const reqObj = {
@@ -125,7 +125,7 @@ export class StartOnlineCollectionRequest {
     const response = parser.parse(data);
     const tokenResponse = response["S:Envelope"]["S:Body"][
       "ns2:startOnlineCollectionResponse"
-    ]["startOnlineCollectionResponse"] as StartOnlineCollectionResponse;
+    ].startOnlineCollectionResponse as StartOnlineCollectionResponse;
     return tokenResponse;
   }
 }

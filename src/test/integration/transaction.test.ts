@@ -1,4 +1,4 @@
-import { ProcessPaymentRequest } from "../../useCases/processPayment";
+import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
 import { InitPaymentRequest } from "../../types/InitPaymentRequest";
 import { getConfig } from "./helpers";
 

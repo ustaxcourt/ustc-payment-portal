@@ -5,7 +5,7 @@ import { UnauthorizedError } from "./errors/unauthorized";
 export const authorizeRequest = (
   request: InitPaymentRequestRaw | ProcessPaymentRequestRaw
 ) => {
-  if (!request.authToken || request.authToken != process.env.API_TOKEN) {
+  if (!request.authToken || request.authToken !== process.env.API_TOKEN) {
     throw new UnauthorizedError();
   }
 };
