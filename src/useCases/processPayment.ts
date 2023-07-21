@@ -1,10 +1,6 @@
 import { AppContext } from "../types/AppContext";
 import { CompleteOnlineCollectionRequest } from "../entities/CompleteOnlineCollectionRequest";
-
-export type ProcessPaymentRequest = {
-  appId: string;
-  token: string;
-};
+import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
 
 type ProcessPaymentResponse = {
   trackingId: string;
