@@ -11,22 +11,22 @@ export async function initPayment(
   request: InitPaymentRequest
 ): Promise<InitPaymentResponse> {
   const rawRequest = {
-    tcs_app_id: request.appId,
-    transaction_amount: request.amount,
-    url_cancel: request.urlCancel,
-    url_success: request.urlSuccess,
-    agency_tracking_id: request.trackingId,
+    tcsAppId: request.appId,
+    transactionAmount: request.amount,
+    urlCancel: request.urlCancel,
+    urlSuccess: request.urlSuccess,
+    agencyTrackingId: request.trackingId,
   };
 
   await startOnlineCollectionSchema.validateAsync(rawRequest);
 
-  console.log("request is valid", rawRequest);
+  // console.log("request is valid", rawRequest);
 
   const req = new StartOnlineCollectionRequest(rawRequest);
 
   const result = await req.makeSoapRequest(appContext);
 
-  console.log("result from soap request", result);
+  // console.log("result from soap request", result);
 
   return {
     token: result.token,
