@@ -5,9 +5,9 @@ import { AppContext } from "../types/AppContext";
 import { StartOnlineCollectionResponse } from "../types/StartOnlineCollectionResponse";
 
 export const startOnlineCollectionSchema = Joi.object({
-  agency_tracking_id: Joi.string().required(),
+  agencyTrackingId: Joi.string().required(),
   tcsAppId: Joi.string().required(),
-  transaction_amount: Joi.number().required(),
+  transactionAmount: Joi.number().required(),
   urlCancel: Joi.string().required(),
   urlSuccess: Joi.string().required(),
 });

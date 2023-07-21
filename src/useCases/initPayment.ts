@@ -20,7 +20,7 @@ export async function initPayment(
 
   await startOnlineCollectionSchema.validateAsync(rawRequest);
 
-  // console.log("request is valid", rawRequest);
+  console.log("request is valid", rawRequest);
 
   const req = new StartOnlineCollectionRequest(rawRequest);
 
