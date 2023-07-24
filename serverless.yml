@@ -43,7 +43,7 @@ functions:
       subnetIds:
         - !Ref PrivateLambdaSubnet
     environment:
-      API_TOKEN: ${self:custom.apiToken}
+      API_ACCESS_TOKEN: ${self:custom.apiToken}
       CERT_PASSPHRASE: ${self:custom.certPassphrase}
       NODE_ENV: ${self:custom.nodeEnv}
       PAYMENT_URL: ${self:custom.paymentUrl}
@@ -63,7 +63,7 @@ functions:
       subnetIds:
         - !Ref PrivateLambdaSubnet
     environment:
-      API_TOKEN: ${self:custom.apiToken}
+      API_ACCESS_TOKEN: ${self:custom.apiToken}
       CERT_PASSPHRASE: ${self:custom.certPassphrase}
       NODE_ENV: ${self:custom.nodeEnv}
       PAYMENT_URL: ${self:custom.paymentUrl}
@@ -82,7 +82,7 @@ functions:
       subnetIds:
         - !Ref PrivateLambdaSubnet
     environment:
-      API_TOKEN: ${self:custom.apiToken}
+      API_ACCESS_TOKEN: ${self:custom.apiToken}
       CERT_PASSPHRASE: ${self:custom.certPassphrase}
       NODE_ENV: ${self:custom.nodeEnv}
       SOAP_URL: ${self:custom.soapUrl}

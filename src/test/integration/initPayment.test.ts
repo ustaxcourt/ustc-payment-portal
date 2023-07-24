@@ -4,7 +4,7 @@ describe("initialize a payment", () => {
       method: "POST",
       body: JSON.stringify({
         trackingId: "my-tracking-id",
-        amount: 10,
+        amount: "10.00",
         appId: "asdf-123",
         urlSuccess: "https://example.com",
         urlCancel: "https://example.com",
@@ -14,6 +14,11 @@ describe("initialize a payment", () => {
       },
     });
 
-    expect(result.statusText).toBe(200);
+    const data = await result.json();
+    console.log(result);
+    console.log(data);
+
+    expect(result.status).toBe(200);
+    expect(data.token).toBeTruthy();
   });
 });

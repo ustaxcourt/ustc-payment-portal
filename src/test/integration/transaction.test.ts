@@ -1,17 +1,15 @@
 import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
 import { InitPaymentRequest } from "../../types/InitPaymentRequest";
 import { getConfig } from "./helpers";
+import { loadLocalConfig } from "../loadLocalConfig";
 
 describe("make a transaction", () => {
-  let baseUrl: string;
   let token: string;
   let paymentRedirect: string;
-  let appId: string;
+  const appId = "ustc-local-app-test";
 
   beforeAll(() => {
-    const config = getConfig();
-    baseUrl = config.baseUrl;
-    appId = config.tcsAppId;
+    loadLocalConfig();
   });
 
   it("should make a request to start a transaction", async () => {
@@ -25,7 +23,7 @@ describe("make a transaction", () => {
       urlCancel: "http://example.com/cancel",
     };
 
-    const result = await fetch(`${baseUrl}/init`, {
+    const result = await fetch(`${process.env.BASE_URL}/init`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -59,7 +57,7 @@ describe("make a transaction", () => {
       `Time to process the transaction with this appId ${appId}; token: ${token}`
     );
 
-    const result = await fetch(`${baseUrl}/process`, {
+    const result = await fetch(`${process.env.BASE_URL}/process`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -71,6 +69,7 @@ describe("make a transaction", () => {
     console.log(result);
 
     const data = await result.json();
+    console.log({ data });
     expect(data.trackingId).toBeTruthy();
   });
 });

@@ -18,7 +18,7 @@ export const createAppContext = (): AppContext => {
           const params = {
             forceSoap12Headers: true,
             wsdl_headers: {
-              Authentication: `Bearer ${process.env.API_TOKEN}`,
+              Authentication: `Bearer ${process.env.PAY_GOV_DEV_SERVER_TOKEN}`,
             },
           };
           soapClient = await soap.createClientAsync(
@@ -26,7 +26,7 @@ export const createAppContext = (): AppContext => {
             params
           );
           soapClient.addSoapHeader({
-            Authentication: process.env.API_TOKEN,
+            Authentication: process.env.PAY_GOV_DEV_SERVER_TOKEN,
           });
         } else {
           // we will need to provide a certificate somehow!?
@@ -66,11 +66,19 @@ export const createAppContext = (): AppContext => {
         httpsAgent = appContext.getHttpsAgent();
       }
 
+      const headers: {
+        "Content-type": string;
+        authentication?: string;
+      } = {
+        "Content-type": "application/soap+xml",
+      };
+      if (process.env.PAY_GOV_DEV_SERVER_TOKEN) {
+        headers.authentication = `Bearer ${process.env.PAY_GOV_DEV_SERVER_TOKEN}`;
+      }
+
       const result = await fetch(process.env.SOAP_URL, {
         method: "POST",
-        headers: {
-          "Content-type": "application/soap+xml",
-        },
+        headers,
         body,
         agent: httpsAgent,
       });
