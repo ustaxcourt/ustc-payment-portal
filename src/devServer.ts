@@ -17,18 +17,18 @@ app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
 // define a route handler for the default home page
-app.post("/init", (req, res) => {
-  // initialize a payment
-
-  const result = appContext.getUseCases().initPayment(appContext, req.body);
+app.post("/init", async (req, res) => {
+  const result = await appContext
+    .getUseCases()
+    .initPayment(appContext, req.body);
   res.json(result);
 });
 
-app.post("/process", (req, res) => {
-  // process a payment
-  res.json({
-    foo: "bar",
-  });
+app.post("/process", async (req, res) => {
+  const result = await appContext
+    .getUseCases()
+    .processPayment(appContext, req.body);
+  res.json(result);
 });
 
 app.get("/", (req, res) => {

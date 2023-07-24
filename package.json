@@ -12,7 +12,8 @@
     "dev": "nodemon --delay 5 --watch src -e ts,ejs --exec npm run dev:start",
     "start": "node .",
     "test": "npx jest --config jest-unit.config.ts",
-    "test:env": "npx jest src/test/integration/transaction.test.ts"
+    "test:env": "npx jest ./src/test/integration/transaction.test.ts",
+    "test:integration": "npx jest ./src/test/integration/"
   },
   "keywords": [],
   "author": "",
