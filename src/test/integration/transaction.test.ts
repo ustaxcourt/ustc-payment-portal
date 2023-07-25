@@ -1,6 +1,5 @@
 import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
 import { InitPaymentRequest } from "../../types/InitPaymentRequest";
-import { getConfig } from "./helpers";
 import { loadLocalConfig } from "../loadLocalConfig";
 
 describe("make a transaction", () => {
@@ -23,7 +22,8 @@ describe("make a transaction", () => {
       urlCancel: "http://example.com/cancel",
     };
 
-    const result = await fetch(`${process.env.BASE_URL}/init`, {
+    const url = `${process.env.BASE_URL}/init`;
+    const result = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -66,10 +66,8 @@ describe("make a transaction", () => {
     });
 
     expect(result.status).toBe(200);
-    console.log(result);
 
     const data = await result.json();
-    console.log({ data });
     expect(data.trackingId).toBeTruthy();
   });
 });
