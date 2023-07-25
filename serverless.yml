@@ -21,6 +21,7 @@ custom:
   nodeEnv: ${file(./config.${opt:stage, 'dev'}.yml):nodeEnv}
   certPassphrase: ${file(./config.${opt:stage, 'dev'}.yml):certPassphrase}
   flagSoapClient: ${file(./config.${opt:stage, 'dev'}.yml):flagSoapClient}
+  payGovDevServerToken: ${file(./config.${opt:stage, 'dev'}.yml):payGovDevServerToken}
   customDomain:
     domainName: ${self:custom.subdomain}
     basePath: ""
@@ -49,6 +50,7 @@ functions:
       PAYMENT_URL: ${self:custom.paymentUrl}
       SOAP_URL: ${self:custom.soapUrl}
       FLAG_SOAP_CLIENT: ${self:custom.flagSoapClient}
+      PAY_GOV_DEV_SERVER_TOKEN: ${self:custom.payGovDevServerToken}
 
   processPayment:
     handler: src/lambdaHandler.processPaymentHandler
@@ -69,6 +71,8 @@ functions:
       PAYMENT_URL: ${self:custom.paymentUrl}
       SOAP_URL: ${self:custom.soapUrl}
       FLAG_SOAP_CLIENT: ${self:custom.flagSoapClient}
+      PAY_GOV_DEV_SERVER_TOKEN: ${self:custom.payGovDevServerToken}
+
   testCert:
     handler: src/testCert.handler
     events:
