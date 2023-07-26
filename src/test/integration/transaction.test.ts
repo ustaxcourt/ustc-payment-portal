@@ -69,5 +69,6 @@ describe("make a transaction", () => {
 
     const data = await result.json();
     expect(data.trackingId).toBeTruthy();
+    expect(data.paymentStatus).toBe("Success");
   });
 });
