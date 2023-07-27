@@ -6,9 +6,7 @@ const testToken = "one-quarter";
 
 describe("authorizeRequest", () => {
   const mockRequest = {
-    authToken: testToken,
-    appId: "some-app-id",
-    token: "a-token",
+    Authentication: `Bearer ${testToken}`,
   };
 
   beforeAll(() => {
@@ -35,8 +33,7 @@ describe("authorizeRequest", () => {
     let result;
     try {
       authorizeRequest({
-        ...mockRequest,
-        authToken: "some-other-token",
+        Authentication: "Bearer some-other-token",
       });
       result = "success";
     } catch (err) {

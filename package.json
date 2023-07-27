@@ -12,7 +12,7 @@
     "dev": "nodemon --delay 2 --watch src -e ts,ejs --exec npm run dev:start",
     "start": "node .",
     "test": "npx jest --config jest-unit.config.ts",
-    "test:env": "npx jest ./src/test/integration/transaction.test.ts",
+    "test:integration:dev": "DOTENV_CONFIG_PATH=.env.dev npx jest ./src/test/integration/",
     "test:integration": "npx jest ./src/test/integration/"
   },
   "keywords": [],
