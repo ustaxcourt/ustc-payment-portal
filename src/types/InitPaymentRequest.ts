@@ -5,7 +5,3 @@ export interface InitPaymentRequest {
   urlSuccess: string;
   urlCancel: string;
 }
-
-export interface InitPaymentRequestRaw extends InitPaymentRequest {
-  authToken: string;
-}

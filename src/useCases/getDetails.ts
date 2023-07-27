@@ -27,6 +27,7 @@ export const getDetails: GetDetails = async (
   });
 
   const result = await req.makeSoapRequest(appContext);
+
   return {
     trackingId: result.paygov_tracking_id,
     transactionStatus: result.transaction_status,

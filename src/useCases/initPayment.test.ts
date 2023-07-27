@@ -25,9 +25,7 @@ describe("initPayment", () => {
   });
 
   it("does not throw an error if we pass in a valid request", async () => {
-    appContext.postHttpRequest = jest.fn().mockReturnValue({
-      text: jest.fn().mockReturnValue(mockSoapResponse),
-    });
+    appContext.postHttpRequest = jest.fn().mockReturnValue(mockSoapResponse);
 
     const { token, paymentRedirect } = await initPayment(appContext, {
       amount: 20,

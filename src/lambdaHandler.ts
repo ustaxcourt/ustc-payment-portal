@@ -3,25 +3,16 @@ import { createAppContext } from "./appContext";
 import { authorizeRequest } from "./authorizeRequest";
 import { handleError } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
-import { AppContext } from "./types/AppContext";
-import { InitPaymentRequest } from "./types/InitPaymentRequest";
-import { ProcessPaymentRequest } from "./types/ProcessPaymentRequest";
-import { InitPaymentResponse } from "./types/InitPaymentResponse";
-import { ProcessPaymentResponse } from "./types/ProcessPaymentResponse";
+import { GetDetails } from "./useCases/getDetails";
+import { InitPayment } from "./useCases/initPayment";
+import { ProcessPayment } from "./useCases/processPayment";
 
 const appContext = createAppContext();
 
-type InitPaymentHandler = (
-  appContext: AppContext,
-  request: InitPaymentRequest
-) => Promise<InitPaymentResponse>;
-
-type ProcessPaymentHandler = (
-  appContext: AppContext,
-  request: ProcessPaymentRequest
-) => Promise<ProcessPaymentResponse>;
-
-type LambdaHandler = ProcessPaymentHandler | InitPaymentHandler;
+type LambdaHandler =
+  | ProcessPayment
+  | InitPayment
+  | GetDetails;
 
 const lambdaHandler = async (
   event: APIGatewayEvent,
@@ -33,7 +24,7 @@ const lambdaHandler = async (
 
   try {
     const request = JSON.parse(event.body);
-    authorizeRequest(request);
+    authorizeRequest(event.headers);
     const result = await callback(appContext, request);
     return {
       statusCode: 200,
@@ -53,3 +44,8 @@ export const processPaymentHandler = (
   event: APIGatewayEvent
 ): Promise<APIGatewayProxyResult> =>
   lambdaHandler(event, appContext.getUseCases().processPayment);
+
+export const getDetailsHandler = (
+  event: APIGatewayEvent
+): Promise<APIGatewayProxyResult> =>
+  lambdaHandler(event, appContext.getUseCases().getDetails);
