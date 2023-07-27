@@ -1,5 +1,6 @@
 import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
 import { InitPaymentRequest } from "../../types/InitPaymentRequest";
+import { RawGetDetailsRequest } from "../../entities/GetDetailsRequest";
 
 describe("make a transaction", () => {
   let token: string;
@@ -71,13 +72,13 @@ describe("make a transaction", () => {
   });
 
   it("should be able to get the details about the transaction", async () => {
-    const request: GetDetailsRequest = {
+    const request = {
       appId,
       payGovTrackingId,
     };
 
     console.log(
-      `Time to get the details with this appId ${appId}; token: ${payGovTrackingId}`
+      `Time to get the details with this appId ${appId}; payGovTrackingId: ${payGovTrackingId}`
     );
 
     const result = await fetch(
@@ -86,7 +87,6 @@ describe("make a transaction", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(request),
       }
     );
 
