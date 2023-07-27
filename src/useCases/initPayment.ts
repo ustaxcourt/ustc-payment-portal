@@ -6,10 +6,12 @@ import {
 import { InitPaymentRequest } from "../types/InitPaymentRequest";
 import { InitPaymentResponse } from "../types/InitPaymentResponse";
 
-export async function initPayment(
+export type InitPayment = (
   appContext: AppContext,
   request: InitPaymentRequest
-): Promise<InitPaymentResponse> {
+) => Promise<InitPaymentResponse>;
+
+export const initPayment: InitPayment = async (appContext, request) => {
   const rawRequest = {
     tcsAppId: request.appId,
     transactionAmount: request.amount,
@@ -26,10 +28,8 @@ export async function initPayment(
 
   const result = await req.makeSoapRequest(appContext);
 
-  // console.log("result from soap request", result);
-
   return {
     token: result.token,
     paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${request.appId}`,
   };
-}
+};

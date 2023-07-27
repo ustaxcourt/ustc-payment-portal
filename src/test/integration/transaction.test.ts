@@ -30,8 +30,9 @@ describe("make a transaction", () => {
       },
       body: JSON.stringify(request),
     });
-    expect(result.status).toBe(200);
 
+    expect(result.status).toBe(200);
+    
     const data = await result.json();
     token = data.token;
     paymentRedirect = data.paymentRedirect;
@@ -69,6 +70,6 @@ describe("make a transaction", () => {
 
     const data = await result.json();
     expect(data.trackingId).toBeTruthy();
-    expect(data.paymentStatus).toBe("Success");
+    expect(data.transactionStatus).toBe("Success");
   });
 });
