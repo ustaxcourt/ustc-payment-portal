@@ -22,47 +22,7 @@ export class CompleteOnlineCollectionRequest {
   makeSoapRequest = async (
     appContext: AppContext
   ): Promise<CompleteOnlineCollectionResponse> => {
-    switch (process.env.FLAG_SOAP_CLIENT) {
-      case "http":
-        return this.useHttp(appContext);
-      case "soap":
-        return this.useSoap(appContext);
-      default:
-        throw new Error(
-          `Invalid FLAG_SOAP_CLIENT: (${process.env.FLAG_SOAP_CLIENT})`
-        );
-    }
-  };
-
-  useSoap = async (
-    appContext: AppContext
-  ): Promise<CompleteOnlineCollectionResponse> => {
-    const client = await appContext.getSoapClient();
-
-    return new Promise((resolve, reject) => {
-      client.completeOnlineCollection(
-        {
-          completeOnlineCollectionRequest: {
-            tcsAppId: this.tcsAppId,
-            token: this.token,
-          },
-        },
-        (
-          err: Error,
-          result: {
-            completeOnlineCollectionResponse: {
-              paygov_tracking_id: string;
-            };
-          }
-        ) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(result.completeOnlineCollectionResponse);
-          }
-        }
-      );
-    });
+    return this.useHttp(appContext);
   };
 
   useHttp = async (

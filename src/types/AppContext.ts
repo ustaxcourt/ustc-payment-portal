@@ -1,14 +1,15 @@
 import * as https from "https";
-import * as soap from "soap";
+
 import { InitPayment } from "../useCases/initPayment";
 import { ProcessPayment } from "../useCases/processPayment";
+import { GetDetails } from "../useCases/getDetails";
 
 export type AppContext = {
-  getSoapClient: () => Promise<soap.Client>;
   getHttpsAgent: () => https.Agent;
   postHttpRequest: (appContext: AppContext, body: string) => Promise<any>;
   getUseCases: () => {
     initPayment: InitPayment;
     processPayment: ProcessPayment;
+    getDetails: GetDetails;
   };
 };

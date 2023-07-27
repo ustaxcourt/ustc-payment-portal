@@ -7,7 +7,6 @@ declare global {
       API_ACCESS_TOKEN: string;
       PAY_GOV_DEV_SERVER_TOKEN: string;
       CERT_PASSPHRASE: string;
-      FLAG_SOAP_CLIENT: "http" | "soap";
     }
   }
 }

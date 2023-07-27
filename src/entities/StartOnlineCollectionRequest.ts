@@ -34,52 +34,7 @@ export class StartOnlineCollectionRequest {
   makeSoapRequest(
     appContext: AppContext
   ): Promise<StartOnlineCollectionResponse> {
-    switch (process.env.FLAG_SOAP_CLIENT) {
-      case "http":
-        return this.useHttp(appContext);
-      case "soap":
-        return this.useSoap(appContext);
-      default:
-        throw new Error("Invalid flag");
-    }
-  }
-
-  async useSoap(
-    appContext: AppContext
-  ): Promise<StartOnlineCollectionResponse> {
-    const client = await appContext.getSoapClient();
-
-    return new Promise((resolve, reject) => {
-      client.startOnlineCollection(
-        {
-          startOnlineCollectionRequest: {
-            agency_tracking_id: this.agencyTrackingId,
-            transaction_amount: this.transactionAmount,
-            tcs_app_id: this.tcsAppId,
-            url_cancel: this.urlCancel,
-            url_success: this.urlSuccess,
-            transaction_type: this.transactionType,
-            language: this.language,
-          },
-        },
-        (
-          err: Error,
-          result: {
-            startOnlineCollectionResponse: {
-              token: string;
-            };
-          }
-        ) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(
-              result.startOnlineCollectionResponse as StartOnlineCollectionResponse
-            );
-          }
-        }
-      );
-    });
+    return this.useHttp(appContext);
   }
 
   async useHttp(

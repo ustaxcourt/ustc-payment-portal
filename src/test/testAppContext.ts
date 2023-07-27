@@ -1,5 +1,4 @@
 export const testAppContext = {
-  getSoapClient: jest.fn(),
   getHttpsAgent: jest.fn(),
   postHttpRequest: jest.fn(),
   getUseCases: () => ({
