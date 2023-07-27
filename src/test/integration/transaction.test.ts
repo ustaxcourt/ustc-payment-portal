@@ -32,7 +32,7 @@ describe("make a transaction", () => {
     });
 
     expect(result.status).toBe(200);
-    
+
     const data = await result.json();
     token = data.token;
     paymentRedirect = data.paymentRedirect;
