@@ -1,6 +1,6 @@
 describe("initialize a payment", () => {
   it("makes a request to the local payment portal", async () => {
-    const result = await fetch("http://localhost:8080/init", {
+    const result = await fetch(`${process.env.BASE_URL}/init`, {
       method: "POST",
       body: JSON.stringify({
         trackingId: "my-tracking-id",
@@ -11,6 +11,7 @@ describe("initialize a payment", () => {
       }),
       headers: {
         "Content-Type": "application/json",
+        Authentication: `Bearer ${process.env.API_ACCESS_TOKEN}`,
       },
     });
 
