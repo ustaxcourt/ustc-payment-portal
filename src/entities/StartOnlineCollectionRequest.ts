@@ -1,8 +1,8 @@
 import Joi from "joi";
-import { XMLBuilder, XMLParser } from "fast-xml-parser";
 import { RawStartOnlineCollectionRequest } from "../types/RawStartOnlineCollectionRequest";
 import { AppContext } from "../types/AppContext";
 import { StartOnlineCollectionResponse } from "../types/StartOnlineCollectionResponse";
+import { RequestType, SoapRequest } from "./SoapRequest";
 
 export const startOnlineCollectionSchema = Joi.object({
   agencyTrackingId: Joi.string().required(),
@@ -12,18 +12,29 @@ export const startOnlineCollectionSchema = Joi.object({
   urlSuccess: Joi.string().required(),
 });
 
-export class StartOnlineCollectionRequest {
+export type StartOnlineCollectionRequestParams = {
+  tcs_app_id: string;
+  agency_tracking_id: string;
+  transaction_type: string;
+  transaction_amount: string;
+  language: string;
+  url_success: string;
+  url_cancel: string;
+};
+
+export class StartOnlineCollectionRequest extends SoapRequest {
   public agencyTrackingId: string;
   public transactionAmount: string;
-  public tcsAppId: string;
   public urlCancel: string;
   public urlSuccess: string;
   public transactionType: string = "Sale";
   public language: string = "en";
+  private requestType: RequestType = "startOnlineCollection";
 
   constructor(request: RawStartOnlineCollectionRequest) {
+    super(request);
+
     this.agencyTrackingId = request.agencyTrackingId;
-    this.tcsAppId = request.tcsAppId;
     this.transactionAmount = (
       Math.round(request.transactionAmount * 100) / 100
     ).toFixed(2);
@@ -40,13 +51,7 @@ export class StartOnlineCollectionRequest {
   async useHttp(
     appContext: AppContext
   ): Promise<StartOnlineCollectionResponse> {
-    const xmlOptions = {
-      ignoreAttributes: false,
-      attributeNamePrefix: "@",
-      format: true,
-    };
-
-    const startOnlineCollectionRequest = {
+    const params: StartOnlineCollectionRequestParams = {
       tcs_app_id: this.tcsAppId,
       agency_tracking_id: this.agencyTrackingId,
       transaction_type: this.transactionType,
@@ -56,31 +61,15 @@ export class StartOnlineCollectionRequest {
       url_cancel: this.urlCancel,
     };
 
-    const reqObj = {
-      "soapenv:Envelope": {
-        "soapenv:Header": {},
-        "soapenv:Body": {
-          "tcs:startOnlineCollection": {
-            startOnlineCollectionRequest,
-          },
-        },
-        "@xmlns:soapenv": "http://schemas.xmlsoap.org/soap/envelope/",
-        "@xmlns:tcs": "http://fms.treas.gov/services/tcsonline_3_1",
-      },
-    };
+    const response = await SoapRequest.prototype.makeRequest(
+      appContext,
+      params,
+      this.requestType
+    );
 
-    const builder = new XMLBuilder(xmlOptions);
-    const xmlBody = builder.build(reqObj);
+    const tokenResponse = response["ns2:startOnlineCollectionResponse"]
+      .startOnlineCollectionResponse as StartOnlineCollectionResponse;
 
-    const result = await appContext.postHttpRequest(appContext, xmlBody);
-
-    const parser = new XMLParser(xmlOptions);
-    const data = await result.text();
-    console.log(data);
-    const response = parser.parse(data);
-    const tokenResponse = response["S:Envelope"]["S:Body"][
-      "ns2:startOnlineCollectionResponse"
-    ].startOnlineCollectionResponse as StartOnlineCollectionResponse;
     return tokenResponse;
   }
 }

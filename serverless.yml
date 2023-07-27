@@ -15,10 +15,9 @@ plugins:
   - serverless-esbuild
   - serverless-domain-manager
 
-
 custom:
   customDomain:
-    domainName: ${self:custom.subdomain}
+    domainName: ${env:SUBDOMAIN}
     basePath: ""
     autoDomain: true
 
@@ -56,7 +55,7 @@ functions:
       subnetIds:
         - !Ref PrivateLambdaSubnet
     environment:
-      API_ACCESS_TOKEN: ${self:custom.apiToken}
+      API_ACCESS_TOKEN: ${env:API_ACCESS_TOKEN}
       CERT_PASSPHRASE: ${env:CERT_PASSPHRASE}
       NODE_ENV: ${env:NODE_ENV}
       PAYMENT_URL: ${env:PAYMENT_URL}
@@ -76,7 +75,7 @@ functions:
       subnetIds:
         - !Ref PrivateLambdaSubnet
     environment:
-      API_ACCESS_TOKEN: ${self:custom.apiToken}
+      API_ACCESS_TOKEN: ${env:API_ACCESS_TOKEN}
       CERT_PASSPHRASE: ${env:CERT_PASSPHRASE}
       NODE_ENV: ${env:NODE_ENV}
       SOAP_URL: ${env:SOAP_URL}

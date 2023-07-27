@@ -9,7 +9,7 @@
     "build": "npm-run-all clean lint tsc",
     "dev:start": "npm-run-all build start",
     "tsc": "tsc",
-    "dev": "nodemon --delay 5 --watch src -e ts,ejs --exec npm run dev:start",
+    "dev": "nodemon --delay 2 --watch src -e ts,ejs --exec npm run dev:start",
     "start": "node .",
     "test": "npx jest --config jest-unit.config.ts",
     "test:env": "npx jest ./src/test/integration/transaction.test.ts",

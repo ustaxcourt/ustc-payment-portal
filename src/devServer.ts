@@ -31,7 +31,9 @@ app.post("/process", async (req, res) => {
 });
 
 app.get("/details/:appId/:payGovTrackingId", async (req, res) => {
-  const result = appContext.getUseCases().getDetails(appContext, req.params);
+  const result = await appContext
+    .getUseCases()
+    .getDetails(appContext, req.params);
   return res.json(result);
 });
 

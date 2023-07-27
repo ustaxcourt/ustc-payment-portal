@@ -1,11 +1,11 @@
-import path from "path";
-import { readFileSync } from "fs";
-import { initPayment } from "./useCases/initPayment";
-import { getDetails } from "./useCases/getDetails";
-import { processPayment } from "./useCases/processPayment";
 import { AppContext } from "./types/AppContext";
+import { getDetails } from "./useCases/getDetails";
+import { initPayment } from "./useCases/initPayment";
+import { processPayment } from "./useCases/processPayment";
+import { readFileSync } from "fs";
 import * as https from "https";
 import fetch from "node-fetch";
+import path from "path";
 
 let httpsAgentCache: https.Agent;
 
@@ -37,7 +37,10 @@ export const createAppContext = (): AppContext => {
       }
       return httpsAgentCache;
     },
-    postHttpRequest: async (appContext: AppContext, body: string) => {
+    postHttpRequest: async (
+      appContext: AppContext,
+      body: string
+    ): Promise<string> => {
       let httpsAgent: https.Agent | undefined;
       if (process.env.CERT_PASSPHRASE) {
         httpsAgent = appContext.getHttpsAgent();
@@ -59,7 +62,9 @@ export const createAppContext = (): AppContext => {
         body,
         agent: httpsAgent,
       });
-      return result;
+
+      const responseBody = await result.text();
+      return responseBody;
     },
     getUseCases: () => ({
       initPayment,

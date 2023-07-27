@@ -1,8 +1,7 @@
-import { XMLParser } from "fast-xml-parser";
 import { AppContext } from "../types/AppContext";
-import { CompleteOnlineCollectionRequest } from "./CompleteOnlineCollectionRequest";
 import { TransactionStatus } from "../types/TransactionStatus";
 import { RawCompleteOnlineCollectionRequest } from "../types/RawCompleteOnlineCollectionRequest";
+import { RequestType, SoapRequest } from "./SoapRequest";
 
 type CompleteOnlineCollectionWithDetailsResponse = {
   paygov_tracking_id: string;
@@ -11,13 +10,17 @@ type CompleteOnlineCollectionWithDetailsResponse = {
   transaction_amount: string;
 };
 
-export class CompleteOnlineCollectionWithDetailsRequest extends CompleteOnlineCollectionRequest {
+export type CompleteOnlineCollectionWithDetailsRequestParams = {
+  tcs_app_id: string;
+  token: string;
+};
+
+export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
   public token: string;
-  public tcsAppId: string;
+  private requestType: RequestType = "completeOnlineCollectionWithDetails";
 
   constructor(request: RawCompleteOnlineCollectionRequest) {
     super(request);
-    this.tcsAppId = request.tcsAppId;
     this.token = request.token;
   }
 
@@ -30,36 +33,21 @@ export class CompleteOnlineCollectionWithDetailsRequest extends CompleteOnlineCo
   useHttp = async (
     appContext: AppContext
   ): Promise<CompleteOnlineCollectionWithDetailsResponse> => {
-    const xmlOptions = {
-      ignoreAttributes: false,
-      attributeNamePrefix: "@",
-      format: true,
+    const params: CompleteOnlineCollectionWithDetailsRequestParams = {
+      tcs_app_id: this.tcsAppId,
+      token: this.token,
     };
+    const responseBody = await SoapRequest.prototype.makeRequest(
+      appContext,
+      params,
+      this.requestType
+    );
 
-    const xmlBody = `
-  <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tcs="http://fms.treas.gov/services/tcsonline_3_1">
-    <soapenv:Header />
-    <soapenv:Body>
-      <tcs:completeOnlineCollectionWithDetails>
-        <completeOnlineCollectionWithDetailsRequest>
-          <tcs_app_id>${this.tcsAppId}</tcs_app_id>
-          <token>${this.token}</token>
-        </completeOnlineCollectionWithDetailsRequest>
-      </tcs:completeOnlineCollectionWithDetails>
-    </soapenv:Body>
-  </soapenv:Envelope>`;
-
-    const result = await appContext.postHttpRequest(appContext, xmlBody);
-
-    const parser = new XMLParser(xmlOptions);
-    const data = await result.text();
-    console.log(data);
-
-    const response = parser.parse(data);
-    const responseData = response["S:Envelope"]["S:Body"][
+    const response = responseBody[
       "ns2:completeOnlineCollectionWithDetailsResponse"
     ]
       .completeOnlineCollectionWithDetailsResponse as CompleteOnlineCollectionWithDetailsResponse;
-    return responseData;
+
+    return response;
   };
 }
