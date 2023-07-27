@@ -62,6 +62,26 @@ functions:
       SOAP_URL: ${env:SOAP_URL}
       PAY_GOV_DEV_SERVER_TOKEN: ${env:PAY_GOV_DEV_SERVER_TOKEN}
 
+  getDetails:
+    handler: src/lambdaHandler.getDetailsHandler
+    events:
+      - http:
+          path: details/{appId}/{payGovTrackingId}
+          method: get
+          cors: true
+    vpc:
+      securityGroupIds:
+        - !Ref LambdaSecurityGroup
+      subnetIds:
+        - !Ref PrivateLambdaSubnet
+    environment:
+      API_ACCESS_TOKEN: ${env:API_ACCESS_TOKEN}
+      CERT_PASSPHRASE: ${env:CERT_PASSPHRASE}
+      NODE_ENV: ${env:NODE_ENV}
+      PAYMENT_URL: ${env:PAYMENT_URL}
+      SOAP_URL: ${env:SOAP_URL}
+      PAY_GOV_DEV_SERVER_TOKEN: ${env:PAY_GOV_DEV_SERVER_TOKEN}
+
   testCert:
     handler: src/testCert.handler
     events:
