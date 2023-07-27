@@ -1,7 +1,9 @@
 import express from "express";
 import path from "path";
 import { createAppContext } from "./appContext";
-require("dotenv").config();
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const appContext = createAppContext();
 
@@ -26,6 +28,11 @@ app.post("/process", async (req, res) => {
     .getUseCases()
     .processPayment(appContext, req.body);
   res.json(result);
+});
+
+app.get("/details/:appId/:payGovTrackingId", async (req, res) => {
+  const result = appContext.getUseCases().getDetails(appContext, req.params);
+  return res.json(result);
 });
 
 app.get("/", (req, res) => {

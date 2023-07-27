@@ -4,6 +4,7 @@ import { InitPaymentRequest } from "../../types/InitPaymentRequest";
 describe("make a transaction", () => {
   let token: string;
   let paymentRedirect: string;
+  let payGovTrackingId: string;
   const appId = "ustc-local-app-test";
 
   it("should make a request to start a transaction", async () => {
@@ -65,6 +66,34 @@ describe("make a transaction", () => {
 
     const data = await result.json();
     expect(data.trackingId).toBeTruthy();
+    expect(data.transactionStatus).toBe("Success");
+    payGovTrackingId = data.trackingId;
+  });
+
+  it("should be able to get the details about the transaction", async () => {
+    const request: GetDetailsRequest = {
+      appId,
+      payGovTrackingId,
+    };
+
+    console.log(
+      `Time to get the details with this appId ${appId}; token: ${payGovTrackingId}`
+    );
+
+    const result = await fetch(
+      `${process.env.BASE_URL}/details/${appId}/${payGovTrackingId}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(request),
+      }
+    );
+
+    expect(result.status).toBe(200);
+
+    const data = await result.json();
+    expect(data.trackingId).toBe(payGovTrackingId);
     expect(data.transactionStatus).toBe("Success");
   });
 });

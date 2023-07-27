@@ -1,39 +1,16 @@
 import path from "path";
 import { readFileSync } from "fs";
-import * as soap from "soap";
 import { initPayment } from "./useCases/initPayment";
+import { getDetails } from "./useCases/getDetails";
 import { processPayment } from "./useCases/processPayment";
 import { AppContext } from "./types/AppContext";
 import * as https from "https";
 import fetch from "node-fetch";
 
-let soapClient: soap.Client;
 let httpsAgentCache: https.Agent;
 
 export const createAppContext = (): AppContext => {
   return {
-    getSoapClient: async (): Promise<soap.Client> => {
-      if (!soapClient) {
-        if (process.env.NODE_ENV === "development") {
-          const params = {
-            forceSoap12Headers: true,
-            wsdl_headers: {
-              Authentication: `Bearer ${process.env.PAY_GOV_DEV_SERVER_TOKEN}`,
-            },
-          };
-          soapClient = await soap.createClientAsync(
-            process.env.SOAP_URL!,
-            params
-          );
-          soapClient.addSoapHeader({
-            Authentication: process.env.PAY_GOV_DEV_SERVER_TOKEN,
-          });
-        } else {
-          // we will need to provide a certificate somehow!?
-        }
-      }
-      return soapClient;
-    },
     getHttpsAgent: () => {
       if (!httpsAgentCache) {
         const privateKeyPath = path.resolve(
@@ -87,6 +64,7 @@ export const createAppContext = (): AppContext => {
     getUseCases: () => ({
       initPayment,
       processPayment,
+      getDetails,
     }),
   };
 };

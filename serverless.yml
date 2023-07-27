@@ -21,9 +21,6 @@ custom:
     domainName: ${self:custom.subdomain}
     basePath: ""
     autoDomain: true
-  esbuild:
-    external:
-      - soap
 
 functions:
   initPayment:
@@ -44,7 +41,6 @@ functions:
       NODE_ENV: ${env:NODE_ENV}
       PAYMENT_URL: ${env:PAYMENT_URL}
       SOAP_URL: ${env:SOAP_URL}
-      FLAG_SOAP_CLIENT: ${env:FLAG_SOAP_CLIENT}
       PAY_GOV_DEV_SERVER_TOKEN: ${env:PAY_GOV_DEV_SERVER_TOKEN}
 
   processPayment:
@@ -65,7 +61,6 @@ functions:
       NODE_ENV: ${env:NODE_ENV}
       PAYMENT_URL: ${env:PAYMENT_URL}
       SOAP_URL: ${env:SOAP_URL}
-      FLAG_SOAP_CLIENT: ${env:FLAG_SOAP_CLIENT}
       PAY_GOV_DEV_SERVER_TOKEN: ${env:PAY_GOV_DEV_SERVER_TOKEN}
 
   testCert:
