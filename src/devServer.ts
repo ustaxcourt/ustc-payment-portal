@@ -1,10 +1,7 @@
 import express from "express";
 import path from "path";
 import { createAppContext } from "./appContext";
-import { InitPaymentRequest } from "./types/InitPaymentRequest";
-import { loadLocalConfig } from "./test/loadLocalConfig";
-
-loadLocalConfig();
+require("dotenv").config();
 
 const appContext = createAppContext();
 

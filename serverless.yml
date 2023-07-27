@@ -4,6 +4,8 @@ provider:
   runtime: nodejs18.x
   region: us-east-1
 
+useDotenv: true
+
 package:
   individually: true
   include:
@@ -13,15 +15,8 @@ plugins:
   - serverless-esbuild
   - serverless-domain-manager
 
+
 custom:
-  soapUrl: ${file(./config.${opt:stage, 'dev'}.yml):soapUrl}
-  apiToken: ${file(./config.${opt:stage, 'dev'}.yml):apiToken}
-  paymentUrl: ${file(./config.${opt:stage, 'dev'}.yml):paymentUrl}
-  subdomain: ${file(./config.${opt:stage, 'dev'}.yml):subdomain}
-  nodeEnv: ${file(./config.${opt:stage, 'dev'}.yml):nodeEnv}
-  certPassphrase: ${file(./config.${opt:stage, 'dev'}.yml):certPassphrase}
-  flagSoapClient: ${file(./config.${opt:stage, 'dev'}.yml):flagSoapClient}
-  payGovDevServerToken: ${file(./config.${opt:stage, 'dev'}.yml):payGovDevServerToken}
   customDomain:
     domainName: ${self:custom.subdomain}
     basePath: ""
@@ -44,13 +39,13 @@ functions:
       subnetIds:
         - !Ref PrivateLambdaSubnet
     environment:
-      API_ACCESS_TOKEN: ${self:custom.apiToken}
-      CERT_PASSPHRASE: ${self:custom.certPassphrase}
-      NODE_ENV: ${self:custom.nodeEnv}
-      PAYMENT_URL: ${self:custom.paymentUrl}
-      SOAP_URL: ${self:custom.soapUrl}
-      FLAG_SOAP_CLIENT: ${self:custom.flagSoapClient}
-      PAY_GOV_DEV_SERVER_TOKEN: ${self:custom.payGovDevServerToken}
+      API_ACCESS_TOKEN: ${env:API_ACCESS_TOKEN}
+      CERT_PASSPHRASE: ${env:CERT_PASSPHRASE}
+      NODE_ENV: ${env:NODE_ENV}
+      PAYMENT_URL: ${env:PAYMENT_URL}
+      SOAP_URL: ${env:SOAP_URL}
+      FLAG_SOAP_CLIENT: ${env:FLAG_SOAP_CLIENT}
+      PAY_GOV_DEV_SERVER_TOKEN: ${env:PAY_GOV_DEV_SERVER_TOKEN}
 
   processPayment:
     handler: src/lambdaHandler.processPaymentHandler
@@ -66,12 +61,12 @@ functions:
         - !Ref PrivateLambdaSubnet
     environment:
       API_ACCESS_TOKEN: ${self:custom.apiToken}
-      CERT_PASSPHRASE: ${self:custom.certPassphrase}
-      NODE_ENV: ${self:custom.nodeEnv}
-      PAYMENT_URL: ${self:custom.paymentUrl}
-      SOAP_URL: ${self:custom.soapUrl}
-      FLAG_SOAP_CLIENT: ${self:custom.flagSoapClient}
-      PAY_GOV_DEV_SERVER_TOKEN: ${self:custom.payGovDevServerToken}
+      CERT_PASSPHRASE: ${env:CERT_PASSPHRASE}
+      NODE_ENV: ${env:NODE_ENV}
+      PAYMENT_URL: ${env:PAYMENT_URL}
+      SOAP_URL: ${env:SOAP_URL}
+      FLAG_SOAP_CLIENT: ${env:FLAG_SOAP_CLIENT}
+      PAY_GOV_DEV_SERVER_TOKEN: ${env:PAY_GOV_DEV_SERVER_TOKEN}
 
   testCert:
     handler: src/testCert.handler
@@ -87,9 +82,9 @@ functions:
         - !Ref PrivateLambdaSubnet
     environment:
       API_ACCESS_TOKEN: ${self:custom.apiToken}
-      CERT_PASSPHRASE: ${self:custom.certPassphrase}
-      NODE_ENV: ${self:custom.nodeEnv}
-      SOAP_URL: ${self:custom.soapUrl}
+      CERT_PASSPHRASE: ${env:CERT_PASSPHRASE}
+      NODE_ENV: ${env:NODE_ENV}
+      SOAP_URL: ${env:SOAP_URL}
 
 resources:
   Resources:

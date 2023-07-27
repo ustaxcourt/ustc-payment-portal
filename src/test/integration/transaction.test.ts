@@ -1,15 +1,10 @@
 import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
 import { InitPaymentRequest } from "../../types/InitPaymentRequest";
-import { loadLocalConfig } from "../loadLocalConfig";
 
 describe("make a transaction", () => {
   let token: string;
   let paymentRedirect: string;
   const appId = "ustc-local-app-test";
-
-  beforeAll(() => {
-    loadLocalConfig();
-  });
 
   it("should make a request to start a transaction", async () => {
     const randomNumber = Math.floor(Math.random() * 100000);
