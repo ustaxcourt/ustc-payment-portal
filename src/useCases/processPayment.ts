@@ -3,10 +3,15 @@ import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/Complete
 import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
 import { ProcessPaymentResponse } from "../types/ProcessPaymentResponse";
 
-export async function processPayment(
+export type ProcessPayment = (
   appContext: AppContext,
   request: ProcessPaymentRequest
-): Promise<ProcessPaymentResponse> {
+) => Promise<ProcessPaymentResponse>;
+
+export const processPayment: ProcessPayment = async (
+  appContext: AppContext,
+  request: ProcessPaymentRequest
+) => {
   const req = new CompleteOnlineCollectionWithDetailsRequest({
     tcsAppId: request.appId,
     token: request.token,
@@ -18,6 +23,6 @@ export async function processPayment(
 
   return {
     trackingId: result.paygov_tracking_id,
-    paymentStatus: result.transaction_status,
+    transactionStatus: result.transaction_status,
   };
-}
+};
