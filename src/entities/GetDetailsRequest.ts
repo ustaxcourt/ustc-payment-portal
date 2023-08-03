@@ -60,10 +60,8 @@ export class GetRequestRequest extends SoapRequest {
     console.log(`getDetails api response`, response);
 
     if ("transaction" in response.transactions) {
-      console.log(`returning with `, response.transactions.transaction);
       return response.transactions.transaction;
     } else if (response.transactions.length > 0) {
-      console.log(`returning with `, response.transactions[0].transaction);
       return response.transactions[0].transaction;
     } else {
       throw new Error("Could not find any transaction details");
