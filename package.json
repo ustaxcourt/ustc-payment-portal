@@ -10,6 +10,8 @@
     "dev:start": "npm-run-all build start",
     "tsc": "tsc",
     "dev": "nodemon --delay 2 --watch src -e ts,ejs --exec npm run dev:start",
+    "remove": "eval $(aws configure export-credentials --profile ${AWS_PROFILE} --format env) && env -u AWS_PROFILE sls remove --stage",
+    "deploy": "eval $(aws configure export-credentials --profile ${AWS_PROFILE} --format env) && env -u AWS_PROFILE sls deploy --stage",
     "start": "node .",
     "test": "npx jest --config jest-unit.config.ts",
     "test:integration:dev": "DOTENV_CONFIG_PATH=.env.dev npx jest ./src/test/integration/",
