@@ -40,7 +40,6 @@ export class SoapRequest {
     const formattedRequest = {
       [outerKey]: {
         [innerKey]: params,
-        "@xmlns:tcs": "http://fms.treas.gov/services/tcsonline",
       },
     };
 
@@ -48,6 +47,8 @@ export class SoapRequest {
       "soapenv:Envelope": {
         "soapenv:Header": {},
         "soapenv:Body": formattedRequest,
+        "@xmlns:tcs": "http://fms.treas.gov/services/tcsonline_3_1",
+        "@xmlns:soapenv": "http://schemas.xmlsoap.org/soap/envelope/",
       },
     };
 
@@ -68,8 +69,9 @@ export class SoapRequest {
   ) {
     const xmlBody = this.buildXml(params, requestType);
 
+    console.log("makeRequest", xmlBody);
     const result = await appContext.postHttpRequest(appContext, xmlBody);
-
+    console.log("makeRequest", result);
     const responseBody = this.parseXml(result);
     return responseBody;
   }
