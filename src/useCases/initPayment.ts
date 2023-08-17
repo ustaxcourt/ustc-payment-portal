@@ -22,11 +22,13 @@ export const initPayment: InitPayment = async (appContext, request) => {
 
   await startOnlineCollectionSchema.validateAsync(rawRequest);
 
-  console.log("request is valid", rawRequest);
+  console.log("initPayment request:", rawRequest);
 
   const req = new StartOnlineCollectionRequest(rawRequest);
 
   const result = await req.makeSoapRequest(appContext);
+
+  console.log(`initPayment result:`, result);
 
   return {
     token: result.token,
