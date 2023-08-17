@@ -16,10 +16,11 @@ export const processPayment: ProcessPayment = async (
     tcsAppId: request.appId,
     token: request.token,
   });
+  console.log("processPayment request", req);
 
   const result = await req.makeSoapRequest(appContext);
 
-  console.log("result from soap request", result);
+  console.log("processPayment result", result);
 
   return {
     trackingId: result.paygov_tracking_id,

@@ -26,7 +26,11 @@ export const getDetails: GetDetails = async (
     payGovTrackingId,
   });
 
+  console.log(`getDetails request:`, req);
+
   const result = await req.makeSoapRequest(appContext);
+
+  console.log(`getDetails result:`, result);
 
   return {
     trackingId: result.paygov_tracking_id,
