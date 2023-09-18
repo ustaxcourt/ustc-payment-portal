@@ -1,131 +1,75 @@
 import Joi from "joi";
-import { XMLBuilder, XMLParser } from "fast-xml-parser";
 import { RawStartOnlineCollectionRequest } from "../types/RawStartOnlineCollectionRequest";
 import { AppContext } from "../types/AppContext";
 import { StartOnlineCollectionResponse } from "../types/StartOnlineCollectionResponse";
+import { RequestType, SoapRequest } from "./SoapRequest";
 
 export const startOnlineCollectionSchema = Joi.object({
-  agency_tracking_id: Joi.string().required(),
-  tcs_app_id: Joi.string().required(),
-  transaction_amount: Joi.number().required(),
-  url_cancel: Joi.string().required(),
-  url_success: Joi.string().required(),
+  agencyTrackingId: Joi.string().required(),
+  tcsAppId: Joi.string().required(),
+  transactionAmount: Joi.number().required(),
+  urlCancel: Joi.string().required(),
+  urlSuccess: Joi.string().required(),
 });
 
-export class StartOnlineCollectionRequest {
-  public agency_tracking_id: string;
-  public transaction_amount: string;
-  public tcs_app_id: string;
-  public url_cancel: string;
-  public url_success: string;
-  public transaction_type: string = "Sale";
+export type StartOnlineCollectionRequestParams = {
+  tcs_app_id: string;
+  agency_tracking_id: string;
+  transaction_type: string;
+  transaction_amount: string;
+  language: string;
+  url_success: string;
+  url_cancel: string;
+};
+
+export class StartOnlineCollectionRequest extends SoapRequest {
+  public agencyTrackingId: string;
+  public transactionAmount: string;
+  public urlCancel: string;
+  public urlSuccess: string;
+  public transactionType: string = "Sale";
   public language: string = "en";
+  private requestType: RequestType = "startOnlineCollection";
 
   constructor(request: RawStartOnlineCollectionRequest) {
-    this.agency_tracking_id = request.agency_tracking_id;
-    this.tcs_app_id = request.tcs_app_id;
-    this.transaction_amount = (
-      Math.round(request.transaction_amount * 100) / 100
+    super(request);
+
+    this.agencyTrackingId = request.agencyTrackingId;
+    this.transactionAmount = (
+      Math.round(request.transactionAmount * 100) / 100
     ).toFixed(2);
-    this.url_cancel = request.url_cancel;
-    this.url_success = request.url_success;
+    this.urlCancel = request.urlCancel;
+    this.urlSuccess = request.urlSuccess;
   }
 
   makeSoapRequest(
     appContext: AppContext
   ): Promise<StartOnlineCollectionResponse> {
-    switch (process.env.FLAG_SOAP_CLIENT) {
-      case "http":
-        return this.useHttp(appContext);
-      case "soap":
-        return this.useSoap(appContext);
-      default:
-        throw "Invalid flag";
-    }
-  }
-
-  async useSoap(
-    appContext: AppContext
-  ): Promise<StartOnlineCollectionResponse> {
-    const client = await appContext.getSoapClient();
-
-    return new Promise((resolve, reject) => {
-      client.startOnlineCollection(
-        {
-          startOnlineCollectionRequest: {
-            agency_tracking_id: this.agency_tracking_id,
-            transaction_amount: this.transaction_amount,
-            tcs_app_id: this.tcs_app_id,
-            url_cancel: this.url_cancel,
-            url_success: this.url_success,
-            transaction_type: this.transaction_type,
-            language: this.language,
-          },
-        },
-        function (
-          err: Error,
-          result: {
-            startOnlineCollectionResponse: {
-              token: string;
-            };
-          }
-        ) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(
-              result.startOnlineCollectionResponse as StartOnlineCollectionResponse
-            );
-          }
-        }
-      );
-    });
+    return this.useHttp(appContext);
   }
 
   async useHttp(
     appContext: AppContext
   ): Promise<StartOnlineCollectionResponse> {
-    const xmlOptions = {
-      ignoreAttributes: false,
-      attributeNamePrefix: "@",
-      format: true,
-    };
-
-    const startOnlineCollectionRequest = {
-      tcs_app_id: this.tcs_app_id,
-      agency_tracking_id: this.agency_tracking_id,
-      transaction_type: this.transaction_type,
-      transaction_amount: this.transaction_amount,
+    const params: StartOnlineCollectionRequestParams = {
+      tcs_app_id: this.tcsAppId,
+      agency_tracking_id: this.agencyTrackingId,
+      transaction_type: this.transactionType,
+      transaction_amount: this.transactionAmount,
       language: this.language,
-      url_success: this.url_success,
-      url_cancel: this.url_cancel,
+      url_success: this.urlSuccess,
+      url_cancel: this.urlCancel,
     };
 
-    const reqObj = {
-      "soapenv:Envelope": {
-        "soapenv:Header": {},
-        "soapenv:Body": {
-          "tcs:startOnlineCollection": {
-            startOnlineCollectionRequest,
-          },
-        },
-        "@xmlns:soapenv": "http://schemas.xmlsoap.org/soap/envelope/",
-        "@xmlns:tcs": "http://fms.treas.gov/services/tcsonline_3_1",
-      },
-    };
+    const response = await SoapRequest.prototype.makeRequest(
+      appContext,
+      params,
+      this.requestType
+    );
 
-    const builder = new XMLBuilder(xmlOptions);
-    const xmlBody = builder.build(reqObj);
+    const tokenResponse = response["ns2:startOnlineCollectionResponse"]
+      .startOnlineCollectionResponse as StartOnlineCollectionResponse;
 
-    const result = await appContext.postHttpRequest(appContext, xmlBody);
-
-    const parser = new XMLParser(xmlOptions);
-    const data = await result.text();
-    console.log(data);
-    const response = parser.parse(data);
-    const tokenResponse = response["S:Envelope"]["S:Body"][
-      "ns2:startOnlineCollectionResponse"
-    ]["startOnlineCollectionResponse"] as StartOnlineCollectionResponse;
     return tokenResponse;
   }
 }

@@ -1,4 +1,0 @@
-soapUrl: https://pay.gov.example.com/wsdl
-apiToken: some-token-used-to-connect-to-dev-server
-paymentUrl: https://pay.gov.example.com/path/to/payment/page
-baseUrl: https://portal.example.com

@@ -1,18 +1,12 @@
-import { ProcessPaymentRequest } from "../../useCases/processPayment";
+import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
 import { InitPaymentRequest } from "../../types/InitPaymentRequest";
-import { getConfig } from "./helpers";
+import { RawGetDetailsRequest } from "../../entities/GetDetailsRequest";
 
 describe("make a transaction", () => {
-  let baseUrl: string;
   let token: string;
   let paymentRedirect: string;
-  let appId: string;
-
-  beforeAll(() => {
-    const config = getConfig();
-    baseUrl = config.baseUrl;
-    appId = config.tcsAppId;
-  });
+  let payGovTrackingId: string;
+  const appId = "ustc-local-app-test";
 
   it("should make a request to start a transaction", async () => {
     const randomNumber = Math.floor(Math.random() * 100000);
@@ -25,13 +19,16 @@ describe("make a transaction", () => {
       urlCancel: "http://example.com/cancel",
     };
 
-    const result = await fetch(`${baseUrl}/init`, {
+    const url = `${process.env.BASE_URL}/init`;
+    const result = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authentication: `Bearer ${process.env.API_ACCESS_TOKEN}`,
       },
       body: JSON.stringify(request),
     });
+
     expect(result.status).toBe(200);
 
     const data = await result.json();
@@ -59,18 +56,47 @@ describe("make a transaction", () => {
       `Time to process the transaction with this appId ${appId}; token: ${token}`
     );
 
-    const result = await fetch(`${baseUrl}/process`, {
+    const result = await fetch(`${process.env.BASE_URL}/process`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authentication: `Bearer ${process.env.API_ACCESS_TOKEN}`,
       },
       body: JSON.stringify(request),
     });
 
     expect(result.status).toBe(200);
-    console.log(result);
 
     const data = await result.json();
     expect(data.trackingId).toBeTruthy();
+    expect(data.transactionStatus).toBe("Success");
+    payGovTrackingId = data.trackingId;
+  });
+
+  it("should be able to get the details about the transaction", async () => {
+    const request = {
+      appId,
+      payGovTrackingId,
+    };
+
+    console.log(
+      `Time to get the details with this appId ${appId}; payGovTrackingId: ${payGovTrackingId}`
+    );
+
+    const result = await fetch(
+      `${process.env.BASE_URL}/details/${appId}/${payGovTrackingId}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authentication: `Bearer ${process.env.API_ACCESS_TOKEN}`,
+        },
+      }
+    );
+
+    expect(result.status).toBe(200);
+
+    const data = await result.json();
+    expect(data.trackingId).toBe(payGovTrackingId);
+    expect(data.transactionStatus).toBe("Success");
   });
 });

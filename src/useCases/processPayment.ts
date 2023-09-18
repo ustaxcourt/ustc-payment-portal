@@ -1,25 +1,29 @@
 import { AppContext } from "../types/AppContext";
-import { CompleteOnlineCollectionRequest } from "../entities/CompleteOnlineCollectionRequest";
+import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/CompleteOnlineCollectionWithDetailsRequest";
 import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
+import { ProcessPaymentResponse } from "../types/ProcessPaymentResponse";
 
-type ProcessPaymentResponse = {
-  trackingId: string;
-};
-
-export async function processPayment(
+export type ProcessPayment = (
   appContext: AppContext,
   request: ProcessPaymentRequest
-): Promise<ProcessPaymentResponse> {
-  const req = new CompleteOnlineCollectionRequest({
-    tcs_app_id: request.appId,
+) => Promise<ProcessPaymentResponse>;
+
+export const processPayment: ProcessPayment = async (
+  appContext: AppContext,
+  request: ProcessPaymentRequest
+) => {
+  const req = new CompleteOnlineCollectionWithDetailsRequest({
+    tcsAppId: request.appId,
     token: request.token,
   });
+  console.log("processPayment request", req);
 
   const result = await req.makeSoapRequest(appContext);
 
-  console.log("result from soap request", result);
+  console.log("processPayment result", result);
 
   return {
     trackingId: result.paygov_tracking_id,
+    transactionStatus: result.transaction_status,
   };
-}
+};
