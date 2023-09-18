@@ -1,41 +1,18 @@
-import path from "path";
-import { readFileSync } from "fs";
-import * as soap from "soap";
+import { AppContext } from "./types/AppContext";
+import { getDetails } from "./useCases/getDetails";
 import { initPayment } from "./useCases/initPayment";
 import { processPayment } from "./useCases/processPayment";
-import { AppContext } from "./types/AppContext";
+import { readFileSync } from "fs";
 import * as https from "https";
 import fetch from "node-fetch";
+import path from "path";
 
-let soapClient: soap.Client;
-let httpsAgent: https.Agent;
+let httpsAgentCache: https.Agent;
 
 export const createAppContext = (): AppContext => {
   return {
-    getSoapClient: async (): Promise<soap.Client> => {
-      if (!soapClient) {
-        if (process.env.NODE_ENV === "development") {
-          const params = {
-            forceSoap12Headers: true,
-            wsdl_headers: {
-              Authentication: `Bearer ${process.env.API_TOKEN}`,
-            },
-          };
-          soapClient = await soap.createClientAsync(
-            process.env.SOAP_URL!,
-            params
-          );
-          soapClient.addSoapHeader({
-            Authentication: process.env.API_TOKEN,
-          });
-        } else {
-          // we will need to provide a certificate somehow!?
-        }
-      }
-      return soapClient;
-    },
     getHttpsAgent: () => {
-      if (!httpsAgent) {
+      if (!httpsAgentCache) {
         const privateKeyPath = path.resolve(
           __dirname,
           `../certs/${process.env.NODE_ENV}-privatekey.pem`
@@ -56,27 +33,43 @@ export const createAppContext = (): AppContext => {
         };
 
         // Create an HTTPS agent using the certificate options
-        httpsAgent = new https.Agent(httpsAgentOptions);
+        httpsAgentCache = new https.Agent(httpsAgentOptions);
       }
-      return httpsAgent;
+      return httpsAgentCache;
     },
-    postHttpRequest: async (appContext: AppContext, body: string) => {
-      const httpsAgent = appContext.getHttpsAgent();
+    postHttpRequest: async (
+      appContext: AppContext,
+      body: string
+    ): Promise<string> => {
+      let httpsAgent: https.Agent | undefined;
+      if (process.env.CERT_PASSPHRASE) {
+        httpsAgent = appContext.getHttpsAgent();
+      }
+
+      const headers: {
+        "Content-type": string;
+        authentication?: string;
+      } = {
+        "Content-type": "application/soap+xml",
+      };
+      if (process.env.PAY_GOV_DEV_SERVER_TOKEN) {
+        headers.authentication = `Bearer ${process.env.PAY_GOV_DEV_SERVER_TOKEN}`;
+      }
 
       const result = await fetch(process.env.SOAP_URL, {
-        agent: httpsAgent,
         method: "POST",
-        headers: {
-          "Content-type": "application/soap+xml",
-        },
+        headers,
         body,
+        agent: httpsAgent,
       });
 
-      return result;
+      const responseBody = await result.text();
+      return responseBody;
     },
     getUseCases: () => ({
       initPayment,
       processPayment,
+      getDetails,
     }),
   };
 };

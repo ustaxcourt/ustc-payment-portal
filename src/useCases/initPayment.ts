@@ -6,30 +6,32 @@ import {
 import { InitPaymentRequest } from "../types/InitPaymentRequest";
 import { InitPaymentResponse } from "../types/InitPaymentResponse";
 
-export async function initPayment(
+export type InitPayment = (
   appContext: AppContext,
   request: InitPaymentRequest
-): Promise<InitPaymentResponse> {
+) => Promise<InitPaymentResponse>;
+
+export const initPayment: InitPayment = async (appContext, request) => {
   const rawRequest = {
-    tcs_app_id: request.appId,
-    transaction_amount: request.amount,
-    url_cancel: request.urlCancel,
-    url_success: request.urlSuccess,
-    agency_tracking_id: request.trackingId,
+    tcsAppId: request.appId,
+    transactionAmount: request.amount,
+    urlCancel: request.urlCancel,
+    urlSuccess: request.urlSuccess,
+    agencyTrackingId: request.trackingId,
   };
 
   await startOnlineCollectionSchema.validateAsync(rawRequest);
 
-  console.log("request is valid", rawRequest);
+  console.log("initPayment request:", rawRequest);
 
   const req = new StartOnlineCollectionRequest(rawRequest);
 
   const result = await req.makeSoapRequest(appContext);
 
-  console.log("result from soap request", result);
+  console.log(`initPayment result:`, result);
 
   return {
     token: result.token,
     paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${request.appId}`,
   };
-}
+};

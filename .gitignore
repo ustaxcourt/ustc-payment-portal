@@ -5,7 +5,8 @@ jspm_packages
 # Serverless directories
 .serverless
 .esbuild
-.env
+.env*
+!.env.example
 
 config.*.yml
 !config.example.yml
@@ -14,3 +15,5 @@ config.*.yml
 /resources/**
 
 coverage/
+
+dist/
