@@ -161,12 +161,12 @@ describe("processPayment", () => {
       expect(trackingId).toBe(mockPayGovTrackingId);
     });
 
-    it("returns transactionStatus from XML", async () => {
+    it("returns Pending transaction status", async () => {
       const { transactionStatus } = await processPayment(appContext, {
         appId: "asdf",
         token: "mock-token",
       });
-      expect(transactionStatus).toBe("Received");
+      expect(transactionStatus).toBe("Pending");
     });
   });
 });
