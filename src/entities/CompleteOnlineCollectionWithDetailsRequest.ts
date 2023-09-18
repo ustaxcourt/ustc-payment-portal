@@ -1,12 +1,12 @@
 import { AppContext } from "../types/AppContext";
-import { TransactionStatus } from "../types/TransactionStatus";
+import { FailedTransactionError } from "../errors/failedTransaction";
+import { PayGovTransactionStatus } from "../types/TransactionStatus";
 import { RawCompleteOnlineCollectionRequest } from "../types/RawCompleteOnlineCollectionRequest";
 import { RequestType, SoapRequest } from "./SoapRequest";
-import { FailedTransactionError } from "../errors/failedTransaction";
 
 type CompleteOnlineCollectionWithDetailsResponse = {
   paygov_tracking_id: string;
-  transaction_status: TransactionStatus;
+  transaction_status: PayGovTransactionStatus;
   agency_tracking_id: string;
   transaction_amount: string;
 };

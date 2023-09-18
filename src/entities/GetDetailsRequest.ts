@@ -1,5 +1,5 @@
 import { AppContext } from "../types/AppContext";
-import { TransactionStatus } from "../types/TransactionStatus";
+import { PayGovTransactionStatus } from "../types/TransactionStatus";
 import { RequestType, SoapRequest } from "./SoapRequest";
 
 export type RawGetDetailsRequest = {
@@ -9,7 +9,7 @@ export type RawGetDetailsRequest = {
 
 export type TransactionDetails = {
   paygov_tracking_id: string;
-  transaction_status: TransactionStatus;
+  transaction_status: PayGovTransactionStatus;
   agency_tracking_id: string;
   transaction_amount: string;
 };

@@ -3,6 +3,7 @@ import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/Complete
 import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
 import { ProcessPaymentResponse } from "../types/ProcessPaymentResponse";
 import { FailedTransactionError } from "../errors/failedTransaction";
+import { parseTransactionStatus } from "./parseTransactionStatus";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -26,7 +27,7 @@ export const processPayment: ProcessPayment = async (
 
     return {
       trackingId: result.paygov_tracking_id,
-      transactionStatus: result.transaction_status,
+      transactionStatus: parseTransactionStatus(result.transaction_status),
     };
   } catch (err) {
     if (err instanceof FailedTransactionError) {
