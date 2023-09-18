@@ -2,6 +2,7 @@ import { AppContext } from "../types/AppContext";
 import { TransactionStatus } from "../types/TransactionStatus";
 import { RawCompleteOnlineCollectionRequest } from "../types/RawCompleteOnlineCollectionRequest";
 import { RequestType, SoapRequest } from "./SoapRequest";
+import { FailedTransactionError } from "../errors/failedTransaction";
 
 type CompleteOnlineCollectionWithDetailsResponse = {
   paygov_tracking_id: string;
@@ -43,11 +44,39 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
       this.requestType
     );
 
-    const response = responseBody[
-      "ns2:completeOnlineCollectionWithDetailsResponse"
-    ]
-      .completeOnlineCollectionWithDetailsResponse as CompleteOnlineCollectionWithDetailsResponse;
-
-    return response;
+    if (responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]) {
+      return responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]
+        .completeOnlineCollectionWithDetailsResponse as CompleteOnlineCollectionWithDetailsResponse;
+    } else {
+      throw handleFault(responseBody["S:Fault"]);
+    }
   };
 }
+
+type ProcessorFault =
+  | {
+      faultcode: string;
+      faultstring: string;
+      detail: {
+        "ns2:TCSServiceFault": {
+          return_code: string;
+          return_detail: string;
+        };
+      };
+    }
+  | undefined;
+
+const handleFault = (fault: ProcessorFault) => {
+  if (!fault) {
+    return new FailedTransactionError();
+  }
+
+  if (!fault.detail["ns2:TCSServiceFault"]) {
+    return new FailedTransactionError();
+  }
+
+  return new FailedTransactionError(
+    fault.detail["ns2:TCSServiceFault"].return_detail,
+    Number(fault.detail["ns2:TCSServiceFault"].return_code)
+  );
+};

@@ -2,6 +2,7 @@ import { AppContext } from "../types/AppContext";
 import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/CompleteOnlineCollectionWithDetailsRequest";
 import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
 import { ProcessPaymentResponse } from "../types/ProcessPaymentResponse";
+import { FailedTransactionError } from "../errors/failedTransaction";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -18,12 +19,22 @@ export const processPayment: ProcessPayment = async (
   });
   console.log("processPayment request", req);
 
-  const result = await req.makeSoapRequest(appContext);
+  try {
+    const result = await req.makeSoapRequest(appContext);
 
-  console.log("processPayment result", result);
+    console.log("processPayment result", result);
 
-  return {
-    trackingId: result.paygov_tracking_id,
-    transactionStatus: result.transaction_status,
-  };
+    return {
+      trackingId: result.paygov_tracking_id,
+      transactionStatus: result.transaction_status,
+    };
+  } catch (err) {
+    if (err instanceof FailedTransactionError) {
+      return {
+        transactionStatus: "Failed",
+        message: err.message,
+        code: err.code,
+      };
+    } else throw err;
+  }
 };
