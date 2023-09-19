@@ -10,6 +10,7 @@ export const parseTransactionStatus = (
     case "Pending":
     case "Received":
     case "Waiting":
+    case "Submitted":
       return "Pending";
 
     case "Settled":

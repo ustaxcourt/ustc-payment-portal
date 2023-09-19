@@ -38,7 +38,7 @@ Stages should be one of `dev`, `stg`, and `prod`. The dev server should be confi
 This gets deployed to the USTC Website AWS Account. You will need credentials loaded in order to perform this operation. And you will need the above environment variables specified.
 
 ```bash
-sls deploy --stage <dev|stg|prod>
+npm run deploy <dev|stg|prod>
 ```
 
 ## Testing
