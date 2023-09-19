@@ -1,6 +1,7 @@
 import { GetRequestRequest } from "../entities/GetDetailsRequest";
 import { AppContext } from "../types/AppContext";
 import { TransactionStatus } from "../types/TransactionStatus";
+import { parseTransactionStatus } from "./parseTransactionStatus";
 
 export type GetDetailsRequest = {
   appId: string;
@@ -34,6 +35,6 @@ export const getDetails: GetDetails = async (
 
   return {
     trackingId: result.paygov_tracking_id,
-    transactionStatus: result.transaction_status,
+    transactionStatus: parseTransactionStatus(result.transaction_status),
   };
 };
