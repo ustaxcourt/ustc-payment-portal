@@ -7,6 +7,10 @@ export type SuccessfulTransactionStatus = "Success" | "Settled";
 
 export type FailedTransactionStatus = "Cancelled" | "Failed" | "Retired";
 
-export type PendingTransactionStatus = "Pending" | "Received" | "Waiting";
+export type PendingTransactionStatus =
+  | "Pending"
+  | "Received"
+  | "Waiting"
+  | "Submitted";
 
 export type TransactionStatus = "Success" | "Failed" | "Pending";
