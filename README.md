@@ -17,7 +17,7 @@ The application is intended to handle API requests from USTC applications and th
 
 ## Environment Variables
 
-Environment variables are located in `./env.<NODE_ENV>`.
+Environment variables are located in `.env.<NODE_ENV>`.
 
 Stages should be one of `dev`, `stg`, and `prod`. The dev server should be configured to point to the USTC Pay.gov test server, which is managed in a [separate repository](https://github.com/ustaxcourt/ustc-pay-gov-test-server).
 
@@ -43,7 +43,7 @@ npm run deploy <dev|stg|prod>
 
 ## Testing
 
-Right now there aren't many unit tests, but there are some integration tests that test the deployed application at the base url and the apiToken specified in `env.dev`:
+Right now there aren't many unit tests, but there are some integration tests that test the deployed application at the base url and the apiToken specified in `.env.dev`:
 
 ```bash
 npm run test
