@@ -8,8 +8,6 @@ jspm_packages
 .env*
 !.env.example
 
-config.*.yml
-!config.example.yml
 
 /certs/**
 /resources/**
