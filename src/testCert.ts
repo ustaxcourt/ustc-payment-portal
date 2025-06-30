@@ -7,10 +7,11 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
   try {
     const appContext = createAppContext();
     const httpsAgent = appContext.getHttpsAgent();
-    const result = await fetch(process.env.SOAP_URL, {
+    const result = await fetch(`${process.env.SOAP_URL}?wsdl`, {
       agent: httpsAgent,
     });
 
+    console.log(result);
     const resultText = await result.text();
 
     return {
@@ -18,7 +19,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
       body: resultText,
     };
   } catch (err) {
-    // console.error(err);
+    console.log(err);
     return {
       statusCode: 500,
       body: "not ok",

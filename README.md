@@ -17,21 +17,20 @@ The application is intended to handle API requests from USTC applications and th
 
 ## Environment Variables
 
-Environment variables are located in `./config.<NODE_ENV>.yml`.
+Environment variables are located in `.env.<NODE_ENV>`.
 
 Stages should be one of `dev`, `stg`, and `prod`. The dev server should be configured to point to the USTC Pay.gov test server, which is managed in a [separate repository](https://github.com/ustaxcourt/ustc-pay-gov-test-server).
 
 | Environment Variable | Description                                                                                                      |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `apiToken`           | An optional token that is used to make authorized requests to the development portal                             |
-| `baseUrl`            | The URL of this payment portal (for running integration tests)                                                   |
-| `certPassphrase`     | The secret password for using the certificate as an httpsAgent                                                   |
-| `nodeEnv`            | The environment or stage for this application (`staging`, `development`, or `production`)                        |
-| `paymentUrl`         | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated |
-| `soapUrl`            | The URL of the SOAP Server that handles payment requests made by this portal                                     |
-| `subdomain`          | The subdomain that the deployed application should assume                                                        |
-| `tcsAppId`           | The identifier granted by Pay.gov for using their service (used for testing)                                     |
-| `flagSoapClient`     | Whether or not `http` or `soap` client for making requests to the Pay.gov server                                 |
+| `API_ACCESS_TOKEN`   | An optional token that is used to make authorized requests to the development portal                             |
+| `BASE_URL`           | The URL of this payment portal (for running integration tests)                                                   |
+| `CERT_PASSPHRASE`    | The secret password for using the certificate as an httpsAgent                                                   |
+| `NODE_ENV`           | The environment or stage for this application (`staging`, `development`, or `production`)                        |
+| `PAYMENT_URL`        | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated |
+| `SOAP_URL`           | The URL of the SOAP Server that handles payment requests made by this portal                                     |
+| `SUBDOMAIN`          | The subdomain that the deployed application should assume                                                        |
+| `TCS_APP_ID`         | The identifier granted by Pay.gov for using their service (used for testing)                                     |
 
 ## Deployment
 
@@ -43,7 +42,7 @@ npm run deploy <dev|stg|prod>
 
 ## Testing
 
-Right now there aren't many unit tests, but there are some integration tests that test the deployed application at the base url and the apiToken specified in `config.dev.yml`:
+Right now there aren't many unit tests, but there are some integration tests that test the deployed application at the base url and the apiToken specified in `.env.dev`:
 
 ```bash
 npm run test
