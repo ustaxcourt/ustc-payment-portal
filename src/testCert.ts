@@ -7,7 +7,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
   try {
     const appContext = createAppContext();
     const httpsAgent = appContext.getHttpsAgent();
-    const result = await fetch(process.env.SOAP_URL, {
+    const result = await fetch(`${process.env.SOAP_URL}?wsdl`, {
       agent: httpsAgent,
     });
 
