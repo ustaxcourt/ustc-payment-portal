@@ -47,7 +47,7 @@ export class SoapRequest {
       "soapenv:Envelope": {
         "soapenv:Header": {},
         "soapenv:Body": formattedRequest,
-        "@xmlns:tcs": "http://fms.treas.gov/services/tcsonline_3_1",
+        "@xmlns:tcs": "http://fms.treas.gov/services/tcsonline_3_3",
         "@xmlns:soapenv": "http://schemas.xmlsoap.org/soap/envelope/",
       },
     };
