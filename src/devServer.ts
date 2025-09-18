@@ -3,7 +3,9 @@ import path from "path";
 import { createAppContext } from "./appContext";
 import dotenv from "dotenv";
 
-dotenv.config();
+// Prefer .env.dev for local development, fallback to default .env
+const envPath = path.resolve(process.cwd(), ".env.dev");
+dotenv.config({ path: envPath });
 
 const appContext = createAppContext();
 
@@ -34,7 +36,7 @@ app.get("/details/:appId/:payGovTrackingId", async (req, res) => {
   const result = await appContext
     .getUseCases()
     .getDetails(appContext, req.params);
-  return res.json(result);
+  res.json(result);
 });
 
 app.get("/", (req, res) => {
