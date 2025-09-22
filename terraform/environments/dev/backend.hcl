@@ -3,3 +3,4 @@ key            = "ustc-payment-portal/dev/terraform.tfstate"
 region         = "us-east-1"
 dynamodb_table = "ustc-payment-portal-terraform-locks-dev"
 encrypt        = true
+
