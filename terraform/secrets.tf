@@ -1,17 +1,13 @@
-# Dev service token stored in AWS Secrets Manager
-# This is used to set the Lambda env var ACCESS_TOKEN via Terraform.
+# Secrets are now managed per environment in the environment layers (for serverless framework)
+# This file is just for informational purposes (for now) and can be removed once secrets are created 
 
-resource "random_password" "access_token" {
-  length  = 48
-  special = true
-}
-
-resource "aws_secretsmanager_secret" "access_token" {
-  name        = local.access_token_secret_name
-  description = "USTC Payment portal Server ${env.environment} access token"
-}
-
-resource "aws_secretsmanager_secret_version" "access_token" {
-  secret_id     = aws_secretsmanager_secret.access_token.id
-  secret_string = random_password.access_token.result
-}
+# Example secrets that need to be created in AWS Secrets Manager:
+# - ustc/pay-gov/dev/access-token
+# - ustc/pay-gov/dev/cert-passphrase  
+# - ustc/pay-gov/dev/pay-gov-dev-server-token
+# - ustc/pay-gov/stg/access-token
+# - ustc/pay-gov/stg/cert-passphrase
+# - ustc/pay-gov/stg/pay-gov-dev-server-token
+# - ustc/pay-gov/prod/access-token
+# - ustc/pay-gov/prod/cert-passphrase
+# - ustc/pay-gov/prod/pay-gov-dev-server-token
