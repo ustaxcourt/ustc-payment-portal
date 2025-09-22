@@ -5,7 +5,7 @@ This directory contains the Terraform configuration to bootstrap the S3 backend 
 ## Prerequisites
 
 - AWS CLI configured with appropriate credentials
-- Terraform installed (>= 1.7.0)
+- Install Terraform matching the constraint in bootstrap/main.tf
 - Permissions to create S3 buckets, DynamoDB tables, and IAM policies
 
 ## Bootstrap Process
@@ -20,8 +20,9 @@ terraform apply
 ```
 
 This will create:
-- S3 bucket: `ustc-pay-gov-terraform-state`
-- DynamoDB table: `ustc-pay-gov-terraform-locks`
+- S3 bucket: `ustc-payment-portal-terraform-state-dev`
+- DynamoDB table: `ustc-payment-portal-terraform-locks-dev`
+- Make sure to change the default values for state bucket name and lock table name in bootstrap/variables.tf before making this change for staging or Prod.
 - IAM policy for backend access
 
 ### 2. Initialize Environment Configurations
