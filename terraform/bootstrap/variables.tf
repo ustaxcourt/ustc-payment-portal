@@ -15,3 +15,4 @@ variable "lock_table_name" {
   type        = string
   default     = "ustc-payment-portal-terraform-locks-dev"
 }
+
