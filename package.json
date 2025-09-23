@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "dist/devServer.js",
-  "scripts": {
+  "engines": {
+    "node": "^22.0.0"
+  },
+   "scripts": {
     "clean": "rimraf dist/*",
     "lint": "tslint -c tslint.json -p tsconfig.json",
     "build": "npm-run-all clean lint tsc",
