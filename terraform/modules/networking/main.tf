@@ -1,66 +1,65 @@
 resource "aws_vpc" "lambda_vpc" {
-  cidr_block       = var.vpc_cidr           # This IP address is 10.20.0.0/25  --> 126 available IP addresses
-  enable_dns_support = true
+  cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
 
-  tags = {
-    Name = "LambdaVPC-Dev"
-  }
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-vpc"
+  })
 }
 
 resource "aws_internet_gateway" "lambda_igw" {
   vpc_id = aws_vpc.lambda_vpc.id
 
-  tags = {
-    Name = "LambdaIGW-Dev"
-  }
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-igw"
+  })
 }
 
 
 resource "aws_subnet" "public_subnet" {
-  vpc_id     = aws_vpc.lambda_vpc.id
-  cidr_block = "10.20.0.0/28"          # MAKE THIS DYNAMIC
+  vpc_id            = aws_vpc.lambda_vpc.id
+  cidr_block        = var.public_subnet_cidr
   availability_zone = var.availability_zone
 
-  tags = {
-    Name = "PublicSubnet"
-  }
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-public-subnet"
+  })
 }
 
 resource "aws_subnet" "private_subnet" {
-  vpc_id     = aws_vpc.lambda_vpc.id
-  cidr_block = "10.20.0.32/28"          # MAKE THIS DYNAMIC
+  vpc_id            = aws_vpc.lambda_vpc.id
+  cidr_block        = var.private_subnet_cidr
   availability_zone = var.availability_zone
 
-  tags = {
-    Name = "PublicSubnet"
-  }
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-private-subnet"
+  })
 }
 
 resource "aws_eip" "nat" {
   domain = "vpc"
 
-  tags = {
-    Name = "EIP"
-  }
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-eip"
+  })
 }
 
 
 resource "aws_nat_gateway" "default" {
-  subnet_id = aws_subnet.public_subnet.id
+  subnet_id     = aws_subnet.public_subnet.id
   allocation_id = aws_eip.nat.id
-  tags = {
-    Name = "gw NAT"
-  }
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-nat-gw"
+  })
 }
 
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.lambda_vpc.id
 
-  tags = {
-    Name = "PublicRouteTable"
-  }
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-public-rt"
+  })
 }
 
 
@@ -74,16 +73,16 @@ resource "aws_route" "public_default" {
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.lambda_vpc.id
 
-  tags = {
-    Name = "PrivateRouteTable"
-  }
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-private-rt"
+  })
 }
 
 
 resource "aws_route" "private_default" {
   route_table_id         = aws_route_table.private.id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_nat_gateway.default.id
+  nat_gateway_id         = aws_nat_gateway.default.id
 }
 
 
@@ -100,7 +99,7 @@ resource "aws_route_table_association" "private_rta" {
 
 
 resource "aws_security_group" "lambda" {
-  name = "lambda-SG"
+  name   = "lambda-SG"
   vpc_id = aws_vpc.lambda_vpc.id
   ingress {
     from_port   = 0
@@ -115,7 +114,7 @@ resource "aws_security_group" "lambda" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "Lambda Security Group"
-  }
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-sg"
+  })
 }
