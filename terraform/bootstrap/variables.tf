@@ -16,3 +16,4 @@ variable "lock_table_name" {
   default     = "ustc-payment-portal-terraform-locks-dev"
 }
 
+

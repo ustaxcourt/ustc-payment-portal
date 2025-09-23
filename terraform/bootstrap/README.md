@@ -60,3 +60,4 @@ or Go to the bucket in the AWS Account and there should be a .tfstate object cre
 ## Remove local tfstate
 
 Remove the .terraform/ and .tfstate in bootstrap/ once you can verify Terraform is using remote backend.
+

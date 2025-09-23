@@ -122,3 +122,4 @@ resource "aws_iam_policy" "terraform_backend_policy" {
     ManagedBy   = "terraform"
   }
 }
+
