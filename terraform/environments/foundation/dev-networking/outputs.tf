@@ -15,4 +15,3 @@ output "private_subnet_id" {
 output "lambda_security_group_id" {
   value = module.networking.lambda_security_group_id
 }
-
