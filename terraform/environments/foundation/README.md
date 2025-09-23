@@ -51,16 +51,10 @@ terraform init -backend-config=backend.hcl -reconfigure
 
 ## What this creates (dev)
 
-- **VPC** with CIDR `10.20.0.0/25`
-- **Subnets**: public `10.20.0.0/28`, private `10.20.0.32/28` (in `us-east-1a`)
-- **Internet Gateway**, **EIP**, **NAT Gateway** (in the public subnet)
-- **Route Tables**: public route to IGW; private route to NAT
-- **Lambda Security Group** (permissive for parity; harden later)
+- VPC with CIDR `10.20.0.0/25`
+- Subnets: public `10.20.0.0/28`, private `10.20.0.32/28` (in `us-east-1a`)
+- Internet Gateway, EIP, NAT Gateway (in the public subnet)
+- Route Tables: public route to IGW; private route to NAT
+- Lambda Security Group (permissive for parity; harden later)
 
-Module outputs exposed by the root (`outputs.tf`):
-- `vpc_id`
-- `public_subnet_id`
-- `private_subnet_id`
-- `lambda_security_group_id`
-
-These are used later by the workloads stack (Lambdas/API).
+These will beused later by the workloads stack (Lambdas/API).
