@@ -82,7 +82,7 @@ resource "aws_route_table" "private_rt" {
 resource "aws_route" "private_default_route" {
   route_table_id         = aws_route_table.private_rt.id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.default.id
+  nat_gateway_id         = aws_nat_gateway.default_nat_gw.id
 }
 
 
