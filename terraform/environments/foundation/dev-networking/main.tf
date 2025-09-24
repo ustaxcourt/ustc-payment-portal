@@ -28,3 +28,11 @@ module "networking" {
   }
 }
 
+module "iam" {
+  source = "../../../modules/iam"
+  name_prefix = "ustc-payment-portal-dev"
+  tags = {
+    Env = "dev"
+    Project = "ustc-payment-portal"
+  }
+}
