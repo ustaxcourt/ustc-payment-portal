@@ -57,4 +57,8 @@ terraform init -backend-config=backend.hcl -reconfigure
 - Route Tables: public route to IGW; private route to NAT
 - Lambda Security Group (permissive for parity; harden later)
 
+## IAM Module
+ This is needed to grant Lambda permissions to create CloudWatch logs and Permissions to manage ENIs in VPCs Lambdas in VPC will need these permissions. This was auto-created in serverless framework, but we have to configure it in terraform.
+
 These will beused later by the workloads stack (Lambdas/API).
+

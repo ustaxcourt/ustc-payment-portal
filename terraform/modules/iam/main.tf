@@ -1,9 +1,3 @@
-# These are needed to grant Lambda permissions to create
-# CloudWatch logs and Permissions to manage ENIs in VPCs
-# Lambdas in VPC will need these permissions.
-# This was auto-created in serverless framework, but we 
-# have to configure it in terraform.
-
 data "aws_iam_policy_document" "assume_role" {
   statement {
     effect = "Allow"
@@ -33,4 +27,5 @@ resource "aws_iam_role_policy_attachment" "vpc_access" {
   role       = aws_iam_role.lambda_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
+
 
