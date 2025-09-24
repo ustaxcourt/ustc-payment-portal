@@ -1,8 +1,8 @@
-#These are needed to grant Lambda permissions to create
-#CloudWatch logs and Permissions to manage ENIs in VPCs
-#Lambdas in VPC will need these permissions.
-#This was auto-created in serverless framework, but we 
-#have to configure it in terraform.
+# These are needed to grant Lambda permissions to create
+# CloudWatch logs and Permissions to manage ENIs in VPCs
+# Lambdas in VPC will need these permissions.
+# This was auto-created in serverless framework, but we 
+# have to configure it in terraform.
 
 data "aws_iam_policy_document" "assume_role" {
   statement {
