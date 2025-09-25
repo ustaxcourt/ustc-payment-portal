@@ -1,14 +1,14 @@
 terraform {
   required_version = ">= 1.7.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
   }
-  
- 
+
+
 }
 
 provider "aws" {
@@ -16,9 +16,9 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "ustc-payment-portal"
-      ManagedBy   = "terraform"
-      Purpose     = "terraform-backend"
+      Project   = "ustc-payment-portal"
+      ManagedBy = "terraform"
+      Purpose   = "terraform-backend"
     }
   }
 }
@@ -28,10 +28,10 @@ resource "aws_s3_bucket" "terraform_state" {
   bucket = var.state_bucket_name
 
   tags = {
-    Name        = var.state_bucket_name
-    Project     = "ustc-payment-portal"
-    ManagedBy   = "terraform"
-    Purpose     = "terraform-state"
+    Name      = var.state_bucket_name
+    Project   = "ustc-payment-portal"
+    ManagedBy = "terraform"
+    Purpose   = "terraform-state"
   }
 }
 
@@ -63,9 +63,9 @@ resource "aws_s3_bucket_public_access_block" "terraform_state" {
 
 # DynamoDB table for state locking
 resource "aws_dynamodb_table" "terraform_locks" {
-  name           = var.lock_table_name
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "LockID"
+  name         = var.lock_table_name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
 
   attribute {
     name = "LockID"
@@ -73,10 +73,10 @@ resource "aws_dynamodb_table" "terraform_locks" {
   }
 
   tags = {
-    Name        = var.lock_table_name
-    Project     = "ustc-payment-portal"
-    ManagedBy   = "terraform"
-    Purpose     = "terraform-locks"
+    Name      = var.lock_table_name
+    Project   = "ustc-payment-portal"
+    ManagedBy = "terraform"
+    Purpose   = "terraform-locks"
   }
 }
 
@@ -118,8 +118,8 @@ resource "aws_iam_policy" "terraform_backend_policy" {
   })
 
   tags = {
-    Project     = "ustc-payment-portal"
-    ManagedBy   = "terraform"
+    Project   = "ustc-payment-portal"
+    ManagedBy = "terraform"
   }
 }
 
