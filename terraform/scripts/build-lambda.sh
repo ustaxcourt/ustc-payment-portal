@@ -32,7 +32,7 @@ npx esbuild src/lambdaHandler.ts \
   --platform=node \
   --target=node22 \
   --format=cjs \
-  --outfile=dist/initPayment/index.js \
+  --outfile=dist/initPayment/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   --minify \
@@ -46,7 +46,7 @@ npx esbuild src/lambdaHandler.ts \
   --platform=node \
   --target=node22 \
   --format=cjs \
-  --outfile=dist/processPayment/index.js \
+  --outfile=dist/processPayment/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   --minify \
@@ -60,7 +60,7 @@ npx esbuild src/lambdaHandler.ts \
   --platform=node \
   --target=node22 \
   --format=cjs \
-  --outfile=dist/getDetails/index.js \
+  --outfile=dist/getDetails/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   --minify \
@@ -74,7 +74,7 @@ npx esbuild src/testCert.ts \
   --platform=node \
   --target=node22 \
   --format=cjs \
-  --outfile=dist/testCert/index.js \
+  --outfile=dist/testCert/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   --minify \
@@ -92,17 +92,17 @@ fi
 
 echo "Build completed successfully!"
 echo "Bundled Lambda functions ready:"
-echo "  - dist/initPayment/index.js"
-echo "  - dist/processPayment/index.js"
-echo "  - dist/getDetails/index.js"
-echo "  - dist/testCert/index.js"
+echo "  - dist/initPayment/lambdaHandler.js"
+echo "  - dist/processPayment/lambdaHandler.js"
+echo "  - dist/getDetails/lambdaHandler.js"
+echo "  - dist/testCert/lambdaHandler.js"
 
 # Show file sizes
 echo ""
 echo "Bundle sizes:"
 for func in initPayment processPayment getDetails testCert; do
-    if [ -f "dist/$func/index.js" ]; then
-        size=$(du -h "dist/$func/index.js" | cut -f1)
+    if [ -f "dist/$func/lambdaHandler.js" ]; then
+        size=$(du -h "dist/$func/lambdaHandler.js" | cut -f1)
         echo "  - $func: $size"
     fi
 done
