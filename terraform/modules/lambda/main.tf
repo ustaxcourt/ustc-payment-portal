@@ -129,34 +129,28 @@ resource "aws_lambda_function" "test_cert" {
   tags = var.tags
 }
 
-resource "aws_lambda_permission" "init_payment_apigateway" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.init_payment.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_gateway_execution_arn}/*/*"
+# Add cloudwatch pieces
+
+resource "aws_cloudwatch_log_group" "init_payment" {
+  name              = "/aws/lambda/${var.function_name_prefix}-initPayment"
+  retention_in_days = 14
+  tags              = var.tags
 }
 
-resource "aws_lambda_permission" "process_payment_apigateway" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.process_payment.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_gateway_execution_arn}/*/*"
+resource "aws_cloudwatch_log_group" "process_payment" {
+  name              = "/aws/lambda/${var.function_name_prefix}-processPayment"
+  retention_in_days = 14
+  tags              = var.tags
 }
 
-resource "aws_lambda_permission" "get_details_apigateway" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.get_details.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_gateway_execution_arn}/*/*"
+resource "aws_cloudwatch_log_group" "get_details" {
+  name              = "/aws/lambda/${var.function_name_prefix}-getDetails"
+  retention_in_days = 14
+  tags              = var.tags
 }
 
-resource "aws_lambda_permission" "test_cert_apigateway" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.test_cert.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_gateway_execution_arn}/*/*"
+resource "aws_cloudwatch_log_group" "test_cert" {
+  name              = "/aws/lambda/${var.function_name_prefix}-testCert"
+  retention_in_days = 14
+  tags              = var.tags
 }
