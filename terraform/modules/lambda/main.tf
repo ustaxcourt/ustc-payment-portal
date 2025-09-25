@@ -2,7 +2,7 @@ data "archive_file" "lambda_zip" {
   type        = "zip"
   source_dir  = "${path.root}/../../src"
   output_path = "${path.root}/../../dist/lambda-deployment-package.zip"
-  excludes    = ["node_modules", "*.test.js", "*.spec.js"]
+  excludes    = ["*.test.js", "*.spec.js"]
 }
 
 resource "aws_lambda_function" "init_payment" {
