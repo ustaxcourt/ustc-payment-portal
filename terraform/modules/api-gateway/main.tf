@@ -2,7 +2,7 @@ data "aws_region" "current"{}
 
 # API Gateway REST API
 resource "aws_api_gateway_rest_api" "rest" {
-  name        = "${var.environment}-api-gateway"
+  name        = "ustc-payment-portal-${var.environment}-api-gateway"
   description = "USTC Payment Payment Portal"
 
   endpoint_configuration {
@@ -91,7 +91,7 @@ resource "aws_api_gateway_integration" "init_integration" {
   http_method          = aws_api_gateway_method.init_post.http_method
   type                 = "AWS_PROXY"
   integration_http_method = "POST"
-  # uri                     = aws_lambda_function.lambda.invoke_arn
+  uri         = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["initPayment"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "process_integration" {
@@ -100,7 +100,7 @@ resource "aws_api_gateway_integration" "process_integration" {
   http_method          = aws_api_gateway_method.process_post.http_method
   type                 = "AWS_PROXY"
   integration_http_method = "POST"
-  # uri                     = aws_lambda_function.lambda.invoke_arn Change this later
+  uri = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["processPayment"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "test_integration" {
@@ -108,8 +108,8 @@ resource "aws_api_gateway_integration" "test_integration" {
   resource_id          = aws_api_gateway_resource.test.id
   http_method          = aws_api_gateway_method.test_get.http_method
   type                 = "AWS_PROXY"
-  integration_http_method = "GET"
-  # uri                     = aws_lambda_function.lambda.invoke_arn Change this later
+  integration_http_method = "POST"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["testCert"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "details_integration" {
@@ -117,8 +117,8 @@ resource "aws_api_gateway_integration" "details_integration" {
   resource_id          = aws_api_gateway_resource.details_tracking.id
   http_method          = aws_api_gateway_method.details_get.http_method
   type                 = "AWS_PROXY"
-  integration_http_method = "GET"
-  # uri                     = aws_lambda_function.lambda.invoke_arn Change this later
+  integration_http_method = "POST"
+  uri                   = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getDetails"]}/invocations"
 }
 
 #Deployment 
@@ -153,43 +153,38 @@ resource "aws_api_gateway_stage" "stage" {
   deployment_id = aws_api_gateway_deployment.deployment.id
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   stage_name    = var.stage_name
-  tags          = var.tags
+  tags       = var.common_tags
 }
 
 #These should go in api gateway
 resource "aws_lambda_permission" "init_permission" {
-  statement_id  = "AllowAPIGatewayInvoke"
+  statement_id  = "AllowAPIGatewayInvokeInit"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_function_arns["initPayment"] #Need to change
+  function_name = var.lambda_function_arns["initPayment"]
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_gateway_execution_arn}/*/POST/init"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/POST/init"
 }
 
 resource "aws_lambda_permission" "process_permissions" {
-  statement_id  = "AllowAPIGatewayInvoke"
+  statement_id  = "AllowAPIGatewayInvokeProcess"
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_arns["processPayment"]
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_gateway_execution_arn}/*/POST/process"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/POST/process"
 }
 
 resource "aws_lambda_permission" "test_permissions" {
-  statement_id  = "AllowAPIGatewayInvoke"
+  statement_id  = "AllowAPIGatewayInvokeTest"
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_arns["testCert"]
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_gateway_execution_arn}/*/GET/test"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/test"
 }
 
 resource "aws_lambda_permission" "details_permissions" {
-  statement_id  = "AllowAPIGatewayInvoke"
+  statement_id  = "AllowAPIGatewayInvokeDetails"
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_arns["getDetails"]
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_gateway_execution_arn}/*/GET/details/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/details/*/*"
 }
-
-
-# Need to Wire Lambda Function arns to uri for AWS API Gateway integration
-# To parametrize
-# Verify Source ARNs and Functions Names in Lambda permissions

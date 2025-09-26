@@ -16,7 +16,7 @@ output "lambda_security_group_id" {
   value = module.networking.lambda_security_group_id
 }
 
-output "lamda_role_arn" {
+output "lambda_role_arn" {
   value = module.iam.lambda_role_arn
 }
 
