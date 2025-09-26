@@ -19,8 +19,8 @@ data "archive_file" "lambda_zip" {
   for_each = local.lambda_functions
 
   type        = "zip"
-  source_dir  = "${path.root}/../../dist/${each.key}"
-  output_path = "${path.root}/../../dist/${each.key}-deployment-package.zip"
+  source_dir  = "${path.root}/../../../dist/${each.key}"
+  output_path = "${path.root}/../../../dist/${each.key}-deployment-package.zip"
 
   depends_on = [null_resource.build_lambdas]
 }
@@ -30,13 +30,13 @@ resource "null_resource" "build_lambdas" {
     # Rebuild when source files change
     src_hash = sha256(join("", [for f in fileset("${path.root}/../../src", "**/*.ts") : filesha256("${path.root}/../../src/${f}")]))
     # Rebuild when build script changes
-    build_script_hash = filesha256("${path.root}/../scripts/build-lambda.sh")
+    build_script_hash = filesha256("${path.root}/../../scripts/build-lambda.sh")
   }
 
   provisioner "local-exec" {
-    command     = "cd ${path.root}/../.. && npm run build:lambda"
+    command     = "cd ${path.root} && npm run build:lambda"
     working_dir = "${path.root}/../.."
-  }
+  }  
 }
 
 resource "aws_lambda_function" "functions" {
