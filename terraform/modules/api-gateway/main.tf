@@ -1,7 +1,7 @@
 data "aws_region" "current"{}
 
 # API Gateway REST API
-resource "aws_api_gateway_rest_api" "main" {
+resource "aws_api_gateway_rest_api" "rest" {
   name        = "${var.environment}-api-gateway"
   description = "USTC Payment Payment Portal"
 
@@ -12,37 +12,184 @@ resource "aws_api_gateway_rest_api" "main" {
   tags = var.common_tags
 }
 
-# Add api gateway resources 
+#POST /init
+resource "aws_api_gateway_resource" "init" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
+  path_part   = "init"
+}
+
+#POST /process
+resource "aws_api_gateway_resource" "process" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
+  path_part   = "process"
+}
+
+resource "aws_api_gateway_resource" "test" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
+  path_part   = "test"
+}
+
+#GET /details/{appID}/{payGovTrackingID}
+resource "aws_api_gateway_resource" "details" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
+  path_part   = "details"
+}
+
+resource "aws_api_gateway_resource" "details_app_id" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_resource.details.id
+  path_part   = "{appId}"
+}
+
+resource "aws_api_gateway_resource" "details_tracking" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_resource.details_app_id.id
+  path_part   = "{payGovTrackingId}"
+}
+
+#Methods
+resource "aws_api_gateway_method" "init_post" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.init.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_method" "process_post" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.process.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_method" "test_get" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.test.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_method" "details_get" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.details_tracking.id
+  http_method   = "GET"
+  authorization = "NONE"
+  request_parameters = {
+
+  }
+}
+
+#lambda integration
+
+resource "aws_api_gateway_integration" "init_integration" {
+  rest_api_id          = aws_api_gateway_rest_api.rest.id
+  resource_id          = aws_api_gateway_resource.init.id
+  http_method          = aws_api_gateway_method.init_post.http_method
+  type                 = "AWS_PROXY"
+  integration_http_method = "POST"
+  # uri                     = aws_lambda_function.lambda.invoke_arn
+}
+
+resource "aws_api_gateway_integration" "process_integration" {
+  rest_api_id          = aws_api_gateway_rest_api.rest.id
+  resource_id          = aws_api_gateway_resource.process.id
+  http_method          = aws_api_gateway_method.process_post.http_method
+  type                 = "AWS_PROXY"
+  integration_http_method = "POST"
+  # uri                     = aws_lambda_function.lambda.invoke_arn Change this later
+}
+
+resource "aws_api_gateway_integration" "test_integration" {
+  rest_api_id          = aws_api_gateway_rest_api.rest.id
+  resource_id          = aws_api_gateway_resource.test.id
+  http_method          = aws_api_gateway_method.test_get.http_method
+  type                 = "AWS_PROXY"
+  integration_http_method = "GET"
+  # uri                     = aws_lambda_function.lambda.invoke_arn Change this later
+}
+
+resource "aws_api_gateway_integration" "details_integration" {
+  rest_api_id          = aws_api_gateway_rest_api.rest.id
+  resource_id          = aws_api_gateway_resource.details_tracking.id
+  http_method          = aws_api_gateway_method.details_get.http_method
+  type                 = "AWS_PROXY"
+  integration_http_method = "GET"
+  # uri                     = aws_lambda_function.lambda.invoke_arn Change this later
+}
+
+#Deployment 
+
+resource "aws_api_gateway_deployment" "deployment" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_integration.init_integration.id,
+      aws_api_gateway_integration.process_integration.id,
+      aws_api_gateway_integration.test_integration.id,
+      aws_api_gateway_integration.details_integration.id
+    ]))
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  depends_on = [
+    aws_api_gateway_integration.init_integration,
+    aws_api_gateway_integration.process_integration,
+    aws_api_gateway_integration.test_integration,
+    aws_api_gateway_integration.details_integration
+  ]
+}
+
+#Stage
+
+resource "aws_api_gateway_stage" "stage" {
+  deployment_id = aws_api_gateway_deployment.deployment.id
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  stage_name    = var.stage_name
+  tags          = var.tags
+}
 
 #These should go in api gateway
-resource "aws_lambda_permission" "init_payment_apigateway" {
+resource "aws_lambda_permission" "init_permission" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.init_payment.function_name
+  function_name = var.lambda_function_arns["initPayment"] #Need to change
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_gateway_execution_arn}/*/*"
+  source_arn    = "${var.api_gateway_execution_arn}/*/POST/init"
 }
 
-resource "aws_lambda_permission" "process_payment_apigateway" {
+resource "aws_lambda_permission" "process_permissions" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.process_payment.function_name
+  function_name = var.lambda_function_arns["processPayment"]
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_gateway_execution_arn}/*/*"
+  source_arn    = "${var.api_gateway_execution_arn}/*/POST/process"
 }
 
-resource "aws_lambda_permission" "get_details_apigateway" {
+resource "aws_lambda_permission" "test_permissions" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.get_details.function_name
+  function_name = var.lambda_function_arns["testCert"]
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_gateway_execution_arn}/*/*"
+  source_arn    = "${var.api_gateway_execution_arn}/*/GET/test"
 }
 
-resource "aws_lambda_permission" "test_cert_apigateway" {
+resource "aws_lambda_permission" "details_permissions" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.test_cert.function_name
+  function_name = var.lambda_function_arns["getDetails"]
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.api_gateway_execution_arn}/*/*"
+  source_arn    = "${var.api_gateway_execution_arn}/*/GET/details/*/*"
 }
+
+
+# Need to Wire Lambda Function arns to uri for AWS API Gateway integration
+# To parametrize
+# Verify Source ARNs and Functions Names in Lambda permissions
