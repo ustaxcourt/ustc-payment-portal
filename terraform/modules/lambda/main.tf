@@ -1,16 +1,16 @@
 locals {
   lambda_functions = {
     initPayment = {
-      handler = "index.initPaymentHandler"
+      handler = "lambdaHandler.initPaymentHandler"
     }
     processPayment = {
-      handler = "index.processPaymentHandler"
+      handler = "lambdaHandler.processPaymentHandler"
     }
     getDetails = {
-      handler = "index.getDetailsHandler"
+      handler = "lambdaHandler.getDetailsHandler"
     }
     testCert = {
-      handler = "index.handler"
+      handler = "lambdaHandler.handler"
     }
   }
 }
@@ -58,11 +58,6 @@ resource "aws_lambda_function" "functions" {
   # Increase /tmp storage to 5GB
   ephemeral_storage {
     size = 5120
-  }
-
-  # Enable SnapStart for faster cold starts
-  snap_start {
-    apply_on = "PublishedVersions"
   }
 
   environment {
