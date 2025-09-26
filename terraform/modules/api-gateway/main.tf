@@ -59,6 +59,51 @@ resource "aws_api_gateway_method" "init_post" {
   authorization = "NONE"
 }
 
+resource "aws_api_gateway_method" "init_options" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.init.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "init_options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  resource_id = aws_api_gateway_resource.init.id
+  http_method = aws_api_gateway_method.init_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = jsonencode({
+      statusCode = 200
+    })
+  }
+}
+
+resource "aws_api_gateway_method_response" "init_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  resource_id = aws_api_gateway_resource.init.id
+  http_method = aws_api_gateway_method.init_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "init_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  resource_id = aws_api_gateway_resource.init.id
+  http_method = aws_api_gateway_method.init_options.http_method
+  status_code = aws_api_gateway_method_response.init_options_200.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST,PUT,DELETE'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'" #re-visit
+  }
+
+  depends_on = [aws_api_gateway_integration.init_options_integration]
+}
+
 resource "aws_api_gateway_method" "process_post" {
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   resource_id   = aws_api_gateway_resource.process.id
@@ -131,7 +176,8 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_integration.init_integration.id,
       aws_api_gateway_integration.process_integration.id,
       aws_api_gateway_integration.test_integration.id,
-      aws_api_gateway_integration.details_integration.id
+      aws_api_gateway_integration.details_integration.id,
+      aws_api_gateway_integration.init_options_integration.id,  #need to add process, test and detil OPTIONS integrations later
     ]))
   }
 
@@ -143,7 +189,8 @@ resource "aws_api_gateway_deployment" "deployment" {
     aws_api_gateway_integration.init_integration,
     aws_api_gateway_integration.process_integration,
     aws_api_gateway_integration.test_integration,
-    aws_api_gateway_integration.details_integration
+    aws_api_gateway_integration.details_integration,
+    aws_api_gateway_integration.init_options_integration #need to add process, test and detil OPTIONS integrations
   ]
 }
 
