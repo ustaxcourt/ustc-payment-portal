@@ -9,7 +9,3 @@ output "api_gateway_execution_arn" {
 output "stage_name" {
     value = aws_api_gateway_stage.stage.stage_name
 }
-
-# output "invoke_url" {
-#     value = 
-# }
