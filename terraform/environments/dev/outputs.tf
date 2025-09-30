@@ -12,3 +12,4 @@ output "lambda_function_invoke_arns" {
   description = "Map of Lambda function invoke ARNs keyed by function name"
   value       = module.lambda.function_invoke_arns
 }
+

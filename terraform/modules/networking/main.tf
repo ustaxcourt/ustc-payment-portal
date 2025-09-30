@@ -131,4 +131,3 @@ resource "aws_security_group" "lambda" {
     Name = "${var.name_prefix}-sg"
   })
 }
-
