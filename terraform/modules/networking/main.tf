@@ -36,18 +36,31 @@ resource "aws_subnet" "private_subnet" {
   })
 }
 
-resource "aws_eip" "nat" {
+#keeping it here in case we've to rollback to the original EIP
+
+# resource "aws_eip" "nat" {
+#   domain = "vpc"
+
+#   tags = merge(var.tags, {
+#     Name = "${var.name_prefix}-eip"
+#   })
+# }
+
+resource "aws_eip" "nat_replacement" {
   domain = "vpc"
-
+  
   tags = merge(var.tags, {
-    Name = "${var.name_prefix}-eip"
+    Name = "${var.name_prefix}-replacement-eip"
   })
+  
+  lifecycle {
+    prevent_destroy = true
+  }
 }
-
 
 resource "aws_nat_gateway" "default_nat_gw" {
   subnet_id     = aws_subnet.public_subnet.id
-  allocation_id = aws_eip.nat.id
+  allocation_id = aws_eip.nat_replacement.id
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-nat-gw"
   })
