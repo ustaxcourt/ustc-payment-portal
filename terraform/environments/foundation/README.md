@@ -58,7 +58,7 @@ terraform init -backend-config=backend.hcl -reconfigure
 - Lambda Security Group (permissive for parity; harden later)
 
 ## IAM Module
- This is needed to grant Lambda permissions to create CloudWatch logs and Permissions to manage ENIs in VPCs Lambdas in VPC will need these permissions. This was auto-created in serverless framework, but we have to configure it in terraform.
+ This is needed to grant Lambda permissions to create CloudWatch logs and Permissions to manage ENIs in VPCs. Lambdas in VPC will need these permissions.
 
-These will beused later by the workloads stack (Lambdas/API).
+These will be used later by the workloads stack (Lambdas/API).
 
