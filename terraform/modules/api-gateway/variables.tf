@@ -20,3 +20,12 @@ variable "common_tags" {
   default     = {}
 }
 
+variable "allowed_origins" {
+  description = "List of allowed origins for CORS. Must be exact domain URLs (e.g. https://example.com)"
+  type        = list(string)
+
+  validation {
+    condition     = alltrue([for origin in var.allowed_origins : can(regex("^https://", origin))])
+    error_message = "All allowed origins must start with https:// for security best practices."
+  }
+}

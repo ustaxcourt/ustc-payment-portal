@@ -26,5 +26,8 @@ module "api" {
 lambda_function_arns = module.lambda.function_arns
 environment   = "dev"
 stage_name    = "dev"
+allowed_origins = [
+  "https://dawson.ustaxcourt.gov"
+]
 
 }

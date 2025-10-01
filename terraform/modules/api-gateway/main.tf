@@ -1,7 +1,7 @@
 data "aws_region" "current"{}
 
 locals {
-  cors_allow_origin  = "*"  # replace this
+  cors_allow_origin  = join(",", var.allowed_origins)
   cors_allow_methods = "GET,POST,OPTIONS"
   cors_allow_headers = "Content-Type,Authorization,X-Requested-With"
 }
