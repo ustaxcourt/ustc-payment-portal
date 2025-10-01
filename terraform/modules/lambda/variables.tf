@@ -32,11 +32,6 @@ variable "environment_variables" {
   default     = {}
 }
 
-variable "api_gateway_execution_arn" {
-  description = "Execution ARN of the API Gateway"
-  type        = string
-}
-
 variable "tags" {
   description = "Tags to apply to Lambda functions"
   type        = map(string)
@@ -48,3 +43,4 @@ variable "log_retention_days" {
   type        = number
   default     = 14
 }
+
