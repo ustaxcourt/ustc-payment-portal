@@ -13,3 +13,8 @@ output "lambda_function_invoke_arns" {
   value       = module.lambda.function_invoke_arns
 }
 
+output "cicd_role_arn" {
+  value       = module.iam_cicd.role_arn
+  description = "ARN of the GitHub OIDC CI/CD deployer role"
+}
+
