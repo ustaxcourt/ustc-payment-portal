@@ -13,3 +13,4 @@ locals {
   lambda_exec_role_arn = "arn:aws:iam::723609007960:role/ustc-payment-portal-dev-lambda-exec"
   name_prefix = "ustc-payment-processor-dev"
 }
+
