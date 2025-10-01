@@ -34,11 +34,9 @@ Stages should be one of `dev`, `stg`, and `prod`. The dev server should be confi
 
 ## Deployment
 
-This gets deployed to the USTC Website AWS Account. You will need credentials loaded in order to perform this operation. And you will need the above environment variables specified.
+This gets deployed to the USTC Website AWS Account using Terraform. You will need credentials loaded in order to perform this operation. And you will need the above environment variables specified.
 
-```bash
-npm run deploy <dev|stg|prod>
-```
+See the `terraform/` directory for deployment configuration and instructions.
 
 ## Testing
 
