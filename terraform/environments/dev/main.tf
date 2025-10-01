@@ -44,3 +44,4 @@ module "iam_cicd" {
   lambda_exec_role_arn = local.lambda_exec_role_arn
   lambda_name_prefix   = local.name_prefix
 }
+

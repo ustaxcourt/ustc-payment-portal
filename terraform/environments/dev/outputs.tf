@@ -18,3 +18,4 @@ output "cicd_role_arn" {
   description = "ARN of the GitHub OIDC CI/CD deployer role"
 }
 
+
