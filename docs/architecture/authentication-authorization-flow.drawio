@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Authentication and Authorization Flow" id="auth-flow">
-        <mxGraphModel dx="2993" dy="1069" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+        <mxGraphModel dx="2643" dy="1003" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -151,33 +151,6 @@
                 </mxCell>
                 <mxCell id="step10-label" value="10. Process Payment" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1" parent="1" vertex="1">
                     <mxGeometry x="620" y="734" width="160" height="30" as="geometry"/>
-                </mxCell>
-                <mxCell id="step11-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#009900;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="paygov" target="client-lambda" edge="1">
-                    <mxGeometry relative="1" as="geometry">
-                        <Array as="points">
-                            <mxPoint x="400" y="695"/>
-                            <mxPoint x="400" y="820"/>
-                            <mxPoint x="140" y="820"/>
-                        </Array>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="step11-label" value="11. Return 200 Success" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;fontColor=#009900;labelBackgroundColor=#ffffff;" parent="step11-arrow" vertex="1" connectable="0">
-                    <mxGeometry x="0.25" y="-2" relative="1" as="geometry">
-                        <mxPoint x="328" y="42" as="offset"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="step11b-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#CC0000;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="forbidden" target="client-lambda" edge="1">
-                    <mxGeometry relative="1" as="geometry">
-                        <Array as="points">
-                            <mxPoint x="980" y="820"/>
-                            <mxPoint x="140" y="820"/>
-                        </Array>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="step11b-label" value="Return 403 Forbidden" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;fontColor=#CC0000;labelBackgroundColor=#ffffff;" parent="step11b-arrow" vertex="1" connectable="0">
-                    <mxGeometry x="0.35" y="1" relative="1" as="geometry">
-                        <mxPoint x="331" y="79" as="offset"/>
-                    </mxGeometry>
                 </mxCell>
                 <mxCell id="legend-box" value="Legend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=13;fontStyle=1;align=left;verticalAlign=top" parent="1" vertex="1">
                     <mxGeometry x="1140" y="80" width="220" height="190" as="geometry"/>
