@@ -15,7 +15,7 @@ The Payment Portal API currently uses a simple Bearer token authentication mecha
 3. **Manual secret management**: Token rotation and distribution requires manual coordination
 4. **Limited auditability**: Unable to trace which client made specific API requests
 
-The Payment Portal will be used by multiple internal applications (DAWSON, and potentially 3-4 other applications) to initiate and process payments. Each application will utilize AWS Labda functions make authenticated requests to the Payment Portal API. Different applications should only be authorized to process payments for specific fees based on their `tcsAppId` values.
+The Payment Portal will be used by multiple internal applications (DAWSON, and potentially 3-4 other applications) to initiate and process payments. Each application will utilize AWS Lambda functions make authenticated requests to the Payment Portal API. Different applications should only be authorized to process payments for specific fees based on their `tcsAppId` values.
 
 For example:
 
