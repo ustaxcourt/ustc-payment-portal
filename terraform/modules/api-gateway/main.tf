@@ -1,11 +1,5 @@
 data "aws_region" "current"{}
 
-locals {
-  cors_allow_origin  = "*"  # replace this
-  cors_allow_methods = "GET,POST,OPTIONS"
-  cors_allow_headers = "Content-Type,Authorization,X-Requested-With"
-}
-
 # API Gateway REST API
 resource "aws_api_gateway_rest_api" "rest" {
   name        = "ustc-payment-portal-${var.environment}-api-gateway"
@@ -65,51 +59,6 @@ resource "aws_api_gateway_method" "init_post" {
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_method" "init_options" {
-  rest_api_id   = aws_api_gateway_rest_api.rest.id
-  resource_id   = aws_api_gateway_resource.init.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_integration" "init_options_integration" {
-  rest_api_id = aws_api_gateway_rest_api.rest.id
-  resource_id = aws_api_gateway_resource.init.id
-  http_method = aws_api_gateway_method.init_options.http_method
-  type        = "MOCK"
-  request_templates = {
-    "application/json" = jsonencode({
-      statusCode = 200
-    })
-  }
-}
-
-resource "aws_api_gateway_method_response" "init_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.rest.id
-  resource_id = aws_api_gateway_resource.init.id
-  http_method = aws_api_gateway_method.init_options.http_method
-  status_code = "200"
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = true
-    "method.response.header.Access-Control-Allow-Methods" = true
-    "method.response.header.Access-Control-Allow-Origin"  = true
-  }
-}
-
-resource "aws_api_gateway_integration_response" "init_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.rest.id
-  resource_id = aws_api_gateway_resource.init.id
-  http_method = aws_api_gateway_method.init_options.http_method
-  status_code = aws_api_gateway_method_response.init_options_200.status_code
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = "'${local.cors_allow_origin}'"
-    "method.response.header.Access-Control-Allow-Methods" = "'${local.cors_allow_methods}'"
-    "method.response.header.Access-Control-Allow-Origin"  = "'${local.cors_allow_methods}'"
-  }
-
-  depends_on = [aws_api_gateway_integration.init_options_integration]
-}
-
 resource "aws_api_gateway_method" "process_post" {
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   resource_id   = aws_api_gateway_resource.process.id
@@ -117,107 +66,11 @@ resource "aws_api_gateway_method" "process_post" {
   authorization = "NONE"
 }
 
-#Options for /process
-
-resource "aws_api_gateway_method" "process_options" {
-  rest_api_id   = aws_api_gateway_rest_api.rest.id
-  resource_id   = aws_api_gateway_resource.process.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_integration" "process_options_integration" {
-  rest_api_id       = aws_api_gateway_rest_api.rest.id
-  resource_id       = aws_api_gateway_resource.process.id
-  http_method       = aws_api_gateway_method.process_options.http_method
-  type              = "MOCK"
-  request_templates = {
-    "application/json" = jsonencode({
-      statusCode = 200
-    })
-  }
-}
-
-resource "aws_api_gateway_method_response" "process_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.rest.id
-  resource_id = aws_api_gateway_resource.process.id
-  http_method = aws_api_gateway_method.process_options.http_method
-  status_code = "200"
-
-  response_models = { "application/json" = "Empty" }
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = true
-    "method.response.header.Access-Control-Allow-Methods" = true
-    "method.response.header.Access-Control-Allow-Headers" = true
-  }
-}
-
-resource "aws_api_gateway_integration_response" "process_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.rest.id
-  resource_id = aws_api_gateway_resource.process.id
-  http_method = aws_api_gateway_method.process_options.http_method
-  status_code = aws_api_gateway_method_response.process_options_200.status_code
-
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'${local.cors_allow_origin}'"
-    "method.response.header.Access-Control-Allow-Methods" = "'${local.cors_allow_methods}'"
-    "method.response.header.Access-Control-Allow-Headers" = "'${local.cors_allow_headers}'"
-  }
-
-  depends_on = [aws_api_gateway_integration.process_options_integration]
-}
-
 resource "aws_api_gateway_method" "test_get" {
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   resource_id   = aws_api_gateway_resource.test.id
   http_method   = "GET"
   authorization = "NONE"
-}
-
-#Options for /test
-
-resource "aws_api_gateway_method" "test_options" {
-  rest_api_id   = aws_api_gateway_rest_api.rest.id
-  resource_id   = aws_api_gateway_resource.test.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_integration" "test_options_integration" {
-  rest_api_id       = aws_api_gateway_rest_api.rest.id
-  resource_id       = aws_api_gateway_resource.test.id
-  http_method       = aws_api_gateway_method.test_options.http_method
-  type              = "MOCK"
-  request_templates = { "application/json" = "{\"statusCode\": 200}" }
-}
-
-resource "aws_api_gateway_method_response" "test_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.rest.id
-  resource_id = aws_api_gateway_resource.test.id
-  http_method = aws_api_gateway_method.test_options.http_method
-  status_code = "200"
-
-  response_models = { "application/json" = "Empty" }
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = true
-    "method.response.header.Access-Control-Allow-Methods" = true
-    "method.response.header.Access-Control-Allow-Headers" = true
-  }
-}
-
-resource "aws_api_gateway_integration_response" "test_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.rest.id
-  resource_id = aws_api_gateway_resource.test.id
-  http_method = aws_api_gateway_method.test_options.http_method
-  status_code = aws_api_gateway_method_response.test_options_200.status_code
-
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'${local.cors_allow_origin}'"
-    "method.response.header.Access-Control-Allow-Methods" = "'${local.cors_allow_methods}'"
-    "method.response.header.Access-Control-Allow-Headers" = "'${local.cors_allow_headers}'"
-  }
-
-  depends_on = [aws_api_gateway_integration.test_options_integration]
 }
 
 resource "aws_api_gateway_method" "details_get" {
@@ -228,52 +81,6 @@ resource "aws_api_gateway_method" "details_get" {
   request_parameters = {
 
   }
-}
-
-#Options for /details
-
-resource "aws_api_gateway_method" "details_options" {
-  rest_api_id   = aws_api_gateway_rest_api.rest.id
-  resource_id   = aws_api_gateway_resource.details_tracking.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_integration" "details_options_integration" {
-  rest_api_id       = aws_api_gateway_rest_api.rest.id
-  resource_id       = aws_api_gateway_resource.details_tracking.id
-  http_method       = aws_api_gateway_method.details_options.http_method
-  type              = "MOCK"
-  request_templates = { "application/json" = "{\"statusCode\": 200}" }
-}
-
-resource "aws_api_gateway_method_response" "details_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.rest.id
-  resource_id = aws_api_gateway_resource.details_tracking.id
-  http_method = aws_api_gateway_method.details_options.http_method
-  status_code = "200"
-
-  response_models = { "application/json" = "Empty" }
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = true
-    "method.response.header.Access-Control-Allow-Methods" = true
-    "method.response.header.Access-Control-Allow-Headers" = true
-  }
-}
-
-resource "aws_api_gateway_integration_response" "details_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.rest.id
-  resource_id = aws_api_gateway_resource.details_tracking.id
-  http_method = aws_api_gateway_method.details_options.http_method
-  status_code = aws_api_gateway_method_response.details_options_200.status_code
-
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'${local.cors_allow_origin}'"
-    "method.response.header.Access-Control-Allow-Methods" = "'${local.cors_allow_methods}'"
-    "method.response.header.Access-Control-Allow-Headers" = "'${local.cors_allow_headers}'"
-  }
-
-  depends_on = [aws_api_gateway_integration.details_options_integration]
 }
 
 #lambda integration
@@ -325,7 +132,6 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_integration.process_integration.id,
       aws_api_gateway_integration.test_integration.id,
       aws_api_gateway_integration.details_integration.id,
-      aws_api_gateway_integration.init_options_integration.id,  #need to add process, test and detil OPTIONS integrations later
     ]))
   }
 
@@ -338,7 +144,6 @@ resource "aws_api_gateway_deployment" "deployment" {
     aws_api_gateway_integration.process_integration,
     aws_api_gateway_integration.test_integration,
     aws_api_gateway_integration.details_integration,
-    aws_api_gateway_integration.init_options_integration #need to add process, test and detil OPTIONS integrations
   ]
 }
 
