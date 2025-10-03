@@ -115,6 +115,10 @@ We will implement **AWS IAM authentication using SigV4 request signing** with **
 
 ## Migration Path
 
+# Note:
+
+- This authentication switch should be co-ordinated with the client side (dawson). If Sigv4 is not already setup on the client side, then IAM auth on Payment Portal APIs and Sigv4 Implementation on Client side should be done at the same time to make sure the payments don't break.
+
 1. Create DynamoDB permissions table and seed with initial client mappings (including cross-account role ARNs)
 2. Add API Gateway resource policy allowing cross-account access from client AWS accounts
 3. Coordinate with client account administrators (e.g., DAWSON team) to create IAM roles in their accounts with permissions to invoke Payment Portal API
