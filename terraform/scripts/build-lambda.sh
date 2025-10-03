@@ -27,7 +27,7 @@ echo "Bundling Lambda functions with esbuild..."
 # Bundle Init Payment Lambda
 echo "Bundling initPayment..."
 mkdir -p dist/initPayment
-npx esbuild src/lambdaHandler.ts \
+npx esbuild src/lambdas/initPayment.ts \
   --bundle \
   --platform=node \
   --target=node22 \
@@ -41,7 +41,7 @@ npx esbuild src/lambdaHandler.ts \
 # Bundle Process Payment Lambda
 echo "Bundling processPayment..."
 mkdir -p dist/processPayment
-npx esbuild src/lambdaHandler.ts \
+npx esbuild src/lambdas/processPayment.ts \
   --bundle \
   --platform=node \
   --target=node22 \
@@ -55,7 +55,7 @@ npx esbuild src/lambdaHandler.ts \
 # Bundle Get Details Lambda
 echo "Bundling getDetails..."
 mkdir -p dist/getDetails
-npx esbuild src/lambdaHandler.ts \
+npx esbuild src/lambdas/getDetails.ts \
   --bundle \
   --platform=node \
   --target=node22 \
@@ -69,7 +69,7 @@ npx esbuild src/lambdaHandler.ts \
 # Bundle Test Cert Lambda
 echo "Bundling testCert..."
 mkdir -p dist/testCert
-npx esbuild src/testCert.ts \
+npx esbuild src/lambdas/testCert.ts \
   --bundle \
   --platform=node \
   --target=node22 \

@@ -1,0 +1,1 @@
+export { getDetailsHandler } from '../lambdaHandler';
