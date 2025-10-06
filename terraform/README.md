@@ -177,3 +177,5 @@ export AWS_SDK_LOAD_CONFIG=1
 - **Locks**: Ensure the DynamoDB lock table exists (via bootstrap) before running `terraform init` with the backend.
 - **Drift/plan checks**: Prefer `terraform plan` in CI with explicit backend config and upload a plan artifact for review.
 - **State permissions**: IAM for CI (`modules/iam`) is scoped to specific state object keys (see `state_object_keys` in `locals.tf`). Ensure keys match your environment naming.
+
+
