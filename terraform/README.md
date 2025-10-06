@@ -20,10 +20,12 @@ This directory contains Infrastructure as Code for the USTC Payment Portal. It i
 ## Remote State Design (two keys per environment)
 
 Each environment uses two distinct S3 object keys for Terraform state stored in that environment's backend bucket. This separation allows:
+
 - **[foundation]** Networking/IAM to be applied independently and infrequently.
 - **[app]** Application/API to be iterated and deployed frequently without risking foundation resources.
 
 From `terraform/environments/dev/locals.tf` and `terraform/environments/stg/locals.tf`:
+
 - **Dev** bucket: `ustc-payment-portal-terraform-state-dev`
   - Foundation state key: `ustc-payment-portal/dev/networking.tfstate`
   - App state key: `ustc-payment-portal/dev/dev.tfstate`
@@ -32,10 +34,12 @@ From `terraform/environments/dev/locals.tf` and `terraform/environments/stg/loca
   - App state key: `ustc-payment-portal/stg/stg.tfstate`
 
 Locking is handled with DynamoDB tables per environment:
+
 - Dev: `ustc-payment-portal-terraform-locks-dev`
 - Stg: `ustc-payment-portal-terraform-locks-stg`
 
 The app layer reads the foundation outputs via `data "terraform_remote_state" "foundation"` with the foundation state key. See:
+
 - `terraform/environments/dev/main.tf`
 - `terraform/environments/stg/main.tf`
 
@@ -177,5 +181,3 @@ export AWS_SDK_LOAD_CONFIG=1
 - **Locks**: Ensure the DynamoDB lock table exists (via bootstrap) before running `terraform init` with the backend.
 - **Drift/plan checks**: Prefer `terraform plan` in CI with explicit backend config and upload a plan artifact for review.
 - **State permissions**: IAM for CI (`modules/iam`) is scoped to specific state object keys (see `state_object_keys` in `locals.tf`). Ensure keys match your environment naming.
-
-
