@@ -1,3 +1,4 @@
+import { getSecretBinary } from "./clients/secretsClient";
 import { AppContext } from "./types/AppContext";
 import { getDetails } from "./useCases/getDetails";
 import { initPayment } from "./useCases/initPayment";
@@ -22,6 +23,13 @@ export const createAppContext = (): AppContext => {
           `../certs/${process.env.NODE_ENV}-certificate.pem`
         );
 
+        //Update these calls to be either getBinary or getSecret depending on what we actually need.
+        const keyData = getSecretBinary("keySECRET");
+
+        const certData = getSecretBinary("certSecret");
+
+
+        // TODO: Use the above secret datas in the actual requests 
         const privateKey = readFileSync(privateKeyPath, "utf-8");
         const certificate = readFileSync(certificatePath, "utf-8");
 
