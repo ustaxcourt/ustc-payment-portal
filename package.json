@@ -6,7 +6,7 @@
   "engines": {
     "node": "^22.0.0"
   },
-   "scripts": {
+  "scripts": {
     "clean": "rimraf dist/*",
     "lint": "tslint -c tslint.json -p tsconfig.json",
     "build": "npm-run-all clean lint tsc",
@@ -45,6 +45,7 @@
     "uuid": "^13.0.0"
   },
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.901.0",
     "dotenv": "^17.2.2",
     "fast-xml-parser": "^5.2.5",
     "joi": "^18.0.1",
