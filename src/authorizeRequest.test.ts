@@ -56,4 +56,19 @@ describe("authorizeRequest", () => {
     }
     expect(result).toBeUndefined();
   });
+
+  it("throws an error if Authentication header is missing from headers object", () => {
+    let result;
+    try {
+      authorizeRequest({
+        "Content-Type": "application/json",
+        "User-Agent": "test",
+      });
+      result = "success";
+    } catch (err) {
+      expect(err).toBeInstanceOf(UnauthorizedError);
+      expect((err as UnauthorizedError).message).toEqual("Unauthorized");
+    }
+    expect(result).toBeUndefined();
+  });
 });
