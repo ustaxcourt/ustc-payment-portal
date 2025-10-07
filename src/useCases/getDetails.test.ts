@@ -14,13 +14,7 @@ const mockSuccessResponse = `<?xml version="1.0" encoding="UTF-8"?>
         <transactions>
           <transaction>
             <paygov_tracking_id>${mockPayGovTrackingId}</paygov_tracking_id>
-            <agency_tracking_id>agency-tracking-token</agency_tracking_id>
-            <transaction_amount>150.00</transaction_amount>
-            <transaction_type>Sale</transaction_type>
-            <transaction_date>2025-10-07T10:54:05</transaction_date>
-            <payment_date>2025-10-07</payment_date>
             <transaction_status>Success</transaction_status>
-            <payment_type>PLASTIC_CARD</payment_type>
           </transaction>
         </transactions>
       </getDetailsResponse>
@@ -40,13 +34,7 @@ const mockPendingResponse = `<?xml version="1.0" encoding="UTF-8"?>
         <transactions>
           <transaction>
             <paygov_tracking_id>${mockPayGovTrackingId}</paygov_tracking_id>
-            <agency_tracking_id>agency-tracking-token</agency_tracking_id>
-            <transaction_amount>150.00</transaction_amount>
-            <transaction_type>Sale</transaction_type>
-            <transaction_date>2025-10-07T10:54:05</transaction_date>
-            <payment_date>2025-10-07</payment_date>
             <transaction_status>Received</transaction_status>
-            <payment_type>ACH</payment_type>
           </transaction>
         </transactions>
       </getDetailsResponse>
