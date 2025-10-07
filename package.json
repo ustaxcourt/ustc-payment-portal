@@ -6,7 +6,7 @@
   "engines": {
     "node": "^22.0.0"
   },
-   "scripts": {
+  "scripts": {
     "clean": "rimraf dist/*",
     "lint": "tslint -c tslint.json -p tsconfig.json",
     "build": "npm-run-all clean lint tsc",
@@ -17,6 +17,7 @@
     "tf:build": "npm run build:lambda",
     "start": "node .",
     "test": "npx jest --config jest-unit.config.ts",
+    "test:coverage": "npm run test -- --coverage",
     "test:integration:dev": "DOTENV_CONFIG_PATH=.env.dev npx jest ./src/test/integration/",
     "test:integration": "npx jest ./src/test/integration/"
   },

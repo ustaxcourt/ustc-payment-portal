@@ -65,6 +65,35 @@ const mockUnsuccessfulResponse = `<?xml version="1.0" encoding="UTF-8"?>
   </S:Body>
 </S:Envelope>`;
 
+const mockFaultWithoutDetail = `<?xml version="1.0" encoding="UTF-8"?>
+  <S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Header>
+    <WorkContext xmlns="http://oracle.com/weblogic/soap/workarea/">blah=</WorkContext>
+  </S:Header>
+  <S:Body>
+    <S:Fault xmlns:ns4="http://www.w3.org/2003/05/soap-envelope">
+      <faultcode>S:Server</faultcode>
+      <faultstring>TCS Error</faultstring>
+    </S:Fault>
+  </S:Body>
+</S:Envelope>`;
+
+const mockFaultWithoutTCSServiceFault = `<?xml version="1.0" encoding="UTF-8"?>
+  <S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Header>
+    <WorkContext xmlns="http://oracle.com/weblogic/soap/workarea/">blah=</WorkContext>
+  </S:Header>
+  <S:Body>
+    <S:Fault xmlns:ns4="http://www.w3.org/2003/05/soap-envelope">
+      <faultcode>S:Server</faultcode>
+      <faultstring>TCS Error</faultstring>
+      <detail>
+        <SomeOtherFault>Error</SomeOtherFault>
+      </detail>
+    </S:Fault>
+  </S:Body>
+</S:Envelope>`;
+
 describe("processPayment", () => {
   it("throws an error if we pass in an invalid request", async () => {
     await expect(
@@ -167,6 +196,36 @@ describe("processPayment", () => {
         token: "mock-token",
       });
       expect(transactionStatus).toBe("Pending");
+    });
+  });
+
+  describe("Fault handling edge cases", () => {
+    it("handles fault without detail object", async () => {
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockReturnValue(mockFaultWithoutDetail);
+
+      const { transactionStatus, message } = await processPayment(appContext, {
+        appId: "asdf",
+        token: "mock-token",
+      });
+
+      expect(transactionStatus).toBe("Failed");
+      expect(message).toBe("Transaction Error");
+    });
+
+    it("handles fault with detail but no TCSServiceFault", async () => {
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockReturnValue(mockFaultWithoutTCSServiceFault);
+
+      const { transactionStatus, message } = await processPayment(appContext, {
+        appId: "asdf",
+        token: "mock-token",
+      });
+
+      expect(transactionStatus).toBe("Failed");
+      expect(message).toBe("Transaction Error");
     });
   });
 });
