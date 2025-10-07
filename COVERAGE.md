@@ -60,20 +60,6 @@ The following files are **intentionally excluded** from coverage requirements:
 
 **Justification:** Type definitions don't contain executable code and are validated by the TypeScript compiler.
 
-## Branch Coverage Notes
-
-Some files may show less than 100% branch coverage while having 100% line coverage due to:
-
-1. **Default parameter branches** - TypeScript/Jest treats default parameters as branches
-
-   - Example: `constructor(message: string = "Default")` creates a branch for the default case
-   - These are covered but may show as partial branch coverage
-
-2. **Error class constructors** - The error classes use default parameters which create implicit branches
-   - `src/errors/unauthorized.ts` - Constructor default parameter
-   - `src/errors/failedTransaction.ts` - Constructor default parameter
-   - These show 100% line coverage but may have lower branch coverage
-
 ## Running Coverage Reports
 
 To generate a coverage report:
