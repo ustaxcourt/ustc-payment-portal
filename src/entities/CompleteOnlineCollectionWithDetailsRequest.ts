@@ -71,7 +71,7 @@ const handleFault = (fault: ProcessorFault) => {
     return new FailedTransactionError();
   }
 
-  if (!fault.detail["ns2:TCSServiceFault"]) {
+  if (!fault.detail || !fault.detail["ns2:TCSServiceFault"]) {
     return new FailedTransactionError();
   }
 

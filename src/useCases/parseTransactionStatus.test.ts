@@ -22,4 +22,10 @@ describe("parseTransactionStatus", () => {
       expect(parseTransactionStatus(transactionStatus)).toBe("Pending");
     }
   );
+
+  it("throws an error for invalid transaction status", () => {
+    expect(() => {
+      parseTransactionStatus("InvalidStatus" as PayGovTransactionStatus);
+    }).toThrow("Could not parse transaction status InvalidStatus");
+  });
 });
