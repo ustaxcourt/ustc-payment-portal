@@ -42,4 +42,18 @@ describe("authorizeRequest", () => {
     }
     expect(result).toBeUndefined();
   });
+
+  it("throws an error if headers are missing", () => {
+    let result;
+    try {
+      authorizeRequest(undefined);
+      result = "success";
+    } catch (err) {
+      expect(err).toBeInstanceOf(UnauthorizedError);
+      expect((err as UnauthorizedError).message).toEqual(
+        "Missing Authentication"
+      );
+    }
+    expect(result).toBeUndefined();
+  });
 });
