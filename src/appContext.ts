@@ -1,4 +1,4 @@
-import { getSecretValue } from "./clients/secretsClient";
+import { getSecretString } from "./clients/secretsClient";
 import { AppContext } from "./types/AppContext";
 import { getDetails } from "./useCases/getDetails";
 import { initPayment } from "./useCases/initPayment";
@@ -6,24 +6,37 @@ import { processPayment } from "./useCases/processPayment";
 import * as https from "https";
 import fetch from "node-fetch";
 
-let httpsAgentCache: https.Agent;
+let httpsAgentCache: https.Agent | undefined;
+
+function normalizePem(pem: string): string {
+  return pem.replace(/\r\n/g, "\n").trimEnd() + "\n";
+}
 
 export const createAppContext = (): AppContext => {
   return {
     getHttpsAgent: async () => {
       if (!httpsAgentCache) {
-        const privateKey = await getSecretValue("keySECRET"); // UPDATE THIS TO BE THE ACTUAL SECRET NAME!
-        const certificate = await getSecretValue("certSECRET"); // UPDATE THIS TO BE THE ACTUAL SECRET NAME!
+        const keyId = process.env.PRIVATE_KEY_SECRET_ID;
+        const certId = process.env.CERTIFICATE_SECRET_ID;
+        const passId = process.env.CERT_PASSPHRASE_SECRET_ID; // optional
 
-        const httpsAgentOptions = {
-          key: privateKey,
-          cert: certificate,
-          passphrase: process.env.CERT_PASSPHRASE,
-          keepAlive: true,
-        };
+        // Only build an mTLS agent when both key and cert IDs are present (stg/prod), will
+        if (keyId && certId) {
+          const [key, cert, passphrase] = await Promise.all([
+            getSecretString(keyId),
+            getSecretString(certId),
+            passId ? getSecretString(passId) : Promise.resolve(undefined),
+          ]);
 
-        // Create an HTTPS agent using the certificate options
-        httpsAgentCache = new https.Agent(httpsAgentOptions);
+          httpsAgentCache = new https.Agent({
+            keepAlive: true,
+            maxFreeSockets: 10,
+            timeout: 30_000,
+            key: normalizePem(key),
+            cert: normalizePem(cert),
+            passphrase,
+          });
+        }
       }
       return httpsAgentCache;
     },
@@ -31,22 +44,23 @@ export const createAppContext = (): AppContext => {
       appContext: AppContext,
       body: string
     ): Promise<string> => {
-      let httpsAgent: https.Agent | undefined;
-      if (process.env.CERT_PASSPHRASE) {
-        httpsAgent = await appContext.getHttpsAgent();
-      }
+      const httpsAgent = await appContext.getHttpsAgent();
 
-      const headers: {
-        "Content-type": string;
-        authentication?: string;
-      } = {
+      const headers: { "Content-type": string; Authorization?: string } = {
         "Content-type": "application/soap+xml",
       };
-      if (process.env.PAY_GOV_DEV_SERVER_TOKEN) {
-        headers.authentication = `Bearer ${process.env.PAY_GOV_DEV_SERVER_TOKEN}`;
+      // Fetch token from Secrets Manager if the Secret ID is present
+      const tokenId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
+      if (tokenId) {
+        try {
+          const token = await getSecretString(tokenId);
+          headers.Authorization = `Bearer ${token}`;
+        } catch {
+          // Proceed without Authorization header if token fetch fails
+        }
       }
 
-      const result = await fetch(process.env.SOAP_URL, {
+      const result = await fetch(process.env.SOAP_URL as string, {
         method: "POST",
         headers,
         body,
