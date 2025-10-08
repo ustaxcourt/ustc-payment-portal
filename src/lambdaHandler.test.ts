@@ -68,7 +68,6 @@ describe("lambdaHandler", () => {
       } as unknown as APIGatewayEvent;
 
       const result = await initPaymentHandler(event);
-      console.log("result:", result);
 
       expect(result.statusCode).toBe(200);
       expect(JSON.parse(result.body)).toHaveProperty("token");
