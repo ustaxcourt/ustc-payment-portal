@@ -46,7 +46,7 @@ export const createAppContext = (): AppContext => {
     ): Promise<string> => {
       const httpsAgent = await appContext.getHttpsAgent();
 
-      const headers: { "Content-type": string; Authorization?: string } = {
+      const headers: { "Content-type": string; Authorization?: string; Authentication?: string } = {
         "Content-type": "application/soap+xml",
       };
       // Fetch token from Secrets Manager if the Secret ID is present
@@ -55,6 +55,7 @@ export const createAppContext = (): AppContext => {
         try {
           const token = await getSecretString(tokenId);
           headers.Authorization = `Bearer ${token}`;
+          headers.Authentication = headers.Authorization;
         } catch {
           // Proceed without Authorization header if token fetch fails
         }
