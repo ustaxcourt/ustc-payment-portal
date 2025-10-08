@@ -4,7 +4,7 @@ import { ProcessPayment } from "../useCases/processPayment";
 import { GetDetails } from "../useCases/getDetails";
 
 export type AppContext = {
-  getHttpsAgent: () => Promise<https.Agent>;
+  getHttpsAgent: () => Promise<https.Agent | undefined>;
   postHttpRequest: (appContext: AppContext, body: string) => Promise<string>;
   getUseCases: () => {
     initPayment: InitPayment;
