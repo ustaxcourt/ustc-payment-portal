@@ -1,16 +1,21 @@
-import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from "@aws-sdk/client-secrets-manager";
 
-//TODO: Figure out if this should be getSecretBinary or getSecretString OR just getSecret and let the caller determine which piece of the data they would
-// like to use 
- export const getSecretBinary = async (input: string)=> {
-  const secretName = {
-    SecretId: input
-  };
-        const client = new SecretsManagerClient({});
+export async function getSecretValue(
+  secretName: string
+): Promise<string | Buffer> {
+  const client = new SecretsManagerClient({ region: process.env.AWS_REGION });
 
-        const command = new GetSecretValueCommand(secretName);
-        const secretResponse =  await client.send(command);
+  const command = new GetSecretValueCommand({ SecretId: secretName });
+  const response = await client.send(command);
 
-  return secretResponse.SecretBinary;
-
+  if (response.SecretString) {
+    return response.SecretString.trim();
+  } else if (response.SecretBinary) {
+    return Buffer.from(response.SecretBinary);
+  } else {
+    throw new Error("Secret not found");
+  }
 }
