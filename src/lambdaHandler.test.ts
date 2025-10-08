@@ -39,7 +39,7 @@ jest.mock("./appContext", () => ({
 }));
 
 const mockHeaders = {
-  Authentication: `Bearer ${process.env.API_ACCESS_TOKEN || "test-token"}`,
+  Authentication: `Bearer test-token`,
 };
 
 describe("lambdaHandler", () => {
