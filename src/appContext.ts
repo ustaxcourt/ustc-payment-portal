@@ -1,37 +1,19 @@
-import { getSecretBinary } from "./clients/secretsClient";
+import { getSecretValue } from "./clients/secretsClient";
 import { AppContext } from "./types/AppContext";
 import { getDetails } from "./useCases/getDetails";
 import { initPayment } from "./useCases/initPayment";
 import { processPayment } from "./useCases/processPayment";
-import { readFileSync } from "fs";
 import * as https from "https";
 import fetch from "node-fetch";
-import path from "path";
 
 let httpsAgentCache: https.Agent;
 
 export const createAppContext = (): AppContext => {
   return {
-    getHttpsAgent: () => {
+    getHttpsAgent: async () => {
       if (!httpsAgentCache) {
-        const privateKeyPath = path.resolve(
-          __dirname,
-          `../certs/${process.env.NODE_ENV}-privatekey.pem`
-        );
-        const certificatePath = path.resolve(
-          __dirname,
-          `../certs/${process.env.NODE_ENV}-certificate.pem`
-        );
-
-        //Update these calls to be either getBinary or getSecret depending on what we actually need.
-        const keyData = getSecretBinary("keySECRET");
-
-        const certData = getSecretBinary("certSecret");
-
-
-        // TODO: Use the above secret datas in the actual requests 
-        const privateKey = readFileSync(privateKeyPath, "utf-8");
-        const certificate = readFileSync(certificatePath, "utf-8");
+        const privateKey = await getSecretValue("keySECRET"); // UPDATE THIS TO BE THE ACTUAL SECRET NAME!
+        const certificate = await getSecretValue("certSECRET"); // UPDATE THIS TO BE THE ACTUAL SECRET NAME!
 
         const httpsAgentOptions = {
           key: privateKey,
@@ -51,7 +33,7 @@ export const createAppContext = (): AppContext => {
     ): Promise<string> => {
       let httpsAgent: https.Agent | undefined;
       if (process.env.CERT_PASSPHRASE) {
-        httpsAgent = appContext.getHttpsAgent();
+        httpsAgent = await appContext.getHttpsAgent();
       }
 
       const headers: {
