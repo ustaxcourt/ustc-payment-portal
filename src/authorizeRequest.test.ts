@@ -1,8 +1,12 @@
 import { authorizeRequest } from "./authorizeRequest";
 import { UnauthorizedError } from "./errors/unauthorized";
+import { getSecretString } from "./clients/secretsClient";
+
+jest.mock("./clients/secretsClient");
 
 let tempEnv: any;
 const testToken = "one-quarter";
+const testSecretId = "test-secret-id";
 
 describe("authorizeRequest", () => {
   const mockRequest = {
@@ -11,17 +15,18 @@ describe("authorizeRequest", () => {
 
   beforeAll(() => {
     tempEnv = process.env;
-    process.env.API_ACCESS_TOKEN_SECRET_ID = testToken;
+    process.env.API_ACCESS_TOKEN_SECRET_ID = testSecretId;
+    (getSecretString as jest.Mock).mockResolvedValue(testToken);
   });
 
   afterAll(() => {
     process.env = tempEnv;
   });
 
-  it("does not throw an error if the request.authToken matches process.env.API_ACCESS_TOKEN_SECRET_ID", () => {
+  it("does not throw an error if the request.authToken matches the token from Secrets Manager", async () => {
     let result;
     try {
-      authorizeRequest(mockRequest);
+      await authorizeRequest(mockRequest);
       result = "success";
     } catch (err) {
       // catch any errors,
@@ -29,10 +34,10 @@ describe("authorizeRequest", () => {
     expect(result).toEqual("success");
   });
 
-  it("throws an error if the request.authToken does not match process.env.API_ACCESS_TOKEN_SECRET_ID", () => {
+  it("throws an error if the request.authToken does not match the token from Secrets Manager", async () => {
     let result;
     try {
-      authorizeRequest({
+      await authorizeRequest({
         Authentication: "Bearer some-other-token",
       });
       result = "success";
@@ -43,10 +48,10 @@ describe("authorizeRequest", () => {
     expect(result).toBeUndefined();
   });
 
-  it("throws an error if headers are missing", () => {
+  it("throws an error if headers are missing", async () => {
     let result;
     try {
-      authorizeRequest(undefined);
+      await authorizeRequest(undefined);
       result = "success";
     } catch (err) {
       expect(err).toBeInstanceOf(UnauthorizedError);
@@ -57,10 +62,10 @@ describe("authorizeRequest", () => {
     expect(result).toBeUndefined();
   });
 
-  it("throws an error if Authentication header is missing from headers object", () => {
+  it("throws an error if Authentication header is missing from headers object", async () => {
     let result;
     try {
-      authorizeRequest({
+      await authorizeRequest({
         "Content-Type": "application/json",
         "User-Agent": "test",
       });
