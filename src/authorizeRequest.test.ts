@@ -11,14 +11,14 @@ describe("authorizeRequest", () => {
 
   beforeAll(() => {
     tempEnv = process.env;
-    process.env.API_ACCESS_TOKEN = testToken;
+    process.env.API_ACCESS_TOKEN_SECRET_ID = testToken;
   });
 
   afterAll(() => {
     process.env = tempEnv;
   });
 
-  it("does not throw an error if the request.authToken matches process.env.API_ACCESS_TOKEN", () => {
+  it("does not throw an error if the request.authToken matches process.env.API_ACCESS_TOKEN_SECRET_ID", () => {
     let result;
     try {
       authorizeRequest(mockRequest);
@@ -29,7 +29,7 @@ describe("authorizeRequest", () => {
     expect(result).toEqual("success");
   });
 
-  it("throws an error if the request.authToken does not match process.env.API_ACCESS_TOKEN", () => {
+  it("throws an error if the request.authToken does not match process.env.API_ACCESS_TOKEN_SECRET_ID", () => {
     let result;
     try {
       authorizeRequest({

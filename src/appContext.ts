@@ -46,19 +46,28 @@ export const createAppContext = (): AppContext => {
     ): Promise<string> => {
       const httpsAgent = await appContext.getHttpsAgent();
 
-      const headers: { "Content-type": string; Authorization?: string; Authentication?: string } = {
+      const headers: {
+        "Content-type": string;
+        Authorization?: string;
+        Authentication?: string;
+      } = {
         "Content-type": "application/soap+xml",
       };
-      // Fetch token from Secrets Manager if the Secret ID is present
-      const tokenId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
-      if (tokenId) {
+
+      const tokenSecretId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID; // AWS Secrets Manager value
+      const directToken = process.env.PAY_GOV_DEV_SERVER_TOKEN; // Local env variable
+
+      if (tokenSecretId) {
         try {
-          const token = await getSecretString(tokenId);
+          const token = await getSecretString(tokenSecretId);
           headers.Authorization = `Bearer ${token}`;
           headers.Authentication = headers.Authorization;
         } catch {
           // Proceed without Authorization header if token fetch fails
         }
+      } else if (directToken) {
+        headers.Authorization = `Bearer ${directToken}`;
+        headers.Authentication = headers.Authorization;
       }
 
       const result = await fetch(process.env.SOAP_URL as string, {
