@@ -11,7 +11,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
 
     const headers: { Authorization?: string; Authentication?: string } = {};
 
-    const tokenId = process.env.API_ACCESS_TOKEN;
+    const tokenId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
     if (tokenId) {
       try {
         const token = await getSecretString(tokenId);
