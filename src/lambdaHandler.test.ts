@@ -39,7 +39,9 @@ jest.mock("./appContext", () => ({
 }));
 
 const mockHeaders = {
-  Authentication: `Bearer ${process.env.API_ACCESS_TOKEN || "test-token"}`,
+  Authentication: `Bearer ${
+    process.env.API_ACCESS_TOKEN_SECRET_ID || "test-token"
+  }`,
 };
 
 describe("lambdaHandler", () => {
@@ -47,7 +49,7 @@ describe("lambdaHandler", () => {
 
   beforeAll(() => {
     tempEnv = process.env;
-    process.env.API_ACCESS_TOKEN = "test-token";
+    process.env.API_ACCESS_TOKEN_SECRET_ID = "test-token";
   });
 
   afterAll(() => {

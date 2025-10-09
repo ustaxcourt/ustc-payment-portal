@@ -15,7 +15,7 @@ export const authorizeRequest = (headers?: Headers) => {
     }
   }
 
-  if (authentication !== `Bearer ${process.env.API_ACCESS_TOKEN}`) {
+  if (authentication !== `Bearer ${process.env.API_ACCESS_TOKEN_SECRET_ID}`) {
     throw new UnauthorizedError("Unauthorized");
   }
 };
