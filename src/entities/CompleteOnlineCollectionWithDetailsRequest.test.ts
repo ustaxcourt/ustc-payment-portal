@@ -69,7 +69,20 @@ describe("CompleteOnlineCollectionWithDetailsRequest", () => {
 
       // Restore original
       SoapRequest.prototype.makeRequest = originalMakeRequest;
+    // });
+
+    describe("handleFault", () => {
+      it("returns FailedTransactionError when fault is undefined", () => {
+        const request = new CompleteOnlineCollectionWithDetailsRequest({
+          tcsAppId: "test-app-id",
+          token: mockToken,
+        });
+
+        const result = request.handleFault(undefined);
+        expect(result).toBeInstanceOf(FailedTransactionError);
+      });
     });
+
 
     it("throws FailedTransactionError when fault has no detail", async () => {
       const request = new CompleteOnlineCollectionWithDetailsRequest({
