@@ -130,7 +130,7 @@ describe("appContext", () => {
       );
     });
 
-    it("should not use HTTPS agent when CERT_PASSPHRASE is not set", async () => {
+    it("should not use HTTPS agent when CERT_PASSPHRASE is not set, when running locally/dev", async () => {
       process.env.CERT_PASSPHRASE = "";
       const appContext = createAppContext();
       const body = "<soap>request</soap>";
