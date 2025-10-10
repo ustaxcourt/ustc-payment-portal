@@ -48,35 +48,37 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
       return responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]
         .completeOnlineCollectionWithDetailsResponse as CompleteOnlineCollectionWithDetailsResponse;
     } else {
-      throw handleFault(responseBody["S:Fault"]);
+      throw this.handleFault(responseBody["S:Fault"]);
     }
+  };
+
+  handleFault = (fault: ProcessorFault) => {
+    if (!fault) {
+      return new FailedTransactionError();
+    }
+
+    if (!fault.detail || !fault.detail["ns2:TCSServiceFault"]) {
+      return new FailedTransactionError();
+    }
+
+    return new FailedTransactionError(
+      fault.detail["ns2:TCSServiceFault"].return_detail,
+      Number(fault.detail["ns2:TCSServiceFault"].return_code)
+    );
   };
 }
 
 type ProcessorFault =
   | {
-      faultcode: string;
-      faultstring: string;
-      detail: {
-        "ns2:TCSServiceFault": {
-          return_code: string;
-          return_detail: string;
-        };
+    faultcode: string;
+    faultstring: string;
+    detail: {
+      "ns2:TCSServiceFault": {
+        return_code: string;
+        return_detail: string;
       };
-    }
+    };
+  }
   | undefined;
 
-const handleFault = (fault: ProcessorFault) => {
-  if (!fault) {
-    return new FailedTransactionError();
-  }
 
-  if (!fault.detail || !fault.detail["ns2:TCSServiceFault"]) {
-    return new FailedTransactionError();
-  }
-
-  return new FailedTransactionError(
-    fault.detail["ns2:TCSServiceFault"].return_detail,
-    Number(fault.detail["ns2:TCSServiceFault"].return_code)
-  );
-};
