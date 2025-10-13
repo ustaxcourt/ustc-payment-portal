@@ -34,7 +34,7 @@ describe("getSecretString", () => {
     expect(result).toBe("binary-secret");
   });
 
-  it.only("throws an error when no SecretString or SecretBinary is present", async () => {
+  it("throws an error when no SecretString or SecretBinary is present", async () => {
     mockSend.mockResolvedValueOnce({});
 
     await expect(getSecretString("empty-secret-id")).rejects.toThrow(
