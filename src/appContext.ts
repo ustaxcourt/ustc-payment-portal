@@ -20,7 +20,7 @@ export const createAppContext = (): AppContext => {
         const certId = process.env.CERTIFICATE_SECRET_ID;
         const passId = process.env.CERT_PASSPHRASE_SECRET_ID; // optional
 
-        // Only build an mTLS agent when both key and cert IDs are present (stg/prod), will
+        // Only build an mTLS agent when both key and cert IDs are present (stg/prod)
         if (keyId && certId) {
           const [key, cert, passphrase] = await Promise.all([
             getSecretString(keyId),

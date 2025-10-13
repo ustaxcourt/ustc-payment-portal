@@ -1,5 +1,6 @@
 import { authorizeRequest } from "./authorizeRequest";
 import { UnauthorizedError } from "./errors/unauthorized";
+import { ServerError } from "./errors/serverError";
 import { getSecretString } from "./clients/secretsClient";
 
 jest.mock("./clients/secretsClient");
@@ -18,6 +19,10 @@ describe("authorizeRequest", () => {
     process.env.API_ACCESS_TOKEN_SECRET_ID = testSecretId;
     (getSecretString as jest.Mock).mockResolvedValue(testToken);
   });
+
+  afterEach(() => {
+    process.env.API_ACCESS_TOKEN_SECRET_ID = testSecretId;
+  })
 
   afterAll(() => {
     process.env = tempEnv;
@@ -73,6 +78,41 @@ describe("authorizeRequest", () => {
     } catch (err) {
       expect(err).toBeInstanceOf(UnauthorizedError);
       expect((err as UnauthorizedError).message).toEqual("Unauthorized");
+    }
+    expect(result).toBeUndefined();
+  });
+
+  it("throws an UnauthorizedError when API_ACCESS_TOKEN_SECRET_ID is not set", async () => {
+    delete process.env.API_ACCESS_TOKEN_SECRET_ID;
+    jest.resetModules();
+    const { authorizeRequest: freshAuthorizeRequest } = require("./authorizeRequest");
+    const { UnauthorizedError: FreshUnauthorizedError } = require("./errors/unauthorized");
+
+    let result;
+    try {
+      result = await freshAuthorizeRequest(mockRequest);
+    } catch (err) {
+      expect(err).toBeInstanceOf(FreshUnauthorizedError);
+      expect((err as any).message).toEqual("Unauthorized");
+    }
+    expect(result).toBeUndefined();
+  });
+
+  it("throws a ServerError when getSecretString fails", async () => {
+    jest.resetModules();
+
+    const { getSecretString: mockGetSecretString } = require("./clients/secretsClient");
+    const { authorizeRequest: freshAuthorizeRequest } = require("./authorizeRequest");
+    const { ServerError: FreshServerError } = require("./errors/serverError");
+
+    mockGetSecretString.mockRejectedValue(new ServerError("Failed to fetch API access token from Secrets Manager"));
+
+    let result;
+    try {
+      result = await freshAuthorizeRequest(mockRequest);
+    } catch (err) {
+      expect(err).toBeInstanceOf(FreshServerError);
+      expect((err as any).message).toEqual("Failed to fetch API access token from Secrets Manager");
     }
     expect(result).toBeUndefined();
   });
