@@ -1,5 +1,6 @@
 import { UnauthorizedError } from "./errors/unauthorized";
 import { getSecretString } from "./clients/secretsClient";
+import { ServerError } from "./errors/serverError";
 
 type Headers = { [key: string]: string | string[] | undefined };
 
@@ -27,14 +28,15 @@ export const authorizeRequest = async (headers?: Headers) => {
       cachedToken = await getSecretString(tokenSecretId);
     } catch (error) {
       console.error(
-        "Failed to fetch API access token from Secrets Manager:",
+        "Failed to fetch API access token from Secrets Manager",
         error
       );
-      throw new UnauthorizedError("Unauthorized");
+      throw new ServerError("Failed to fetch API access token from Secrets Manager");
     }
   }
 
   if (authentication !== `Bearer ${cachedToken}`) {
+    console.warn("Invalid Token");
     throw new UnauthorizedError("Unauthorized");
   }
 };
