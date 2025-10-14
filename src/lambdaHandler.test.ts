@@ -5,6 +5,9 @@ import {
 } from "./lambdaHandler";
 import { APIGatewayEvent } from "aws-lambda";
 import { InvalidRequestError } from "./errors/invalidRequest";
+import { getSecretString } from "./clients/secretsClient";
+
+jest.mock("./clients/secretsClient");
 
 // Mock the appContext module
 jest.mock("./appContext", () => ({
@@ -38,8 +41,11 @@ jest.mock("./appContext", () => ({
   })),
 }));
 
+const testToken = "test-token";
+const testSecretId = "test-secret-id";
+
 const mockHeaders = {
-  Authentication: `Bearer test-token`,
+  Authentication: `Bearer ${testToken}`,
 };
 
 describe("lambdaHandler", () => {
@@ -47,7 +53,8 @@ describe("lambdaHandler", () => {
 
   beforeAll(() => {
     tempEnv = process.env;
-    process.env.API_ACCESS_TOKEN = "test-token";
+    process.env.API_ACCESS_TOKEN_SECRET_ID = testSecretId;
+    (getSecretString as jest.Mock).mockResolvedValue(testToken);
   });
 
   afterAll(() => {

@@ -1,8 +1,12 @@
 import { UnauthorizedError } from "./errors/unauthorized";
+import { getSecretString } from "./clients/secretsClient";
+import { ServerError } from "./errors/serverError";
 
 type Headers = { [key: string]: string | string[] | undefined };
 
-export const authorizeRequest = (headers?: Headers) => {
+let cachedToken: string | undefined;
+
+export const authorizeRequest = async (headers?: Headers) => {
   if (!headers) {
     throw new UnauthorizedError("Missing Authentication");
   }
@@ -15,7 +19,24 @@ export const authorizeRequest = (headers?: Headers) => {
     }
   }
 
-  if (authentication !== `Bearer ${process.env.API_ACCESS_TOKEN}`) {
+  if (!cachedToken) {
+    const tokenSecretId = process.env.API_ACCESS_TOKEN_SECRET_ID;
+    if (!tokenSecretId) {
+      throw new UnauthorizedError("Unauthorized");
+    }
+    try {
+      cachedToken = await getSecretString(tokenSecretId);
+    } catch (error) {
+      console.error(
+        "Failed to fetch API access token from Secrets Manager",
+        error
+      );
+      throw new ServerError("Failed to fetch API access token from Secrets Manager");
+    }
+  }
+
+  if (authentication !== `Bearer ${cachedToken}`) {
+    console.warn("Invalid Token");
     throw new UnauthorizedError("Unauthorized");
   }
 };

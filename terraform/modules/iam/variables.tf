@@ -31,7 +31,7 @@ variable "attach_vpc_access" {
 variable "create_lambda_exec_role" {
   description = "Whether to create a Lambda execution role in this module"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "aws_region" {
