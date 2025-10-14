@@ -21,7 +21,7 @@ const lambdaHandler = async (
   callback: LambdaHandler
 ): Promise<APIGatewayProxyResult> => {
   try {
-    authorizeRequest(headers);
+    await authorizeRequest(headers);
     const result = await callback(appContext, request);
     return {
       statusCode: 200,
