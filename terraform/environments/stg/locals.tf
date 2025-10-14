@@ -28,7 +28,7 @@ locals {
   ]
   lambda_exec_role_arn = "arn:aws:iam::747103385969:role/ustc-payment-portal-stg-lambda-exec"
   name_prefix = "ustc-payment-processor-stg"
-  payment_url          = "https://pay-gov-dev.ustaxcourt.gov/pay"
+  payment_url          = "https://qa.pay.gov/tcsonline/payment.do"
   soap_url             = "https://qa.tcs.pay.gov/services/TCSOnlineService/3.3/"
 }
 
