@@ -1,0 +1,47 @@
+variable "environment" {
+  type = string
+}
+
+variable "project" {
+  type    = string
+  default = "ustc-payment-portal"
+}
+
+variable "lambda_exec_role_arn" {
+  type = string
+}
+
+variable "enable_mtls" {
+  type    = bool
+  default = true
+}
+
+variable "private_key_name" {
+  type    = string
+  default = "private-key-pem"
+}
+
+variable "certificate_name" {
+  type    = string
+  default = "certificate-pem"
+}
+
+variable "api_access_token_name" {
+  type    = string
+  default = "access-token"
+}
+
+variable "cert_passphrase_name" {
+  type    = string
+  default = "cert-passphrase"
+}
+
+variable "paygov_dev_server_token_name" {
+  type    = string
+  default = "pay-gov-dev-server-token"
+}
+
+variable "tags" {
+  type    = map(string)
+  default = {}
+}

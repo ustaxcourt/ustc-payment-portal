@@ -14,8 +14,9 @@ module "lambda" {
   lambda_execution_role_arn = data.terraform_remote_state.foundation.outputs.lambda_role_arn
   subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
   security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
+  environment_variables     = local.lambda_env
   tags = {
-    Env     = "stg"
+    Env     = local.environment
     Project = "ustc-payment-portal"
   }
 }
@@ -43,4 +44,5 @@ module "iam_cicd" {
   state_object_keys        = local.state_object_keys
   lambda_exec_role_arn     = local.lambda_exec_role_arn
   lambda_name_prefix       = local.name_prefix
+  create_lambda_exec_role  = true
 }

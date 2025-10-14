@@ -24,7 +24,7 @@ describe("make a transaction", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authentication: `Bearer ${process.env.API_ACCESS_TOKEN}`,
+        Authentication: `Bearer ${process.env.API_ACCESS_TOKEN_SECRET_ID}`,
       },
       body: JSON.stringify(request),
     });
@@ -60,7 +60,7 @@ describe("make a transaction", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authentication: `Bearer ${process.env.API_ACCESS_TOKEN}`,
+        Authentication: `Bearer ${process.env.API_ACCESS_TOKEN_SECRET_ID}`,
       },
       body: JSON.stringify(request),
     });
@@ -88,7 +88,7 @@ describe("make a transaction", () => {
       {
         headers: {
           "Content-Type": "application/json",
-          Authentication: `Bearer ${process.env.API_ACCESS_TOKEN}`,
+          Authentication: `Bearer ${process.env.API_ACCESS_TOKEN_SECRET_ID}`,
         },
       }
     );
