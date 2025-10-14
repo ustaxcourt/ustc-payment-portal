@@ -1,39 +1,42 @@
+import { getSecretString } from "./clients/secretsClient";
 import { AppContext } from "./types/AppContext";
 import { getDetails } from "./useCases/getDetails";
 import { initPayment } from "./useCases/initPayment";
 import { processPayment } from "./useCases/processPayment";
-import { readFileSync } from "fs";
 import * as https from "https";
 import fetch from "node-fetch";
-import path from "path";
 
-let httpsAgentCache: https.Agent;
+let httpsAgentCache: https.Agent | undefined;
+
+function normalizePem(pem: string): string {
+  return pem.replace(/\r\n/g, "\n").trimEnd() + "\n";
+}
 
 export const createAppContext = (): AppContext => {
   return {
-    getHttpsAgent: () => {
+    getHttpsAgent: async () => {
       if (!httpsAgentCache) {
-        const privateKeyPath = path.resolve(
-          __dirname,
-          `../certs/${process.env.NODE_ENV}-privatekey.pem`
-        );
-        const certificatePath = path.resolve(
-          __dirname,
-          `../certs/${process.env.NODE_ENV}-certificate.pem`
-        );
+        const keyId = process.env.PRIVATE_KEY_SECRET_ID;
+        const certId = process.env.CERTIFICATE_SECRET_ID;
+        const passId = process.env.CERT_PASSPHRASE_SECRET_ID; // optional
 
-        const privateKey = readFileSync(privateKeyPath, "utf-8");
-        const certificate = readFileSync(certificatePath, "utf-8");
+        // Only build an mTLS agent when both key and cert IDs are present (stg/prod)
+        if (keyId && certId) {
+          const [key, cert, passphrase] = await Promise.all([
+            getSecretString(keyId),
+            getSecretString(certId),
+            passId ? getSecretString(passId) : Promise.resolve(undefined),
+          ]);
 
-        const httpsAgentOptions = {
-          key: privateKey,
-          cert: certificate,
-          passphrase: process.env.CERT_PASSPHRASE,
-          keepAlive: true,
-        };
-
-        // Create an HTTPS agent using the certificate options
-        httpsAgentCache = new https.Agent(httpsAgentOptions);
+          httpsAgentCache = new https.Agent({
+            keepAlive: true,
+            maxFreeSockets: 10,
+            timeout: 30_000,
+            key: normalizePem(key),
+            cert: normalizePem(cert),
+            passphrase,
+          });
+        }
       }
       return httpsAgentCache;
     },
@@ -41,22 +44,41 @@ export const createAppContext = (): AppContext => {
       appContext: AppContext,
       body: string
     ): Promise<string> => {
-      let httpsAgent: https.Agent | undefined;
-      if (process.env.CERT_PASSPHRASE) {
-        httpsAgent = appContext.getHttpsAgent();
-      }
+      const httpsAgent = await appContext.getHttpsAgent();
 
       const headers: {
         "Content-type": string;
-        authentication?: string;
+        Authorization?: string;
+        Authentication?: string;
       } = {
         "Content-type": "application/soap+xml",
       };
-      if (process.env.PAY_GOV_DEV_SERVER_TOKEN) {
-        headers.authentication = `Bearer ${process.env.PAY_GOV_DEV_SERVER_TOKEN}`;
+
+      const tokenSecretId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID; // AWS Secrets Manager value
+      const directToken = process.env.PAY_GOV_DEV_SERVER_TOKEN; // Local env variable
+
+      if (tokenSecretId) {
+        try {
+          const token = await getSecretString(tokenSecretId);
+          headers.Authorization = `Bearer ${token}`;
+          headers.Authentication = headers.Authorization;
+        } catch (err: any) {
+          console.warn(
+            "[postHttpRequest] Failed to read token from Secrets Manager",
+            {
+              secretId: tokenSecretId,
+              errorName: err?.name,
+              errorMessage: err?.message,
+            }
+          );
+          // Proceed without Authorization header if token fetch fails
+        }
+      } else if (directToken) {
+        headers.Authorization = `Bearer ${directToken}`;
+        headers.Authentication = headers.Authorization;
       }
 
-      const result = await fetch(process.env.SOAP_URL, {
+      const result = await fetch(process.env.SOAP_URL as string, {
         method: "POST",
         headers,
         body,

@@ -6,7 +6,7 @@
   "engines": {
     "node": "^22.0.0"
   },
-   "scripts": {
+  "scripts": {
     "clean": "rimraf dist/*",
     "lint": "tslint -c tslint.json -p tsconfig.json",
     "build": "npm-run-all clean lint tsc",
@@ -17,6 +17,7 @@
     "tf:build": "npm run build:lambda",
     "start": "node .",
     "test": "npx jest --config jest-unit.config.ts",
+    "test:coverage": "npm run test -- --coverage",
     "test:integration:dev": "DOTENV_CONFIG_PATH=.env.dev npx jest ./src/test/integration/",
     "test:integration": "npx jest ./src/test/integration/"
   },
@@ -45,6 +46,7 @@
     "uuid": "^13.0.0"
   },
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.901.0",
     "dotenv": "^17.2.2",
     "fast-xml-parser": "^5.2.5",
     "joi": "^18.0.1",
