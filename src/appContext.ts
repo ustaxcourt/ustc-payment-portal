@@ -54,8 +54,7 @@ export const createAppContext = (): AppContext => {
         "Content-type": "application/soap+xml",
       };
 
-      const tokenSecretId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID; // AWS Secrets Manager value
-      const directToken = process.env.PAY_GOV_DEV_SERVER_TOKEN; // Local env variable
+      const tokenSecretId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
 
       if (tokenSecretId) {
         try {
@@ -73,9 +72,6 @@ export const createAppContext = (): AppContext => {
           );
           // Proceed without Authorization header if token fetch fails
         }
-      } else if (directToken) {
-        headers.Authorization = `Bearer ${directToken}`;
-        headers.Authentication = headers.Authorization;
       }
 
       const result = await fetch(process.env.SOAP_URL as string, {

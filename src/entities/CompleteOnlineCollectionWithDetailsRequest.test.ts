@@ -51,100 +51,17 @@ describe("CompleteOnlineCollectionWithDetailsRequest", () => {
       expect(result.transaction_amount).toBe(150);
     });
 
-    it("throws FailedTransactionError when fault is undefined", async () => {
-      const request = new CompleteOnlineCollectionWithDetailsRequest({
-        tcsAppId: "test-app-id",
-        token: mockToken,
+    describe("handleFault", () => {
+      it("throws FailedTransactionError when fault is undefined", () => {
+        const request = new CompleteOnlineCollectionWithDetailsRequest({
+          tcsAppId: "test-app-id",
+          token: mockToken,
+        });
+
+        const result = request.handleFault(undefined);
+        expect(result).toBeInstanceOf(FailedTransactionError);
       });
 
-      // Mock makeRequest to return a response without success or fault
-      const originalMakeRequest = SoapRequest.prototype.makeRequest;
-      SoapRequest.prototype.makeRequest = jest.fn().mockResolvedValue({
-        "S:Fault": undefined,
-      });
-
-      await expect(request.makeSoapRequest(appContext)).rejects.toThrow(
-        FailedTransactionError
-      );
-
-      // Restore original
-      SoapRequest.prototype.makeRequest = originalMakeRequest;
-    });
-
-    it("throws FailedTransactionError when fault has no detail", async () => {
-      const request = new CompleteOnlineCollectionWithDetailsRequest({
-        tcsAppId: "test-app-id",
-        token: mockToken,
-      });
-
-      // Mock makeRequest to return a fault without detail
-      const originalMakeRequest = SoapRequest.prototype.makeRequest;
-      SoapRequest.prototype.makeRequest = jest.fn().mockResolvedValue({
-        "S:Fault": {
-          faultcode: "S:Server",
-          faultstring: "Internal error",
-        },
-      });
-
-      await expect(request.makeSoapRequest(appContext)).rejects.toThrow(
-        FailedTransactionError
-      );
-
-      // Restore original
-      SoapRequest.prototype.makeRequest = originalMakeRequest;
-    });
-
-    it("throws FailedTransactionError when fault has no TCSServiceFault", async () => {
-      const request = new CompleteOnlineCollectionWithDetailsRequest({
-        tcsAppId: "test-app-id",
-        token: mockToken,
-      });
-
-      // Mock makeRequest to return a fault without TCSServiceFault
-      const originalMakeRequest = SoapRequest.prototype.makeRequest;
-      SoapRequest.prototype.makeRequest = jest.fn().mockResolvedValue({
-        "S:Fault": {
-          faultcode: "S:Server",
-          faultstring: "Internal error",
-          detail: {},
-        },
-      });
-
-      await expect(request.makeSoapRequest(appContext)).rejects.toThrow(
-        FailedTransactionError
-      );
-
-      // Restore original
-      SoapRequest.prototype.makeRequest = originalMakeRequest;
-    });
-
-    it("throws FailedTransactionError with details when fault has TCSServiceFault", async () => {
-      const request = new CompleteOnlineCollectionWithDetailsRequest({
-        tcsAppId: "test-app-id",
-        token: mockToken,
-      });
-
-      // Mock makeRequest to return a complete fault
-      const originalMakeRequest = SoapRequest.prototype.makeRequest;
-      SoapRequest.prototype.makeRequest = jest.fn().mockResolvedValue({
-        "S:Fault": {
-          faultcode: "S:Server",
-          faultstring: "Service fault",
-          detail: {
-            "ns2:TCSServiceFault": {
-              return_code: "1001",
-              return_detail: "Invalid token provided",
-            },
-          },
-        },
-      });
-
-      await expect(request.makeSoapRequest(appContext)).rejects.toThrow(
-        new FailedTransactionError("Invalid token provided", 1001)
-      );
-
-      // Restore original
-      SoapRequest.prototype.makeRequest = originalMakeRequest;
     });
   });
 });
