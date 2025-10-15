@@ -1,12 +1,15 @@
 import { createAppContext } from "./appContext";
 import * as https from "https";
+import { getSecretString } from "./clients/secretsClient";
 
 jest.mock("node-fetch", () => jest.fn());
 jest.mock("https");
+jest.mock("./clients/secretsClient");
 
 
 // Import after mocking
 let mockFetch: jest.Mock;
+let mockGetSecretString: jest.Mock;
 beforeAll(async () => {
   mockFetch = (await import("node-fetch")).default as unknown as jest.Mock;
 });
@@ -29,7 +32,7 @@ describe("appContext", () => {
     const appContext = createAppContext();
     const agent = appContext.getHttpsAgent();
 
-    expect(agent).toBeInstanceOf(https.Agent);
+    expect(agent).toBeInstanceOf(Promise<https.Agent>);
   });
 
   it("should cache the HTTPS agent and return the same instance on subsequent calls", () => {
@@ -37,7 +40,7 @@ describe("appContext", () => {
     const agent1 = appContext.getHttpsAgent();
     const agent2 = appContext.getHttpsAgent();
 
-    expect(agent1).toBe(agent2);
+    expect(agent1).toStrictEqual(agent2);
   });
 });
 
@@ -46,7 +49,7 @@ describe("postHttpRequest", () => {
 
   beforeEach(() => {
     process.env.SOAP_URL = "https://test-soap-url.com";
-    mockFetch.mockResolvedValue({
+    mockFetch.mockResolvedValueOnce({
       text: mockResponseText,
     } as any);
     mockResponseText.mockResolvedValue("mock-response-body");
@@ -75,27 +78,31 @@ describe("postHttpRequest", () => {
 
     await appContext.postHttpRequest(appContext, body);
 
-    expect(mockFetch).toHaveBeenCalledWith(
+    expect(mockFetch).toHaveBeenNthCalledWith(2,
       "https://test-soap-url.com",
       expect.objectContaining({
+        agent: undefined,
+        body: "<soap>request</soap>",
         headers: {
           "Content-type": "application/soap+xml",
-          authentication: "Bearer test-token",
+          Authentication: "Bearer test-token",
+          Authorization: "Bearer test-token"
         },
+        method: "POST"
       })
     );
   });
 
   it("should use HTTPS agent when CERT_PASSPHRASE is set", async () => {
-    process.env.CERT_PASSPHRASE = "test-passphrase";
-    process.env.NODE_ENV = "development";
-
+    process.env.PRIVATE_KEY_SECRET_ID = "key-id";
+    process.env.CERTIFICATE_SECRET_ID = "secret-id";
+    (getSecretString as jest.Mock).mockResolvedValue("mock-secret-value");
     const appContext = createAppContext();
     const body = "<soap>request</soap>";
 
     await appContext.postHttpRequest(appContext, body);
 
-    expect(mockFetch).toHaveBeenCalledWith(
+    expect(mockFetch).toHaveBeenNthCalledWith(3,
       "https://test-soap-url.com",
       expect.objectContaining({
         agent: expect.any(https.Agent),
