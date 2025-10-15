@@ -9,7 +9,7 @@ jest.mock("./clients/secretsClient");
 
 // Import after mocking
 let mockFetch: jest.Mock;
-let mockGetSecretString: jest.Mock;
+let mockGetSecretString = getSecretString as jest.Mock;
 beforeAll(async () => {
   mockFetch = (await import("node-fetch")).default as unknown as jest.Mock;
 });
@@ -71,24 +71,25 @@ describe("postHttpRequest", () => {
     });
   });
 
-  it("should include authentication header when PAY_GOV_DEV_SERVER_TOKEN is set", async () => {
-    process.env.PAY_GOV_DEV_SERVER_TOKEN = "test-token";
+
+  it("should include authentication header when PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID is set and secret is retrieved successfully", async () => {
+    process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "token-secret-id";
+    mockGetSecretString.mockResolvedValueOnce("secret-token-from-aws");
+
     const appContext = createAppContext();
     const body = "<soap>request</soap>";
 
     await appContext.postHttpRequest(appContext, body);
 
-    expect(mockFetch).toHaveBeenNthCalledWith(2,
+    expect(mockGetSecretString).toHaveBeenCalledWith("token-secret-id");
+    expect(mockFetch).toHaveBeenCalledWith(
       "https://test-soap-url.com",
       expect.objectContaining({
-        agent: undefined,
-        body: "<soap>request</soap>",
         headers: {
           "Content-type": "application/soap+xml",
-          Authentication: "Bearer test-token",
-          Authorization: "Bearer test-token"
+          Authentication: "Bearer secret-token-from-aws",
+          Authorization: "Bearer secret-token-from-aws",
         },
-        method: "POST"
       })
     );
   });

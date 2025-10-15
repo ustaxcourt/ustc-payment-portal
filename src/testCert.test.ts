@@ -1,5 +1,6 @@
 import { handler } from "./testCert";
 import fetch from "node-fetch";
+import { getSecretString } from "./clients/secretsClient";
 
 // Mock node-fetch
 jest.mock("node-fetch", () => jest.fn());
@@ -11,6 +12,9 @@ jest.mock("./appContext", () => ({
     getHttpsAgent: jest.fn().mockReturnValue({ mockAgent: true }),
   })),
 }));
+
+jest.mock("./clients/secretsClient");
+const mockGetSecretString = getSecretString as jest.MockedFunction<typeof getSecretString>;
 
 describe("testCert handler", () => {
   let tempEnv: any;
@@ -115,5 +119,33 @@ describe("testCert handler", () => {
 
     expect(result.statusCode).toBe(500);
     expect(result.body).toBe("not ok");
+  });
+
+  it("includes Authorization header when PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID is set and secret is retrieved successfully", async () => {
+    process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "token-secret-id";
+    mockGetSecretString.mockResolvedValueOnce("secret-token-from-aws");
+
+    const mockWsdlContent = "test wsdl content";
+    mockFetch.mockResolvedValue({
+      text: jest.fn().mockResolvedValue(mockWsdlContent),
+    } as any);
+
+    const result = await handler();
+
+    expect(mockGetSecretString).toHaveBeenCalledWith("token-secret-id");
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:3366?wsdl",
+      expect.objectContaining({
+        agent: { mockAgent: true },
+        headers: {
+          Authorization: "Bearer secret-token-from-aws",
+          Authentication: "Bearer secret-token-from-aws",
+        },
+      })
+    );
+    expect(result.statusCode).toBe(200);
+    expect(result.body).toBe(mockWsdlContent);
+
+    delete process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
   });
 });
