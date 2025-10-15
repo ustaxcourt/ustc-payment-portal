@@ -6,13 +6,18 @@ This document explains the test coverage for the payment portal codebase and doc
 
 ## Coverage Goals
 
-The project does not have a target coverage level. All production source files in `/src` (excluding test utilities) are expected to have unit tests. An example of where we don't need coverage are for portions of the code where we are calling out to an external SDK and the portion of coverage missing is for the actual call to a service.  This behavior should be mocked in a unit test or the code refactored and the line in question can safely be ignored for coverage.
+The project attempts to maintain testing coverage of 100%. All production source files in `/src` (excluding test utilities) are expected to have unit tests.
+
+An example of where we don't need coverage are for portions of the code where we are calling out to an external SDK and the portion of coverage missing is for the actual call to a service.  This behavior should be mocked in a unit test or the code refactored and the line in question can safely be ignored for coverage.
 
 ## Legitimately Excluded Files
 
 The following files are **intentionally excluded** from coverage requirements:
 
-### 1. Test Utilities (`src/test/testAppContext.ts`)
+### 1. AppContext.ts
+- Line 66: Nested within a catch block, this line is simply a console.warn and is not included in unit tests.
+
+### 2. Test Utilities (`src/test/testAppContext.ts`)
 
 **Current Coverage:** ~50% (intentionally low)
 
@@ -24,7 +29,7 @@ The following files are **intentionally excluded** from coverage requirements:
 
 **Rationale:** Testing test utilities creates circular dependencies and provides no value. These utilities are validated through their usage in actual tests.
 
-### 2. Server Entry Points and Context
+### 3. Server Entry Points and Context
 
 **Files:**
 
