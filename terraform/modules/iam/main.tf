@@ -69,12 +69,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       {
         Effect = "Allow",
         Action = ["s3:ListBucket"],
-        Resource = "arn:aws:s3:::${local.tf_state_bucket_name}",    #Backend bucket
-        Condition = {
-          StringLike = {
-            "s3:prefix" = "${local.project_name}/${local.environment}/*"
-          }
-        }
+        Resource = "arn:aws:s3:::${local.tf_state_bucket_name}"
       },
       {
         Effect = "Allow",
