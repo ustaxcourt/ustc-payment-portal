@@ -1,0 +1,75 @@
+name: CICD - Dev
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  pr_build_test_deploy:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    name: PR Build/Test and Ephemeral Deploy (Dev Account)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build Lambda
+        run: npm run build:lambda
+
+      - name: Configure AWS Credentials (OIDC - Dev)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_DEV }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ vars.TERRAFORM_VERSION || '1.8.5' }}
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -input=false
+
+      - name: Select/Create PR Workspace
+        id: tfws
+        working-directory: terraform
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          WS="pr-${PR_NUMBER}"
+          terraform workspace list || true
+          terraform workspace select "$WS" 2>/dev/null || terraform workspace new "$WS"
+          echo "workspace=$WS" >> $GITHUB_OUTPUT
