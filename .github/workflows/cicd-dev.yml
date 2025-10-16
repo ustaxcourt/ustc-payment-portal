@@ -64,17 +64,21 @@ jobs:
         with:
           terraform_version: ${{ vars.TERRAFORM_VERSION || '1.7.5' }}
 
-      # - name: Terraform Init
-      #   working-directory: terraform
-      #   run: terraform init -input=false
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -input=false
 
-      # - name: Select/Create PR Workspace
-      #   id: tfws
-      #   working-directory: terraform
-      #   env:
-      #     PR_NUMBER: ${{ github.event.pull_request.number }}
-      #   run: |
-      #     WS="pr-${PR_NUMBER}"
-      #     terraform workspace list || true
-      #     terraform workspace select "$WS" 2>/dev/null || terraform workspace new "$WS"
-      #     echo "workspace=$WS" >> $GITHUB_OUTPUT
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform plan
+
+      - name: Select/Create PR Workspace
+        id: tfws
+        working-directory: terraform
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          WS="pr-${PR_NUMBER}"
+          terraform workspace list || true
+          terraform workspace select "$WS" 2>/dev/null || terraform workspace new "$WS"
+          echo "workspace=$WS" >> $GITHUB_OUTPUT
