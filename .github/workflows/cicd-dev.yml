@@ -68,10 +68,6 @@ jobs:
         working-directory: terraform
         run: terraform init -input=false
 
-      - name: Terraform Apply
-        working-directory: terraform
-        run: terraform plan
-
       - name: Select/Create PR Workspace
         id: tfws
         working-directory: terraform
@@ -82,3 +78,7 @@ jobs:
           terraform workspace list || true
           terraform workspace select "$WS" 2>/dev/null || terraform workspace new "$WS"
           echo "workspace=$WS" >> $GITHUB_OUTPUT
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform plan
