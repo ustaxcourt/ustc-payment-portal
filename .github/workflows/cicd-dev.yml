@@ -51,7 +51,7 @@ jobs:
       - name: Configure AWS Credentials (OIDC - Dev)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Verify AWS caller identity (can be deleted later)
