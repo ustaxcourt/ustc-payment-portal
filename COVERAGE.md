@@ -15,7 +15,7 @@ An example of where we don't need coverage are for portions of the code where we
 The following files are **intentionally excluded** from coverage requirements:
 
 ### 1. AppContext.ts
-- Line 65: Nested within a catch block, this line is simply a console.warn and is not included in unit tests.
+- Line 69: Nested within a catch block, this line is simply a console.warn and is not included in unit tests.
 
 ### 2. Test Utilities (`src/test/testAppContext.ts`)
 
