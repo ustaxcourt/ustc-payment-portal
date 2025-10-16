@@ -65,12 +65,16 @@ jobs:
           terraform_version: ${{ vars.TERRAFORM_VERSION || '1.7.5' }}
 
       - name: Terraform Init
-        working-directory: terraform
-        run: terraform init -input=false
+        working-directory: terraform/environments/dev
+        run: terraform init -input=false \
+          -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
+          -backend-config="region=us-east-1" \
+          -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
+          -backend-config="encrypt=true"
 
       - name: Select/Create PR Workspace
         id: tfws
-        working-directory: terraform
+        working-directory: terraform/environments/dev
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
@@ -81,7 +85,13 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        working-directory: terraform
+        working-directory: terraform/environments/dev
+        env:
+          TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
         run: |
-          terraform plan -input=false -lock-timeout=2m -detailed-exitcode
-          echo "exitcode=$?" >> $GITHUB_OUTPUT
+          set +e
+          terraform plan -input=false -lock-timeout=2m -detailed-exitcode -out=tfplan
+          code=$?
+          echo "exitcode=$code" >> $GITHUB_OUTPUT
+          terraform show -no-color tfplan > tfplan.txt || true
+          set -e
