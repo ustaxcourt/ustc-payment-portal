@@ -75,7 +75,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           WS="pr-${PR_NUMBER}"
-          terraform workspace select "$WS" >/dev/null 2>&1 || terraform workspace new "$WS
+          terraform workspace select "$WS" >/dev/null 2>&1 || terraform workspace new "$WS"
           terraform workspace select "$WS"
           echo "workspace=$WS" >> $GITHUB_OUTPUT
 
