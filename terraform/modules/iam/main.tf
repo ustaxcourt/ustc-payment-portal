@@ -78,9 +78,16 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       },
       {
         Effect = "Allow",
-        Action = ["s3:GetObject","s3:PutObject","s3:DeleteObject"],
+        Action = ["s3:GetObject","s3:PutObject"],
         Resource = [
-          for i in local.state_object_keys : "arn:aws:s3:::${local.tf_state_bucket_name}/${i}"
+          "arn:aws:s3:::${local.tf_state_bucket_name}/*"
+        ]
+      },
+      {
+        Effect = "Allow",
+        Action = ["s3:DeleteObject"],
+        Resource = [
+          "arn:aws:s3:::${local.tf_state_bucket_name}/env:/pr-*/*"
         ]
       },
       { #lock table
