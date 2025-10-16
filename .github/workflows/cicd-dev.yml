@@ -79,6 +79,9 @@ jobs:
           terraform workspace select "$WS" 2>/dev/null || terraform workspace new "$WS"
           echo "workspace=$WS" >> $GITHUB_OUTPUT
 
-      - name: Terraform Apply
+      - name: Terraform Plan
+        id: plan
         working-directory: terraform
-        run: terraform plan
+        run: |
+          terraform plan -input=false -lock-timeout=2m -detailed-exitcode
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
