@@ -66,11 +66,12 @@ jobs:
 
       - name: Terraform Init
         working-directory: terraform/environments/dev
-        run: terraform init -input=false \
-          -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
-          -backend-config="region=us-east-1" \
-          -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
-          -backend-config="encrypt=true"
+        run: |
+          terraform init -input=false \
+           -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
+           -backend-config="region=us-east-1" \
+           -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
+           -backend-config="encrypt=true"
 
       - name: Select/Create PR Workspace
         id: tfws
