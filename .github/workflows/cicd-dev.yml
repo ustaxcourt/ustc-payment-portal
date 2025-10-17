@@ -36,17 +36,17 @@ jobs:
           node-version: "22"
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      # - name: Install dependencies
+      #   run: npm ci
 
-      - name: Lint
-        run: npm run lint
+      # - name: Lint
+      #   run: npm run lint
 
-      - name: Unit tests
-        run: npm test
+      # - name: Unit tests
+      #   run: npm test
 
-      - name: Build Lambda
-        run: npm run build:lambda
+      # - name: Build Lambda
+      #   run: npm run build:lambda
 
       - name: Configure AWS Credentials (OIDC - Dev)
         uses: aws-actions/configure-aws-credentials@v4

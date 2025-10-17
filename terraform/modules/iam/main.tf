@@ -151,9 +151,42 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "logs:PutLogEvents",
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams",
-          "logs:ListTagsForResource"
+          "logs:ListTagsForResource",
+          "logs:TagResource"
         ],
         Resource = "*"
+      },
+      {
+        Effect = "Allow", #secrets manager
+        Action = [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:DeleteSecret",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:UpdateSecret",
+          "secretsmanager:TagResource",
+          "secretsmanager:UntagResource"
+        ],
+        Resource = "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*"
+      },
+      {
+        Effect = "Allow", #iam role creation (for self-management)
+        Action = [
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:UpdateRole",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:TagRole",
+          "iam:UntagRole"
+        ],
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.deploy_role_name}",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*lambda*"
+        ]
       },
       {
         Effect = "Allow",
