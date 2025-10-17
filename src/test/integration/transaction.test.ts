@@ -1,6 +1,7 @@
 import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
 import { InitPaymentRequest } from "../../types/InitPaymentRequest";
 import { RawGetDetailsRequest } from "../../entities/GetDetailsRequest";
+import { getSecretString } from "../../clients/secretsClient";
 
 describe("make a transaction", () => {
   let token: string;
@@ -19,20 +20,17 @@ describe("make a transaction", () => {
       urlCancel: "http://example.com/cancel",
     };
 
+    let tokenString = process.env.NODE_ENV === "development" ? process.env.API_ACCESS_TOKEN_SECRET_ID :
+      await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string)
     const url = `${process.env.BASE_URL}/init`;
-    console.log('Integration test Debug');
-    console.log('API_ACCESS_TOKEN_SECRET_ID:', process.env.API_ACCESS_TOKEN_SECRET_ID);
-    console.log('BASE_URL:', process.env.BASE_URL);
-    console.log(`Request url:`, url);
     const result = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authentication: `Bearer ${process.env.API_ACCESS_TOKEN_SECRET_ID}`,
+        Authentication: `Bearer ${tokenString}`,
       },
       body: JSON.stringify(request),
     });
-    console.log(`Request status:`, result.status);
     expect(result.status).toBe(200);
 
     const data = await result.json();
