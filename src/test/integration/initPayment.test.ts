@@ -1,5 +1,9 @@
+import { getSecretString } from "../../clients/secretsClient";
+
 describe("initialize a payment", () => {
   it("makes a request to the local payment portal", async () => {
+    const tokenString = await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string);
+
     const result = await fetch(`${process.env.BASE_URL}/init`, {
       method: "POST",
       body: JSON.stringify({
@@ -11,7 +15,7 @@ describe("initialize a payment", () => {
       }),
       headers: {
         "Content-Type": "application/json",
-        Authentication: `Bearer ${process.env.API_ACCESS_TOKEN_SECRET_ID}`,
+        Authentication: `Bearer ${tokenString}`,
       },
     });
 
