@@ -21,6 +21,7 @@ export const authorizeRequest = async (headers?: Headers) => {
 
   if (!cachedToken) {
     const tokenSecretId = process.env.API_ACCESS_TOKEN_SECRET_ID;
+    console.log("DEBUG_Secret_ID: ", tokenSecretId)
     if (!tokenSecretId) {
       throw new UnauthorizedError("Unauthorized");
     }
