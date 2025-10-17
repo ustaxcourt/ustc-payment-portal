@@ -43,8 +43,8 @@ export const authorizeRequest = async (headers?: Headers) => {
     }
   }
 
-  const expected = `Bearer ${cachedToken?.trim()}`;
-  const received = (authentication ?? '').trim();
+  const expected = `Bearer ${cachedToken}`;
+  const received = (authentication ?? '');
 
   if (received !== expected) {
     console.warn("Invalid Token");
