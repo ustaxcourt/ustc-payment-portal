@@ -20,7 +20,7 @@ describe("make a transaction", () => {
       urlCancel: "http://example.com/cancel",
     };
 
-    let tokenString = process.env.NODE_ENV === "development" ? process.env.API_ACCESS_TOKEN_SECRET_ID :
+    const tokenString = process.env.NODE_ENV === "development" ? process.env.API_ACCESS_TOKEN_SECRET_ID :
       await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string)
     const url = `${process.env.BASE_URL}/init`;
     const result = await fetch(url, {
