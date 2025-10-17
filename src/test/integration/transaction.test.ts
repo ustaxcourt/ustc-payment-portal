@@ -27,6 +27,8 @@ describe("make a transaction", () => {
       await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string)
     console.log('Using development mode?', process.env.NODE_ENV === "development");
     console.log('Token string length:', tokenString?.length);
+    console.log('Token string exists:', !!tokenString);
+    console.log('Token string type:', typeof tokenString);
     const url = `${process.env.BASE_URL}/init`;
     const result = await fetch(url, {
       method: "POST",
