@@ -165,6 +165,9 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:PutSecretValue",
           "secretsmanager:UpdateSecret",
+          "secretsmanager:GetResourcePolicy",
+          "secretsmanager:PutResourcePolicy",
+          "secretsmanager:DeleteResourcePolicy",
           "secretsmanager:TagResource",
           "secretsmanager:UntagResource"
         ],
@@ -184,7 +187,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "iam:UntagRole"
         ],
         Resource = [
-          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.deploy_role_name}",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/ustc-payment-processor-*",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*lambda*"
         ]
       },

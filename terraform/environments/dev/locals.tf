@@ -27,7 +27,8 @@ locals {
     "ustc-payment-portal/dev/dev.tfstate",
   ]
   lambda_exec_role_arn = "arn:aws:iam::723609007960:role/ustc-payment-portal-dev-lambda-exec"
-  name_prefix          = "ustc-payment-processor-${local.environment}"
+  # Conditional naming: dev uses original names, PR environments get suffixes
+  name_prefix          = local.environment == "dev" ? "ustc-payment-processor" : "ustc-payment-processor-${local.environment}"
   payment_url          = "https://pay-gov-dev.ustaxcourt.gov/pay"
   soap_url             = "https://pay-gov-dev.ustaxcourt.gov/wsdl"
 }
