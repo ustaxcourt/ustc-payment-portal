@@ -66,7 +66,7 @@ export const createAppContext = (): AppContext => {
           try {
             console.log(`retrieving secrets from Secrets Manager`)
             const token = await getSecretString(tokenSecretId);
-            console.log(`retrieved token length: ${token.length} characters`)
+            console.log(`retrieved token length: ${token.length} characters!!!`)
             headers.Authorization = `Bearer ${token}`;
             headers.Authentication = headers.Authorization;
           } catch (err: any) {
