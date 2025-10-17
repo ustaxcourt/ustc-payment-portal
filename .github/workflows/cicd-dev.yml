@@ -98,22 +98,25 @@ jobs:
           terraform show -no-color tfplan > tfplan.txt || true
           set -e
 
+      - name: Debug plan exit code
+        run: echo "plan exitcode=${{ steps.plan.outputs.exitcode }}"
+
       - name: Terraform Apply (if required)
-        if: steps.plan.outputs.exitcode == '2'
+        if: ${{ steps.plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/dev
         env:
           TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
         run: terraform apply -auto-approve tfplan
 
       - name: Smoke check (post-apply to verify the workspace)
-        if: steps.plan.outputs.exitcode == '2'
+        if: ${{ steps.plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/dev
         run: |
           echo "Workspace:" $(terraform workspace show)
           echo "State resources:" && terraform state list || true
 
       - name: Integration tests (PR environment)
-        if: steps.plan.outputs.exitcode == '2'
+        if: ${{ steps.plan.outputs.exitcode == '2' }}
         env:
           NODE_ENV: test
           TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
