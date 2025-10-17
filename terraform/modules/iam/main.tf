@@ -104,7 +104,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "lambda:TagResource",
           "lambda:UntagResource"
         ],
-        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:${local.lambda_name_prefix}*"
+        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor*"
       },
       {
         Effect   = "Allow",
@@ -181,8 +181,11 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "iam:DeleteRole",
           "iam:UpdateRole",
           "iam:GetRole",
+          "iam:ListRolePolicies",
+          "iam:GetRolePolicy",
           "iam:PutRolePolicy",
           "iam:DeleteRolePolicy",
+          "iam:ListAttachedRolePolicies",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
           "iam:TagRole",
