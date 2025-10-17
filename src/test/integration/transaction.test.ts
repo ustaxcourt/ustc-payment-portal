@@ -20,6 +20,10 @@ describe("make a transaction", () => {
     };
 
     const url = `${process.env.BASE_URL}/init`;
+    console.log('Integration test Debug');
+    console.log('API_ACCESS_TOKEN_SECRET_ID:', process.env.API_ACCESS_TOKEN_SECRET_ID);
+    console.log('BASE_URL:', process.env.BASE_URL);
+    console.log(`Request url:`, url);
     const result = await fetch(url, {
       method: "POST",
       headers: {
@@ -28,7 +32,7 @@ describe("make a transaction", () => {
       },
       body: JSON.stringify(request),
     });
-
+    console.log(`Request status:`, result.status);
     expect(result.status).toBe(200);
 
     const data = await result.json();
