@@ -22,7 +22,7 @@ export const authorizeRequest = async (headers?: Headers) => {
   console.log('=== LAMBDA AUTH DEBUG ===');
   console.log('Lambda NODE_ENV:', process.env.NODE_ENV);
   console.log('Received authentication header:', authentication);
-
+  console.log('test');
   if (!cachedToken) {
     const tokenSecretId = process.env.API_ACCESS_TOKEN_SECRET_ID;
     console.log("DEBUG_Secret_ID: ", tokenSecretId)
