@@ -116,11 +116,48 @@ jobs:
           echo "Workspace:" $(terraform workspace show)
           echo "State resources:" && terraform state list || true
 
+      - name: Get Terraform Outputs
+        if: ${{ steps.plan.outputs.exitcode == '2' }}
+        id: tf_outputs
+        working-directory: terraform/environments/dev
+        run: |
+          API_URL=$(terraform output -raw api_gateway_url)
+          SECRET_ID=$(terraform output -raw api_access_token_secret_id)
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
+          echo "API Gateway URL: $API_URL"
+          echo "API Access Token Secret ID: $SECRET_ID"
+
+      - name: Copy secrets from dev (for PR environments)
+        if: ${{ steps.plan.outputs.exitcode == '2' && github.event.pull_request.number }}
+        run: |
+          echo "Copying secret values from dev to PR environment..."
+
+          # Copy API access token
+          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/access-token" --query SecretString --output text | \
+          aws secretsmanager put-secret-value --secret-id "${{ steps.tf_outputs.outputs.secret_id }}" --secret-string file:///dev/stdin
+
+          # Copy certificate passphrase
+          CERT_SECRET_ID=$(terraform output -raw cert_passphrase_secret_id)
+          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/cert-passphrase" --query SecretString --output text | \
+          aws secretsmanager put-secret-value --secret-id "$CERT_SECRET_ID" --secret-string file:///dev/stdin
+
+          # Copy Pay.gov dev server token
+          PAYGOV_SECRET_ID=$(terraform output -raw paygov_dev_server_token_secret_id)
+          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/pay-gov-dev-server-token" --query SecretString --output text | \
+          aws secretsmanager put-secret-value --secret-id "$PAYGOV_SECRET_ID" --secret-string file:///dev/stdin
+
+          echo "All secret values copied successfully"
+        working-directory: terraform/environments/dev
+
       - name: Integration tests (PR environment)
         if: ${{ steps.plan.outputs.exitcode == '2' }}
         env:
           NODE_ENV: test
           TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
+          BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          API_ACCESS_TOKEN_SECRET_ID: ${{ steps.tf_outputs.outputs.secret_id }}
         run: |
           npm ci
+          echo "Running integration tests against: $BASE_URL"
           npm run test:integration
