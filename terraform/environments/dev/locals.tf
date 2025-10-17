@@ -1,6 +1,6 @@
 locals {
   aws_region   = "us-east-1"
-  environment  = "dev"
+  environment  = var.namespace
   node_env     = "development"
   mtls_enabled = false
   lambda_env_base = {
@@ -27,7 +27,7 @@ locals {
     "ustc-payment-portal/dev/dev.tfstate",
   ]
   lambda_exec_role_arn = "arn:aws:iam::723609007960:role/ustc-payment-portal-dev-lambda-exec"
-  name_prefix          = "ustc-payment-processor-dev"
+  name_prefix          = "ustc-payment-processor-${local.environment}"
   payment_url          = "https://pay-gov-dev.ustaxcourt.gov/pay"
   soap_url             = "https://pay-gov-dev.ustaxcourt.gov/wsdl"
 }
