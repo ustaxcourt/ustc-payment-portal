@@ -1,7 +1,7 @@
 locals {
   aws_region   = "us-east-1"
   environment  = var.namespace
-  node_env     = "test"     #need to change back to development
+  node_env     = "development"     #need to change back to development
   mtls_enabled = false
   lambda_env_base = {
     NODE_ENV                           = local.node_env
