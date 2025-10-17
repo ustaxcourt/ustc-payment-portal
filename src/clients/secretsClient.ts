@@ -7,8 +7,8 @@ export async function getSecretString(secretId: string): Promise<string> {
 
   const res = await sm.send(new GetSecretValueCommand({ SecretId: secretId }));
 
-  if (res.SecretString) return res.SecretString;
-  if (res.SecretBinary) return Buffer.from(res.SecretBinary as any).toString("utf-8");
+  if (res.SecretString) return res.SecretString.trim();
+  if (res.SecretBinary) return Buffer.from(res.SecretBinary as any).toString("utf-8").trim();
 
   throw new Error(`Secret "${secretId}" has no SecretString or SecretBinary`);
 }
