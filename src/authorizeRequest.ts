@@ -19,10 +19,6 @@ export const authorizeRequest = async (headers?: Headers) => {
     }
   }
 
-  console.log('=== LAMBDA AUTH DEBUG ===');
-  console.log('Lambda NODE_ENV:', process.env.NODE_ENV);
-  console.log('Received authentication header:', authentication);
-  console.log('test');
   if (!cachedToken) {
     const tokenSecretId = process.env.API_ACCESS_TOKEN_SECRET_ID;
     console.log("DEBUG_Secret_ID: ", tokenSecretId)
@@ -50,10 +46,6 @@ export const authorizeRequest = async (headers?: Headers) => {
 
   const expected = `Bearer ${cachedToken?.trim()}`;
   const received = (authentication ?? '').trim();
-
-  console.log('Header length:', received.length);
-  console.log('Expected length:', expected.length);
-  console.log('Tokens match:', received === expected);
 
   if (received !== expected) {
     console.warn("Invalid Token");
