@@ -101,6 +101,8 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "lambda:GetFunction*",
           "lambda:GetPolicy",
           "lambda:ListVersionsByFunction",
+          "lambda:AddPermission",
+          "lambda:RemovePermission",
           "lambda:TagResource",
           "lambda:UntagResource"
         ],
@@ -188,6 +190,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "iam:ListAttachedRolePolicies",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
+          "iam:ListInstanceProfilesForRole",
           "iam:TagRole",
           "iam:UntagRole"
         ],
