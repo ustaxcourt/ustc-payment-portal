@@ -57,12 +57,16 @@ export const createAppContext = (): AppContext => {
       const tokenSecretId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
 
       if (tokenSecretId) {
+        console.log(`tokenSecretId: ${tokenSecretId}`);
         if (process.env.NODE_ENV === "development") {
+          console.log(`using development mode - getting values from env file`)
           headers.Authorization = `Bearer ${tokenSecretId}`;
           headers.Authentication = headers.Authorization;
         } else {
           try {
+            console.log(`retrieving secrets from Secrets Manager`)
             const token = await getSecretString(tokenSecretId);
+            console.log(`retrieved token length: ${token.length} characters`)
             headers.Authorization = `Bearer ${token}`;
             headers.Authentication = headers.Authorization;
           } catch (err: any) {
