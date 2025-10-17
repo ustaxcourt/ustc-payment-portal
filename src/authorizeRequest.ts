@@ -48,7 +48,14 @@ export const authorizeRequest = async (headers?: Headers) => {
     }
   }
 
-  if (authentication !== `Bearer ${cachedToken}`) {
+  const expected = `Bearer ${cachedToken?.trim()}`;
+  const received = (authentication ?? '').trim();
+
+  console.log('Header length:', received.length);
+  console.log('Expected length:', expected.length);
+  console.log('Tokens match:', received === expected);
+
+  if (received !== expected) {
     console.warn("Invalid Token");
     throw new UnauthorizedError("Unauthorized");
   }
