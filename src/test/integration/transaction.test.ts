@@ -23,8 +23,7 @@ describe("make a transaction", () => {
     console.log('NODE_ENV:', process.env.NODE_ENV);
     console.log('API_ACCESS_TOKEN_SECRET_ID:', process.env.API_ACCESS_TOKEN_SECRET_ID);
     console.log('BASE_URL:', process.env.BASE_URL);
-    const tokenString = process.env.NODE_ENV === "development" ? process.env.API_ACCESS_TOKEN_SECRET_ID :
-      await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string)
+    const tokenString = await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string);
     console.log('Using development mode?', process.env.NODE_ENV === "development");
     console.log('Token string length:', tokenString?.length);
     console.log('Token string exists:', !!tokenString);
