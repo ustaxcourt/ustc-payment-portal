@@ -19,15 +19,9 @@ describe("make a transaction", () => {
       urlSuccess: "http://example.com/success",
       urlCancel: "http://example.com/cancel",
     };
-    console.log(' INTEGRATION TEST DEBUG ');
-    console.log('NODE_ENV:', process.env.NODE_ENV);
-    console.log('API_ACCESS_TOKEN_SECRET_ID:', process.env.API_ACCESS_TOKEN_SECRET_ID);
-    console.log('BASE_URL:', process.env.BASE_URL);
+
     const tokenString = await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string);
-    console.log('Using development mode?', process.env.NODE_ENV === "development");
-    console.log('Token string length:', tokenString?.length);
-    console.log('Token string exists:', !!tokenString);
-    console.log('Token string type:', typeof tokenString);
+
     const url = `${process.env.BASE_URL}/init`;
     const result = await fetch(url, {
       method: "POST",
@@ -63,12 +57,13 @@ describe("make a transaction", () => {
     console.log(
       `Time to process the transaction with this appId ${appId}; token: ${token}`
     );
+    const tokenString = await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string);
 
     const result = await fetch(`${process.env.BASE_URL}/process`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authentication: `Bearer ${process.env.API_ACCESS_TOKEN_SECRET_ID}`,
+        Authentication: `Bearer ${tokenString}`,
       },
       body: JSON.stringify(request),
     });
@@ -90,13 +85,14 @@ describe("make a transaction", () => {
     console.log(
       `Time to get the details with this appId ${appId}; payGovTrackingId: ${payGovTrackingId}`
     );
+    const tokenString = await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string);
 
     const result = await fetch(
       `${process.env.BASE_URL}/details/${appId}/${payGovTrackingId}`,
       {
         headers: {
           "Content-Type": "application/json",
-          Authentication: `Bearer ${process.env.API_ACCESS_TOKEN_SECRET_ID}`,
+          Authentication: `Bearer ${tokenString}`,
         },
       }
     );
