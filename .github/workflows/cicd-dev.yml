@@ -36,17 +36,17 @@ jobs:
           node-version: "22"
           cache: npm
 
-      # - name: Install dependencies
-      #   run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      # - name: Lint
-      #   run: npm run lint
+      - name: Lint
+        run: npm run lint
 
-      # - name: Unit tests
-      #   run: npm test
+      - name: Unit tests
+        run: npm test
 
-      # - name: Build Lambda
-      #   run: npm run build:lambda
+      - name: Build Lambda
+        run: npm run build:lambda
 
       - name: Configure AWS Credentials (OIDC - Dev)
         uses: aws-actions/configure-aws-credentials@v4
@@ -97,3 +97,26 @@ jobs:
           echo "exitcode=$code" >> $GITHUB_OUTPUT
           terraform show -no-color tfplan > tfplan.txt || true
           set -e
+
+      - name: Terraform Apply (if required)
+        if: steps.plan.outputs.exitcode == '2'
+        working-directory: terraform/environments/dev
+        env:
+          TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Smoke check (post-apply to verify the workspace)
+        if: steps.plan.outputs.exitcode == '2'
+        working-directory: terraform/environments/dev
+        run: |
+          echo "Workspace:" $(terraform workspace show)
+          echo "State resources:" && terraform state list || true
+
+      - name: Integration tests (PR environment)
+        if: steps.plan.outputs.exitcode == '2'
+        env:
+          NODE_ENV: test
+          TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
+        run: |
+          npm ci
+          npm run test:integration
