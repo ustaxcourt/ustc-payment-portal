@@ -19,14 +19,14 @@ describe("make a transaction", () => {
       urlSuccess: "http://example.com/success",
       urlCancel: "http://example.com/cancel",
     };
-    console.log(' INTEGRATION TEST DEBUG ');
-    console.log('NODE_ENV:', process.env.NODE_ENV);
-    console.log('API_ACCESS_TOKEN_SECRET_ID:', process.env.API_ACCESS_TOKEN_SECRET_ID);
-    console.log('BASE_URL:', process.env.BASE_URL);
+    // console.log(' INTEGRATION TEST DEBUG ');
+    // console.log('NODE_ENV:', process.env.NODE_ENV);
+    // console.log('API_ACCESS_TOKEN_SECRET_ID:', process.env.API_ACCESS_TOKEN_SECRET_ID);
+    // console.log('BASE_URL:', process.env.BASE_URL);
     const tokenString = process.env.NODE_ENV === "development" ? process.env.API_ACCESS_TOKEN_SECRET_ID :
       await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string)
-    console.log('Using development mode?', process.env.NODE_ENV === "development");
-    console.log('Token string length:', tokenString?.length);
+    // console.log('Using development mode?', process.env.NODE_ENV === "development");
+    // console.log('Token string length:', tokenString?.length);
     const url = `${process.env.BASE_URL}/init`;
     const result = await fetch(url, {
       method: "POST",
