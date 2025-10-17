@@ -152,7 +152,8 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams",
           "logs:ListTagsForResource",
-          "logs:TagResource"
+          "logs:TagResource",
+          "logs:PutRetentionPolicy"
         ],
         Resource = "*"
       },
@@ -179,6 +180,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "iam:CreateRole",
           "iam:DeleteRole",
           "iam:UpdateRole",
+          "iam:GetRole",
           "iam:PutRolePolicy",
           "iam:DeleteRolePolicy",
           "iam:AttachRolePolicy",
