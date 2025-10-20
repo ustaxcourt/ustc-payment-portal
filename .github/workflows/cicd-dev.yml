@@ -161,3 +161,117 @@ jobs:
           npm ci
           echo "Running integration tests against: $BASE_URL"
           npm run test:integration
+
+  pr_cleanup:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    name: PR Cleanup (Destroy Ephemeral Env)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ vars.TERRAFORM_VERSION || '1.7.5' }}
+          terraform_wrapper: false
+
+      - name: Configure AWS Credentials (OIDC - Dev)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init (dev backend)
+        working-directory: terraform/environments/dev
+        run: |
+          terraform init -input=false \
+           -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
+           -backend-config="key=ustc-payment-portal/terraform.tfstate" \
+           -backend-config="region=us-east-1" \
+           -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
+           -backend-config="encrypt=true"
+
+      - name: Select PR Workspace (if exists)
+        id: ws
+        working-directory: terraform/environments/dev
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          WS="pr-${PR_NUMBER}"
+          (terraform workspace select "$WS" && echo "workspace=$WS" >> $GITHUB_OUTPUT) || echo "no_ws=true" >> $GITHUB_OUTPUT
+
+      - name: Destroy PR Workspace Resources
+        if: ${{ steps.ws.outputs.no_ws != 'true' }}
+        working-directory: terraform/environments/dev
+        env:
+          TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
+        run: |
+          terraform destroy -auto-approve || true
+
+      - name: Delete PR Workspace
+        if: ${{ steps.ws.outputs.no_ws != 'true' }}
+        working-directory: terraform/environments/dev
+        run: |
+          terraform workspace select default || true
+          terraform workspace delete -force ${{ steps.ws.outputs.workspace }} || true
+
+  deploy_dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Deploy to Dev (on push to main)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Lambda
+        run: npm run build:lambda
+
+      - name: Configure AWS Credentials (OIDC - Dev)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ vars.TERRAFORM_VERSION || '1.7.5' }}
+          terraform_wrapper: false
+
+      - name: Terraform Init (dev backend)
+        working-directory: terraform/environments/dev
+        run: |
+          terraform init -input=false \
+           -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
+           -backend-config="key=ustc-payment-portal/terraform.tfstate" \
+           -backend-config="region=us-east-1" \
+           -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
+           -backend-config="encrypt=true"
+
+      - name: Select default workspace
+        working-directory: terraform/environments/dev
+        run: |
+          terraform workspace select default || terraform workspace new default
+
+      - name: Terraform Plan (dev)
+        id: plan_dev
+        working-directory: terraform/environments/dev
+        run: |
+          terraform plan -input=false -out=tfplan
+          terraform show -no-color tfplan > tfplan.txt || true
+
+      - name: Terraform Apply (dev)
+        working-directory: terraform/environments/dev
+        run: terraform apply -auto-approve tfplan
