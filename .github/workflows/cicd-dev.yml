@@ -178,6 +178,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Lambda (ensure dist/ exists for archive_file)
+        run: npm run build:lambda
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -209,16 +221,32 @@ jobs:
           WS="pr-${PR_NUMBER}"
           (terraform workspace select "$WS" && echo "workspace=$WS" >> $GITHUB_OUTPUT) || echo "no_ws=true" >> $GITHUB_OUTPUT
 
+      - name: Terraform Plan Destroy (PR workspace)
+        if: ${{ steps.ws.outputs.no_ws != 'true' }}
+        working-directory: terraform/environments/dev
+        run: |
+          terraform plan -destroy -input=false -out=tfplan-destroy || exit 1
+          terraform show -no-color tfplan-destroy > tfplan-destroy.txt || true
+
+      - name: Upload destroy plan (text)
+        if: ${{ steps.ws.outputs.no_ws != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-destroy-text-${{ github.run_id }}
+          path: terraform/environments/dev/tfplan-destroy.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Destroy PR Workspace Resources
         if: ${{ steps.ws.outputs.no_ws != 'true' }}
         working-directory: terraform/environments/dev
         env:
           TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
         run: |
-          terraform destroy -auto-approve || true
+          terraform destroy -auto-approve
 
       - name: Delete PR Workspace
-        if: ${{ steps.ws.outputs.no_ws != 'true' }}
+        if: ${{ steps.ws.outputs.no_ws != 'true' && success() }}
         working-directory: terraform/environments/dev
         run: |
           terraform workspace select default || true
