@@ -11,7 +11,7 @@ describe("make a transaction", () => {
   const appId = "ustc-local-app-test";
 
   beforeAll(async () => {
-    const isLocal = (process.env.NODE_ENV = "local");
+    const isLocal = process.env.NODE_ENV === "local";
     if (isLocal) {
       tokenString = process.env.API_ACCESS_TOKEN_SECRET_ID as string;
     } else {
