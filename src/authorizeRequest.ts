@@ -25,28 +25,27 @@ export const authorizeRequest = async (headers?: Headers) => {
       throw new UnauthorizedError("Unauthorized");
     }
     try {
-      console.log('Attempting to fetch secret from Secrets Manager...');
+      console.log("Attempting to fetch secret from Secrets Manager...");
       cachedToken = await getSecretString(tokenSecretId);
-      console.log('Successfully fetched secret, length:', cachedToken?.length);
+      console.log("Successfully fetched secret, length:", cachedToken?.length);
     } catch (error) {
       console.error(
         "Failed to fetch API access token from Secrets Manager",
         error
       );
-      console.error('Error details:', {
+      console.error("Error details:", {
         name: (error as any)?.name,
         message: (error as any)?.message,
         code: (error as any)?.code,
-        statusCode: (error as any)?.statusCode
+        statusCode: (error as any)?.statusCode,
       });
-      throw new ServerError("Failed to fetch API access token from Secrets Manager");
+      throw new ServerError(
+        "Failed to fetch API access token from Secrets Manager"
+      );
     }
   }
 
-  const expected = `Bearer ${cachedToken}`;
-  const received = (authentication ?? '');
-
-  if (received !== expected) {
+  if (authentication !== `Bearer ${cachedToken}`) {
     console.warn("Invalid Token");
     throw new UnauthorizedError("Unauthorized");
   }

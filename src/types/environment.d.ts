@@ -1,7 +1,7 @@
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
-      NODE_ENV: "development" | "production" | "staging" | "local";
+      NODE_ENV: "development" | "production" | "staging" | "local" | "test";
       SOAP_URL: string;
       PAYMENT_URL: string;
       API_ACCESS_TOKEN: string;
