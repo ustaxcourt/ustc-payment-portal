@@ -6,7 +6,6 @@ jest.mock("node-fetch", () => jest.fn());
 jest.mock("https");
 jest.mock("./clients/secretsClient");
 
-
 // Import after mocking
 let mockFetch: jest.Mock;
 const mockGetSecretString = getSecretString as jest.Mock;
@@ -25,7 +24,6 @@ describe("appContext", () => {
   afterEach(() => {
     process.env = originalEnv;
   });
-
 
   it("should create an HTTPS agent with correct options", () => {
     // Since cache may be populated from previous test, verify the agent has correct properties
@@ -71,9 +69,9 @@ describe("postHttpRequest", () => {
     });
   });
 
-
   it("should include authentication header when PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID is set and secret is retrieved successfully", async () => {
     process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "token-secret-id";
+    process.env.TEST_NAMESPACE = "pr-123";
     mockGetSecretString.mockResolvedValueOnce("secret-token-from-aws");
 
     const appContext = createAppContext();
@@ -97,6 +95,7 @@ describe("postHttpRequest", () => {
   it("should include authentication and authorization headers when PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID is set and retrieved locally", async () => {
     process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "local-token-secret-id";
     process.env.NODE_ENV = "development";
+    delete process.env.TEST_NAMESPACE;
 
     const appContext = createAppContext();
     const body = "<soap>request</soap>";
