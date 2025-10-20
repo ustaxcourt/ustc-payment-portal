@@ -272,6 +272,15 @@ jobs:
           terraform plan -input=false -out=tfplan
           terraform show -no-color tfplan > tfplan.txt || true
 
+      - name: Upload Terraform plan
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-text-${{ github.run_id }}
+          path: terraform/environments/dev/tfplan.txt
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Terraform Apply (dev)
         working-directory: terraform/environments/dev
         run: terraform apply -auto-approve tfplan
