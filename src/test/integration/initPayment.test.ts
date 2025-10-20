@@ -3,7 +3,7 @@ import { getSecretString } from "../../clients/secretsClient";
 describe("initialize a payment", () => {
   it("makes a request to the local payment portal", async () => {
     let tokenString;
-    const isLocal = (process.env.NODE_ENV = "local");
+    const isLocal = process.env.NODE_ENV === "local";
     if (isLocal) {
       tokenString = process.env.API_ACCESS_TOKEN_SECRET_ID;
     } else {
