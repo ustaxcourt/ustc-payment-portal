@@ -3,8 +3,10 @@ import { getSecretString } from "../../clients/secretsClient";
 describe("initialize a payment", () => {
   it("makes a request to the local payment portal", async () => {
     let tokenString;
-    // When TEST_NAMESPACE is not set, we're running locally and should use the raw secret ID
-    if (!process.env.TEST_NAMESPACE) {
+    const isLocal =
+      process.env.NODE_ENV === "local" ||
+      process.env.NODE_ENV === "development";
+    if (isLocal) {
       tokenString = process.env.API_ACCESS_TOKEN_SECRET_ID;
     } else {
       tokenString = await getSecretString(

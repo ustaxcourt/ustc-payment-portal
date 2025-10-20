@@ -11,8 +11,10 @@ describe("make a transaction", () => {
   const appId = "ustc-local-app-test";
 
   beforeAll(async () => {
-    // When TEST_NAMESPACE is not set, we're running locally and should use the raw secret ID
-    if (!process.env.TEST_NAMESPACE) {
+    const isLocal =
+      process.env.NODE_ENV === "local" ||
+      process.env.NODE_ENV === "development";
+    if (isLocal) {
       tokenString = process.env.API_ACCESS_TOKEN_SECRET_ID as string;
     } else {
       tokenString = await getSecretString(

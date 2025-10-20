@@ -57,8 +57,10 @@ export const createAppContext = (): AppContext => {
       const tokenSecretId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
 
       if (tokenSecretId) {
-        // When TEST_NAMESPACE is not set, we're running locally in dev mode
-        if (!process.env.TEST_NAMESPACE) {
+        const isLocal =
+          process.env.NODE_ENV === "local" ||
+          process.env.NODE_ENV === "development";
+        if (isLocal) {
           headers.Authorization = `Bearer ${tokenSecretId}`;
           headers.Authentication = headers.Authorization;
         } else {
