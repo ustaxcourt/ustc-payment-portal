@@ -160,6 +160,22 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "*"
       },
       {
+        Effect = "Allow", # delete/manage PR Lambda log groups
+        Action = [
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:PutRetentionPolicy",
+          "logs:DeleteRetentionPolicy",
+          "logs:PutSubscriptionFilter",
+          "logs:DeleteSubscriptionFilter",
+          "logs:DeleteLogGroup"
+        ],
+        Resource = [
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/ustc-payment-processor-pr-*",
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/ustc-payment-processor-pr-*:*"
+        ]
+      },
+      {
         Effect = "Allow", #secrets manager
         Action = [
           "secretsmanager:CreateSecret",
