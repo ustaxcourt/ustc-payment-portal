@@ -7,7 +7,18 @@ describe("make a transaction", () => {
   let token: string;
   let paymentRedirect: string;
   let payGovTrackingId: string;
+  let tokenString: string;
   const appId = "ustc-local-app-test";
+
+  beforeAll(async () => {
+    if (process.env.NODE_ENV === "test") {
+      tokenString = process.env.API_ACCESS_TOKEN_SECRET_ID as string;
+    } else {
+      tokenString = await getSecretString(
+        process.env.API_ACCESS_TOKEN_SECRET_ID as string
+      );
+    }
+  });
 
   it("should make a request to start a transaction", async () => {
     const randomNumber = Math.floor(Math.random() * 100000);
@@ -19,8 +30,6 @@ describe("make a transaction", () => {
       urlSuccess: "http://example.com/success",
       urlCancel: "http://example.com/cancel",
     };
-
-    const tokenString = await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string);
 
     const url = `${process.env.BASE_URL}/init`;
     const result = await fetch(url, {
@@ -57,7 +66,6 @@ describe("make a transaction", () => {
     console.log(
       `Time to process the transaction with this appId ${appId}; token: ${token}`
     );
-    const tokenString = await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string);
 
     const result = await fetch(`${process.env.BASE_URL}/process`, {
       method: "POST",
@@ -85,7 +93,6 @@ describe("make a transaction", () => {
     console.log(
       `Time to get the details with this appId ${appId}; payGovTrackingId: ${payGovTrackingId}`
     );
-    const tokenString = await getSecretString(process.env.API_ACCESS_TOKEN_SECRET_ID as string);
 
     const result = await fetch(
       `${process.env.BASE_URL}/details/${appId}/${payGovTrackingId}`,
