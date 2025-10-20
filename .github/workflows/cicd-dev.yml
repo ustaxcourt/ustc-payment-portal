@@ -116,20 +116,27 @@ jobs:
           echo "Workspace:" $(terraform workspace show)
           echo "State resources:" && terraform state list || true
 
-      - name: Get Terraform Outputs
-        if: ${{ steps.plan.outputs.exitcode == '2' }}
+      - name: Get Terraform Outputs (if available)
         id: tf_outputs
         working-directory: terraform/environments/dev
         run: |
-          API_URL=$(terraform output -raw api_gateway_url)
-          SECRET_ID=$(terraform output -raw api_access_token_secret_id)
-          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
-          echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
-          echo "API Gateway URL: $API_URL"
-          echo "API Access Token Secret ID: $SECRET_ID"
+          set +e
+          API_URL=$(terraform output -raw api_gateway_url 2>/dev/null)
+          SECRET_ID=$(terraform output -raw api_access_token_secret_id 2>/dev/null)
+          set -e
+          if [ -n "$API_URL" ] && [ -n "$SECRET_ID" ]; then
+            echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+            echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
+            echo "has_outputs=true" >> $GITHUB_OUTPUT
+            echo "API Gateway URL: $API_URL"
+            echo "API Access Token Secret ID: $SECRET_ID"
+          else
+            echo "has_outputs=false" >> $GITHUB_OUTPUT
+            echo "PR workspace not yet provisioned; skipping integration tests until outputs exist."
+          fi
 
       - name: Copy secrets from dev (for PR environments)
-        if: ${{ steps.plan.outputs.exitcode == '2' && github.event.pull_request.number }}
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' && github.event.pull_request.number }}
         run: |
           echo "Copying secret values from dev to PR environment..."
 
@@ -151,7 +158,7 @@ jobs:
         working-directory: terraform/environments/dev
 
       - name: Integration tests (PR environment)
-        if: ${{ steps.plan.outputs.exitcode == '2' }}
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
         env:
           NODE_ENV: test
           TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
