@@ -27,7 +27,7 @@ export const authorizeRequest = async (headers?: Headers) => {
     try {
       console.log("Attempting to fetch secret from Secrets Manager...");
       cachedToken = await getSecretString(tokenSecretId);
-      console.log("Successfully fetched secret, length:", cachedToken?.length);
+      console.log("Successfully fetched secret from Secrets Manager");
     } catch (error) {
       console.error(
         "Failed to fetch API access token from Secrets Manager",
