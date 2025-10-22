@@ -288,17 +288,7 @@ jobs:
       - name: Terraform Init (dev backend)
         working-directory: terraform/environments/dev
         run: |
-          terraform init -input=false \
-           -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
-           -backend-config="key=ustc-payment-portal/terraform.tfstate" \
-           -backend-config="region=us-east-1" \
-           -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
-           -backend-config="encrypt=true"
-
-      - name: Select default workspace
-        working-directory: terraform/environments/dev
-        run: |
-          terraform workspace select default || terraform workspace new default
+          terraform init -input=false -backend-config=backend.hcl -reconfigure
 
       - name: Terraform Plan (dev)
         id: plan_dev
