@@ -69,18 +69,20 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       {
         Effect = "Allow",
         Action = ["s3:ListBucket"],
-        Resource = "arn:aws:s3:::${local.tf_state_bucket_name}",    #Backend bucket
-        Condition = {
-          StringLike = {
-            "s3:prefix" = "${local.project_name}/${local.environment}/*"
-          }
-        }
+        Resource = "arn:aws:s3:::${local.tf_state_bucket_name}"
       },
       {
         Effect = "Allow",
-        Action = ["s3:GetObject","s3:PutObject","s3:DeleteObject"],
+        Action = ["s3:GetObject","s3:PutObject"],
         Resource = [
-          for i in local.state_object_keys : "arn:aws:s3:::${local.tf_state_bucket_name}/${i}"
+          "arn:aws:s3:::${local.tf_state_bucket_name}/*"
+        ]
+      },
+      {
+        Effect = "Allow",
+        Action = ["s3:DeleteObject"],
+        Resource = [
+          "arn:aws:s3:::${local.tf_state_bucket_name}/env:/pr-*/*"
         ]
       },
       { #lock table
@@ -99,10 +101,12 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "lambda:GetFunction*",
           "lambda:GetPolicy",
           "lambda:ListVersionsByFunction",
+          "lambda:AddPermission",
+          "lambda:RemovePermission",
           "lambda:TagResource",
           "lambda:UntagResource"
         ],
-        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:${local.lambda_name_prefix}*"
+        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor*"
       },
       {
         Effect   = "Allow",
@@ -149,9 +153,67 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "logs:PutLogEvents",
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams",
-          "logs:ListTagsForResource"
+          "logs:ListTagsForResource",
+          "logs:TagResource",
+          "logs:PutRetentionPolicy"
         ],
         Resource = "*"
+      },
+      {
+        Effect = "Allow", # delete/manage PR Lambda log groups
+        Action = [
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:PutRetentionPolicy",
+          "logs:DeleteRetentionPolicy",
+          "logs:PutSubscriptionFilter",
+          "logs:DeleteSubscriptionFilter",
+          "logs:DeleteLogGroup"
+        ],
+        Resource = [
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/ustc-payment-processor-pr-*",
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/ustc-payment-processor-pr-*:*"
+        ]
+      },
+      {
+        Effect = "Allow", #secrets manager
+        Action = [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:DeleteSecret",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:UpdateSecret",
+          "secretsmanager:GetResourcePolicy",
+          "secretsmanager:PutResourcePolicy",
+          "secretsmanager:DeleteResourcePolicy",
+          "secretsmanager:TagResource",
+          "secretsmanager:UntagResource"
+        ],
+        Resource = "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*"
+      },
+      {
+        Effect = "Allow", #iam role creation (for self-management)
+        Action = [
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:UpdateRole",
+          "iam:GetRole",
+          "iam:ListRolePolicies",
+          "iam:GetRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:ListAttachedRolePolicies",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:ListInstanceProfilesForRole",
+          "iam:TagRole",
+          "iam:UntagRole"
+        ],
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/ustc-payment-processor-*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*lambda*"
+        ]
       },
       {
         Effect = "Allow",
