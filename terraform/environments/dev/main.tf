@@ -48,3 +48,9 @@ module "iam_cicd" {
   create_lambda_exec_role  = false
 }
 
+module "artifacts_bucket" {
+  source = "../../modules/artifacts_bucket"
+
+  build_artifacts_bucket_name = "ustc-payment-portal-build-artifacts"
+  deployer_role_arn           = local.github_oidc_provider_arn
+}

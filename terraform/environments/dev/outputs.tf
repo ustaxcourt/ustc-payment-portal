@@ -37,3 +37,14 @@ output "paygov_dev_server_token_secret_id" {
   value       = module.secrets.paygov_dev_server_token_secret_id
   description = "Secret ID for Pay.gov dev server token"
 }
+
+output "build_artifacts_bucket_name" {
+  value       = module.artifacts_bucket.build_artifacts_bucket_name
+  description = "Name for build artifacts bucket"
+}
+
+output "build_artifacts_bucket_arn" {
+  value       = module.artifacts_bucket.bucket_arn
+  description = "ARN for build artifacts bucket"
+
+}
