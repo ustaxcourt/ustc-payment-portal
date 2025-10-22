@@ -60,19 +60,6 @@ resource "aws_iam_policy" "build_artifacts_access_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid = "Allow deployer role write"
-        Effect = "Allow"
-        Action = [
-          "s3:ListBucket",
-          "s3:GetBucketVersioning",
-          "s3:GetObject",
-          "s3:GetObjectVersioning",
-          "s3:PutObject",
-        ]
-        Principal = var.deployer_role_arn
-        Resource = aws_s3_bucket.build_artifacts.arn
-      },
-      {
         Sid = "Deny non-deployer access"
         Effect = "Deny"
         Action = "s3:*"
@@ -85,6 +72,19 @@ resource "aws_iam_policy" "build_artifacts_access_policy" {
           }
 
         }
+      },
+      {
+        Sid = "Allow deployer role write"
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketVersioning",
+          "s3:GetObject",
+          "s3:GetObjectVersioning",
+          "s3:PutObject",
+        ]
+        Principal = { var.deployer_role_arn }
+        Resource = aws_s3_bucket.build_artifacts.arn
       }
     ]
   })
