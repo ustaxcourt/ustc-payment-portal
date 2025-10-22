@@ -11,6 +11,7 @@ data "terraform_remote_state" "foundation" {
 
 module "lambda" {
   source                    = "../../modules/lambda"
+  function_name_prefix      = local.name_prefix
   lambda_execution_role_arn = data.terraform_remote_state.foundation.outputs.lambda_role_arn
   subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
   security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
@@ -25,8 +26,8 @@ module "api" {
   source = "../../modules/api-gateway"
 
   lambda_function_arns = module.lambda.function_arns
-  environment          = "dev"
-  stage_name           = "dev"
+  environment          = local.environment == "dev" ? "dev" : local.environment
+  stage_name           = local.environment == "dev" ? "dev" : local.environment
 
 }
 
@@ -35,7 +36,7 @@ module "iam_cicd" {
 
   aws_region               = local.aws_region
   environment              = local.environment
-  deploy_role_name         = "${local.name_prefix}-cicd-deployer-role"
+  deploy_role_name         = local.environment == "dev" ? "ustc-payment-processor-dev-cicd-deployer-role" : "${local.name_prefix}-cicd-deployer-role"
   github_oidc_provider_arn = local.github_oidc_provider_arn
   github_org               = local.github_org
   github_repo              = local.github_repo

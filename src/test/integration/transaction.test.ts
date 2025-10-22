@@ -1,12 +1,25 @@
 import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
 import { InitPaymentRequest } from "../../types/InitPaymentRequest";
 import { RawGetDetailsRequest } from "../../entities/GetDetailsRequest";
+import { getSecretString } from "../../clients/secretsClient";
 
 describe("make a transaction", () => {
   let token: string;
   let paymentRedirect: string;
   let payGovTrackingId: string;
+  let tokenString: string;
   const appId = "ustc-local-app-test";
+
+  beforeAll(async () => {
+    const isLocal = process.env.NODE_ENV === "local";
+    if (isLocal) {
+      tokenString = process.env.API_ACCESS_TOKEN_SECRET_ID as string;
+    } else {
+      tokenString = await getSecretString(
+        process.env.API_ACCESS_TOKEN_SECRET_ID as string
+      );
+    }
+  });
 
   it("should make a request to start a transaction", async () => {
     const randomNumber = Math.floor(Math.random() * 100000);
@@ -24,11 +37,10 @@ describe("make a transaction", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authentication: `Bearer ${process.env.API_ACCESS_TOKEN_SECRET_ID}`,
+        Authentication: `Bearer ${tokenString}`,
       },
       body: JSON.stringify(request),
     });
-
     expect(result.status).toBe(200);
 
     const data = await result.json();
@@ -60,7 +72,7 @@ describe("make a transaction", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authentication: `Bearer ${process.env.API_ACCESS_TOKEN_SECRET_ID}`,
+        Authentication: `Bearer ${tokenString}`,
       },
       body: JSON.stringify(request),
     });
@@ -88,7 +100,7 @@ describe("make a transaction", () => {
       {
         headers: {
           "Content-Type": "application/json",
-          Authentication: `Bearer ${process.env.API_ACCESS_TOKEN_SECRET_ID}`,
+          Authentication: `Bearer ${tokenString}`,
         },
       }
     );

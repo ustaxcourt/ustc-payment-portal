@@ -1,0 +1,321 @@
+name: CICD - Dev
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  pr_build_test_deploy:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    name: PR Build/Test and Ephemeral Deploy (Dev Account)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build Lambda
+        run: npm run build:lambda
+
+      - name: Configure AWS Credentials (OIDC - Dev)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS caller identity (can be deleted later)
+        run: |
+          aws sts get-caller-identity
+          aws configure list
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ vars.TERRAFORM_VERSION || '1.7.5' }}
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: terraform/environments/dev
+        run: |
+          terraform init -input=false \
+           -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
+           -backend-config="key=ustc-payment-portal/terraform.tfstate" \
+           -backend-config="region=us-east-1" \
+           -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
+           -backend-config="encrypt=true"
+
+      - name: Select/Create PR Workspace
+        id: tfws
+        working-directory: terraform/environments/dev
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          WS="pr-${PR_NUMBER}"
+          terraform workspace select "$WS" >/dev/null 2>&1 || terraform workspace new "$WS"
+          terraform workspace select "$WS"
+          echo "workspace=$WS" >> $GITHUB_OUTPUT
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: terraform/environments/dev
+        env:
+          TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
+        run: |
+          set +e
+          terraform plan -input=false -lock-timeout=2m -detailed-exitcode -out=tfplan
+          code=$?
+          echo "exitcode=$code" >> $GITHUB_OUTPUT
+          terraform show -no-color tfplan > tfplan.txt || true
+          set -e
+
+      - name: Debug plan exit code
+        run: echo "plan exitcode=${{ steps.plan.outputs.exitcode }}"
+
+      - name: Terraform Apply (if required)
+        if: ${{ steps.plan.outputs.exitcode == '2' }}
+        working-directory: terraform/environments/dev
+        env:
+          TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Smoke check (post-apply to verify the workspace)
+        if: ${{ steps.plan.outputs.exitcode == '2' }}
+        working-directory: terraform/environments/dev
+        run: |
+          echo "Workspace:" $(terraform workspace show)
+          echo "State resources:" && terraform state list || true
+
+      - name: Get Terraform Outputs (if available)
+        id: tf_outputs
+        working-directory: terraform/environments/dev
+        run: |
+          set +e
+          API_URL=$(terraform output -raw api_gateway_url 2>/dev/null)
+          SECRET_ID=$(terraform output -raw api_access_token_secret_id 2>/dev/null)
+          set -e
+          if [ -n "$API_URL" ] && [ -n "$SECRET_ID" ]; then
+            echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+            echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
+            echo "has_outputs=true" >> $GITHUB_OUTPUT
+            echo "API Gateway URL: $API_URL"
+            echo "API Access Token Secret ID: $SECRET_ID"
+          else
+            echo "has_outputs=false" >> $GITHUB_OUTPUT
+            echo "PR workspace not yet provisioned; skipping integration tests until outputs exist."
+          fi
+
+      - name: Copy secrets from dev (for PR environments)
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' && github.event.pull_request.number }}
+        run: |
+          echo "Copying secret values from dev to PR environment..."
+
+          # Copy API access token
+          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/access-token" --query SecretString --output text | \
+          aws secretsmanager put-secret-value --secret-id "${{ steps.tf_outputs.outputs.secret_id }}" --secret-string file:///dev/stdin
+
+          # Copy certificate passphrase
+          CERT_SECRET_ID=$(terraform output -raw cert_passphrase_secret_id)
+          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/cert-passphrase" --query SecretString --output text | \
+          aws secretsmanager put-secret-value --secret-id "$CERT_SECRET_ID" --secret-string file:///dev/stdin
+
+          # Copy Pay.gov dev server token
+          PAYGOV_SECRET_ID=$(terraform output -raw paygov_dev_server_token_secret_id)
+          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/pay-gov-dev-server-token" --query SecretString --output text | \
+          aws secretsmanager put-secret-value --secret-id "$PAYGOV_SECRET_ID" --secret-string file:///dev/stdin
+
+          echo "All secret values copied successfully"
+        working-directory: terraform/environments/dev
+
+      - name: Integration tests (PR environment)
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
+        env:
+          NODE_ENV: test
+          TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
+          BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          API_ACCESS_TOKEN_SECRET_ID: ${{ steps.tf_outputs.outputs.secret_id }}
+        run: |
+          npm ci
+          echo "Running integration tests against: $BASE_URL"
+          npm run test:integration
+
+  pr_cleanup:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    name: PR Cleanup (Destroy Ephemeral Env)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Lambda (ensure dist/ exists for archive_file)
+        run: npm run build:lambda
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ vars.TERRAFORM_VERSION || '1.7.5' }}
+          terraform_wrapper: false
+
+      - name: Configure AWS Credentials (OIDC - Dev)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init (dev backend)
+        working-directory: terraform/environments/dev
+        run: |
+          terraform init -input=false \
+           -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
+           -backend-config="key=ustc-payment-portal/terraform.tfstate" \
+           -backend-config="region=us-east-1" \
+           -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
+           -backend-config="encrypt=true"
+
+      - name: Select PR Workspace (if exists)
+        id: ws
+        working-directory: terraform/environments/dev
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          WS="pr-${PR_NUMBER}"
+          (terraform workspace select "$WS" && echo "workspace=$WS" >> $GITHUB_OUTPUT) || echo "no_ws=true" >> $GITHUB_OUTPUT
+
+      - name: Terraform Plan Destroy (PR workspace)
+        if: ${{ steps.ws.outputs.no_ws != 'true' }}
+        working-directory: terraform/environments/dev
+        run: |
+          terraform plan -destroy -input=false -out=tfplan-destroy || exit 1
+          terraform show -no-color tfplan-destroy > tfplan-destroy.txt || true
+
+      - name: Upload destroy plan (text)
+        if: ${{ steps.ws.outputs.no_ws != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-destroy-text-${{ github.run_id }}
+          path: terraform/environments/dev/tfplan-destroy.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Destroy PR Workspace Resources
+        if: ${{ steps.ws.outputs.no_ws != 'true' }}
+        working-directory: terraform/environments/dev
+        env:
+          TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
+        run: |
+          terraform destroy -auto-approve
+
+      - name: Delete PR Workspace
+        if: ${{ steps.ws.outputs.no_ws != 'true' && success() }}
+        working-directory: terraform/environments/dev
+        run: |
+          terraform workspace select default || true
+          terraform workspace delete -force ${{ steps.ws.outputs.workspace }} || true
+
+  deploy_dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Deploy to Dev (on push to main)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Lambda
+        run: npm run build:lambda
+
+      - name: Configure AWS Credentials (OIDC - Dev)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ vars.TERRAFORM_VERSION || '1.7.5' }}
+          terraform_wrapper: false
+
+      - name: Terraform Init (dev backend)
+        working-directory: terraform/environments/dev
+        run: |
+          terraform init -input=false \
+           -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
+           -backend-config="key=ustc-payment-portal/terraform.tfstate" \
+           -backend-config="region=us-east-1" \
+           -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
+           -backend-config="encrypt=true"
+
+      - name: Select default workspace
+        working-directory: terraform/environments/dev
+        run: |
+          terraform workspace select default || terraform workspace new default
+
+      - name: Terraform Plan (dev)
+        id: plan_dev
+        working-directory: terraform/environments/dev
+        run: |
+          terraform plan -input=false -out=tfplan
+          terraform show -no-color tfplan > tfplan.txt || true
+
+      - name: Upload Terraform plan
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-text-${{ github.run_id }}
+          path: terraform/environments/dev/tfplan.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Terraform Apply (dev)
+        working-directory: terraform/environments/dev
+        run: terraform apply -auto-approve tfplan

@@ -10,3 +10,8 @@ output "stage_name" {
     value = aws_api_gateway_stage.stage.stage_name
 }
 
+output "api_gateway_url" {
+    value = aws_api_gateway_stage.stage.invoke_url
+    description = "Base URL for API Gateway stage"
+}
+

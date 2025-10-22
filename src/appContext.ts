@@ -57,7 +57,8 @@ export const createAppContext = (): AppContext => {
       const tokenSecretId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
 
       if (tokenSecretId) {
-        if (process.env.NODE_ENV === "development") {
+        const isLocal = process.env.NODE_ENV === "local";
+        if (isLocal) {
           headers.Authorization = `Bearer ${tokenSecretId}`;
           headers.Authentication = headers.Authorization;
         } else {
