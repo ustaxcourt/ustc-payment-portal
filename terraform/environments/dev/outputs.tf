@@ -39,7 +39,7 @@ output "paygov_dev_server_token_secret_id" {
 }
 
 output "build_artifacts_bucket_name" {
-  value       = module.artifacts_bucket.build_artifacts_bucket_name
+  value       = module.artifacts_bucket.bucket_name
   description = "Name for build artifacts bucket"
 }
 
