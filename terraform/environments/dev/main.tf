@@ -52,5 +52,11 @@ module "artifacts_bucket" {
   source = "../../modules/artifacts_bucket"
 
   build_artifacts_bucket_name = "ustc-payment-portal-build-artifacts"
-  deployer_role_arn           = local.github_oidc_provider_arn
+  deployer_role_arn           = module.iam_cicd.role_arn
+}
+
+#attaching artifact bucket policy to our deployer role (github --> Aws deployment)
+resource "aws_iam_role_policy_attachment" "ci_build_artifacts" {
+  role       = module.iam_cicd.role_name
+  policy_arn = module.artifacts_bucket.build_artifacts_access_policy_arn
 }

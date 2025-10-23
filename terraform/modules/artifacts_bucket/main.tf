@@ -40,13 +40,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "build_artifacts" {
   bucket = aws_s3_bucket.build_artifacts.id
 
   rule {
-    id = "delete-old-artifacts"
+    id     = "delete-old-artifacts"
+    status = "Enabled"
 
     expiration {
       days = 90
     }
-
-    status = "Enabled"
   }
 }
 
@@ -54,37 +53,30 @@ resource "aws_s3_bucket_lifecycle_configuration" "build_artifacts" {
 
 resource "aws_iam_policy" "build_artifacts_access_policy" {
   name        = "build-artifacts-access-policy"
-  description = "Policy for build artifacts storage"
+  description = "Policy for build artifacts storage (attach to CI/deployer role)"
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid = "Deny non-deployer access"
-        Effect = "Deny"
-        Action = "s3:*"
-        Principal = "*"
-        Resource = aws_s3_bucket.build_artifacts.arn
-
-        Condition = {
-          Bool = {
-            "aws:SecureTransport" = "false"
-          }
-
-        }
-      },
-      {
-        Sid = "Allow deployer role write"
+        Sid    = "BucketListAndVersioning"
         Effect = "Allow"
         Action = [
           "s3:ListBucket",
-          "s3:GetBucketVersioning",
-          "s3:GetObject",
-          "s3:GetObjectVersioning",
-          "s3:PutObject",
+          "s3:GetBucketVersioning"
         ]
-        Principal = { var.deployer_role_arn }
         Resource = aws_s3_bucket.build_artifacts.arn
+      },
+      {
+        Sid    = "ObjectReadWrite"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:PutObject",
+          "s3:PutObjectAcl"
+        ]
+        Resource = "${aws_s3_bucket.build_artifacts.arn}/*"
       }
     ]
   })
@@ -93,4 +85,56 @@ resource "aws_iam_policy" "build_artifacts_access_policy" {
     Project   = "ustc-payment-portal"
     ManagedBy = "terraform"
   }
+}
+
+#reminder: need to add cross account read access for staging deployer role later
+resource "aws_s3_bucket_policy" "build_artifacts" {
+  bucket = aws_s3_bucket.build_artifacts.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.build_artifacts.arn,
+          "${aws_s3_bucket.build_artifacts.arn}/*"
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      },
+      {
+        Sid    = "AllowDeployerRoleListBucket"
+        Effect = "Allow"
+        Principal = {
+          AWS = var.deployer_role_arn
+        }
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketVersioning"
+        ]
+        Resource = aws_s3_bucket.build_artifacts.arn
+      },
+      {
+        Sid    = "AllowDeployerRoleObjectAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = var.deployer_role_arn
+        }
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:PutObject",
+          "s3:PutObjectAcl"
+        ]
+        Resource = "${aws_s3_bucket.build_artifacts.arn}/*"
+      }
+    ]
+  })
 }
