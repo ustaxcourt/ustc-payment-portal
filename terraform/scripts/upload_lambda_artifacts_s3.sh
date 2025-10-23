@@ -20,6 +20,13 @@ jq -n \
   --arg ts "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
   '{git_sha:$sha, pr_number:$pr, timestamp:$ts, artifacts:{}}' > "$MANIFEST_FILE"
 
+for dir in ../../dist/*; do
+ #outputs ../../dist/directory name
+  echo "${dir}"
+  dir=${dir%*/}      # remove the trailing "/"
+  echo "${dir##*/}"    # print everything after the final "/"
+done
+
 for FUNC in "${FUNCTIONS[@]}"; do
   ZIP="dist/${FUNC}.zip"
   [[ -f "$ZIP" ]] || { echo "Skip ${FUNC}: ${ZIP} not found"; continue; }
