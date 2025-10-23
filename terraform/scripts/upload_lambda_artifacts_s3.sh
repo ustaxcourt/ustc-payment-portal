@@ -29,6 +29,7 @@ for FUNC in "${FUNCTIONS[@]}"; do
 
   aws s3 cp "$ZIP" "s3://${BUCKET}/${S3_KEY}" \
     --metadata "git-sha=${GIT_SHA},function-name=${FUNC},sha256_b64=${HASH_B64}"
+  echo "Artifact uploaded: s3://${BUCKET}/${S3_KEY}"
 
   # Update manifest.json
   tmp="$(mktemp)"
