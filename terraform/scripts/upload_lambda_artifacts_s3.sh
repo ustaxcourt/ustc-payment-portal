@@ -21,15 +21,10 @@ jq -n \
   '{git_sha:$sha, pr_number:$pr, timestamp:$ts, artifacts:{}}' > "$MANIFEST_FILE"
 
 for dir in ../../dist/*; do
- #outputs ../../dist/directory name
-  echo "${dir}"
   dir=${dir%*/}      # remove the trailing "/"
-  echo "${dir##*/}"    # print everything after the final "/"
-done
-
-for FUNC in "${FUNCTIONS[@]}"; do
+  FUNC=${dir##*/}  # grab everything after the final "/"
+  echo "${FUNC}"
   ZIP="dist/${FUNC}.zip"
-  [[ -f "$ZIP" ]] || { echo "Skip ${FUNC}: ${ZIP} not found"; continue; }
 
   S3_KEY="${PREFIX}/${FUNC}.zip"
   HASH_B64="$(openssl dgst -sha256 -binary "$ZIP" | base64)"
