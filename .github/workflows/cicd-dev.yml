@@ -59,6 +59,15 @@ jobs:
           aws sts get-caller-identity
           aws configure list
 
+      - name: Upload Lambda Artifacts to S3 (PR)
+        id: upload_artifacts_pr
+        working-directory: terraform/scripts
+        run: |
+          export GIT_SHA="${{ github.sha }}"
+          export PR_NUMBER="${{ github.event.pull_request.number }}"
+          export BUCKET="${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}"
+          ./upload_lambda_artifacts_s3.sh
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -278,6 +287,15 @@ jobs:
         with:
           role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload Lambda Artifacts to S3 (Dev)
+        id: upload_artifacts_dev
+        working-directory: terraform/scripts
+        run: |
+          xport GIT_SHA="${{ github.sha }}"
+          export PR_NUMBER="dev"  # temporary label to isolate dev artifacts/manifest
+          export BUCKET="${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}"
+          ./upload_lambda_artifacts_s3.sh
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
