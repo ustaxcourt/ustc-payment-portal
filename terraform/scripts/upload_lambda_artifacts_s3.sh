@@ -9,7 +9,6 @@ GIT_SHA="${GIT_SHA:-${{ github.sha }}}"
 PR_NUMBER="${PR_NUMBER:-${{ github.event.pull_request.number }}}"
 BUCKET="${BUCKET:-${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}}"
 
-FUNCTIONS=(initPayment processPayment getDetails testCert)
 PREFIX="artifacts/pr-${PR_NUMBER}/${GIT_SHA}"   #this costructs the path in s3 for PR-env by default
 MANIFEST_KEY="manifests/pr-${PR_NUMBER}-${GIT_SHA}.json"    #we need to over-ride this step in dev_deploy job later.
 
