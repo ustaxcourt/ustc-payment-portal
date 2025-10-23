@@ -5,6 +5,6 @@ variable "build_artifacts_bucket_name" {
 
 
 variable "deployer_role_arn" {
-  type = string
-  description = "Deployer role arn"
+  type        = string
+  description = "Deployer role ARN (GitHub Actions deployer role in dev)"
 }
