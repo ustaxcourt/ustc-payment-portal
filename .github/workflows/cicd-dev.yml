@@ -298,7 +298,7 @@ jobs:
         id: upload_artifacts_dev
         working-directory: terraform/scripts
         run: |
-          xport GIT_SHA="${{ github.sha }}"
+          export GIT_SHA="${{ github.sha }}"
           export PR_NUMBER="dev"  # temporary label to isolate dev artifacts/manifest
           export BUCKET="${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}"
           ./upload_lambda_artifacts_s3.sh
@@ -317,6 +317,16 @@ jobs:
       - name: Terraform Plan (dev)
         id: plan_dev
         working-directory: terraform/environments/dev
+        env:
+          TF_VAR_artifact_bucket: ${{ steps.upload_artifacts_dev.outputs.artifact_bucket }}
+          TF_VAR_initPayment_s3_key: ${{ steps.upload_artifacts_dev.outputs.initPayment_s3_key }}
+          TF_VAR_processPayment_s3_key: ${{ steps.upload_artifacts_dev.outputs.processPayment_s3_key }}
+          TF_VAR_getDetails_s3_key: ${{ steps.upload_artifacts_dev.outputs.getDetails_s3_key }}
+          TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_dev.outputs.testCert_s3_key }}
+          TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.initPayment_source_code_hash }}
+          TF_VAR_processPayment_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.processPayment_source_code_hash }}
+          TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.getDetails_source_code_hash }}
+          TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.testCert_source_code_hash }}
         run: |
           terraform plan -input=false -out=tfplan
           terraform show -no-color tfplan > tfplan.txt || true
@@ -332,4 +342,14 @@ jobs:
 
       - name: Terraform Apply (dev)
         working-directory: terraform/environments/dev
+        env:
+          TF_VAR_artifact_bucket: ${{ steps.upload_artifacts_dev.outputs.artifact_bucket }}
+          TF_VAR_initPayment_s3_key: ${{ steps.upload_artifacts_dev.outputs.initPayment_s3_key }}
+          TF_VAR_processPayment_s3_key: ${{ steps.upload_artifacts_dev.outputs.processPayment_s3_key }}
+          TF_VAR_getDetails_s3_key: ${{ steps.upload_artifacts_dev.outputs.getDetails_s3_key }}
+          TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_dev.outputs.testCert_s3_key }}
+          TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.initPayment_source_code_hash }}
+          TF_VAR_processPayment_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.processPayment_source_code_hash }}
+          TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.getDetails_source_code_hash }}
+          TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.testCert_source_code_hash }}
         run: terraform apply -auto-approve tfplan
