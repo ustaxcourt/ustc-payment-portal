@@ -64,14 +64,26 @@ module "iam_cicd" {
 }
 
 module "artifacts_bucket" {
+  count  = local.environment == "dev" ? 1 : 0
   source = "../../modules/artifacts_bucket"
 
   build_artifacts_bucket_name = "ustc-payment-portal-build-artifacts"
   deployer_role_arn           = module.iam_cicd.role_arn
 }
 
+# Reference existing bucket in PR workspaces
+data "aws_s3_bucket" "existing_artifacts" {
+  count  = local.environment != "dev" ? 1 : 0
+  bucket = "ustc-payment-portal-build-artifacts"
+}
+
+data "aws_iam_policy" "existing_artifacts_policy" {
+  count = local.environment != "dev" ? 1 : 0
+  name  = "build-artifacts-access-policy"
+}
+
 #attaching artifact bucket policy to our deployer role (github --> Aws deployment)
 resource "aws_iam_role_policy_attachment" "ci_build_artifacts" {
   role       = module.iam_cicd.role_name
-  policy_arn = module.artifacts_bucket.build_artifacts_access_policy_arn
+  policy_arn = local.environment == "dev" ? module.artifacts_bucket[0].build_artifacts_access_policy_arn : data.aws_iam_policy.existing_artifacts_policy[0].arn
 }
