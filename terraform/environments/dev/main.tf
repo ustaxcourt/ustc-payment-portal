@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 data "terraform_remote_state" "foundation" {
   backend = "s3"
   config = {
@@ -77,13 +79,8 @@ data "aws_s3_bucket" "existing_artifacts" {
   bucket = "ustc-payment-portal-build-artifacts"
 }
 
-data "aws_iam_policy" "existing_artifacts_policy" {
-  count = local.environment != "dev" ? 1 : 0
-  name  = "build-artifacts-access-policy"
-}
-
-#attaching artifact bucket policy to our deployer role (github --> Aws deployment)
+# Attach artifact bucket policy to deployer role (GitHub Actions --> AWS deployment)
 resource "aws_iam_role_policy_attachment" "ci_build_artifacts" {
   role       = module.iam_cicd.role_name
-  policy_arn = local.environment == "dev" ? module.artifacts_bucket[0].build_artifacts_access_policy_arn : data.aws_iam_policy.existing_artifacts_policy[0].arn
+  policy_arn = local.environment == "dev" ? module.artifacts_bucket[0].build_artifacts_access_policy_arn : local.artifacts_bucket_policy_arn
 }
