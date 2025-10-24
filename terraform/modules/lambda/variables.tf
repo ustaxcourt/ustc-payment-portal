@@ -44,3 +44,18 @@ variable "log_retention_days" {
   default     = 14
 }
 
+variable "artifact_bucket" {
+  description = "S3 bucket containing Lambda artifacts"
+  type        = string
+}
+
+variable "artifact_s3_keys" {
+  description = "Map of function names to S3 keys for artifacts"
+  type        = map(string)
+}
+
+variable "source_code_hashes" {
+  description = "Map of function names to base64-encoded SHA256 hashes"
+  type        = map(string)
+}
+

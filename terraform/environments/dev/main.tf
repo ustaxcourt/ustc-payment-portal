@@ -16,6 +16,21 @@ module "lambda" {
   subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
   security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
   environment_variables     = local.lambda_env
+
+  artifact_bucket = var.artifact_bucket
+  artifact_s3_keys = {
+    initPayment    = var.initPayment_s3_key
+    processPayment = var.processPayment_s3_key
+    getDetails     = var.getDetails_s3_key
+    testCert       = var.testCert_s3_key
+  }
+  source_code_hashes = {
+    initPayment    = var.initPayment_source_code_hash
+    processPayment = var.processPayment_source_code_hash
+    getDetails     = var.getDetails_source_code_hash
+    testCert       = var.testCert_source_code_hash
+  }
+
   tags = {
     Env     = local.environment
     Project = "ustc-payment-portal"
