@@ -23,7 +23,11 @@ for dir in ../../dist/*; do
   dir=${dir%*/}      # remove the trailing "/"
   FUNC=${dir##*/}  # grab everything after the final "/"
   echo "${FUNC}"
-  ZIP="dist/${FUNC}.zip"
+  ZIP="../../dist/${FUNC}.zip"
+
+  # Create zip file from the directory
+  echo "Creating zip file for ${FUNC}..."
+  (cd "$dir" && zip -r "../${FUNC}.zip" .)
 
   S3_KEY="${PREFIX}/${FUNC}.zip"
   HASH_B64="$(openssl dgst -sha256 -binary "$ZIP" | base64)"
