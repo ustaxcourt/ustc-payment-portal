@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 data "terraform_remote_state" "foundation" {
   backend = "s3"
   config = {
@@ -16,6 +18,21 @@ module "lambda" {
   subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
   security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
   environment_variables     = local.lambda_env
+
+  artifact_bucket = var.artifact_bucket
+  artifact_s3_keys = {
+    initPayment    = var.initPayment_s3_key
+    processPayment = var.processPayment_s3_key
+    getDetails     = var.getDetails_s3_key
+    testCert       = var.testCert_s3_key
+  }
+  source_code_hashes = {
+    initPayment    = var.initPayment_source_code_hash
+    processPayment = var.processPayment_source_code_hash
+    getDetails     = var.getDetails_source_code_hash
+    testCert       = var.testCert_source_code_hash
+  }
+
   tags = {
     Env     = local.environment
     Project = "ustc-payment-portal"
@@ -48,3 +65,22 @@ module "iam_cicd" {
   create_lambda_exec_role  = false
 }
 
+module "artifacts_bucket" {
+  count  = local.environment == "dev" ? 1 : 0
+  source = "../../modules/artifacts_bucket"
+
+  build_artifacts_bucket_name = "ustc-payment-portal-build-artifacts"
+  deployer_role_arn           = module.iam_cicd.role_arn
+}
+
+# Reference existing bucket in PR workspaces
+data "aws_s3_bucket" "existing_artifacts" {
+  count  = local.environment != "dev" ? 1 : 0
+  bucket = "ustc-payment-portal-build-artifacts"
+}
+
+# Attach artifact bucket policy to deployer role (GitHub Actions --> AWS deployment)
+resource "aws_iam_role_policy_attachment" "ci_build_artifacts" {
+  role       = module.iam_cicd.role_name
+  policy_arn = local.environment == "dev" ? module.artifacts_bucket[0].build_artifacts_access_policy_arn : local.artifacts_bucket_policy_arn
+}
