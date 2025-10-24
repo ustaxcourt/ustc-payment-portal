@@ -36,22 +36,6 @@ resource "aws_s3_bucket_public_access_block" "build_artifacts" {
   restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "build_artifacts" {
-  bucket = aws_s3_bucket.build_artifacts.id
-
-  rule {
-    id     = "delete-old-artifacts"
-    status = "Enabled"
-
-    filter {}
-
-    expiration {
-      days = 90
-    }
-  }
-}
-
-
 
 resource "aws_iam_policy" "build_artifacts_access_policy" {
   name        = "build-artifacts-access-policy"
