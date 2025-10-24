@@ -43,6 +43,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "build_artifacts" {
     id     = "delete-old-artifacts"
     status = "Enabled"
 
+    filter {}
+
     expiration {
       days = 90
     }
