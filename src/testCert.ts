@@ -28,6 +28,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
     });
 
     console.log(result);
+    console.log("SALOME TEST LOG - TO BE REMOVED");
     const resultText = await result.text();
 
     return {
