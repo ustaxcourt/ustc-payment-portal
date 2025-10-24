@@ -39,12 +39,12 @@ output "paygov_dev_server_token_secret_id" {
 }
 
 output "build_artifacts_bucket_name" {
-  value       = module.artifacts_bucket.bucket_name
+  value       = local.environment == "dev" ? module.artifacts_bucket[0].bucket_name : data.aws_s3_bucket.existing_artifacts[0].bucket
   description = "Name for build artifacts bucket"
 }
 
 output "build_artifacts_bucket_arn" {
-  value       = module.artifacts_bucket.bucket_arn
+  value       = local.environment == "dev" ? module.artifacts_bucket[0].bucket_arn : data.aws_s3_bucket.existing_artifacts[0].arn
   description = "ARN for build artifacts bucket"
 
 }
