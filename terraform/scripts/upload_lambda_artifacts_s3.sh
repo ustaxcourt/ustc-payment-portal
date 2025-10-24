@@ -5,9 +5,15 @@ if ! command -v jq >/dev/null 2>&1; then
   sudo apt-get update -y && sudo apt-get install -y jq
 fi
 
-GIT_SHA="${GIT_SHA:-${{ github.sha }}}"
-PR_NUMBER="${PR_NUMBER:-${{ github.event.pull_request.number }}}"
-BUCKET="${BUCKET:-${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}}"
+# Environment variables must be set by caller:
+# - GIT_SHA: Git commit SHA
+# - PR_NUMBER: Pull request number or environment name
+# - BUCKET: S3 bucket name for artifacts
+
+if [ -z "$GIT_SHA" ] || [ -z "$PR_NUMBER" ] || [ -z "$BUCKET" ]; then
+  echo "Error: Required environment variables not set (GIT_SHA, PR_NUMBER, BUCKET)"
+  exit 1
+fi
 
 PREFIX="artifacts/pr-${PR_NUMBER}/${GIT_SHA}"   #this costructs the path in s3 for PR-env by default
 MANIFEST_KEY="manifests/pr-${PR_NUMBER}-${GIT_SHA}.json"    #we need to over-ride this step in dev_deploy job later.
