@@ -275,18 +275,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Lambda
-        run: npm run build:lambda
+          fetch-depth: 2 # Need history to find merge commit
 
       - name: Configure AWS Credentials (OIDC - Dev)
         uses: aws-actions/configure-aws-credentials@v4
@@ -294,14 +284,34 @@ jobs:
           role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Upload Lambda Artifacts to S3 (Dev)
-        id: upload_artifacts_dev
+      - name: Extract PR Number from Merge Commit
+        id: extract_pr
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+
+          # Extract PR number from "Merge pull request #123" format
+          if [[ "$COMMIT_MSG" =~ Merge\ pull\ request\ \#([0-9]+) ]]; then
+            PR_NUM="${BASH_REMATCH[1]}"
+            echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
+            echo "Found PR number: $PR_NUM"
+          else
+            echo "Error: Could not extract PR number from merge commit"
+            echo "This deployment must be triggered by merging a PR"
+            exit 1
+          fi
+
+      - name: Promote Lambda Artifacts (PR → Dev)
+        id: promote_artifacts
         working-directory: terraform/scripts
+        env:
+          ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}
         run: |
           export GIT_SHA="${{ github.sha }}"
-          export PR_NUMBER="dev"  # temporary label to isolate dev artifacts/manifest
-          export BUCKET="${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}"
-          ./upload_lambda_artifacts_s3.sh
+          export PR_NUMBER="${{ steps.extract_pr.outputs.pr_number }}"
+          export BUCKET="${ARTIFACT_BUCKET}"
+          export TARGET_ENV="dev"
+          ./promote_artifacts_s3.sh
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -318,15 +328,15 @@ jobs:
         id: plan_dev
         working-directory: terraform/environments/dev
         env:
-          TF_VAR_artifact_bucket: ${{ steps.upload_artifacts_dev.outputs.artifact_bucket }}
-          TF_VAR_initPayment_s3_key: ${{ steps.upload_artifacts_dev.outputs.initPayment_s3_key }}
-          TF_VAR_processPayment_s3_key: ${{ steps.upload_artifacts_dev.outputs.processPayment_s3_key }}
-          TF_VAR_getDetails_s3_key: ${{ steps.upload_artifacts_dev.outputs.getDetails_s3_key }}
-          TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_dev.outputs.testCert_s3_key }}
-          TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.initPayment_source_code_hash }}
-          TF_VAR_processPayment_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.processPayment_source_code_hash }}
-          TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.getDetails_source_code_hash }}
-          TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.testCert_source_code_hash }}
+          TF_VAR_artifact_bucket: ${{ steps.promote_artifacts.outputs.artifact_bucket }}
+          TF_VAR_initPayment_s3_key: ${{ steps.promote_artifacts.outputs.initPayment_s3_key }}
+          TF_VAR_processPayment_s3_key: ${{ steps.promote_artifacts.outputs.processPayment_s3_key }}
+          TF_VAR_getDetails_s3_key: ${{ steps.promote_artifacts.outputs.getDetails_s3_key }}
+          TF_VAR_testCert_s3_key: ${{ steps.promote_artifacts.outputs.testCert_s3_key }}
+          TF_VAR_initPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.initPayment_source_code_hash }}
+          TF_VAR_processPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.processPayment_source_code_hash }}
+          TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
+          TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
         run: |
           terraform plan -input=false -out=tfplan
           terraform show -no-color tfplan > tfplan.txt || true
@@ -343,13 +353,13 @@ jobs:
       - name: Terraform Apply (dev)
         working-directory: terraform/environments/dev
         env:
-          TF_VAR_artifact_bucket: ${{ steps.upload_artifacts_dev.outputs.artifact_bucket }}
-          TF_VAR_initPayment_s3_key: ${{ steps.upload_artifacts_dev.outputs.initPayment_s3_key }}
-          TF_VAR_processPayment_s3_key: ${{ steps.upload_artifacts_dev.outputs.processPayment_s3_key }}
-          TF_VAR_getDetails_s3_key: ${{ steps.upload_artifacts_dev.outputs.getDetails_s3_key }}
-          TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_dev.outputs.testCert_s3_key }}
-          TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.initPayment_source_code_hash }}
-          TF_VAR_processPayment_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.processPayment_source_code_hash }}
-          TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.getDetails_source_code_hash }}
-          TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_dev.outputs.testCert_source_code_hash }}
+          TF_VAR_artifact_bucket: ${{ steps.promote_artifacts.outputs.artifact_bucket }}
+          TF_VAR_initPayment_s3_key: ${{ steps.promote_artifacts.outputs.initPayment_s3_key }}
+          TF_VAR_processPayment_s3_key: ${{ steps.promote_artifacts.outputs.processPayment_s3_key }}
+          TF_VAR_getDetails_s3_key: ${{ steps.promote_artifacts.outputs.getDetails_s3_key }}
+          TF_VAR_testCert_s3_key: ${{ steps.promote_artifacts.outputs.testCert_s3_key }}
+          TF_VAR_initPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.initPayment_source_code_hash }}
+          TF_VAR_processPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.processPayment_source_code_hash }}
+          TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
+          TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
         run: terraform apply -auto-approve tfplan
