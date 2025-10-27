@@ -9,14 +9,46 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 # Environment variables must be set by caller:
-# - GIT_SHA: Git commit SHA
+# - GIT_SHA: Git commit SHA (optional - will auto-discover from S3 if not provided)
 # - PR_NUMBER: Pull request number (source)
 # - BUCKET: S3 bucket name for artifacts
 # - TARGET_ENV: Target environment (dev, staging, prod)
 
-if [ -z "$GIT_SHA" ] || [ -z "$PR_NUMBER" ] || [ -z "$BUCKET" ] || [ -z "$TARGET_ENV" ]; then
-  echo "Error: Required environment variables not set (GIT_SHA, PR_NUMBER, BUCKET, TARGET_ENV)"
+if [ -z "$PR_NUMBER" ] || [ -z "$BUCKET" ] || [ -z "$TARGET_ENV" ]; then
+  echo "Error: Required environment variables not set (PR_NUMBER, BUCKET, TARGET_ENV)"
   exit 1
+fi
+
+# Auto-discover GIT_SHA from S3 if not provided
+if [ -z "$GIT_SHA" ]; then
+  echo "GIT_SHA not provided, discovering latest SHA from S3..."
+
+  # List objects in the PR prefix and find the most recently modified one
+  PR_PREFIX="artifacts/pr-${PR_NUMBER}/"
+
+  # Get the latest object key and extract the SHA from it
+  # S3 path structure: artifacts/pr-123/abc123def456.../functionName.zip
+  LATEST_KEY=$(aws s3api list-objects-v2 \
+    --bucket "${BUCKET}" \
+    --prefix "${PR_PREFIX}" \
+    --query 'reverse(sort_by(Contents, &LastModified))[0].Key' \
+    --output text)
+
+  if [ -z "$LATEST_KEY" ] || [ "$LATEST_KEY" = "None" ]; then
+    echo "Error: No artifacts found for PR ${PR_NUMBER} in s3://${BUCKET}/${PR_PREFIX}"
+    echo "Please ensure the PR build has uploaded artifacts before attempting to promote."
+    exit 1
+  fi
+
+  # Extract SHA from path: artifacts/pr-123/SHA/file.zip -> SHA
+  GIT_SHA=$(echo "$LATEST_KEY" | cut -d'/' -f3)
+
+  if [ -z "$GIT_SHA" ]; then
+    echo "Error: Could not extract GIT_SHA from S3 path: $LATEST_KEY"
+    exit 1
+  fi
+
+  echo "Discovered GIT_SHA: $GIT_SHA"
 fi
 
 SOURCE_PREFIX="artifacts/pr-${PR_NUMBER}/${GIT_SHA}"
