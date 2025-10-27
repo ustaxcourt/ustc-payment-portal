@@ -61,7 +61,8 @@ resource "aws_iam_policy" "build_artifacts_access_policy" {
           "s3:GetBucketLogging",
           "s3:GetReplicationConfiguration",
           "s3:GetBucketObjectLockConfiguration",
-          "s3:GetBucketTagging"
+          "s3:GetBucketTagging",
+          "s3:GetBucketRequestPayment"
         ]
         Resource = aws_s3_bucket.build_artifacts.arn
       },
