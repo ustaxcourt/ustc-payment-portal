@@ -290,8 +290,8 @@ jobs:
           COMMIT_MSG=$(git log -1 --pretty=%B)
           echo "Commit message: $COMMIT_MSG"
 
-          # Extract PR number from "Merge pull request #123" format
-          if [[ "$COMMIT_MSG" =~ Merge\ pull\ request\ \#([0-9]+) ]]; then
+          # Extract PR number from any format containing #<number>
+          if [[ "$COMMIT_MSG" =~ \#([0-9]+) ]]; then
             PR_NUM="${BASH_REMATCH[1]}"
             echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
             echo "Found PR number: $PR_NUM"
