@@ -63,7 +63,7 @@ jobs:
         id: upload_artifacts_pr
         working-directory: terraform/scripts
         run: |
-          export GIT_SHA="${{ github.sha }}"
+          export GIT_SHA="${{ github.event.pull_request.head.sha }}"
           export PR_NUMBER="${{ github.event.pull_request.number }}"
           export BUCKET="${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}"
           ./upload_lambda_artifacts_s3.sh
