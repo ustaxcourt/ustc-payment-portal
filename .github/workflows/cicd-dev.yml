@@ -310,6 +310,7 @@ jobs:
           export PR_NUMBER="${{ steps.extract_pr.outputs.pr_number }}"
           export BUCKET="${ARTIFACT_BUCKET}"
           export TARGET_ENV="dev"
+          export GIT_SHA="" # Initialize as empty to allow auto-discovery
           ./promote_artifacts_s3.sh
 
       - name: Setup Terraform
