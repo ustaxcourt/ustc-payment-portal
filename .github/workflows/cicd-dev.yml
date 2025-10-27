@@ -307,7 +307,6 @@ jobs:
         env:
           ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}
         run: |
-          export GIT_SHA="${{ github.sha }}"
           export PR_NUMBER="${{ steps.extract_pr.outputs.pr_number }}"
           export BUCKET="${ARTIFACT_BUCKET}"
           export TARGET_ENV="dev"
