@@ -362,3 +362,19 @@ jobs:
           TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
         run: terraform apply -auto-approve tfplan
+
+      - name: Cleanup PR artifacts (soft delete)
+        if: ${{ success() }}
+        env:
+          BUCKET: ${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}
+          PR_NUMBER: ${{ steps.extract_pr.outputs.pr_number }}
+          PR_HEAD_SHA: ${{ steps.pr_info.outputs.pr_head_sha }}
+        run: |
+          set -euo pipefail
+          PREFIX="artifacts/pr-${PR_NUMBER}/${PR_HEAD_SHA}/"
+          if [ -z "${PREFIX:-}" ]; then
+            echo "Cleanup skipped: empty PREFIX"
+            exit 0
+          fi
+          echo "Soft deleting s3://$BUCKET/$PREFIX"
+          aws s3 rm "s3://$BUCKET/$PREFIX" --recursive || true
