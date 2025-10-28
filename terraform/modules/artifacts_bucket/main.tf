@@ -92,6 +92,11 @@ resource "aws_s3_bucket_policy" "build_artifacts" {
   count  = var.manage_bucket_policy ? 1 : 0
   bucket = aws_s3_bucket.build_artifacts.id
 
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = [policy]
+  }
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
