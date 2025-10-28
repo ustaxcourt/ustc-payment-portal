@@ -371,7 +371,11 @@ jobs:
           PR_HEAD_SHA: ${{ steps.pr_info.outputs.pr_head_sha }}
         run: |
           set -euo pipefail
-          PREFIX="artifacts/pr-${PR_NUMBER}/${PR_HEAD_SHA}/"
+          if [ -z "${PR_NUMBER:-}" ]; then
+            echo "Cleanup skipped: empty PR_NUMBER"
+            exit 0
+          fi
+          PREFIX="artifacts/pr-${PR_NUMBER}/"
           if [ -z "${PREFIX:-}" ]; then
             echo "Cleanup skipped: empty PREFIX"
             exit 0
