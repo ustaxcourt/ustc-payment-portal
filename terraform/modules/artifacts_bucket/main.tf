@@ -51,7 +51,18 @@ resource "aws_iam_policy" "build_artifacts_access_policy" {
           "s3:ListBucket",
           "s3:GetBucketVersioning",
           "s3:GetLifecycleConfiguration",
-          "s3:GetBucketPolicy"
+          "s3:GetBucketPolicy",
+          "s3:GetBucketAcl",
+          "s3:GetBucketCORS",
+          "s3:GetBucketWebsite",
+          "s3:GetAccelerateConfiguration",
+          "s3:GetEncryptionConfiguration",
+          "s3:GetBucketPublicAccessBlock",
+          "s3:GetBucketLogging",
+          "s3:GetReplicationConfiguration",
+          "s3:GetBucketObjectLockConfiguration",
+          "s3:GetBucketTagging",
+          "s3:GetBucketRequestPayment"
         ]
         Resource = aws_s3_bucket.build_artifacts.arn
       },
@@ -107,7 +118,13 @@ resource "aws_s3_bucket_policy" "build_artifacts" {
           "s3:ListBucket",
           "s3:GetBucketVersioning",
           "s3:GetLifecycleConfiguration",
-          "s3:GetBucketPolicy"
+          "s3:GetBucketPolicy",
+          "s3:GetBucketAcl",
+          "s3:GetBucketCORS",
+          "s3:GetBucketWebsite",
+          "s3:GetAccelerateConfiguration",
+          "s3:GetEncryptionConfiguration",
+          "s3:GetBucketPublicAccessBlock"
         ]
         Resource = aws_s3_bucket.build_artifacts.arn
       },
