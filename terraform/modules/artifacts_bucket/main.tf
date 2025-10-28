@@ -89,6 +89,7 @@ resource "aws_iam_policy" "build_artifacts_access_policy" {
 
 #reminder: need to add cross account read access for staging deployer role later
 resource "aws_s3_bucket_policy" "build_artifacts" {
+  count  = var.manage_bucket_policy ? 1 : 0
   bucket = aws_s3_bucket.build_artifacts.id
 
   policy = jsonencode({
