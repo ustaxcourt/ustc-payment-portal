@@ -124,8 +124,7 @@ resource "aws_s3_bucket_policy" "build_artifacts" {
           "s3:GetBucketWebsite",
           "s3:GetAccelerateConfiguration",
           "s3:GetEncryptionConfiguration",
-          "s3:GetBucketPublicAccessBlock",
-          "s3:GetBucketRequestPayment"
+          "s3:GetBucketPublicAccessBlock"
         ]
         Resource = aws_s3_bucket.build_artifacts.arn
       },
