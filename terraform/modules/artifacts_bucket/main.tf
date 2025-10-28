@@ -49,7 +49,9 @@ resource "aws_iam_policy" "build_artifacts_access_policy" {
         Effect = "Allow"
         Action = [
           "s3:ListBucket",
-          "s3:GetBucketVersioning"
+          "s3:GetBucketVersioning",
+          "s3:GetLifecycleConfiguration",
+          "s3:GetBucketPolicy"
         ]
         Resource = aws_s3_bucket.build_artifacts.arn
       },
@@ -105,7 +107,7 @@ resource "aws_s3_bucket_policy" "build_artifacts" {
           "s3:ListBucket",
           "s3:GetBucketVersioning",
           "s3:GetLifecycleConfiguration",
-          "s3:GetBucketPolicy",
+          "s3:GetBucketPolicy"
         ]
         Resource = aws_s3_bucket.build_artifacts.arn
       },
