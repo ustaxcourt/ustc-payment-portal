@@ -73,7 +73,8 @@ resource "aws_iam_policy" "build_artifacts_access_policy" {
           "s3:GetObject",
           "s3:GetObjectVersion",
           "s3:PutObject",
-          "s3:PutObjectAcl"
+          "s3:PutObjectAcl",
+          "s3:DeleteObject"
         ]
         Resource = "${aws_s3_bucket.build_artifacts.arn}/*"
       }
@@ -138,7 +139,8 @@ resource "aws_s3_bucket_policy" "build_artifacts" {
           "s3:GetObject",
           "s3:GetObjectVersion",
           "s3:PutObject",
-          "s3:PutObjectAcl"
+          "s3:PutObjectAcl",
+          "s3:DeleteObject"
         ]
         Resource = "${aws_s3_bucket.build_artifacts.arn}/*"
       }
