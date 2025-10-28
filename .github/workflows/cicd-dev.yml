@@ -289,16 +289,15 @@ jobs:
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
           echo "Commit message: $COMMIT_MSG"
-
           # Extract PR number from any format containing #<number>
           if [[ "$COMMIT_MSG" =~ \#([0-9]+) ]]; then
             PR_NUM="${BASH_REMATCH[1]}"
             echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
             echo "Found PR number: $PR_NUM"
           else
-            echo "Error: Could not extract PR number from merge commit"
-            echo "This deployment must be triggered by merging a PR"
-            exit 1
+            PR_NUM=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/commits/${GITHUB_SHA}/pulls" | jq '.[0].number')
+            echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
           fi
 
       - name: Promote Lambda Artifacts (PR → Dev)
