@@ -216,6 +216,24 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         ]
       },
       {
+        Effect = "Allow", #iam policy management
+        Action = [
+          "iam:CreatePolicy",
+          "iam:DeletePolicy",
+          "iam:GetPolicy",
+          "iam:GetPolicyVersion",
+          "iam:ListPolicyVersions",
+          "iam:CreatePolicyVersion",
+          "iam:DeletePolicyVersion",
+          "iam:TagPolicy",
+          "iam:UntagPolicy"
+        ],
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/build-artifacts-access-policy",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/ustc-payment-processor-*"
+        ]
+      },
+      {
         Effect = "Allow",
         Action = [
           "ec2:AllocateAddress",
