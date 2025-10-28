@@ -372,5 +372,9 @@ jobs:
         run: |
           set -euo pipefail
           PREFIX="artifacts/pr-${PR_NUMBER}/${PR_HEAD_SHA}/"
+          if [ -z "${PREFIX:-}" ]; then
+            echo "Cleanup skipped: empty PREFIX"
+            exit 0
+          fi
           echo "Soft deleting s3://$BUCKET/$PREFIX"
           aws s3 rm "s3://$BUCKET/$PREFIX" --recursive || true
