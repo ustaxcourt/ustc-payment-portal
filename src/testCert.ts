@@ -17,6 +17,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
         const token = await getSecretString(tokenId);
         headers.Authorization = `Bearer ${token}`;
         headers.Authentication = headers.Authorization;
+        console.log('TESTING 1. TO BE REMOVED LATER')
       } catch {
         // Proceed without Authorization header if token fetch fails
       }
