@@ -1,6 +1,6 @@
 variable "build_artifacts_bucket_name" {
   description = "Name for build artifacts bucket"
-  type = string
+  type        = string
 }
 
 
