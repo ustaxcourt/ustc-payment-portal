@@ -21,8 +21,24 @@ env:
   TF_IN_AUTOMATION: "true"
 
 jobs:
+  check_actor:
+    name: Check if Dependabot
+    runs-on: ubuntu-latest
+    outputs:
+      is_dependabot: ${{ steps.check.outputs.is_dependabot }}
+    steps:
+      - id: check
+        run: |
+          # Determine if this run was triggered by Dependabot
+          if [[ "${{ github.actor }}" == "dependabot[bot]" ]] || [[ "${{ github.head_ref }}" == dependabot/* ]]; then
+            echo "is_dependabot=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_dependabot=false" >> $GITHUB_OUTPUT
+          fi
+
   pr_build_test_deploy:
-    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.actor != 'dependabot[bot]' && !startsWith(github.head_ref, 'dependabot/')
+    needs: check_actor
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
     name: PR Build/Test and Ephemeral Deploy (Dev Account)
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -197,7 +213,8 @@ jobs:
           npm run test:integration
 
   pr_cleanup:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.actor != 'dependabot[bot]' && !startsWith(github.head_ref, 'dependabot/')
+    needs: check_actor
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
     name: PR Cleanup (Destroy Ephemeral Env)
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -268,7 +285,8 @@ jobs:
           terraform workspace delete -force ${{ steps.ws.outputs.workspace }} || true
 
   deploy_dev:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'dependabot[bot]'
+    needs: check_actor
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: Deploy to Dev (on push to main)
     runs-on: ubuntu-latest
     timeout-minutes: 45
