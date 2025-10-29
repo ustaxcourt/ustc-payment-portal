@@ -22,7 +22,7 @@ env:
 
 jobs:
   pr_build_test_deploy:
-    if: (github.event_name == 'pull_request' && github.event.action != 'closed') && (${{ github.actor != 'dependabot[bot]' && !startsWith(github.head_ref, 'dependabot/') }})
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.actor != 'dependabot[bot]' && !startsWith(github.head_ref, 'dependabot/')
     name: PR Build/Test and Ephemeral Deploy (Dev Account)
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -197,7 +197,7 @@ jobs:
           npm run test:integration
 
   pr_cleanup:
-    if: (github.event_name == 'pull_request' && github.event.action == 'closed') && (${{ github.actor != 'dependabot[bot]' && !startsWith(github.head_ref, 'dependabot/') }})
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.actor != 'dependabot[bot]' && !startsWith(github.head_ref, 'dependabot/')
     name: PR Cleanup (Destroy Ephemeral Env)
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -268,7 +268,7 @@ jobs:
           terraform workspace delete -force ${{ steps.ws.outputs.workspace }} || true
 
   deploy_dev:
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') && (${{ github.actor != 'dependabot[bot]' && !startsWith(github.head_ref, 'dependabot/') }})
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'dependabot[bot]'
     name: Deploy to Dev (on push to main)
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -368,7 +368,6 @@ jobs:
         env:
           BUCKET: ${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}
           PR_NUMBER: ${{ steps.extract_pr.outputs.pr_number }}
-          PR_HEAD_SHA: ${{ steps.pr_info.outputs.pr_head_sha }}
         run: |
           set -euo pipefail
           if [ -z "${PR_NUMBER:-}" ]; then
