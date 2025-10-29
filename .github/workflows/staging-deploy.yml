@@ -1,0 +1,22 @@
+name: CICD - Staging
+
+on:
+  workflow_dispatch:
+  inputs:
+    release_tag:
+      description: 'Release Tag Number'
+      required: true
+      type: string
+
+
+jobs:
+  tag-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+    - name: Test
+      run: |
+      echo "Running workflow with ${{ inputs.release_tag }}"
+      echo "Ran the flow successfully!"
+
+
