@@ -72,6 +72,7 @@ module "artifacts_bucket" {
   build_artifacts_bucket_name = "ustc-payment-portal-build-artifacts"
   deployer_role_arn           = module.iam_cicd.role_arn
   manage_bucket_policy        = true
+  staging_deployer_role_arn   = "arn:aws:iam::747103385969:role/ustc-payment-processor-stg-cicd-deployer-role"
 }
 
 # Reference existing bucket in PR workspaces
