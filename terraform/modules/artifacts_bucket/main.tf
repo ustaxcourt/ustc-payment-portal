@@ -38,7 +38,7 @@ resource "aws_s3_bucket_public_access_block" "build_artifacts" {
 
 
 resource "aws_iam_policy" "build_artifacts_access_policy" {
-  name        = "build-artifacts-access-policy"
+  name        = "build-artifacts-access-policy-v2"
   description = "Policy for build artifacts storage (attach to CI/deployer role)"
 
   policy = jsonencode({
@@ -79,35 +79,35 @@ resource "aws_iam_policy" "build_artifacts_access_policy" {
         Resource = "${aws_s3_bucket.build_artifacts.arn}/*"
       },
       {
-  Sid    = "AllowStagingDeployerReadDevArtifacts"
-  Effect = "Allow"
-  Principal = {
-    AWS = var.staging_deployer_role_arn
-  }
-  Action = [
-    "s3:ListBucket",
-    "s3:GetBucketLocation"
-  ]
-  Resource = aws_s3_bucket.build_artifacts.arn
-  Condition = {
-    StringLike = {
-      "s3:prefix" = "artifacts/dev/*"
-    }
-  }
-},
-{
-  Sid    = "AllowStagingDeployerGetDevObjects"
-  Effect = "Allow"
-  Principal = {
-    AWS = var.staging_deployer_role_arn
-  }
-  Action = [
-    "s3:GetObject",
-    "s3:GetObjectVersion",
-    "s3:GetObjectTagging"
-  ]
-  Resource = "${aws_s3_bucket.build_artifacts.arn}/artifacts/dev/*"
-}
+        Sid    = "AllowStagingDeployerReadDevArtifacts"
+        Effect = "Allow"
+        Principal = {
+          AWS = var.staging_deployer_role_arn
+        }
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
+        ]
+        Resource = aws_s3_bucket.build_artifacts.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = "artifacts/dev/*"
+          }
+        }
+      },
+      {
+        Sid    = "AllowStagingDeployerGetDevObjects"
+        Effect = "Allow"
+        Principal = {
+          AWS = var.staging_deployer_role_arn
+        }
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:GetObjectTagging"
+        ]
+        Resource = "${aws_s3_bucket.build_artifacts.arn}/artifacts/dev/*"
+      }
     ]
   })
 
