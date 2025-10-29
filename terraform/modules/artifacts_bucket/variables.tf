@@ -14,3 +14,9 @@ variable "manage_bucket_policy" {
   type        = bool
   default     = false
 }
+
+variable "staging_deployer_role_arn" {
+  description = "ARN of the staging CI/CD deployer role that needs read access to dev artifacts"
+  type        = string
+  default     = null
+}
