@@ -14,9 +14,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-    - name: Test
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+         fetch-depth: 0  # Fetch all history for all tags and branches
+    - name: Tag Release
       run: |
       echo "Running workflow with ${{ inputs.release_tag }}"
       echo "Ran the flow successfully!"
+      git tag -a ${{ inputs.release_tag }} -m "Release ${{ inputs.release_tag }}"
+      git push origin ${{ inputs.release_tag }}
 
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: tag-release
+    environment:
+      name: staging
+      #url: https://your-app-url.com  # Update with your actual URL
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag }}
+
+      - name: Deploy release
+        run: |
+          echo "Deploying version ${{ inputs.release_tag }}"
 
