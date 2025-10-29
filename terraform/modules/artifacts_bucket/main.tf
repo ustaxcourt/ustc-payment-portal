@@ -38,8 +38,13 @@ resource "aws_s3_bucket_public_access_block" "build_artifacts" {
 
 
 resource "aws_iam_policy" "build_artifacts_access_policy" {
-  name        = "build-artifacts-access-policy-v2"
+  name        = "build-artifacts-access-policy"
   description = "Policy for build artifacts storage (attach to CI/deployer role)"
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = [policy]
+  }
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -77,36 +82,6 @@ resource "aws_iam_policy" "build_artifacts_access_policy" {
           "s3:DeleteObject"
         ]
         Resource = "${aws_s3_bucket.build_artifacts.arn}/*"
-      },
-      {
-        Sid    = "AllowStagingDeployerReadDevArtifacts"
-        Effect = "Allow"
-        Principal = {
-          AWS = var.staging_deployer_role_arn
-        }
-        Action = [
-          "s3:ListBucket",
-          "s3:GetBucketLocation"
-        ]
-        Resource = aws_s3_bucket.build_artifacts.arn
-        Condition = {
-          StringLike = {
-            "s3:prefix" = "artifacts/dev/*"
-          }
-        }
-      },
-      {
-        Sid    = "AllowStagingDeployerGetDevObjects"
-        Effect = "Allow"
-        Principal = {
-          AWS = var.staging_deployer_role_arn
-        }
-        Action = [
-          "s3:GetObject",
-          "s3:GetObjectVersion",
-          "s3:GetObjectTagging"
-        ]
-        Resource = "${aws_s3_bucket.build_artifacts.arn}/artifacts/dev/*"
       }
     ]
   })
@@ -179,6 +154,36 @@ resource "aws_s3_bucket_policy" "build_artifacts" {
           "s3:DeleteObject"
         ]
         Resource = "${aws_s3_bucket.build_artifacts.arn}/*"
+      },
+      {
+        Sid    = "AllowStagingDeployerReadDevArtifacts"
+        Effect = "Allow"
+        Principal = {
+          AWS = var.staging_deployer_role_arn
+        }
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
+        ]
+        Resource = aws_s3_bucket.build_artifacts.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = "artifacts/dev/*"
+          }
+        }
+      },
+      {
+        Sid    = "AllowStagingDeployerGetDevObjects"
+        Effect = "Allow"
+        Principal = {
+          AWS = var.staging_deployer_role_arn
+        }
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:GetObjectTagging"
+        ]
+        Resource = "${aws_s3_bucket.build_artifacts.arn}/artifacts/dev/*"
       }
     ]
   })
