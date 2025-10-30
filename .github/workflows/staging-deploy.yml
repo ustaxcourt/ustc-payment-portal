@@ -21,6 +21,7 @@ env:
 
 jobs:
   tag-release:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -28,13 +29,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Fetch all history for all tags and branches
-
       - name: Tag Release
+        env:
+          TAG: ${{ inputs.release_tag }}
         run: |
-          echo "Running workflow with ${{ inputs.release_tag }}"
-          echo "Ran the flow successfully!"
-          git tag -a ${{ inputs.release_tag }} -m "Release ${{ inputs.release_tag }}"
-          git push origin ${{ inputs.release_tag }}
+          set -euo pipefail
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "Tag ${TAG} already exists; skipping tag creation."
+          else
+            echo "Creating and pushing tag ${TAG}"
+            git tag -a "${TAG}" -m "Release ${TAG}"
+            git push origin "${TAG}"
+          fi
 
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -49,10 +55,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.release_tag }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.sha }}
 
       #to check of the release tag input isn't empty. just a defensive guard so we dont proceed with undefined tag and deploy wrong code.
       - name: Validate release tag input
+        if: github.event_name == 'workflow_dispatch'
         run: |
           set -euo pipefail
           TAG='${{ inputs.release_tag }}'
@@ -63,6 +70,7 @@ jobs:
 
       # finds exact commit sha that the tag points to and should show output as steps.rev.outputs.sha
       - name: Resolve tag commit SHA
+        if: github.event_name == 'workflow_dispatch'
         id: rev
         run: |
           set -euo pipefail
@@ -77,6 +85,8 @@ jobs:
       - name: Export artifact bucket (env)
         run: |
           echo "Dev bucket: $DEV_ARTIFACT_BUCKET"
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
 
       - name: Configure AWS Credentials (OIDC - Stg)
         uses: aws-actions/configure-aws-credentials@v4
