@@ -1,6 +1,9 @@
 name: CICD - Staging (Work in progress)
 
 on:
+  push: #This is temporary and needs to be removed once this branch is merged
+    branches:
+      - staging-deploy
   workflow_dispatch:
     inputs:
       release_tag:
