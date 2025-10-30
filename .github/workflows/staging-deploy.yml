@@ -80,3 +80,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.STAGING_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS caller identity (to be removed later)
+        run: aws sts get-caller-identity
