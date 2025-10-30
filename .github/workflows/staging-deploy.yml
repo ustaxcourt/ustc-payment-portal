@@ -48,6 +48,7 @@ jobs:
         with:
           ref: ${{ inputs.release_tag }}
 
+      #to check of the release tag input isn't empty. just a defensive guard so we dont proceed with undefined tag and deploy wrong code.
       - name: Validate release tag input
         run: |
           set -euo pipefail
@@ -57,6 +58,7 @@ jobs:
           fi
           echo "Using tag: ${TAG}"
 
+      # finds exact commit sha that the tag points to and should show output as steps.rev.outputs.sha
       - name: Resolve tag commit SHA
         id: rev
         run: |
