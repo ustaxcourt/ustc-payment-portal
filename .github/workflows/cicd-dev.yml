@@ -289,16 +289,30 @@ jobs:
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
           echo "Commit message: $COMMIT_MSG"
+          PR_NUM=""
+
           # Extract PR number from any format containing #<number>
           if [[ "$COMMIT_MSG" =~ \#([0-9]+) ]]; then
             PR_NUM="${BASH_REMATCH[1]}"
-            echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
-            echo "Found PR number: $PR_NUM"
+            echo "Found PR number from commit message: $PR_NUM"
           else
-            PR_NUM=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/commits/${GITHUB_SHA}/pulls" | jq '.[0].number')
-            echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
+            echo "PR number not found in commit message, trying API..."
+            API_RESULT=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/commits/${GITHUB_SHA}/pulls" | jq -r '.[0].number // empty')
+            if [[ "$API_RESULT" != "null" && -n "$API_RESULT" ]]; then
+              PR_NUM="$API_RESULT"
+              echo "Found PR number from API: $PR_NUM"
+            fi
           fi
+
+          # Validate PR number was extracted
+          if [[ -z "$PR_NUM" || "$PR_NUM" == "null" ]]; then
+            echo "ERROR: Could not extract PR number from commit or API"
+            echo "This deployment requires a valid PR number to promote artifacts"
+            exit 1
+          fi
+
+          echo "pr_number=$PR_NUM" >> $GITHUB_OUTPUT
 
       - name: Promote Lambda Artifacts (PR → Dev)
         id: promote_artifacts
@@ -368,7 +382,6 @@ jobs:
         env:
           BUCKET: ${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}
           PR_NUMBER: ${{ steps.extract_pr.outputs.pr_number }}
-          PR_HEAD_SHA: ${{ steps.pr_info.outputs.pr_head_sha }}
         run: |
           set -euo pipefail
           if [ -z "${PR_NUMBER:-}" ]; then
