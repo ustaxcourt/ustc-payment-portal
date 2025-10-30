@@ -1,0 +1,98 @@
+name: CICD - Staging (Work in progress)
+
+on:
+  push: #This is temporary and needs to be removed once this branch is merged
+    branches:
+      - staging-deploy
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to deploy (e.g., v1.2.3-rc.1 or v1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  DEV_ARTIFACT_BUCKET: ${{ vars.DEV_ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}
+
+jobs:
+  tag-release:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for all tags and branches
+      - name: Tag Release
+        env:
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "Tag ${TAG} already exists; skipping tag creation."
+          else
+            echo "Creating and pushing tag ${TAG}"
+            git tag -a "${TAG}" -m "Release ${TAG}"
+            git push origin "${TAG}"
+          fi
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    # needs: tag-release
+    environment:
+      name: staging
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.sha }}
+
+      #to check of the release tag input isn't empty. just a defensive guard so we dont proceed with undefined tag and deploy wrong code.
+      - name: Validate release tag input
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          TAG='${{ inputs.release_tag }}'
+          if [ -z "${TAG}" ]; then
+            echo "release_tag is required" >&2; exit 1
+          fi
+          echo "Using tag: ${TAG}"
+
+      # finds exact commit sha that the tag points to and should show output as steps.rev.outputs.sha
+      - name: Resolve tag commit SHA
+        if: github.event_name == 'workflow_dispatch'
+        id: rev
+        run: |
+          set -euo pipefail
+          TAG='${{ inputs.release_tag }}'
+          SHA=$(git rev-list -n 1 "${TAG}")
+          if [ -z "${SHA}" ]; then
+            echo "Unable to resolve commit for tag ${TAG}" >&2; exit 1
+          fi
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "Resolved SHA: ${SHA}"
+
+      - name: Export artifact bucket (env)
+        run: |
+          echo "Dev bucket: $DEV_ARTIFACT_BUCKET"
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+
+      - name: Configure AWS Credentials (OIDC - Stg)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.STAGING_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS caller identity (to be removed later)
+        run: aws sts get-caller-identity
