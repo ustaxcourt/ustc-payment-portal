@@ -59,6 +59,6 @@ module "iam_cicd" {
   state_lock_table_name    = local.state_lock_table_name
   state_object_keys        = local.state_object_keys
   lambda_exec_role_arn     = local.lambda_exec_role_arn
-  lambda_name_prefix       = local.name_prefix
+  name_prefix       = local.name_prefix
   create_lambda_exec_role  = false
 }
