@@ -116,19 +116,19 @@ jobs:
           echo "getDetails=${PREFIX}/getDetails.zip" >> $GITHUB_OUTPUT
           echo "testCert=${PREFIX}/testCert.zip" >> $GITHUB_OUTPUT
 
-      - name: Fetch artifact hashes (to see if tf change is needed)
-        id: hashes
-        run: |
-          set -euo pipefail
-          get_hash() {
-            KEY="$1"
-            aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "${KEY}" \
-              | jq -r '.Metadata.sha256_b64 // empty'
-          }
-          echo "initPayment=$(get_hash '${{ steps.artifacts.outputs.initPayment }}')" >> $GITHUB_OUTPUT
-          echo "processPayment=$(get_hash '${{ steps.artifacts.outputs.processPayment }}')" >> $GITHUB_OUTPUT
-          echo "getDetails=$(get_hash '${{ steps.artifacts.outputs.getDetails }}')" >> $GITHUB_OUTPUT
-          echo "testCert=$(get_hash '${{ steps.artifacts.outputs.testCert }}')" >> $GITHUB_OUTPUT
+      # - name: Fetch artifact hashes (to see if tf change is needed)
+      #   id: hashes
+      #   run: |
+      #     set -euo pipefail
+      #     get_hash() {
+      #       KEY="$1"
+      #       aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "${KEY}" \
+      #         | jq -r '.Metadata.sha256_b64 // empty'
+      #     }
+      #     echo "initPayment=$(get_hash '${{ steps.artifacts.outputs.initPayment }}')" >> $GITHUB_OUTPUT
+      #     echo "processPayment=$(get_hash '${{ steps.artifacts.outputs.processPayment }}')" >> $GITHUB_OUTPUT
+      #     echo "getDetails=$(get_hash '${{ steps.artifacts.outputs.getDetails }}')" >> $GITHUB_OUTPUT
+      #     echo "testCert=$(get_hash '${{ steps.artifacts.outputs.testCert }}')" >> $GITHUB_OUTPUT
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
