@@ -395,3 +395,43 @@ jobs:
           fi
           echo "Soft deleting s3://$BUCKET/$PREFIX"
           aws s3 rm "s3://$BUCKET/$PREFIX" --recursive || true
+
+      - name: Auto-tag dev release
+        if: ${{ success() && github.actor != 'dependabot[bot]' }}
+        run: |
+          set -euo pipefail
+
+          # Configure git for tagging
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Generate semantic version tag for dev release
+          git fetch --tags --force
+          LATEST_TAG=$(git describe --tags --match="v*" --abbrev=0 2>/dev/null || echo "v0.0.0")
+          BASE_VERSION=$(echo "$LATEST_TAG" | sed 's/v//' | sed 's/-.*$//')
+          BUILD_NUM="${{ github.run_number }}"
+          DEV_TAG="v${BASE_VERSION}-dev.${BUILD_NUM}"
+
+
+          echo "Creating Dev Release Tag"
+          echo "Tag: $DEV_TAG"
+          echo "Commit SHA: ${{ github.sha }}"
+          echo "PR Number: ${{ steps.extract_pr.outputs.pr_number }}"
+          echo "Artifacts Path: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/${{ github.sha }}/"
+
+          # Create and push tag
+          git tag -a "$DEV_TAG" -m "Dev release $DEV_TAG
+
+          Deployed from PR #${{ steps.extract_pr.outputs.pr_number }}
+          Commit: ${{ github.sha }}
+          Artifacts: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/${{ github.sha }}/
+
+          Ready for staging promotion!"
+
+          git push origin "$DEV_TAG"
+
+          echo ""
+          echo "SUCCESS: Created dev release tag: $DEV_TAG"
+          echo "This tag is ready for staging deployment! Deploy when you're ready."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

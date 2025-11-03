@@ -1,15 +1,14 @@
 name: CICD - Staging (Work in progress)
 
 on:
-  push: #This is temporary and needs to be removed once this branch is merged
-    branches:
-      - staging-deploy
-      - staging-workflow
+  push:
+    tags:
+      - "v*.*.*-rc.*"
   workflow_dispatch:
     inputs:
-      release_tag:
-        description: "Release tag to deploy (e.g., v1.2.3-rc.1 or v1.2.3)"
-        required: true
+      source_dev_tag:
+        description: "Dev tag to promote (e.g., v1.2.3-dev.45). Leave empty to auto-select latest valid dev tag."
+        required: false
         type: string
 
 permissions:
@@ -21,40 +20,98 @@ env:
   DEV_ARTIFACT_BUCKET: ${{ vars.DEV_ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}
 
 jobs:
-  tag-release:
+  promote:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    outputs:
+      release_tag: ${{ steps.tag.outputs.version }}
+      sha: ${{ steps.resolve.outputs.sha }}
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetch all history for all tags and branches
+          fetch-depth: 0
 
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Configure AWS Credentials (read dev artifacts)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Tag Release
-        env:
-          TAG: ${{ inputs.release_tag }}
+      - name: Select dev tag to promote
+        id: select
         run: |
           set -euo pipefail
-          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
-            echo "Tag ${TAG} already exists; skipping tag creation."
-          else
-            echo "Creating and pushing tag ${TAG}"
-            git tag -a "${TAG}" -m "Release ${TAG}"
-            git push origin "${TAG}"
+          if [ -n "${{ inputs.source_dev_tag }}" ]; then
+            echo "dev_tag=${{ inputs.source_dev_tag }}" >> $GITHUB_OUTPUT
+            exit 0
           fi
+          git fetch --tags --force
+          CANDIDATE=""
+          while read -r tag; do
+            [ -z "$tag" ] && continue
+            sha=$(git rev-list -n 1 "$tag" 2>/dev/null || true)
+            [ -z "$sha" ] && continue
+            if aws s3 ls "s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$sha/" >/dev/null 2>&1; then
+              CANDIDATE="$tag"; break
+            fi
+          done < <(git tag -l "v*-dev.*" --sort=-version:refname)
+          [ -z "$CANDIDATE" ] && { echo "No valid dev tag with artifacts found" >&2; exit 1; }
+          echo "dev_tag=$CANDIDATE" >> $GITHUB_OUTPUT
+
+      - name: Resolve SHA from dev tag
+        id: resolve
+        run: |
+          set -euo pipefail
+          TAG='${{ steps.select.outputs.dev_tag }}'
+          SHA=$(git rev-list -n 1 "$TAG")
+          [ -z "$SHA" ] && { echo "Unable to resolve commit for tag $TAG" >&2; exit 1; }
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "Resolved: $TAG -> $SHA"
+
+      - name: Validate artifacts exist for SHA
+        run: |
+          set -euo pipefail
+          SHA='${{ steps.resolve.outputs.sha }}'
+          echo "Validating artifacts for $SHA in s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
+          for f in initPayment processPayment getDetails testCert; do
+            KEY="artifacts/dev/${SHA}/${f}.zip"
+            aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "$KEY" >/dev/null 2>&1 || {
+              echo "Missing $KEY" >&2; exit 1; }
+          done
+          echo "All artifacts present"
+
+      - name: Generate RC version tag
+        id: tag
+        env:
+          TZ: UTC
+        run: |
+          set -euo pipefail
+          chmod +x terraform/scripts/generate_version_tag.sh
+          terraform/scripts/generate_version_tag.sh staging
+
+      - name: Create and push RC tag at resolved SHA
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          [ -z "${VERSION:-}" ] && { echo "Empty VERSION" >&2; exit 1; }
+          git fetch --tags --force
+          if git rev-parse -q --verify "refs/tags/${VERSION}" >/dev/null; then
+            echo "Tag ${VERSION} already exists; skipping"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          SHA='${{ steps.resolve.outputs.sha }}'
+          git tag -a "$VERSION" "$SHA" -m "Release candidate $VERSION for staging\nCommit: $SHA\nArtifacts: s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
+          git push origin "$VERSION"
 
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    # needs: tag-release
     environment:
       name: staging
 
@@ -62,32 +119,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.sha }}
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
 
-      #to check of the release tag input isn't empty. just a defensive guard so we dont proceed with undefined tag and deploy wrong code.
-      - name: Validate release tag input
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          set -euo pipefail
-          TAG='${{ inputs.release_tag }}'
-          if [ -z "${TAG}" ]; then
-            echo "release_tag is required" >&2; exit 1
-          fi
-          echo "Using tag: ${TAG}"
-
-      # finds exact commit sha that the tag points to and should show output as steps.rev.outputs.sha
       - name: Resolve tag commit SHA
-        if: github.event_name == 'workflow_dispatch'
         id: rev
         run: |
           set -euo pipefail
-          TAG='${{ inputs.release_tag }}'
-          SHA=$(git rev-list -n 1 "${TAG}")
-          if [ -z "${SHA}" ]; then
-            echo "Unable to resolve commit for tag ${TAG}" >&2; exit 1
-          fi
-          echo "sha=${SHA}" >> $GITHUB_OUTPUT
-          echo "Resolved SHA: ${SHA}"
+          TAG='${{ github.ref_name }}'
+          SHA=$(git rev-list -n 1 "$TAG")
+          [ -z "$SHA" ] && { echo "Unable to resolve commit for tag $TAG" >&2; exit 1; }
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "Resolved: $TAG -> $SHA"
 
       - name: Export artifact bucket (env)
         run: |
@@ -108,7 +151,7 @@ jobs:
         id: artifacts
         run: |
           set -euo pipefail
-          SHA='${{ steps.rev.outputs.sha || github.sha }}'
+          SHA='${{ steps.rev.outputs.sha }}'
           PREFIX="artifacts/dev/${SHA}"
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
           echo "initPayment=${PREFIX}/initPayment.zip" >> $GITHUB_OUTPUT
