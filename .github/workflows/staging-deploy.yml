@@ -4,6 +4,7 @@ on:
   push: #This is temporary and needs to be removed once this branch is merged
     branches:
       - staging-deploy
+      - staging-workflow
   workflow_dispatch:
     inputs:
       release_tag:
@@ -102,3 +103,58 @@ jobs:
 
       - name: Verify AWS caller identity (to be removed later)
         run: aws sts get-caller-identity
+
+      - name: Build artifact key map (dev bucket)
+        id: artifacts
+        run: |
+          set -euo pipefail
+          SHA='${{ steps.rev.outputs.sha || github.sha }}'
+          PREFIX="artifacts/dev/${SHA}"
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "initPayment=${PREFIX}/initPayment.zip" >> $GITHUB_OUTPUT
+          echo "processPayment=${PREFIX}/processPayment.zip" >> $GITHUB_OUTPUT
+          echo "getDetails=${PREFIX}/getDetails.zip" >> $GITHUB_OUTPUT
+          echo "testCert=${PREFIX}/testCert.zip" >> $GITHUB_OUTPUT
+
+      # - name: Fetch artifact hashes (to see if tf change is needed)
+      #   id: hashes
+      #   run: |
+      #     set -euo pipefail
+      #     get_hash() {
+      #       KEY="$1"
+      #       aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "${KEY}" \
+      #         | jq -r '.Metadata.sha256_b64 // empty'
+      #     }
+      #     echo "initPayment=$(get_hash '${{ steps.artifacts.outputs.initPayment }}')" >> $GITHUB_OUTPUT
+      #     echo "processPayment=$(get_hash '${{ steps.artifacts.outputs.processPayment }}')" >> $GITHUB_OUTPUT
+      #     echo "getDetails=$(get_hash '${{ steps.artifacts.outputs.getDetails }}')" >> $GITHUB_OUTPUT
+      #     echo "testCert=$(get_hash '${{ steps.artifacts.outputs.testCert }}')" >> $GITHUB_OUTPUT
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+          terraform_version: ${{ vars.TERRAFORM_VERSION || '1.7.5' }}
+
+      - name: Terraform Init (staging)
+        working-directory: terraform/environments/stg
+        run: |
+          terraform init -input=false -backend-config=backend.hcl -reconfigure
+
+      - name: Terraform Plan (staging)
+        id: plan
+        working-directory: terraform/environments/stg
+        env:
+          TF_VAR_artifact_bucket: ${{ env.DEV_ARTIFACT_BUCKET }}
+          TF_VAR_initPayment_s3_key: ${{ steps.artifacts.outputs.initPayment }}
+          TF_VAR_processPayment_s3_key: ${{ steps.artifacts.outputs.processPayment }}
+          TF_VAR_getDetails_s3_key: ${{ steps.artifacts.outputs.getDetails }}
+          TF_VAR_testCert_s3_key: ${{ steps.artifacts.outputs.testCert }}
+          TF_VAR_initPayment_source_code_hash: ${{ steps.hashes.outputs.initPayment }}
+          TF_VAR_processPayment_source_code_hash: ${{ steps.hashes.outputs.processPayment }}
+          TF_VAR_getDetails_source_code_hash: ${{ steps.hashes.outputs.getDetails }}
+          TF_VAR_testCert_source_code_hash: ${{ steps.hashes.outputs.testCert }}
+        run: |
+          set -euo pipefail
+          terraform plan -input=false -out=tfplan
+          terraform show -no-color tfplan > tfplan.txt || true
