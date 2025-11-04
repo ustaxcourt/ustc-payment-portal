@@ -110,7 +110,6 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment:
       name: staging
