@@ -270,6 +270,9 @@ jobs:
   deploy_dev:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: Deploy to Dev (on push to main)
+    permissions:
+      contents: write
+      id-token: write
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -325,6 +328,24 @@ jobs:
           export TARGET_ENV="dev"
           export GIT_SHA="" # Initialize as empty to allow auto-discovery
           ./promote_artifacts_s3.sh
+
+      - name: Resolve deploy SHA from promoted artifact key
+        id: resolve_deploy_sha
+        run: |
+          set -euo pipefail
+          KEY='${{ steps.promote_artifacts.outputs.initPayment_s3_key }}'
+          if [ -z "$KEY" ]; then
+            echo "ERROR: initPayment_s3_key output is empty; cannot resolve deploy SHA" >&2
+            exit 1
+          fi
+          # Expected format: artifacts/dev/<SHA>/initPayment.zip
+          DEPLOY_SHA=$(echo "$KEY" | awk -F'/' '{print $(NF-1)}')
+          if [ -z "$DEPLOY_SHA" ]; then
+            echo "ERROR: Failed to derive deploy SHA from key: $KEY" >&2
+            exit 1
+          fi
+          echo "sha=$DEPLOY_SHA" >> $GITHUB_OUTPUT
+          echo "Resolved deploy SHA (from promoted artifacts): $DEPLOY_SHA"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -395,3 +416,45 @@ jobs:
           fi
           echo "Soft deleting s3://$BUCKET/$PREFIX"
           aws s3 rm "s3://$BUCKET/$PREFIX" --recursive || true
+
+      - name: Auto-tag dev release
+        if: ${{ success() && github.actor != 'dependabot[bot]' }}
+        run: |
+          set -euo pipefail
+
+          # Configure git for tagging
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Generate semantic version tag for dev release
+          git fetch --tags --force
+          LATEST_TAG=$(git describe --tags --match="v*" --abbrev=0 2>/dev/null || echo "v0.0.0")
+          BASE_VERSION=$(echo "$LATEST_TAG" | sed 's/v//' | sed 's/-.*$//')
+          BUILD_NUM="${{ github.run_number }}"
+          DEV_TAG="v${BASE_VERSION}-dev.${BUILD_NUM}"
+
+
+          echo "Creating Dev Release Tag"
+          echo "Tag: $DEV_TAG"
+          echo "Commit SHA: ${{ steps.resolve_deploy_sha.outputs.sha }}"
+          echo "PR Number: ${{ steps.extract_pr.outputs.pr_number }}"
+          echo "Artifacts Path: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/${{ steps.resolve_deploy_sha.outputs.sha }}/"
+
+          # Create and push tag
+          git tag -a "$DEV_TAG" "${{ steps.resolve_deploy_sha.outputs.sha }}" -m "Dev release $DEV_TAG
+
+          Deployed from PR #${{ steps.extract_pr.outputs.pr_number }}
+          Commit: ${{ steps.resolve_deploy_sha.outputs.sha }}
+          Artifacts: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/${{ steps.resolve_deploy_sha.outputs.sha }}/
+
+          Ready for staging promotion!"
+
+          # Ensure origin uses the workflow token for authentication (avoids 403)
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin "$DEV_TAG"
+
+          echo ""
+          echo "SUCCESS: Created dev release tag: $DEV_TAG"
+          echo "This tag is ready for staging deployment! Deploy when you're ready."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
