@@ -1,9 +1,6 @@
 name: CICD - Staging (Work in progress)
 
 on:
-  push:
-    tags:
-      - "v*.*.*-rc.*"
   workflow_dispatch:
     inputs:
       source_dev_tag:
@@ -110,7 +107,6 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment:
       name: staging
