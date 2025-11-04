@@ -85,6 +85,17 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "arn:aws:s3:::${local.tf_state_bucket_name}/env:/pr-*/*"
         ]
       },
+      # Read access to build artifacts used for Lambda code updates
+      {
+        Effect  = "Allow",
+        Action  = ["s3:GetObject", "s3:HeadObject"],
+        Resource = "arn:aws:s3:::ustc-payment-portal-build-artifacts/artifacts/dev/*"
+      },
+      {
+        Effect  = "Allow",
+        Action  = ["s3:ListBucket"],
+        Resource = "arn:aws:s3:::ustc-payment-portal-build-artifacts"
+      },
       { #lock table
         Effect   = "Allow",
         Action   = ["dynamodb:DescribeTable","dynamodb:GetItem","dynamodb:PutItem","dynamodb:UpdateItem","dynamodb:DeleteItem"],
