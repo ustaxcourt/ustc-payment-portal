@@ -1,9 +1,6 @@
 name: CICD - Staging (Work in progress)
 
 on:
-  push:
-    tags:
-      - "v*.*.*-rc.*"
   workflow_dispatch:
     inputs:
       source_dev_tag:
