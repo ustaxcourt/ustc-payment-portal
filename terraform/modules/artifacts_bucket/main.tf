@@ -99,7 +99,6 @@ resource "aws_s3_bucket_policy" "build_artifacts" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes  = [policy]
   }
 
   policy = jsonencode({
@@ -156,21 +155,27 @@ resource "aws_s3_bucket_policy" "build_artifacts" {
         Resource = "${aws_s3_bucket.build_artifacts.arn}/*"
       },
       {
-        Sid    = "AllowStagingDeployerReadDevArtifacts"
+        Sid    = "AllowStagingDeployerListDevPrefix"
         Effect = "Allow"
         Principal = {
           AWS = var.staging_deployer_role_arn
         }
-        Action = [
-          "s3:ListBucket",
-          "s3:GetBucketLocation"
-        ]
+        Action   = ["s3:ListBucket"]
         Resource = aws_s3_bucket.build_artifacts.arn
         Condition = {
           StringLike = {
-            "s3:prefix" = "artifacts/dev/*"
+            "s3:prefix" = ["artifacts/dev/*"]
           }
         }
+      },
+      {
+        Sid       = "AllowStagingDeployerGetBucketLocation"
+        Effect    = "Allow"
+        Principal = {
+          AWS = var.staging_deployer_role_arn
+        }
+        Action   = ["s3:GetBucketLocation"]
+        Resource = aws_s3_bucket.build_artifacts.arn
       },
       {
         Sid    = "AllowStagingDeployerGetDevObjects"
