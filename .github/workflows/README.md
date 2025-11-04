@@ -21,6 +21,11 @@
   - Builds the application and applies Terraform in the `dev` environment.
   - Keeps `dev` continuously up to date with `main`.
 
+- **Deploy to Stg** (`staging-deploy.yml`)
+  - Trigger: Manual from GitHub Actions
+  - Finds dev tag to deploy, validates that sha for that tag exists, creates RC tag, then copies build artifact from dev artifact bucket to staging and deploys any infrastructure updates
+  - If no dev tag is specified on workflow trigger, will automatically find the latest dev tag to use for promotion
+
 ## Notes
 - **Ephemeral envs** are isolated per PR and destroyed on close.
 - **Artifacts**: PR runs upload JUnit XML and coverage (lcov/HTML) for review.
