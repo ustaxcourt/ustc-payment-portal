@@ -270,6 +270,8 @@ jobs:
   deploy_dev:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: Deploy to Dev (on push to main)
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -325,6 +327,24 @@ jobs:
           export TARGET_ENV="dev"
           export GIT_SHA="" # Initialize as empty to allow auto-discovery
           ./promote_artifacts_s3.sh
+
+      - name: Resolve deploy SHA from promoted artifact key
+        id: resolve_deploy_sha
+        run: |
+          set -euo pipefail
+          KEY='${{ steps.promote_artifacts.outputs.initPayment_s3_key }}'
+          if [ -z "$KEY" ]; then
+            echo "ERROR: initPayment_s3_key output is empty; cannot resolve deploy SHA" >&2
+            exit 1
+          fi
+          # Expected format: artifacts/dev/<SHA>/initPayment.zip
+          DEPLOY_SHA=$(echo "$KEY" | awk -F'/' '{print $(NF-1)}')
+          if [ -z "$DEPLOY_SHA" ]; then
+            echo "ERROR: Failed to derive deploy SHA from key: $KEY" >&2
+            exit 1
+          fi
+          echo "sha=$DEPLOY_SHA" >> $GITHUB_OUTPUT
+          echo "Resolved deploy SHA (from promoted artifacts): $DEPLOY_SHA"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -415,19 +435,21 @@ jobs:
 
           echo "Creating Dev Release Tag"
           echo "Tag: $DEV_TAG"
-          echo "Commit SHA: ${{ github.sha }}"
+          echo "Commit SHA: ${{ steps.resolve_deploy_sha.outputs.sha }}"
           echo "PR Number: ${{ steps.extract_pr.outputs.pr_number }}"
-          echo "Artifacts Path: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/${{ github.sha }}/"
+          echo "Artifacts Path: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/${{ steps.resolve_deploy_sha.outputs.sha }}/"
 
           # Create and push tag
-          git tag -a "$DEV_TAG" -m "Dev release $DEV_TAG
+          git tag -a "$DEV_TAG" "${{ steps.resolve_deploy_sha.outputs.sha }}" -m "Dev release $DEV_TAG
 
           Deployed from PR #${{ steps.extract_pr.outputs.pr_number }}
-          Commit: ${{ github.sha }}
-          Artifacts: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/${{ github.sha }}/
+          Commit: ${{ steps.resolve_deploy_sha.outputs.sha }}
+          Artifacts: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/${{ steps.resolve_deploy_sha.outputs.sha }}/
 
           Ready for staging promotion!"
 
+          # Ensure origin uses the workflow token for authentication (avoids 403)
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push origin "$DEV_TAG"
 
           echo ""
