@@ -29,7 +29,6 @@ jobs:
     steps:
       - id: check
         run: |
-          # Determine if this run was triggered by Dependabot
           if [[ "${{ github.actor }}" == "dependabot[bot]" ]] || [[ "${{ github.head_ref }}" == dependabot/* ]]; then
             echo "is_dependabot=true" >> $GITHUB_OUTPUT
           else
@@ -38,7 +37,7 @@ jobs:
 
   pr_build_test_deploy:
     needs: check_actor
-    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && needs.check_actor.outputs.is_dependabot != 'true'
     name: PR Build/Test and Ephemeral Deploy (Dev Account)
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -214,7 +213,7 @@ jobs:
 
   pr_cleanup:
     needs: check_actor
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && needs.check_actor.outputs.is_dependabot != 'true'
     name: PR Cleanup (Destroy Ephemeral Env)
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -286,7 +285,7 @@ jobs:
 
   deploy_dev:
     needs: check_actor
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check_actor.outputs.is_dependabot != 'true'
     name: Deploy to Dev (on push to main)
     runs-on: ubuntu-latest
     timeout-minutes: 45
