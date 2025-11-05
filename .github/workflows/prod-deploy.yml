@@ -1,0 +1,38 @@
+name: Production Deploy
+
+on:
+  release:
+  types:
+    - published
+
+
+permissions:
+  id-token: write
+  contents: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  DEV_ARTIFACT_BUCKET: ${{ vars.DEV_ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}
+
+  jobs:
+    promote:
+      runs-on: ubuntu-latest
+      timeout-minutes: 30
+      outputs:
+        sha: ${{ steps.resolve.outputs.sha }}
+      steps:
+        - name: Checkout
+        uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Configure AWS Credentials (read dev artifacts)
+          uses: aws-actions/configure-aws-credentials@v4
+          with:
+            role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+            aws-region: ${{ env.AWS_REGION }}
+
+        - name: Select RC Candidate to deploy
+          id: select
+          run: |
+            echo "Figure out code for determining latest rc tag here"
