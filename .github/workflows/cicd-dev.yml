@@ -165,10 +165,12 @@ jobs:
           set +e
           API_URL=$(terraform output -raw api_gateway_url 2>/dev/null)
           SECRET_ID=$(terraform output -raw api_access_token_secret_id 2>/dev/null)
+          TCS_APP_ID_SECRET_ID=$(terraform output -raw tcs_app_id_secret_id 2>/dev/null)
           set -e
           if [ -n "$API_URL" ] && [ -n "$SECRET_ID" ]; then
             echo "api_url=$API_URL" >> $GITHUB_OUTPUT
             echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
+            echo "tcs_app_id_secret_id=$TCS_APP_ID_SECRET_ID" >> $GITHUB_OUTPUT
             echo "has_outputs=true" >> $GITHUB_OUTPUT
             echo "API Gateway URL: $API_URL"
             echo "API Access Token Secret ID: $SECRET_ID"
@@ -196,6 +198,11 @@ jobs:
           aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/pay-gov-dev-server-token" --query SecretString --output text | \
           aws secretsmanager put-secret-value --secret-id "$PAYGOV_SECRET_ID" --secret-string file:///dev/stdin
 
+          # Copy TCS App ID
+          TCS_APP_ID_SECRET_ID=$(terraform output -raw tcs_app_id_secret_id)
+          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/tcs-app-id" --query SecretString --output text | \
+          aws secretsmanager put-secret-value --secret-id "$TCS_APP_ID_SECRET_ID" --secret-string file:///dev/stdin
+
           echo "All secret values copied successfully"
         working-directory: terraform/environments/dev
 
@@ -206,6 +213,7 @@ jobs:
           TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
           BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
           API_ACCESS_TOKEN_SECRET_ID: ${{ steps.tf_outputs.outputs.secret_id }}
+          TCS_APP_ID: ${{ steps.tf_outputs.outputs.tcs_app_id_secret_id }}
         run: |
           npm ci
           echo "Running integration tests against: $BASE_URL"
