@@ -35,4 +35,20 @@ env:
         - name: Select RC Candidate to deploy
           id: select
           run: |
-            echo "Figure out code for determining latest rc tag here"
+            set -euo pipefail
+            tag=$(git tag -l "*rc*" --sort=-version:refname | head -n 1)
+            hash=$(git rev-list -n 1 $tag)
+            echo "tag=$tag" >> $GITHUB_OUTPUT
+            echo "sha=$hash" >> $GITHUB_OUTPUT
+
+        - name: Validate artifacts exist for SHA
+          run: |
+            set -euo pipefail
+            SHA='${{ steps.select.outputs.sha}}'
+            echo "Validating artifacts for $SHA in s3://${DEV_ARTIFACT_BUCKET}/artifacts/stg/$SHA/"
+            for f in initPayment processPayment getDetails testCert; do
+              KEY="artifacts/stg/${SHA}/${f}.zip"
+              aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "$KEY" >/stg/null 2>&1 || {
+                echo "Missing $KEY" >&2; exit 1; }
+            done
+            echo "All artifacts present"
