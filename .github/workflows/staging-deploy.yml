@@ -225,7 +225,6 @@ jobs:
           # Fetch portal API token
           PORTAL_TOKEN=$(aws secretsmanager get-secret-value --secret-id "$API_TOKEN_SECRET_ID" --query SecretString --output text)
 
-          # Simple constants for smoke test
           APP_ID="TCSUSTAXCOURTANAEF"
           AMOUNT="6.00"
           TRACKING="stg-smoke-$(date +%s)"
