@@ -38,3 +38,8 @@ output "paygov_dev_server_token_secret_id" {
   description = "Secret ID for Pay.gov dev server token"
 }
 
+output "tcs_app_id_secret_id" {
+  value       = module.secrets.tcs_app_id_secret_id
+  description = "Secret ID for TCS Application ID"
+}
+

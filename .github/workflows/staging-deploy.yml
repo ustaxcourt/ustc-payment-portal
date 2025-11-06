@@ -204,8 +204,10 @@ jobs:
         run: |
           API_URL=$(terraform output -raw api_gateway_url)
           SECRET_ID=$(terraform output -raw api_access_token_secret_id)
+          TCS_APP_ID_SECRET_ID=$(terraform output -raw tcs_app_id_secret_id 2>/dev/null)
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
           echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
+          echo "tcs_app_id_secret_id=$TCS_APP_ID_SECRET_ID" >> $GITHUB_OUTPUT
           echo "API Gateway URL: $API_URL"
           echo "API Access Token Secret ID: $SECRET_ID"
 
@@ -224,6 +226,7 @@ jobs:
           TEST_NAMESPACE: stg
           BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
           API_ACCESS_TOKEN_SECRET_ID: ${{ steps.tf_outputs.outputs.secret_id }}
+          TCS_APP_ID: ${{ steps.tf_outputs.outputs.tcs_app_id_secret_id }}
         run: |
           echo "Running integration tests against: $BASE_URL"
           npm run test:integration
