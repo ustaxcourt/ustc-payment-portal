@@ -197,3 +197,33 @@ jobs:
         if: ${{ steps.plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/stg
         run: terraform apply -auto-approve tfplan
+
+      - name: Get Terraform Outputs (for integration tests)
+        id: tf_outputs
+        working-directory: terraform/environments/stg
+        run: |
+          API_URL=$(terraform output -raw api_gateway_url)
+          SECRET_ID=$(terraform output -raw api_access_token_secret_id)
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
+          echo "API Gateway URL: $API_URL"
+          echo "API Access Token Secret ID: $SECRET_ID"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Integration tests (staging environment)
+        env:
+          NODE_ENV: test
+          TEST_NAMESPACE: stg
+          BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          API_ACCESS_TOKEN_SECRET_ID: ${{ steps.tf_outputs.outputs.secret_id }}
+        run: |
+          echo "Running integration tests against: $BASE_URL"
+          npm run test:integration
