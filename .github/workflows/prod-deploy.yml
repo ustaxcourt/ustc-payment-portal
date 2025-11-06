@@ -45,10 +45,55 @@ env:
           run: |
             set -euo pipefail
             SHA='${{ steps.select.outputs.sha}}'
-            echo "Validating artifacts for $SHA in s3://${DEV_ARTIFACT_BUCKET}/artifacts/stg/$SHA/"
+            echo "Validating artifacts for $SHA in s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
             for f in initPayment processPayment getDetails testCert; do
-              KEY="artifacts/stg/${SHA}/${f}.zip"
-              aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "$KEY" >/stg/null 2>&1 || {
+              KEY="artifacts/dev/${SHA}/${f}.zip"
+              aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "$KEY" >/dev/null 2>&1 || {
                 echo "Missing $KEY" >&2; exit 1; }
             done
             echo "All artifacts present"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: promote
+    environment:
+      name: production
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.ref_name }}
+        fetch-depth: 0
+
+    - name: Echo RC tag and SHA
+      run: |
+        echo "RC tag: ${{ needs.promote.outputs.release_tag}}"
+        echo "SHA:    ${{ needs.promote.outputs.sha }}"
+
+    - name: Export artifact bucket (env)
+      run: |
+          echo "Dev bucket: $DEV_ARTIFACT_BUCKET"
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+
+    - name: Configure AWS Credentials (OIDC - Prd)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: $${{ secrets.PRODUCTION_AWS_DEPLOYER_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS caller identity (remove later)
+        run: aws sts get-caller-identity
+
+      - name: Build artifact key map (dev bucket)
+        id: artifacts
+        run: |
+          set -euo pipefail
+          SHA='${{ needs.promote.outputs.sha }}'
+          PREFIX="artifacts/stg/${SHA}"
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "initPayment=${PREFIX}/initPayment.zip" >> $GITHUB_OUTPUT
+          echo "processPayment=${PREFIX}/processPayment.zip" >> $GITHUB_OUTPUT
+          echo "getDetails=${PREFIX}/getDetails.zip" >> $GITHUB_OUTPUT
+          echo "testCert=${PREFIX}/testCert.zip" >> $GITHUB_OUTPUT
