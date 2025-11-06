@@ -30,3 +30,12 @@
 - **Ephemeral envs** are isolated per PR and destroyed on close.
 - **Artifacts**: PR runs upload JUnit XML and coverage (lcov/HTML) for review.
 - **Safety**: Cleanup does not delete workspaces if destroy fails, avoiding orphaned state.
+
+## Release automation (RC tags)
+
+The repository includes a GitHub Actions workflow `/.github/workflows/rc-release.yml` that documents each Release Candidate (RC) used for staging.
+
+- **Trigger:** On push of a tag matching `v*.*.*-rc.*` (for example, `v2025.11.1-rc.5`).
+- **What it does:** Automatically creates a GitHub Release page for the RC tag.
+- **What it shows:** The RC tag, the exact commit SHA, and a link to the S3 artifacts prefix `s3://ustc-payment-portal-build-artifacts/artifacts/dev/<SHA>/` used by staging.
+- **Why:** Provides a clear, immutable record of the precise commit and artifacts that were staged. When promoting to production, create the final tag (e.g., `vX.Y.Z`) on this same commit SHA so production deploys the identical artifacts.
