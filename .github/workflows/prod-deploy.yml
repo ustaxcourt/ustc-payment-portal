@@ -36,7 +36,7 @@ env:
           id: select
           run: |
             set -euo pipefail
-            tag=$(git tag -l "*rc*" --sort=-version:refname | head -n 1)
+            tag=$(git tag -l "${{ github.ref_name }}" --sort=-version:refname | head -n 1)
             hash=$(git rev-list -n 1 $tag)
             echo "tag=$tag" >> $GITHUB_OUTPUT
             echo "sha=$hash" >> $GITHUB_OUTPUT
