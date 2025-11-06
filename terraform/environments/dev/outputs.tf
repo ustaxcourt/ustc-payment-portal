@@ -38,6 +38,11 @@ output "paygov_dev_server_token_secret_id" {
   description = "Secret ID for Pay.gov dev server token"
 }
 
+output "tcs_app_id_secret_id" {
+  value       = module.secrets.tcs_app_id_secret_id
+  description = "Secret ID for TCS Application ID"
+}
+
 output "build_artifacts_bucket_name" {
   value       = local.environment == "dev" ? module.artifacts_bucket[0].bucket_name : data.aws_s3_bucket.existing_artifacts[0].bucket
   description = "Name for build artifacts bucket"
