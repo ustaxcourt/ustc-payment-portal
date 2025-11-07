@@ -241,7 +241,8 @@ jobs:
           # Fetch portal API token
           PORTAL_TOKEN=$(aws secretsmanager get-secret-value --secret-id "$API_TOKEN_SECRET_ID" --query SecretString --output text)
 
-          APP_ID="TCSUSTAXCOURTANAEF"
+          # Fetch TCS app ID from Secrets Manager
+          APP_ID=$(aws secretsmanager get-secret-value --secret-id "$TCS_APP_ID_SECRET_ID" --query SecretString --output text)
           AMOUNT="6.00"
           TRACKING="stg-smoke-$(date +%s)"
 
