@@ -264,7 +264,12 @@ jobs:
           [ -n "$REDIRECT" ] || { echo "Missing paymentRedirect in /init response" >&2; exit 1; }
           echo "Token present. Redirect=$REDIRECT"
 
-          # Ensure redirect URL is reachable (HTTP 200)
+          # Ensure redirect URL is reachable (expect 302 redirect from Pay.gov)
           REDIRECT_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$REDIRECT")
           echo "REDIRECT_STATUS=$REDIRECT_STATUS"
-          test "$REDIRECT_STATUS" = "200"
+          if [ "$REDIRECT_STATUS" = "302" ]; then
+            echo "Redirect reachable ($REDIRECT_STATUS)."
+          else
+            echo "ERROR: Redirect returned $REDIRECT_STATUS (expected 302)" >&2
+            exit 1
+          fi
