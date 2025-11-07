@@ -41,6 +41,11 @@ variable "paygov_dev_server_token_name" {
   default = "pay-gov-dev-server-token"
 }
 
+variable "tcs_app_id_name" {
+  type    = string
+  default = "tcs-app-id"
+}
+
 variable "tags" {
   type    = map(string)
   default = {}

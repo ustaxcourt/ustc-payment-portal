@@ -11,6 +11,7 @@ on:
 permissions:
   id-token: write
   contents: write
+  actions: write
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -102,6 +103,21 @@ jobs:
           SHA='${{ steps.resolve.outputs.sha }}'
           git tag -a "$VERSION" "$SHA" -m "Release candidate $VERSION for staging\nCommit: $SHA\nArtifacts: s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
           git push origin "$VERSION"
+
+      - name: Dispatch rc-release workflow
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          [ -z "${VERSION:-}" ] && { echo "Empty VERSION" >&2; exit 1; }
+          echo "Dispatching rc-release.yml for tag $VERSION"
+          curl -s -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GH_REPO}/actions/workflows/rc-release.yml/dispatches" \
+            -d '{"ref":"main","inputs":{"rc_tag":"'"${VERSION}"'"}}'
 
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -197,3 +213,36 @@ jobs:
         if: ${{ steps.plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/stg
         run: terraform apply -auto-approve tfplan
+
+      - name: Get Terraform Outputs (for integration tests)
+        id: tf_outputs
+        working-directory: terraform/environments/stg
+        run: |
+          API_URL=$(terraform output -raw api_gateway_url)
+          SECRET_ID=$(terraform output -raw api_access_token_secret_id)
+          TCS_APP_ID_SECRET_ID=$(terraform output -raw tcs_app_id_secret_id 2>/dev/null)
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
+          echo "tcs_app_id_secret_id=$TCS_APP_ID_SECRET_ID" >> $GITHUB_OUTPUT
+          echo "API Gateway URL: $API_URL"
+          echo "API Access Token Secret ID: $SECRET_ID"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Integration tests (staging environment)
+        env:
+          NODE_ENV: test
+          TEST_NAMESPACE: stg
+          BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          API_ACCESS_TOKEN_SECRET_ID: ${{ steps.tf_outputs.outputs.secret_id }}
+          TCS_APP_ID: ${{ steps.tf_outputs.outputs.tcs_app_id_secret_id }}
+        run: |
+          echo "Running integration tests against: $BASE_URL"
+          npm run test:integration

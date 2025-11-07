@@ -1,0 +1,65 @@
+name: Create RC Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*-rc.*"
+  workflow_dispatch:
+    inputs:
+      rc_tag:
+        description: "RC tag to release (optional). Leave blank to auto-select latest matching tag"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  create_rc_release:
+    name: Create GitHub Release for RC tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (all tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG_INPUT='${{ github.event.inputs.rc_tag || '' }}'
+          if [ -n "$TAG_INPUT" ]; then
+            TAG="$TAG_INPUT"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          SHA=$(git rev-list -n 1 "$TAG")
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "prefix=artifacts/dev/${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Create RC Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.tag }}
+          body: |
+            Release Candidate for staging
+
+            - Tag: `${{ steps.meta.outputs.tag }}`
+            - Commit SHA: `${{ steps.meta.outputs.sha }}`
+            - Artifacts prefix: `s3://ustc-payment-portal-build-artifacts/${{ steps.meta.outputs.prefix }}/`
+
+            Notes:
+            - This Release records the exact commit (SHA) and the specific artifact files that were deployed to staging for this RC.
+            - When ready to promote, create the final tag on the same commit (e.g., `vX.Y.Z`) so prod uses the identical artifacts.
+
+      - name: Add job summary
+        if: always()
+        run: |
+          echo "### RC Release created" >> $GITHUB_STEP_SUMMARY
+          echo "- Tag: \\`${{ steps.meta.outputs.tag }}\\`" >> $GITHUB_STEP_SUMMARY
+          echo "- SHA: \\`${{ steps.meta.outputs.sha }}\\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Artifacts: s3://ustc-payment-portal-build-artifacts/${{ steps.meta.outputs.prefix }}/" >> $GITHUB_STEP_SUMMARY

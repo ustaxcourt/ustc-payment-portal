@@ -8,16 +8,18 @@ describe("make a transaction", () => {
   let paymentRedirect: string;
   let payGovTrackingId: string;
   let tokenString: string;
-  const appId = "ustc-local-app-test";
+  let appId: string;
 
   beforeAll(async () => {
     const isLocal = process.env.NODE_ENV === "local";
     if (isLocal) {
       tokenString = process.env.API_ACCESS_TOKEN_SECRET_ID as string;
+      appId = process.env.TCS_APP_ID as string;
     } else {
       tokenString = await getSecretString(
         process.env.API_ACCESS_TOKEN_SECRET_ID as string
       );
+      appId = await getSecretString(process.env.TCS_APP_ID as string);
     }
   });
 
