@@ -96,7 +96,7 @@ jobs:
       - name: Configure AWS Credentials (OIDC - Prd)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: $${{ secrets.PROD_AWS_DEPLOYER_ROLE_ARN }}
+          role-to-assume: ${{ secrets.PROD_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Verify AWS caller identity (remove later)
