@@ -143,12 +143,12 @@ jobs:
           set -e
 
       - name: Terraform Apply (if required)
-        if: ${{ (github.event_name == 'release' || !inputs.plan_only) && steps.tf_plan.outputs.exitcode == '2' }}
+        if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/prod
         run: terraform apply -auto-approve tfplan
 
       - name: Get Terraform Outputs (for integration tests)
-        if: ${{ (github.event_name == 'release' || !inputs.plan_only) && steps.tf_plan.outputs.exitcode == '2' }}
+        if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
         id: tf_outputs
         working-directory: terraform/environments/prod
         run: |
