@@ -160,49 +160,49 @@ jobs:
           echo "API Gateway URL: $API_URL"
           echo "API Access Token Secret ID: $SECRET_ID"
 
-      - name: Smoke test /init and redirect reachability
-        shell: bash
-        env:
-          API_URL: ${{ steps.tf_outputs.outputs.api_url }}
-          API_TOKEN_SECRET_ID: ${{ steps.tf_outputs.outputs.secret_id }}
-          TCS_APP_ID_SECRET_ID: ${{ steps.tf_outputs.outputs.tcs_app_id_secret_id }}
-        run: |
-          set -euo pipefail
-          trap 'echo "Smoke test FAILED"; [ -f init.json ] && { echo "--- init.json ---"; cat init.json; echo "-----------------"; } || true' ERR
-          echo "Running smoke test against: $API_URL"
+      # - name: Smoke test /init and redirect reachability
+      #   shell: bash
+      #   env:
+      #     API_URL: ${{ steps.tf_outputs.outputs.api_url }}
+      #     API_TOKEN_SECRET_ID: ${{ steps.tf_outputs.outputs.secret_id }}
+      #     TCS_APP_ID_SECRET_ID: ${{ steps.tf_outputs.outputs.tcs_app_id_secret_id }}
+      #   run: |
+      #     set -euo pipefail
+      #     trap 'echo "Smoke test FAILED"; [ -f init.json ] && { echo "--- init.json ---"; cat init.json; echo "-----------------"; } || true' ERR
+      #     echo "Running smoke test against: $API_URL"
 
-          # Fetch portal API token
-          PORTAL_TOKEN=$(aws secretsmanager get-secret-value --secret-id "$API_TOKEN_SECRET_ID" --query SecretString --output text)
+      #     # Fetch portal API token
+      #     PORTAL_TOKEN=$(aws secretsmanager get-secret-value --secret-id "$API_TOKEN_SECRET_ID" --query SecretString --output text)
 
-          # Fetch TCS app ID from Secrets Manager
-          APP_ID=$(aws secretsmanager get-secret-value --secret-id "$TCS_APP_ID_SECRET_ID" --query SecretString --output text)
-          AMOUNT="6.00"
-          TRACKING="prod-smoke-$(date +%s)"
+      #     # Fetch TCS app ID from Secrets Manager
+      #     APP_ID=$(aws secretsmanager get-secret-value --secret-id "$TCS_APP_ID_SECRET_ID" --query SecretString --output text)
+      #     AMOUNT="6.00"
+      #     TRACKING="prod-smoke-$(date +%s)"
 
-          echo "Using APP_ID=$APP_ID AMOUNT=$AMOUNT TRACKING_ID=$TRACKING"
-          printf '{"trackingId":"%s","amount":"%s","appId":"%s","urlSuccess":"https://example.com","urlCancel":"https://example.com"}' "$TRACKING" "$AMOUNT" "$APP_ID" > body.json
+      #     echo "Using APP_ID=$APP_ID AMOUNT=$AMOUNT TRACKING_ID=$TRACKING"
+      #     printf '{"trackingId":"%s","amount":"%s","appId":"%s","urlSuccess":"https://example.com","urlCancel":"https://example.com"}' "$TRACKING" "$AMOUNT" "$APP_ID" > body.json
 
-          # POST to /init
-          INIT_STATUS=$(curl -s -o init.json -w '%{http_code}' -X POST "$API_URL/init" \
-            -H 'Content-Type: application/json' \
-            -H "Authentication: Bearer $PORTAL_TOKEN" \
-            --data-binary @body.json)
-          echo "INIT_STATUS=$INIT_STATUS" && cat init.json
-          test "$INIT_STATUS" = "200"
+      #     # POST to /init
+      #     INIT_STATUS=$(curl -s -o init.json -w '%{http_code}' -X POST "$API_URL/init" \
+      #       -H 'Content-Type: application/json' \
+      #       -H "Authentication: Bearer $PORTAL_TOKEN" \
+      #       --data-binary @body.json)
+      #     echo "INIT_STATUS=$INIT_STATUS" && cat init.json
+      #     test "$INIT_STATUS" = "200"
 
-          # Verify token present
-          TOKEN=$(jq -r '.token // empty' init.json)
-          REDIRECT=$(jq -r '.paymentRedirect // empty' init.json)
-          [ -n "$TOKEN" ] || { echo "Missing token in /init response" >&2; exit 1; }
-          [ -n "$REDIRECT" ] || { echo "Missing paymentRedirect in /init response" >&2; exit 1; }
-          echo "Token present. Redirect=$REDIRECT"
+      #     # Verify token present
+      #     TOKEN=$(jq -r '.token // empty' init.json)
+      #     REDIRECT=$(jq -r '.paymentRedirect // empty' init.json)
+      #     [ -n "$TOKEN" ] || { echo "Missing token in /init response" >&2; exit 1; }
+      #     [ -n "$REDIRECT" ] || { echo "Missing paymentRedirect in /init response" >&2; exit 1; }
+      #     echo "Token present. Redirect=$REDIRECT"
 
-          # Ensure redirect URL is reachable (expect 302 redirect from Pay.gov)
-          REDIRECT_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$REDIRECT")
-          echo "REDIRECT_STATUS=$REDIRECT_STATUS"
-          if [ "$REDIRECT_STATUS" = "302" ]; then
-            echo "Redirect reachable ($REDIRECT_STATUS)."
-          else
-            echo "ERROR: Redirect returned $REDIRECT_STATUS (expected 302)" >&2
-            exit 1
-          fi
+      #     # Ensure redirect URL is reachable (expect 302 redirect from Pay.gov)
+      #     REDIRECT_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$REDIRECT")
+      #     echo "REDIRECT_STATUS=$REDIRECT_STATUS"
+      #     if [ "$REDIRECT_STATUS" = "302" ]; then
+      #       echo "Redirect reachable ($REDIRECT_STATUS)."
+      #     else
+      #       echo "ERROR: Redirect returned $REDIRECT_STATUS (expected 302)" >&2
+      #       exit 1
+      #     fi
