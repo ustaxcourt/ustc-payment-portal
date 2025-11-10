@@ -53,6 +53,7 @@ module "iam_cicd" {
 
   aws_region               = local.aws_region
   environment              = local.environment
+  name_prefix              = local.name_prefix
   deploy_role_name         = "ustc-payment-processor-prod-cicd-deployer-role"
   github_oidc_provider_arn = local.github_oidc_provider_arn
   github_org               = local.github_org
