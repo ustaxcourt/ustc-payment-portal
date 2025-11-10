@@ -121,7 +121,7 @@ jobs:
 
       - name: Terraform init
         working-directory: terraform/environments/prod
-        run: terraform init
+        run: terraform init -input=false -backend-config=backend.hcl -reconfigure
 
       - name: Terraform plan
         id: tf_plan
