@@ -73,6 +73,7 @@ module "artifacts_bucket" {
   deployer_role_arn           = module.iam_cicd.role_arn
   manage_bucket_policy        = true
   staging_deployer_role_arn   = "arn:aws:iam::747103385969:role/ustc-payment-processor-stg-cicd-deployer-role"
+  prod_deployer_role_arn      = "arn:aws:iam::802939326821:role/ustc-payment-processor-prod-cicd-deployer-role"
 }
 
 # Reference existing bucket in PR workspaces
