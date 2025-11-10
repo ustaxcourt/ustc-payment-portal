@@ -1,0 +1,206 @@
+name: Production Deploy
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag to deploy (e.g., v1.2.3)"
+        required: true
+        type: string
+      plan_only:
+        description: "Run up to terraform plan (no apply)"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  DEV_ARTIFACT_BUCKET: ${{ vars.DEV_ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      sha: ${{ steps.select.outputs.sha }}
+      tag: ${{ steps.select.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS Credentials (read dev artifacts)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Select tag and SHA
+        id: select
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="${{ github.event.inputs.release_tag }}"
+          fi
+          [ -n "${TAG:-}" ] || { echo "Empty tag" >&2; exit 1; }
+          SHA=$(git rev-list -n 1 "$TAG")
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Validate artifacts exist for SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA='${{ steps.select.outputs.sha}}'
+          echo "Validating artifacts for $SHA in s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
+          for f in initPayment processPayment getDetails testCert; do
+            KEY="artifacts/dev/${SHA}/${f}.zip"
+            aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "$KEY" >/dev/null 2>&1 || {
+              echo "Missing $KEY" >&2; exit 1; }
+          done
+          echo "All artifacts present"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: promote
+    environment:
+      name: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.promote.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Echo RC tag and SHA
+        run: |
+          echo "RC tag: ${{ needs.promote.outputs.tag}}"
+          echo "SHA:    ${{ needs.promote.outputs.sha }}"
+
+      - name: Export artifact bucket (env)
+        run: |
+          echo "Dev bucket: $DEV_ARTIFACT_BUCKET"
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+
+      - name: Configure AWS Credentials (OIDC - Prd)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: $${{ secrets.PROD_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS caller identity (remove later)
+        run: aws sts get-caller-identity
+
+      - name: Build artifact key map (dev bucket)
+        id: artifacts
+        run: |
+          set -euo pipefail
+          SHA='${{ needs.promote.outputs.sha }}'
+          PREFIX="artifacts/dev/${SHA}"
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "initPayment=${PREFIX}/initPayment.zip" >> $GITHUB_OUTPUT
+          echo "processPayment=${PREFIX}/processPayment.zip" >> $GITHUB_OUTPUT
+          echo "getDetails=${PREFIX}/getDetails.zip" >> $GITHUB_OUTPUT
+          echo "testCert=${PREFIX}/testCert.zip" >> $GITHUB_OUTPUT
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform init
+        working-directory: terraform/environments/prod
+        run: terraform init
+
+      - name: Terraform plan
+        id: tf_plan
+        working-directory: terraform/environments/prod
+        env:
+          TF_VAR_artifact_bucket: ${{ env.DEV_ARTIFACT_BUCKET }}
+          TF_VAR_initPayment_s3_key: ${{ steps.artifacts.outputs.initPayment }}
+          TF_VAR_processPayment_s3_key: ${{ steps.artifacts.outputs.processPayment }}
+          TF_VAR_getDetails_s3_key: ${{ steps.artifacts.outputs.getDetails }}
+          TF_VAR_testCert_s3_key: ${{ steps.artifacts.outputs.testCert }}
+        run: |
+          set +e
+          terraform plan -input=false -detailed-exitcode -out=tfplan
+          code=$?
+          echo "exitcode=$code" >> $GITHUB_OUTPUT
+          terraform show -no-color tfplan > tfplan.txt || true
+          set -e
+
+      # - name: Terraform Apply (if required)
+      #   if: ${{ github.event_name == 'release' && steps.plan.outputs.exitcode == '2' }}
+      #   working-directory: terraform/environments/stg
+      #   run: terraform apply -auto-approve tfplan
+
+      # - name: Get Terraform Outputs (for integration tests)
+      #   id: tf_outputs
+      #   working-directory: terraform/environments/stg
+      #   run: |
+      #     API_URL=$(terraform output -raw api_gateway_url)
+      #     SECRET_ID=$(terraform output -raw api_access_token_secret_id)
+      #     TCS_APP_ID_SECRET_ID=$(terraform output -raw tcs_app_id_secret_id 2>/dev/null)
+      #     echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+      #     echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
+      #     echo "tcs_app_id_secret_id=$TCS_APP_ID_SECRET_ID" >> $GITHUB_OUTPUT
+      #     echo "API Gateway URL: $API_URL"
+      #     echo "API Access Token Secret ID: $SECRET_ID"
+
+      # - name: Smoke test /init and redirect reachability
+      #   shell: bash
+      #   env:
+      #     API_URL: ${{ steps.tf_outputs.outputs.api_url }}
+      #     API_TOKEN_SECRET_ID: ${{ steps.tf_outputs.outputs.secret_id }}
+      #     TCS_APP_ID_SECRET_ID: ${{ steps.tf_outputs.outputs.tcs_app_id_secret_id }}
+      #   run: |
+      #     set -euo pipefail
+      #     trap 'echo "Smoke test FAILED"; [ -f init.json ] && { echo "--- init.json ---"; cat init.json; echo "-----------------"; } || true' ERR
+      #     echo "Running smoke test against: $API_URL"
+
+      #     # Fetch portal API token
+      #     PORTAL_TOKEN=$(aws secretsmanager get-secret-value --secret-id "$API_TOKEN_SECRET_ID" --query SecretString --output text)
+
+      #     # Fetch TCS app ID from Secrets Manager
+      #     APP_ID=$(aws secretsmanager get-secret-value --secret-id "$TCS_APP_ID_SECRET_ID" --query SecretString --output text)
+      #     AMOUNT="6.00"
+      #     TRACKING="prod-smoke-$(date +%s)"
+
+      #     echo "Using APP_ID=$APP_ID AMOUNT=$AMOUNT TRACKING_ID=$TRACKING"
+      #     printf '{"trackingId":"%s","amount":"%s","appId":"%s","urlSuccess":"https://example.com","urlCancel":"https://example.com"}' "$TRACKING" "$AMOUNT" "$APP_ID" > body.json
+
+      #     # POST to /init
+      #     INIT_STATUS=$(curl -s -o init.json -w '%{http_code}' -X POST "$API_URL/init" \
+      #       -H 'Content-Type: application/json' \
+      #       -H "Authentication: Bearer $PORTAL_TOKEN" \
+      #       --data-binary @body.json)
+      #     echo "INIT_STATUS=$INIT_STATUS" && cat init.json
+      #     test "$INIT_STATUS" = "200"
+
+      #     # Verify token present
+      #     TOKEN=$(jq -r '.token // empty' init.json)
+      #     REDIRECT=$(jq -r '.paymentRedirect // empty' init.json)
+      #     [ -n "$TOKEN" ] || { echo "Missing token in /init response" >&2; exit 1; }
+      #     [ -n "$REDIRECT" ] || { echo "Missing paymentRedirect in /init response" >&2; exit 1; }
+      #     echo "Token present. Redirect=$REDIRECT"
+
+      #     # Ensure redirect URL is reachable (expect 302 redirect from Pay.gov)
+      #     REDIRECT_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$REDIRECT")
+      #     echo "REDIRECT_STATUS=$REDIRECT_STATUS"
+      #     if [ "$REDIRECT_STATUS" = "302" ]; then
+      #       echo "Redirect reachable ($REDIRECT_STATUS)."
+      #     else
+      #       echo "ERROR: Redirect returned $REDIRECT_STATUS (expected 302)" >&2
+      #       exit 1
+      #     fi
