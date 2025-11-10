@@ -107,7 +107,7 @@ jobs:
         run: |
           set -euo pipefail
           SHA='${{ needs.promote.outputs.sha }}'
-          PREFIX="artifacts/stg/${SHA}"
+          PREFIX="artifacts/dev/${SHA}"
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
           echo "initPayment=${PREFIX}/initPayment.zip" >> $GITHUB_OUTPUT
           echo "processPayment=${PREFIX}/processPayment.zip" >> $GITHUB_OUTPUT
@@ -141,10 +141,11 @@ jobs:
           set -e
 
       - name: Terraform Apply (if required)
-        if: ${{ steps.plan.outputs.exitcode == '2' }}
+        if: ${{ github.event_name == 'release' && steps.plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/stg
         run: terraform apply -auto-approve tfplan
-- name: Get Terraform Outputs (for integration tests)
+
+      - name: Get Terraform Outputs (for integration tests)
         id: tf_outputs
         working-directory: terraform/environments/stg
         run: |
@@ -174,7 +175,7 @@ jobs:
           # Fetch TCS app ID from Secrets Manager
           APP_ID=$(aws secretsmanager get-secret-value --secret-id "$TCS_APP_ID_SECRET_ID" --query SecretString --output text)
           AMOUNT="6.00"
-          TRACKING="stg-smoke-$(date +%s)"
+          TRACKING="prod-smoke-$(date +%s)"
 
           echo "Using APP_ID=$APP_ID AMOUNT=$AMOUNT TRACKING_ID=$TRACKING"
           printf '{"trackingId":"%s","amount":"%s","appId":"%s","urlSuccess":"https://example.com","urlCancel":"https://example.com"}' "$TRACKING" "$AMOUNT" "$APP_ID" > body.json
