@@ -20,3 +20,9 @@ variable "staging_deployer_role_arn" {
   type        = string
   default     = null
 }
+
+variable "prod_deployer_role_arn" {
+  description = "ARN of the prod CI/CD deployer role that needs read access to dev artifacts"
+  type        = string
+  default     = null
+}

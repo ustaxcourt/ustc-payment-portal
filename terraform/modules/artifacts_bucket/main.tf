@@ -189,6 +189,42 @@ resource "aws_s3_bucket_policy" "build_artifacts" {
           "s3:GetObjectTagging"
         ]
         Resource = "${aws_s3_bucket.build_artifacts.arn}/artifacts/dev/*"
+      },
+      {
+        Sid       = "AllowProdDeployerListDevPrefix"
+        Effect    = "Allow"
+        Principal = {
+          AWS = var.prod_deployer_role_arn
+        }
+        Action   = ["s3:ListBucket"]
+        Resource = aws_s3_bucket.build_artifacts.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = ["artifacts/dev/*"]
+          }
+        }
+      },
+      {
+        Sid       = "AllowProdDeployerGetBucketLocation"
+        Effect    = "Allow"
+        Principal = {
+          AWS = var.prod_deployer_role_arn
+        }
+        Action   = ["s3:GetBucketLocation"]
+        Resource = aws_s3_bucket.build_artifacts.arn
+      },
+      {
+        Sid    = "AllowProdDeployerGetDevObjects"
+        Effect = "Allow"
+        Principal = {
+          AWS = var.prod_deployer_role_arn
+        }
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:GetObjectTagging"
+        ]
+        Resource = "${aws_s3_bucket.build_artifacts.arn}/artifacts/dev/*"
       }
     ]
   })
