@@ -20,7 +20,7 @@
     "test:coverage": "npm run test -- --coverage",
     "test:integration:dev": "NODE_ENV=local DOTENV_CONFIG_PATH=.env.dev npx jest ./src/test/integration/",
     "test:integration": "npx jest ./src/test/integration/",
-    "ci:publish": "npm run build && changeset publish --provenance"
+    "ci:publish": "npm run build && changeset publish"
   },
   "keywords": [],
   "author": "",

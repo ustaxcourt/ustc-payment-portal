@@ -28,16 +28,13 @@ jobs:
           scope: "@ustaxcourt"
           check-latest: true
 
-      - name: Upgrade npm to >= 11.5.1 (required for OIDC auto-provenance)
+      - name: Upgrade npm to latest
         run: |
           npm -v
-          npm i -g npm@^11.5.1
+          npm i -g npm@latest
           npm -v
 
       - run: npm ci
-
-      - name: Enable npm provenance
-        run: npm config set provenance true
 
       - name: Create Release Pull Request or Publish
         uses: changesets/action@v1
