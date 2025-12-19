@@ -68,7 +68,7 @@ This document outlines the approach for publishing versioned updates of `@ustaxc
 
 ## Installation
 
-Consumers can install the package:
+Package can be installed:
 
 ```bash
 # As a dependency
