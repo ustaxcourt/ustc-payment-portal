@@ -121,18 +121,6 @@ npm install --save-dev @ustaxcourt/payment-portal
   }
   ```
 
-## Troubleshooting
-
-- **Missing Trusted Publisher**: Verify the npm package has the GitHub repo/workflow configured as a Trusted Publisher.
-- **Version conflicts**: If a version already exists, you'll need to bump to a new version.
-
-## Best Practices
-
-- **One changeset per PR**: Add exactly one changeset per PR to keep changelog entries focused.
-- **Clear changelog messages**: Write user-focused changelog entries that explain what changed and why.
-- **Semantic versioning**: Follow SemVer strictly to maintain consumer trust.
-- **Small, focused releases**: Prefer smaller, more frequent releases over large, infrequent ones.
-
 ## Example Workflow
 
 Here's a complete example of making a change and publishing:
