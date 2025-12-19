@@ -45,3 +45,26 @@ Right now there aren't many unit tests, but there are some integration tests tha
 ```bash
 npm run test
 ```
+
+## Publishing to npmjs.org
+
+This package is published to npmjs.org as `@ustaxcourt/payment-portal` and can be installed via:
+
+```bash
+npm install --save-dev @ustaxcourt/payment-portal
+```
+
+### Publishing Process
+
+1. **Make changes** on a feature branch
+2. **Add a changeset** to document your changes:
+   ```bash
+   npx changeset add
+   ```
+   - Select the package and bump type (patch/minor/major)
+   - Write a concise summary for the changelog
+3. **Open a PR** and merge to `main`
+4. **Review and merge** the "Version Packages" PR that Changesets automatically creates
+5. **Automatic publish** via GitHub Actions to npm with provenance
+
+For detailed instructions, see [PUBLISHING.md](./PUBLISHING.md).
