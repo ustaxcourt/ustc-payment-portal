@@ -4,7 +4,7 @@
   "description": "USTC Payment Portal client for Pay.gov integration",
   "main": "dist/index.js",
   "engines": {
-    "node": "^22.0.0"
+    "node": ">=22 <25"
   },
   "scripts": {
     "clean": "rimraf dist/*",
