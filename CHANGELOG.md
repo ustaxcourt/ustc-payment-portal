@@ -1,5 +1,11 @@
 # @ustaxcourt/payment-portal
 
+## 0.1.3
+
+### Patch Changes
+
+- 597abb4: align supported node engine range with ef-cms (Node 24.12)
+
 ## 0.1.2
 
 ### Patch Changes
