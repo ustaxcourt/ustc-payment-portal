@@ -293,7 +293,7 @@ jobs:
 
   deploy_dev:
     needs: check_actor
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check_actor.outputs.is_dependabot != 'true'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check_actor.outputs.is_dependabot != 'true' && !contains(github.event.head_commit.message, 'changeset-release')
     name: Deploy to Dev (on push to main)
     permissions:
       contents: write
