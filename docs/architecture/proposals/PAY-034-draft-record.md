@@ -58,3 +58,6 @@
    - Processed almost immediately
 - PayPal Redirect
   - Processed almost immediately
+
+## Questions for Mike
+- Is testCert endpoint actually getting used, or does it just exist for testing purposes internally.
