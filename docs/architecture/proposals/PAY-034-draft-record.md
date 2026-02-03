@@ -27,5 +27,5 @@
 ## Caveats
 - What happens when a sale is stuck on pending? (and the token expires at the 3 hour mark)
 - Who actually uses getDetails? (Finance department to debug transactions?)
-
+- AgencyTrackingID decided by the client app or us?
 
