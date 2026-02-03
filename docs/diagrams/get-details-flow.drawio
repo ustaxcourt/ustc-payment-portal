@@ -82,14 +82,12 @@
                         <mxPoint x="740" y="280" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step5" value="5. Check cached&#xa;record [FUTURE]" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" parent="1" edge="1">
-                    <mxGeometry relative="1" as="geometry">
+                <mxCell id="step5" value="5. Check cached&lt;br&gt;record for success, failure, or pending" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" parent="1" edge="1">
+                    <mxGeometry x="-0.875" y="-20" relative="1" as="geometry">
                         <mxPoint x="420" y="320" as="sourcePoint"/>
                         <mxPoint x="580" y="320" as="targetPoint"/>
+                        <mxPoint as="offset"/>
                     </mxGeometry>
-                </mxCell>
-                <mxCell id="decision-box" value="Cache hit?&#xa;[FUTURE]" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;dashed=1" parent="1" vertex="1">
-                    <mxGeometry x="540" y="340" width="80" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="step6" value="6. GetTransactionDetails&#xa;(SOAP + mTLS cert)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
@@ -106,7 +104,7 @@
                         <mxPoint x="420" y="510" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step9-box" value="9. Parse status&#xa;Cache result [FUTURE]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11" parent="1" vertex="1">
+                <mxCell id="step9-box" value="9. Parse result" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11" parent="1" vertex="1">
                     <mxGeometry x="360" y="530" width="120" height="50" as="geometry"/>
                 </mxCell>
                 <mxCell id="step10" value="10. Log response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;dashed=1;strokeColor=#9673a6;" parent="1" edge="1">
@@ -132,9 +130,6 @@
                 </mxCell>
                 <mxCell id="legend-future" value="[FUTURE] Not yet implemented" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
                     <mxGeometry x="180" y="695" width="150" height="20" as="geometry"/>
-                </mxCell>
-                <mxCell id="note-box" value="Note: Future datastore&#xa;can cache Pay.gov&#xa;responses to reduce&#xa;API calls and improve&#xa;query performance" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;dashed=1" parent="1" vertex="1">
-                    <mxGeometry x="840" y="550" width="140" height="80" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
