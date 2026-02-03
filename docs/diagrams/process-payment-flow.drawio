@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Process Payment Flow" id="process-payment-flow">
-        <mxGraphModel dx="890" dy="565" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+        <mxGraphModel dx="342" dy="565" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -115,10 +115,11 @@
                         <mxPoint x="740" y="650" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step11" value="11. {trackingId,&#xa;transactionStatus,&#xa;message?, code?}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
+                <mxCell id="step11" value="11. Return success/fail response {trackingId,&lt;br&gt;transactionStatus,&lt;br&gt;message?, code?}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="420" y="690" as="sourcePoint"/>
                         <mxPoint x="100" y="690" as="targetPoint"/>
+                        <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="legend-box" value="Legend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontSize=12;fontStyle=1;verticalAlign=top" parent="1" vertex="1">
@@ -129,9 +130,6 @@
                 </mxCell>
                 <mxCell id="legend-dashed" value="- - - Response" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
                     <mxGeometry x="50" y="785" width="130" height="20" as="geometry"/>
-                </mxCell>
-                <mxCell id="legend-future" value="[FUTURE] Not yet implemented" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
-                    <mxGeometry x="180" y="765" width="150" height="20" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
