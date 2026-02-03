@@ -19,8 +19,8 @@
   completedAt: string | null,     // When finished/failed
 
   // Failure Info (if applicable)
-  errorCode: string | null,
-  errorMessage: string | null,
+  errorCode?: string | null,
+  errorMessage?: string | null,
 }
 ```
 
