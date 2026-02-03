@@ -25,6 +25,11 @@
 ```
 
 ## Caveats
+
+### Important
+  - Can we avoid having the client needing to track the PayGovTrackingID
+  - Make Agency Tracking ID AppID+FeeName+keyNumber
+
 - What happens when a sale is stuck on pending? (and the token expires at the 3 hour mark)
 - Who actually uses getDetails? (Finance department to debug transactions?)
 - AgencyTrackingID decided by the client app or us?
@@ -61,3 +66,26 @@
 
 ## Questions for Mike
 - Is testCert endpoint actually getting used, or does it just exist for testing purposes internally.
+  - Tests our Pay.gov cert (it's a health check)
+    - Passes if cert is valid, fails if not
+- Add it as health check?
+  - Skip drawio diagram for it for now.
+
+# Datastore Options
+
+## Constraints
+- Assume minimum of 20,000 transactions for petition fees
+- Soft Ceiling: 100,000 transactions to start?
+- We need to be able to do queries for historical transactions from daily, monthly, quarterly, and multi-yearly and etc per Chris for finance audits
+
+
+- RDS Vanilla (Ben)
+- RDS (Hot) -> Lambda (scheduled) -> S3 (Parquet files) -> Athena (Ben)
+- DynamoDB Vanilla (Jean)
+- DynamoDB + S3 Archival + Athena (DynamoDB is hot storage and S3 Archival is cold) (Jean)
+- Aurora Serverless + S3 Archival (Anthony)
+- Document DB Serverless (Anthony)
+
+
+# Additional Endpoints needed?
+- For later, what endpoints are needed to make our dashboard users happy?

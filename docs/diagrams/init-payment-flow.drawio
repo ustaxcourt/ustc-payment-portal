@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Init Payment Flow" id="init-payment-flow">
-        <mxGraphModel dx="342" dy="565" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+        <mxGraphModel dx="890" dy="831" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -85,7 +85,7 @@
                         <mxPoint x="740" y="305" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step6" value="6. Save initial record&lt;br&gt;(status: Pending)&lt;br&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" parent="1" edge="1">
+                <mxCell id="step6" value="6. Save initial record&lt;br&gt;(status: Incepted)&lt;br&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="420" y="350" as="sourcePoint"/>
                         <mxPoint x="580" y="350" as="targetPoint"/>
@@ -130,6 +130,16 @@
                 </mxCell>
                 <mxCell id="legend-dashed" value="- - - Response" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
                     <mxGeometry x="50" y="765" width="130" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="2" value="&lt;div&gt;Update record from Incepted&lt;/div&gt;&lt;div&gt;to Recieved&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" edge="1" parent="1">
+                    <mxGeometry y="20" relative="1" as="geometry">
+                        <mxPoint x="420" y="540" as="sourcePoint"/>
+                        <mxPoint x="580" y="540" as="targetPoint"/>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="3" value="Forward the user to the Pay.gov UI along with the token to fill out the payment information. They hit Pay, redirect back to the app to hit process-payment in Payment Portal" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+                    <mxGeometry x="45" y="510" width="140" height="140" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
