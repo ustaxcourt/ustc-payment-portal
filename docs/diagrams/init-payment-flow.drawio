@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Init Payment Flow" id="init-payment-flow">
-        <mxGraphModel dx="890" dy="831" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+        <mxGraphModel dx="1442" dy="831" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -61,7 +61,7 @@
                         <mxPoint x="900" y="700" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step1" value="1. POST /init&lt;br&gt;{agencyTrackingId, amount,&lt;br&gt;appId, urlSuccess,&lt;br&gt;urlCancel}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" edge="1">
+                <mxCell id="step1" value="1. POST /init&lt;br&gt;{appAgencyTrackingId, amount,&lt;br&gt;appId, urlSuccess,&lt;br&gt;urlCancel}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="100" y="160" as="sourcePoint"/>
                         <mxPoint x="260" y="160" as="targetPoint"/>
@@ -140,6 +140,9 @@
                 </mxCell>
                 <mxCell id="3" value="Forward the user to the Pay.gov UI along with the token to fill out the payment information. They hit Pay, redirect back to the app to hit process-payment in Payment Portal" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
                     <mxGeometry x="45" y="510" width="140" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="NOTE: Inital request contract isn&#39;t finalized, we need to talk about what appAgencyTrackingId would be (what DAWSON would provide, and how it&#39;s different from agencyTrackingId)" style="whiteSpace=wrap;html=1;aspect=fixed;fillColor=#fff2cc;strokeColor=#d6b656;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="-40" y="170" width="160" height="160" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
