@@ -57,6 +57,8 @@ More relevant for RDS + S3 option. We can skip it with vanilla RDS.
 | Multi-AZ | Yes | $28.60 | $423 |
 | Single-AZ | Yes | ~$26.30 | $211 |
 
+**Adding Proxy RDS is an extra $22 a month**
+
 ## Important Considerations
 
 If we need to go over the reserved instance, we get charged their ondemand pricing.
