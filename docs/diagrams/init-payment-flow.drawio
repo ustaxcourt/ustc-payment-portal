@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Init Payment Flow" id="init-payment-flow">
-        <mxGraphModel dx="1990" dy="831" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+        <mxGraphModel dx="2294" dy="831" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -123,13 +123,13 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="legend-box" value="Legend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontSize=12;fontStyle=1;verticalAlign=top" parent="1" vertex="1">
-                    <mxGeometry x="40" y="720" width="300" height="100" as="geometry"/>
+                    <mxGeometry x="-240" y="710" width="300" height="100" as="geometry"/>
                 </mxCell>
                 <mxCell id="legend-solid" value="─── Request" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
-                    <mxGeometry x="50" y="745" width="130" height="20" as="geometry"/>
+                    <mxGeometry x="-220" y="745" width="130" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="legend-dashed" value="- - - Response" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
-                    <mxGeometry x="50" y="765" width="130" height="20" as="geometry"/>
+                    <mxGeometry x="-220" y="765" width="130" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="2" value="&lt;div&gt;Update record from Incepted&lt;/div&gt;&lt;div&gt;to Recieved&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" edge="1" parent="1">
                     <mxGeometry y="20" relative="1" as="geometry">
@@ -146,6 +146,9 @@
                 </mxCell>
                 <mxCell id="11" value="TODO: Talk about batch &#39;purchases&#39;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
                     <mxGeometry x="-180" y="250" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" value="" style="rounded=1;whiteSpace=wrap;html=1;align=left;" vertex="1" parent="1">
+                    <mxGeometry x="200" y="705" width="610" height="105" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

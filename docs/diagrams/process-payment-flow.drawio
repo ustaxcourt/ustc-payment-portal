@@ -157,6 +157,9 @@
                 <mxCell id="5" value="After submitting on Pay.gov, Agency hits this end point to process the payment with the payment info associated with the token on Pay.gov&#39;s end." style="whiteSpace=wrap;html=1;aspect=fixed;align=left;" vertex="1" parent="1">
                     <mxGeometry y="150" width="120" height="120" as="geometry"/>
                 </mxCell>
+                <mxCell id="7" value="&lt;b&gt;This endpoint is required regardless of payment type used!&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+                    <mxGeometry x="10" y="10" width="120" height="60" as="geometry"/>
+                </mxCell>
             </root>
         </mxGraphModel>
     </diagram>
