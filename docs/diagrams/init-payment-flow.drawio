@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Init Payment Flow" id="init-payment-flow">
-        <mxGraphModel dx="1894" dy="1596" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+        <mxGraphModel dx="1990" dy="831" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -61,7 +61,7 @@
                         <mxPoint x="900" y="700" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step1" value="1. POST /init&lt;br&gt;{appAgencyTrackingId, amount,&lt;br&gt;appId, urlSuccess,&lt;br&gt;urlCancel}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" edge="1">
+                <mxCell id="step1" value="1. POST /init&lt;br&gt;{uniqueId, feeType, amount?,&lt;br&gt;appId, urlSuccess,&lt;br&gt;urlCancel}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="100" y="160" as="sourcePoint"/>
                         <mxPoint x="260" y="160" as="targetPoint"/>
@@ -131,27 +131,21 @@
                 <mxCell id="legend-dashed" value="- - - Response" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
                     <mxGeometry x="50" y="765" width="130" height="20" as="geometry"/>
                 </mxCell>
-                <mxCell id="2" value="&lt;div&gt;Update record from Incepted&lt;/div&gt;&lt;div&gt;to Recieved&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" parent="1" edge="1">
+                <mxCell id="2" value="&lt;div&gt;Update record from Incepted&lt;/div&gt;&lt;div&gt;to Recieved&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" edge="1" parent="1">
                     <mxGeometry y="20" relative="1" as="geometry">
                         <mxPoint x="420" y="540" as="sourcePoint"/>
                         <mxPoint x="580" y="540" as="targetPoint"/>
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="3" value="Forward the user to the Pay.gov UI along with the token to fill out the payment information. They hit Pay, redirect back to the app to hit process-payment in Payment Portal" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
+                <mxCell id="3" value="Forward the user to the Pay.gov UI along with the token to fill out the payment information. They hit Pay, redirect back to the app to hit process-payment in Payment Portal" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
                     <mxGeometry x="45" y="510" width="140" height="140" as="geometry"/>
                 </mxCell>
-                <mxCell id="4" value="NOTE: Inital request contract isn&#39;t finalized, we need to talk about what appAgencyTrackingId would be (what DAWSON would provide, and how it&#39;s different from agencyTrackingId)" style="whiteSpace=wrap;html=1;aspect=fixed;fillColor=#fff2cc;strokeColor=#d6b656;align=left;" parent="1" vertex="1">
-                    <mxGeometry x="-40" y="170" width="160" height="160" as="geometry"/>
-                </mxCell>
-                <mxCell id="9" style="edgeStyle=none;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="7" target="8">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="7" value="Payload Structure&lt;br&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;AppID: String&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;FeeType: String&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;UniqueId: String&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;Amount?: String&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;" vertex="1" parent="1">
-                    <mxGeometry x="30" y="-30" width="140" height="100" as="geometry"/>
-                </mxCell>
                 <mxCell id="8" value="Note: Amount will only be required on copy fees. all other fees are optional. If amount is provided on non-copy fees, the request becomes invalid." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="210" y="-60" width="130" height="110" as="geometry"/>
+                    <mxGeometry x="-50" y="140" width="130" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="TODO: Talk about batch &#39;purchases&#39;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="-180" y="250" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
