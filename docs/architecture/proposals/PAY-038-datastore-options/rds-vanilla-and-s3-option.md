@@ -55,7 +55,7 @@ More relevant for RDS + S3 option. We can skip it with vanilla RDS.
 | Multi-AZ | No | $6.70 | $423 |
 | Single-AZ | No | $4.40 | $211 |
 | Multi-AZ | Yes | $28.60 | $423 |
-| Single-AZ | Yes | ~$26.30 | $211 |
+| Single-AZ | Yes | $26.30 | $211 |
 
 **Adding Proxy RDS is an extra $22 a month**
 
