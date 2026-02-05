@@ -12,7 +12,7 @@ Lambda (write) → Aurora Serverless v2 (all data)
 
 ### Pros
 
-- **Cost**: ACU-based pricing with a 0.5 ACU minimum (cannot scale to zero). At 100k
+- **Cost**: ACU-based pricing with a 1 ACU minimum (cannot scale to zero). At 100k
   transactions/year compute is the only meaningful cost — storage and I/O are negligible.
 - **Operational simplicity**: Single data store, no archival pipeline, no ETL, unified query path.
 - **Analytics fit**: SQL GROUP BY, window functions, and JOINs map directly to the required
@@ -23,7 +23,7 @@ Lambda (write) → Aurora Serverless v2 (all data)
 
 ### Cons
 
-- **No scale-to-zero**: 0.5 ACU minimum per instance (~$90/mo baseline with Multi-AZ) even with zero traffic.
+- **No scale-to-zero**: 1 ACU minimum per instance even with zero traffic.
 - **Schema migrations**: ALTER TABLE required for changes, though the transaction schema is expected
   to be stable.
 
