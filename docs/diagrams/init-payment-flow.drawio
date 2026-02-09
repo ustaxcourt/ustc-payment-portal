@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Init Payment Flow" id="init-payment-flow">
-        <mxGraphModel dx="1990" dy="831" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+        <mxGraphModel dx="1990" dy="475" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -131,23 +131,23 @@
                 <mxCell id="legend-dashed" value="- - - Response" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
                     <mxGeometry x="-220" y="765" width="130" height="20" as="geometry"/>
                 </mxCell>
-                <mxCell id="2" value="&lt;div&gt;Update record from Incepted&lt;/div&gt;&lt;div&gt;to Recieved&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" edge="1" parent="1">
+                <mxCell id="2" value="&lt;div&gt;Update record from Incepted&lt;/div&gt;&lt;div&gt;to Recieved&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" parent="1" edge="1">
                     <mxGeometry y="20" relative="1" as="geometry">
                         <mxPoint x="420" y="540" as="sourcePoint"/>
                         <mxPoint x="580" y="540" as="targetPoint"/>
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="3" value="Forward the user to the Pay.gov UI along with the token to fill out the payment information. They hit Pay, redirect back to the app to hit process-payment in Payment Portal" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+                <mxCell id="3" value="Forward the user to the Pay.gov UI along with the token to fill out the payment information. They hit Pay, redirect back to the app to hit process-payment in Payment Portal" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
                     <mxGeometry x="45" y="510" width="140" height="140" as="geometry"/>
                 </mxCell>
-                <mxCell id="8" value="Note: Amount will only be required on copy fees. all other fees are optional. If amount is provided on non-copy fees, the request becomes invalid." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                <mxCell id="8" value="Note: Amount will only be required on copy fees. all other fees are optional. If amount is provided on non-copy fees, the request becomes invalid." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-50" y="140" width="130" height="110" as="geometry"/>
                 </mxCell>
-                <mxCell id="11" value="TODO: Talk about batch &#39;purchases&#39;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="11" value="TODO: Talk about batch &#39;purchases&#39;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Update this with what we figured out in unique-id.drawio&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-180" y="250" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="14" value="&lt;b&gt;urlSuccess: &lt;/b&gt;user makes it all the way to the payment redirect url, user enters their payment info and it is VALID. The user is taken to the urlSuccess location defined in the initial request body. Note that we don&#39;t know if the payment was completed yet at this point, just that the payment info was valid to make the atttempt.&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;div&gt;&lt;b&gt;urlCancel: &lt;/b&gt;User makes it all the way to the payment redirect url, but rather then entering their payment info they choose to cancel. The user is taken to the urlCancel location defined in the initial request body.&amp;nbsp;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;" vertex="1" parent="1">
+                <mxCell id="14" value="&lt;b&gt;urlSuccess: &lt;/b&gt;user makes it all the way to the payment redirect url, user enters their payment info and it is VALID. The user is taken to the urlSuccess location defined in the initial request body. Note that we don&#39;t know if the payment was completed yet at this point, just that the payment info was valid to make the atttempt.&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;div&gt;&lt;b&gt;urlCancel: &lt;/b&gt;User makes it all the way to the payment redirect url, but rather then entering their payment info they choose to cancel. The user is taken to the urlCancel location defined in the initial request body.&amp;nbsp;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;" parent="1" vertex="1">
                     <mxGeometry x="200" y="705" width="610" height="105" as="geometry"/>
                 </mxCell>
             </root>
