@@ -1,0 +1,464 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "USTC Payment Portal API",
+    "version": "0.1.3",
+    "description": "API for integrating with Pay.gov payment services for the US Tax Court.",
+    "contact": {
+      "name": "US Tax Court"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Local development server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Payments",
+      "description": "Payment initialization, processing, and status operations"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "API key for authorization"
+      }
+    },
+    "schemas": {
+      "InitPaymentRequest": {
+        "type": "object",
+        "properties": {
+          "trackingId": {
+            "type": "string",
+            "description": "Unique identifier for tracking the payment",
+            "example": "TRK-12345"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "description": "Payment amount in dollars",
+            "example": 150
+          },
+          "appId": {
+            "type": "string",
+            "description": "The TCS application ID",
+            "example": "USTC_APP"
+          },
+          "urlSuccess": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to redirect to after successful payment",
+            "example": "https://example.com/success"
+          },
+          "urlCancel": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to redirect to if payment is cancelled",
+            "example": "https://example.com/cancel"
+          }
+        },
+        "required": [
+          "trackingId",
+          "amount",
+          "appId",
+          "urlSuccess",
+          "urlCancel"
+        ]
+      },
+      "InitPaymentResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Payment token for the initiated transaction",
+            "example": "abc123token"
+          },
+          "paymentRedirect": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to redirect the user to complete payment on Pay.gov",
+            "example": "https://pay.gov/payment?token=abc123token&tcsAppID=USTC_APP"
+          }
+        },
+        "required": [
+          "token",
+          "paymentRedirect"
+        ]
+      },
+      "ProcessPaymentRequest": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "string",
+            "description": "The TCS application ID",
+            "example": "USTC_APP"
+          },
+          "token": {
+            "type": "string",
+            "description": "Payment token received from init payment",
+            "example": "abc123token"
+          }
+        },
+        "required": [
+          "appId",
+          "token"
+        ]
+      },
+      "ProcessPaymentResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/SuccessfulProcessPaymentResponse"
+          },
+          {
+            "$ref": "#/components/schemas/FailedProcessPaymentResponse"
+          }
+        ]
+      },
+      "SuccessfulProcessPaymentResponse": {
+        "type": "object",
+        "properties": {
+          "trackingId": {
+            "type": "string",
+            "description": "The Pay.gov tracking ID for the transaction",
+            "example": "PAYGOV-789"
+          },
+          "transactionStatus": {
+            "type": "string",
+            "enum": [
+              "Success",
+              "Failed",
+              "Pending"
+            ],
+            "description": "The current status of the transaction",
+            "example": "Success"
+          }
+        },
+        "required": [
+          "trackingId",
+          "transactionStatus"
+        ]
+      },
+      "FailedProcessPaymentResponse": {
+        "type": "object",
+        "properties": {
+          "transactionStatus": {
+            "type": "string",
+            "enum": [
+              "Failed"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "Error message if payment failed",
+            "example": "Card declined"
+          },
+          "code": {
+            "type": "number",
+            "description": "Error code if payment failed",
+            "example": 4001
+          }
+        },
+        "required": [
+          "transactionStatus"
+        ]
+      },
+      "GetDetailsRequest": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "string",
+            "description": "The TCS application ID",
+            "example": "USTC_APP"
+          },
+          "payGovTrackingId": {
+            "type": "string",
+            "description": "The Pay.gov tracking ID",
+            "example": "PAYGOV-789"
+          }
+        },
+        "required": [
+          "appId",
+          "payGovTrackingId"
+        ]
+      },
+      "GetDetailsResponse": {
+        "type": "object",
+        "properties": {
+          "trackingId": {
+            "type": "string",
+            "description": "The Pay.gov tracking ID",
+            "example": "PAYGOV-789"
+          },
+          "transactionStatus": {
+            "type": "string",
+            "enum": [
+              "Success",
+              "Failed",
+              "Pending"
+            ],
+            "description": "The current status of the transaction",
+            "example": "Success"
+          }
+        },
+        "required": [
+          "trackingId",
+          "transactionStatus"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "description": "HTTP status code",
+            "example": 400
+          },
+          "message": {
+            "type": "string",
+            "description": "Error message",
+            "example": "Invalid request payload"
+          }
+        },
+        "required": [
+          "statusCode",
+          "message"
+        ]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/init": {
+      "post": {
+        "summary": "Initialize a payment",
+        "description": "Creates a new payment session with Pay.gov and returns a redirect URL for the user to complete payment.",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitPaymentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment initialized successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitPaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/process": {
+      "post": {
+        "summary": "Process a payment",
+        "description": "Completes a payment transaction after the user has authorized it on Pay.gov. Returns the transaction status and tracking information.",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcessPaymentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment processed (check transactionStatus for result)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessPaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/details/{appId}/{payGovTrackingId}": {
+      "get": {
+        "summary": "Get transaction details",
+        "description": "Retrieves the current status and details of a payment transaction by its tracking ID.",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "The TCS application ID",
+              "example": "USTC_APP"
+            },
+            "required": true,
+            "description": "The TCS application ID",
+            "name": "appId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The Pay.gov tracking ID",
+              "example": "PAYGOV-789"
+            },
+            "required": true,
+            "description": "The Pay.gov tracking ID",
+            "name": "payGovTrackingId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetDetailsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request - missing required parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Transaction not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
