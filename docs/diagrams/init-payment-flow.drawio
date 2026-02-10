@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Init Payment Flow" id="init-payment-flow">
-        <mxGraphModel dx="1990" dy="475" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+        <mxGraphModel dx="2807" dy="908" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -150,6 +150,11 @@
                 <mxCell id="14" value="&lt;b&gt;urlSuccess: &lt;/b&gt;user makes it all the way to the payment redirect url, user enters their payment info and it is VALID. The user is taken to the urlSuccess location defined in the initial request body. Note that we don&#39;t know if the payment was completed yet at this point, just that the payment info was valid to make the atttempt.&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;div&gt;&lt;b&gt;urlCancel: &lt;/b&gt;User makes it all the way to the payment redirect url, but rather then entering their payment info they choose to cancel. The user is taken to the urlCancel location defined in the initial request body.&amp;nbsp;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;" parent="1" vertex="1">
                     <mxGeometry x="200" y="705" width="610" height="105" as="geometry"/>
                 </mxCell>
+                <UserObject label="{&#xa;  &quot;appId&quot;: &quot;DAWSON&quot;,&#xa;  &quot;transactionUUID&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,&#xa;  &quot;urlSuccess&quot;: &quot;https://client.app/success&quot;,&#xa;  &quot;urlCancel&quot;: &quot;https://client.app/cancel&quot;,&#xa;  &quot;metadata&quot;: {&#xa;    &quot;docketNumber&quot;: &quot;123456&quot;,&#xa;    &quot;petitionNumber&quot;: &quot;PET-7890&quot;&#xa;  }&#xa;}" link="{&#xa;  &quot;appId&quot;: &quot;DAWSON&quot;,&#xa;  &quot;transactionUUID&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,&#xa;  &quot;urlSuccess&quot;: &quot;https://client.app/success&quot;,&#xa;  &quot;urlCancel&quot;: &quot;https://client.app/cancel&quot;,&#xa;  &quot;metadata&quot;: {&#xa;    &quot;docketNumber&quot;: &quot;123456&quot;,&#xa;    &quot;petitionNumber&quot;: &quot;PET-7890&quot;&#xa;  }&#xa;}" id="15">
+                    <mxCell style="text;whiteSpace=wrap;" vertex="1" parent="1">
+                        <mxGeometry x="950" y="540" width="380" height="170" as="geometry"/>
+                    </mxCell>
+                </UserObject>
             </root>
         </mxGraphModel>
     </diagram>

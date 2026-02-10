@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="44C6MNScdNAlMVhiBaLj" name="Page-1">
-        <mxGraphModel dx="890" dy="475" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="1401" dy="727" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -100,14 +100,20 @@
                         <mxPoint x="239.5" y="110" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="36" value="Validate based on the keyValue pairs expected for a given feeType." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+                <mxCell id="36" value="Validate based on the keyValue pairs expected for a given feeType." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
                     <mxGeometry x="400" y="35" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="37" value="" style="endArrow=none;dashed=1;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="36" target="33">
+                <mxCell id="37" value="" style="endArrow=none;dashed=1;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="36" target="33" edge="1">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
                         <mxPoint x="380" y="120" as="sourcePoint"/>
                         <mxPoint x="380" y="70" as="targetPoint"/>
                     </mxGeometry>
+                </mxCell>
+                <mxCell id="38" value="A client-generated UUID uniquely identifies a specific transaction request and represents a single payment interaction rather than the underlying obligation. It is used to correlate client and Payment Portal records, support idempotency, and enable transaction lookup." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="-50" y="240" width="212.5" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="40" value="Metadata is a flexible JSON key/value structure that provides context about what the payment is for. Its shape varies by feeType and is validated only against the expected keys for that fee type." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="-80" y="10" width="200" height="110" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
