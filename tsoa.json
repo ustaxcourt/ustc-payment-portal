@@ -42,6 +42,7 @@
   "routes": {
     "routesDir": "src/generated",
     "basePath": "/",
-    "iocModule": "src/ioc"
+    "iocModule": "src/ioc",
+    "authenticationModule": "src/authentication"
   }
 }
