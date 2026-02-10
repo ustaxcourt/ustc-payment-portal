@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Process Payment Flow" id="process-payment-flow">
-        <mxGraphModel dx="890" dy="831" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+        <mxGraphModel dx="861" dy="524" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -25,7 +25,7 @@
                 <mxCell id="header-paygov" value="Pay.gov&#xa;SOAP API" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1" parent="1" vertex="1">
                     <mxGeometry x="840" y="90" width="120" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="line-client" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1" source="5">
+                <mxCell id="line-client" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" source="5" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="100" y="140" as="sourcePoint"/>
                         <mxPoint x="100" y="720" as="targetPoint"/>
@@ -131,33 +131,33 @@
                 <mxCell id="legend-dashed" value="- - - Response" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
                     <mxGeometry x="50" y="785" width="130" height="20" as="geometry"/>
                 </mxCell>
-                <mxCell id="2" value="" style="endArrow=classic;html=1;" edge="1" parent="1">
+                <mxCell id="2" value="" style="endArrow=classic;html=1;" parent="1" edge="1">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
                         <mxPoint x="420" y="214.5" as="sourcePoint"/>
                         <mxPoint x="580" y="214.5" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="3" value="4. Check to see if initated&lt;div&gt;transaction exists&amp;nbsp;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="2">
+                <mxCell id="3" value="4. Check to see if initated&lt;div&gt;transaction exists&amp;nbsp;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="2" vertex="1" connectable="0">
                     <mxGeometry x="0.0375" y="3" relative="1" as="geometry">
                         <mxPoint y="1" as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="4" value="5. Return with error if no pending transaction is found" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;dashed=1;strokeColor=#9673a6;" edge="1" parent="1">
+                <mxCell id="4" value="5. Return with error if no pending transaction is found" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;dashed=1;strokeColor=#9673a6;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="420" y="300" as="sourcePoint"/>
                         <mxPoint x="70" y="300" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="6" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" edge="1" parent="1" target="5">
+                <mxCell id="6" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" target="5" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="100" y="140" as="sourcePoint"/>
                         <mxPoint x="100" y="720" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="5" value="After submitting on Pay.gov, Agency hits this end point to process the payment with the payment info associated with the token on Pay.gov&#39;s end." style="whiteSpace=wrap;html=1;aspect=fixed;align=left;" vertex="1" parent="1">
+                <mxCell id="5" value="After submitting on Pay.gov, Agency hits this end point to process the payment with the payment info associated&amp;nbsp; with the token on Pay.gov&#39;s&amp;nbsp;&lt;div&gt;&amp;nbsp;&amp;nbsp;end.&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;align=left;" parent="1" vertex="1">
                     <mxGeometry y="150" width="120" height="120" as="geometry"/>
                 </mxCell>
-                <mxCell id="7" value="&lt;b&gt;This endpoint is required regardless of payment type used!&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+                <mxCell id="7" value="&lt;b&gt;This endpoint is required regardless of payment type used!&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
                     <mxGeometry x="10" y="10" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>

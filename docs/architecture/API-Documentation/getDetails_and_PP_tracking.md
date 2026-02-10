@@ -1,29 +1,60 @@
-# Transaction Reference ID → Payment Attempt Linkage
+# Transaction UUID → Payment Attempt Linkage (Metadata-Driven Obligations)
 
 ## Purpose
 
-Payment Portal must support payment retries while ensuring that a single business obligation is paid **at most once**. To accomplish this, PP relies on a **client-provided `transaction_reference_id` (UUID)** to represent the obligation and explicitly links all payment attempts to it.
+Payment Portal must support multiple payment attempts for the same obligation (e.g., retries), while ensuring the obligation is paid **at most once**. In the updated design, the client provides:
 
-This allows PP to associate multiple retries with the same obligation while keeping payment attempts distinct.
+- a **unique UUID for each transaction attempt**
+- a **metadata string** describing the *obligation* (e.g., feeType)
+- `appId`, `urlSuccess`, and `urlCancel` passed in on each initiation request
+
+The UUID represents the **transaction attempt**, not the obligation.
+The metadata represents the **obligation**, not the attempt.
+
+Payment Portal uses metadata to group attempts, enforce correctness, and prevent double payment.
 
 ---
 
-## Transaction Reference ID Ownership & Semantics
+## Example Client Payload
 
-- `transaction_reference_id` is **provided by the client** as a UUID
-- The identifier represents the **business obligation**, not a single payment attempt
-- The same `transaction_reference_id` **must be reused across retries**
-- Payment Portal treats this value as **opaque but stable**
+```json
+{
+  "appId": "DAWSON",
+  "transactionUUID": "550e8400-e29b-41d4-a716-446655440000",
+  "urlSuccess": "https://client.app/success",
+  "urlCancel": "https://client.app/cancel",
+  "metadata": {
+    "docketNumber": "123456",
+    "petitionNumber": "PET-7890"
+  }
+}
 
-While the client provides the identifier, **Payment Portal owns the enforcement of payment correctness and lifecycle rules**.
+## UUID & Metadata Semantics
+
+### UUID
+- The client generates a **new UUID for every initiated transaction**
+- UUIDs are **never reused**, even for retries
+- PP treats the UUID as an identifier for **one and only one attempt**
+
+### Metadata
+- Metadata identifies **the obligation being paid** (e.g., `"PETITION_FEE"`)
+- Multiple attempts for the same obligation will share identical metadata
+- Metadata must remain stable across retries
+
+Together:
+
+- **UUID = attempt ID**
+- **Metadata = obligation descriptor**
 
 ---
 
 ## Core Relationship Model
 
-- `transaction_reference_id` identifies **what is being paid**
-- Each `attempt_id` represents **one attempt**
-- All retries reference the same UUID
+- Each transaction attempt has a **unique UUID**
+- Payment Portal uses **metadata** to determine which attempts belong to the same obligation
+- Multiple attempts may share the same metadata, indicating retries
+
+This allows PP to support unlimited retries without confusing them with different obligations.
 
 ---
 
@@ -33,116 +64,99 @@ While the client provides the identifier, **Payment Portal owns the enforcement 
 
 When a payment is initiated:
 
-1. Client supplies a `transaction_reference_id` (UUID)
-2. Payment Portal creates an obligation record if one does not already exist
-3. The first payment attempt is created with:
-   - `attempt_id`
-   - `transaction_reference_id`
-   - initial status = `Pending`
+1. Client sends:
+   - a **fresh UUID** (attempt-level)
+   - a **metadata string** (obligation-level)
+2. Payment Portal creates a new payment attempt:
+   - `attempt_uuid` = client UUID
+   - `metadata` = what the user is paying for
+   - `status = Pending`
+3. If no obligation record exists for this metadata:
+   - PP creates one implicitly
 
-> Note: `Pending` represents the initial Pay.gov-facing state. Any internal pre-processing state (e.g., request validation or token creation) is transient and not exposed as a durable attempt status.
-
-This establishes the obligation → attempt relationship.
+This links the attempt to its obligation via **metadata**, not UUID.
 
 ---
 
 ### Retry Attempts
 
-If an attempt fails, expires, or is abandoned:
+On retry:
 
-1. Client reuses the same `transaction_reference_id`
-2. Payment Portal **does not create a new obligation**
-3. A new payment attempt is created and linked to the existing obligation
+1. The client generates a **new UUID**
+2. The client sends the **same metadata**
+3. Payment Portal:
+   - creates a new attempt
+   - links it to the same obligation (matched by metadata)
 
-Retries are therefore explicitly grouped under the same obligation.
+Retries are detected because **metadata matches a previous attempt**.
 
 ---
 
 ## How Status Is Tracked
 
-### Attempt-Level Status (Pay.gov → PP Mapping)
+### Attempt-Level Status
 
-Payment Portal normalizes Pay.gov statuses into three internal attempt states.
+Each UUID maps to an attempt with one of the internal states:
 
-#### Pending
-
-Any of the following Pay.gov statuses map to **`Pending`**:
 - `Pending`
-- `Received`
-- `Waiting`
-- `Submitted`
-
-These indicate the payment has been initiated or is still being processed.
-
-#### Success
-
-Any of the following Pay.gov statuses map to **`Success`**:
-- `Settled`
 - `Success`
-
-These indicate the payment has completed successfully.
-
-#### Failed
-
-Any of the following Pay.gov statuses map to **`Failed`**:
-- `Cancelled`
 - `Failed`
-- `Retired`
-
-These indicate the payment attempt did not complete successfully.
-
----
 
 ### Obligation-Level Status
 
-The obligation status is derived from its associated attempts:
+The obligation status is derived from all attempts sharing the same metadata:
 
-- If **any attempt reaches `Success`** → obligation becomes **PAID**
-- If all attempts are `Failed` → obligation remains **OPEN**
-- If any attempt is `Pending` → obligation remains **OPEN**
+- If **any attempt is `Success`** → obligation is **PAID**
+- If all attempts are `Failed` → obligation stays **OPEN**
+- If any attempt is `Pending` → obligation stays **OPEN**
 
-Once an obligation is PAID:
-- no new attempts may be created
-- existing attempts cannot transition to `Success`
+Once PAID:
+- no further attempts may succeed
+- PP may reject attempts with the same metadata
 
 ---
 
 ## getDetails and Retry Awareness
 
-The `getDetails` API uses `transaction_reference_id` to:
+The `getDetails` API now:
 
-1. Locate the obligation
-2. Inspect all associated attempts
-3. Determine the authoritative obligation status
-4. Return a single, stable result to the client
+- Accepts the **attempt UUID**
+- Uses it to find the attempt → then its metadata → then the obligation
+- Returns the **obligation status**, not just the attempt status
 
-Clients never reference:
-- individual attempt IDs
-- Pay.gov tracking IDs
-- processor-specific identifiers
+This gives the client a stable view of payment state without exposing internal linking logic.
 
 ---
 
 ## Why This Works
 
-- Clients control obligation identity, but PP controls correctness
-- Retries are first-class and explicitly linked
-- Duplicate payments are prevented
-- Payment history is auditable and explainable
+- UUIDs stay clean and single-purpose (one per attempt)
+- Metadata acts as a natural grouping key
+- PP, not the client, decides obligation lifecycle
+- Retries are easy to track across separate UUIDs
+- Duplicate payments are prevented through metadata grouping
 
 ---
 
 ## Contract Rules (Client Responsibilities)
 
-- A `transaction_reference_id` **must uniquely identify one obligation per app**
-- The same `transaction_reference_id` **must not be reused** for different fee types or amounts
-- If a `transaction_reference_id` is reused, the following fields must remain immutable **as originally recorded on first use**:
-  - `feeType`
-  - `amount`
-- Payment Portal will reject requests that violate these constraints
+- Every transaction attempt **must use a fresh UUID**
+- Metadata must accurately describe the obligation
+- Metadata **must stay consistent** across retries
+- UUIDs must not encode meaning; PP treats them as opaque identifiers
+
+Payment Portal will reject:
+- attempts with conflicting metadata for an existing obligation
+- attempts for obligations already marked PAID
 
 ---
 
 ## Summary
 
-By requiring the client to provide a stable `transaction_reference_id` (UUID) and linking all payment attempts to it, Payment Portal can reliably track retries and enforce that each obligation is paid at most once. This design preserves a clean client contract while allowing PP to manage payment integrity and retries.
+Payment Portal now relies on:
+
+- **Client-provided UUIDs** to uniquely identify each individual payment attempt
+- **Client-provided metadata** to identify and group attempts under the same obligation
+
+This design cleanly separates *attempt identity* from *obligation identity*, enabling PP to support retries safely, prevent double payments, and maintain accurate obligation-level status tracking.
+
