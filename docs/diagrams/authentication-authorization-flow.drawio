@@ -1,0 +1,220 @@
+<mxfile host="65bd71144e">
+    <diagram name="Authentication and Authorization Flow" id="auth-flow">
+        <mxGraphModel dx="2290" dy="565" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="Payment Portal API - Authentication &amp; Authorization Flow (Cross-Account)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="400" y="10" width="760" height="10" as="geometry"/>
+                </mxCell>
+                <mxCell id="dawson-account-boundary" value="DAWSON AWS Account (123456789012)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#0066CC;fontSize=14;fontStyle=1;align=left;verticalAlign=top;dashed=1;dashPattern=8 8;strokeWidth=3;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="60" width="240" height="380" as="geometry"/>
+                </mxCell>
+                <mxCell id="portal-account-boundary" value="Payment Portal AWS Account (987654321098)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#009900;fontSize=14;fontStyle=1;align=left;verticalAlign=top;dashed=1;dashPattern=8 8;strokeWidth=3;" parent="1" vertex="1">
+                    <mxGeometry x="295" y="40" width="810" height="720" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-lambda" value="Client Lambda&#xa;(DAWSON)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="100" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="step1-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="client-lambda" target="sts" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="step1-label" value="1. Cross-Account&#xa;Assume Role" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step1-arrow" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1" y="2" relative="1" as="geometry">
+                        <mxPoint x="30" y="-5" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="sts" value="AWS STS&#xa;(Cross-Account)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="220" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="step2-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="sts" target="client-lambda" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="30" y="235"/>
+                            <mxPoint x="30" y="115"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="step2-label" value="2. Temp Credentials" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step2-arrow" vertex="1" connectable="0">
+                    <mxGeometry x="0.1" y="-2" relative="1" as="geometry">
+                        <mxPoint x="-35" y="-20" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="iam-role-box" value="Client IAM Role&#xa;(In DAWSON Account)&#xa;&#xa;Role: payment-portal-&#xa;client-dawson&#xa;&#xa;Tags:&#xa;• ClientName: DAWSON&#xa;• AllowedTcsAppIds:&#xa;  12345,67890" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;fontColor=#333333;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="293" width="200" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="step3-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="client-lambda" target="api-gateway" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="step3-label" value="3. SigV4 Signed Request&#xa;POST /init&#xa;{appId: 12345, amount: 100}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step3-arrow" vertex="1" connectable="0">
+                    <mxGeometry x="-0.05" y="2" relative="1" as="geometry">
+                        <mxPoint x="3" y="-59" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="api-gateway" value="API Gateway&#xa;(IAM Auth)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="100" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="api-gateway-policy" value="Resource Policy:&lt;br&gt;Allow cross-account&lt;br&gt;from Client account" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;fontColor=#333333;" parent="1" vertex="1">
+                    <mxGeometry x="359" y="270" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="step4-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="api-gateway" target="iam-service" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="step4-label" value="4. Validate Signature" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step4-arrow" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+                        <mxPoint x="25" y="-5" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="iam-service" value="AWS IAM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="200" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="step5-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="iam-service" target="api-gateway" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="520" y="235"/>
+                            <mxPoint x="520" y="115"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="step5-label" value="5. Auth Success ✓" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;fontColor=#009900;labelBackgroundColor=#ffffff;" parent="step5-arrow" vertex="1" connectable="0">
+                    <mxGeometry x="0.15" y="1" relative="1" as="geometry">
+                        <mxPoint x="45" y="-6" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="step6-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="api-gateway" target="portal-lambda" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="step6-label" value="6. Invoke with IAM Context&#xa;event.requestContext.identity.userArn" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step6-arrow" vertex="1" connectable="0">
+                    <mxGeometry x="-0.05" y="2" relative="1" as="geometry">
+                        <mxPoint x="-48" y="-48" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="portal-lambda" value="Payment Portal&#xa;Lambda" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="625" y="80" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="step7-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="portal-lambda" target="dynamodb" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="700" y="150"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="step7-label" value="7. Query Permissions&#xa;GetItem(ClientRoleArn)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step7-arrow" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1" y="2" relative="1" as="geometry">
+                        <mxPoint x="75" y="-5" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="dynamodb" value="DynamoDB&#xa;client-permissions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="200" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="step8-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="dynamodb" target="portal-lambda" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="780" y="230"/>
+                            <mxPoint x="860" y="230"/>
+                            <mxPoint x="860" y="115"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="step8-label" value="8. AllowedTcsAppIds:&#xa;[12345, 67890]" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step8-arrow" vertex="1" connectable="0">
+                    <mxGeometry x="0.15" y="1" relative="1" as="geometry">
+                        <mxPoint x="71" y="-24" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="dynamodb-details" value="DynamoDB Record:&#xa;{&#xa;  ClientRoleArn:&#xa;    arn:aws:iam::123456789012:&#xa;    role/payment-portal-&#xa;    client-dawson&#xa;  ClientAccountId: 123456789012&#xa;  ClientName: DAWSON&#xa;  AllowedTcsAppIds: [12345, 67890]&#xa;}" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;fontColor=#333333;" parent="1" vertex="1">
+                    <mxGeometry x="590" y="300" width="230" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="step9-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="700" y="150"/>
+                        </Array>
+                        <mxPoint x="705" y="150" as="sourcePoint"/>
+                        <mxPoint x="700" y="470" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="step9-label" value="9. Validate" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step9-arrow" vertex="1" connectable="0">
+                    <mxGeometry x="-0.75" y="1" relative="1" as="geometry">
+                        <mxPoint x="20" y="100" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="decision" value="tcsAppId&#xa;authorized?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="630" y="470" width="140" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="paygov" value="Pay.gov&#xa;SOAP API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="660" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="yes-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#009900;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="decision" target="paygov" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="yes-label" value="YES" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;fontColor=#009900;labelBackgroundColor=#ffffff;" parent="yes-arrow" vertex="1" connectable="0">
+                    <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+                        <mxPoint x="20" y="-5" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="forbidden" value="Return 403&#xa;Forbidden" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="900" y="505" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="no-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#CC0000;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="decision" target="forbidden" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="no-label" value="NO" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;fontColor=#CC0000;labelBackgroundColor=#ffffff;" parent="no-arrow" vertex="1" connectable="0">
+                    <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+                        <mxPoint x="-10" y="-10" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="step10-label" value="10. Process Payment" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="620" y="725" width="160" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-box" value="Legend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=13;fontStyle=1;align=left;verticalAlign=top" parent="1" vertex="1">
+                    <mxGeometry x="1140" y="80" width="220" height="190" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-client" value="Client Application" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="1155" y="115" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-portal" value="Portal Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="1155" y="155" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-aws" value="AWS Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="1155" y="195" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-external" value="External Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="1265" y="115" width="85" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-gateway" value="API Gateway" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="1265" y="155" width="85" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-decision" value="Decision" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="1265" y="195" width="85" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-solid" value="Request Flow" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="1180" y="235" width="100" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-solid-line" value="" style="endArrow=classic;html=1;strokeWidth=2;fontSize=11;" parent="1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="1155" y="245" as="sourcePoint"/>
+                        <mxPoint x="1175" y="245" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="legend-dashed" value="Response Flow" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="1180" y="250" width="100" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-dashed-line" value="" style="endArrow=classic;html=1;strokeWidth=2;dashed=1;fontSize=11;" parent="1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="1155" y="260" as="sourcePoint"/>
+                        <mxPoint x="1175" y="260" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="4" style="edgeStyle=none;html=1;" parent="1" source="2" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="2" value="Datastore (TBD)" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="470" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="{&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;payGovTrackingId: string,&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;agencyTrackingId: string,&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;appId: string,&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(63, 63, 63); background-color: transparent; white-space: pre;&quot;&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;amount: number,&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(63, 63, 63); background-color: transparent; white-space: pre;&quot;&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;feeType: string,&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(63, 63, 63); background-color: transparent; white-space: pre;&quot;&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;transactionStatus: string,&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(63, 63, 63); background-color: transparent; white-space: pre;&quot;&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;initiatedAt: string,&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(63, 63, 63); background-color: transparent; white-space: pre;&quot;&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;completedAt: string,&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(63, 63, 63); background-color: transparent; white-space: pre;&quot;&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;errorCode?: string,&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;errorMessage?: string&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;}&lt;/span&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="310" y="550" width="180" height="180" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
