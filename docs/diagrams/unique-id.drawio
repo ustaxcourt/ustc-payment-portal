@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="44C6MNScdNAlMVhiBaLj" name="Page-1">
-        <mxGraphModel dx="1401" dy="727" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="3003" dy="2410" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -115,6 +115,11 @@
                 <mxCell id="40" value="Metadata is a flexible JSON key/value structure that provides context about what the payment is for. Its shape varies by feeType and is validated only against the expected keys for that fee type." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
                     <mxGeometry x="-80" y="10" width="200" height="110" as="geometry"/>
                 </mxCell>
+                <UserObject label="{&#xa;  &quot;appId&quot;: &quot;DAWSON&quot;,&#xa;  &quot;transactionUUID&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,&#xa;  &quot;urlSuccess&quot;: &quot;https://client.app/success&quot;,&#xa;  &quot;urlCancel&quot;: &quot;https://client.app/cancel&quot;,&#xa;  &quot;metadata&quot;: {&#xa;    &quot;docketNumber&quot;: &quot;123456&quot;,&#xa;    &quot;petitionNumber&quot;: &quot;PET-7890&quot;&#xa;  }&#xa;}" link="{&#xa;  &quot;appId&quot;: &quot;DAWSON&quot;,&#xa;  &quot;transactionUUID&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,&#xa;  &quot;urlSuccess&quot;: &quot;https://client.app/success&quot;,&#xa;  &quot;urlCancel&quot;: &quot;https://client.app/cancel&quot;,&#xa;  &quot;metadata&quot;: {&#xa;    &quot;docketNumber&quot;: &quot;123456&quot;,&#xa;    &quot;petitionNumber&quot;: &quot;PET-7890&quot;&#xa;  }&#xa;}" id="42">
+                    <mxCell style="text;whiteSpace=wrap;" vertex="1" parent="1">
+                        <mxGeometry x="570" y="-150" width="380" height="170" as="geometry"/>
+                    </mxCell>
+                </UserObject>
             </root>
         </mxGraphModel>
     </diagram>
