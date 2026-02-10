@@ -1,15 +1,12 @@
+import { IocContainer } from "tsoa";
 import { PaymentController } from "./controllers/paymentController";
 
 // Simple IoC container for tsoa
-// Maps controller names to their instances
-const iocContainer = {
-  get<T>(controller: { prototype: T }): T {
+const iocContainer: IocContainer = {
+  get<T>(controller: new () => T): T {
     // For now, just create new instances
-    // In a more complex app, you might use a DI framework
-    if (controller.prototype instanceof PaymentController || controller === PaymentController as any) {
-      return new PaymentController() as unknown as T;
-    }
-    throw new Error(`Unknown controller: ${controller}`);
+    // In a more complex app, you might use a DI framework like tsyringe
+    return new controller();
   },
 };
 
