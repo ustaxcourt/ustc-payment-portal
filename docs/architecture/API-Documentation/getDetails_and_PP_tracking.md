@@ -27,6 +27,7 @@ Payment Portal uses metadata to group attempts, enforce correctness, and prevent
     "petitionNumber": "PET-7890"
   }
 }
+```
 
 ## UUID & Metadata Semantics
 
