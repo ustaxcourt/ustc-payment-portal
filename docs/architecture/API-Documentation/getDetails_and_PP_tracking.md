@@ -18,7 +18,7 @@ Payment Portal uses metadata to group attempts, enforce correctness, and prevent
 
 ```json
 {
-  "tcsAppId": "DAWSON",
+  "appId": "DAWSON",
   "transactionUUID": "550e8400-e29b-41d4-a716-446655440000",
   "urlSuccess": "https://client.app/success",
   "urlCancel": "https://client.app/cancel",
