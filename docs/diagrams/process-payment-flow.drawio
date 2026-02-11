@@ -84,8 +84,8 @@
                 </mxCell>
                 <mxCell id="step5" value="6. CompleteOnlineCollection&lt;br&gt;WithDetails&lt;br&gt;(SOAP + mTLS cert)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="420" y="340" as="sourcePoint"/>
-                        <mxPoint x="900" y="340" as="targetPoint"/>
+                        <mxPoint x="420" y="360" as="sourcePoint"/>
+                        <mxPoint x="900" y="360" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="paygov-box" value="7. Complete transaction&lt;br&gt;Return details" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11" parent="1" vertex="1">
@@ -147,6 +147,17 @@
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="420" y="300" as="sourcePoint"/>
                         <mxPoint x="70" y="300" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="5a-auth" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#666666;" parent="1" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="420" y="325" as="sourcePoint"/>
+                        <mxPoint x="580" y="325" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="5a-label" value="5a. Authorize App for fee for token&lt;br&gt;(query client permissions, validate fee in AllowedFees)&lt;br&gt;See: authentication-authorization-flow.drawio" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontStyle=0;labelBackgroundColor=#ffffff;" parent="5a-auth" vertex="1" connectable="0">
+                    <mxGeometry x="0.05" y="2" relative="1" as="geometry">
+                        <mxPoint x="30" y="-5" as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="6" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" target="5" edge="1">

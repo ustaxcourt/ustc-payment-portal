@@ -85,41 +85,53 @@
                         <mxPoint x="740" y="305" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
+                <mxCell id="step5a-auth" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#666666;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="420" y="335" as="sourcePoint"/>
+                        <mxPoint x="580" y="335" as="targetPoint"/>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="step5a-label" value="5a. Authorize App for fee&lt;br&gt;(query client permissions, validate feeId in AllowedFees)&lt;br&gt;See: authentication-authorization-flow.drawio" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontStyle=0;labelBackgroundColor=#ffffff;" parent="step5a-auth" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1" y="2" relative="1" as="geometry">
+                        <mxPoint x="50" y="-5" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
                 <mxCell id="step6" value="6. Save initial record&lt;br&gt;(status: Received)&lt;br&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="420" y="350" as="sourcePoint"/>
-                        <mxPoint x="580" y="350" as="targetPoint"/>
+                        <mxPoint x="420" y="375" as="sourcePoint"/>
+                        <mxPoint x="580" y="375" as="targetPoint"/>
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="step7" value="7. StartOnlineCollection&#xa;(SOAP + mTLS cert)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="420" y="400" as="sourcePoint"/>
-                        <mxPoint x="900" y="400" as="targetPoint"/>
+                        <mxPoint x="420" y="425" as="sourcePoint"/>
+                        <mxPoint x="900" y="425" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="paygov-box" value="8. Validate cert&#xa;Generate token" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11" parent="1" vertex="1">
-                    <mxGeometry x="840" y="420" width="120" height="50" as="geometry"/>
+                    <mxGeometry x="840" y="445" width="120" height="50" as="geometry"/>
                 </mxCell>
                 <mxCell id="step9" value="9. {token}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#b85450;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="900" y="490" as="sourcePoint"/>
-                        <mxPoint x="420" y="490" as="targetPoint"/>
+                        <mxPoint x="900" y="515" as="sourcePoint"/>
+                        <mxPoint x="420" y="515" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="step11-box" value="10. Build response&lt;br&gt;paymentRedirect =&lt;br&gt;PAYMENT_URL?token=..." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11" parent="1" vertex="1">
-                    <mxGeometry x="360" y="550" width="120" height="60" as="geometry"/>
+                    <mxGeometry x="360" y="575" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="step12" value="11. Log response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;dashed=1;strokeColor=#9673a6;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="420" y="620" as="sourcePoint"/>
-                        <mxPoint x="740" y="620" as="targetPoint"/>
+                        <mxPoint x="420" y="645" as="sourcePoint"/>
+                        <mxPoint x="740" y="645" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="step13" value="12. Payment redirect link with token" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="420" y="660" as="sourcePoint"/>
-                        <mxPoint x="100" y="660" as="targetPoint"/>
+                        <mxPoint x="420" y="685" as="sourcePoint"/>
+                        <mxPoint x="100" y="685" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="legend-box" value="Legend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontSize=12;fontStyle=1;verticalAlign=top" parent="1" vertex="1">
