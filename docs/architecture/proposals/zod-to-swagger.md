@@ -98,4 +98,12 @@ Run with: `npm run generate:openapi`
 
 After any changes, run `npm run generate:openapi` to regenerate the docs.
 
+# Alternatives (and why they don't really work for us)
+## Hono + Hono-openapi
+Hono is another framework similar to express/node that has a feature built in to directly generate the docs from the API code. Not really practically here because it would require starting Payment Portal from Scratch.
 
+## OpenAPI Specs from CDK
+We can use aws apigateway get-export to grab the API endpoint definitions from API Gateway, but it only provides the route structure - no request/response schemas, descriptions, or examples unless we duplicate that information in Terraform.
+
+## TSOA
+TSOA lets us define routes in endpoints via decorators, getting us pretty close to the goal of having our code be our source of truth. It can then generate the docs based on those routes. It doesn't work for our setup since it requires class-based controllers with decorators, and generates Express/Koa route handlers - neither of which align with our Lambda function-per-endpoint architecture.
