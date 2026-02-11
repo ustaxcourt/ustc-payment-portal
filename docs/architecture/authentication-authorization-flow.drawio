@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Authentication and Authorization Flow" id="auth-flow">
-        <mxGraphModel dx="2385" dy="451" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+        <mxGraphModel dx="2805" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -46,7 +46,7 @@
                 <mxCell id="step3-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="client-lambda" target="api-gateway" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="step3-label" value="3. SigV4 Signed Request&#xa;POST /init&#xa;{appId: 12345, amount: 100}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step3-arrow" vertex="1" connectable="0">
+                <mxCell id="step3-label" value="3. SigV4 Signed Request&lt;br&gt;POST /init&lt;br&gt;{appId: 12345, feeId: 100}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step3-arrow" vertex="1" connectable="0">
                     <mxGeometry x="-0.05" y="2" relative="1" as="geometry">
                         <mxPoint x="3" y="-59" as="offset"/>
                     </mxGeometry>
@@ -123,7 +123,7 @@
                         <mxPoint x="81" y="-22" as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <object label="Database Record:&lt;br&gt;{&lt;br&gt;  ClientRoleArn:&lt;br&gt;    arn:aws:iam::123456789012:&lt;br&gt;    role/payment-portal-&lt;br&gt;    client-dawson&lt;br&gt;  ClientAccountId: 123456789012&lt;br&gt;  ClientName: DAWSON&lt;br&gt;  AllowedTcsAppIds: [12345, 67890]&lt;br&gt;}" id="datastore-details">
+                <object label="Database Record:&lt;br&gt;{&lt;br&gt;  ClientRoleArn:&lt;br&gt;    arn:aws:iam::123456789012:&lt;br&gt;    role/payment-portal-&lt;br&gt;    client-dawson&lt;br&gt;  ClientAccountId: 123456789012&lt;br&gt;  ClientName: DAWSON&lt;br&gt;  AllowedFees: [12345, 67890]&lt;br&gt;}" id="datastore-details">
                     <mxCell style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;fontColor=#333333;" parent="1" vertex="1">
                         <mxGeometry x="590" y="300" width="230" height="140" as="geometry"/>
                     </mxCell>
