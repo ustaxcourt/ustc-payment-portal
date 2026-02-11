@@ -28,37 +28,37 @@
                 <mxCell id="line-client" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="100" y="140" as="sourcePoint"/>
-                        <mxPoint x="100" y="650" as="targetPoint"/>
+                        <mxPoint x="100" y="740" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="line-gateway" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="260" y="140" as="sourcePoint"/>
-                        <mxPoint x="260" y="650" as="targetPoint"/>
+                        <mxPoint x="260" y="740" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="line-lambda" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="420" y="140" as="sourcePoint"/>
-                        <mxPoint x="420" y="650" as="targetPoint"/>
+                        <mxPoint x="420" y="740" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="line-datastore" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="580" y="140" as="sourcePoint"/>
-                        <mxPoint x="580" y="650" as="targetPoint"/>
+                        <mxPoint x="580" y="740" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="line-logs" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="740" y="140" as="sourcePoint"/>
-                        <mxPoint x="740" y="650" as="targetPoint"/>
+                        <mxPoint x="740" y="740" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="line-paygov" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="900" y="140" as="sourcePoint"/>
-                        <mxPoint x="900" y="650" as="targetPoint"/>
+                        <mxPoint x="900" y="740" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="step1" value="1. GET /details/&lt;br&gt;{appId}/{&lt;span style=&quot;color: rgb(63, 63, 63); background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;span style=&quot;color: rgb(63, 63, 63);&quot;&gt;transactionReferenceId&lt;/span&gt;}&lt;/span&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" edge="1">
@@ -109,8 +109,9 @@
                 </mxCell>
                 <mxCell id="step10" value="11. Log response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;dashed=1;strokeColor=#9673a6;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="420" y="590" as="sourcePoint"/>
-                        <mxPoint x="740" y="590" as="targetPoint"/>
+                        <mxPoint x="420" y="600" as="sourcePoint"/>
+                        <mxPoint x="580" y="600" as="targetPoint"/>
+                        <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="step11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
