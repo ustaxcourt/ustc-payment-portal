@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="44C6MNScdNAlMVhiBaLj" name="Page-1">
-        <mxGraphModel dx="1454" dy="2002" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="2070" dy="1931" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -112,15 +112,15 @@
                         <mxPoint x="380" y="70" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="38" value="A client-generated UUID uniquely identifies a specific transaction request and represents a single payment interaction rather than the underlying obligation. It is used to correlate client and Payment Portal records, support idempotency, and enable transaction lookup." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                <mxCell id="38" value="A client-generated UUID uniquely identifies a specific transaction request and represents a single payment interaction rather than the underlying obligation. It is used to correlate client and Payment Portal records, support idempotency, and enable transaction lookup." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-50" y="240" width="212.5" height="140" as="geometry"/>
                 </mxCell>
-                <mxCell id="40" value="Metadata is a flexible JSON key/value structure that provides context about what the payment is for. Its shape varies by fee Id and is validated only against the expected keys for that fee Id." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                <mxCell id="40" value="Metadata is a flexible JSON key/value structure that provides context about what the payment is for. Its shape varies by fee Id and is validated only against the expected keys for that fee Id." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-80" y="10" width="200" height="110" as="geometry"/>
                 </mxCell>
-                <UserObject label="{&#xa;  &quot;appId&quot;: &quot;DAWSON&quot;,&#xa;  &quot;transactionUUID&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,&#xa;  &quot;urlSuccess&quot;: &quot;https://client.app/success&quot;,&#xa;  &quot;urlCancel&quot;: &quot;https://client.app/cancel&quot;,&#xa;  &quot;metadata&quot;: {&#xa;    &quot;docketNumber&quot;: &quot;123456&quot;,&#xa;    &quot;petitionNumber&quot;: &quot;PET-7890&quot;&#xa;  }&#xa;}" link="{&#xa;  &quot;appId&quot;: &quot;DAWSON&quot;,&#xa;  &quot;transactionUUID&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,&#xa;  &quot;urlSuccess&quot;: &quot;https://client.app/success&quot;,&#xa;  &quot;urlCancel&quot;: &quot;https://client.app/cancel&quot;,&#xa;  &quot;metadata&quot;: {&#xa;    &quot;docketNumber&quot;: &quot;123456&quot;,&#xa;    &quot;petitionNumber&quot;: &quot;PET-7890&quot;&#xa;  }&#xa;}" id="42">
-                    <mxCell style="text;whiteSpace=wrap;" vertex="1" parent="1">
-                        <mxGeometry x="570" y="-150" width="380" height="170" as="geometry"/>
+                <UserObject label="{&#xa;  &quot;appId&quot;: &quot;DAWSON&quot;,&#xa;  &quot;transactionReferenceId&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,&#xa;  &quot;urlSuccess&quot;: &quot;https://client.app/success&quot;,&#xa;  &quot;urlCancel&quot;: &quot;https://client.app/cancel&quot;,&#xa;  &quot;metadata&quot;: {&#xa;    &quot;docketNumber&quot;: &quot;123456&quot;,&#xa;    &quot;petitionNumber&quot;: &quot;PET-7890&quot;&#xa;  }&#xa;}" link="{&#xa;  &quot;appId&quot;: &quot;DAWSON&quot;,&#xa;  &quot;transactionUUID&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,&#xa;  &quot;urlSuccess&quot;: &quot;https://client.app/success&quot;,&#xa;  &quot;urlCancel&quot;: &quot;https://client.app/cancel&quot;,&#xa;  &quot;metadata&quot;: {&#xa;    &quot;docketNumber&quot;: &quot;123456&quot;,&#xa;    &quot;petitionNumber&quot;: &quot;PET-7890&quot;&#xa;  }&#xa;}" id="42">
+                    <mxCell style="text;whiteSpace=wrap;" parent="1" vertex="1">
+                        <mxGeometry x="500" y="-150" width="450" height="170" as="geometry"/>
                     </mxCell>
                 </UserObject>
             </root>
