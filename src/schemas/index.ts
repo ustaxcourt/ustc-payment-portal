@@ -5,30 +5,40 @@ import { z } from "zod";
 extendZodWithOpenApi(z);
 
 // ============================================
-// Init Payment
+// Init Payment (OpenAPI documentation schema - future API contract)
 // ============================================
 export const InitPaymentRequestSchema = z
   .object({
-    trackingId: z.string().openapi({
-      description: "Unique identifier for tracking the payment",
-      example: "TRK-12345",
-    }),
-    amount: z.number().positive().openapi({
-      description: "Payment amount in dollars",
-      example: 150.0,
-    }),
     appId: z.string().openapi({
-      description: "The TCS application ID",
-      example: "USTC_APP",
+      description: "The application ID",
+      example: "DAWSON",
+    }),
+    transactionReferenceId: z.string().uuid().openapi({
+      description: "Unique UUID for the transaction reference",
+      example: "550e8400-e29b-41d4-a716-446655440000",
     }),
     urlSuccess: z.string().url().openapi({
       description: "URL to redirect to after successful payment",
-      example: "https://example.com/success",
+      example: "https://client.app/success",
     }),
     urlCancel: z.string().url().openapi({
       description: "URL to redirect to if payment is cancelled",
-      example: "https://example.com/cancel",
+      example: "https://client.app/cancel",
     }),
+    metadata: z
+      .object({
+        docketNumber: z.string().openapi({
+          description: "The docket number for the case",
+          example: "123456",
+        }),
+        petitionNumber: z.string().openapi({
+          description: "The petition number",
+          example: "PET-7890",
+        }),
+      })
+      .openapi({
+        description: "Additional metadata for the payment",
+      }),
   })
   .openapi("InitPaymentRequest");
 
@@ -48,21 +58,6 @@ export const InitPaymentResponseSchema = z
   .openapi("InitPaymentResponse");
 
 export type InitPaymentResponse = z.infer<typeof InitPaymentResponseSchema>;
-
-// ============================================
-// Internal validation schema (for SOAP request)
-// ============================================
-export const StartOnlineCollectionSchema = z.object({
-  agencyTrackingId: z.string(),
-  tcsAppId: z.string(),
-  transactionAmount: z.number().positive(),
-  urlCancel: z.string(),
-  urlSuccess: z.string(),
-});
-
-export type StartOnlineCollectionParams = z.infer<
-  typeof StartOnlineCollectionSchema
->;
 
 // ============================================
 // Error Response

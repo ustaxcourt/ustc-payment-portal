@@ -1,10 +1,16 @@
+import Joi from "joi";
 import { RawStartOnlineCollectionRequest } from "../types/RawStartOnlineCollectionRequest";
 import { AppContext } from "../types/AppContext";
 import { StartOnlineCollectionResponse } from "../types/StartOnlineCollectionResponse";
 import { RequestType, SoapRequest } from "./SoapRequest";
-import { StartOnlineCollectionSchema } from "../schemas";
 
-export const startOnlineCollectionSchema = StartOnlineCollectionSchema;
+export const startOnlineCollectionSchema = Joi.object({
+  agencyTrackingId: Joi.string().required(),
+  tcsAppId: Joi.string().required(),
+  transactionAmount: Joi.number().required(),
+  urlCancel: Joi.string().required(),
+  urlSuccess: Joi.string().required(),
+});
 
 export type StartOnlineCollectionRequestParams = {
   tcs_app_id: string;

@@ -20,7 +20,7 @@ export const initPayment: InitPayment = async (appContext, request) => {
     agencyTrackingId: request.trackingId,
   };
 
-  startOnlineCollectionSchema.parse(rawRequest);
+  await startOnlineCollectionSchema.validateAsync(rawRequest);
 
   console.log("initPayment request:", rawRequest);
 
