@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Authentication and Authorization Flow" id="auth-flow">
-        <mxGraphModel dx="2480" dy="547" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+        <mxGraphModel dx="2805" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -46,7 +46,7 @@
                 <mxCell id="step3-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="client-lambda" target="api-gateway" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="step3-label" value="3. SigV4 Signed Request&#xa;POST /init&#xa;{appId: 12345, amount: 100}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step3-arrow" vertex="1" connectable="0">
+                <mxCell id="step3-label" value="3. SigV4 Signed Request&lt;br&gt;POST /init&lt;br&gt;{appId: 12345, feeId: 100}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step3-arrow" vertex="1" connectable="0">
                     <mxGeometry x="-0.05" y="2" relative="1" as="geometry">
                         <mxPoint x="3" y="-59" as="offset"/>
                     </mxGeometry>
@@ -92,7 +92,7 @@
                 <mxCell id="portal-lambda" value="Payment Portal&#xa;Lambda" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
                     <mxGeometry x="625" y="80" width="160" height="70" as="geometry"/>
                 </mxCell>
-                <mxCell id="step7-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="portal-lambda" target="dynamodb" edge="1">
+                <mxCell id="step7-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="portal-lambda" target="database" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="700" y="150"/>
@@ -104,10 +104,12 @@
                         <mxPoint x="75" y="-5" as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="dynamodb" value="DynamoDB&#xa;client-permissions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
-                    <mxGeometry x="620" y="200" width="160" height="70" as="geometry"/>
-                </mxCell>
-                <mxCell id="step8-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="dynamodb" target="portal-lambda" edge="1">
+                <object label="Data Store Client Permissions" id="database">
+                    <mxCell style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                        <mxGeometry x="620" y="200" width="160" height="70" as="geometry"/>
+                    </mxCell>
+                </object>
+                <mxCell id="step8-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="database" target="portal-lambda" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="780" y="230"/>
@@ -116,14 +118,16 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step8-label" value="8. AllowedTcsAppIds:&#xa;[12345, 67890]" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step8-arrow" vertex="1" connectable="0">
+                <mxCell id="step8-label" value="8. AllowedFees:&lt;br&gt;[appealsFee, petitionsFee]" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step8-arrow" vertex="1" connectable="0">
                     <mxGeometry x="0.15" y="1" relative="1" as="geometry">
-                        <mxPoint x="71" y="-24" as="offset"/>
+                        <mxPoint x="81" y="-22" as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="dynamodb-details" value="DynamoDB Record:&#xa;{&#xa;  ClientRoleArn:&#xa;    arn:aws:iam::123456789012:&#xa;    role/payment-portal-&#xa;    client-dawson&#xa;  ClientAccountId: 123456789012&#xa;  ClientName: DAWSON&#xa;  AllowedTcsAppIds: [12345, 67890]&#xa;}" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;fontColor=#333333;" parent="1" vertex="1">
-                    <mxGeometry x="590" y="300" width="230" height="140" as="geometry"/>
-                </mxCell>
+                <object label="Database Record:&lt;br&gt;{&lt;br&gt;  ClientRoleArn:&lt;br&gt;    arn:aws:iam::123456789012:&lt;br&gt;    role/payment-portal-&lt;br&gt;    client-dawson&lt;br&gt;  ClientAccountId: 123456789012&lt;br&gt;  ClientName: DAWSON&lt;br&gt;  AllowedFees: [12345, 67890]&lt;br&gt;}" id="datastore-details">
+                    <mxCell style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;fontColor=#333333;" parent="1" vertex="1">
+                        <mxGeometry x="590" y="300" width="230" height="140" as="geometry"/>
+                    </mxCell>
+                </object>
                 <mxCell id="step9-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
@@ -204,6 +208,12 @@
                         <mxPoint x="1155" y="260" as="sourcePoint"/>
                         <mxPoint x="1175" y="260" as="targetPoint"/>
                     </mxGeometry>
+                </mxCell>
+                <mxCell id="2" value="PP will validate if DAWSON allowed to charge these fees" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="880" y="223" width="130" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="" style="shape=singleArrow;direction=north;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="930" y="160" width="30" height="70" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
