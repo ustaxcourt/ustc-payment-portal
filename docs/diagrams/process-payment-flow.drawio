@@ -91,7 +91,7 @@
                 <mxCell id="paygov-box" value="8. Complete transaction&lt;br&gt;Return details" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11" parent="1" vertex="1">
                     <mxGeometry x="840" y="760" width="120" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="step7" value="8. {paygovTrackingId,&lt;br&gt;transactionStatus}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#b85450;" parent="1" edge="1">
+                <mxCell id="step7" value="8. {paygovTrackingId,&lt;br&gt;paymentStatus}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#b85450;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="900" y="830" as="sourcePoint"/>
                         <mxPoint x="420" y="830" as="targetPoint"/>
@@ -116,7 +116,7 @@
                         <mxPoint x="740" y="870" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step11" value="12. Return success/fail response {trackingId,&lt;br&gt;paymentStatus,&lt;br&gt;message?, code?}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
+                <mxCell id="step11" value="12. Return success/fail response {trackingId,&lt;br&gt;transactionStatus,&lt;br&gt;message?, code?}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="420" y="1035" as="sourcePoint"/>
                         <mxPoint x="100" y="1035" as="targetPoint"/>
