@@ -5,10 +5,6 @@ import {
 import {
   InitPaymentRequestSchema,
   InitPaymentResponseSchema,
-  ProcessPaymentRequestSchema,
-  ProcessPaymentResponseSchema,
-  GetDetailsRequestSchema,
-  GetDetailsResponseSchema,
   ErrorResponseSchema,
 } from "../schemas";
 
@@ -19,10 +15,6 @@ export const registry = new OpenAPIRegistry();
 // ============================================
 registry.register("InitPaymentRequest", InitPaymentRequestSchema);
 registry.register("InitPaymentResponse", InitPaymentResponseSchema);
-registry.register("ProcessPaymentRequest", ProcessPaymentRequestSchema);
-registry.register("ProcessPaymentResponse", ProcessPaymentResponseSchema);
-registry.register("GetDetailsRequest", GetDetailsRequestSchema);
-registry.register("GetDetailsResponse", GetDetailsResponseSchema);
 registry.register("ErrorResponse", ErrorResponseSchema);
 
 // ============================================
@@ -75,121 +67,6 @@ registry.registerPath({
     },
     401: {
       description: "Unauthorized - invalid or missing API key",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-  },
-});
-
-// ============================================
-// POST /process - Process Payment
-// ============================================
-registry.registerPath({
-  method: "post",
-  path: "/process",
-  summary: "Process a payment",
-  description:
-    "Completes a payment transaction after the user has authorized it on Pay.gov. Returns the transaction status and tracking information.",
-  tags: ["Payments"],
-  security: [{ ApiKeyAuth: [] }],
-  request: {
-    body: {
-      content: {
-        "application/json": {
-          schema: ProcessPaymentRequestSchema,
-        },
-      },
-      required: true,
-    },
-  },
-  responses: {
-    200: {
-      description: "Payment processed (check transactionStatus for result)",
-      content: {
-        "application/json": {
-          schema: ProcessPaymentResponseSchema,
-        },
-      },
-    },
-    400: {
-      description: "Invalid request payload",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-    401: {
-      description: "Unauthorized - invalid or missing API key",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-  },
-});
-
-// ============================================
-// GET /details/{appId}/{payGovTrackingId} - Get Transaction Details
-// ============================================
-registry.registerPath({
-  method: "get",
-  path: "/details/{appId}/{payGovTrackingId}",
-  summary: "Get transaction details",
-  description:
-    "Retrieves the current status and details of a payment transaction by its tracking ID.",
-  tags: ["Payments"],
-  security: [{ ApiKeyAuth: [] }],
-  request: {
-    params: GetDetailsRequestSchema,
-  },
-  responses: {
-    200: {
-      description: "Transaction details retrieved successfully",
-      content: {
-        "application/json": {
-          schema: GetDetailsResponseSchema,
-        },
-      },
-    },
-    400: {
-      description: "Invalid request - missing required parameters",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-    401: {
-      description: "Unauthorized - invalid or missing API key",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-    404: {
-      description: "Transaction not found",
       content: {
         "application/json": {
           schema: ErrorResponseSchema,
