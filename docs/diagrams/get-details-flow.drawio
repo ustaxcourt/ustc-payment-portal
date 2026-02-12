@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Get Details Flow" id="get-details-flow">
-        <mxGraphModel dx="1903" dy="694" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+        <mxGraphModel dx="2161" dy="723" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -28,7 +28,7 @@
                 <mxCell id="line-client" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="100" y="140" as="sourcePoint"/>
-                        <mxPoint x="100" y="740" as="targetPoint"/>
+                        <mxPoint x="100" y="920" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="line-gateway" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1">
@@ -37,22 +37,22 @@
                         <mxPoint x="260" y="740" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="line-lambda" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1">
+                <mxCell id="line-lambda" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" edge="1" source="header-lambda">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="420" y="140" as="sourcePoint"/>
-                        <mxPoint x="420" y="740" as="targetPoint"/>
+                        <mxPoint x="440" y="440" as="sourcePoint"/>
+                        <mxPoint x="420" y="910" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="line-datastore" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="580" y="140" as="sourcePoint"/>
-                        <mxPoint x="580" y="740" as="targetPoint"/>
+                        <mxPoint x="580" y="910" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="line-logs" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="740" y="140" as="sourcePoint"/>
-                        <mxPoint x="740" y="740" as="targetPoint"/>
+                        <mxPoint x="740" y="1020" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="line-paygov" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#999999;" parent="1" edge="1">
@@ -82,89 +82,126 @@
                         <mxPoint x="740" y="280" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step5" value="5. Validate the client has access to the particular&lt;div&gt;&amp;nbsp;feeId by pulling down the transactionReferenceId&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" parent="1" edge="1">
-                    <mxGeometry x="-0.875" y="-20" relative="1" as="geometry">
+                <mxCell id="step5" value="5. Query database &lt;br&gt;for all transactions &lt;br&gt;that belong to&lt;span style=&quot;color: rgb(63, 63, 63); background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&amp;nbsp;&lt;br&gt;transactionReferenceId&lt;/span&gt;" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#666666;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
                         <mxPoint x="420" y="320" as="sourcePoint"/>
                         <mxPoint x="580" y="320" as="targetPoint"/>
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step6" value="6. GetTransactionDetails&#xa;(SOAP + mTLS cert)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" edge="1">
+                <mxCell id="step6" value="8. GetTransactionDetails&lt;br&gt;{ payGovTrackingId }&lt;br&gt;(SOAP + mTLS cert)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="420" y="420" as="sourcePoint"/>
-                        <mxPoint x="900" y="420" as="targetPoint"/>
+                        <mxPoint x="420" y="630" as="sourcePoint"/>
+                        <mxPoint x="900" y="630" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="paygov-box" value="7. Look up&#xa;transaction" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11" parent="1" vertex="1">
-                    <mxGeometry x="840" y="440" width="120" height="50" as="geometry"/>
+                <mxCell id="paygov-box" value="9. Look up&lt;br&gt;transaction" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11" parent="1" vertex="1">
+                    <mxGeometry x="840" y="650" width="120" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="step8" value="8. {paygovTrackingId,&#xa;agencyTrackingId,&#xa;transactionStatus,&#xa;amount}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#b85450;" parent="1" edge="1">
+                <mxCell id="step8" value="10. response&lt;br&gt;{ transaction_status, &lt;br&gt;return_code, return_detail }" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#b85450;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="900" y="510" as="sourcePoint"/>
-                        <mxPoint x="420" y="510" as="targetPoint"/>
+                        <mxPoint x="900" y="720" as="sourcePoint"/>
+                        <mxPoint x="420" y="720" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step9-box" value="9. Parse result" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11" parent="1" vertex="1">
-                    <mxGeometry x="360" y="530" width="120" height="50" as="geometry"/>
+                <mxCell id="step9-box" value="11. Parse result" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11" parent="1" vertex="1">
+                    <mxGeometry x="360" y="750" width="120" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="step10" value="11. Log response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;dashed=1;strokeColor=#9673a6;" parent="1" edge="1">
+                <mxCell id="step10" value="13. Log response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#9673a6;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="420" y="600" as="sourcePoint"/>
-                        <mxPoint x="580" y="600" as="targetPoint"/>
+                        <mxPoint x="420" y="860" as="sourcePoint"/>
+                        <mxPoint x="740" y="861" as="targetPoint"/>
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="step11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="420" y="620" as="sourcePoint"/>
-                        <mxPoint x="100" y="620" as="targetPoint"/>
+                        <mxPoint x="420" y="900" as="sourcePoint"/>
+                        <mxPoint x="100" y="900" as="targetPoint"/>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="38" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;14. respond to client:&lt;br&gt;200 Status&lt;br&gt;paymentStatus&lt;br&gt;transaction info&lt;/span&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="step11">
+                    <mxGeometry x="-0.059" y="-2" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="40" value="Text" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="step11">
+                    <mxGeometry x="-0.722" y="4" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="legend-box" value="Legend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontSize=12;fontStyle=1;verticalAlign=top" parent="1" vertex="1">
-                    <mxGeometry x="40" y="890" width="300" height="80" as="geometry"/>
+                    <mxGeometry x="40" y="1050" width="300" height="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="legend-solid" value="─── Request" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
-                    <mxGeometry x="50" y="920" width="130" height="20" as="geometry"/>
+                    <mxGeometry x="50" y="1070" width="130" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="legend-dashed" value="- - - Response" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
-                    <mxGeometry x="60" y="940" width="130" height="20" as="geometry"/>
+                    <mxGeometry x="60" y="1090" width="130" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="legend-future" value="[FUTURE] Not yet implemented" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
-                    <mxGeometry x="180" y="920" width="150" height="20" as="geometry"/>
+                    <mxGeometry x="180" y="1070" width="150" height="20" as="geometry"/>
                 </mxCell>
-                <mxCell id="3" value="transactionStatus (Paid, Pending, or Unpaid), array of related transaction reports (all for the same payment, include failed attempts), and reason for failure if needed," style="whiteSpace=wrap;html=1;aspect=fixed;align=left;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
-                    <mxGeometry x="110" y="470" width="140" height="140" as="geometry"/>
+                <mxCell id="3" value="paymentStatus (Paid, Pending, or Unpaid), array of related transaction reports (all for the same payment, include failed attempts), and reason for failure if needed," style="whiteSpace=wrap;html=1;aspect=fixed;align=left;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+                    <mxGeometry x="-230" y="730" width="140" height="140" as="geometry"/>
                 </mxCell>
                 <mxCell id="4" value="With&amp;nbsp;&lt;span style=&quot;color: rgb(63, 63, 63); font-size: 11px; text-wrap-mode: nowrap; background-color: rgb(255, 255, 255);&quot;&gt;transactionReferenceId&lt;/span&gt;, need to make sure this is included on the transaction record" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-20" y="190" width="160" height="65" as="geometry"/>
                 </mxCell>
-                <mxCell id="6" style="edgeStyle=none;html=1;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="5" target="9" edge="1">
+                <mxCell id="6" style="edgeStyle=none;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;shadow=0;dashed=1;" parent="1" source="26" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="740" y="330" as="targetPoint"/>
+                        <mxPoint x="100" y="530" as="targetPoint"/>
+                        <mxPoint x="380" y="520" as="sourcePoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="12" value="No" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="6" vertex="1" connectable="0">
+                <mxCell id="12" value="&lt;b&gt;No&lt;/b&gt;&lt;br&gt;200 Status&lt;br&gt;paymentStatus and&lt;br&gt;&lt;div&gt;Transaction Information&lt;br&gt;from Database&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="6" vertex="1" connectable="0">
                     <mxGeometry x="-0.2182" y="-2" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="8" value="Yes" style="edgeStyle=none;html=1;" parent="1" source="5" edge="1">
+                <mxCell id="8" value="Yes" style="edgeStyle=none;html=1;" parent="1" source="26" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="655" y="410" as="targetPoint"/>
+                        <mxPoint x="420" y="630" as="targetPoint"/>
+                        <mxPoint x="425" y="660" as="sourcePoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="5" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-size: 11px;&quot;&gt;Is there a pending transaction?&amp;nbsp;&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="600" y="340" width="110" height="40" as="geometry"/>
+                <mxCell id="14" value="&lt;span&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;12. Update result in DB:&lt;/font&gt;&lt;/span&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;Pending → update lastUpdatedTimestamp&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;Success → update lastUpdatedTimestamp, set transactionStatus = Complete, set paymentStatus = Success&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(0, 0, 0);&quot;&gt;Failed → update lastUpdatedTimestamp, set transactionStatus = Complete, set paymentStatus = Failed, store failureReason&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="390" y="930" width="250" height="160" as="geometry"/>
                 </mxCell>
-                <mxCell id="9" value="If no, then we provide the transaction status directly from our database." style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="-10" y="340" width="120" height="80" as="geometry"/>
+                <mxCell id="24" style="edgeStyle=none;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;dashed=1;" edge="1" parent="1" source="22">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="100" y="388" as="targetPoint"/>
+                    </mxGeometry>
                 </mxCell>
-                <mxCell id="14" value="&lt;span&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;10. Update result in DB:&lt;/font&gt;&lt;/span&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;Pending → update lastUpdatedTimestamp&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;Success → update lastUpdatedTimestamp, set transactionStatus = Complete, set paymentStatus = Success&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(0, 0, 0);&quot;&gt;Failed → update lastUpdatedTimestamp, set transactionStatus = Complete, set paymentStatus = Failed, store failureReason&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="370" y="645" width="250" height="160" as="geometry"/>
+                <mxCell id="25" value="No&lt;br&gt;403 Status" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="24">
+                    <mxGeometry x="0.0143" y="-4" relative="1" as="geometry">
+                        <mxPoint x="1" as="offset"/>
+                    </mxGeometry>
                 </mxCell>
-                <mxCell id="17" value="12. Send&amp;nbsp;Response&lt;br&gt;&lt;br&gt;&amp;nbsp;{&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;paymentStatus: `Success` | `Failed` | `Pending`&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;transactions: [&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;{...transaction },&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;&lt;span style=&quot;color: rgb(63, 63, 63); background-color: transparent;&quot;&gt;{...transaction },&lt;/span&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;]&lt;br&gt;&lt;/div&gt;&lt;div&gt;}&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="30" y="660" width="340" height="130" as="geometry"/>
+                <mxCell id="33" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="22" target="26">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="34" value="Yes" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="33">
+                    <mxGeometry x="-0.2152" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="22" value="6. App have&lt;div&gt;&amp;nbsp;access to &lt;br&gt;fee?&lt;/div&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;" vertex="1" parent="1">
+                    <mxGeometry x="367.5" y="335" width="105" height="105" as="geometry"/>
+                </mxCell>
+                <mxCell id="26" value="7. is there a&lt;br&gt;pending transaction?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;" vertex="1" parent="1">
+                    <mxGeometry x="370" y="480" width="100" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="35" value="&lt;h2 style=&quot;color: rgb(63, 63, 63); scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left;&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(0, 0, 0);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;b style=&quot;color: rgb(63, 63, 63); scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251);&quot;&gt;getDetails Response&lt;/b&gt;&lt;/font&gt;&lt;/span&gt;&lt;/h2&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(0, 0, 0);&quot;&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;color: rgb(63, 63, 63); font-family: &amp;quot;Courier New&amp;quot;; background-color: transparent;&quot;&gt;{&lt;/span&gt;&lt;/div&gt;&lt;/span&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left; color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot; face=&quot;Courier New&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;paymentStatus: `Success` | `Failed` | `Pending`&lt;br style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left; color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot; face=&quot;Courier New&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;transactions: [&lt;br style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left; color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot; face=&quot;Courier New&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;{...transaction },&lt;br style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left; color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot; face=&quot;Courier New&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); background-color: transparent; color: rgb(63, 63, 63);&quot;&gt;{...transaction },&lt;/span&gt;&lt;br style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left; color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot; face=&quot;Courier New&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;]&lt;br style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left; color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot; face=&quot;Courier New&quot;&gt;}&lt;/font&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="-75" y="610" width="400" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="37" value="12. Update database" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#9673a6;" edge="1" parent="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="420" y="820" as="sourcePoint"/>
+                        <mxPoint x="580" y="820" as="targetPoint"/>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
                 </mxCell>
             </root>
         </mxGraphModel>
