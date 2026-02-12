@@ -30,36 +30,46 @@ components:
     InitPaymentRequest:
       type: object
       properties:
-        trackingId:
-          type: string
-          description: Unique identifier for tracking the payment
-          example: TRK-12345
-        amount:
-          type: number
-          minimum: 0
-          exclusiveMinimum: true
-          description: Payment amount in dollars
-          example: 150
         appId:
           type: string
-          description: The TCS application ID
-          example: USTC_APP
+          description: The application ID
+          example: DAWSON
+        transactionReferenceId:
+          type: string
+          format: uuid
+          description: Unique UUID for the transaction reference
+          example: "550e8400-e29b-41d4-a716-446655440000"
         urlSuccess:
           type: string
           format: uri
           description: URL to redirect to after successful payment
-          example: "https://example.com/success"
+          example: "https://client.app/success"
         urlCancel:
           type: string
           format: uri
           description: URL to redirect to if payment is cancelled
-          example: "https://example.com/cancel"
+          example: "https://client.app/cancel"
+        metadata:
+          type: object
+          properties:
+            docketNumber:
+              type: string
+              description: The docket number for the case
+              example: "123456"
+            petitionNumber:
+              type: string
+              description: The petition number
+              example: PET-7890
+          required:
+            - docketNumber
+            - petitionNumber
+          description: Additional metadata for the payment
       required:
-        - trackingId
-        - amount
         - appId
+        - transactionReferenceId
         - urlSuccess
         - urlCancel
+        - metadata
     InitPaymentResponse:
       type: object
       properties:
