@@ -21,7 +21,7 @@ The application is intended to handle API requests from USTC applications and th
 
 ### Future workflow (v2)
 
-This workflow is currently a work-in-progress and not operational yet. We'll post more information to this documentation as we work towards getting it ready to use. 
+This workflow is currently a work-in-progress and not operational yet. We'll post more information to this documentation as we work towards getting it ready to use.
 
 #### Initiate a Transaction
 
