@@ -36,13 +36,14 @@ This workflow is currently a work-in-progress and not operational yet. We'll pos
 1. The Portal checks its own permission system to authorize the Application to initiate a Transaction to the Specified Fee
 1. Once authorized, the Portal also makes sure there is not already a Successful transaction for the specified `TransactionReferenceId`.
 1. If there isn't, then the Portal generates a unique `agencyTrackingId`
-and starts keeping track of this transaction in its own database.
+   and starts keeping track of this transaction in its own database.
 1. The portal then performs a `startOnlineCollection` request to Pay.gov with the transaction information derived from the Fee.
 1. Pay.gov responds with a token, which the portal uses to generate a redirect URL to Pay.gov to enter in payment information.
 1. The token and URL are returned to the original App, which stores the token and forwards the user to the redirect URL.
 1. The user enters their payment information on Pay.gov and either submits or cancels, which sends them back to the corresonding success or cancel URL specified in the original request.
 
 ![Initiate Transaction Flow](./docs/diagrams/init-payment-flow.png)
+[init-payment-flow.drawio](./docs/diagrams/init-payment-flow.drawio)
 
 #### Process Payment on a Transaction
 
@@ -54,6 +55,7 @@ and starts keeping track of this transaction in its own database.
 1. The Portal responds to the Application the derived Payment Status as well as any transactions that share the transaction's `transactionReferenceId`.
 
 ![Process Payment Flow](./docs/diagrams/process-payment-flow.png)
+[process-payment-flow.drawio](./docs/diagrams/process-payment-flow.png)
 
 #### Get Details about a Payment
 
@@ -63,6 +65,7 @@ and starts keeping track of this transaction in its own database.
 1. Then the Portal will respond with the most up-to-date Payment Status as well as any transactions that share the transaction's `transactionReferenceId`.
 
 ![Get Details Flow](./docs/diagrams/get-details-flow.png)
+[get-details-flow.drawio](./docs/diagrams/get-details-flow.png)
 
 ## Environment Variables
 
