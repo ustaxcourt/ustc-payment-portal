@@ -24,7 +24,8 @@ Payment Portal (PP) supports multiple payment attempts for the same obligation w
 
 ## Status Rules
 
-- Each attempt has its own status (`Received`, `Initiated`, `Pending`, `Success`, `Failed`).
+- Each attempt has its own status (`Received`, `Initiated`, `Pending`, `Completed`).
+- Each attempt keeps track of the payment status as reported by Pay.gov's `transaction_status` (`Pending`, `Success`, `Failed`)
 - Obligation status is derived from all attempts under the same `transactionReferenceId`:
   - If **any attempt succeeds** → obligation is **PAID**
   - Otherwise → obligation remains **OPEN**
