@@ -127,6 +127,164 @@
           "statusCode",
           "message"
         ]
+      },
+      "GetDetailsResponse": {
+        "type": "object",
+        "properties": {
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "Success",
+              "Failed",
+              "Pending"
+            ],
+            "description": "Overall payment status representing the current state of the payment",
+            "example": "Success"
+          },
+          "transactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionRecord"
+            },
+            "description": "Array of all transaction records associated with this payment reference"
+          }
+        },
+        "required": [
+          "paymentStatus",
+          "transactions"
+        ]
+      },
+      "TransactionRecord": {
+        "type": "object",
+        "properties": {
+          "payGovTrackingId": {
+            "type": "string",
+            "description": "Pay.gov tracking ID for the transaction",
+            "example": "TRK-123456789"
+          },
+          "transactionStatus": {
+            "type": "string",
+            "enum": [
+              "Success",
+              "Failed",
+              "Pending"
+            ],
+            "description": "The status of the payment transaction",
+            "example": "Success"
+          },
+          "paymentType": {
+            "type": "string",
+            "description": "Type of payment (e.g., card, ACH)",
+            "example": "card"
+          },
+          "returnCode": {
+            "type": "string",
+            "description": "Return code from Pay.gov",
+            "example": "0000"
+          },
+          "returnDetail": {
+            "type": "string",
+            "description": "Detailed return message from Pay.gov",
+            "example": "Transaction completed successfully"
+          },
+          "createdTimestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the transaction was created",
+            "example": "2024-01-15T10:30:00Z"
+          },
+          "updatedTimestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the transaction was last updated",
+            "example": "2024-01-15T10:35:00Z"
+          }
+        },
+        "required": [
+          "payGovTrackingId",
+          "transactionStatus"
+        ]
+      },
+      "TransactionStatus": {
+        "type": "string",
+        "enum": [
+          "Success",
+          "Failed",
+          "Pending"
+        ],
+        "description": "The status of the payment transaction",
+        "example": "Success"
+      },
+      "ProcessPaymentRequest": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "string",
+            "description": "The application ID",
+            "example": "DAWSON"
+          },
+          "token": {
+            "type": "string",
+            "description": "The payment token received from Pay.gov after user completes payment form",
+            "example": "abc123token"
+          }
+        },
+        "required": [
+          "appId",
+          "token"
+        ]
+      },
+      "ProcessPaymentSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "trackingId": {
+            "type": "string",
+            "description": "Pay.gov tracking ID for the completed transaction",
+            "example": "TRK-123456789"
+          },
+          "transactionStatus": {
+            "type": "string",
+            "enum": [
+              "Success",
+              "Failed",
+              "Pending"
+            ],
+            "description": "The status of the payment transaction",
+            "example": "Success"
+          }
+        },
+        "required": [
+          "trackingId",
+          "transactionStatus"
+        ]
+      },
+      "ProcessPaymentFailedResponse": {
+        "type": "object",
+        "properties": {
+          "transactionStatus": {
+            "type": "string",
+            "enum": [
+              "Success",
+              "Failed",
+              "Pending"
+            ],
+            "description": "The status of the payment transaction",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string",
+            "description": "Error message describing the failure reason",
+            "example": "Payment was declined by the processor"
+          },
+          "code": {
+            "type": "number",
+            "description": "Error code from Pay.gov",
+            "example": 1001
+          }
+        },
+        "required": [
+          "transactionStatus"
+        ]
       }
     },
     "parameters": {}
@@ -181,6 +339,193 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/details/{appId}/{transactionReferenceId}": {
+      "get": {
+        "summary": "Get transaction details",
+        "description": "Retrieves the payment status and all transaction records associated with a transaction reference ID. If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "The application ID",
+              "example": "DAWSON"
+            },
+            "required": true,
+            "description": "The application ID",
+            "name": "appId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Unique UUID for the transaction reference",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
+            },
+            "required": true,
+            "description": "Unique UUID for the transaction reference",
+            "name": "transactionReferenceId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetDetailsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - application not authorized for this transaction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Transaction not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/process": {
+      "post": {
+        "summary": "Process a payment",
+        "description": "Completes a payment transaction after the user has submitted payment information on Pay.gov. This endpoint must be called regardless of payment type used to finalize the transaction.",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcessPaymentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessPaymentSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - application not authorized for this fee type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No pending transaction found for the provided token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Payment processing failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessPaymentFailedResponse"
                 }
               }
             }
