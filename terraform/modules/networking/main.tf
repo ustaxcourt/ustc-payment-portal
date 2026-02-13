@@ -36,6 +36,25 @@ resource "aws_subnet" "private_subnet" {
   })
 }
 
+resource "aws_subnet" "private_subnet_2" {
+  vpc_id            = aws_vpc.lambda_vpc.id
+  cidr_block        = var.private_subnet_cidr_2
+  availability_zone = var.availability_zone_2 != "" ? var.availability_zone_2 : var.availability_zone
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-private-subnet-2"
+  })
+}
+
+resource "aws_db_subnet_group" "rds" {
+  name = "pp-db-subnet-group"
+
+  subnet_ids = [
+    aws_subnet.private_subnet.id,
+    aws_subnet.private_subnet_2.id
+  ]
+}
+
 #keeping it here in case we've to rollback to the original EIP
 
 # resource "aws_eip" "nat" {
@@ -48,11 +67,11 @@ resource "aws_subnet" "private_subnet" {
 
 resource "aws_eip" "nat_replacement" {
   domain = "vpc"
-  
+
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-replacement-eip"
   })
-  
+
   lifecycle {
     prevent_destroy = true
   }
@@ -107,6 +126,11 @@ resource "aws_route_table_association" "public_rta" {
 
 resource "aws_route_table_association" "private_rta" {
   subnet_id      = aws_subnet.private_subnet.id
+  route_table_id = aws_route_table.private_rt.id
+}
+
+resource "aws_route_table_association" "private_rta_2" {
+  subnet_id      = aws_subnet.private_subnet_2.id
   route_table_id = aws_route_table.private_rt.id
 }
 

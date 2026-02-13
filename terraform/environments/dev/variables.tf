@@ -57,3 +57,12 @@ variable "testCert_source_code_hash" {
   type        = string
   default     = ""
 }
+
+variable "db_username" {
+  type = string
+}
+
+variable "db_password" {
+  type      = string
+  sensitive = true
+}
