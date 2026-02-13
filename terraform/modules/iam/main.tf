@@ -31,8 +31,6 @@ resource "aws_iam_role_policy_attachment" "vpc_access" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
-# AWS OIDC <--> Github actions IAM Role
-
 resource "aws_iam_role" "github_actions_deployer" {
   count = var.create_deployer_role ? 1 : 0
   name  = local.deploy_role_name

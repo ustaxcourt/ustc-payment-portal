@@ -29,10 +29,11 @@ module "networking" {
 }
 
 module "iam" {
-  source = "../../../modules/iam"
-  name_prefix = "ustc-payment-portal-stg"
+  source               = "../../../modules/iam"
+  name_prefix          = "ustc-payment-portal-stg"
+  create_deployer_role = false  # Foundation only needs Lambda exec role, not CI/CD deployer
   tags = {
-    Env = "stg"
+    Env     = "stg"
     Project = "ustc-payment-portal"
   }
 }

@@ -13,10 +13,6 @@ locals {
     TCS_APP_ID                         = module.secrets.tcs_app_id_secret_id
   }
 
-  rds_creds = jsondecode(
-    data.aws_secretsmanager_secret_version.rds_credentials.secret_string
-  )
-
   lambda_env_mtls = local.mtls_enabled ? {
     PRIVATE_KEY_SECRET_ID = module.secrets.private_key_secret_id
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
