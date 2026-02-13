@@ -6,7 +6,14 @@ import {
   InitPaymentRequestSchema,
   InitPaymentResponseSchema,
   ErrorResponseSchema,
+  GetDetailsResponseSchema,
+  TransactionRecordSchema,
+  TransactionStatusSchema,
+  ProcessPaymentRequestSchema,
+  ProcessPaymentSuccessResponseSchema,
+  ProcessPaymentFailedResponseSchema,
 } from "../schemas";
+import { z } from "zod";
 
 export const registry = new OpenAPIRegistry();
 
@@ -16,6 +23,18 @@ export const registry = new OpenAPIRegistry();
 registry.register("InitPaymentRequest", InitPaymentRequestSchema);
 registry.register("InitPaymentResponse", InitPaymentResponseSchema);
 registry.register("ErrorResponse", ErrorResponseSchema);
+registry.register("GetDetailsResponse", GetDetailsResponseSchema);
+registry.register("TransactionRecord", TransactionRecordSchema);
+registry.register("TransactionStatus", TransactionStatusSchema);
+registry.register("ProcessPaymentRequest", ProcessPaymentRequestSchema);
+registry.register(
+  "ProcessPaymentSuccessResponse",
+  ProcessPaymentSuccessResponseSchema
+);
+registry.register(
+  "ProcessPaymentFailedResponse",
+  ProcessPaymentFailedResponseSchema
+);
 
 // ============================================
 // API Key Security Scheme
@@ -85,6 +104,156 @@ registry.registerPath({
 });
 
 // ============================================
+// GET /details/:appId/:transactionReferenceId - Get Transaction Details
+// ============================================
+registry.registerPath({
+  method: "get",
+  path: "/details/{appId}/{transactionReferenceId}",
+  summary: "Get transaction details",
+  description:
+    "Retrieves the payment status and all transaction records associated with a transaction reference ID. " +
+    "If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
+  tags: ["Payments"],
+  security: [{ ApiKeyAuth: [] }],
+  request: {
+    params: z.object({
+      appId: z.string().openapi({
+        description: "The application ID",
+        example: "DAWSON",
+      }),
+      transactionReferenceId: z.string().uuid().openapi({
+        description: "Unique UUID for the transaction reference",
+        example: "550e8400-e29b-41d4-a716-446655440000",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Transaction details retrieved successfully",
+      content: {
+        "application/json": {
+          schema: GetDetailsResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized - invalid or missing API key",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    403: {
+      description: "Forbidden - application not authorized for this transaction",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: "Transaction not found",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: "Internal server error",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+// ============================================
+// POST /process - Process Payment
+// ============================================
+registry.registerPath({
+  method: "post",
+  path: "/process",
+  summary: "Process a payment",
+  description:
+    "Completes a payment transaction after the user has submitted payment information on Pay.gov. " +
+    "This endpoint must be called regardless of payment type used to finalize the transaction.",
+  tags: ["Payments"],
+  security: [{ ApiKeyAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: ProcessPaymentRequestSchema,
+        },
+      },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      description: "Payment processed successfully",
+      content: {
+        "application/json": {
+          schema: ProcessPaymentSuccessResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: "Invalid request payload",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized - invalid or missing API key",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    403: {
+      description: "Forbidden - application not authorized for this fee type",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: "No pending transaction found for the provided token",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    422: {
+      description: "Payment processing failed",
+      content: {
+        "application/json": {
+          schema: ProcessPaymentFailedResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: "Internal server error",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+// ============================================
 // Generate OpenAPI Document
 // ============================================
 export const generateOpenAPIDocument = () => {
@@ -103,7 +272,7 @@ export const generateOpenAPIDocument = () => {
     },
     servers: [
       {
-        url: "https://api.example.com",
+        url: "https://5740jj3tq0.execute-api.us-east-1.amazonaws.com/prod",
         description: "Production server",
       },
       {
