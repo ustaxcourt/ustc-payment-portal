@@ -34,7 +34,8 @@ resource "aws_iam_role_policy_attachment" "vpc_access" {
 # AWS OIDC <--> Github actions IAM Role
 
 resource "aws_iam_role" "github_actions_deployer" {
-  name = local.deploy_role_name
+  count = var.create_deployer_role ? 1 : 0
+  name  = local.deploy_role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -60,8 +61,9 @@ resource "aws_iam_role" "github_actions_deployer" {
 }
 
 resource "aws_iam_role_policy" "github_actions_permissions" {
-   name = "${local.project_name}-${local.environment}-ci-deployer"
-  role = aws_iam_role.github_actions_deployer.id
+  count = var.create_deployer_role ? 1 : 0
+  name  = "${local.project_name}-${local.environment}-ci-deployer"
+  role  = aws_iam_role.github_actions_deployer[0].id
 
   policy = jsonencode({
     Version = "2012-10-17",
