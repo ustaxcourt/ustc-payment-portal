@@ -1,11 +1,11 @@
 <mxfile host="65bd71144e">
     <diagram name="Authentication and Authorization Flow" id="auth-flow">
-        <mxGraphModel dx="2169" dy="488" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+        <mxGraphModel dx="2286" dy="565" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="title" value="Payment Portal API - Authentication &amp; Authorization Flow (Cross-Account)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" parent="1" vertex="1">
-                    <mxGeometry x="400" y="10" width="760" height="10" as="geometry"/>
+                <mxCell id="title" value="Payment Portal API - Authentication &amp;amp; Authorization Flow (Cross-Account, Planned)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="400" y="10" width="830" height="10" as="geometry"/>
                 </mxCell>
                 <mxCell id="dawson-account-boundary" value="DAWSON AWS Account (123456789012)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#0066CC;fontSize=14;fontStyle=1;align=left;verticalAlign=top;dashed=1;dashPattern=8 8;strokeWidth=3;" parent="1" vertex="1">
                     <mxGeometry x="20" y="60" width="240" height="380" as="geometry"/>
@@ -46,7 +46,7 @@
                 <mxCell id="step3-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="client-lambda" target="api-gateway" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="step3-label" value="3. SigV4 Signed Request&lt;br&gt;POST /init&lt;br&gt;{appId: 12345, feeId: 100}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step3-arrow" vertex="1" connectable="0">
+                <mxCell id="step3-label" value="3. SigV4 Signed Request&lt;br&gt;POST /init&lt;br&gt;(see init-payment-flow diagram)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" parent="step3-arrow" vertex="1" connectable="0">
                     <mxGeometry x="-0.05" y="2" relative="1" as="geometry">
                         <mxPoint x="3" y="-59" as="offset"/>
                     </mxGeometry>
