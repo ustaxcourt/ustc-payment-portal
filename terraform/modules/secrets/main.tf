@@ -40,6 +40,12 @@ resource "aws_secretsmanager_secret" "tcs_app_id" {
   tags        = local.tags
 }
 
+resource "aws_secretsmanager_secret" "rds_credentials" {
+  name        = "${local.basepath}/${var.rds_secret_name}"
+  description = "RDS credentials (${local.env})"
+  tags        = local.tags
+}
+
 # IAM for Lambda to read these secrets
 data "aws_iam_policy_document" "lambda_secrets_read" {
   statement {
@@ -55,3 +61,5 @@ resource "aws_iam_role_policy" "lambda_secrets_read" {
   role   = local.lambda_exec_role_name
   policy = data.aws_iam_policy_document.lambda_secrets_read.json
 }
+
+

@@ -50,3 +50,8 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "rds_secret_name" {
+  description = "Name of the Secrets Manager secret that stores RDS credentials"
+  type        = string
+}
