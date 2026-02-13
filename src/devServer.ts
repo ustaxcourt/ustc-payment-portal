@@ -21,7 +21,12 @@ app.set("view engine", "ejs");
 
 // Swagger UI - serve API documentation at /docs
 const openApiDocument = generateOpenAPIDocument();
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiDocument));
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiDocument, {
+  swaggerOptions: {
+    defaultModelsExpandDepth: 5,
+    defaultModelExpandDepth: 5,
+  },
+}));
 
 // Serve raw OpenAPI spec as JSON
 app.get("/openapi.json", (req, res) => {
