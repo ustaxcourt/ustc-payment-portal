@@ -282,6 +282,16 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:subgrp:*",
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:snapshot:*"
         ]
+      },
+      {
+        Effect = "Allow", # RDS service-linked role (required for first RDS instance)
+        Action = ["iam:CreateServiceLinkedRole"],
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS",
+        Condition = {
+          StringEquals = {
+            "iam:AWSServiceName" = "rds.amazonaws.com"
+          }
+        }
       }
     ]
   })
