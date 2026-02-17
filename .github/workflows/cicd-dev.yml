@@ -151,6 +151,15 @@ jobs:
           TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.testCert_source_code_hash }}
         run: terraform apply -auto-approve tfplan
 
+      - name: Cleanup on apply failure
+        if: ${{ failure() && steps.plan.outputs.exitcode == '2' }}
+        working-directory: terraform/environments/dev
+        env:
+          TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
+        run: |
+          echo "Apply failed - destroying partial resources..."
+          terraform destroy -auto-approve || true
+
       - name: Smoke check (post-apply to verify the workspace)
         if: ${{ steps.plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/dev
