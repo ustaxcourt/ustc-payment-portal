@@ -262,19 +262,25 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "*"
       },
       {
-        Effect = "Allow", # RDS permissions for database provisioning
+        Effect = "Allow", # RDS read permissions (require * for describe operations)
+        Action = [
+          "rds:DescribeDBInstances",
+          "rds:DescribeDBSubnetGroups",
+          "rds:DescribeDBSnapshots",
+          "rds:ListTagsForResource"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow", # RDS write permissions for database provisioning
         Action = [
           "rds:CreateDBInstance",
           "rds:DeleteDBInstance",
           "rds:ModifyDBInstance",
-          "rds:DescribeDBInstances",
-          "rds:DescribeDBSubnetGroups",
-          "rds:ListTagsForResource",
           "rds:AddTagsToResource",
           "rds:RemoveTagsFromResource",
           "rds:CreateDBSnapshot",
-          "rds:DeleteDBSnapshot",
-          "rds:DescribeDBSnapshots"
+          "rds:DeleteDBSnapshot"
         ],
         Resource = [
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:ustc-payment-processor-*",
