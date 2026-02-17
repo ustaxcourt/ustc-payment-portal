@@ -15,3 +15,13 @@ output "private_subnet_id" {
 output "lambda_security_group_id" {
   value = module.networking.lambda_security_group_id
 }
+
+output "db_subnet_group_name" {
+  value       = module.networking.db_subnet_group_name
+  description = "RDS DB subnet group name"
+}
+
+output "rds_security_group_id" {
+  value       = module.networking.rds_security_group_id
+  description = "RDS security group ID"
+}

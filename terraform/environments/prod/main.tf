@@ -11,8 +11,23 @@ data "terraform_remote_state" "foundation" {
 
 data "aws_caller_identity" "current" {}
 
+resource "random_password" "rds_master" {
+  length           = 32
+  special          = true
+  override_special = "!#$%^&*()-_=+[]{}<>:?"
+}
+
+resource "aws_secretsmanager_secret_version" "rds_credentials" {
+  secret_id = module.secrets.rds_credentials_secret_id
+  secret_string = jsonencode({
+    username = "payment_portal_admin"
+    password = random_password.rds_master.result
+  })
+}
+
 module "lambda" {
   source                    = "../../modules/lambda"
+  function_name_prefix      = local.name_prefix
   lambda_execution_role_arn = module.iam_cicd.lambda_role_arn
   subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
   security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
@@ -37,6 +52,25 @@ module "lambda" {
     Env     = local.environment
     Project = "ustc-payment-portal"
   }
+}
+
+module "rds" {
+  source = "../../modules/rds"
+
+  identifier = "${local.name_prefix}-db"
+  db_name    = "paymentportal"
+  username   = "payment_portal_admin"
+  password   = random_password.rds_master.result
+
+  db_subnet_group_name = data.terraform_remote_state.foundation.outputs.db_subnet_group_name
+
+  vpc_security_group_ids = [
+    data.terraform_remote_state.foundation.outputs.rds_security_group_id
+  ]
+
+  multi_az            = true
+  deletion_protection = true
+  skip_final_snapshot = false
 }
 
 module "api" {
