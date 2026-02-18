@@ -17,6 +17,10 @@ export const InitPaymentRequestSchema = z
       description: "Unique UUID for the transaction reference",
       example: "550e8400-e29b-41d4-a716-446655440000",
     }),
+    feeId: z.string().openapi({
+      description: "The fee ID for the payment",
+      example: "FEE-12345",
+    }),
     urlSuccess: z.string().url().openapi({
       description: "URL to redirect to after successful payment",
       example: "https://client.app/success",
