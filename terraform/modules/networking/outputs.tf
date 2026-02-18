@@ -19,7 +19,7 @@ output "lambda_security_group_id" {
 }
 
 output "db_subnet_group_name" {
-  value       = var.private_subnet_cidr_2 != "" ? aws_db_subnet_group.rds[0].name : ""
+  value       = var.private_subnet_cidr_2 != "" ? aws_db_subnet_group.rds[0].name : null
   description = "RDS DB Subnet Group Name"
 }
 
