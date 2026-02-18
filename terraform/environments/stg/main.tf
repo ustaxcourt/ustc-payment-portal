@@ -13,6 +13,9 @@ resource "random_password" "rds_master" {
   length           = 32
   special          = true
   override_special = "!#$%^&*()-_=+[]{}<>:?"
+  keepers = {
+    db_identifier = "${local.name_prefix}-db"
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "rds_credentials" {

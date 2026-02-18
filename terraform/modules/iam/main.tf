@@ -67,13 +67,13 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect = "Allow",
-        Action = ["s3:ListBucket"],
+        Effect   = "Allow",
+        Action   = ["s3:ListBucket"],
         Resource = "arn:aws:s3:::${local.tf_state_bucket_name}"
       },
       {
         Effect = "Allow",
-        Action = ["s3:GetObject","s3:PutObject"],
+        Action = ["s3:GetObject", "s3:PutObject"],
         Resource = [
           "arn:aws:s3:::${local.tf_state_bucket_name}/*"
         ]
@@ -87,18 +87,18 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       },
       # Read access to build artifacts used for Lambda code updates
       {
-        Effect  = "Allow",
-        Action  = ["s3:GetObject", "s3:HeadObject"],
+        Effect   = "Allow",
+        Action   = ["s3:GetObject", "s3:HeadObject"],
         Resource = "arn:aws:s3:::ustc-payment-portal-build-artifacts/artifacts/dev/*"
       },
       {
-        Effect  = "Allow",
-        Action  = ["s3:ListBucket"],
+        Effect   = "Allow",
+        Action   = ["s3:ListBucket"],
         Resource = "arn:aws:s3:::ustc-payment-portal-build-artifacts"
       },
       { #lock table
         Effect   = "Allow",
-        Action   = ["dynamodb:DescribeTable","dynamodb:GetItem","dynamodb:PutItem","dynamodb:UpdateItem","dynamodb:DeleteItem"],
+        Action   = ["dynamodb:DescribeTable", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem"],
         Resource = "arn:aws:dynamodb:${local.aws_region}:${data.aws_caller_identity.current.account_id}:table/${local.tf_lock_table_name}"
       },
       {
@@ -131,7 +131,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       },
       {
         Effect = "Allow",
-        Action = ["iam:GetRole","iam:ListRolePolicies","iam:GetRolePolicy","iam:ListAttachedRolePolicies"],
+        Action = ["iam:GetRole", "iam:ListRolePolicies", "iam:GetRolePolicy", "iam:ListAttachedRolePolicies"],
         Resource = [
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.deploy_role_name}",
           local.lambda_exec_role_arn
@@ -140,10 +140,10 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       {
         Effect = "Allow",
         Action = ["apigateway:GET",
-                  "apigateway:POST",
-                  "apigateway:PUT",
-                  "apigateway:PATCH",
-                  "apigateway:DELETE"],
+          "apigateway:POST",
+          "apigateway:PUT",
+          "apigateway:PATCH",
+        "apigateway:DELETE"],
         Resource = [
           "arn:aws:apigateway:${local.aws_region}::/restapis*",
           "arn:aws:apigateway:${local.aws_region}::/deployments*",
@@ -153,7 +153,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       },
       {
         Effect   = "Allow",
-        Action   = ["acm:ListCertificates","acm:DescribeCertificate"],
+        Action   = ["acm:ListCertificates", "acm:DescribeCertificate"],
         Resource = "*"
       },
       {
@@ -290,8 +290,8 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         ]
       },
       {
-        Effect = "Allow", # RDS service-linked role (required for first RDS instance)
-        Action = ["iam:CreateServiceLinkedRole"],
+        Effect   = "Allow", # RDS service-linked role (required for first RDS instance)
+        Action   = ["iam:CreateServiceLinkedRole"],
         Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS",
         Condition = {
           StringEquals = {
