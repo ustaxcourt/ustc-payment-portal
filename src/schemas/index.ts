@@ -25,7 +25,7 @@ export const MetadataDawsonSchema = z
   .object({
     docketNumber: z.string().openapi({
       description: "The docket number for the case (required for DAWSON fees)",
-      example: "123-45",
+      example: "123-26L",
     }),
   })
   .openapi("MetadataDawson");
@@ -33,7 +33,7 @@ export const MetadataDawsonSchema = z
 // Metadata for Non-Attorney Admissions Exam Registration
 export const MetadataNonattorneyExamSchema = z
   .object({
-    email: z.string().email().openapi({
+    email: z.email().openapi({
       description: "Applicant email address",
       example: "applicant@example.com",
     }),
@@ -71,16 +71,16 @@ export const InitPaymentRequestSchema = z
       description: "The application ID",
       example: "DAWSON",
     }),
-    transactionReferenceId: z.string().uuid().openapi({
+    transactionReferenceId: z.uuid().openapi({
       description: "Unique UUID for the transaction reference",
       example: "550e8400-e29b-41d4-a716-446655440000",
     }),
     feeId: FeeIdSchema,
-    urlSuccess: z.string().url().openapi({
+    urlSuccess: z.url().openapi({
       description: "URL to redirect to after successful payment",
       example: "https://client.app/success",
     }),
-    urlCancel: z.string().url().openapi({
+    urlCancel: z.url().openapi({
       description: "URL to redirect to if payment is cancelled",
       example: "https://client.app/cancel",
     }),
@@ -96,7 +96,7 @@ export const InitPaymentResponseSchema = z
       description: "Payment token for the initiated transaction",
       example: "abc123token",
     }),
-    paymentRedirect: z.string().url().openapi({
+    paymentRedirect: z.url().openapi({
       description: "URL to redirect the user to complete payment on Pay.gov",
       example: "https://pay.gov/payment?token=abc123token&tcsAppID=USTC_APP",
     }),
@@ -136,11 +136,11 @@ export const TransactionRecordSchema = z
       description: "Detailed return message from Pay.gov",
       example: "Transaction completed successfully",
     }),
-    createdTimestamp: z.string().datetime().optional().openapi({
+    createdTimestamp: z.iso.datetime().optional().openapi({
       description: "Timestamp when the transaction was created",
       example: "2024-01-15T10:30:00Z",
     }),
-    updatedTimestamp: z.string().datetime().optional().openapi({
+    updatedTimestamp: z.iso.datetime().optional().openapi({
       description: "Timestamp when the transaction was last updated",
       example: "2024-01-15T10:35:00Z",
     }),
