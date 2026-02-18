@@ -33,8 +33,12 @@ data "aws_secretsmanager_secret_version" "access_token" {
   secret_id = data.aws_secretsmanager_secret.access_token.id
 }
 
+data "aws_secretsmanager_secret" "rds_credentials" {
+  name = local.rds_credentials_secret_name
+}
+
 data "aws_secretsmanager_secret_version" "rds_credentials" {
-  secret_id = aws_secretsmanager_secret.rds_credentials.id
+  secret_id = data.aws_secretsmanager_secret.rds_credentials.id
 }
 
 # S3 Module
