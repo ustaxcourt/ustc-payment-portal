@@ -29,9 +29,11 @@ output "tcs_app_id_secret_id" {
 }
 
 output "rds_credentials_secret_id" {
-  value = aws_secretsmanager_secret.rds_credentials.id
+  value       = aws_secretsmanager_secret.rds_credentials.id
+  description = "SecretId (name) for RDS credentials"
 }
 
 output "rds_credentials_secret_arn" {
-  value = aws_secretsmanager_secret.rds_credentials.arn
+  value       = aws_secretsmanager_secret.rds_credentials.arn
+  description = "ARN for RDS credentials secret"
 }
