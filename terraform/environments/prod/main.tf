@@ -74,7 +74,7 @@ module "rds" {
   multi_az                  = true
   deletion_protection       = true
   skip_final_snapshot       = false
-  final_snapshot_identifier = "ustc-payment-processor-prod-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
+  final_snapshot_identifier = "ustc-payment-processor-prod-final-snapshot"
 
   tags = {
     Env     = local.environment

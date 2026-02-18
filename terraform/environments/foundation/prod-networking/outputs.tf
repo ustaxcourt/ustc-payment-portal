@@ -9,11 +9,13 @@ output "public_subnet_id" {
 }
 
 output "private_subnet_id" {
-  value = module.networking.private_subnet_id
+  value       = module.networking.private_subnet_id
+  description = "Private Subnet ID"
 }
 
 output "lambda_security_group_id" {
-  value = module.networking.lambda_security_group_id
+  value       = module.networking.lambda_security_group_id
+  description = "Lambda Security Group ID"
 }
 
 output "db_subnet_group_name" {

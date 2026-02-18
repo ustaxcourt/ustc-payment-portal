@@ -62,6 +62,7 @@ resource "aws_db_subnet_group" "rds" {
 }
 
 resource "aws_security_group" "rds" {
+  count       = var.private_subnet_cidr_2 != "" ? 1 : 0
   name        = "${var.name_prefix}-rds-sg"
   description = "Allow PostgreSQL from Lambda"
   vpc_id      = aws_vpc.lambda_vpc.id
@@ -104,6 +105,7 @@ resource "aws_eip" "nat_replacement" {
 resource "aws_nat_gateway" "default_nat_gw" {
   subnet_id     = aws_subnet.public_subnet.id
   allocation_id = aws_eip.nat_replacement.id
+
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-nat-gw"
   })
