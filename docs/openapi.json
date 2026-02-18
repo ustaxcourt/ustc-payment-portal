@@ -49,7 +49,7 @@
           "docketNumber": {
             "type": "string",
             "description": "The docket number for the case (required for DAWSON fees)",
-            "example": "123-45"
+            "example": "123-26L"
           }
         },
         "required": [
@@ -170,23 +170,24 @@
         ]
       },
       "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "statusCode": {
-            "type": "number",
-            "description": "HTTP status code",
-            "example": 400
-          },
-          "message": {
-            "type": "string",
-            "description": "Error message",
-            "example": "Invalid request payload"
-          }
-        },
-        "required": [
-          "statusCode",
-          "message"
-        ]
+        "type": "string",
+        "description": "Plain text error message",
+        "example": "Invalid Request"
+      },
+      "BadRequestError": {
+        "type": "string",
+        "description": "Error message for invalid requests. May be plain text (e.g., 'missing body') or a JSON-stringified Joi validation error object.",
+        "example": "missing body"
+      },
+      "ForbiddenError": {
+        "type": "string",
+        "description": "Plain text error message for authentication/authorization failures",
+        "example": "Missing Authentication"
+      },
+      "ServerError": {
+        "type": "string",
+        "description": "Plain text error message for internal server errors",
+        "example": "Internal Server Error"
       },
       "GetDetailsResponse": {
         "type": "object",
@@ -384,21 +385,21 @@
             }
           },
           "400": {
-            "description": "Invalid request payload",
+            "description": "Invalid request payload (e.g., missing body, validation error)",
             "content": {
-              "application/json": {
+              "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/BadRequestError"
                 }
               }
             }
           },
-          "401": {
-            "description": "Unauthorized - invalid or missing API key",
+          "403": {
+            "description": "Forbidden - invalid or missing API key",
             "content": {
-              "application/json": {
+              "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ForbiddenError"
                 }
               }
             }
@@ -406,9 +407,9 @@
           "500": {
             "description": "Internal server error",
             "content": {
-              "application/json": {
+              "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             }
@@ -464,32 +465,22 @@
               }
             }
           },
-          "401": {
-            "description": "Unauthorized - invalid or missing API key",
+          "400": {
+            "description": "Invalid request (e.g., missing path parameters)",
             "content": {
-              "application/json": {
+              "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/BadRequestError"
                 }
               }
             }
           },
           "403": {
-            "description": "Forbidden - application not authorized for this transaction",
+            "description": "Forbidden - invalid or missing API key",
             "content": {
-              "application/json": {
+              "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Transaction not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ForbiddenError"
                 }
               }
             }
@@ -497,9 +488,9 @@
           "500": {
             "description": "Internal server error",
             "content": {
-              "application/json": {
+              "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             }
@@ -510,7 +501,7 @@
     "/process": {
       "post": {
         "summary": "Process a payment",
-        "description": "Completes a payment transaction after the user has submitted payment information on Pay.gov. This endpoint must be called regardless of payment type used to finalize the transaction.",
+        "description": "Completes a payment transaction after the user has submitted payment information on Pay.gov. This endpoint must be called regardless of payment type used to finalize the transaction. Note: Both successful and failed payment processing return HTTP 200. Check the transactionStatus field to determine the outcome.",
         "tags": [
           "Payments"
         ],
@@ -531,61 +522,39 @@
         },
         "responses": {
           "200": {
-            "description": "Payment processed successfully",
+            "description": "Payment processed. Check transactionStatus for Success or Failed.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProcessPaymentSuccessResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ProcessPaymentSuccessResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ProcessPaymentFailedResponse"
+                    }
+                  ],
+                  "description": "Returns ProcessPaymentSuccessResponse on success, ProcessPaymentFailedResponse on payment failure"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid request payload",
+            "description": "Invalid request payload (e.g., missing body)",
             "content": {
-              "application/json": {
+              "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - invalid or missing API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/BadRequestError"
                 }
               }
             }
           },
           "403": {
-            "description": "Forbidden - application not authorized for this fee type",
+            "description": "Forbidden - invalid or missing API key",
             "content": {
-              "application/json": {
+              "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No pending transaction found for the provided token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Payment processing failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProcessPaymentFailedResponse"
+                  "$ref": "#/components/schemas/ForbiddenError"
                 }
               }
             }
@@ -593,9 +562,9 @@
           "500": {
             "description": "Internal server error",
             "content": {
-              "application/json": {
+              "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             }
