@@ -6,6 +6,9 @@ import {
   InitPaymentRequestSchema,
   InitPaymentResponseSchema,
   ErrorResponseSchema,
+  BadRequestErrorSchema,
+  ForbiddenErrorSchema,
+  ServerErrorSchema,
   GetDetailsResponseSchema,
   TransactionRecordSchema,
   TransactionStatusSchema,
@@ -31,6 +34,9 @@ registry.register("Metadata", MetadataSchema);
 registry.register("InitPaymentRequest", InitPaymentRequestSchema);
 registry.register("InitPaymentResponse", InitPaymentResponseSchema);
 registry.register("ErrorResponse", ErrorResponseSchema);
+registry.register("BadRequestError", BadRequestErrorSchema);
+registry.register("ForbiddenError", ForbiddenErrorSchema);
+registry.register("ServerError", ServerErrorSchema);
 registry.register("GetDetailsResponse", GetDetailsResponseSchema);
 registry.register("TransactionRecord", TransactionRecordSchema);
 registry.register("TransactionStatus", TransactionStatusSchema);
@@ -85,26 +91,26 @@ registry.registerPath({
       },
     },
     400: {
-      description: "Invalid request payload",
+      description: "Invalid request payload (e.g., missing body, validation error)",
       content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
+        "text/plain": {
+          schema: BadRequestErrorSchema,
         },
       },
     },
-    401: {
-      description: "Unauthorized - invalid or missing API key",
+    403: {
+      description: "Forbidden - invalid or missing API key",
       content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
+        "text/plain": {
+          schema: ForbiddenErrorSchema,
         },
       },
     },
     500: {
       description: "Internal server error",
       content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
+        "text/plain": {
+          schema: ServerErrorSchema,
         },
       },
     },
@@ -144,35 +150,27 @@ registry.registerPath({
         },
       },
     },
-    401: {
-      description: "Unauthorized - invalid or missing API key",
+    400: {
+      description: "Invalid request (e.g., missing path parameters)",
       content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
+        "text/plain": {
+          schema: BadRequestErrorSchema,
         },
       },
     },
     403: {
-      description: "Forbidden - application not authorized for this transaction",
+      description: "Forbidden - invalid or missing API key",
       content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-    404: {
-      description: "Transaction not found",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
+        "text/plain": {
+          schema: ForbiddenErrorSchema,
         },
       },
     },
     500: {
       description: "Internal server error",
       content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
+        "text/plain": {
+          schema: ServerErrorSchema,
         },
       },
     },
@@ -188,7 +186,9 @@ registry.registerPath({
   summary: "Process a payment",
   description:
     "Completes a payment transaction after the user has submitted payment information on Pay.gov. " +
-    "This endpoint must be called regardless of payment type used to finalize the transaction.",
+    "This endpoint must be called regardless of payment type used to finalize the transaction. " +
+    "Note: Both successful and failed payment processing return HTTP 200. " +
+    "Check the transactionStatus field to determine the outcome.",
   tags: ["Payments"],
   security: [{ ApiKeyAuth: [] }],
   request: {
@@ -203,58 +203,36 @@ registry.registerPath({
   },
   responses: {
     200: {
-      description: "Payment processed successfully",
+      description: "Payment processed. Check transactionStatus for Success or Failed.",
       content: {
         "application/json": {
-          schema: ProcessPaymentSuccessResponseSchema,
+          schema: z.union([ProcessPaymentSuccessResponseSchema, ProcessPaymentFailedResponseSchema]).openapi({
+            description: "Returns ProcessPaymentSuccessResponse on success, ProcessPaymentFailedResponse on payment failure",
+          }),
         },
       },
     },
     400: {
-      description: "Invalid request payload",
+      description: "Invalid request payload (e.g., missing body)",
       content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-    401: {
-      description: "Unauthorized - invalid or missing API key",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
+        "text/plain": {
+          schema: BadRequestErrorSchema,
         },
       },
     },
     403: {
-      description: "Forbidden - application not authorized for this fee type",
+      description: "Forbidden - invalid or missing API key",
       content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-    404: {
-      description: "No pending transaction found for the provided token",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-    422: {
-      description: "Payment processing failed",
-      content: {
-        "application/json": {
-          schema: ProcessPaymentFailedResponseSchema,
+        "text/plain": {
+          schema: ForbiddenErrorSchema,
         },
       },
     },
     500: {
       description: "Internal server error",
       content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
+        "text/plain": {
+          schema: ServerErrorSchema,
         },
       },
     },

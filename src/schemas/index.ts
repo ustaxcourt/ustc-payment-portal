@@ -215,17 +215,43 @@ export type ProcessPaymentFailedResponse = z.infer<
 >;
 
 // ============================================
-// Error Response
+// Error Responses
 // ============================================
+// Note: The actual error response body is a plain string,
+// not a JSON object. The HTTP status code is in the response header.
+// For validation errors (Joi), the body is a JSON-stringified error object.
+
+export const BadRequestErrorSchema = z
+  .string()
+  .openapi({
+    description:
+      "Error message for invalid requests. May be plain text (e.g., 'missing body') " +
+      "or a JSON-stringified Joi validation error object.",
+    example: "missing body",
+  })
+  .openapi("BadRequestError");
+
+export const ForbiddenErrorSchema = z
+  .string()
+  .openapi({
+    description: "Plain text error message for authentication/authorization failures",
+    example: "Missing Authentication",
+  })
+  .openapi("ForbiddenError");
+
+export const ServerErrorSchema = z
+  .string()
+  .openapi({
+    description: "Plain text error message for internal server errors",
+    example: "Internal Server Error",
+  })
+  .openapi("ServerError");
+
+// Generic error schema (for backward compatibility)
 export const ErrorResponseSchema = z
-  .object({
-    statusCode: z.number().openapi({
-      description: "HTTP status code",
-      example: 400,
-    }),
-    message: z.string().openapi({
-      description: "Error message",
-      example: "Invalid request payload",
-    }),
+  .string()
+  .openapi({
+    description: "Plain text error message",
+    example: "Invalid Request",
   })
   .openapi("ErrorResponse");
