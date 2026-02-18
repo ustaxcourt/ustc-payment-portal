@@ -267,6 +267,8 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "rds:DescribeDBInstances",
           "rds:DescribeDBSubnetGroups",
           "rds:DescribeDBSnapshots",
+          "rds:DescribeDBParameterGroups",
+          "rds:DescribeDBParameters",
           "rds:ListTagsForResource"
         ],
         Resource = "*"
@@ -280,13 +282,17 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "rds:AddTagsToResource",
           "rds:RemoveTagsFromResource",
           "rds:CreateDBSnapshot",
-          "rds:DeleteDBSnapshot"
+          "rds:DeleteDBSnapshot",
+          "rds:CreateDBParameterGroup",
+          "rds:DeleteDBParameterGroup",
+          "rds:ModifyDBParameterGroup"
         ],
         Resource = [
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:ustc-payment-processor-*",
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:*-pr-*-db",
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:subgrp:*",
-          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:snapshot:*"
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:snapshot:*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:pg:ustc-payment-processor-*"
         ]
       },
       {
