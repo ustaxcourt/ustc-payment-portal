@@ -10,7 +10,7 @@
   },
   "servers": [
     {
-      "url": "https://api.example.com",
+      "url": "https://5740jj3tq0.execute-api.us-east-1.amazonaws.com/prod",
       "description": "Production server"
     },
     {
@@ -48,6 +48,11 @@
             "description": "Unique UUID for the transaction reference",
             "example": "550e8400-e29b-41d4-a716-446655440000"
           },
+          "feeId": {
+            "type": "string",
+            "description": "The fee ID for the payment",
+            "example": "FEE-12345"
+          },
           "urlSuccess": {
             "type": "string",
             "format": "uri",
@@ -84,6 +89,7 @@
         "required": [
           "appId",
           "transactionReferenceId",
+          "feeId",
           "urlSuccess",
           "urlCancel",
           "metadata"
