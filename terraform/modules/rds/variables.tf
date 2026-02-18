@@ -64,3 +64,9 @@ variable "skip_final_snapshot" {
   type        = bool
   default     = true
 }
+
+variable "final_snapshot_identifier" {
+  description = "Snapshot identifier for final snapshot when skip_final_snapshot is false (required for prod deletion)"
+  type        = string
+  default     = null
+}

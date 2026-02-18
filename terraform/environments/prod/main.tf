@@ -71,9 +71,10 @@ module "rds" {
     data.terraform_remote_state.foundation.outputs.rds_security_group_id
   ]
 
-  multi_az            = true
-  deletion_protection = true
-  skip_final_snapshot = false
+  multi_az                  = true
+  deletion_protection       = true
+  skip_final_snapshot       = false
+  final_snapshot_identifier = "ustc-payment-processor-prod-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
 }
 
 module "api" {
