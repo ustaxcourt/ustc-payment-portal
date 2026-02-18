@@ -55,3 +55,13 @@ variable "rds_secret_name" {
   description = "Name of the Secrets Manager secret that stores RDS credentials"
   type        = string
 }
+
+variable "recovery_window_in_days" {
+  description = "Days to retain deleted secrets before permanent removal (0=immediate, 7-30 for recoverability)"
+  type        = number
+  default     = 30
+  validation {
+    condition     = var.recovery_window_in_days == 0 || (var.recovery_window_in_days >= 7 && var.recovery_window_in_days <= 30)
+    error_message = "Must be 0 (immediate) or between 7-30 days."
+  }
+}
