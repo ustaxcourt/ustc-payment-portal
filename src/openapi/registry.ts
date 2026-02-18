@@ -1,6 +1,6 @@
 import {
   OpenAPIRegistry,
-  OpenApiGeneratorV3,
+  OpenApiGeneratorV31,
 } from "@asteasolutions/zod-to-openapi";
 import {
   InitPaymentRequestSchema,
@@ -12,6 +12,10 @@ import {
   ProcessPaymentRequestSchema,
   ProcessPaymentSuccessResponseSchema,
   ProcessPaymentFailedResponseSchema,
+  FeeIdSchema,
+  MetadataDawsonSchema,
+  MetadataNonattorneyExamSchema,
+  MetadataSchema,
 } from "../schemas";
 import { z } from "zod";
 
@@ -20,6 +24,10 @@ export const registry = new OpenAPIRegistry();
 // ============================================
 // Register Schemas
 // ============================================
+registry.register("FeeId", FeeIdSchema);
+registry.register("MetadataDawson", MetadataDawsonSchema);
+registry.register("MetadataNonattorneyExam", MetadataNonattorneyExamSchema);
+registry.register("Metadata", MetadataSchema);
 registry.register("InitPaymentRequest", InitPaymentRequestSchema);
 registry.register("InitPaymentResponse", InitPaymentResponseSchema);
 registry.register("ErrorResponse", ErrorResponseSchema);
@@ -257,10 +265,10 @@ registry.registerPath({
 // Generate OpenAPI Document
 // ============================================
 export const generateOpenAPIDocument = () => {
-  const generator = new OpenApiGeneratorV3(registry.definitions);
+  const generator = new OpenApiGeneratorV31(registry.definitions);
 
   return generator.generateDocument({
-    openapi: "3.0.3",
+    openapi: "3.1.0",
     info: {
       title: "USTC Payment Portal API",
       version: "0.1.3",

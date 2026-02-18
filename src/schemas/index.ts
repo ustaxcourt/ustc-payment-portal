@@ -5,6 +5,64 @@ import { z } from "zod";
 extendZodWithOpenApi(z);
 
 // ============================================
+// Fee IDs
+// ============================================
+export const FeeIdSchema = z
+  .enum(["DAWSON_FILING_FEE", "NONATTORNEY_EXAM_REGISTRATION"])
+  .openapi({
+    description: "The fee type identifier",
+    example: "DAWSON_FILING_FEE",
+  });
+
+export type FeeId = z.infer<typeof FeeIdSchema>;
+
+// ============================================
+// Metadata Schemas (fee-specific)
+// ============================================
+
+// Metadata for DAWSON filing fees - requires docket number
+export const MetadataDawsonSchema = z
+  .object({
+    docketNumber: z.string().openapi({
+      description: "The docket number for the case (required for DAWSON fees)",
+      example: "123-45",
+    }),
+  })
+  .openapi("MetadataDawson");
+
+// Metadata for Non-Attorney Admissions Exam Registration
+export const MetadataNonattorneyExamSchema = z
+  .object({
+    email: z.string().email().openapi({
+      description: "Applicant email address",
+      example: "applicant@example.com",
+    }),
+    fullName: z.string().openapi({
+      description: "Applicant full name",
+      example: "John Doe",
+    }),
+    accessCode: z.string().openapi({
+      description: "Registration access code",
+      example: "ABC123",
+    }),
+  })
+  .openapi("MetadataNonattorneyExam");
+
+// Union of all metadata types for OpenAPI documentation
+export const MetadataSchema = z
+  .union([MetadataDawsonSchema, MetadataNonattorneyExamSchema])
+  .openapi({
+    description:
+      "Metadata fields are dynamic and determined by the feeId value. " +
+      "Different fees require different metadata properties. " +
+      "Note: Fee identifiers shown here (e.g., DAWSON_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) " +
+      "are working names and may be renamed before release. " +
+      "See individual metadata schemas for field requirements.",
+  });
+
+export type Metadata = z.infer<typeof MetadataSchema>;
+
+// ============================================
 // Init Payment (OpenAPI documentation schema - future API contract)
 // ============================================
 export const InitPaymentRequestSchema = z
@@ -17,10 +75,7 @@ export const InitPaymentRequestSchema = z
       description: "Unique UUID for the transaction reference",
       example: "550e8400-e29b-41d4-a716-446655440000",
     }),
-    feeId: z.string().openapi({
-      description: "The fee ID for the payment",
-      example: "FEE-12345",
-    }),
+    feeId: FeeIdSchema,
     urlSuccess: z.string().url().openapi({
       description: "URL to redirect to after successful payment",
       example: "https://client.app/success",
@@ -29,20 +84,7 @@ export const InitPaymentRequestSchema = z
       description: "URL to redirect to if payment is cancelled",
       example: "https://client.app/cancel",
     }),
-    metadata: z
-      .object({
-        docketNumber: z.string().openapi({
-          description: "The docket number for the case",
-          example: "123456",
-        }),
-        petitionNumber: z.string().openapi({
-          description: "The petition number",
-          example: "PET-7890",
-        }),
-      })
-      .openapi({
-        description: "Additional metadata for the payment",
-      }),
+    metadata: MetadataSchema,
   })
   .openapi("InitPaymentRequest");
 
