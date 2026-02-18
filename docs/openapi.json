@@ -1,5 +1,5 @@
 {
-  "openapi": "3.0.3",
+  "openapi": "3.1.0",
   "info": {
     "title": "USTC Payment Portal API",
     "version": "0.1.3",
@@ -34,6 +34,65 @@
       }
     },
     "schemas": {
+      "FeeId": {
+        "type": "string",
+        "enum": [
+          "DAWSON_FILING_FEE",
+          "NONATTORNEY_EXAM_REGISTRATION"
+        ],
+        "description": "The fee type identifier",
+        "example": "DAWSON_FILING_FEE"
+      },
+      "MetadataDawson": {
+        "type": "object",
+        "properties": {
+          "docketNumber": {
+            "type": "string",
+            "description": "The docket number for the case (required for DAWSON fees)",
+            "example": "123-45"
+          }
+        },
+        "required": [
+          "docketNumber"
+        ]
+      },
+      "MetadataNonattorneyExam": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Applicant email address",
+            "example": "applicant@example.com"
+          },
+          "fullName": {
+            "type": "string",
+            "description": "Applicant full name",
+            "example": "John Doe"
+          },
+          "accessCode": {
+            "type": "string",
+            "description": "Registration access code",
+            "example": "ABC123"
+          }
+        },
+        "required": [
+          "email",
+          "fullName",
+          "accessCode"
+        ]
+      },
+      "Metadata": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/MetadataDawson"
+          },
+          {
+            "$ref": "#/components/schemas/MetadataNonattorneyExam"
+          }
+        ],
+        "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. Note: Fee identifiers shown here (e.g., DAWSON_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) are working names and may be renamed before release. See individual metadata schemas for field requirements."
+      },
       "InitPaymentRequest": {
         "type": "object",
         "properties": {
@@ -50,8 +109,12 @@
           },
           "feeId": {
             "type": "string",
-            "description": "The fee ID for the payment",
-            "example": "FEE-12345"
+            "enum": [
+              "DAWSON_FILING_FEE",
+              "NONATTORNEY_EXAM_REGISTRATION"
+            ],
+            "description": "The fee type identifier",
+            "example": "DAWSON_FILING_FEE"
           },
           "urlSuccess": {
             "type": "string",
@@ -66,24 +129,15 @@
             "example": "https://client.app/cancel"
           },
           "metadata": {
-            "type": "object",
-            "properties": {
-              "docketNumber": {
-                "type": "string",
-                "description": "The docket number for the case",
-                "example": "123456"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetadataDawson"
               },
-              "petitionNumber": {
-                "type": "string",
-                "description": "The petition number",
-                "example": "PET-7890"
+              {
+                "$ref": "#/components/schemas/MetadataNonattorneyExam"
               }
-            },
-            "required": [
-              "docketNumber",
-              "petitionNumber"
             ],
-            "description": "Additional metadata for the payment"
+            "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. Note: Fee identifiers shown here (e.g., DAWSON_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) are working names and may be renamed before release. See individual metadata schemas for field requirements."
           }
         },
         "required": [
@@ -549,5 +603,6 @@
         }
       }
     }
-  }
+  },
+  "webhooks": {}
 }
