@@ -22,9 +22,9 @@ resource "aws_db_parameter_group" "main" {
     value = "1"
   }
 
-  tags = {
+  tags = merge(var.tags, {
     Name = "${var.identifier}-parameter-group"
-  }
+  })
 }
 
 resource "aws_db_instance" "main" {
@@ -55,4 +55,8 @@ resource "aws_db_instance" "main" {
 
   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
   final_snapshot_identifier = var.final_snapshot_identifier
+
+  tags = merge(var.tags, {
+    Name = var.identifier
+  })
 }
