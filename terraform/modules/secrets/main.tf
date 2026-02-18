@@ -2,48 +2,55 @@
 
 # mTLS artifacts only when enabled
 resource "aws_secretsmanager_secret" "private_key" {
-  count       = var.enable_mtls ? 1 : 0
-  name        = "${local.basepath}/${var.private_key_name}"
-  description = "Client private key PEM (${local.env})"
-  tags        = local.tags
+  count                   = var.enable_mtls ? 1 : 0
+  name                    = "${local.basepath}/${var.private_key_name}"
+  description             = "Client private key PEM (${local.env})"
+  recovery_window_in_days = 0
+  tags                    = local.tags
 }
 
 resource "aws_secretsmanager_secret" "certificate" {
-  count       = var.enable_mtls ? 1 : 0
-  name        = "${local.basepath}/${var.certificate_name}"
-  description = "Client certificate PEM (${local.env})"
-  tags        = local.tags
+  count                   = var.enable_mtls ? 1 : 0
+  name                    = "${local.basepath}/${var.certificate_name}"
+  description             = "Client certificate PEM (${local.env})"
+  recovery_window_in_days = 0
+  tags                    = local.tags
 }
 
 # Secrets
 resource "aws_secretsmanager_secret" "api_access_token" {
-  name        = "${local.basepath}/${var.api_access_token_name}"
-  description = "Pay.gov API access token (${local.env})"
-  tags        = local.tags
+  name                    = "${local.basepath}/${var.api_access_token_name}"
+  description             = "Pay.gov API access token (${local.env})"
+  recovery_window_in_days = 0
+  tags                    = local.tags
 }
 
 resource "aws_secretsmanager_secret" "cert_passphrase" {
-  name        = "${local.basepath}/${var.cert_passphrase_name}"
-  description = "Client certificate passphrase (${local.env})"
-  tags        = local.tags
+  name                    = "${local.basepath}/${var.cert_passphrase_name}"
+  description             = "Client certificate passphrase (${local.env})"
+  recovery_window_in_days = 0
+  tags                    = local.tags
 }
 
 resource "aws_secretsmanager_secret" "paygov_dev_server_token" {
-  name        = "${local.basepath}/${var.paygov_dev_server_token_name}"
-  description = "Pay.gov dev server token (${local.env})"
-  tags        = local.tags
+  name                    = "${local.basepath}/${var.paygov_dev_server_token_name}"
+  description             = "Pay.gov dev server token (${local.env})"
+  recovery_window_in_days = 0
+  tags                    = local.tags
 }
 
 resource "aws_secretsmanager_secret" "tcs_app_id" {
-  name        = "${local.basepath}/${var.tcs_app_id_name}"
-  description = "TCS Application ID (${local.env})"
-  tags        = local.tags
+  name                    = "${local.basepath}/${var.tcs_app_id_name}"
+  description             = "TCS Application ID (${local.env})"
+  recovery_window_in_days = 0
+  tags                    = local.tags
 }
 
 resource "aws_secretsmanager_secret" "rds_credentials" {
-  name        = "${local.basepath}/${var.rds_secret_name}"
-  description = "RDS credentials (${local.env})"
-  tags        = local.tags
+  name                    = "${local.basepath}/${var.rds_secret_name}"
+  description             = "RDS credentials (${local.env})"
+  recovery_window_in_days = 0
+  tags                    = local.tags
 }
 
 # IAM for Lambda to read these secrets
