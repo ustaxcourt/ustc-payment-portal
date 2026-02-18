@@ -10,6 +10,8 @@ locals {
     API_ACCESS_TOKEN_SECRET_ID         = module.secrets.api_access_token_secret_id
     CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
     PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = module.secrets.paygov_dev_server_token_secret_id
+    TCS_APP_ID                         = module.secrets.tcs_app_id_secret_id
+    RDS_ENDPOINT                       = module.rds.endpoint
   }
 
   lambda_env_mtls = local.mtls_enabled ? {

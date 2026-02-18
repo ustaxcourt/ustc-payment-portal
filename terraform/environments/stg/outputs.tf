@@ -43,3 +43,8 @@ output "tcs_app_id_secret_id" {
   description = "Secret ID for TCS Application ID"
 }
 
+output "rds_endpoint" {
+  value       = module.rds.endpoint
+  description = "RDS database endpoint (host:port)"
+}
+
