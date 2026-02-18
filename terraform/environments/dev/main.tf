@@ -71,6 +71,11 @@ module "rds" {
   ]
 
   multi_az = false
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
 }
 
 module "api" {

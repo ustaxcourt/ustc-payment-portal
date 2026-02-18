@@ -70,3 +70,9 @@ variable "final_snapshot_identifier" {
   type        = string
   default     = null
 }
+
+variable "tags" {
+  description = "Tags to apply to RDS resources"
+  type        = map(string)
+  default     = {}
+}

@@ -75,6 +75,11 @@ module "rds" {
   deletion_protection       = true
   skip_final_snapshot       = false
   final_snapshot_identifier = "ustc-payment-processor-prod-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
 }
 
 module "api" {
