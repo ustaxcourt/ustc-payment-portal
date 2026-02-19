@@ -9,19 +9,31 @@ You can find the detailed Zod documention for defining schemas [here](https://zo
 When endpoints are added, modified, or removed, you need to update the OpenAPI documentation. Here's what to change:
 
 ### 1. Update Zod Schemas (if request/response shapes changed)
-
-Edit [src/schemas/index.ts](../../../src/schemas/index.ts):
+Create a schema file, under the schema folder and export it via [src/schemas/index.ts](../../../src/schemas/index.ts). The schema file will look like the following:
 
 ```typescript
-// Add or modify schemas with .openapi() for documentation
-export const MyNewRequestSchema = z
+import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
+import { z } from "zod";
+import { TransactionStatusSchema } from "./TransactionStatus.schema";
+import { TransactionRecordSummarySchema } from "./TransactionRecord.schema";
+
+// Extend Zod with OpenAPI support
+extendZodWithOpenApi(z);
+
+export const GetDetailsResponseSchema = z
   .object({
-    field: z.string().openapi({
-      description: "Description shown in docs",
-      example: "example value",
+    paymentStatus: TransactionStatusSchema.openapi({
+      description:
+        "Overall payment status representing the current state of the payment",
+    }),
+    transactions: z.array(TransactionRecordSummarySchema).openapi({
+      description:
+        "Array of all transaction records associated with this payment reference",
     }),
   })
-  .openapi("MyNewRequest");
+  .openapi("GetDetailsResponse");
+
+export type GetDetailsResponse = z.infer<typeof GetDetailsResponseSchema>;
 ```
 
 ### 2. Register the Schema (if new)
