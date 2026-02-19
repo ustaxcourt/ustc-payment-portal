@@ -11,6 +11,7 @@ import {
   ServerErrorSchema,
   GetDetailsResponseSchema,
   TransactionRecordSchema,
+  TransactionRecordSummarySchema,
   TransactionStatusSchema,
   ProcessPaymentRequestSchema,
   ProcessPaymentResponseSchema,
@@ -38,6 +39,7 @@ registry.register("ForbiddenError", ForbiddenErrorSchema);
 registry.register("ServerError", ServerErrorSchema);
 registry.register("GetDetailsResponse", GetDetailsResponseSchema);
 registry.register("TransactionRecord", TransactionRecordSchema);
+registry.register("TransactionRecordSummary", TransactionRecordSummarySchema);
 registry.register("TransactionStatus", TransactionStatusSchema);
 registry.register("ProcessPaymentRequest", ProcessPaymentRequestSchema);
 registry.register(

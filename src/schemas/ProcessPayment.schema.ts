@@ -1,7 +1,7 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 import { TransactionStatusSchema } from "./TransactionStatus.schema";
-import { TransactionRecordSchema } from "./TransactionRecord.schema";
+import { TransactionRecordSummarySchema } from "./TransactionRecord.schema";
 
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);
@@ -27,7 +27,7 @@ export const ProcessPaymentResponseSchema = z
       description:
         "Overall payment status representing the current state of the payment",
     }),
-    transactions: z.array(TransactionRecordSchema).openapi({
+    transactions: z.array(TransactionRecordSummarySchema).openapi({
       description:
         "Array of all transaction records associated with this payment reference",
     }),

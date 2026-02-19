@@ -10,12 +10,20 @@
   },
   "servers": [
     {
-      "url": "https://5740jj3tq0.execute-api.us-east-1.amazonaws.com/prod",
-      "description": "Production server"
-    },
-    {
       "url": "http://localhost:8080",
       "description": "Local development server"
+    },
+    {
+      "url": "https://dev-payments.ustaxcourt.gov",
+      "description": "Dev"
+    },
+    {
+      "url": "https://stg-payments.ustaxcourt.gov",
+      "description": "Test/Staging"
+    },
+    {
+      "url": "https://payments.ustaxcourt.gov",
+      "description": "Production"
     }
   ],
   "tags": [
@@ -37,11 +45,11 @@
       "FeeId": {
         "type": "string",
         "enum": [
-          "DAWSON_FILING_FEE",
+          "PETITIONS_FILING_FEE",
           "NONATTORNEY_EXAM_REGISTRATION"
         ],
         "description": "The fee type identifier",
-        "example": "DAWSON_FILING_FEE"
+        "example": "PETITIONS_FILING_FEE"
       },
       "MetadataDawson": {
         "type": "object",
@@ -49,7 +57,7 @@
           "docketNumber": {
             "type": "string",
             "description": "The docket number for the case (required for DAWSON fees)",
-            "example": "123-26L"
+            "example": "123-26"
           }
         },
         "required": [
@@ -110,11 +118,11 @@
           "feeId": {
             "type": "string",
             "enum": [
-              "DAWSON_FILING_FEE",
+              "PETITIONS_FILING_FEE",
               "NONATTORNEY_EXAM_REGISTRATION"
             ],
             "description": "The fee type identifier",
-            "example": "DAWSON_FILING_FEE"
+            "example": "PETITIONS_FILING_FEE"
           },
           "urlSuccess": {
             "type": "string",
@@ -195,6 +203,8 @@
           "paymentStatus": {
             "type": "string",
             "enum": [
+              "Received",
+              "Initiated",
               "Success",
               "Failed",
               "Pending"
@@ -205,7 +215,7 @@
           "transactions": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TransactionRecord"
+              "$ref": "#/components/schemas/TransactionRecordSummary"
             },
             "description": "Array of all transaction records associated with this payment reference"
           }
@@ -213,6 +223,48 @@
         "required": [
           "paymentStatus",
           "transactions"
+        ]
+      },
+      "TransactionRecordSummary": {
+        "type": "object",
+        "properties": {
+          "transactionStatus": {
+            "type": "string",
+            "enum": [
+              "Received",
+              "Initiated",
+              "Success",
+              "Failed",
+              "Pending"
+            ],
+            "description": "The status of the payment transaction",
+            "example": "Success"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "description": "Method of payment (e.g., card, ACH)",
+            "example": "card"
+          },
+          "returnDetail": {
+            "type": "string",
+            "description": "Detailed return message from Pay.gov",
+            "example": "Transaction completed successfully"
+          },
+          "createdTimestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the transaction was created",
+            "example": "2024-01-15T10:30:00Z"
+          },
+          "updatedTimestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the transaction was last updated",
+            "example": "2024-01-15T10:35:00Z"
+          }
+        },
+        "required": [
+          "transactionStatus"
         ]
       },
       "TransactionRecord": {
@@ -226,6 +278,8 @@
           "transactionStatus": {
             "type": "string",
             "enum": [
+              "Received",
+              "Initiated",
               "Success",
               "Failed",
               "Pending"
@@ -233,20 +287,20 @@
             "description": "The status of the payment transaction",
             "example": "Success"
           },
-          "paymentType": {
+          "paymentMethod": {
             "type": "string",
-            "description": "Type of payment (e.g., card, ACH)",
+            "description": "Method of payment (e.g., card, ACH)",
             "example": "card"
-          },
-          "returnCode": {
-            "type": "string",
-            "description": "Return code from Pay.gov",
-            "example": "0000"
           },
           "returnDetail": {
             "type": "string",
             "description": "Detailed return message from Pay.gov",
             "example": "Transaction completed successfully"
+          },
+          "returnCode": {
+            "type": "string",
+            "description": "Return code from Pay.gov",
+            "example": "1000"
           },
           "createdTimestamp": {
             "type": "string",
@@ -269,6 +323,8 @@
       "TransactionStatus": {
         "type": "string",
         "enum": [
+          "Received",
+          "Initiated",
           "Success",
           "Failed",
           "Pending"
@@ -295,56 +351,32 @@
           "token"
         ]
       },
-      "ProcessPaymentSuccessResponse": {
+      "ProcessPaymentResponse": {
         "type": "object",
         "properties": {
-          "trackingId": {
-            "type": "string",
-            "description": "Pay.gov tracking ID for the completed transaction",
-            "example": "TRK-123456789"
-          },
-          "transactionStatus": {
+          "paymentStatus": {
             "type": "string",
             "enum": [
+              "Received",
+              "Initiated",
               "Success",
               "Failed",
               "Pending"
             ],
-            "description": "The status of the payment transaction",
+            "description": "Overall payment status representing the current state of the payment",
             "example": "Success"
+          },
+          "transactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionRecord"
+            },
+            "description": "Array of all transaction records associated with this payment reference"
           }
         },
         "required": [
-          "trackingId",
-          "transactionStatus"
-        ]
-      },
-      "ProcessPaymentFailedResponse": {
-        "type": "object",
-        "properties": {
-          "transactionStatus": {
-            "type": "string",
-            "enum": [
-              "Success",
-              "Failed",
-              "Pending"
-            ],
-            "description": "The status of the payment transaction",
-            "example": "Success"
-          },
-          "message": {
-            "type": "string",
-            "description": "Error message describing the failure reason",
-            "example": "Payment was declined by the processor"
-          },
-          "code": {
-            "type": "number",
-            "description": "Error code from Pay.gov",
-            "example": 1001
-          }
-        },
-        "required": [
-          "transactionStatus"
+          "paymentStatus",
+          "transactions"
         ]
       }
     },
@@ -528,13 +560,10 @@
                 "schema": {
                   "anyOf": [
                     {
-                      "$ref": "#/components/schemas/ProcessPaymentSuccessResponse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ProcessPaymentFailedResponse"
+                      "$ref": "#/components/schemas/ProcessPaymentResponse"
                     }
                   ],
-                  "description": "Returns ProcessPaymentSuccessResponse on success, ProcessPaymentFailedResponse on payment failure"
+                  "description": "Returns ProcessPaymentResponse on success or failure"
                 }
               }
             }
