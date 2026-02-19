@@ -13,8 +13,7 @@ import {
   TransactionRecordSchema,
   TransactionStatusSchema,
   ProcessPaymentRequestSchema,
-  ProcessPaymentSuccessResponseSchema,
-  ProcessPaymentFailedResponseSchema,
+  ProcessPaymentResponseSchema,
   FeeIdSchema,
   MetadataDawsonSchema,
   MetadataNonattorneyExamSchema,
@@ -42,12 +41,8 @@ registry.register("TransactionRecord", TransactionRecordSchema);
 registry.register("TransactionStatus", TransactionStatusSchema);
 registry.register("ProcessPaymentRequest", ProcessPaymentRequestSchema);
 registry.register(
-  "ProcessPaymentSuccessResponse",
-  ProcessPaymentSuccessResponseSchema
-);
-registry.register(
-  "ProcessPaymentFailedResponse",
-  ProcessPaymentFailedResponseSchema
+  "ProcessPaymentResponse",
+  ProcessPaymentResponseSchema
 );
 
 // ============================================
@@ -206,8 +201,8 @@ registry.registerPath({
       description: "Payment processed. Check transactionStatus for Success or Failed.",
       content: {
         "application/json": {
-          schema: z.union([ProcessPaymentSuccessResponseSchema, ProcessPaymentFailedResponseSchema]).openapi({
-            description: "Returns ProcessPaymentSuccessResponse on success, ProcessPaymentFailedResponse on payment failure",
+          schema: z.union([ProcessPaymentResponseSchema]).openapi({
+            description: "Returns ProcessPaymentResponse on success or failure",
           }),
         },
       },
@@ -258,12 +253,20 @@ export const generateOpenAPIDocument = () => {
     },
     servers: [
       {
-        url: "https://5740jj3tq0.execute-api.us-east-1.amazonaws.com/prod",
-        description: "Production server",
-      },
-      {
         url: "http://localhost:8080",
         description: "Local development server",
+      },
+      {
+        url: "https://dev-payments.ustaxcourt.gov",
+        description: "Dev",
+      },
+      {
+        url: "https://stg-payments.ustaxcourt.gov",
+        description: "Test/Staging",
+      },
+      {
+        url: "https://payments.ustaxcourt.gov",
+        description: "Production",
       },
     ],
     tags: [
