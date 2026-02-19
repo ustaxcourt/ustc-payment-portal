@@ -4,7 +4,7 @@ resource "aws_db_parameter_group" "main" {
 
   parameter {
     name  = "log_statement"
-    value = "all"
+    value = var.log_statement
   }
 
   parameter {
@@ -32,14 +32,17 @@ resource "aws_db_instance" "main" {
   engine         = "postgres"
   engine_version = "16.6"
 
-  instance_class    = var.instance_class
-  allocated_storage = var.allocated_storage
-  storage_encrypted = true
-  storage_type      = "gp3"
+  instance_class        = var.instance_class
+  allocated_storage     = var.allocated_storage
+  max_allocated_storage = var.max_allocated_storage > 0 ? var.max_allocated_storage : null
+  storage_encrypted     = true
+  storage_type          = "gp3"
 
   db_name  = var.db_name
   username = var.username
-  password = var.password
+  password = var.manage_master_user_password ? null : var.password
+
+  manage_master_user_password = var.manage_master_user_password
 
   db_subnet_group_name   = var.db_subnet_group_name
   vpc_security_group_ids = var.vpc_security_group_ids

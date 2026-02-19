@@ -31,6 +31,26 @@ resource "aws_iam_role_policy_attachment" "vpc_access" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+resource "aws_iam_role_policy" "lambda_secrets_access" {
+  count = var.create_lambda_exec_role ? 1 : 0
+  name  = "${var.name_prefix}-lambda-secrets-access"
+  role  = aws_iam_role.lambda_exec[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = ["secretsmanager:GetSecretValue"]
+        Resource = [
+          "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*",
+          "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
+        ]
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role" "github_actions_deployer" {
   count = var.create_deployer_role ? 1 : 0
   name  = local.deploy_role_name
@@ -201,7 +221,10 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "secretsmanager:TagResource",
           "secretsmanager:UntagResource"
         ],
-        Resource = "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*"
+        Resource = [
+            "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*",
+            "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
+          ]
       },
       {
         Effect = "Allow", #iam role creation (for self-management)

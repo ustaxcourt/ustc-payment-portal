@@ -11,23 +11,6 @@ data "terraform_remote_state" "foundation" {
 
 data "aws_caller_identity" "current" {}
 
-resource "random_password" "rds_master" {
-  length           = 32
-  special          = true
-  override_special = "!#$%^&*()-_=+[]{}<>:?"
-  keepers = {
-    db_identifier = "${local.name_prefix}-db"
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "rds_credentials" {
-  secret_id = module.secrets.rds_credentials_secret_id
-  secret_string = jsonencode({
-    username = "payment_portal_admin"
-    password = random_password.rds_master.result
-  })
-}
-
 module "lambda" {
   source                    = "../../modules/lambda"
   function_name_prefix      = local.name_prefix
@@ -63,7 +46,8 @@ module "rds" {
   identifier = "${local.name_prefix}-db"
   db_name    = "paymentportal"
   username   = "payment_portal_admin"
-  password   = random_password.rds_master.result
+
+  manage_master_user_password = true
 
   db_subnet_group_name = data.terraform_remote_state.foundation.outputs.db_subnet_group_name
 
@@ -71,6 +55,8 @@ module "rds" {
     data.terraform_remote_state.foundation.outputs.rds_security_group_id
   ]
 
+  log_statement             = "ddl"
+  max_allocated_storage     = 100
   multi_az                  = true
   deletion_protection       = true
   skip_final_snapshot       = false

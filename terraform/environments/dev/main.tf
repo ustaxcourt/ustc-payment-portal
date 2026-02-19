@@ -12,6 +12,7 @@ data "terraform_remote_state" "foundation" {
 }
 
 resource "random_password" "rds_master" {
+  count            = local.environment == "dev" ? 1 : 0
   length           = 32
   special          = true
   override_special = "!#$%^&*()-_=+[]{}<>:?"
@@ -21,10 +22,11 @@ resource "random_password" "rds_master" {
 }
 
 resource "aws_secretsmanager_secret_version" "rds_credentials" {
+  count     = local.environment == "dev" ? 1 : 0
   secret_id = module.secrets.rds_credentials_secret_id
   secret_string = jsonencode({
     username = "payment_portal_admin"
-    password = random_password.rds_master.result
+    password = random_password.rds_master[0].result
   })
 }
 
@@ -57,12 +59,15 @@ module "lambda" {
 }
 
 module "rds" {
+  count  = local.environment == "dev" ? 1 : 0
   source = "../../modules/rds"
 
   identifier = "${local.name_prefix}-db"
   db_name    = "paymentportal"
   username   = "payment_portal_admin"
-  password   = random_password.rds_master.result
+  password   = random_password.rds_master[0].result
+
+  manage_master_user_password = false
 
   db_subnet_group_name = data.terraform_remote_state.foundation.outputs.db_subnet_group_name
 

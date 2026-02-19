@@ -44,7 +44,7 @@ output "tcs_app_id_secret_id" {
 }
 
 output "rds_endpoint" {
-  value       = module.rds.endpoint
+  value       = local.environment == "dev" ? module.rds[0].endpoint : null
   description = "RDS database endpoint (host:port)"
 }
 
