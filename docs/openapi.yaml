@@ -1,24 +1,22 @@
-openapi: "3.1.0"
+openapi: 3.1.0
 info:
   title: USTC Payment Portal API
-  version: "0.1.3"
+  version: 0.1.3
   description: API for integrating with Pay.gov payment services for the US Tax Court.
   contact:
     name: US Tax Court
 servers:
-  -
-    url: "https://5740jj3tq0.execute-api.us-east-1.amazonaws.com/prod"
-    description: Production server
-
-  -
-    url: "http://localhost:8080"
+  - url: http://localhost:8080
     description: Local development server
-
+  - url: https://dev-payments.ustaxcourt.gov
+    description: Dev
+  - url: https://stg-payments.ustaxcourt.gov
+    description: Test/Staging
+  - url: https://payments.ustaxcourt.gov
+    description: Production
 tags:
-  -
-    name: Payments
+  - name: Payments
     description: Payment initialization, processing, and status operations
-
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -30,17 +28,17 @@ components:
     FeeId:
       type: string
       enum:
-        - DAWSON_FILING_FEE
+        - PETITIONS_FILING_FEE
         - NONATTORNEY_EXAM_REGISTRATION
       description: The fee type identifier
-      example: DAWSON_FILING_FEE
+      example: PETITIONS_FILING_FEE
     MetadataDawson:
       type: object
       properties:
         docketNumber:
           type: string
           description: The docket number for the case (required for DAWSON fees)
-          example: "123-26L"
+          example: 123-26
       required:
         - docketNumber
     MetadataNonattorneyExam:
@@ -65,13 +63,14 @@ components:
         - accessCode
     Metadata:
       anyOf:
-        -
-          $ref: "#/components/schemas/MetadataDawson"
-
-        -
-          $ref: "#/components/schemas/MetadataNonattorneyExam"
-
-      description: "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. Note: Fee identifiers shown here (e.g., DAWSON_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) are working names and may be renamed before release. See individual metadata schemas for field requirements."
+        - $ref: '#/components/schemas/MetadataDawson'
+        - $ref: '#/components/schemas/MetadataNonattorneyExam'
+      description: >-
+        Metadata fields are dynamic and determined by the feeId value. Different
+        fees require different metadata properties. Note: Fee identifiers shown
+        here (e.g., DAWSON_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) are
+        working names and may be renamed before release. See individual metadata
+        schemas for field requirements.
     InitPaymentRequest:
       type: object
       properties:
@@ -83,33 +82,35 @@ components:
           type: string
           format: uuid
           description: Unique UUID for the transaction reference
-          example: "550e8400-e29b-41d4-a716-446655440000"
+          example: 550e8400-e29b-41d4-a716-446655440000
         feeId:
           type: string
           enum:
-            - DAWSON_FILING_FEE
+            - PETITIONS_FILING_FEE
             - NONATTORNEY_EXAM_REGISTRATION
           description: The fee type identifier
-          example: DAWSON_FILING_FEE
+          example: PETITIONS_FILING_FEE
         urlSuccess:
           type: string
           format: uri
           description: URL to redirect to after successful payment
-          example: "https://client.app/success"
+          example: https://client.app/success
         urlCancel:
           type: string
           format: uri
           description: URL to redirect to if payment is cancelled
-          example: "https://client.app/cancel"
+          example: https://client.app/cancel
         metadata:
           anyOf:
-            -
-              $ref: "#/components/schemas/MetadataDawson"
-
-            -
-              $ref: "#/components/schemas/MetadataNonattorneyExam"
-
-          description: "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. Note: Fee identifiers shown here (e.g., DAWSON_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) are working names and may be renamed before release. See individual metadata schemas for field requirements."
+            - $ref: '#/components/schemas/MetadataDawson'
+            - $ref: '#/components/schemas/MetadataNonattorneyExam'
+          description: >-
+            Metadata fields are dynamic and determined by the feeId value.
+            Different fees require different metadata properties. Note: Fee
+            identifiers shown here (e.g., DAWSON_FILING_FEE,
+            NONATTORNEY_EXAM_REGISTRATION) are working names and may be renamed
+            before release. See individual metadata schemas for field
+            requirements.
       required:
         - appId
         - transactionReferenceId
@@ -128,7 +129,7 @@ components:
           type: string
           format: uri
           description: URL to redirect the user to complete payment on Pay.gov
-          example: "https://pay.gov/payment?token=abc123token&tcsAppID=USTC_APP"
+          example: https://pay.gov/payment?token=abc123token&tcsAppID=USTC_APP
       required:
         - token
         - paymentRedirect
@@ -138,7 +139,9 @@ components:
       example: Invalid Request
     BadRequestError:
       type: string
-      description: "Error message for invalid requests. May be plain text (e.g., 'missing body') or a JSON-stringified Joi validation error object."
+      description: >-
+        Error message for invalid requests. May be plain text (e.g., 'missing
+        body') or a JSON-stringified Joi validation error object.
       example: missing body
     ForbiddenError:
       type: string
@@ -154,6 +157,8 @@ components:
         paymentStatus:
           type: string
           enum:
+            - Received
+            - Initiated
             - Success
             - Failed
             - Pending
@@ -162,11 +167,46 @@ components:
         transactions:
           type: array
           items:
-            $ref: "#/components/schemas/TransactionRecord"
-          description: Array of all transaction records associated with this payment reference
+            $ref: '#/components/schemas/TransactionRecordSummary'
+          description: >-
+            Array of all transaction records associated with this payment
+            reference
       required:
         - paymentStatus
         - transactions
+    TransactionRecordSummary:
+      type: object
+      properties:
+        transactionStatus:
+          type: string
+          enum:
+            - Received
+            - Initiated
+            - Success
+            - Failed
+            - Pending
+          description: The status of the payment transaction
+          example: Success
+        paymentMethod:
+          type: string
+          description: Method of payment (e.g., card, ACH)
+          example: card
+        returnDetail:
+          type: string
+          description: Detailed return message from Pay.gov
+          example: Transaction completed successfully
+        createdTimestamp:
+          type: string
+          format: date-time
+          description: Timestamp when the transaction was created
+          example: '2024-01-15T10:30:00Z'
+        updatedTimestamp:
+          type: string
+          format: date-time
+          description: Timestamp when the transaction was last updated
+          example: '2024-01-15T10:35:00Z'
+      required:
+        - transactionStatus
     TransactionRecord:
       type: object
       properties:
@@ -177,39 +217,43 @@ components:
         transactionStatus:
           type: string
           enum:
+            - Received
+            - Initiated
             - Success
             - Failed
             - Pending
           description: The status of the payment transaction
           example: Success
-        paymentType:
+        paymentMethod:
           type: string
-          description: Type of payment (e.g., card, ACH)
+          description: Method of payment (e.g., card, ACH)
           example: card
-        returnCode:
-          type: string
-          description: Return code from Pay.gov
-          example: "0000"
         returnDetail:
           type: string
           description: Detailed return message from Pay.gov
           example: Transaction completed successfully
+        returnCode:
+          type: string
+          description: Return code from Pay.gov
+          example: '1000'
         createdTimestamp:
           type: string
           format: date-time
           description: Timestamp when the transaction was created
-          example: "2024-01-15T10:30:00Z"
+          example: '2024-01-15T10:30:00Z'
         updatedTimestamp:
           type: string
           format: date-time
           description: Timestamp when the transaction was last updated
-          example: "2024-01-15T10:35:00Z"
+          example: '2024-01-15T10:35:00Z'
       required:
         - payGovTrackingId
         - transactionStatus
     TransactionStatus:
       type: string
       enum:
+        - Received
+        - Initiated
         - Success
         - Failed
         - Pending
@@ -224,106 +268,92 @@ components:
           example: DAWSON
         token:
           type: string
-          description: The payment token received from Pay.gov after user completes payment form
+          description: >-
+            The payment token received from Pay.gov after user completes payment
+            form
           example: abc123token
       required:
         - appId
         - token
-    ProcessPaymentSuccessResponse:
+    ProcessPaymentResponse:
       type: object
       properties:
-        trackingId:
-          type: string
-          description: Pay.gov tracking ID for the completed transaction
-          example: TRK-123456789
-        transactionStatus:
+        paymentStatus:
           type: string
           enum:
+            - Received
+            - Initiated
             - Success
             - Failed
             - Pending
-          description: The status of the payment transaction
+          description: Overall payment status representing the current state of the payment
           example: Success
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionRecord'
+          description: >-
+            Array of all transaction records associated with this payment
+            reference
       required:
-        - trackingId
-        - transactionStatus
-    ProcessPaymentFailedResponse:
-      type: object
-      properties:
-        transactionStatus:
-          type: string
-          enum:
-            - Success
-            - Failed
-            - Pending
-          description: The status of the payment transaction
-          example: Success
-        message:
-          type: string
-          description: Error message describing the failure reason
-          example: Payment was declined by the processor
-        code:
-          type: number
-          description: Error code from Pay.gov
-          example: 1001
-      required:
-        - transactionStatus
+        - paymentStatus
+        - transactions
   parameters: {}
 paths:
   /init:
     post:
       summary: Initialize a payment
-      description: Creates a new payment session with Pay.gov and returns a redirect URL for the user to complete payment.
+      description: >-
+        Creates a new payment session with Pay.gov and returns a redirect URL
+        for the user to complete payment.
       tags:
         - Payments
       security:
-        -
-          ApiKeyAuth: []
-
+        - ApiKeyAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/InitPaymentRequest"
+              $ref: '#/components/schemas/InitPaymentRequest'
       responses:
-        200:
+        '200':
           description: Payment initialized successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InitPaymentResponse"
-        400:
+                $ref: '#/components/schemas/InitPaymentResponse'
+        '400':
           description: Invalid request payload (e.g., missing body, validation error)
           content:
             text/plain:
               schema:
-                $ref: "#/components/schemas/BadRequestError"
-        403:
+                $ref: '#/components/schemas/BadRequestError'
+        '403':
           description: Forbidden - invalid or missing API key
           content:
             text/plain:
               schema:
-                $ref: "#/components/schemas/ForbiddenError"
-        500:
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
           description: Internal server error
           content:
             text/plain:
               schema:
-                $ref: "#/components/schemas/ServerError"
+                $ref: '#/components/schemas/ServerError'
   /details/{appId}/{transactionReferenceId}:
     get:
       summary: Get transaction details
-      description: Retrieves the payment status and all transaction records associated with a transaction reference ID. If there is a pending transaction, it will query Pay.gov for the latest status before returning.
+      description: >-
+        Retrieves the payment status and all transaction records associated with
+        a transaction reference ID. If there is a pending transaction, it will
+        query Pay.gov for the latest status before returning.
       tags:
         - Payments
       security:
-        -
-          ApiKeyAuth: []
-
+        - ApiKeyAuth: []
       parameters:
-        -
-          schema:
+        - schema:
             type: string
             description: The application ID
             example: DAWSON
@@ -331,89 +361,84 @@ paths:
           description: The application ID
           name: appId
           in: path
-
-        -
-          schema:
+        - schema:
             type: string
             format: uuid
             description: Unique UUID for the transaction reference
-            example: "550e8400-e29b-41d4-a716-446655440000"
+            example: 550e8400-e29b-41d4-a716-446655440000
           required: true
           description: Unique UUID for the transaction reference
           name: transactionReferenceId
           in: path
-
       responses:
-        200:
+        '200':
           description: Transaction details retrieved successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GetDetailsResponse"
-        400:
+                $ref: '#/components/schemas/GetDetailsResponse'
+        '400':
           description: Invalid request (e.g., missing path parameters)
           content:
             text/plain:
               schema:
-                $ref: "#/components/schemas/BadRequestError"
-        403:
+                $ref: '#/components/schemas/BadRequestError'
+        '403':
           description: Forbidden - invalid or missing API key
           content:
             text/plain:
               schema:
-                $ref: "#/components/schemas/ForbiddenError"
-        500:
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
           description: Internal server error
           content:
             text/plain:
               schema:
-                $ref: "#/components/schemas/ServerError"
+                $ref: '#/components/schemas/ServerError'
   /process:
     post:
       summary: Process a payment
-      description: "Completes a payment transaction after the user has submitted payment information on Pay.gov. This endpoint must be called regardless of payment type used to finalize the transaction. Note: Both successful and failed payment processing return HTTP 200. Check the transactionStatus field to determine the outcome."
+      description: >-
+        Completes a payment transaction after the user has submitted payment
+        information on Pay.gov. This endpoint must be called regardless of
+        payment type used to finalize the transaction. Note: Both successful and
+        failed payment processing return HTTP 200. Check the transactionStatus
+        field to determine the outcome.
       tags:
         - Payments
       security:
-        -
-          ApiKeyAuth: []
-
+        - ApiKeyAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProcessPaymentRequest"
+              $ref: '#/components/schemas/ProcessPaymentRequest'
       responses:
-        200:
+        '200':
           description: Payment processed. Check transactionStatus for Success or Failed.
           content:
             application/json:
               schema:
                 anyOf:
-                  -
-                    $ref: "#/components/schemas/ProcessPaymentSuccessResponse"
-
-                  -
-                    $ref: "#/components/schemas/ProcessPaymentFailedResponse"
-
-                description: Returns ProcessPaymentSuccessResponse on success, ProcessPaymentFailedResponse on payment failure
-        400:
+                  - $ref: '#/components/schemas/ProcessPaymentResponse'
+                description: Returns ProcessPaymentResponse on success or failure
+        '400':
           description: Invalid request payload (e.g., missing body)
           content:
             text/plain:
               schema:
-                $ref: "#/components/schemas/BadRequestError"
-        403:
+                $ref: '#/components/schemas/BadRequestError'
+        '403':
           description: Forbidden - invalid or missing API key
           content:
             text/plain:
               schema:
-                $ref: "#/components/schemas/ForbiddenError"
-        500:
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
           description: Internal server error
           content:
             text/plain:
               schema:
-                $ref: "#/components/schemas/ServerError"
+                $ref: '#/components/schemas/ServerError'
 webhooks: {}
