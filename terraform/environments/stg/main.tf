@@ -53,10 +53,8 @@ module "rds" {
     data.terraform_remote_state.foundation.outputs.rds_security_group_id
   ]
 
-  multi_az                  = false
-  deletion_protection       = true
-  skip_final_snapshot       = false
-  final_snapshot_identifier = "ustc-payment-processor-stg-final-snapshot"
+  multi_az            = false
+  deletion_protection = true
 
   tags = {
     Env     = local.environment
