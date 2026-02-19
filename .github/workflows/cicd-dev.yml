@@ -151,24 +151,6 @@ jobs:
           TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.testCert_source_code_hash }}
         run: terraform apply -auto-approve tfplan
 
-      - name: Cleanup on apply failure
-        if: ${{ failure() && steps.plan.outputs.exitcode == '2' }}
-        working-directory: terraform/environments/dev
-        env:
-          TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
-          TF_VAR_artifact_bucket: ${{ steps.upload_artifacts_pr.outputs.artifact_bucket }}
-          TF_VAR_initPayment_s3_key: ${{ steps.upload_artifacts_pr.outputs.initPayment_s3_key }}
-          TF_VAR_processPayment_s3_key: ${{ steps.upload_artifacts_pr.outputs.processPayment_s3_key }}
-          TF_VAR_getDetails_s3_key: ${{ steps.upload_artifacts_pr.outputs.getDetails_s3_key }}
-          TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_pr.outputs.testCert_s3_key }}
-          TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.initPayment_source_code_hash }}
-          TF_VAR_processPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.processPayment_source_code_hash }}
-          TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getDetails_source_code_hash }}
-          TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.testCert_source_code_hash }}
-        run: |
-          echo "Apply failed - destroying partial resources..."
-          terraform destroy -auto-approve || true
-
       - name: Smoke check (post-apply to verify the workspace)
         if: ${{ steps.plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/dev
