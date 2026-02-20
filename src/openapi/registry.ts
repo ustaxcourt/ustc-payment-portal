@@ -123,14 +123,14 @@ registry.registerPath({
 });
 
 // ============================================
-// GET /details/:appId/:payGovTrackingId - Get Transaction Details
+// GET /details/:appId/:transactionReferenceId - Get Transaction Details
 // ============================================
 registry.registerPath({
   method: "get",
-  path: "/details/{appId}/{payGovTrackingId}",
+  path: "/details/{appId}/{transactionReferenceId}",
   summary: "Get transaction details",
   description:
-    "Retrieves the payment status and all transaction records associated with a Pay.gov tracking ID. " +
+    "Retrieves the payment status and all transaction records associated with a transaction reference ID. " +
     "If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
@@ -140,9 +140,9 @@ registry.registerPath({
         description: "The application ID",
         example: "DAWSON",
       }),
-      payGovTrackingId: z.string().openapi({
-        description: "The Pay.gov tracking ID assigned to the transaction",
-        example: "PAYGOV-TRK-123456789",
+      transactionReferenceId: z.string().openapi({
+        description: "The transaction reference ID",
+        example: "TXN-REF-123456789",
       }),
     }),
   },
