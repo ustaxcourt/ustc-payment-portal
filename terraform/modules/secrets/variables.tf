@@ -52,8 +52,21 @@ variable "tags" {
 }
 
 variable "rds_secret_name" {
-  description = "Name of the Secrets Manager secret that stores RDS credentials"
+  description = "Name of the Secrets Manager secret that stores RDS credentials (ignored if create_rds_secret = false)"
   type        = string
+  default     = "rds-credentials"
+}
+
+variable "create_rds_secret" {
+  description = "Whether to create the RDS credentials secret (false for prod/stg which use AWS-managed RDS password)"
+  type        = bool
+  default     = true
+}
+
+variable "additional_secret_arns" {
+  description = "Additional secret ARNs to include in Lambda IAM policy (e.g., AWS-managed RDS secret)"
+  type        = list(string)
+  default     = []
 }
 
 variable "recovery_window_in_days" {

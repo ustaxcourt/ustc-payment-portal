@@ -48,3 +48,8 @@ output "rds_endpoint" {
   description = "RDS database endpoint (host:port)"
 }
 
+output "rds_master_secret_arn" {
+  value       = module.rds.master_user_secret_arn
+  description = "ARN of AWS-managed Secrets Manager secret containing RDS master credentials"
+}
+

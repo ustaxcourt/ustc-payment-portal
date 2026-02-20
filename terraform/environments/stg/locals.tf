@@ -12,6 +12,7 @@ locals {
     PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = module.secrets.paygov_dev_server_token_secret_id
     TCS_APP_ID                         = module.secrets.tcs_app_id_secret_id
     RDS_ENDPOINT                       = module.rds.endpoint
+    RDS_SECRET_ARN                     = module.rds.master_user_secret_arn
   }
 
   lambda_env_mtls = local.mtls_enabled ? {
