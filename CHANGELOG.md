@@ -1,5 +1,11 @@
 # @ustaxcourt/payment-portal
 
+## 0.1.4
+
+### Patch Changes
+
+- 4f35f7a: Adds running-locally markdown, minor version updates for package.json
+
 ## 0.1.3
 
 ### Patch Changes
