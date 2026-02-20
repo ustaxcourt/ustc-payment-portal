@@ -187,8 +187,12 @@ components:
           example: Success
         paymentMethod:
           type: string
-          description: Method of payment (e.g., card, ACH)
-          example: card
+          enum:
+            - Credit/Debit Card
+            - ACH
+            - PayPal
+          description: Method of payment
+          example: Credit/Debit Card
         returnDetail:
           type: string
           description: Detailed return message from Pay.gov
@@ -224,8 +228,12 @@ components:
           example: Success
         paymentMethod:
           type: string
-          description: Method of payment (e.g., card, ACH)
-          example: card
+          enum:
+            - Credit/Debit Card
+            - ACH
+            - PayPal
+          description: Method of payment
+          example: Credit/Debit Card
         returnDetail:
           type: string
           description: Detailed return message from Pay.gov
@@ -265,6 +273,14 @@ components:
         - Pending
       description: The overall status of the payment
       example: Success
+    PaymentMethod:
+      type: string
+      enum:
+        - Credit/Debit Card
+        - ACH
+        - PayPal
+      description: Method of payment
+      example: Credit/Debit Card
     ProcessPaymentRequest:
       type: object
       properties:
