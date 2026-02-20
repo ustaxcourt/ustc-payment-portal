@@ -36,6 +36,50 @@ resource "aws_subnet" "private_subnet" {
   })
 }
 
+resource "aws_subnet" "private_subnet_2" {
+  count             = var.private_subnet_cidr_2 != "" ? 1 : 0
+  vpc_id            = aws_vpc.lambda_vpc.id
+  cidr_block        = var.private_subnet_cidr_2
+  availability_zone = var.availability_zone_2 != "" ? var.availability_zone_2 : var.availability_zone
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-private-subnet-2"
+  })
+}
+
+resource "aws_db_subnet_group" "rds" {
+  count = var.private_subnet_cidr_2 != "" ? 1 : 0
+  name  = "${var.name_prefix}-db-subnet-group"
+
+  subnet_ids = [
+    aws_subnet.private_subnet.id,
+    aws_subnet.private_subnet_2[0].id
+  ]
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-db-subnet-group"
+  })
+}
+
+resource "aws_security_group" "rds" {
+  count       = var.private_subnet_cidr_2 != "" ? 1 : 0
+  name        = "${var.name_prefix}-rds-sg"
+  description = "Allow PostgreSQL from Lambda"
+  vpc_id      = aws_vpc.lambda_vpc.id
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.lambda.id]
+    description     = "PostgreSQL from Lambda"
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-rds-sg"
+  })
+}
+
 #keeping it here in case we've to rollback to the original EIP
 
 # resource "aws_eip" "nat" {
@@ -48,11 +92,11 @@ resource "aws_subnet" "private_subnet" {
 
 resource "aws_eip" "nat_replacement" {
   domain = "vpc"
-  
+
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-replacement-eip"
   })
-  
+
   lifecycle {
     prevent_destroy = true
   }
@@ -61,6 +105,7 @@ resource "aws_eip" "nat_replacement" {
 resource "aws_nat_gateway" "default_nat_gw" {
   subnet_id     = aws_subnet.public_subnet.id
   allocation_id = aws_eip.nat_replacement.id
+
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-nat-gw"
   })
@@ -110,16 +155,16 @@ resource "aws_route_table_association" "private_rta" {
   route_table_id = aws_route_table.private_rt.id
 }
 
+resource "aws_route_table_association" "private_rta_2" {
+  count          = var.private_subnet_cidr_2 != "" ? 1 : 0
+  subnet_id      = aws_subnet.private_subnet_2[0].id
+  route_table_id = aws_route_table.private_rt.id
+}
+
 
 resource "aws_security_group" "lambda" {
   name   = "lambda-SG"
   vpc_id = aws_vpc.lambda_vpc.id
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
   egress {
     from_port   = 0
     to_port     = 0

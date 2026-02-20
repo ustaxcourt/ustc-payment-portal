@@ -162,18 +162,24 @@ jobs:
         id: tf_outputs
         working-directory: terraform/environments/dev
         run: |
-          set +e
-          API_URL=$(terraform output -raw api_gateway_url 2>/dev/null)
-          SECRET_ID=$(terraform output -raw api_access_token_secret_id 2>/dev/null)
-          TCS_APP_ID_SECRET_ID=$(terraform output -raw tcs_app_id_secret_id 2>/dev/null)
-          set -e
-          if [ -n "$API_URL" ] && [ -n "$SECRET_ID" ]; then
-            echo "api_url=$API_URL" >> $GITHUB_OUTPUT
-            echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
-            echo "tcs_app_id_secret_id=$TCS_APP_ID_SECRET_ID" >> $GITHUB_OUTPUT
-            echo "has_outputs=true" >> $GITHUB_OUTPUT
-            echo "API Gateway URL: $API_URL"
-            echo "API Access Token Secret ID: $SECRET_ID"
+          # Check if outputs exist before trying to read them
+          if terraform output api_gateway_url &>/dev/null; then
+            API_URL=$(terraform output -raw api_gateway_url)
+            SECRET_ID=$(terraform output -raw api_access_token_secret_id)
+            TCS_APP_ID_SECRET_ID=$(terraform output -raw tcs_app_id_secret_id)
+            
+            # Validate outputs are actual values (not warning text)
+            if [[ "$API_URL" == https://* ]]; then
+              echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+              echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
+              echo "tcs_app_id_secret_id=$TCS_APP_ID_SECRET_ID" >> $GITHUB_OUTPUT
+              echo "has_outputs=true" >> $GITHUB_OUTPUT
+              echo "API Gateway URL: $API_URL"
+              echo "API Access Token Secret ID: $SECRET_ID"
+            else
+              echo "has_outputs=false" >> $GITHUB_OUTPUT
+              echo "Outputs exist but appear invalid; skipping integration tests."
+            fi
           else
             echo "has_outputs=false" >> $GITHUB_OUTPUT
             echo "PR workspace not yet provisioned; skipping integration tests until outputs exist."

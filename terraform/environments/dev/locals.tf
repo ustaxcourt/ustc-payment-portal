@@ -11,6 +11,8 @@ locals {
     CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
     PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = module.secrets.paygov_dev_server_token_secret_id
     TCS_APP_ID                         = module.secrets.tcs_app_id_secret_id
+    RDS_ENDPOINT                       = local.environment == "dev" ? module.rds[0].endpoint : ""
+    RDS_SECRET_ARN                     = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : ""
   }
 
   lambda_env_mtls = local.mtls_enabled ? {
@@ -29,9 +31,9 @@ locals {
   ]
   lambda_exec_role_arn = "arn:aws:iam::723609007960:role/ustc-payment-portal-dev-lambda-exec"
   # Conditional naming: dev uses original names, PR environments get suffixes
-  name_prefix          = local.environment == "dev" ? "ustc-payment-processor" : "ustc-payment-processor-${local.environment}"
-  payment_url          = "https://pay-gov-dev.ustaxcourt.gov/pay"
-  soap_url             = "https://pay-gov-dev.ustaxcourt.gov/wsdl"
+  name_prefix = local.environment == "dev" ? "ustc-payment-processor" : "ustc-payment-processor-${local.environment}"
+  payment_url = "https://pay-gov-dev.ustaxcourt.gov/pay"
+  soap_url    = "https://pay-gov-dev.ustaxcourt.gov/wsdl"
 
   # Artifacts bucket policy ARN (constructed dynamically for PR workspaces)
   artifacts_bucket_policy_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/build-artifacts-access-policy"
