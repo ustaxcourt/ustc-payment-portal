@@ -10,7 +10,7 @@ describe("initialize a payment", () => {
       appId = process.env.TCS_APP_ID;
     } else {
       tokenString = await getSecretString(
-        process.env.API_ACCESS_TOKEN_SECRET_ID as string
+        process.env.API_ACCESS_TOKEN_SECRET_ID as string,
       );
       appId = await getSecretString(process.env.TCS_APP_ID as string);
     }

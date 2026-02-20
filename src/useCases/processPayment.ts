@@ -12,7 +12,7 @@ export type ProcessPayment = (
 
 export const processPayment: ProcessPayment = async (
   appContext: AppContext,
-  request: ProcessPaymentRequest
+  request: ProcessPaymentRequest,
 ) => {
   const req = new CompleteOnlineCollectionWithDetailsRequest({
     tcsAppId: request.appId,

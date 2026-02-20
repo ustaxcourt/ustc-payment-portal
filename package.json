@@ -8,7 +8,7 @@
   },
   "scripts": {
     "clean": "rimraf dist/*",
-    "lint": "tslint -c tslint.json -p tsconfig.json",
+    "lint": "eslint src/",
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "build:lambda": "terraform/scripts/build-lambda.sh",
     "dev:start": "npm-run-all build start",
@@ -27,6 +27,7 @@
   "license": "ISC",
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
+    "@eslint/js": "^10.0.1",
     "@types/aws-lambda": "^8.10.152",
     "@types/axios": "^0.14.4",
     "@types/express": "^5.0.3",
@@ -34,7 +35,10 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node-fetch": "^2.6.13",
     "@types/uuid": "^11.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.0",
+    "@typescript-eslint/parser": "^8.56.0",
     "esbuild": "^0.25.10",
+    "eslint": "^10.0.1",
     "express": "^5.1.0",
     "jest": "^30.1.3",
     "js-yaml": "^4.1.0",
@@ -43,9 +47,9 @@
     "rimraf": "^6.0.1",
     "ts-jest": "^29.4.3",
     "ts-node": "^10.9.2",
-    "tslint": "^6.1.3",
     "tsup": "^8.5.1",
     "typescript": "^5.9.2",
+    "typescript-eslint": "^8.56.0",
     "uuid": "^13.0.0"
   },
   "dependencies": {

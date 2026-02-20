@@ -4,7 +4,7 @@ import {
 } from "../types/TransactionStatus";
 
 export const parseTransactionStatus = (
-  status: PayGovTransactionStatus
+  status: PayGovTransactionStatus,
 ): TransactionStatus => {
   switch (status) {
     case "Pending":

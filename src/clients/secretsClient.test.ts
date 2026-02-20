@@ -38,7 +38,7 @@ describe("getSecretString", () => {
     mockSend.mockResolvedValueOnce({});
 
     await expect(getSecretString("empty-secret-id")).rejects.toThrow(
-      'Secret "empty-secret-id" has no SecretString or SecretBinary'
+      'Secret "empty-secret-id" has no SecretString or SecretBinary',
     );
   });
 

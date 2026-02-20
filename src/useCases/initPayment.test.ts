@@ -20,7 +20,7 @@ describe("initPayment", () => {
     await expect(
       initPayment(appContext, {
         amount: 20,
-      } as any)
+      } as any),
     ).rejects.toThrow();
   });
 

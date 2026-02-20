@@ -88,7 +88,7 @@ describe("postHttpRequest", () => {
           Authentication: "Bearer secret-token-from-aws",
           Authorization: "Bearer secret-token-from-aws",
         },
-      })
+      }),
     );
   });
 
@@ -109,7 +109,7 @@ describe("postHttpRequest", () => {
           Authentication: "Bearer local-token-secret-id",
           Authorization: "Bearer local-token-secret-id",
         },
-      })
+      }),
     );
   });
 
@@ -127,7 +127,7 @@ describe("postHttpRequest", () => {
       "https://test-soap-url.com",
       expect.objectContaining({
         agent: expect.any(https.Agent),
-      })
+      }),
     );
   });
 
@@ -142,7 +142,7 @@ describe("postHttpRequest", () => {
       "https://test-soap-url.com",
       expect.objectContaining({
         agent: undefined,
-      })
+      }),
     );
   });
 

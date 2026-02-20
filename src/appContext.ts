@@ -42,7 +42,7 @@ export const createAppContext = (): AppContext => {
     },
     postHttpRequest: async (
       appContext: AppContext,
-      body: string
+      body: string,
     ): Promise<string> => {
       const httpsAgent = await appContext.getHttpsAgent();
 
@@ -73,7 +73,7 @@ export const createAppContext = (): AppContext => {
                 secretId: tokenSecretId,
                 errorName: err?.name,
                 errorMessage: err?.message,
-              }
+              },
             );
             // Proceed without Authorization header if token fetch fails
           }

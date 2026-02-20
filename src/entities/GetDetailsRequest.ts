@@ -37,7 +37,7 @@ export class GetRequestRequest extends SoapRequest {
   }
 
   makeSoapRequest = async (
-    appContext: AppContext
+    appContext: AppContext,
   ): Promise<TransactionDetails> => {
     return this.useHttp(appContext);
   };
@@ -51,7 +51,7 @@ export class GetRequestRequest extends SoapRequest {
     const responseBody = await SoapRequest.prototype.makeRequest(
       appContext,
       params,
-      this.requestType
+      this.requestType,
     );
 
     const response = responseBody["ns2:getDetailsResponse"]

@@ -99,7 +99,7 @@ describe("processPayment", () => {
     await expect(
       processPayment(appContext, {
         foo: 20,
-      } as any)
+      } as any),
     ).rejects.toThrow();
   });
 
@@ -160,7 +160,7 @@ describe("processPayment", () => {
       });
 
       expect(message).toBe(
-        "The card has been declined, the transaction will not be processed."
+        "The card has been declined, the transaction will not be processed.",
       );
     });
 

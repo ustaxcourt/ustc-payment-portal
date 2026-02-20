@@ -40,7 +40,7 @@ describe("handleError", () => {
           path: ["somewhere"],
         },
       ],
-      "original"
+      "original",
     );
     const expected = JSON.stringify(error);
     expect(handleError(error)).toMatchObject({

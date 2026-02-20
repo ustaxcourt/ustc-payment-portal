@@ -31,7 +31,7 @@ export const authorizeRequest = async (headers?: Headers) => {
     } catch (error) {
       console.error(
         "Failed to fetch API access token from Secrets Manager",
-        error
+        error,
       );
       console.error("Error details:", {
         name: (error as any)?.name,
@@ -40,7 +40,7 @@ export const authorizeRequest = async (headers?: Headers) => {
         statusCode: (error as any)?.statusCode,
       });
       throw new ServerError(
-        "Failed to fetch API access token from Secrets Manager"
+        "Failed to fetch API access token from Secrets Manager",
       );
     }
   }

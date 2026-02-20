@@ -17,7 +17,7 @@ describe("make a transaction", () => {
       appId = process.env.TCS_APP_ID as string;
     } else {
       tokenString = await getSecretString(
-        process.env.API_ACCESS_TOKEN_SECRET_ID as string
+        process.env.API_ACCESS_TOKEN_SECRET_ID as string,
       );
       appId = await getSecretString(process.env.TCS_APP_ID as string);
     }
@@ -67,7 +67,7 @@ describe("make a transaction", () => {
     };
 
     console.log(
-      `Time to process the transaction with this appId ${appId}; token: ${token}`
+      `Time to process the transaction with this appId ${appId}; token: ${token}`,
     );
 
     const result = await fetch(`${process.env.BASE_URL}/process`, {
@@ -94,7 +94,7 @@ describe("make a transaction", () => {
     };
 
     console.log(
-      `Time to get the details with this appId ${appId}; payGovTrackingId: ${payGovTrackingId}`
+      `Time to get the details with this appId ${appId}; payGovTrackingId: ${payGovTrackingId}`,
     );
 
     const result = await fetch(
@@ -104,7 +104,7 @@ describe("make a transaction", () => {
           "Content-Type": "application/json",
           Authentication: `Bearer ${tokenString}`,
         },
-      }
+      },
     );
 
     expect(result.status).toBe(200);

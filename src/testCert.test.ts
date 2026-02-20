@@ -47,7 +47,7 @@ describe("testCert handler", () => {
       "http://localhost:3366?wsdl",
       expect.objectContaining({
         agent: { mockAgent: true },
-      })
+      }),
     );
   });
 
@@ -64,7 +64,7 @@ describe("testCert handler", () => {
       expect.any(String),
       expect.objectContaining({
         agent: { mockAgent: true },
-      })
+      }),
     );
   });
 
@@ -77,7 +77,7 @@ describe("testCert handler", () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       "http://localhost:3366?wsdl",
-      expect.any(Object)
+      expect.any(Object),
     );
   });
 
@@ -112,7 +112,7 @@ describe("testCert handler", () => {
 
   it("handles SSL certificate errors", async () => {
     mockFetch.mockRejectedValue(
-      new Error("unable to verify the first certificate")
+      new Error("unable to verify the first certificate"),
     );
 
     const result = await handler();
@@ -141,7 +141,7 @@ describe("testCert handler", () => {
           Authorization: "Bearer secret-token-from-aws",
           Authentication: "Bearer secret-token-from-aws",
         },
-      })
+      }),
     );
     expect(result.statusCode).toBe(200);
     expect(result.body).toBe(mockWsdlContent);

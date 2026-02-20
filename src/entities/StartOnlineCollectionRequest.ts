@@ -43,13 +43,13 @@ export class StartOnlineCollectionRequest extends SoapRequest {
   }
 
   makeSoapRequest(
-    appContext: AppContext
+    appContext: AppContext,
   ): Promise<StartOnlineCollectionResponse> {
     return this.useHttp(appContext);
   }
 
   async useHttp(
-    appContext: AppContext
+    appContext: AppContext,
   ): Promise<StartOnlineCollectionResponse> {
     const params: StartOnlineCollectionRequestParams = {
       tcs_app_id: this.tcsAppId,
@@ -64,7 +64,7 @@ export class StartOnlineCollectionRequest extends SoapRequest {
     const response = await SoapRequest.prototype.makeRequest(
       appContext,
       params,
-      this.requestType
+      this.requestType,
     );
 
     const tokenResponse = response["ns2:startOnlineCollectionResponse"]

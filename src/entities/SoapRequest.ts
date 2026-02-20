@@ -65,7 +65,7 @@ export class SoapRequest {
   async makeRequest(
     appContext: AppContext,
     params: RequestParams,
-    requestType: RequestType
+    requestType: RequestType,
   ) {
     const xmlBody = this.buildXml(params, requestType);
 

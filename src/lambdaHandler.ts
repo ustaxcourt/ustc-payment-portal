@@ -18,7 +18,7 @@ type LambdaHandler = ProcessPayment | InitPayment | GetDetails;
 const lambdaHandler = async (
   request: any,
   headers: APIGatewayProxyEventHeaders,
-  callback: LambdaHandler
+  callback: LambdaHandler,
 ): Promise<APIGatewayProxyResult> => {
   try {
     await authorizeRequest(headers);
@@ -33,7 +33,7 @@ const lambdaHandler = async (
 };
 
 export const initPaymentHandler = (
-  event: APIGatewayEvent
+  event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
   if (!event.body) {
     throw new InvalidRequestError("missing body");
@@ -44,12 +44,12 @@ export const initPaymentHandler = (
   return lambdaHandler(
     request,
     event.headers,
-    appContext.getUseCases().initPayment
+    appContext.getUseCases().initPayment,
   );
 };
 
 export const processPaymentHandler = (
-  event: APIGatewayEvent
+  event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
   if (!event.body) {
     throw new InvalidRequestError("missing body");
@@ -60,12 +60,12 @@ export const processPaymentHandler = (
   return lambdaHandler(
     request,
     event.headers,
-    appContext.getUseCases().processPayment
+    appContext.getUseCases().processPayment,
   );
 };
 
 export const getDetailsHandler = (
-  event: APIGatewayEvent
+  event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
   if (!event.pathParameters) {
     throw new InvalidRequestError("missing required information");
@@ -74,6 +74,6 @@ export const getDetailsHandler = (
   return lambdaHandler(
     event.pathParameters,
     event.headers,
-    appContext.getUseCases().getDetails
+    appContext.getUseCases().getDetails,
   );
 };

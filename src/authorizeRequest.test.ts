@@ -61,7 +61,7 @@ describe("authorizeRequest", () => {
     } catch (err) {
       expect(err).toBeInstanceOf(UnauthorizedError);
       expect((err as UnauthorizedError).message).toEqual(
-        "Missing Authentication"
+        "Missing Authentication",
       );
     }
     expect(result).toBeUndefined();

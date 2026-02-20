@@ -48,7 +48,7 @@ describe("getDetails", () => {
     await expect(
       getDetails(appContext, {
         foo: "bar",
-      } as any)
+      } as any),
     ).rejects.toThrow();
   });
 

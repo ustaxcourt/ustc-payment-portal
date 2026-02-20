@@ -26,13 +26,13 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
   }
 
   makeSoapRequest = async (
-    appContext: AppContext
+    appContext: AppContext,
   ): Promise<CompleteOnlineCollectionWithDetailsResponse> => {
     return this.useHttp(appContext);
   };
 
   useHttp = async (
-    appContext: AppContext
+    appContext: AppContext,
   ): Promise<CompleteOnlineCollectionWithDetailsResponse> => {
     const params: CompleteOnlineCollectionWithDetailsRequestParams = {
       tcs_app_id: this.tcsAppId,
@@ -41,7 +41,7 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
     const responseBody = await SoapRequest.prototype.makeRequest(
       appContext,
       params,
-      this.requestType
+      this.requestType,
     );
 
     if (responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]) {
@@ -63,7 +63,7 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
 
     return new FailedTransactionError(
       fault.detail["ns2:TCSServiceFault"].return_detail,
-      Number(fault.detail["ns2:TCSServiceFault"].return_code)
+      Number(fault.detail["ns2:TCSServiceFault"].return_code),
     );
   };
 }

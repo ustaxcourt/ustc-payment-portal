@@ -20,7 +20,7 @@ export type GetDetails = (
 
 export const getDetails: GetDetails = async (
   appContext,
-  { appId, payGovTrackingId }
+  { appId, payGovTrackingId },
 ) => {
   const req = new GetRequestRequest({
     tcsAppId: appId,

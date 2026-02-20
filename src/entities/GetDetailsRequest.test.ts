@@ -111,7 +111,7 @@ describe("GetRequestRequest", () => {
       });
 
       await expect(request.makeSoapRequest(appContext)).rejects.toThrow(
-        "Could not find any transaction details"
+        "Could not find any transaction details",
       );
 
       // Restore original
