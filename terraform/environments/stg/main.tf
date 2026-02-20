@@ -55,6 +55,7 @@ module "rds" {
 
   multi_az            = false
   deletion_protection = true
+  log_statement       = "ddl"
 
   tags = {
     Env     = local.environment
