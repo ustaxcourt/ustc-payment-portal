@@ -207,9 +207,7 @@ registry.registerPath({
       description: "Payment processed. Check transactionStatus for Success or Failed.",
       content: {
         "application/json": {
-          schema: z.union([ProcessPaymentResponseSchema]).openapi({
-            description: "Returns ProcessPaymentResponse on success or failure",
-          }),
+          schema: ProcessPaymentResponseSchema,
         },
       },
     },

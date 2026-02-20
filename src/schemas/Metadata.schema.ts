@@ -39,7 +39,7 @@ export const MetadataSchema = z
     description:
       "Metadata fields are dynamic and determined by the feeId value. " +
       "Different fees require different metadata properties. " +
-      "Note: Fee identifiers shown here (e.g., DAWSON_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) " +
+      "Note: Fee identifiers shown here (e.g., PETITIONS_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) " +
       "are working names and may be renamed before release. " +
       "See individual metadata schemas for field requirements.",
   });
