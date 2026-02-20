@@ -14,7 +14,7 @@ Create a schema file, under the schema folder and export it via [src/schemas/ind
 ```typescript
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
-import { TransactionStatusSchema } from "./TransactionStatus.schema";
+import { PaymentStatusSchema } from "./PaymentStatus.schema";
 import { TransactionRecordSummarySchema } from "./TransactionRecord.schema";
 
 // Extend Zod with OpenAPI support
@@ -22,7 +22,7 @@ extendZodWithOpenApi(z);
 
 export const GetDetailsResponseSchema = z
   .object({
-    paymentStatus: TransactionStatusSchema.openapi({
+    paymentStatus: PaymentStatusSchema.openapi({
       description:
         "Overall payment status representing the current state of the payment",
     }),

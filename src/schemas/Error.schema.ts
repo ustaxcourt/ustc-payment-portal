@@ -6,14 +6,14 @@ extendZodWithOpenApi(z);
 
 // Note: The actual error response body is a plain string,
 // not a JSON object. The HTTP status code is in the response header.
-// For validation errors (Joi), the body is a JSON-stringified error object.
+// For validation errors, the body is a JSON-stringified validation error object.
 
 export const BadRequestErrorSchema = z
   .string()
   .openapi({
     description:
       "Error message for invalid requests. May be plain text (e.g., 'missing body') " +
-      "or a JSON-stringified Joi validation error object.",
+      "or a JSON-stringified validation error object.",
     example: "missing body",
   })
   .openapi("BadRequestError");
