@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e" scale="1" border="10">
     <diagram name="Process Payment Flow" id="process-payment-flow">
-        <mxGraphModel dx="1564" dy="610" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" background="#ffffff" math="0" shadow="0">
+        <mxGraphModel dx="1896" dy="554" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" background="#ffffff" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -116,7 +116,7 @@
                         <mxPoint x="740" y="870" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step11" value="12. Return success/fail response {trackingId,&lt;br&gt;transactionStatus,&lt;br&gt;message?, code?}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
+                <mxCell id="step11" value="12. Returns" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="420" y="1035" as="sourcePoint"/>
                         <mxPoint x="100" y="1035" as="targetPoint"/>
@@ -124,13 +124,13 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="legend-box" value="Legend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontSize=12;fontStyle=1;verticalAlign=top" parent="1" vertex="1">
-                    <mxGeometry x="40" y="1125" width="300" height="80" as="geometry"/>
+                    <mxGeometry x="-2.5" y="1320" width="300" height="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="legend-solid" value="─── Request" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
-                    <mxGeometry x="50" y="1150" width="130" height="20" as="geometry"/>
+                    <mxGeometry x="10" y="1350" width="130" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="legend-dashed" value="- - - Response" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10" parent="1" vertex="1">
-                    <mxGeometry x="50" y="1170" width="130" height="20" as="geometry"/>
+                    <mxGeometry x="10" y="1370" width="130" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="2" value="" style="endArrow=classic;html=1;" parent="1" edge="1">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
@@ -190,6 +190,9 @@
                 </mxCell>
                 <mxCell id="11" value="6. &lt;br&gt;transaction found?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;" parent="1" vertex="1">
                     <mxGeometry x="375" y="490" width="90" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" value="&lt;h2 style=&quot;color: rgb(63, 63, 63); scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left;&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(0, 0, 0);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;b style=&quot;color: rgb(63, 63, 63); scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251);&quot;&gt;processPayment Response&lt;/b&gt;&lt;/font&gt;&lt;/span&gt;&lt;/h2&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(0, 0, 0);&quot;&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;color: rgb(63, 63, 63); font-family: &amp;quot;Courier New&amp;quot;; background-color: transparent;&quot;&gt;{&lt;/span&gt;&lt;/div&gt;&lt;/span&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left; color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot; face=&quot;Courier New&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;paymentStatus: `Success` | `Failed` | `Pending`&lt;br style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left; color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot; face=&quot;Courier New&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;transactions: [&lt;br style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left; color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot; face=&quot;Courier New&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;{...transaction },&lt;br style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left; color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot; face=&quot;Courier New&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); background-color: transparent; color: rgb(63, 63, 63);&quot;&gt;{...transaction },&lt;/span&gt;&lt;br style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left; color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot; face=&quot;Courier New&quot;&gt;&lt;span style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); white-space: pre; color: rgb(63, 63, 63);&quot;&gt;&#x9;&lt;/span&gt;]&lt;br style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot;&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); text-align: left; color: rgb(63, 63, 63);&quot;&gt;&lt;font style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); color: rgb(63, 63, 63);&quot; face=&quot;Courier New&quot;&gt;}&lt;/font&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="105" y="1055" width="435" height="205" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
