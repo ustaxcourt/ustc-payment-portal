@@ -34,11 +34,11 @@
   ],
   "components": {
     "securitySchemes": {
-      "ApiKeyAuth": {
+      "sigv4": {
         "type": "apiKey",
         "in": "header",
-        "name": "Authentication",
-        "description": "Bearer token authentication. Send as: Authentication: Bearer <token>. Tokens are provisioned and managed via AWS Secrets Manager."
+        "name": "Authorization",
+        "description": "AWS Signature Version 4 authentication. Requests must be signed using AWS credentials with the AWS4-HMAC-SHA256 algorithm. Include the Authorization header with the signature, along with X-Amz-Date and optionally X-Amz-Security-Token headers. See AWS documentation for signing requests: https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html"
       }
     },
     "schemas": {
@@ -418,7 +418,7 @@
         ],
         "security": [
           {
-            "ApiKeyAuth": []
+            "sigv4": []
           }
         ],
         "requestBody": {
@@ -475,41 +475,55 @@
         }
       }
     },
-    "/process": {
-      "post": {
-        "summary": "Process a payment",
-        "description": "Completes a payment transaction after the user has submitted payment information on Pay.gov. This endpoint must be called regardless of payment type used to finalize the transaction. Note: Both successful and failed payment processing return HTTP 200. Check the transactionStatus field to determine the outcome.",
+    "/details/{appId}/{payGovTrackingId}": {
+      "get": {
+        "summary": "Get transaction details",
+        "description": "Retrieves the payment status and all transaction records associated with a Pay.gov tracking ID. If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
         "tags": [
           "Payments"
         ],
         "security": [
           {
-            "ApiKeyAuth": []
+            "sigv4": []
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProcessPaymentRequest"
-              }
-            }
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "The application ID",
+              "example": "DAWSON"
+            },
+            "required": true,
+            "description": "The application ID",
+            "name": "appId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The Pay.gov tracking ID assigned to the transaction",
+              "example": "PAYGOV-TRK-123456789"
+            },
+            "required": true,
+            "description": "The Pay.gov tracking ID assigned to the transaction",
+            "name": "payGovTrackingId",
+            "in": "path"
           }
-        },
+        ],
         "responses": {
           "200": {
-            "description": "Payment processed. Check transactionStatus for Success or Failed.",
+            "description": "Transaction details retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProcessPaymentResponse"
+                  "$ref": "#/components/schemas/GetDetailsResponse"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid request payload (e.g., missing body)",
+            "description": "Invalid request (e.g., missing path parameters)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -541,54 +555,41 @@
         }
       }
     },
-    "/details/{appId}/{payGovTrackingId}": {
-      "get": {
-        "summary": "Get transaction details",
-        "description": "Retrieves the payment status and all transaction records associated with a Pay.gov tracking ID. If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
+    "/process": {
+      "post": {
+        "summary": "Process a payment",
+        "description": "Completes a payment transaction after the user has submitted payment information on Pay.gov. This endpoint must be called regardless of payment type used to finalize the transaction. Note: Both successful and failed payment processing return HTTP 200. Check the transactionStatus field to determine the outcome.",
         "tags": [
           "Payments"
         ],
         "security": [
           {
-            "ApiKeyAuth": []
+            "sigv4": []
           }
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "The application ID",
-              "example": "DAWSON"
-            },
-            "required": true,
-            "description": "The application ID",
-            "name": "appId",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "required": true,
-            "description": "The Pay.gov tracking ID assigned to the transaction",
-            "name": "payGovTrackingId",
-            "in": "path",
-            "example": "PAYGOV-TRK-123456789"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcessPaymentRequest"
+              }
+            }
           }
-        ],
+        },
         "responses": {
           "200": {
-            "description": "Transaction details retrieved successfully",
+            "description": "Payment processed. Check transactionStatus for Success or Failed.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GetDetailsResponse"
+                  "$ref": "#/components/schemas/ProcessPaymentResponse"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid request (e.g., missing path parameters)",
+            "description": "Invalid request payload (e.g., missing body)",
             "content": {
               "text/plain": {
                 "schema": {

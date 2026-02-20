@@ -52,15 +52,17 @@ registry.register(
 );
 
 // ============================================
-// Bearer Token Security Scheme
+// AWS Signature Version 4 Security Scheme
 // ============================================
-registry.registerComponent("securitySchemes", "ApiKeyAuth", {
+registry.registerComponent("securitySchemes", "sigv4", {
   type: "apiKey",
   in: "header",
-  name: "Authentication",
+  name: "Authorization",
   description:
-    "Bearer token authentication. Send as: Authentication: Bearer <token>. " +
-    "Tokens are provisioned and managed via AWS Secrets Manager.",
+    "AWS Signature Version 4 authentication. Requests must be signed using AWS credentials " +
+    "with the AWS4-HMAC-SHA256 algorithm. Include the Authorization header with the signature, " +
+    "along with X-Amz-Date and optionally X-Amz-Security-Token headers. " +
+    "See AWS documentation for signing requests: https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html",
 });
 
 // ============================================
@@ -73,7 +75,7 @@ registry.registerPath({
   description:
     "Creates a new payment session with Pay.gov and returns a redirect URL for the user to complete payment.",
   tags: ["Payments"],
-  security: [{ ApiKeyAuth: [] }],
+  security: [{ sigv4: [] }],
   request: {
     body: {
       content: {
@@ -131,7 +133,7 @@ registry.registerPath({
     "Retrieves the payment status and all transaction records associated with a Pay.gov tracking ID. " +
     "If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
   tags: ["Payments"],
-  security: [{ ApiKeyAuth: [] }],
+  security: [{ sigv4: [] }],
   request: {
     params: z.object({
       appId: z.string().openapi({
@@ -193,7 +195,7 @@ registry.registerPath({
     "Note: Both successful and failed payment processing return HTTP 200. " +
     "Check the transactionStatus field to determine the outcome.",
   tags: ["Payments"],
-  security: [{ ApiKeyAuth: [] }],
+  security: [{ sigv4: [] }],
   request: {
     body: {
       content: {

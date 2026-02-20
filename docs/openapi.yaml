@@ -19,13 +19,17 @@ tags:
     description: Payment initialization, processing, and status operations
 components:
   securitySchemes:
-    ApiKeyAuth:
+    sigv4:
       type: apiKey
       in: header
-      name: Authentication
+      name: Authorization
       description: >-
-        Bearer token authentication. Send as: Authentication: Bearer <token>.
-        Tokens are provisioned and managed via AWS Secrets Manager.
+        AWS Signature Version 4 authentication. Requests must be signed using
+        AWS credentials with the AWS4-HMAC-SHA256 algorithm. Include the
+        Authorization header with the signature, along with X-Amz-Date and
+        optionally X-Amz-Security-Token headers. See AWS documentation for
+        signing requests:
+        https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html
   schemas:
     FeeId:
       type: string
@@ -331,7 +335,7 @@ paths:
       tags:
         - Payments
       security:
-        - ApiKeyAuth: []
+        - sigv4: []
       requestBody:
         required: true
         content:
@@ -373,7 +377,7 @@ paths:
       tags:
         - Payments
       security:
-        - ApiKeyAuth: []
+        - sigv4: []
       parameters:
         - schema:
             type: string
@@ -428,7 +432,7 @@ paths:
       tags:
         - Payments
       security:
-        - ApiKeyAuth: []
+        - sigv4: []
       requestBody:
         required: true
         content:
