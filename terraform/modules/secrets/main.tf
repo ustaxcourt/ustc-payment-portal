@@ -47,6 +47,7 @@ resource "aws_secretsmanager_secret" "tcs_app_id" {
 }
 
 resource "aws_secretsmanager_secret" "rds_credentials" {
+  count                   = var.create_rds_secret ? 1 : 0
   name                    = "${local.basepath}/${var.rds_secret_name}"
   description             = "RDS credentials (${local.env})"
   recovery_window_in_days = var.recovery_window_in_days
