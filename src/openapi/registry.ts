@@ -52,13 +52,15 @@ registry.register(
 );
 
 // ============================================
-// API Key Security Scheme
+// Bearer Token Security Scheme
 // ============================================
 registry.registerComponent("securitySchemes", "ApiKeyAuth", {
   type: "apiKey",
   in: "header",
-  name: "x-api-key",
-  description: "API key for authorization",
+  name: "Authentication",
+  description:
+    "Bearer token authentication. Send as: Authentication: Bearer <token>. " +
+    "Tokens are provisioned and managed via AWS Secrets Manager.",
 });
 
 // ============================================
@@ -119,14 +121,14 @@ registry.registerPath({
 });
 
 // ============================================
-// GET /details/:appId/:transactionReferenceId - Get Transaction Details
+// GET /details/:appId/:payGovTrackingId - Get Transaction Details
 // ============================================
 registry.registerPath({
   method: "get",
-  path: "/details/{appId}/{transactionReferenceId}",
+  path: "/details/{appId}/{payGovTrackingId}",
   summary: "Get transaction details",
   description:
-    "Retrieves the payment status and all transaction records associated with a transaction reference ID. " +
+    "Retrieves the payment status and all transaction records associated with a Pay.gov tracking ID. " +
     "If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
   tags: ["Payments"],
   security: [{ ApiKeyAuth: [] }],
@@ -136,9 +138,9 @@ registry.registerPath({
         description: "The application ID",
         example: "DAWSON",
       }),
-      transactionReferenceId: z.string().uuid().openapi({
-        description: "Unique UUID for the transaction reference",
-        example: "550e8400-e29b-41d4-a716-446655440000",
+      payGovTrackingId: z.string().openapi({
+        description: "The Pay.gov tracking ID assigned to the transaction",
+        example: "PAYGOV-TRK-123456789",
       }),
     }),
   },

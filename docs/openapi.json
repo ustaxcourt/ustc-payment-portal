@@ -37,8 +37,8 @@
       "ApiKeyAuth": {
         "type": "apiKey",
         "in": "header",
-        "name": "x-api-key",
-        "description": "API key for authorization"
+        "name": "Authentication",
+        "description": "Bearer token authentication. Send as: Authentication: Bearer <token>. Tokens are provisioned and managed via AWS Secrets Manager."
       }
     },
     "schemas": {
@@ -475,87 +475,6 @@
         }
       }
     },
-    "/details/{appId}/{transactionReferenceId}": {
-      "get": {
-        "summary": "Get transaction details",
-        "description": "Retrieves the payment status and all transaction records associated with a transaction reference ID. If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
-        "tags": [
-          "Payments"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "The application ID",
-              "example": "DAWSON"
-            },
-            "required": true,
-            "description": "The application ID",
-            "name": "appId",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "description": "Unique UUID for the transaction reference",
-              "example": "550e8400-e29b-41d4-a716-446655440000"
-            },
-            "required": true,
-            "description": "Unique UUID for the transaction reference",
-            "name": "transactionReferenceId",
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Transaction details retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GetDetailsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request (e.g., missing path parameters)",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - invalid or missing API key",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/process": {
       "post": {
         "summary": "Process a payment",
@@ -591,6 +510,85 @@
           },
           "400": {
             "description": "Invalid request payload (e.g., missing body)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - invalid or missing API key",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/details/{appId}/{payGovTrackingId}": {
+      "get": {
+        "summary": "Get transaction details",
+        "description": "Retrieves the payment status and all transaction records associated with a Pay.gov tracking ID. If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "The application ID",
+              "example": "DAWSON"
+            },
+            "required": true,
+            "description": "The application ID",
+            "name": "appId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "The Pay.gov tracking ID assigned to the transaction",
+            "name": "payGovTrackingId",
+            "in": "path",
+            "example": "PAYGOV-TRK-123456789"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetDetailsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (e.g., missing path parameters)",
             "content": {
               "text/plain": {
                 "schema": {
