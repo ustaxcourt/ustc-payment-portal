@@ -13,6 +13,8 @@ import {
   TransactionRecordSchema,
   TransactionRecordSummarySchema,
   TransactionStatusSchema,
+  PaymentStatusSchema,
+  PaymentMethodSchema,
   ProcessPaymentRequestSchema,
   ProcessPaymentResponseSchema,
   FeeIdSchema,
@@ -41,6 +43,8 @@ registry.register("GetDetailsResponse", GetDetailsResponseSchema);
 registry.register("TransactionRecord", TransactionRecordSchema);
 registry.register("TransactionRecordSummary", TransactionRecordSummarySchema);
 registry.register("TransactionStatus", TransactionStatusSchema);
+registry.register("PaymentStatus", PaymentStatusSchema);
+registry.register("PaymentMethod", PaymentMethodSchema);
 registry.register("ProcessPaymentRequest", ProcessPaymentRequestSchema);
 registry.register(
   "ProcessPaymentResponse",

@@ -1,6 +1,6 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
-import { TransactionStatusSchema } from "./TransactionStatus.schema";
+import { PaymentStatusSchema } from "./PaymentStatus.schema";
 import { TransactionRecordSummarySchema } from "./TransactionRecord.schema";
 
 // Extend Zod with OpenAPI support
@@ -23,7 +23,7 @@ export type ProcessPaymentRequest = z.infer<typeof ProcessPaymentRequestSchema>;
 
 export const ProcessPaymentResponseSchema = z
   .object({
-    paymentStatus: TransactionStatusSchema.openapi({
+    paymentStatus: PaymentStatusSchema.openapi({
       description:
         "Overall payment status representing the current state of the payment",
     }),

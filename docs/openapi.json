@@ -203,8 +203,6 @@
           "paymentStatus": {
             "type": "string",
             "enum": [
-              "Received",
-              "Initiated",
               "Success",
               "Failed",
               "Pending"
@@ -332,6 +330,16 @@
         "description": "The status of the payment transaction",
         "example": "Success"
       },
+      "PaymentStatus": {
+        "type": "string",
+        "enum": [
+          "Success",
+          "Failed",
+          "Pending"
+        ],
+        "description": "The overall status of the payment",
+        "example": "Success"
+      },
       "ProcessPaymentRequest": {
         "type": "object",
         "properties": {
@@ -357,8 +365,6 @@
           "paymentStatus": {
             "type": "string",
             "enum": [
-              "Received",
-              "Initiated",
               "Success",
               "Failed",
               "Pending"
@@ -369,7 +375,7 @@
           "transactions": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TransactionRecord"
+              "$ref": "#/components/schemas/TransactionRecordSummary"
             },
             "description": "Array of all transaction records associated with this payment reference"
           }

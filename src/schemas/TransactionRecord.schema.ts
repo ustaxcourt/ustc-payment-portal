@@ -1,6 +1,7 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 import { TransactionStatusSchema } from "./TransactionStatus.schema";
+import { PaymentMethodSchema } from "./PaymentMethod.schema";
 
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);
@@ -12,10 +13,7 @@ export const TransactionRecordSchema = z
       example: "TRK-123456789",
     }),
     transactionStatus: TransactionStatusSchema,
-    paymentMethod: z.string().optional().openapi({
-      description: "Method of payment (e.g., card, ACH)",
-      example: "card",
-    }),
+    paymentMethod: PaymentMethodSchema.optional(),
     returnDetail: z.string().optional().openapi({
       description: "Detailed return message from Pay.gov",
       example: "Transaction completed successfully",
@@ -40,10 +38,7 @@ export type TransactionRecord = z.infer<typeof TransactionRecordSchema>;
 export const TransactionRecordSummarySchema = z
   .object({
     transactionStatus: TransactionStatusSchema,
-    paymentMethod: z.string().optional().openapi({
-      description: "Method of payment (e.g., card, ACH)",
-      example: "card",
-    }),
+    paymentMethod: PaymentMethodSchema.optional(),
     returnDetail: z.string().optional().openapi({
       description: "Detailed return message from Pay.gov",
       example: "Transaction completed successfully",
