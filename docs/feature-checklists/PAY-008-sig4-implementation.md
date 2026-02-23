@@ -53,7 +53,7 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
   - [ ] Define `ClientPermission` type: `{ clientName, clientRoleArn, allowedTcsAppIds }`
   - [ ] Export `CLIENT_PERMISSIONS` array with registered clients
   - [ ] Implement `getClientByRoleArn(roleArn: string)` lookup function
-  - [ ] Return `null` for unknown clients (triggers 401)
+  - [ ] Return `null` for unknown clients (triggers 403)
 - [ ] Add unit tests for client permissions config
 
 ### 2.3 Implement tcsAppId Authorization
@@ -61,8 +61,8 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 - [ ] Create `src/authorizeAppId.ts`:
   - [ ] Lookup client in `CLIENT_PERMISSIONS` by IAM principal
   - [ ] Validate requested `tcsAppId` is in `allowedTcsAppIds`
-  - [ ] Return 401 Unauthorized if client not found
-  - [ ] Return 403 Forbidden if `tcsAppId` not authorized
+  - [ ] Return 403 with message "Client not registered" if client not found
+  - [ ] Return 403 with message "Client not authorized for tcsAppId" if tcsAppId not allowed
 - [ ] Add unit tests for tcsAppId authorization
 
 ### 2.4 Update Lambda Handlers
@@ -71,8 +71,8 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
   - [ ] Pass `event.requestContext` to authorization functions
   - [ ] Extract `tcsAppId` from request body/params
   - [ ] Call tcsAppId authorization after IAM auth
-- [ ] Ensure 401 returned for missing/invalid IAM authentication
-- [ ] Ensure 403 returned for unauthorized `tcsAppId`
+- [ ] Note: API Gateway handles IAM auth failures (returns 403 "Missing Authentication Token" or "Invalid signature")
+- [ ] Ensure 403 returned for application-level authorization failures with descriptive messages
 
 ### 2.5 Update Types
 
@@ -83,9 +83,9 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 
 ### 2.6 Error Handling
 
-- [ ] Verify `src/errors/unauthorized.ts` returns 401 status
-- [ ] Create/verify `src/errors/forbidden.ts` returns 403 status
-- [ ] Update `src/handleError.ts` to handle new error types
+- [ ] Create `src/errors/forbidden.ts` returning 403 status with custom message
+- [ ] Update `src/handleError.ts` to handle ForbiddenError
+- [ ] Remove or deprecate `src/errors/unauthorized.ts` (no longer needed - API Gateway handles 403 for IAM failures)
 
 ---
 
@@ -96,12 +96,11 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 - [ ] Update `src/authorizeRequest.test.ts`:
   - [ ] Remove Bearer token test cases
   - [ ] Add IAM principal extraction tests
-  - [ ] Test missing IAM auth returns 401
 - [ ] Create `src/config/clientPermissions.test.ts`
 - [ ] Create `src/authorizeAppId.test.ts`:
   - [ ] Test valid tcsAppId authorization
-  - [ ] Test invalid tcsAppId returns 403
-  - [ ] Test unknown client returns 401
+  - [ ] Test invalid tcsAppId returns 403 with "Client not authorized for tcsAppId" message
+  - [ ] Test unknown client returns 403 with "Client not registered" message
 - [ ] Update `src/lambdaHandler.test.ts` for new auth flow
 
 ### 3.2 Integration Tests
@@ -119,10 +118,10 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 
 - [ ] Update `README.md` with new authentication requirements
 - [ ] Update `running-locally.md` for local development auth
-- [ ] Update `docs/openapi.yaml` security schemes:
-  - [ ] Remove `bearerAuth` security scheme
-  - [ ] Add `sigv4` security scheme
-- [ ] Regenerate `docs/openapi.json`
+- [ ] Update `src/openapi/registry.ts`:
+  - [ ] Update 403 descriptions from "invalid or missing API key" to "invalid SigV4 signature or client not authorized"
+  - [ ] Verify `sigv4` security scheme is correct (already present)
+- [ ] Regenerate `docs/openapi.yaml` and `docs/openapi.json` via `npm run generate:openapi`
 - [ ] Update `PUBLISHING.md` if relevant
 
 ### 4.2 Environment Variables
@@ -176,8 +175,10 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 - [ ] **API Keys removed**: No Bearer token or API_ACCESS_TOKEN used for authentication
 - [ ] **SigV4 authentication**: All API requests authenticated via AWS IAM SigV4 signing
 - [ ] **App identities**: Each client app has unique IAM role (DAWSON, Nonattorney Admissions Exam App, etc.)
-- [ ] **401 for auth failures**: Unauthenticated requests return 401 status code
-- [ ] **403 for authorization failures**: Authenticated but unauthorized tcsAppId returns 403
+- [ ] **403 for auth failures**: Unauthenticated/invalid SigV4 requests return 403 (handled by API Gateway)
+- [ ] **403 for authorization failures**: Authenticated but unauthorized requests return 403 with descriptive message:
+  - "Client not registered" - IAM principal not in config
+  - "Client not authorized for tcsAppId" - client exists but tcsAppId not allowed
 
 ---
 
