@@ -28,7 +28,25 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
   - [ ] Create variable for allowed client AWS account IDs
   - [ ] Configure policy to allow `execute-api:Invoke` from client accounts
 
-### 1.2 Remove Legacy API Access Token
+### 1.2 Client Permissions Secret
+
+- [ ] Create Secrets Manager secret resource in Terraform (empty container, no values in repo)
+- [ ] Document expected JSON schema for client onboarding guide:
+  ```json
+  [
+    {
+      "clientName": "DAWSON",
+      "clientRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME",
+      "allowedTcsAppIds": ["PETITIONS_FILING_FEE", "ADMISSIONS_FEE"]
+    }
+  ]
+  ```
+- [ ] Add secret resource to Terraform (`terraform/modules/secrets/`)
+- [ ] Grant Lambda read access to the secret
+- [ ] Add `CLIENT_PERMISSIONS_SECRET_ID` environment variable to Lambda
+- [ ] Manually populate secret values via AWS CLI/Console (never in repo)
+
+### 1.3 Remove Legacy API Access Token
 
 - [ ] Remove `aws_secretsmanager_secret.api_access_token` from `terraform/modules/secrets/main.tf`
 - [ ] Update `locals.tf` to remove api_access_token from `secret_arns`
@@ -47,19 +65,20 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
   - [ ] Extract IAM principal from `event.requestContext.identity.userArn`
   - [ ] Return IAM principal ARN for use in authorization
 
-### 2.2 Create Client Permissions Config
+### 2.2 Create Client Permissions Service
 
-- [ ] Create `src/config/clientPermissions.ts`:
+- [ ] Create `src/clients/clientPermissionsClient.ts`:
   - [ ] Define `ClientPermission` type: `{ clientName, clientRoleArn, allowedTcsAppIds }`
-  - [ ] Export `CLIENT_PERMISSIONS` array with registered clients
+  - [ ] Fetch client permissions from Secrets Manager (with caching)
   - [ ] Implement `getClientByRoleArn(roleArn: string)` lookup function
+  - [ ] Handle assumed-role ARN format (extract role name for matching)
   - [ ] Return `null` for unknown clients (triggers 403)
-- [ ] Add unit tests for client permissions config
+- [ ] Add unit tests for client permissions service (mock Secrets Manager)
 
 ### 2.3 Implement tcsAppId Authorization
 
 - [ ] Create `src/authorizeAppId.ts`:
-  - [ ] Lookup client in `CLIENT_PERMISSIONS` by IAM principal
+  - [ ] Lookup client in permissions (via Secrets Manager service) by IAM principal
   - [ ] Validate requested `tcsAppId` is in `allowedTcsAppIds`
   - [ ] Return 403 with message "Client not registered" if client not found
   - [ ] Return 403 with message "Client not authorized for tcsAppId" if tcsAppId not allowed
@@ -96,7 +115,7 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 - [ ] Update `src/authorizeRequest.test.ts`:
   - [ ] Remove Bearer token test cases
   - [ ] Add IAM principal extraction tests
-- [ ] Create `src/config/clientPermissions.test.ts`
+- [ ] Create `src/clients/clientPermissionsClient.test.ts` (mock Secrets Manager)
 - [ ] Create `src/authorizeAppId.test.ts`:
   - [ ] Test valid tcsAppId authorization
   - [ ] Test invalid tcsAppId returns 403 with "Client not authorized for tcsAppId" message
@@ -138,6 +157,7 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 
 - [ ] Update `.env.example`:
   - [ ] Remove `API_ACCESS_TOKEN_SECRET_ID`
+  - [ ] Add `CLIENT_PERMISSIONS_SECRET_ID`
 - [ ] Update `.env.dev` for local development
 
 ### 4.3 Client Onboarding Guide
@@ -146,9 +166,9 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 - [ ] Provide example SigV4 signing code for clients
 - [ ] Create runbook for adding new client applications:
   1. Client contacts Payment Portal team with their IAM role ARN and requested tcsAppIds
-  2. Team adds client to `src/config/clientPermissions.ts`
-  3. Team adds client AWS account ID to API Gateway resource policy (Terraform)
-  4. Deploy changes to enable access
+  2. Team adds client to Secrets Manager secret (no code deployment required)
+  3. Team adds client AWS account ID to API Gateway resource policy (Terraform deployment required)
+  4. Client can begin making requests
 
 ---
 
@@ -158,7 +178,7 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 
 - [ ] Coordinate with DAWSON team on migration timeline
 - [ ] Ensure DAWSON has SigV4 signing implementation ready
-- [ ] Add initial clients to `src/config/clientPermissions.ts`:
+- [ ] Seed initial client permissions in Secrets Manager:
   - [ ] DAWSON client role ARN and allowed tcsAppIds
   - [ ] Other client apps as needed
 
@@ -188,7 +208,7 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 - [ ] **App identities**: Each client app has unique IAM role (DAWSON, Nonattorney Admissions Exam App, etc.)
 - [ ] **403 for auth failures**: Unauthenticated/invalid SigV4 requests return 403 (handled by API Gateway)
 - [ ] **403 for authorization failures**: Authenticated but unauthorized requests return 403 with descriptive message:
-  - "Client not registered" - IAM principal not in config
+  - "Client not registered" - IAM principal not in client permissions
   - "Client not authorized for tcsAppId" - client exists but tcsAppId not allowed
 
 ---
@@ -197,7 +217,7 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 
 - This implementation follows [ADR-0004](../architecture/decisions/0004-iam-authentication-for-api-gateway.md)
 - Cross-account coordination is required with client teams
-- Client permissions are managed via config (requires deployment to add/update clients)
+- Client permissions stored in Secrets Manager (can update without deployment; revocation is instant after cache expires)
 - CloudTrail will automatically log all IAM-authenticated requests
 
 ---
@@ -213,8 +233,14 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 
 ### Environment-Specific Configs
 
-- [ ] Client role ARNs differ per environment (dev/stg/prod)
-- [ ] Consider: separate config files per env, or environment variable for role ARN prefix
+- [ ] Each environment (dev/stg/prod) has its own Secrets Manager secret for client permissions
+- [ ] Client role ARNs differ per environment (different AWS accounts)
+
+### Secrets Manager Caching
+
+- [ ] Cache client permissions in Lambda memory to avoid per-request Secrets Manager calls
+- [ ] Decide on cache TTL (e.g., 5 minutes) - shorter = faster revocation, more API calls
+- [ ] Consider using AWS Lambda Secrets Manager extension or in-memory cache
 
 ### Local Development
 
