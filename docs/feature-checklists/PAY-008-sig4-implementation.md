@@ -228,8 +228,14 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 
 ### IAM Principal Format
 
-- `event.requestContext.identity.userArn` may be in assumed-role format: `arn:aws:sts::123456789012:assumed-role/role-name/session-name`
-- Client lookup should extract the role ARN or handle both formats
+- `event.requestContext.identity.userArn` comes as assumed-role format: `arn:aws:sts::ACCOUNT_ID:assumed-role/role-name/session-name`
+- Store IAM role ARN in Secrets Manager: `arn:aws:iam::ACCOUNT_ID:role/role-name`
+- [ ] Implement ARN conversion in code:
+  1. Parse assumed-role ARN to extract account ID and role name
+  2. Reconstruct IAM role ARN format for lookup
+  3. Match against stored `clientRoleArn` in Secrets Manager
+
+> **⚠️ Important:** Client IAM roles must be created at the root path (e.g., `arn:aws:iam::ACCOUNT_ID:role/role-name`), not with a custom path (e.g., `arn:aws:iam::ACCOUNT_ID:role/custom-path/role-name`). STS assumed-role ARNs drop the path prefix, which would cause ARN reconstruction to fail and break authorization. Document this requirement in the client onboarding guide.
 
 ### Environment-Specific Configs
 
@@ -255,5 +261,5 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 
 ### CI/CD Pipeline
 
-- [ ] Update any automated tests that use Bearer token authentication
-- [ ] Update GitHub Actions / deployment scripts if they call the API
+- [ ] Smoke test (section 3.3) covers SigV4 validation after deployments
+- No other GitHub Actions currently call the hosted Payment Portal API
