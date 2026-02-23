@@ -1,6 +1,6 @@
 # PAY-008: AWS Sig4 Implementation Checklist
 
-> **⚠️ NOTE: Remove this document before merging into main.**
+> **⚠️ NOTE: Remove this document before merging into main. Do not remove until final documentation for this feature is added.**
 
 This checklist tracks the implementation of AWS IAM authentication using SigV4 request signing as defined in [ADR-0004](../architecture/decisions/0004-iam-authentication-for-api-gateway.md).
 
@@ -110,6 +110,16 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
   - [ ] Add SigV4 signing to test requests
   - [ ] Test cross-account authentication scenarios
 
+### 3.3 SigV4 Smoke Test
+
+- [ ] Create a smoke test that runs against deployed environments to detect auth config breakage:
+  - [ ] Sign request with valid AWS credentials (test IAM role)
+  - [ ] Call a protected endpoint (e.g., `/details` or `/test`)
+  - [ ] Assert: valid signature → 200 (or business-level error, not 403)
+  - [ ] Assert: missing/invalid signature → 403
+- [ ] Consider running in CI/CD after each deployment
+- [ ] Alert if smoke test fails (indicates broken IAM auth config)
+
 ---
 
 ## Phase 4: Documentation & Cleanup
@@ -158,8 +168,9 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 2. [ ] Coordinate: Deploy Payment Portal code changes
 3. [ ] Coordinate: Deploy client code changes (SigV4 signing)
 4. [ ] Switch API Gateway authorization to AWS_IAM
-5. [ ] Verify authentication works in lower environments
-6. [ ] Remove legacy API access token secret
+5. [ ] Redeploy API Gateway stage (required for auth changes to take effect)
+6. [ ] Verify authentication works in lower environments
+7. [ ] Remove legacy API access token secret (after validation period)
 
 ### 5.3 Rollback Plan
 
@@ -188,3 +199,35 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 - Cross-account coordination is required with client teams
 - Client permissions are managed via config (requires deployment to add/update clients)
 - CloudTrail will automatically log all IAM-authenticated requests
+
+---
+
+## Edge Cases & Considerations
+
+**consider these loose until we do a ensemble review**
+
+### IAM Principal Format
+
+- `event.requestContext.identity.userArn` may be in assumed-role format: `arn:aws:sts::123456789012:assumed-role/role-name/session-name`
+- Client lookup should extract the role ARN or handle both formats
+
+### Environment-Specific Configs
+
+- [ ] Client role ARNs differ per environment (dev/stg/prod)
+- [ ] Consider: separate config files per env, or environment variable for role ARN prefix
+
+### Local Development
+
+- [ ] Bypass SigV4 auth when running locally (e.g., check `NODE_ENV === 'development'` or `LOCAL_DEV` env var)
+- [ ] Return mock IAM context for local requests to allow testing use cases
+- [ ] Document in `running-locally.md` that auth is bypassed locally
+
+### API Gateway Deployment
+
+- [ ] After Terraform changes, API Gateway stage must be redeployed for auth changes to take effect
+- [ ] Verify deployment triggers in Terraform config
+
+### CI/CD Pipeline
+
+- [ ] Update any automated tests that use Bearer token authentication
+- [ ] Update GitHub Actions / deployment scripts if they call the API
