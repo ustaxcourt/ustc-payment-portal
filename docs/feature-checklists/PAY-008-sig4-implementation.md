@@ -53,6 +53,13 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 - [ ] Remove `API_ACCESS_TOKEN_SECRET_ID` from Lambda environment variables
 - [ ] Update any IAM policies that reference the secret ARN
 
+### 1.4 Fix API Gateway Deployment Triggers
+
+- [ ] Update `terraform/modules/api-gateway/main.tf` deployment `triggers` block to include method resources:
+  - Current triggers only include integrations, not methods
+  - Authorization changes won't trigger redeployment without this fix
+  - Add method IDs to the `redeployment` hash alongside integration IDs
+
 ---
 
 ## Phase 2: Application Code Changes
@@ -257,7 +264,16 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 ### API Gateway Deployment
 
 - [ ] After Terraform changes, API Gateway stage must be redeployed for auth changes to take effect
-- [ ] Verify deployment triggers in Terraform config
+- [ ] **FIX REQUIRED:** Add method resources to deployment triggers in `terraform/modules/api-gateway/main.tf`:
+  - Current triggers only include integration resources, not methods
+  - Authorization changes on methods won't trigger redeployment without this fix
+  - Add to `triggers.redeployment` hash:
+    ```terraform
+    aws_api_gateway_method.init_post.id,
+    aws_api_gateway_method.process_post.id,
+    aws_api_gateway_method.test_get.id,
+    aws_api_gateway_method.details_get.id,
+    ```
 
 ### CI/CD Pipeline
 
