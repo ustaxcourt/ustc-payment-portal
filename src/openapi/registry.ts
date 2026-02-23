@@ -104,7 +104,7 @@ registry.registerPath({
       },
     },
     403: {
-      description: "Forbidden - invalid or missing API key",
+      description: "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
         "text/plain": {
           schema: ForbiddenErrorSchema,
@@ -164,7 +164,7 @@ registry.registerPath({
       },
     },
     403: {
-      description: "Forbidden - invalid or missing API key",
+      description: "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
         "text/plain": {
           schema: ForbiddenErrorSchema,
@@ -224,7 +224,7 @@ registry.registerPath({
       },
     },
     403: {
-      description: "Forbidden - invalid or missing API key",
+      description: "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
         "text/plain": {
           schema: ForbiddenErrorSchema,
