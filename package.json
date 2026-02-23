@@ -20,7 +20,8 @@
     "test:coverage": "npm run test -- --coverage",
     "test:integration:dev": "NODE_ENV=local DOTENV_CONFIG_PATH=.env.dev npx jest ./src/test/integration/",
     "test:integration": "npx jest ./src/test/integration/",
-    "ci:publish": "npm run build && changeset publish --provenance"
+    "ci:publish": "npm run build && changeset publish --provenance",
+    "generate:openapi": "ts-node src/openapi/generate.ts"
   },
   "keywords": [],
   "author": "",
@@ -33,6 +34,7 @@
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node-fetch": "^2.6.13",
+    "@types/swagger-ui-express": "^4.1.8",
     "@types/uuid": "^11.0.0",
     "esbuild": "^0.25.10",
     "express": "^5.1.0",
@@ -49,11 +51,14 @@
     "uuid": "^13.0.0"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^8.4.0",
     "@aws-sdk/client-secrets-manager": "^3.901.0",
     "dotenv": "^17.2.2",
     "fast-xml-parser": "^5.2.5",
-    "joi": "^18.0.1",
-    "node-fetch": "^3.3.2"
+    "joi": "^18.0.2",
+    "node-fetch": "^3.3.2",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^4.3.6"
   },
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
