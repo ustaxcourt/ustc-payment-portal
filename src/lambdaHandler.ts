@@ -5,7 +5,7 @@ import {
 } from "aws-lambda";
 import { createAppContext } from "./appContext";
 import { authorizeRequest } from "./authorizeRequest";
-import { authorizeAppId } from "./authorizeAppId";
+import { authorizeFeeId } from "./authorizeFeeId";
 import { handleError } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
 import { GetDetails } from "./useCases/getDetails";
@@ -23,7 +23,7 @@ const lambdaHandler = async (
 ): Promise<APIGatewayProxyResult> => {
   try {
     const roleArn = authorizeRequest(requestContext);
-    await authorizeAppId(roleArn, request.appId);
+    await authorizeFeeId(roleArn, request.feeId);
     const result = await callback(appContext, request);
     return {
       statusCode: 200,
