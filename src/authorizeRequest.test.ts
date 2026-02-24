@@ -1,119 +1,162 @@
-import { authorizeRequest } from "./authorizeRequest";
-import { UnauthorizedError } from "./errors/unauthorized";
-import { ServerError } from "./errors/serverError";
-import { getSecretString } from "./clients/secretsClient";
+import {
+  authorizeRequest,
+  convertAssumedRoleToIamArn,
+} from "./authorizeRequest";
+import { ForbiddenError } from "./errors/forbidden";
+import { APIGatewayEventRequestContext } from "aws-lambda";
 
-jest.mock("./clients/secretsClient");
-
-let tempEnv: any;
-const testToken = "one-quarter";
-const testSecretId = "test-secret-id";
+const createMockRequestContext = (
+  userArn?: string | null
+): APIGatewayEventRequestContext =>
+  ({
+    identity: {
+      userArn,
+    },
+    accountId: "123456789012",
+    apiId: "test-api",
+    authorizer: {},
+    httpMethod: "POST",
+    path: "/test",
+    protocol: "HTTP/1.1",
+    requestId: "test-request-id",
+    requestTimeEpoch: Date.now(),
+    resourceId: "test-resource",
+    resourcePath: "/test",
+    stage: "test",
+  }) as APIGatewayEventRequestContext;
 
 describe("authorizeRequest", () => {
-  const mockRequest = {
-    Authentication: `Bearer ${testToken}`,
-  };
+  const validAssumedRoleArn =
+    "arn:aws:sts::123456789012:assumed-role/dawson-client/session-abc123";
+  const expectedIamRoleArn = "arn:aws:iam::123456789012:role/dawson-client";
 
-  beforeAll(() => {
-    tempEnv = process.env;
-    process.env.API_ACCESS_TOKEN_SECRET_ID = testSecretId;
-    (getSecretString as jest.Mock).mockResolvedValue(testToken);
+  let originalEnv: NodeJS.ProcessEnv;
+
+  beforeEach(() => {
+    originalEnv = { ...process.env };
+    delete process.env.LOCAL_DEV;
   });
 
   afterEach(() => {
-    process.env.API_ACCESS_TOKEN_SECRET_ID = testSecretId;
-  })
-
-  afterAll(() => {
-    process.env = tempEnv;
+    process.env = originalEnv;
   });
 
-  it("does not throw an error if the request.authToken matches the token from Secrets Manager", async () => {
-    let result;
-    try {
-      await authorizeRequest(mockRequest);
-      result = "success";
-    } catch (err) {
-      // catch any errors,
-    }
-    expect(result).toEqual("success");
-  });
+  describe("with valid IAM principal", () => {
+    it("returns converted IAM role ARN", () => {
+      const requestContext = createMockRequestContext(validAssumedRoleArn);
 
-  it("throws an error if the request.authToken does not match the token from Secrets Manager", async () => {
-    let result;
-    try {
-      await authorizeRequest({
-        Authentication: "Bearer some-other-token",
-      });
-      result = "success";
-    } catch (err) {
-      // catch any errors,
-      expect(err).toBeInstanceOf(UnauthorizedError);
-    }
-    expect(result).toBeUndefined();
-  });
+      const result = authorizeRequest(requestContext);
 
-  it("throws an error if headers are missing", async () => {
-    let result;
-    try {
-      await authorizeRequest(undefined);
-      result = "success";
-    } catch (err) {
-      expect(err).toBeInstanceOf(UnauthorizedError);
-      expect((err as UnauthorizedError).message).toEqual(
-        "Missing Authentication"
+      expect(result).toBe(expectedIamRoleArn);
+    });
+
+    it("handles different account IDs and role names", () => {
+      const requestContext = createMockRequestContext(
+        "arn:aws:sts::999888777666:assumed-role/other-app-role/my-session"
       );
-    }
-    expect(result).toBeUndefined();
+
+      const result = authorizeRequest(requestContext);
+
+      expect(result).toBe("arn:aws:iam::999888777666:role/other-app-role");
+    });
   });
 
-  it("throws an error if Authentication header is missing from headers object", async () => {
-    let result;
-    try {
-      await authorizeRequest({
-        "Content-Type": "application/json",
-        "User-Agent": "test",
-      });
-      result = "success";
-    } catch (err) {
-      expect(err).toBeInstanceOf(UnauthorizedError);
-      expect((err as UnauthorizedError).message).toEqual("Unauthorized");
-    }
-    expect(result).toBeUndefined();
+  describe("with missing or invalid IAM principal", () => {
+    it("throws ForbiddenError when requestContext is undefined", () => {
+      expect(() => authorizeRequest(undefined)).toThrow(ForbiddenError);
+      expect(() => authorizeRequest(undefined)).toThrow("Missing IAM principal");
+    });
+
+    it("throws ForbiddenError when identity is undefined", () => {
+      const requestContext = {} as APIGatewayEventRequestContext;
+
+      expect(() => authorizeRequest(requestContext)).toThrow(ForbiddenError);
+      expect(() => authorizeRequest(requestContext)).toThrow(
+        "Missing IAM principal"
+      );
+    });
+
+    it("throws ForbiddenError when userArn is null", () => {
+      const requestContext = createMockRequestContext(null);
+
+      expect(() => authorizeRequest(requestContext)).toThrow(ForbiddenError);
+    });
+
+    it("throws ForbiddenError when userArn is invalid format", () => {
+      const requestContext = createMockRequestContext("not-a-valid-arn");
+
+      expect(() => authorizeRequest(requestContext)).toThrow(ForbiddenError);
+      expect(() => authorizeRequest(requestContext)).toThrow(
+        "Invalid IAM principal format"
+      );
+    });
   });
 
-  it("throws an UnauthorizedError when API_ACCESS_TOKEN_SECRET_ID is not set", async () => {
-    delete process.env.API_ACCESS_TOKEN_SECRET_ID;
-    jest.resetModules();
-    const { authorizeRequest: freshAuthorizeRequest } = require("./authorizeRequest");
-    const { UnauthorizedError: FreshUnauthorizedError } = require("./errors/unauthorized");
+  describe("local development bypass", () => {
+    it("returns mock IAM role ARN when LOCAL_DEV is true", () => {
+      process.env.LOCAL_DEV = "true";
 
-    let result;
-    try {
-      result = await freshAuthorizeRequest(mockRequest);
-    } catch (err) {
-      expect(err).toBeInstanceOf(FreshUnauthorizedError);
-      expect((err as any).message).toEqual("Unauthorized");
-    }
-    expect(result).toBeUndefined();
+      const result = authorizeRequest(undefined);
+
+      expect(result).toBe("arn:aws:iam::000000000000:role/local-dev-role");
+    });
+
+    it("does not bypass when LOCAL_DEV is false", () => {
+      process.env.LOCAL_DEV = "false";
+
+      expect(() => authorizeRequest(undefined)).toThrow(ForbiddenError);
+    });
+  });
+});
+
+describe("convertAssumedRoleToIamArn", () => {
+  it("converts standard assumed-role ARN to IAM role ARN", () => {
+    const assumedRoleArn =
+      "arn:aws:sts::123456789012:assumed-role/my-role/session-name";
+
+    const result = convertAssumedRoleToIamArn(assumedRoleArn);
+
+    expect(result).toBe("arn:aws:iam::123456789012:role/my-role");
   });
 
-  it("throws a ServerError when getSecretString fails", async () => {
-    jest.resetModules();
+  it("handles role names with hyphens and underscores", () => {
+    const assumedRoleArn =
+      "arn:aws:sts::111222333444:assumed-role/payment-portal_client-role/sess";
 
-    const { getSecretString: mockGetSecretString } = require("./clients/secretsClient");
-    const { authorizeRequest: freshAuthorizeRequest } = require("./authorizeRequest");
-    const { ServerError: FreshServerError } = require("./errors/serverError");
+    const result = convertAssumedRoleToIamArn(assumedRoleArn);
 
-    mockGetSecretString.mockRejectedValue(new ServerError("Failed to fetch API access token from Secrets Manager"));
+    expect(result).toBe(
+      "arn:aws:iam::111222333444:role/payment-portal_client-role"
+    );
+  });
 
-    let result;
-    try {
-      result = await freshAuthorizeRequest(mockRequest);
-    } catch (err) {
-      expect(err).toBeInstanceOf(FreshServerError);
-      expect((err as any).message).toEqual("Failed to fetch API access token from Secrets Manager");
-    }
-    expect(result).toBeUndefined();
+  it("handles complex session names with slashes", () => {
+    const assumedRoleArn =
+      "arn:aws:sts::123456789012:assumed-role/role/session/with/slashes";
+
+    const result = convertAssumedRoleToIamArn(assumedRoleArn);
+
+    expect(result).toBe("arn:aws:iam::123456789012:role/role");
+  });
+
+  it("throws ForbiddenError for IAM user ARN (not assumed role)", () => {
+    const iamUserArn = "arn:aws:iam::123456789012:user/admin";
+
+    expect(() => convertAssumedRoleToIamArn(iamUserArn)).toThrow(ForbiddenError);
+    expect(() => convertAssumedRoleToIamArn(iamUserArn)).toThrow(
+      "Invalid IAM principal format"
+    );
+  });
+
+  it("throws ForbiddenError for malformed ARN", () => {
+    const malformedArn = "not-an-arn";
+
+    expect(() => convertAssumedRoleToIamArn(malformedArn)).toThrow(ForbiddenError);
+  });
+
+  it("throws ForbiddenError for IAM role ARN (already converted format)", () => {
+    const iamRoleArn = "arn:aws:iam::123456789012:role/my-role";
+
+    expect(() => convertAssumedRoleToIamArn(iamRoleArn)).toThrow(ForbiddenError);
   });
 });
