@@ -1,10 +1,11 @@
 import {
   APIGatewayProxyResult,
   APIGatewayEvent,
-  APIGatewayProxyEventHeaders,
+  APIGatewayEventRequestContext,
 } from "aws-lambda";
 import { createAppContext } from "./appContext";
 import { authorizeRequest } from "./authorizeRequest";
+import { authorizeAppId } from "./authorizeAppId";
 import { handleError } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
 import { GetDetails } from "./useCases/getDetails";
@@ -17,11 +18,12 @@ type LambdaHandler = ProcessPayment | InitPayment | GetDetails;
 
 const lambdaHandler = async (
   request: any,
-  headers: APIGatewayProxyEventHeaders,
+  requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler
 ): Promise<APIGatewayProxyResult> => {
   try {
-    await authorizeRequest(headers);
+    const roleArn = authorizeRequest(requestContext);
+    await authorizeAppId(roleArn, request.appId);
     const result = await callback(appContext, request);
     return {
       statusCode: 200,
@@ -43,7 +45,7 @@ export const initPaymentHandler = (
 
   return lambdaHandler(
     request,
-    event.headers,
+    event.requestContext,
     appContext.getUseCases().initPayment
   );
 };
@@ -59,7 +61,7 @@ export const processPaymentHandler = (
 
   return lambdaHandler(
     request,
-    event.headers,
+    event.requestContext,
     appContext.getUseCases().processPayment
   );
 };
@@ -73,7 +75,7 @@ export const getDetailsHandler = (
 
   return lambdaHandler(
     event.pathParameters,
-    event.headers,
+    event.requestContext,
     appContext.getUseCases().getDetails
   );
 };

@@ -1,4 +1,3 @@
-import { UnauthorizedError } from "./errors/unauthorized";
 import { handleError } from "./handleError";
 import { ValidationError, string } from "joi";
 
