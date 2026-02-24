@@ -7,18 +7,13 @@ describe("make a transaction", () => {
   let token: string;
   let paymentRedirect: string;
   let payGovTrackingId: string;
-  let tokenString: string;
   let appId: string;
 
   beforeAll(async () => {
     const isLocal = process.env.NODE_ENV === "local";
     if (isLocal) {
-      tokenString = process.env.API_ACCESS_TOKEN_SECRET_ID as string;
       appId = process.env.TCS_APP_ID as string;
     } else {
-      tokenString = await getSecretString(
-        process.env.API_ACCESS_TOKEN_SECRET_ID as string
-      );
       appId = await getSecretString(process.env.TCS_APP_ID as string);
     }
   });
@@ -39,7 +34,6 @@ describe("make a transaction", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authentication: `Bearer ${tokenString}`,
       },
       body: JSON.stringify(request),
     });
@@ -74,7 +68,6 @@ describe("make a transaction", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authentication: `Bearer ${tokenString}`,
       },
       body: JSON.stringify(request),
     });
@@ -102,7 +95,6 @@ describe("make a transaction", () => {
       {
         headers: {
           "Content-Type": "application/json",
-          Authentication: `Bearer ${tokenString}`,
         },
       }
     );
