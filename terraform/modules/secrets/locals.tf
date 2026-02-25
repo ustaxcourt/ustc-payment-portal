@@ -7,7 +7,6 @@ locals {
   })
 
   secret_arns_always = [
-    aws_secretsmanager_secret.api_access_token.arn,
     aws_secretsmanager_secret.cert_passphrase.arn,
     aws_secretsmanager_secret.paygov_dev_server_token.arn,
     aws_secretsmanager_secret.tcs_app_id.arn,

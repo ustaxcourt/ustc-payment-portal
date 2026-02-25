@@ -19,16 +19,13 @@ output "cicd_role_arn" {
 }
 
 output "api_gateway_url" {
- value = module.api.api_gateway_url
- description = "API Gateway URL for the production environment"
+  value       = module.api.api_gateway_url
+  description = "API Gateway URL for the production environment"
 }
-output "api_access_token_secret_id" {
- value = module.secrets.api_access_token_secret_id
- description = "Secret ID for API access token"
-}
+
 output "tcs_app_id_secret_id" {
- value = module.secrets.tcs_app_id_secret_id
- description = "Secret ID for TCS App ID"
+  value       = module.secrets.tcs_app_id_secret_id
+  description = "Secret ID for TCS App ID"
 }
 
 output "rds_endpoint" {

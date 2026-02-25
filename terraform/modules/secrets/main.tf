@@ -18,13 +18,6 @@ resource "aws_secretsmanager_secret" "certificate" {
 }
 
 # Secrets
-resource "aws_secretsmanager_secret" "api_access_token" {
-  name                    = "${local.basepath}/${var.api_access_token_name}"
-  description             = "Pay.gov API access token (${local.env})"
-  recovery_window_in_days = var.recovery_window_in_days
-  tags                    = local.tags
-}
-
 resource "aws_secretsmanager_secret" "cert_passphrase" {
   name                    = "${local.basepath}/${var.cert_passphrase_name}"
   description             = "Client certificate passphrase (${local.env})"
