@@ -34,6 +34,12 @@ variable "create_lambda_exec_role" {
   default     = true
 }
 
+variable "create_deployer_role" {
+  description = "Whether to create the GitHub Actions deployer role"
+  type        = bool
+  default     = true
+}
+
 variable "aws_region" {
   type        = string
   default     = "us-east-1"
@@ -46,52 +52,60 @@ variable "project_name" {
 
 variable "lambda_name_prefix" {
   type        = string
-  description = "Lambda name prefix to scope permissions"
+  description = "Lambda name prefix to scope permissions (required if create_deployer_role=true)"
+  default     = ""
 }
 
 variable "lambda_exec_role_arn" {
   type        = string
-  description = "Exact Lambda execution role ARN the CI role may pass to functions"
+  description = "Exact Lambda execution role ARN the CI role may pass to functions (required if create_deployer_role=true)"
+  default     = ""
 }
 
 variable "environment" {
-  description = "Environment (e.g., dev, staging, prod)"
+  description = "Environment (e.g., dev, staging, prod) (required if create_deployer_role=true)"
   type        = string
+  default     = ""
 }
 
 variable "deploy_role_name" {
   type        = string
-  description = "IAM role name for CI/CD"
+  description = "IAM role name for CI/CD (required if create_deployer_role=true)"
+  default     = ""
 }
 
 variable "github_oidc_provider_arn" {
   type        = string
-  description = "GitHub OIDC provider ARN in the account"
+  description = "GitHub OIDC provider ARN in the account (required if create_deployer_role=true)"
+  default     = ""
 }
 
 variable "github_org" {
   type        = string
-  description = "GitHub org"
+  description = "GitHub org (required if create_deployer_role=true)"
+  default     = ""
 }
 
 variable "github_repo" {
   type        = string
-  description = "GitHub repo"
+  description = "GitHub repo (required if create_deployer_role=true)"
+  default     = ""
 }
 
 variable "state_bucket_name" {
   type        = string
-  description = "Terraform backend S3 bucket"
+  description = "Terraform backend S3 bucket (required if create_deployer_role=true)"
+  default     = ""
 }
 
 variable "state_lock_table_name" {
   type        = string
-  description = "Terraform DynamoDB lock table"
+  description = "Terraform DynamoDB lock table (required if create_deployer_role=true)"
+  default     = ""
 }
 
 variable "state_object_keys" {
   type        = list(string)
-  description = "Exact state S3 object keys the role must manage"
+  description = "Exact state S3 object keys the role must manage (required if create_deployer_role=true)"
+  default     = []
 }
-
-

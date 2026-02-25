@@ -1,5 +1,6 @@
 locals {
-  github_sub = "repo:${var.github_org}/${var.github_repo}:*"
+  # Deployer role locals - only meaningful when create_deployer_role = true
+  github_sub = var.create_deployer_role ? "repo:${var.github_org}/${var.github_repo}:*" : ""
 
   github_oidc_provider_arn = var.github_oidc_provider_arn
 
@@ -9,7 +10,7 @@ locals {
 
   lambda_exec_role_arn  = var.lambda_exec_role_arn
   name_prefix    = var.name_prefix
-  lambda_name_prefix = "${var.project_name}-${var.environment}"
+  lambda_name_prefix = var.create_deployer_role ? "${var.project_name}-${var.environment}" : ""
 
   aws_region    = var.aws_region
   project_name  = var.project_name

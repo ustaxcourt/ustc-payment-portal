@@ -30,3 +30,13 @@ output "tcs_app_id_secret_id" {
  value = module.secrets.tcs_app_id_secret_id
  description = "Secret ID for TCS App ID"
 }
+
+output "rds_endpoint" {
+  value       = module.rds.endpoint
+  description = "RDS database endpoint (host:port)"
+}
+
+output "rds_master_secret_arn" {
+  value       = module.rds.master_user_secret_arn
+  description = "ARN of AWS-managed Secrets Manager secret containing RDS master credentials"
+}
