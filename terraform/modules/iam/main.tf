@@ -31,10 +31,29 @@ resource "aws_iam_role_policy_attachment" "vpc_access" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
-# AWS OIDC <--> Github actions IAM Role
+resource "aws_iam_role_policy" "lambda_secrets_access" {
+  count = var.create_lambda_exec_role ? 1 : 0
+  name  = "${var.name_prefix}-lambda-secrets-access"
+  role  = aws_iam_role.lambda_exec[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = ["secretsmanager:GetSecretValue"]
+        Resource = [
+          "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*",
+          "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
+        ]
+      }
+    ]
+  })
+}
 
 resource "aws_iam_role" "github_actions_deployer" {
-  name = local.deploy_role_name
+  count = var.create_deployer_role ? 1 : 0
+  name  = local.deploy_role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -60,20 +79,21 @@ resource "aws_iam_role" "github_actions_deployer" {
 }
 
 resource "aws_iam_role_policy" "github_actions_permissions" {
-   name = "${local.project_name}-${local.environment}-ci-deployer"
-  role = aws_iam_role.github_actions_deployer.id
+  count = var.create_deployer_role ? 1 : 0
+  name  = "${local.project_name}-${local.environment}-ci-deployer"
+  role  = aws_iam_role.github_actions_deployer[0].id
 
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
-        Effect = "Allow",
-        Action = ["s3:ListBucket"],
+        Effect   = "Allow",
+        Action   = ["s3:ListBucket"],
         Resource = "arn:aws:s3:::${local.tf_state_bucket_name}"
       },
       {
         Effect = "Allow",
-        Action = ["s3:GetObject","s3:PutObject"],
+        Action = ["s3:GetObject", "s3:PutObject"],
         Resource = [
           "arn:aws:s3:::${local.tf_state_bucket_name}/*"
         ]
@@ -87,18 +107,18 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       },
       # Read access to build artifacts used for Lambda code updates
       {
-        Effect  = "Allow",
-        Action  = ["s3:GetObject", "s3:HeadObject"],
+        Effect   = "Allow",
+        Action   = ["s3:GetObject", "s3:HeadObject"],
         Resource = "arn:aws:s3:::ustc-payment-portal-build-artifacts/artifacts/dev/*"
       },
       {
-        Effect  = "Allow",
-        Action  = ["s3:ListBucket"],
+        Effect   = "Allow",
+        Action   = ["s3:ListBucket"],
         Resource = "arn:aws:s3:::ustc-payment-portal-build-artifacts"
       },
       { #lock table
         Effect   = "Allow",
-        Action   = ["dynamodb:DescribeTable","dynamodb:GetItem","dynamodb:PutItem","dynamodb:UpdateItem","dynamodb:DeleteItem"],
+        Action   = ["dynamodb:DescribeTable", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem"],
         Resource = "arn:aws:dynamodb:${local.aws_region}:${data.aws_caller_identity.current.account_id}:table/${local.tf_lock_table_name}"
       },
       {
@@ -131,7 +151,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       },
       {
         Effect = "Allow",
-        Action = ["iam:GetRole","iam:ListRolePolicies","iam:GetRolePolicy","iam:ListAttachedRolePolicies"],
+        Action = ["iam:GetRole", "iam:ListRolePolicies", "iam:GetRolePolicy", "iam:ListAttachedRolePolicies"],
         Resource = [
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.deploy_role_name}",
           local.lambda_exec_role_arn
@@ -140,10 +160,10 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       {
         Effect = "Allow",
         Action = ["apigateway:GET",
-                  "apigateway:POST",
-                  "apigateway:PUT",
-                  "apigateway:PATCH",
-                  "apigateway:DELETE"],
+          "apigateway:POST",
+          "apigateway:PUT",
+          "apigateway:PATCH",
+        "apigateway:DELETE"],
         Resource = [
           "arn:aws:apigateway:${local.aws_region}::/restapis*",
           "arn:aws:apigateway:${local.aws_region}::/deployments*",
@@ -153,7 +173,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       },
       {
         Effect   = "Allow",
-        Action   = ["acm:ListCertificates","acm:DescribeCertificate"],
+        Action   = ["acm:ListCertificates", "acm:DescribeCertificate"],
         Resource = "*"
       },
       {
@@ -201,7 +221,10 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "secretsmanager:TagResource",
           "secretsmanager:UntagResource"
         ],
-        Resource = "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*"
+        Resource = [
+            "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*",
+            "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
+          ]
       },
       {
         Effect = "Allow", #iam role creation (for self-management)
@@ -260,6 +283,50 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "ec2:Describe*"
         ],
         Resource = "*"
+      },
+      {
+        Effect = "Allow", # RDS read permissions (require * for describe operations)
+        Action = [
+          "rds:DescribeDBInstances",
+          "rds:DescribeDBSubnetGroups",
+          "rds:DescribeDBSnapshots",
+          "rds:DescribeDBParameterGroups",
+          "rds:DescribeDBParameters",
+          "rds:ListTagsForResource"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow", # RDS write permissions for database provisioning
+        Action = [
+          "rds:CreateDBInstance",
+          "rds:DeleteDBInstance",
+          "rds:ModifyDBInstance",
+          "rds:AddTagsToResource",
+          "rds:RemoveTagsFromResource",
+          "rds:CreateDBSnapshot",
+          "rds:DeleteDBSnapshot",
+          "rds:CreateDBParameterGroup",
+          "rds:DeleteDBParameterGroup",
+          "rds:ModifyDBParameterGroup"
+        ],
+        Resource = [
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:ustc-payment-processor-*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:*-pr-*-db",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:subgrp:*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:snapshot:*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:pg:ustc-payment-processor-*"
+        ]
+      },
+      {
+        Effect   = "Allow", # RDS service-linked role (required for first RDS instance)
+        Action   = ["iam:CreateServiceLinkedRole"],
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS",
+        Condition = {
+          StringEquals = {
+            "iam:AWSServiceName" = "rds.amazonaws.com"
+          }
+        }
       }
     ]
   })
