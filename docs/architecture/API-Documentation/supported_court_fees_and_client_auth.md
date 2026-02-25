@@ -6,13 +6,20 @@ The Payment Portal is the authoritative system for initiating payment transactio
 
 ### Core Architectural Principle
 
-**Client applications provide business context; the Payment Portal determines financial values.**
+**Client applications provide business context; the Payment Portal determines fee types and manages financial values.**
 
-Clients submit metadata describing the transaction. The Payment Portal derives the fee type, validates authorization, resolves the amount, and constructs the Pay.gov request. Clients never provide fee identifiers, amounts, or Pay.gov configuration values.
+Clients submit metadata describing the transaction. The Payment Portal derives the fee type, validates authorization, and constructs the Pay.gov request.
+
+**Fee Amount Determination:**
+- **Fixed fees:** Amount is resolved from the Payment Portal's fees table (e.g., petition filing fee of $60)
+- **Variable fees:** Amount is provided by the client and validated by the Payment Portal (e.g., payment for copies where quantity varies)
+
+Clients never provide `fee_id` or `tcs_app_id` — these are always derived internally.
 
 This design ensures:
-- Centralized fee governance
-- Prevention of amount manipulation
+- Centralized fee governance and type determination
+- Validation of client-provided amounts for variable fees
+- Prevention of unauthorized fee access
 - Consistent authorization enforcement
 - Abstraction of Pay.gov integration details
 
@@ -22,7 +29,8 @@ This design ensures:
 
 - **`app_id`** — Identifier for a client application (e.g., `DAWSON`)
 - **`fee_id`** — Internal identifier for a fee type (e.g., `PETITION_FILING`)
-- **`tcs_app_id`** — Pay.gov application identifier (TCS = Treasury Collection System)
+- **`tcs_app_id`** — Pay.gov application identifier
+- **`is_variable`** — Boolean indicating if fee amount is client-provided (true) or portal-determined (false)
 - **metadata** — Business context provided by clients to identify transaction type
 - **Payment Portal (PP)** — This system
 
@@ -54,15 +62,16 @@ Each stage is described in detail below.
 
 Clients initiate payments by submitting:
 
-| Field | Description | Provided By |
-|-------|-------------|-------------|
-| `app_id` | Client application identifier | Client |
-| `transactionReferenceId` | Client-generated UUID for idempotency | Client |
-| `urlSuccess` | Redirect URL after successful payment | Client |
-| `urlCancel` | Redirect URL if payment is cancelled | Client |
-| `metadata` | Business context describing the transaction | Client |
+| Field | Description | Provided By | Required |
+|-------|-------------|-------------|----------|
+| `app_id` | Client application identifier | Client | Always |
+| `transactionReferenceId` | Client-generated UUID for idempotency | Client | Always |
+| `urlSuccess` | Redirect URL after successful payment | Client | Always |
+| `urlCancel` | Redirect URL if payment is cancelled | Client | Always |
+| `metadata` | Business context describing the transaction | Client | Always |
+| `amount` | Payment amount (only for variable fees) | Client | Variable fees only |
 
-**Example Request:**
+**Example Request (Fixed Fee):**
 
 ```json
 {
@@ -77,7 +86,27 @@ Clients initiate payments by submitting:
 }
 ```
 
-**Critical Constraint:** Clients do not provide `fee_id`, `amount`, or `tcs_app_id`. These are derived internally by the Payment Portal.
+**Example Request (Variable Fee):**
+
+```json
+{
+  "app_id": "DAWSON",
+  "transactionReferenceId": "550e8400-e29b-41d4-a716-446655440000",
+  "urlSuccess": "https://dawson.ustaxcourt.gov/payment/success",
+  "urlCancel": "https://dawson.ustaxcourt.gov/payment/cancel",
+  "amount": 45.00,
+  "metadata": {
+    "copyRequestId": "COPY-2026-001",
+    "numberOfPages": 150
+  }
+}
+```
+
+**Critical Constraints:**
+- Clients never provide `fee_id` or `tcs_app_id` — these are always derived internally
+- Clients provide `amount` only for variable fees; for fixed fees, amount is resolved from the fees table
+- If `amount` is provided for a fixed fee, it is ignored
+- If `amount` is missing for a variable fee, request fails with `400 Bad Request`
 
 ---
 
@@ -119,7 +148,8 @@ Once `fee_id` is determined, the Payment Portal queries the `fees` table to reso
 CREATE TABLE fees (
   fee_id          VARCHAR(50) PRIMARY KEY,
   tcs_app_id      VARCHAR(50) NOT NULL,
-  amount          DECIMAL(10,2) NOT NULL,
+  is_variable     BOOLEAN NOT NULL DEFAULT false,
+  amount          DECIMAL(10,2),  -- Required when is_variable = false, NULL when is_variable = true
   description     TEXT NOT NULL,
   active          BOOLEAN NOT NULL DEFAULT true,
   created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -129,24 +159,40 @@ CREATE TABLE fees (
 
 **Example Data:**
 
-| fee_id | tcs_app_id | amount | description | active |
-|--------|-----------|--------|-------------|--------|
-| PETITION_FILING | USTC_PETITION | 60.00 | Petition Filing Fee | true |
-| COPY_REQUEST | USTC_COPY | 30.00 | Document Copy Request | true |
-| ADMISSION_FEE | USTC_ADMISSION | 250.00 | Non-Attorney Exam Registration | true |
+| fee_id | tcs_app_id | is_variable | amount | description | active |
+|--------|-----------|-------------|--------|-------------|--------|
+| PETITION_FILING | USTC_PETITION | false | 60.00 | Petition Filing Fee | true |
+| COPY_REQUEST | USTC_COPY | true | NULL | Document Copy Request (varies by page count) | true |
+| ADMISSION_FEE | USTC_ADMISSION | false | 250.00 | Non-Attorney Exam Registration | true |
 
 ### Lookup Query
 
 ```sql
-SELECT tcs_app_id, amount, description
+SELECT tcs_app_id, is_variable, amount, description
 FROM fees
 WHERE fee_id = :fee_id
   AND active = true;
 ```
 
-If no active record is found:
-- **Response:** `400 Bad Request`
-- **Body:** `{ "error": "FEE_NOT_FOUND", "message": "Fee type is not available" }`
+### Amount Resolution Logic
+
+**For fixed fees (is_variable = false):**
+- Use `amount` from fees table
+- Ignore any client-provided amount
+
+**For variable fees (is_variable = true):**
+- Require client to provide `amount` in request
+- Validate amount is positive and within reasonable bounds
+- Use client-provided amount for Pay.gov request
+
+### Error Handling
+
+| Condition | HTTP Status | Error Code | Message |
+|-----------|-------------|------------|----------|
+| Fee not found or inactive | 400 | `FEE_NOT_FOUND` | Fee type is not available |
+| Variable fee, amount missing | 400 | `AMOUNT_REQUIRED` | Amount is required for variable fees |
+| Variable fee, invalid amount | 400 | `INVALID_AMOUNT` | Amount must be positive |
+| Fixed fee, amount ignored | N/A | N/A | Client amount ignored (logged for audit) |
 
 ---
 
@@ -215,13 +261,7 @@ After authorization is confirmed, the Payment Portal constructs the SOAP request
 |-------|--------|---------|
 | `tcs_app_id` | Derived from fees table | `USTC_PETITION` |
 | `agency_tracking_id` | Client's `transactionReferenceId` | `550e8400-...` |
-| `transaction_amount` | Resolved from fees table | `60.00` |
-| `url_success` | Client request | `https://dawson.../success` |
-| `url_cancel` | Client request | `https://dawson.../cancel` |
-
-**Example SOAP Envelope (simplified):**
-
-```xml
+| `transaction_amount` | Fees table (fixed) OR client request (variable) | `60.00` |
 <startOnlineCollection>
   <tcs_app_id>USTC_PETITION</tcs_app_id>
   <agency_tracking_id>550e8400-e29b-41d4-a716-446655440000</agency_tracking_id>
@@ -233,16 +273,30 @@ After authorization is confirmed, the Payment Portal constructs the SOAP request
 
 ### Data Flow Summary
 
+**Fixed Fee Flow:**
 ```
 Client Provides:    app_id, metadata, redirects
       ↓
 PP Determines:      fee_id (from metadata)
       ↓
-PP Looks Up:        tcs_app_id, amount (from fees table)
+PP Looks Up:        tcs_app_id, is_variable=false, amount (from fees table)
       ↓
 PP Validates:       (app_id, tcs_app_id) authorization
       ↓
-PP Sends to Pay.gov: tcs_app_id, amount, redirects
+PP Sends to Pay.gov: tcs_app_id, amount (from table), redirects
+```
+
+**Variable Fee Flow:**
+```
+Client Provides:    app_id, metadata, amount, redirects
+      ↓
+PP Determines:      fee_id (from metadata)
+      ↓
+PP Looks Up:        tcs_app_id, is_variable=true (from fees table)
+      ↓
+PP Validates:       (app_id, tcs_app_id) authorization + amount > 0
+      ↓
+PP Sends to Pay.gov: tcs_app_id, amount (from client), redirects
 ```
 
 ---
@@ -298,8 +352,13 @@ VALUES ('NEW_CLIENT_APP', 'USTC_PETITION');
 **1. Create Fee Definition**
 
 ```sql
-INSERT INTO fees (fee_id, tcs_app_id, amount, description, active)
-VALUES ('NEW_FEE_TYPE', 'USTC_NEW_APP', 100.00, 'New Fee Description', true);
+-- Fixed fee example
+INSERT INTO fees (fee_id, tcs_app_id, is_variable, amount, description, active)
+VALUES ('NEW_FIXED_FEE', 'USTC_NEW_APP', false, 100.00, 'New Fixed Fee Description', true);
+
+-- Variable fee example
+INSERT INTO fees (fee_id, tcs_app_id, is_variable, amount, description, active)
+VALUES ('NEW_VARIABLE_FEE', 'USTC_VAR_APP', true, NULL, 'New Variable Fee Description', true);
 ```
 
 **2. Add Fee Determination Logic**
@@ -335,11 +394,12 @@ This design provides the following guarantees:
 
 | Guarantee | Enforcement Mechanism |
 |-----------|----------------------|
-| Clients cannot manipulate amounts | Amounts resolved from fees table only |
+| Clients cannot manipulate fixed fee amounts | Fixed amounts resolved from fees table only |
+| Variable fee amounts are validated | Amount presence and positivity checks for variable fees |
 | Clients cannot select unauthorized fees | Authorization table enforces app_id + tcs_app_id relationship |
-| Fee governance is centralized | All fee data in Payment Portal database |
+| Fee type determination is centralized | All fee_id derivation logic in Payment Portal |
 | Pay.gov details are abstracted | Clients never interact with tcs_app_id |
-| Authorization is auditable | All checks logged with context |
+| Authorization is auditable | All checks logged with context including amounts |
 
 ---
 
@@ -348,6 +408,8 @@ This design provides the following guarantees:
 | Error Code | HTTP Status | Description | Client Action |
 |------------|-------------|-------------|---------------|
 | `UNKNOWN_FEE_TYPE` | 400 | Metadata doesn't match any fee pattern | Verify metadata structure |
+| `AMOUNT_REQUIRED` | 400 | Variable fee requires amount in request | Add amount field to request |
+| `INVALID_AMOUNT` | 400 | Amount is zero, negative, or invalid format | Provide positive decimal amount |
 | `UNAUTHORIZED_FEE` | 403 | Client not authorized for this fee | Request authorization |
 | `INVALID_REQUEST` | 400 | Schema validation failure | Fix request format |
 | `PAY_GOV_ERROR` | 502 | Pay.gov integration failure | Retry later |
