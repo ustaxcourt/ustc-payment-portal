@@ -354,15 +354,4 @@ This design provides the following guarantees:
 
 ---
 
-## Appendix: Authentication
 
-This document assumes client authentication is handled separately. The Payment Portal must validate the `app_id` claim before processing any request.
-
-**Recommended Implementation:**
-- API Key authentication with `x-api-key` header
-- API key maps to `app_id` in authorization system
-- Requests without valid API key receive `401 Unauthorized`
-
-**Future Enhancement:**
-- Mutual TLS (mTLS) for client authentication
-- OAuth 2.0 client credentials flow
