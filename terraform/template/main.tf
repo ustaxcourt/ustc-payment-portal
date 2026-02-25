@@ -1,25 +1,25 @@
 terraform {
 
-    backend "s3" {
+  backend "s3" {
 
-    }
+  }
 }
 
 provider "aws" {
-    region = var.aws_region
+  region = var.aws_region
 
-    default_tags {
-        tags = {
-            Project     = var.prjoect_name
-            Environment = local.Environment
-            ManagedBy   = "terraform"
-        }
+  default_tags {
+    tags = {
+      Project     = var.project_name
+      Environment = local.environment
+      ManagedBy   = "terraform"
     }
+  }
 }
 
 # Data sources
 
-data "aws_caller_identity" "current"  {}
+data "aws_caller_identity" "current" {}
 
 data "aws_region" "current" {}
 
@@ -31,6 +31,14 @@ data "aws_secretsmanager_secret" "access_token" {
 
 data "aws_secretsmanager_secret_version" "access_token" {
   secret_id = data.aws_secretsmanager_secret.access_token.id
+}
+
+data "aws_secretsmanager_secret" "rds_credentials" {
+  name = local.rds_credentials_secret_name
+}
+
+data "aws_secretsmanager_secret_version" "rds_credentials" {
+  secret_id = data.aws_secretsmanager_secret.rds_credentials.id
 }
 
 # S3 Module

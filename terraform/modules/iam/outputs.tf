@@ -9,12 +9,12 @@ output "lambda_role_name" {
 }
 
 output "role_name" {
-  value       = aws_iam_role.github_actions_deployer.name
+  value       = var.create_deployer_role ? aws_iam_role.github_actions_deployer[0].name : null
   description = "CI/CD deployer role name"
 }
 
 output "role_arn" {
-  value       = aws_iam_role.github_actions_deployer.arn
+  value       = var.create_deployer_role ? aws_iam_role.github_actions_deployer[0].arn : null
   description = "CI/CD deployer role ARN"
 }
 

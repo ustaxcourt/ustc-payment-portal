@@ -13,6 +13,7 @@ data "aws_caller_identity" "current" {}
 
 module "lambda" {
   source                    = "../../modules/lambda"
+  function_name_prefix      = local.name_prefix
   lambda_execution_role_arn = module.iam_cicd.lambda_role_arn
   subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
   security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
@@ -32,6 +33,34 @@ module "lambda" {
     getDetails     = var.getDetails_source_code_hash
     testCert       = var.testCert_source_code_hash
   }
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
+module "rds" {
+  source = "../../modules/rds"
+
+  identifier = "${local.name_prefix}-db"
+  db_name    = "paymentportal"
+  username   = "payment_portal_admin"
+
+  manage_master_user_password = true
+
+  db_subnet_group_name = data.terraform_remote_state.foundation.outputs.db_subnet_group_name
+
+  vpc_security_group_ids = [
+    data.terraform_remote_state.foundation.outputs.rds_security_group_id
+  ]
+
+  log_statement             = "ddl"
+  max_allocated_storage     = 100
+  multi_az                  = true
+  deletion_protection       = true
+  skip_final_snapshot       = false
+  final_snapshot_identifier = "ustc-payment-processor-prod-final-snapshot"
 
   tags = {
     Env     = local.environment
