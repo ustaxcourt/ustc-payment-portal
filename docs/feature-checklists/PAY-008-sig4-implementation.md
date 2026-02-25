@@ -148,16 +148,16 @@ Because this is an open source project, authorized client ARNs cannot live in th
 
 - [x] Update `src/test/integration/` tests:
   - [x] Remove Bearer token from test requests
-  - [ ] Add SigV4 signing to test requests — **blocked by Phase 1** (no point signing requests against an endpoint not enforcing SigV4 yet)
+  - [x] Add SigV4 signing to test requests — `signedFetch` used in `initPayment.test.ts` and `transaction.test.ts`
   - [ ] Test cross-account authentication scenarios — **blocked by Phase 1 + DAWSON coordination**
 
 ### 3.3 SigV4 Smoke Test
 
-- [ ] Create a smoke test that runs against deployed environments to detect auth config breakage — **blocked by Phase 1**
-  - [ ] Sign request with valid AWS credentials (test IAM role)
-  - [ ] Call a protected endpoint (e.g., `/details` or `/test`)
-  - [ ] Assert: valid signature → 200 (or business-level error, not 403)
-  - [ ] Assert: missing/invalid signature → 403
+- [x] Create a smoke test that runs against deployed environments to detect auth config breakage — `src/test/integration/sigv4Smoke.test.ts`
+  - [x] Sign request with valid AWS credentials (test IAM role)
+  - [x] Call a protected endpoint (e.g., `/details` or `/test`)
+  - [x] Assert: valid signature → 200 (or business-level error, not 403)
+  - [x] Assert: missing/invalid signature → 403
 - [ ] Consider running in CI/CD after each deployment
 - [ ] Alert if smoke test fails (indicates broken IAM auth config)
 
