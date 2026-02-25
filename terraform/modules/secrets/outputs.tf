@@ -22,6 +22,11 @@ output "tcs_app_id_secret_id" {
   description = "SecretId (name) for TCS Application ID"
 }
 
+output "client_permissions_secret_id" {
+  value       = aws_secretsmanager_secret.client_permissions.name
+  description = "SecretId (name) for client permissions"
+}
+
 output "rds_credentials_secret_id" {
   value       = var.create_rds_secret ? aws_secretsmanager_secret.rds_credentials[0].name : null
   description = "SecretId (name) for RDS credentials (null if using AWS-managed RDS password)"

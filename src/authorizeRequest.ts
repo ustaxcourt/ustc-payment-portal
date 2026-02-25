@@ -2,9 +2,10 @@ import { ForbiddenError } from "./errors/forbidden";
 import { APIGatewayEventRequestContext } from "aws-lambda";
 
 /**
- * Mock IAM role ARN for local development when SigV4 is bypassed
+ * Mock IAM role ARN for local development when SigV4 is bypassed.
+ * Exported so clientPermissionsClient can reference the same value without duplication.
  */
-const LOCAL_DEV_ROLE_ARN = "arn:aws:iam::000000000000:role/local-dev-role";
+export const LOCAL_DEV_ROLE_ARN = "arn:aws:iam::000000000000:role/local-dev-role";
 
 /**
  * Converts an STS assumed-role ARN to an IAM role ARN for lookup.
