@@ -1,5 +1,6 @@
 import { getSecretString } from "./secretsClient";
 import { ServerError } from "../errors/serverError";
+import { LOCAL_DEV_ROLE_ARN } from "../authorizeRequest";
 
 /**
  * Represents a client's permissions for accessing the Payment Portal.
@@ -35,7 +36,7 @@ const CACHE_TTL_MS = parseInt(process.env.CLIENT_PERMISSIONS_CACHE_TTL_MS || "30
 const LOCAL_DEV_PERMISSIONS: ClientPermission[] = [
   {
     clientName: "Local Development",
-    clientRoleArn: "arn:aws:iam::000000000000:role/local-dev-role",
+    clientRoleArn: LOCAL_DEV_ROLE_ARN,
     allowedFeeIds: ["*"], // Wildcard: allow all feeIds in local dev
   },
 ];

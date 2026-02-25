@@ -9,6 +9,7 @@ locals {
     SOAP_URL                           = local.soap_url
     CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
     PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = module.secrets.paygov_dev_server_token_secret_id
+    CLIENT_PERMISSIONS_SECRET_ID       = module.secrets.client_permissions_secret_id
     RDS_ENDPOINT                       = local.environment == "dev" ? module.rds[0].endpoint : ""
     RDS_SECRET_ARN                     = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : ""
   }

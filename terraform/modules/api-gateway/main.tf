@@ -1,4 +1,5 @@
 data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
 
 # API Gateway REST API
 resource "aws_api_gateway_rest_api" "rest" {
@@ -56,31 +57,54 @@ resource "aws_api_gateway_method" "init_post" {
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   resource_id   = aws_api_gateway_resource.init.id
   http_method   = "POST"
-  authorization = "NONE"
+  authorization = "AWS_IAM"
 }
 
 resource "aws_api_gateway_method" "process_post" {
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   resource_id   = aws_api_gateway_resource.process.id
   http_method   = "POST"
-  authorization = "NONE"
+  authorization = "AWS_IAM"
 }
 
 resource "aws_api_gateway_method" "test_get" {
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   resource_id   = aws_api_gateway_resource.test.id
   http_method   = "GET"
-  authorization = "NONE"
+  authorization = "AWS_IAM"
 }
 
 resource "aws_api_gateway_method" "details_get" {
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   resource_id   = aws_api_gateway_resource.details_tracking.id
   http_method   = "GET"
-  authorization = "NONE"
+  authorization = "AWS_IAM"
   request_parameters = {
 
   }
+}
+
+# Resource policy — controls which AWS accounts can reach the API at all.
+# The deploying account is always included so same-account callers (CI/CD, smoke tests) work.
+# Client accounts are added via var.allowed_account_ids — never hardcoded.
+data "aws_iam_policy_document" "api_resource_policy" {
+  statement {
+    effect = "Allow"
+    principals {
+      type = "AWS"
+      identifiers = concat(
+        ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"],
+        [for account_id in var.allowed_account_ids : "arn:aws:iam::${account_id}:root"]
+      )
+    }
+    actions   = ["execute-api:Invoke"]
+    resources = ["${aws_api_gateway_rest_api.rest.execution_arn}/*"]
+  }
+}
+
+resource "aws_api_gateway_rest_api_policy" "policy" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  policy      = data.aws_iam_policy_document.api_resource_policy.json
 }
 
 #lambda integration

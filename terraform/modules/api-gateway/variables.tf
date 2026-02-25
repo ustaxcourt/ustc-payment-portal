@@ -20,3 +20,9 @@ variable "common_tags" {
   default     = {}
 }
 
+variable "allowed_account_ids" {
+  description = "List of AWS account IDs allowed to invoke the API Gateway via cross-account IAM access. The deploying account is always allowed."
+  type        = list(string)
+  default     = []
+}
+

@@ -19,35 +19,35 @@ Replace Bearer token authentication with AWS IAM authentication (SigV4) to:
 
 ### 1.1 API Gateway IAM Authorization
 
-- [ ] Update `terraform/modules/api-gateway/main.tf`:
-  - [ ] Change `aws_api_gateway_method.init_post` authorization from `"NONE"` to `"AWS_IAM"`
-  - [ ] Change `aws_api_gateway_method.process_post` authorization from `"NONE"` to `"AWS_IAM"`
-  - [ ] Change `aws_api_gateway_method.details_get` authorization from `"NONE"` to `"AWS_IAM"`
-  - [ ] Change `aws_api_gateway_method.test_get` authorization from `"NONE"` to `"AWS_IAM"` — `/test` is protected under SigV4 to mimic the actual request flow and because this is an open source project, leaving it open would allow anyone to trigger live outbound requests to Pay.gov
-- [ ] Add API Gateway resource policy for cross-account access
-  - [ ] Create variable for allowed client AWS account IDs
-  - [ ] Configure policy to allow `execute-api:Invoke` from client accounts
+- [x] Update `terraform/modules/api-gateway/main.tf`:
+  - [x] Change `aws_api_gateway_method.init_post` authorization from `"NONE"` to `"AWS_IAM"`
+  - [x] Change `aws_api_gateway_method.process_post` authorization from `"NONE"` to `"AWS_IAM"`
+  - [x] Change `aws_api_gateway_method.details_get` authorization from `"NONE"` to `"AWS_IAM"`
+  - [x] Change `aws_api_gateway_method.test_get` authorization from `"NONE"` to `"AWS_IAM"` — `/test` is protected under SigV4 to mimic the actual request flow and because this is an open source project, leaving it open would allow anyone to trigger live outbound requests to Pay.gov
+- [x] Add API Gateway resource policy for cross-account access
+  - [x] Create variable for allowed client AWS account IDs (`allowed_account_ids` in `terraform/modules/api-gateway/variables.tf`, default `[]`)
+  - [x] Configure policy to allow `execute-api:Invoke` from client accounts — deploying account always included; client accounts added via `var.allowed_account_ids` at deploy time
 
 ### 1.2 Add Client Permissions Secret
 
 Because this is an open source project, authorized client ARNs cannot be hardcoded in the repository. Client permissions are stored in AWS Secrets Manager and loaded at runtime.
 
-- [ ] Add `aws_secretsmanager_secret.client_permissions` to `terraform/modules/secrets/main.tf`
-  - [ ] Secret name: `ustc/pay-gov/{env}/client-permissions`
-  - [ ] Secret value is a JSON array:
+- [x] Add `aws_secretsmanager_secret.client_permissions` to `terraform/modules/secrets/main.tf`
+  - [x] Secret name: `ustc/pay-gov/{env}/client-permissions`
+  - [x] Secret value is a JSON array (populated manually after deploy — never in repo):
     ```json
     [
       {
         "clientName": "DAWSON",
         "clientRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME",
-        "allowedTcsAppIds": ["PETITIONS_FILING_FEE", "ADMISSIONS_FEE"]
+        "allowedFeeIds": ["PETITIONS_FILING_FEE", "ADMISSIONS_FEE"]
       }
     ]
     ```
-- [ ] Update `locals.tf` to include the new secret ARN in `secret_arns`
-- [ ] Grant Lambda read access to the secret
-- [ ] Add `CLIENT_PERMISSIONS_SECRET_ID` to Lambda environment variables
-- [ ] Manually populate secret values via AWS CLI/Console (never in repo)
+- [x] Update `locals.tf` to include the new secret ARN in `secret_arns` — added to `secret_arns_always` in `terraform/modules/secrets/locals.tf`
+- [x] Grant Lambda read access to the secret — handled automatically via `secret_arns_always` feeding into `aws_iam_role_policy.lambda_secrets_read`
+- [x] Add `CLIENT_PERMISSIONS_SECRET_ID` to Lambda environment variables — added to `lambda_env_base` in dev, stg, and prod `locals.tf`
+- [ ] Manually populate secret values via AWS CLI/Console (never in repo) — **deployment-time action, not a code change**
 
 ### 1.3 Remove Legacy API Access Token
 
@@ -282,8 +282,8 @@ Because this is an open source project, authorized client ARNs cannot live in th
 
 ### Environment-Specific Configs
 
-- [ ] Each environment (dev/stg/prod) has its own Secrets Manager secret for client permissions — **pending Phase 1**
-- [ ] Client role ARNs differ per environment (different AWS accounts) — **pending Phase 1**
+- [x] Each environment (dev/stg/prod) has its own Secrets Manager secret for client permissions — `ustc/pay-gov/dev/client-permissions`, `stg/...`, `prod/...`
+- [ ] Client role ARNs differ per environment (different AWS accounts) — **populated manually at deploy time, never in repo**
 
 ### Secrets Manager Caching
 
@@ -299,17 +299,8 @@ Because this is an open source project, authorized client ARNs cannot live in th
 
 ### API Gateway Deployment
 
-- [ ] After Terraform changes, API Gateway stage must be redeployed for auth changes to take effect — **pending Phase 1**
-- [ ] **FIX REQUIRED:** Add method resources to deployment triggers in `terraform/modules/api-gateway/main.tf`:
-  - Current triggers only include integration resources, not methods
-  - Authorization changes on methods won't trigger redeployment without this fix
-  - Add to `triggers.redeployment` hash:
-    ```terraform
-    aws_api_gateway_method.init_post.id,
-    aws_api_gateway_method.process_post.id,
-    aws_api_gateway_method.test_get.id,
-    aws_api_gateway_method.details_get.id,
-    ```
+- [ ] After Terraform changes, API Gateway stage must be redeployed for auth changes to take effect — **deployment-time action**
+- [x] Add method resources to deployment triggers in `terraform/modules/api-gateway/main.tf` — all four method IDs now included in `redeployment` hash alongside integration IDs
 
 ### CI/CD Pipeline
 
