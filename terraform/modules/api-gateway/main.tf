@@ -1,4 +1,4 @@
-data "aws_region" "current"{}
+data "aws_region" "current" {}
 
 # API Gateway REST API
 resource "aws_api_gateway_rest_api" "rest" {
@@ -86,48 +86,52 @@ resource "aws_api_gateway_method" "details_get" {
 #lambda integration
 
 resource "aws_api_gateway_integration" "init_integration" {
-  rest_api_id          = aws_api_gateway_rest_api.rest.id
-  resource_id          = aws_api_gateway_resource.init.id
-  http_method          = aws_api_gateway_method.init_post.http_method
-  type                 = "AWS_PROXY"
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.init.id
+  http_method             = aws_api_gateway_method.init_post.http_method
+  type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri         = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["initPayment"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["initPayment"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "process_integration" {
-  rest_api_id          = aws_api_gateway_rest_api.rest.id
-  resource_id          = aws_api_gateway_resource.process.id
-  http_method          = aws_api_gateway_method.process_post.http_method
-  type                 = "AWS_PROXY"
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.process.id
+  http_method             = aws_api_gateway_method.process_post.http_method
+  type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["processPayment"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["processPayment"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "test_integration" {
-  rest_api_id          = aws_api_gateway_rest_api.rest.id
-  resource_id          = aws_api_gateway_resource.test.id
-  http_method          = aws_api_gateway_method.test_get.http_method
-  type                 = "AWS_PROXY"
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.test.id
+  http_method             = aws_api_gateway_method.test_get.http_method
+  type                    = "AWS_PROXY"
   integration_http_method = "POST"
   uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["testCert"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "details_integration" {
-  rest_api_id          = aws_api_gateway_rest_api.rest.id
-  resource_id          = aws_api_gateway_resource.details_tracking.id
-  http_method          = aws_api_gateway_method.details_get.http_method
-  type                 = "AWS_PROXY"
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.details_tracking.id
+  http_method             = aws_api_gateway_method.details_get.http_method
+  type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                   = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getDetails"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getDetails"]}/invocations"
 }
 
-#Deployment 
+#Deployment
 
 resource "aws_api_gateway_deployment" "deployment" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
 
   triggers = {
     redeployment = sha1(jsonencode([
+      aws_api_gateway_method.init_post.id,
+      aws_api_gateway_method.process_post.id,
+      aws_api_gateway_method.test_get.id,
+      aws_api_gateway_method.details_get.id,
       aws_api_gateway_integration.init_integration.id,
       aws_api_gateway_integration.process_integration.id,
       aws_api_gateway_integration.test_integration.id,
@@ -153,7 +157,7 @@ resource "aws_api_gateway_stage" "stage" {
   deployment_id = aws_api_gateway_deployment.deployment.id
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   stage_name    = var.stage_name
-  tags       = var.common_tags
+  tags          = var.common_tags
 }
 
 #These should go in api gateway

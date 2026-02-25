@@ -7,7 +7,6 @@ locals {
     NODE_ENV                           = local.node_env
     PAYMENT_URL                        = local.payment_url
     SOAP_URL                           = local.soap_url
-    API_ACCESS_TOKEN_SECRET_ID         = module.secrets.api_access_token_secret_id
     CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
     PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = module.secrets.paygov_dev_server_token_secret_id
     RDS_ENDPOINT                       = local.environment == "dev" ? module.rds[0].endpoint : ""

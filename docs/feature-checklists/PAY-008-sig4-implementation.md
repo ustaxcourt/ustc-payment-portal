@@ -51,14 +51,14 @@ Because this is an open source project, authorized client ARNs cannot be hardcod
 
 ### 1.3 Remove Legacy API Access Token
 
-- [ ] Remove `aws_secretsmanager_secret.api_access_token` from `terraform/modules/secrets/main.tf`
-- [ ] Update `locals.tf` to remove api_access_token from `secret_arns`
-- [ ] Remove `API_ACCESS_TOKEN_SECRET_ID` from Lambda environment variables
-- [ ] Update any IAM policies that reference the secret ARN
+- [x] Remove `aws_secretsmanager_secret.api_access_token` from `terraform/modules/secrets/main.tf`
+- [x] Update `locals.tf` to remove api_access_token from `secret_arns`
+- [x] Remove `API_ACCESS_TOKEN_SECRET_ID` from Lambda environment variables
+- [x] Update any IAM policies that reference the secret ARN — handled automatically via `local.secret_arns`
 
 ### 1.4 Fix API Gateway Deployment Triggers
 
-- [ ] Update `terraform/modules/api-gateway/main.tf` deployment `triggers` block to include method resources:
+- [x] Update `terraform/modules/api-gateway/main.tf` deployment `triggers` block to include method resources:
   - Current triggers only include integrations, not methods
   - Authorization changes won't trigger redeployment without this fix
   - Add method IDs to the `redeployment` hash alongside integration IDs

@@ -1,9 +1,3 @@
-#api_access_token to be removed in future stories
-output "api_access_token_secret_id" {
-  value       = aws_secretsmanager_secret.api_access_token.name
-  description = "SecretId (name) for API access token"
-}
-
 output "cert_passphrase_secret_id" {
   value       = aws_secretsmanager_secret.cert_passphrase.name
   description = "SecretId (name) for cert passphrase"

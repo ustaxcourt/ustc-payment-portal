@@ -6,7 +6,7 @@ variable "environment" {
 variable "stage_name" {
   description = "Deployment stage name (e.g., dev)"
   type        = string
-  default = "dev"
+  default     = "dev"
 }
 
 variable "lambda_function_arns" {
