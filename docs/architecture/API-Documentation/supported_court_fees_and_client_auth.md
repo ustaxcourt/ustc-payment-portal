@@ -6,22 +6,22 @@ The Payment Portal is the authoritative system for initiating payment transactio
 
 ### Core Architectural Principle
 
-**Client applications provide business context; the Payment Portal determines fee types and manages financial values.**
+**Clients provide fee identifiers and business context; the Payment Portal validates authorization and manages Pay.gov integration.**
 
-Clients submit metadata describing the transaction. The Payment Portal derives the fee type, validates authorization, and constructs the Pay.gov request.
+Clients submit a `fee_id` to specify which fee they want to charge, along with metadata for audit purposes. The Payment Portal validates the fee exists, checks authorization, and constructs the Pay.gov request.
 
 **Fee Amount Determination:**
 - **Fixed fees:** Amount is resolved from the Payment Portal's fees table (e.g., petition filing fee of $60)
 - **Variable fees:** Amount is provided by the client and validated by the Payment Portal (e.g., payment for copies where quantity varies)
 
-Clients never provide `fee_id` or `tcs_app_id` — these are always derived internally.
+**Critical Constraint:** Clients never provide `tcs_app_id` — this is always derived from the fee configuration.
 
 This design ensures:
-- Centralized fee governance and type determination
-- Validation of client-provided amounts for variable fees
-- Prevention of unauthorized fee access
-- Consistent authorization enforcement
-- Abstraction of Pay.gov integration details
+- Clients explicitly declare payment intent via `fee_id`
+- Authorization prevents clients from charging unauthorized fees
+- Pay.gov integration details remain abstracted
+- Variable fee amounts are validated before processing
+- Consistent audit trail via metadata
 
 ---
 
@@ -41,17 +41,19 @@ This design ensures:
 ### Request Processing Flow
 
 ```
-1. Client Request (metadata + app_id)
+1. Client Request (fee_id + app_id + metadata)
    ↓
-2. Fee Determination (metadata → fee_id)
+2. Fee Validation (fee_id exists and active?)
    ↓
-3. Fee Lookup (fee_id → tcs_app_id + amount)
+3. Fee Lookup (fee_id → tcs_app_id + is_variable + amount)
    ↓
 4. Authorization Check (app_id + tcs_app_id)
    ↓
-5. Pay.gov Request Construction
+5. Amount Resolution (fixed: use table, variable: use client amount)
    ↓
-6. Transaction Initiation
+6. Pay.gov Request Construction
+   ↓
+7. Transaction Initiation
 ```
 
 Each stage is described in detail below.
@@ -65,10 +67,11 @@ Clients initiate payments by submitting:
 | Field | Description | Provided By | Required |
 |-------|-------------|-------------|----------|
 | `app_id` | Client application identifier | Client | Always |
+| `fee_id` | Fee type identifier | Client | Always |
 | `transactionReferenceId` | Client-generated UUID for idempotency | Client | Always |
 | `urlSuccess` | Redirect URL after successful payment | Client | Always |
 | `urlCancel` | Redirect URL if payment is cancelled | Client | Always |
-| `metadata` | Business context describing the transaction | Client | Always |
+| `metadata` | Business context for audit/reporting | Client | Always |
 | `amount` | Payment amount (only for variable fees) | Client | Variable fees only |
 
 **Example Request (Fixed Fee):**
@@ -76,6 +79,7 @@ Clients initiate payments by submitting:
 ```json
 {
   "app_id": "DAWSON",
+  "fee_id": "PETITION_FILING",
   "transactionReferenceId": "550e8400-e29b-41d4-a716-446655440000",
   "urlSuccess": "https://dawson.ustaxcourt.gov/payment/success",
   "urlCancel": "https://dawson.ustaxcourt.gov/payment/cancel",
@@ -91,6 +95,7 @@ Clients initiate payments by submitting:
 ```json
 {
   "app_id": "DAWSON",
+  "fee_id": "COPY_REQUEST",
   "transactionReferenceId": "550e8400-e29b-41d4-a716-446655440000",
   "urlSuccess": "https://dawson.ustaxcourt.gov/payment/success",
   "urlCancel": "https://dawson.ustaxcourt.gov/payment/cancel",
@@ -103,38 +108,39 @@ Clients initiate payments by submitting:
 ```
 
 **Critical Constraints:**
-- Clients never provide `fee_id` or `tcs_app_id` — these are always derived internally
+- Clients must provide `fee_id` to specify which fee to charge
+- Clients never provide `tcs_app_id` — this is always resolved from the fee configuration
 - Clients provide `amount` only for variable fees; for fixed fees, amount is resolved from the fees table
 - If `amount` is provided for a fixed fee, it is ignored
 - If `amount` is missing for a variable fee, request fails with `400 Bad Request`
+- If `fee_id` is invalid or inactive, request fails with `400 Bad Request`
 
 ---
 
-## 2. Fee Determination Layer
+## 2. Fee Validation
 
-The Payment Portal determines the `fee_id` by evaluating request metadata against predefined patterns.
+The Payment Portal validates that the client-provided `fee_id` corresponds to an active fee in the system.
 
-### Determination Logic
+### Validation Steps
 
-The fee determination logic is implemented in the application layer and uses deterministic rules:
-
-| Metadata Pattern | Derived fee_id | Description |
-|------------------|----------------|-------------|
-| `petitionNumber` present | `PETITION_FILING` | Court petition filing fee |
-| `copyRequestId` present | `COPY_REQUEST` | Document copy request fee |
-| `admissionId` present | `ADMISSION_FEE` | Non-attorney admission exam fee |
+1. **Schema Validation** — Verify `fee_id` is present and non-empty
+2. **Existence Check** — Query fees table to confirm fee exists and is active
+3. **Variable Fee Amount Check** — If fee is variable, validate `amount` field is present and positive
 
 ### Implementation Notes
 
-- Logic resides in: `src/useCases/initPyment.ts` (or equivalent)
-- New fee types require code deployment to add patterns
-- Unmapped metadata results in HTTP 400 with error: `UNKNOWN_FEE_TYPE`
+- Logic resides in: `src/useCases/initPayment.ts`
+- Validation occurs before any authorization checks
+- Invalid `fee_id` results in early rejection to avoid unnecessary processing
+- Metadata is stored for audit purposes but not used for fee determination
 
 ### Error Handling
 
-If metadata does not match any pattern:
-- **Response:** `400 Bad Request`
-- **Body:** `{ "error": "UNKNOWN_FEE_TYPE", "message": "Unable to determine fee from provided metadata" }`
+| Condition | HTTP Status | Error Code | Message  |
+|-----------|-------------|------------|----------|
+| `fee_id` missing | 400 | `INVALID_REQUEST` | fee_id is required |
+| `fee_id` not found or inactive | 400 | `FEE_NOT_FOUND` | Fee type is not available |
+| Variable fee, amount missing | 400 | `AMOUNT_REQUIRED` | Amount is required for variable fees |
 
 ---
 
@@ -187,7 +193,7 @@ WHERE fee_id = :fee_id
 
 ### Error Handling
 
-| Condition | HTTP Status | Error Code | Message |
+| Condition | HTTP Status | Error Code | Message  |
 |-----------|-------------|------------|----------|
 | Fee not found or inactive | 400 | `FEE_NOT_FOUND` | Fee type is not available |
 | Variable fee, amount missing | 400 | `AMOUNT_REQUIRED` | Amount is required for variable fees |
@@ -262,6 +268,8 @@ After authorization is confirmed, the Payment Portal constructs the SOAP request
 | `tcs_app_id` | Derived from fees table | `USTC_PETITION` |
 | `agency_tracking_id` | Client's `transactionReferenceId` | `550e8400-...` |
 | `transaction_amount` | Fees table (fixed) OR client request (variable) | `60.00` |
+
+```xml
 <startOnlineCollection>
   <tcs_app_id>USTC_PETITION</tcs_app_id>
   <agency_tracking_id>550e8400-e29b-41d4-a716-446655440000</agency_tracking_id>
@@ -275,26 +283,26 @@ After authorization is confirmed, the Payment Portal constructs the SOAP request
 
 **Fixed Fee Flow:**
 ```
-Client Provides:    app_id, metadata, redirects
+Client Provides:    app_id, fee_id, metadata, redirects
       ↓
-PP Determines:      fee_id (from metadata)
+PP Validates:       fee_id exists and active
       ↓
 PP Looks Up:        tcs_app_id, is_variable=false, amount (from fees table)
       ↓
-PP Validates:       (app_id, tcs_app_id) authorization
+PP Authorizes:      (app_id, tcs_app_id) relationship
       ↓
 PP Sends to Pay.gov: tcs_app_id, amount (from table), redirects
 ```
 
 **Variable Fee Flow:**
 ```
-Client Provides:    app_id, metadata, amount, redirects
+Client Provides:    app_id, fee_id, amount, metadata, redirects
       ↓
-PP Determines:      fee_id (from metadata)
+PP Validates:       fee_id exists and active, amount > 0
       ↓
 PP Looks Up:        tcs_app_id, is_variable=true (from fees table)
       ↓
-PP Validates:       (app_id, tcs_app_id) authorization + amount > 0
+PP Authorizes:      (app_id, tcs_app_id) relationship
       ↓
 PP Sends to Pay.gov: tcs_app_id, amount (from client), redirects
 ```
@@ -335,7 +343,7 @@ For **local development** (acceptable for testing):
 ### Authorization Management
 
 **Who Owns Authorization Data:**
-- Authorization table is managed by Payment Portal adminis
+- Authorization table is managed by Payment Portal
 
 **Adding Client Authorization:**
 ```sql
@@ -361,15 +369,9 @@ INSERT INTO fees (fee_id, tcs_app_id, is_variable, amount, description, active)
 VALUES ('NEW_VARIABLE_FEE', 'USTC_VAR_APP', true, NULL, 'New Variable Fee Description', true);
 ```
 
-**2. Add Fee Determination Logic**
+**2. Update API Documentation**
 
-Update `src/useCases/determineFee.ts`:
-
-```typescript
-if (metadata.newFieldPresent) {
-  return 'NEW_FEE_TYPE';
-}
-```
+Add the new `fee_id` to your API documentation and client SDKs so clients know it's available.
 
 **3. Configure Client Authorization**
 
@@ -403,11 +405,11 @@ This design provides the following guarantees:
 
 ---
 
-## 10. Error Reference
+## 9. Error Reference
 
 | Error Code | HTTP Status | Description | Client Action |
 |------------|-------------|-------------|---------------|
-| `UNKNOWN_FEE_TYPE` | 400 | Metadata doesn't match any fee pattern | Verify metadata structure |
+| `FEE_NOT_FOUND` | 400 | Fee does not exist | Verify fee_id is correct |
 | `AMOUNT_REQUIRED` | 400 | Variable fee requires amount in request | Add amount field to request |
 | `INVALID_AMOUNT` | 400 | Amount is zero, negative, or invalid format | Provide positive decimal amount |
 | `UNAUTHORIZED_FEE` | 403 | Client not authorized for this fee | Request authorization |
