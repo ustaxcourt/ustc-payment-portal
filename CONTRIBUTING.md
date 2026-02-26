@@ -43,9 +43,9 @@ General requirements:
 - Example:
 ```
 
-feature/add-transaction-logging
-bugfix/fix-timeout-behavior
-docs/update-api-reference
+PAY-1234-add-transaction-logging
+PAY-1232-bugfix/fix-timeout-behavior
+PAY-1231-docs/update-api-reference
 
 ```
 
