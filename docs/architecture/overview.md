@@ -53,7 +53,7 @@ It mimics SOAP endpoints, returns mock tokens, and exposes a test UI that mimics
 2. Portal sends SOAP `startOnlineCollection` to Pay.gov (or test server)
 3. Pay.gov responds with a **token**
 4. Portal builds redirect URL
-5. Portal returns `{ token, redirectUrl }` to originating app
+5. Portal returns `{ token, paymentRedirect }` to originating app
 
 ### **2. User Completes or Cancels Payment**
 - User is redirected to Pay.gov HCP UI
