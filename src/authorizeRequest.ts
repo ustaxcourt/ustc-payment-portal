@@ -3,7 +3,7 @@ import { APIGatewayEventRequestContext } from "aws-lambda";
 
 /**
  * Mock IAM role ARN for local development when SigV4 is bypassed.
- * Exported so clientPermissionsClient can reference the same value without duplication.
+ * Exported so permissionsClient can reference the same value without duplication.
  */
 export const LOCAL_DEV_ROLE_ARN = "arn:aws:iam::000000000000:role/local-dev-role";
 

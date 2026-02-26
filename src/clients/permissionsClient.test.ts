@@ -3,7 +3,7 @@ import {
   getClientByRoleArn,
   clearPermissionsCache,
   ClientPermission,
-} from "./clientPermissionsClient";
+} from "./permissionsClient";
 import { getSecretString } from "./secretsClient";
 import { ServerError } from "../errors/serverError";
 
@@ -24,7 +24,7 @@ const validPermissions: ClientPermission[] = [
   },
 ];
 
-describe("clientPermissionsClient", () => {
+describe("permissionsClient", () => {
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {

@@ -37,8 +37,8 @@ jest.mock("./appContext", () => ({
   })),
 }));
 
-// Mock clientPermissionsClient to return valid permissions for test role
-jest.mock("./clients/clientPermissionsClient", () => ({
+// Mock permissionsClient to return valid permissions for test role
+jest.mock("./clients/permissionsClient", () => ({
   getClientByRoleArn: jest.fn().mockResolvedValue({
     clientName: "Test Client",
     clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",

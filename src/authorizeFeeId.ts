@@ -1,5 +1,5 @@
 import { ForbiddenError } from "./errors/forbidden";
-import { getClientByRoleArn } from "./clients/clientPermissionsClient";
+import { getClientByRoleArn } from "./clients/permissionsClient";
 
 /**
  * Validates that the client (identified by IAM role ARN) is registered and,
