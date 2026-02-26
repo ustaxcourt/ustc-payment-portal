@@ -7,7 +7,7 @@ The maintainer group is defined by the GitHub team that has Write/Admin access t
 
 ---
 
-## 🔹 Maintainer Team
+## Maintainer Team
 
 ### **Primary Maintainers**
 
@@ -29,7 +29,7 @@ This team is responsible for:
 
 ---
 
-## 🔹 Responsibilities & Expectations
+## Responsibilities & Expectations
 
 Maintainers are expected to:
 
@@ -41,19 +41,17 @@ Maintainers are expected to:
 
 ### 2. **Architecture & Direction**
 - Ensure changes comply with architectural goals
-- Approve or propose Architecture Decision Records (`/.adr-dir`)
+- Approve or propose Architecture Decision Records (`/docs/architecture/decisions or .adr-dir`)
 - Collaborate on system evolution and improvements
 
 ### 3. **Operational Excellence**
 - Validate staging before promotion
 - Manage production deployments and monitor rollout
-- Follow the incident playbook (`/docs/runbooks/incident-response.md`)
 - Participate in post‑incident reviews when required
 
 ### 4. **Security**
 - Guard against unsafe changes
 - Enforce secure coding standards
-- Coordinate vulnerability reporting per `/SECURITY.md`
 
 ### 5. **Documentation**
 - Maintain clear and current docs
@@ -61,11 +59,7 @@ Maintainers are expected to:
 
 ---
 
-## 🔹 How Maintainers Are Added or Removed
-
-Changes to maintainer membership follow the governance model defined in:
-
-**`/GOVERNANCE.md`**
+## How Maintainers Are Added or Removed
 
 Generally:
 
@@ -77,36 +71,7 @@ All updates should be performed through standard organization‑level processes.
 
 ---
 
-## 🔹 Contact & Escalation
-
-For urgent operational issues, follow:
-
-📄 `/docs/runbooks/incident-response.md`
-
-For security concerns, use the private reporting channels documented in:
-
-🔒 `/SECURITY.md`
-
-For general project questions or support, see:
-
-📄 `/SUPPORT.md`
-
----
-
-## 🔹 Updating This File
-
-Maintainers should update this document when:
-
-- The maintainer team changes
-- Responsibilities evolve
-- Governance rules are updated
-
-Consistency with `/GOVERNANCE.md` and the GitHub team roster should always be maintained.
-
----
-
 ## 🙏 Thank You
 
 The maintainers ensure the Payment Portal remains secure, dependable, and easy to integrate with.
 Your work keeps the payment ecosystem stable for all USTC applications.
-
