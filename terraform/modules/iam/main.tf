@@ -225,9 +225,9 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "secretsmanager:UntagResource"
         ],
         Resource = [
-            "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*",
-            "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
-          ]
+          "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*",
+          "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
+        ]
       },
       {
         Effect = "Allow", #iam role creation (for self-management)
@@ -330,6 +330,11 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
             "iam:AWSServiceName" = "rds.amazonaws.com"
           }
         }
+      },
+      {
+        Effect   = "Allow",
+        Action   = ["execute-api:Invoke"],
+        Resource = "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*"
       }
     ]
   })

@@ -202,6 +202,11 @@ jobs:
           aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/tcs-app-id" --query SecretString --output text | \
           aws secretsmanager put-secret-value --secret-id "$TCS_APP_ID_SECRET_ID" --secret-string file:///dev/stdin
 
+          # Copy client permissions (authorized IAM role ARNs for Lambda-level auth)
+          CLIENT_PERMISSIONS_SECRET_ID=$(terraform output -raw client_permissions_secret_id)
+          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/client-permissions" --query SecretString --output text | \
+          aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string file:///dev/stdin
+
           echo "All secret values copied successfully"
         working-directory: terraform/environments/dev
 

@@ -38,6 +38,11 @@ output "tcs_app_id_secret_id" {
   description = "Secret ID for TCS Application ID"
 }
 
+output "client_permissions_secret_id" {
+  value       = module.secrets.client_permissions_secret_id
+  description = "Secret ID for client permissions (authorized IAM role ARNs and allowed fee IDs)"
+}
+
 output "rds_endpoint" {
   value       = local.environment == "dev" ? module.rds[0].endpoint : null
   description = "RDS database endpoint (host:port)"
