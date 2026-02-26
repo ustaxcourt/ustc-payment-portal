@@ -82,4 +82,3 @@
 *   [ ] Self‑reviewed
 *   [ ] `npm test` passes locally
 *   [ ] CI green
-*   [ ] Requested reviewers make sense (CODEOWNERS will also apply)
