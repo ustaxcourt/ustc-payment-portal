@@ -7,15 +7,20 @@ This document captures the end-to-end interaction flow inferred from the provide
 ## 1) High-Level Flow
 
 ```mermaid
-flowchart TD
-    A[Client App] -->|POST /init\nInitPaymentRequest| B[USTC Payments API]
-    B -->|Creates session with Pay.gov\nreturns token & paymentRedirect| A
-    A -->|Redirect user to paymentRedirect| C[Pay.gov Hosted Form]
-    C -->|User submits payment| A
-    A -->|POST /process\nProcessPaymentRequest token| B
-    B -->|Finalize with Pay.gov\nPersist transactions| A
-    A -->|GET /details/:appId/:transactionReferenceId| B
-    B -->|Return paymentStatus + transactions| A
+sequenceDiagram
+  autonumber
+  participant Client as Client App
+  participant Portal as USTC Payments API
+  participant Paygov as Pay.gov Hosted Form
+
+  Client->>Portal: 1) POST /init (InitPaymentRequest)
+  Portal-->>Client: 2) token, paymentRedirect
+  Client->>Paygov: 3) Redirect user → paymentRedirect
+  Paygov-->>Client: 4) User submits payment (returns to app)
+  Client->>Portal: 5) POST /process (token)
+  Portal-->>Client: 6) Finalize with Pay.gov & persist
+  Client->>Portal: 7) GET /details/:appId/:transactionReferenceId
+  Portal-->>Client: 8) paymentStatus + transactions
 ```
 
 **Key points**
