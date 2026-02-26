@@ -14,3 +14,20 @@ coverage/
 dist/
 
 *.tgz
+
+# Docsify documents generated from root
+docs/CODE_OF_CONDUCT.md
+docs/CHANGELOG.md
+docs/CONTRIBUTING.md
+docs/COVERAGE.md
+docs/GOVERNANCE.md
+docs/LICENSE.md
+docs/MAINTAINERS.md
+docs/PUBLISHING.md
+docs/running-locally.md
+docs/README.md
+docs/SUPPORT.md
+docs/SECURITY.md
+
+# Mac
+.DS_Store

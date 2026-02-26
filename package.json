@@ -21,7 +21,9 @@
     "test:integration:dev": "NODE_ENV=local DOTENV_CONFIG_PATH=.env.dev npx jest ./src/test/integration/",
     "test:integration": "npx jest ./src/test/integration/",
     "ci:publish": "npm run build && changeset publish --provenance",
-    "generate:openapi": "ts-node src/openapi/generate.ts"
+    "generate:openapi": "ts-node src/openapi/generate.ts",
+    "docs:sync": "bash ./bin/copy-docs.sh",
+    "docs:serve": "npm run docs:sync && docsify serve docs"
   },
   "keywords": [],
   "author": "",
