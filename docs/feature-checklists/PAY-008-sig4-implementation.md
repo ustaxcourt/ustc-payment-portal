@@ -80,8 +80,8 @@ Because this is an open source project, authorized client ARNs cannot be hardcod
 
 Because this is an open source project, authorized client ARNs cannot live in the codebase. Instead, they are stored in AWS Secrets Manager as a JSON array and loaded at Lambda cold start.
 
-- [x] Define `ClientPermission` type in `src/clients/clientPermissionsClient.ts`: `{ clientName, clientRoleArn, allowedFeeIds }`
-- [x] Create `src/clients/clientPermissionsClient.ts`:
+- [x] Define `ClientPermission` type in `src/clients/clientPermissions.ts`: `{ clientName, clientRoleArn, allowedFeeIds }`
+- [x] Create `src/clients/clientPermissions.ts`:
   - [x] Fetch JSON from Secrets Manager using `CLIENT_PERMISSIONS_SECRET_ID` env var
   - [x] Cache the parsed result in memory with 5-minute TTL
   - [x] Implement ARN conversion before lookup — `userArn` arrives as `arn:aws:sts::ACCOUNT_ID:assumed-role/role-name/session-name` but Secrets Manager stores `arn:aws:iam::ACCOUNT_ID:role/role-name`; implemented as `convertAssumedRoleToIamArn` in `authorizeRequest.ts`
@@ -90,14 +90,14 @@ Because this is an open source project, authorized client ARNs cannot live in th
 - [x] Add a local dev entry to the cached list when `LOCAL_DEV=true`:
   - [x] `clientRoleArn: "arn:aws:iam::000000000000:role/local-dev-role"` matching the dummy ARN returned by `authorizeRequest`
   - [x] `allowedFeeIds: ["*"]` wildcard — allows any feeId in local dev
-- [x] Add unit tests for `clientPermissionsClient`
+- [x] Add unit tests for `clientPermissions`
 
 ### 2.3 Implement feeId Authorization
 
 > **Note:** Renamed from `authorizeAppId`/`tcsAppId` to `authorizeFeeId`/`feeId` for clarity.
 
 - [x] Create `src/authorizeFeeId.ts`:
-  - [x] Lookup client via `getClientByRoleArn` from `clientPermissionsClient`
+  - [x] Lookup client via `getClientByRoleArn` from `clientPermissions`
   - [x] Validate requested `feeId` is in `allowedFeeIds`
   - [x] Return 403 with message "Client not registered" if client not found
   - [x] Return 403 with message "Client not authorized for feeId" if feeId not allowed
@@ -114,7 +114,7 @@ Because this is an open source project, authorized client ARNs cannot live in th
 
 ### 2.5 Update Types
 
-- [x] `ClientPermission` type defined in `src/clients/clientPermissionsClient.ts`
+- [x] `ClientPermission` type defined in `src/clients/clientPermissions.ts`
 - [x] `AuthContext` type created in `src/types/AuthContext.ts`
 - [x] `AppContext.ts` — no changes needed
 
@@ -134,7 +134,7 @@ Because this is an open source project, authorized client ARNs cannot live in th
   - [x] Remove Bearer token test cases
   - [x] Add IAM principal extraction tests
   - [x] Test local dev bypass returns dummy ARN when `LOCAL_DEV=true`
-- [x] Create `src/clients/clientPermissionsClient.test.ts` (mock Secrets Manager):
+- [x] Create `src/clients/clientPermissions.test.ts` (mock Secrets Manager):
   - [x] Test `getClientByRoleArn` returns client when ARN matches
   - [x] Test `getClientByRoleArn` returns `null` for unknown ARN
   - [x] Test Secrets Manager fetch is cached (only called once across multiple lookups)
@@ -289,7 +289,7 @@ Because this is an open source project, authorized client ARNs cannot live in th
 
 - [x] Cache client permissions in Lambda memory to avoid per-request Secrets Manager calls
 - [x] Cache TTL set to 5 minutes (configurable via `CLIENT_PERMISSIONS_CACHE_TTL_MS` env var)
-- [x] In-memory cache implemented in `clientPermissionsClient.ts`
+- [x] In-memory cache implemented in `clientPermissions.ts`
 
 ### Local Development
 

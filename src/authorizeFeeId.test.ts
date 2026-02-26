@@ -4,9 +4,9 @@ import {
   getClientByRoleArn,
   clearPermissionsCache,
   ClientPermission,
-} from "./clients/clientPermissionsClient";
+} from "./clients/permissionsClient";
 
-jest.mock("./clients/clientPermissionsClient");
+jest.mock("./clients/permissionsClient");
 
 const mockGetClientByRoleArn = getClientByRoleArn as jest.MockedFunction<
   typeof getClientByRoleArn
