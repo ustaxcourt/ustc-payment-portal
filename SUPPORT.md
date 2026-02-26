@@ -21,7 +21,6 @@ For integration questions, please review:
 - `README.md`
 - `running-locally.md`
 - `/docs/architecture/overview.md`
-- `/docs/api/reference.md`
 
 These contain the most up‑to‑date technical guidance.
 
