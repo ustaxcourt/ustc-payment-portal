@@ -181,7 +181,6 @@ A cleanup schedule (e.g., monthly) keeps the environment secure and tidy.
 *   `/docs/runbooks/incident-response.md`
 *   `/docs/security/threat-model.md`
 *   `/docs/architecture/overview.md`
-*   `/docs/api/reference.md`
 *   `/SECURITY.md`
 
 ***

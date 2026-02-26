@@ -114,7 +114,6 @@ Stakeholders provide input but do not have merge rights unless they are maintain
    - Breaking changes/governance: Full consensus.
 
 4. **Execution**
-   - Merge following `CODEOWNERS` rules.
    - Update documentation and ADRs as needed.
 
 5. **Release**
@@ -123,27 +122,7 @@ Stakeholders provide input but do not have merge rights unless they are maintain
 
 ---
 
-## 4. Repository Ownership
-
-Repository ownership is defined in:
-
-**`/CODEOWNERS`**
-
-The global owner is:
-
-```
-@ustaxcourt/payment-portal-team
-```
-
-This ensures:
-
-- Reviews request the correct maintainers automatically
-- Protected branches cannot be merged without maintainer approval
-- Responsibility is clear for each part of the repository
-
----
-
-## 5. Architecture Decisions (ADRs)
+## 4. Architecture Decisions (ADRs)
 
 Major decisions must be recorded as ADRs in:
 
@@ -163,7 +142,7 @@ ADRs require maintainer consensus for approval.
 
 ---
 
-## 6. Release Governance
+## 5. Release Governance
 
 Releases follow the process defined in:
 
@@ -180,7 +159,7 @@ Maintainers are responsible for release safety.
 
 ---
 
-## 7. Security Governance
+## 6. Security Governance
 
 Security policies and procedures are defined in:
 
@@ -197,20 +176,20 @@ Security-sensitive changes must:
 
 ---
 
-## 8. Modifying Governance
+## 7. Modifying Governance
 
 Changes to this governance model require:
 
 - A PR describing the modification
 - Review by all maintainers
 - Full maintainer consensus
-- Updates to related documents (`CONTRIBUTING.md`, `CODEOWNERS`, etc.)
+- Updates to related documents (`CONTRIBUTING.md`, etc.)
 
 No governance changes may be merged without these approvals.
 
 ---
 
-## 9. Conflict Resolution
+## 8. Conflict Resolution
 
 If disagreement arises:
 
@@ -223,7 +202,7 @@ If disagreement arises:
 
 ---
 
-## 10. Thank You
+## 9. Thank You
 
 This project depends on clear, collaborative, and responsible governance.
 Thank you to all maintainers and contributors who help keep the USTC Payment Portal secure, stable, and well‑maintained.

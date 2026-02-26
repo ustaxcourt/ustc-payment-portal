@@ -194,7 +194,6 @@ Within 24–48 hours:
 3.  Update:
     *   `/docs/architecture/overview.md` (if workflows changed)
     *   `/docs/security/threat-model.md` (if risk surface changed)
-    *   `/docs/api/reference.md` (if contract-level behavior adjusted)
 
 ***
 
@@ -244,7 +243,6 @@ Escalate if:
 *   `/SECURITY.md`
 *   `/CONTRIBUTING.md`
 *   `/docs/architecture/overview.md`
-*   `/docs/api/reference.md`
 *   `/docs/security/threat-model.md`
 *   `/docs/deployment/promotions.md`
 

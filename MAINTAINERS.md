@@ -72,7 +72,6 @@ Generally:
 - New maintainers must be added to the
   `@ustaxcourt/payment-portal-team`
 - Departing maintainers should be removed from the same team
-- Any changes should be reflected in CODEOWNERS if needed
 
 All updates should be performed through standard organization‑level processes.
 
@@ -102,7 +101,7 @@ Maintainers should update this document when:
 - Responsibilities evolve
 - Governance rules are updated
 
-Consistency with `CODEOWNERS`, `/GOVERNANCE.md`, and the GitHub team roster should always be maintained.
+Consistency with `/GOVERNANCE.md` and the GitHub team roster should always be maintained.
 
 ---
 
