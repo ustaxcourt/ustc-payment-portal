@@ -165,17 +165,14 @@ jobs:
           # Check if outputs exist before trying to read them
           if terraform output api_gateway_url &>/dev/null; then
             API_URL=$(terraform output -raw api_gateway_url)
-            SECRET_ID=$(terraform output -raw api_access_token_secret_id)
             TCS_APP_ID_SECRET_ID=$(terraform output -raw tcs_app_id_secret_id)
-            
+
             # Validate outputs are actual values (not warning text)
             if [[ "$API_URL" == https://* ]]; then
               echo "api_url=$API_URL" >> $GITHUB_OUTPUT
-              echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
               echo "tcs_app_id_secret_id=$TCS_APP_ID_SECRET_ID" >> $GITHUB_OUTPUT
               echo "has_outputs=true" >> $GITHUB_OUTPUT
               echo "API Gateway URL: $API_URL"
-              echo "API Access Token Secret ID: $SECRET_ID"
             else
               echo "has_outputs=false" >> $GITHUB_OUTPUT
               echo "Outputs exist but appear invalid; skipping integration tests."
@@ -189,10 +186,6 @@ jobs:
         if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' && github.event.pull_request.number }}
         run: |
           echo "Copying secret values from dev to PR environment..."
-
-          # Copy API access token
-          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/access-token" --query SecretString --output text | \
-          aws secretsmanager put-secret-value --secret-id "${{ steps.tf_outputs.outputs.secret_id }}" --secret-string file:///dev/stdin
 
           # Copy certificate passphrase
           CERT_SECRET_ID=$(terraform output -raw cert_passphrase_secret_id)
@@ -218,7 +211,6 @@ jobs:
           NODE_ENV: test
           TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
           BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
-          API_ACCESS_TOKEN_SECRET_ID: ${{ steps.tf_outputs.outputs.secret_id }}
           TCS_APP_ID: ${{ steps.tf_outputs.outputs.tcs_app_id_secret_id }}
         run: |
           npm ci
