@@ -9,7 +9,7 @@ describe("handleError", () => {
     };
     expect(handleError(error)).toMatchObject({
       statusCode: 403,
-      body: "You are not authorized to view this test",
+      body: JSON.stringify({ message: "You are not authorized to view this test" }),
     });
   });
 

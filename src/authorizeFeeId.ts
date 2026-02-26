@@ -2,21 +2,27 @@ import { ForbiddenError } from "./errors/forbidden";
 import { getClientByRoleArn } from "./clients/clientPermissionsClient";
 
 /**
- * Validates that the client (identified by IAM role ARN) is authorized
- * to access the requested feeId.
+ * Validates that the client (identified by IAM role ARN) is registered and,
+ * when a feeId is provided, authorized to access that fee type.
  *
  * @param roleArn - The IAM role ARN of the client (from authorizeRequest)
- * @param feeId - The feeId being requested
+ * @param feeId - The feeId being requested. Omit for read-only endpoints where
+ *   IAM registration check is sufficient (e.g. getDetails).
  * @throws ForbiddenError if client is not registered or not authorized for the feeId
  */
 export const authorizeFeeId = async (
   roleArn: string,
-  feeId: string
+  feeId?: string
 ): Promise<void> => {
   const client = await getClientByRoleArn(roleArn);
 
   if (!client) {
     throw new ForbiddenError("Client not registered");
+  }
+
+  // No feeId provided — read-only endpoint, registration check above is sufficient.
+  if (feeId === undefined) {
+    return;
   }
 
   // Check for wildcard permission (used in local dev)

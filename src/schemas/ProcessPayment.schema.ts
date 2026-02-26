@@ -2,6 +2,7 @@ import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 import { PaymentStatusSchema } from "./PaymentStatus.schema";
 import { TransactionRecordSummarySchema } from "./TransactionRecord.schema";
+import { FeeIdSchema } from "./FeeId.schema";
 
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);
@@ -16,6 +17,7 @@ export const ProcessPaymentRequestSchema = z
       description: "The payment token received from Pay.gov after user completes payment form",
       example: "abc123token",
     }),
+    feeId: FeeIdSchema,
   })
   .openapi("ProcessPaymentRequest");
 
