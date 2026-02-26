@@ -1,6 +1,6 @@
 import { getSecretString } from "./secretsClient";
 import { ServerError } from "../errors/serverError";
-import { LOCAL_DEV_ROLE_ARN } from "../authorizeRequest";
+import { LOCAL_DEV_ROLE_ARN } from "../extractCallerArn";
 
 /**
  * Represents a client's permissions for accessing the Payment Portal.

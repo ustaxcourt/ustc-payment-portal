@@ -35,7 +35,7 @@ The role needs `execute-api:Invoke` permission on the Payment Portal API Gateway
 
 ## Signing Requests with SigV4
 
-Every HTTP request to the Payment Portal must be signed. Here is a reference implementation using the AWS SDK for JavaScript (v3):
+Every HTTP request to the Payment Portal must be signed. Here is a reference implementation using the AWS SDK for JavaScript (AWS SDK v3):
 
 ```typescript
 import { SignatureV4 } from "@aws-sdk/signature-v4";

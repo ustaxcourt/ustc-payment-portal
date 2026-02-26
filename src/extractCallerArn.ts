@@ -34,7 +34,7 @@ export const convertAssumedRoleToIamArn = (assumedRoleArn: string): string => {
  *
  * In deployed environments, API Gateway validates SigV4 signatures before
  * invoking Lambda. This function extracts the IAM identity for app-level
- * authorization (client lookup, tcsAppId validation).
+ * authorization (client lookup, feeId validation).
  *
  * In local development (LOCAL_DEV=true), returns a mock IAM role ARN.
  *
@@ -42,7 +42,7 @@ export const convertAssumedRoleToIamArn = (assumedRoleArn: string): string => {
  * @returns The IAM role ARN for client lookup
  * @throws ForbiddenError if IAM principal is missing or invalid
  */
-export const authorizeRequest = (
+export const extractCallerArn = (
   requestContext?: APIGatewayEventRequestContext
 ): string => {
   // Bypass for local development

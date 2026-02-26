@@ -4,8 +4,8 @@ import {
   APIGatewayEventRequestContext,
 } from "aws-lambda";
 import { createAppContext } from "./appContext";
-import { authorizeRequest } from "./authorizeRequest";
-import { authorizeFeeId } from "./authorizeFeeId";
+import { extractCallerArn } from "./extractCallerArn";
+import { authorizeClient } from "./authorizeClient";
 import { handleError } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
 import { GetDetails } from "./useCases/getDetails";
@@ -23,8 +23,8 @@ const lambdaHandler = async (
   feeId?: string
 ): Promise<APIGatewayProxyResult> => {
   try {
-    const roleArn = authorizeRequest(requestContext);
-    await authorizeFeeId(roleArn, feeId);
+    const roleArn = extractCallerArn(requestContext);
+    await authorizeClient(roleArn, feeId);
     const result = await callback(appContext, request);
     return {
       statusCode: 200,
@@ -65,7 +65,6 @@ export const processPaymentHandler = (
     request,
     event.requestContext,
     appContext.getUseCases().processPayment,
-    request.feeId
   );
 };
 

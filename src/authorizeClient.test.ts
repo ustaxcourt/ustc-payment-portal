@@ -1,4 +1,4 @@
-import { authorizeFeeId } from "./authorizeFeeId";
+import { authorizeClient } from "./authorizeClient";
 import { ForbiddenError } from "./errors/forbidden";
 import {
   getClientByRoleArn,
@@ -24,7 +24,7 @@ const localDevClient: ClientPermission = {
   allowedFeeIds: ["*"],
 };
 
-describe("authorizeFeeId", () => {
+describe("authorizeClient", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -34,7 +34,7 @@ describe("authorizeFeeId", () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
 
       await expect(
-        authorizeFeeId(dawsonClient.clientRoleArn)
+        authorizeClient(dawsonClient.clientRoleArn)
       ).resolves.not.toThrow();
     });
 
@@ -42,7 +42,7 @@ describe("authorizeFeeId", () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(null);
 
       await expect(
-        authorizeFeeId("arn:aws:iam::111111111111:role/unknown")
+        authorizeClient("arn:aws:iam::111111111111:role/unknown")
       ).rejects.toThrow("Client not registered");
     });
   });
@@ -52,7 +52,7 @@ describe("authorizeFeeId", () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
 
       await expect(
-        authorizeFeeId(dawsonClient.clientRoleArn, "PETITIONS_FILING_FEE")
+        authorizeClient(dawsonClient.clientRoleArn, "PETITIONS_FILING_FEE")
       ).resolves.not.toThrow();
     });
 
@@ -60,11 +60,11 @@ describe("authorizeFeeId", () => {
       mockGetClientByRoleArn.mockResolvedValue(dawsonClient);
 
       await expect(
-        authorizeFeeId(dawsonClient.clientRoleArn, "PETITIONS_FILING_FEE")
+        authorizeClient(dawsonClient.clientRoleArn, "PETITIONS_FILING_FEE")
       ).resolves.not.toThrow();
 
       await expect(
-        authorizeFeeId(dawsonClient.clientRoleArn, "ADMISSIONS_FEE")
+        authorizeClient(dawsonClient.clientRoleArn, "ADMISSIONS_FEE")
       ).resolves.not.toThrow();
     });
 
@@ -72,7 +72,7 @@ describe("authorizeFeeId", () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(localDevClient);
 
       await expect(
-        authorizeFeeId(localDevClient.clientRoleArn, "ANY_FEE_ID")
+        authorizeClient(localDevClient.clientRoleArn, "ANY_FEE_ID")
       ).resolves.not.toThrow();
     });
   });
@@ -82,11 +82,11 @@ describe("authorizeFeeId", () => {
       mockGetClientByRoleArn.mockResolvedValue(null);
 
       await expect(
-        authorizeFeeId("arn:aws:iam::111111111111:role/unknown", "SOME_FEE")
+        authorizeClient("arn:aws:iam::111111111111:role/unknown", "SOME_FEE")
       ).rejects.toThrow(ForbiddenError);
 
       await expect(
-        authorizeFeeId("arn:aws:iam::111111111111:role/unknown", "SOME_FEE")
+        authorizeClient("arn:aws:iam::111111111111:role/unknown", "SOME_FEE")
       ).rejects.toThrow("Client not registered");
     });
   });
@@ -96,11 +96,11 @@ describe("authorizeFeeId", () => {
       mockGetClientByRoleArn.mockResolvedValue(dawsonClient);
 
       await expect(
-        authorizeFeeId(dawsonClient.clientRoleArn, "UNAUTHORIZED_FEE")
+        authorizeClient(dawsonClient.clientRoleArn, "UNAUTHORIZED_FEE")
       ).rejects.toThrow(ForbiddenError);
 
       await expect(
-        authorizeFeeId(dawsonClient.clientRoleArn, "UNAUTHORIZED_FEE")
+        authorizeClient(dawsonClient.clientRoleArn, "UNAUTHORIZED_FEE")
       ).rejects.toThrow("Client not authorized for feeId");
     });
 
@@ -109,7 +109,7 @@ describe("authorizeFeeId", () => {
 
       // Case sensitive
       await expect(
-        authorizeFeeId(dawsonClient.clientRoleArn, "petitions_filing_fee")
+        authorizeClient(dawsonClient.clientRoleArn, "petitions_filing_fee")
       ).rejects.toThrow(ForbiddenError);
     });
   });
