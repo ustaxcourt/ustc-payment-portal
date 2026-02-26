@@ -1,5 +1,5 @@
 import { SignatureV4 } from "@smithy/signature-v4";
-import { Sha256 } from "@smithy/sha256-js";
+import { Sha256 } from "@aws-crypto/sha256-js";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { HttpRequest } from "@smithy/protocol-http";
 
