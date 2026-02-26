@@ -159,11 +159,14 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       },
       {
         Effect = "Allow",
-        Action = ["apigateway:GET",
+        Action = [
+          "apigateway:GET",
           "apigateway:POST",
           "apigateway:PUT",
           "apigateway:PATCH",
-        "apigateway:DELETE"],
+          "apigateway:DELETE",
+          "apigateway:UpdateRestApiPolicy"
+        ],
         Resource = [
           "arn:aws:apigateway:${local.aws_region}::/restapis*",
           "arn:aws:apigateway:${local.aws_region}::/deployments*",
