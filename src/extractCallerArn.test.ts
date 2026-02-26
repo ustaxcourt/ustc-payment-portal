@@ -1,7 +1,7 @@
 import {
-  authorizeRequest,
+  extractCallerArn,
   convertAssumedRoleToIamArn,
-} from "./authorizeRequest";
+} from "./extractCallerArn";
 import { ForbiddenError } from "./errors/forbidden";
 import { APIGatewayEventRequestContext } from "aws-lambda";
 
@@ -25,7 +25,7 @@ const createMockRequestContext = (
     stage: "test",
   }) as APIGatewayEventRequestContext;
 
-describe("authorizeRequest", () => {
+describe("extractCallerArn", () => {
   const validAssumedRoleArn =
     "arn:aws:sts::123456789012:assumed-role/dawson-client/session-abc123";
   const expectedIamRoleArn = "arn:aws:iam::123456789012:role/dawson-client";
@@ -45,7 +45,7 @@ describe("authorizeRequest", () => {
     it("returns converted IAM role ARN", () => {
       const requestContext = createMockRequestContext(validAssumedRoleArn);
 
-      const result = authorizeRequest(requestContext);
+      const result = extractCallerArn(requestContext);
 
       expect(result).toBe(expectedIamRoleArn);
     });
@@ -55,7 +55,7 @@ describe("authorizeRequest", () => {
         "arn:aws:sts::999888777666:assumed-role/other-app-role/my-session"
       );
 
-      const result = authorizeRequest(requestContext);
+      const result = extractCallerArn(requestContext);
 
       expect(result).toBe("arn:aws:iam::999888777666:role/other-app-role");
     });
@@ -63,15 +63,15 @@ describe("authorizeRequest", () => {
 
   describe("with missing or invalid IAM principal", () => {
     it("throws ForbiddenError when requestContext is undefined", () => {
-      expect(() => authorizeRequest(undefined)).toThrow(ForbiddenError);
-      expect(() => authorizeRequest(undefined)).toThrow("Missing IAM principal");
+      expect(() => extractCallerArn(undefined)).toThrow(ForbiddenError);
+      expect(() => extractCallerArn(undefined)).toThrow("Missing IAM principal");
     });
 
     it("throws ForbiddenError when identity is undefined", () => {
       const requestContext = {} as APIGatewayEventRequestContext;
 
-      expect(() => authorizeRequest(requestContext)).toThrow(ForbiddenError);
-      expect(() => authorizeRequest(requestContext)).toThrow(
+      expect(() => extractCallerArn(requestContext)).toThrow(ForbiddenError);
+      expect(() => extractCallerArn(requestContext)).toThrow(
         "Missing IAM principal"
       );
     });
@@ -79,14 +79,14 @@ describe("authorizeRequest", () => {
     it("throws ForbiddenError when userArn is null", () => {
       const requestContext = createMockRequestContext(null);
 
-      expect(() => authorizeRequest(requestContext)).toThrow(ForbiddenError);
+      expect(() => extractCallerArn(requestContext)).toThrow(ForbiddenError);
     });
 
     it("throws ForbiddenError when userArn is invalid format", () => {
       const requestContext = createMockRequestContext("not-a-valid-arn");
 
-      expect(() => authorizeRequest(requestContext)).toThrow(ForbiddenError);
-      expect(() => authorizeRequest(requestContext)).toThrow(
+      expect(() => extractCallerArn(requestContext)).toThrow(ForbiddenError);
+      expect(() => extractCallerArn(requestContext)).toThrow(
         "Invalid IAM principal format"
       );
     });
@@ -96,7 +96,7 @@ describe("authorizeRequest", () => {
     it("returns mock IAM role ARN when LOCAL_DEV is true", () => {
       process.env.LOCAL_DEV = "true";
 
-      const result = authorizeRequest(undefined);
+      const result = extractCallerArn(undefined);
 
       expect(result).toBe("arn:aws:iam::000000000000:role/local-dev-role");
     });
@@ -104,7 +104,7 @@ describe("authorizeRequest", () => {
     it("does not bypass when LOCAL_DEV is false", () => {
       process.env.LOCAL_DEV = "false";
 
-      expect(() => authorizeRequest(undefined)).toThrow(ForbiddenError);
+      expect(() => extractCallerArn(undefined)).toThrow(ForbiddenError);
     });
   });
 });

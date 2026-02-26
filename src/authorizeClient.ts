@@ -5,12 +5,11 @@ import { getClientByRoleArn } from "./clients/permissionsClient";
  * Validates that the client (identified by IAM role ARN) is registered and,
  * when a feeId is provided, authorized to access that fee type.
  *
- * @param roleArn - The IAM role ARN of the client (from authorizeRequest)
- * @param feeId - The feeId being requested. Omit for read-only endpoints where
- *   IAM registration check is sufficient (e.g. getDetails).
+ * @param roleArn - The IAM role ARN of the client (from extractCallerArn)
+ * @param feeId - The feeId being requested. Only required for initPayment.
  * @throws ForbiddenError if client is not registered or not authorized for the feeId
  */
-export const authorizeFeeId = async (
+export const authorizeClient = async (
   roleArn: string,
   feeId?: string
 ): Promise<void> => {
@@ -20,7 +19,7 @@ export const authorizeFeeId = async (
     throw new ForbiddenError("Client not registered");
   }
 
-  // No feeId provided — read-only endpoint, registration check above is sufficient.
+  // Exit case if there's no feeId provided - only initPayment requires feeId authorization
   if (feeId === undefined) {
     return;
   }
@@ -34,4 +33,3 @@ export const authorizeFeeId = async (
     throw new ForbiddenError("Client not authorized for feeId");
   }
 };
-
