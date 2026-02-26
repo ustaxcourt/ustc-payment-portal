@@ -29,6 +29,24 @@ describe("authorizeFeeId", () => {
     jest.clearAllMocks();
   });
 
+  describe("with no feeId (read-only endpoint)", () => {
+    it("does not throw when feeId is omitted — only registration check applies", async () => {
+      mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
+
+      await expect(
+        authorizeFeeId(dawsonClient.clientRoleArn)
+      ).resolves.not.toThrow();
+    });
+
+    it("throws when client is unregistered even without a feeId", async () => {
+      mockGetClientByRoleArn.mockResolvedValueOnce(null);
+
+      await expect(
+        authorizeFeeId("arn:aws:iam::111111111111:role/unknown")
+      ).rejects.toThrow("Client not registered");
+    });
+  });
+
   describe("with valid client and feeId", () => {
     it("does not throw when client is authorized for the feeId", async () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);

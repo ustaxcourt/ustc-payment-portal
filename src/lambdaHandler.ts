@@ -19,11 +19,12 @@ type LambdaHandler = ProcessPayment | InitPayment | GetDetails;
 const lambdaHandler = async (
   request: any,
   requestContext: APIGatewayEventRequestContext,
-  callback: LambdaHandler
+  callback: LambdaHandler,
+  feeId?: string
 ): Promise<APIGatewayProxyResult> => {
   try {
     const roleArn = authorizeRequest(requestContext);
-    await authorizeFeeId(roleArn, request.feeId);
+    await authorizeFeeId(roleArn, feeId);
     const result = await callback(appContext, request);
     return {
       statusCode: 200,
@@ -38,7 +39,7 @@ export const initPaymentHandler = (
   event: APIGatewayEvent
 ): Promise<APIGatewayProxyResult> => {
   if (!event.body) {
-    throw new InvalidRequestError("missing body");
+    return Promise.resolve(handleError(new InvalidRequestError("missing body")));
   }
 
   const request = JSON.parse(event.body);
@@ -46,7 +47,8 @@ export const initPaymentHandler = (
   return lambdaHandler(
     request,
     event.requestContext,
-    appContext.getUseCases().initPayment
+    appContext.getUseCases().initPayment,
+    request.feeId
   );
 };
 
@@ -54,7 +56,7 @@ export const processPaymentHandler = (
   event: APIGatewayEvent
 ): Promise<APIGatewayProxyResult> => {
   if (!event.body) {
-    throw new InvalidRequestError("missing body");
+    return Promise.resolve(handleError(new InvalidRequestError("missing body")));
   }
 
   const request = JSON.parse(event.body);
@@ -62,7 +64,8 @@ export const processPaymentHandler = (
   return lambdaHandler(
     request,
     event.requestContext,
-    appContext.getUseCases().processPayment
+    appContext.getUseCases().processPayment,
+    request.feeId
   );
 };
 
@@ -70,9 +73,12 @@ export const getDetailsHandler = (
   event: APIGatewayEvent
 ): Promise<APIGatewayProxyResult> => {
   if (!event.pathParameters) {
-    throw new InvalidRequestError("missing required information");
+    return Promise.resolve(
+      handleError(new InvalidRequestError("missing required information"))
+    );
   }
 
+  // No feeId for read-only endpoint — IAM registration check is sufficient.
   return lambdaHandler(
     event.pathParameters,
     event.requestContext,

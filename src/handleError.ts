@@ -5,7 +5,7 @@ export const handleError = (err: any) => {
   if (err.statusCode && err.statusCode < 500) {
     return {
       statusCode: err.statusCode,
-      body: err.message,
+      body: JSON.stringify({ message: err.message }),
     };
   } else if (err instanceof ValidationError) {
     return {

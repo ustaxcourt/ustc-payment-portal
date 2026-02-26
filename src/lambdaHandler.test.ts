@@ -4,7 +4,6 @@ import {
   getDetailsHandler,
 } from "./lambdaHandler";
 import { APIGatewayEvent } from "aws-lambda";
-import { InvalidRequestError } from "./errors/invalidRequest";
 
 // Mock the appContext module
 jest.mock("./appContext", () => ({
@@ -43,7 +42,7 @@ jest.mock("./clients/clientPermissionsClient", () => ({
   getClientByRoleArn: jest.fn().mockResolvedValue({
     clientName: "Test Client",
     clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
-    allowedFeeIds: ["*"], // Allow all feeIds in tests
+    allowedFeeIds: ["PETITIONS_FILING_FEE", "ADMISSIONS_FEE"],
   }),
   clearPermissionsCache: jest.fn(),
 }));
@@ -79,6 +78,7 @@ describe("lambdaHandler", () => {
           urlCancel: "http://cancel.com",
           urlSuccess: "http://success.com",
           agencyTrackingId: "agency-123",
+          feeId: "PETITIONS_FILING_FEE",
         }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
@@ -90,29 +90,33 @@ describe("lambdaHandler", () => {
       expect(JSON.parse(result.body)).toHaveProperty("token");
     });
 
-    it("returns 400 error when body is missing", () => {
+    it("returns 400 with JSON body when body is missing", async () => {
       const event = {
         body: null,
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
 
-      expect(() => initPaymentHandler(event)).toThrow(InvalidRequestError);
+      const result = await initPaymentHandler(event);
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body)).toHaveProperty("message");
     });
 
-    it("returns 400 error when body is undefined", () => {
+    it("returns 400 with JSON body when body is undefined", async () => {
       const event = {
         body: undefined,
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
 
-      expect(() => initPaymentHandler(event)).toThrow(InvalidRequestError);
+      const result = await initPaymentHandler(event);
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body)).toHaveProperty("message");
     });
 
-    it("handles authorization errors when IAM principal is missing", async () => {
+    it("returns 403 when IAM principal is missing", async () => {
       const event = {
-        body: JSON.stringify({ test: "data" }),
+        body: JSON.stringify({ feeId: "PETITIONS_FILING_FEE" }),
         headers: mockHeaders,
         requestContext: {
           ...mockRequestContext,
@@ -124,6 +128,19 @@ describe("lambdaHandler", () => {
 
       expect(result.statusCode).toBe(403);
     });
+
+    it("returns 403 when feeId is not in client allowedFeeIds", async () => {
+      const event = {
+        body: JSON.stringify({ feeId: "UNAUTHORIZED_FEE" }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await initPaymentHandler(event);
+
+      expect(result.statusCode).toBe(403);
+      expect(JSON.parse(result.body).message).toBe("Client not authorized for feeId");
+    });
   });
 
   describe("processPaymentHandler", () => {
@@ -132,6 +149,7 @@ describe("lambdaHandler", () => {
         body: JSON.stringify({
           appId: "test-app",
           token: "payment-token",
+          feeId: "PETITIONS_FILING_FEE",
         }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
@@ -145,19 +163,21 @@ describe("lambdaHandler", () => {
       expect(body).toHaveProperty("transactionStatus");
     });
 
-    it("returns 400 error when body is missing", () => {
+    it("returns 400 with JSON body when body is missing", async () => {
       const event = {
         body: null,
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
 
-      expect(() => processPaymentHandler(event)).toThrow(InvalidRequestError);
+      const result = await processPaymentHandler(event);
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body)).toHaveProperty("message");
     });
 
-    it("handles authorization errors when IAM principal is invalid", async () => {
+    it("returns 403 when IAM principal is invalid", async () => {
       const event = {
-        body: JSON.stringify({ test: "data" }),
+        body: JSON.stringify({ feeId: "PETITIONS_FILING_FEE" }),
         headers: mockHeaders,
         requestContext: {
           ...mockRequestContext,
@@ -174,7 +194,7 @@ describe("lambdaHandler", () => {
   });
 
   describe("getDetailsHandler", () => {
-    it("returns 200 with transaction details on successful request", async () => {
+    it("returns 200 without feeId in path params — IAM registration check is sufficient", async () => {
       const event = {
         pathParameters: {
           appId: "test-app",
@@ -192,27 +212,31 @@ describe("lambdaHandler", () => {
       expect(body).toHaveProperty("transactionStatus");
     });
 
-    it("returns 400 error when pathParameters are missing", () => {
+    it("returns 400 with JSON body when pathParameters are missing", async () => {
       const event = {
         pathParameters: null,
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
 
-      expect(() => getDetailsHandler(event)).toThrow(InvalidRequestError);
+      const result = await getDetailsHandler(event);
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body)).toHaveProperty("message");
     });
 
-    it("returns 400 error when pathParameters are undefined", () => {
+    it("returns 400 with JSON body when pathParameters are undefined", async () => {
       const event: APIGatewayEvent = {
         pathParameters: undefined,
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
 
-      expect(() => getDetailsHandler(event)).toThrow(InvalidRequestError);
+      const result = await getDetailsHandler(event);
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body)).toHaveProperty("message");
     });
 
-    it("handles authorization errors when IAM principal is missing", async () => {
+    it("returns 403 when IAM principal is missing", async () => {
       const event = {
         pathParameters: { appId: "test", payGovTrackingId: "123" },
         headers: mockHeaders,
