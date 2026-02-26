@@ -184,6 +184,20 @@ resource "aws_api_gateway_stage" "stage" {
   tags          = var.common_tags
 }
 
+# Throttling — protects against runaway clients and abuse.
+# 10 requests/second sustained, burst of 20.
+resource "aws_api_gateway_method_settings" "all" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  stage_name  = aws_api_gateway_stage.stage.stage_name
+  method_path = "*/*"
+
+  settings {
+    throttling_burst_limit = 20
+    throttling_rate_limit  = 10
+    metrics_enabled        = true
+  }
+}
+
 #These should go in api gateway
 resource "aws_lambda_permission" "init_permission" {
   statement_id  = "AllowAPIGatewayInvokeInit"
