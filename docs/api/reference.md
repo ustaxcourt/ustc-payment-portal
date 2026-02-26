@@ -1,373 +1,309 @@
 # USTC Payment Portal — API Reference
 
-> **Status:** Stable (v1).
+> **Status:** 0.1.3
 > **Audience:** USTC internal applications integrating with the Payment Portal.
 > **Related repos:**
->
-> *   **[USTC Payment Portal](https://github.com/ustaxcourt)**
-> *   **[USTC Pay Test Server](https://github.com/ustaxcourt/ustc-pay-gov-test-server)**
+> - **[USTC Payment Portal](https://github.com/ustaxcourt)**
+> - **[USTC Pay Test Server](https://github.com/ustaxcourt/ustc-pay-gov-test-server)**
 
-The Payment Portal provides a REST API that initiates and completes Pay.gov Hosted Collection Pages (HCP) transactions on behalf of USTC applications. The portal abstracts SOAP calls, token handling, and redirect URL generation.
+The Payment Portal provides a REST API that initiates and completes Pay.gov Hosted Collection Pages (HCP) transactions on behalf of USTC applications. The portal abstracts SOAP calls, token handling, redirect URL generation, and status lookups.
 
-***
+---
 
 ## Table of Contents
 
-*   \#base-urls--environments
-*   \#authentication
-*   \#idempotency
-*   \#versioning
-*   \#rate-limits--timeouts
-*   \#errors
-*   \#endpoints
-    *   \#post-v1transactionsinitiate
-    *   \#post-v1transactionscomplete
-    *   \#get-v1health
-*   \#callback-urls
-*   \#field-reference
-*   \#examples
-*   \#changelog
+- #servers
+- #authentication-aws-sigv4
+- #idempotency
+- #errors
+- #endpoints
+  - #post-init
+  - #get-detailsappidtransactionreferenceid
+  - #post-process
+- #schemas
+- #examples
+- #changelog
 
-***
+---
 
-## Base URLs & Environments
+## Servers
 
-> Replace hostnames if they differ from your deployed infra.
+| Environment | Base URL                       | Description           |
+|-------------|--------------------------------|-----------------------|
+| Local       | `http://localhost:8080`        | Local development     |
+| Dev         | `https://dev-payments.ustaxcourt.gov` | Development           |
+| Staging     | `https://stg-payments.ustaxcourt.gov` | Test/Staging          |
+| Production  | `https://payments.ustaxcourt.gov`     | Production            |
 
-| Environment | Base URL                                 | Notes                                                               |
-| ----------- | ---------------------------------------- | ------------------------------------------------------------------- |
-| Local       | `http://localhost:PORT`                  | Use with the **USTC Pay Test Server** for end‑to‑end local testing. |
-| Development | `https://payment-portal.dev.example.gov` | Points to dev Pay.gov mock or dev HCP, depending on config.         |
-| Staging     | `https://payment-portal.stg.example.gov` | Mirrors production settings for pre‑release validation.             |
-| Production  | `https://payment-portal.example.gov`     | Live environment; **do not** test here.                             |
+> Use the correct base URL per environment when calling the endpoints above.
 
-> See `/docs/deployment/promotions.md` for promotion flow and environment details. **TODO:** update actual hostnames and ports.
+---
 
-***
+## Authentication (AWS SigV4)
 
-## Authentication
+All requests must be **signed with AWS Signature Version 4 (SigV4)** using IAM credentials permitted to invoke this API. Include:
 
-All endpoints require a **Bearer token** in the `Authorization` header.
+- `Authorization: Bearer AWS4-HMAC-SHA256 ...`
+- `X-Amz-Date: YYYYMMDDThhmmssZ`
+- `X-Amz-Security-Token: <session token>` (when using temporary creds)
 
-    Authorization: Bearer <access_token>
+SDKs can generate these headers automatically; if hand‑signing, follow AWS SigV4 guidance. (The OpenAPI security scheme name is `sigv4` and uses the `Authorization` header.)
 
-*   **Token scope:** Must authorize the calling application to create and complete transactions.
-*   **Provisioning:** Tokens are issued and rotated by USTC operations. **TODO:** link internal token issuance doc if available.
-*   **Clock skew:** Allow ±60 seconds when verifying `iat`/`exp`, if applicable.
-
-***
+---
 
 ## Idempotency
 
-Use the `Idempotency-Key` header to safely retry request(s) without creating duplicate charges:
+Use the header:
 
-    Idempotency-Key: <uuid-v4>
+```
 
-*   **Initiate:** The first successful call with a given key creates a transaction and returns `{ token, redirectUrl }`. Retries with the same key return the **same** response as long as inputs match.
-*   **Complete:** Retrying with the same key returns the previously computed result for that token.
-*   **Window:** Keys are retained for **24 hours** (configurable). **TODO:** confirm retention window.
+Idempotency-Key: <uuid-v4>
 
-***
+```
 
-## Versioning
+- **/init:** The first successful request with a given key creates a session and returns `{ token, paymentRedirect }`. Retries with the same key return the original response (inputs must match).
+- **/process:** Retries with the same key return the same computed result for a given `token`.
+- **Retention window:** environment‑specific (confirm operational setting).
 
-The API is namespaced under `/v1`. Backward‑compatible changes may be added.
-Breaking changes will be introduced under a new prefix (e.g., `/v2`) and noted in `CHANGELOG.md`.
-
-***
-
-## Rate Limits & Timeouts
-
-*   **Client → Portal:** Recommend a client timeout of **20s** for `initiate` and **30s** for `complete` due to downstream SOAP latency. **TODO:** confirm.
-*   **Portal → Pay.gov:** Retries with exponential backoff on retriable network errors.
-*   **Rate limits:** If enabled, responses include `429 Too Many Requests` with `Retry-After`. **TODO:** document actual limits if configured.
-
-***
+---
 
 ## Errors
 
-Responses use standard HTTP status codes plus a normalized error structure:
+This API may return a **plain text** body for some error responses (400/403/500), as defined in the OpenAPI spec. When present, the text is a concise cause message (e.g., `missing body`, `Invalid Request`, `Internal Server Error`).
 
-```json
-{
-  "error": {
-    "code": "string",          // machine-readable error code
-    "message": "string",       // human-readable summary
-    "details": { },            // optional: object with field-specific hints
-    "correlationId": "uuid"    // trace id for logs/support
-  }
-}
-```
+Other errors may return JSON if produced upstream; clients should treat non‑200 responses as errors and inspect content‑type accordingly.
 
-**Common error codes**
-
-|    HTTP | code               | When                                                        |
-| ------: | ------------------ | ----------------------------------------------------------- |
-|     400 | `VALIDATION_ERROR` | Missing/invalid fields, schema mismatch                     |
-|     401 | `UNAUTHORIZED`     | Missing/invalid bearer token                                |
-|     403 | `FORBIDDEN`        | Caller not permitted for operation                          |
-|     404 | `NOT_FOUND`        | Token or resource not found                                 |
-|     409 | `CONFLICT`         | Token state invalid for operation (e.g., already completed) |
-|     422 | `UNPROCESSABLE`    | Business rule violation                                     |
-|     429 | `RATE_LIMITED`     | Too many requests                                           |
-|     500 | `INTERNAL_ERROR`   | Unexpected failure                                          |
-| 502/504 | `DOWNSTREAM_ERROR` | Pay.gov/transient dependency failure                        |
-
-> Always log the `correlationId` when contacting support.
-
-***
+---
 
 ## Endpoints
 
-### POST `/v1/transactions/initiate`
+### POST `/init`
 
-Initiates a Pay.gov collection session and returns a redirect URL for the end‑user.
+Creates a new payment session and returns a **redirect URL** for the user to complete payment on Pay.gov.
 
-**Headers**
-
-    Authorization: Bearer <token>
-    Content-Type: application/json
-    Idempotency-Key: <uuid-v4>         // recommended
-
-**Request body**
-
-```json
-{
-  "feeId": "string",                  // required; identifies the fee schedule (v2-ready)
-  "amount": 75.00,                    // required; decimal (USD)
-  "currency": "USD",                  // optional; default "USD"
-  "referenceId": "abc-123",           // required; your system's unique reference
-  "payer": {                          // optional; metadata (not PCI/PII sensitive)
-    "name": "string",
-    "email": "user@example.com"
-  },
-  "successUrl": "https://app.example.gov/pay/success",  // required
-  "cancelUrl": "https://app.example.gov/pay/cancel",    // required
-  "metadata": { "caseNumber": "2026-USTC-0001" }        // optional
-}
-```
-
-> **Notes**
->
-> *   `feeId` is the forward‑compatible identifier for the fee being collected.
-> *   Do **not** send card/PAN or sensitive payment data—Pay.gov collects it.
-> *   `successUrl` and `cancelUrl` must be HTTPS and allow query parameters.
-
-**Response (200)**
-
-```json
-{
-  "token": "pg-6e0c7...cdb",
-  "redirectUrl": "https://pay.gov/.../hcp?token=pg-6e0c7...cdb",
-  "expiresAt": "2026-02-25T20:15:00Z"
-}
-```
-
-**Validation errors (400)**
-
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid successUrl",
-    "details": { "successUrl": "must be https" },
-    "correlationId": "3a8b9c40-..."
-  }
-}
-```
-
-***
-
-### POST `/v1/transactions/complete`
-
-Completes a previously initiated transaction using the Pay.gov token.
+**Security**
+- SigV4 (`Authorization`, `X-Amz-Date`, optional `X-Amz-Security-Token`)
 
 **Headers**
-
-    Authorization: Bearer <token>
-    Content-Type: application/json
-    Idempotency-Key: <uuid-v4>         // recommended
-
-**Request body**
-
-```json
-{
-  "token": "pg-6e0c7...cdb",            // required; from initiate response
-  "referenceId": "abc-123"              // required; must match initiation referenceId
-}
 ```
 
-**Response (200)**
+Content-Type: application/json
+Idempotency-Key: <uuid-v4>     # recommended
 
+````
+
+**Request body — `InitPaymentRequest`**
 ```json
 {
-  "status": "COMPLETED",
-  "trackingId": "USTC-TRK-00112233",    // Pay.gov tracking / receipt identifier
-  "amount": 75.00,
-  "currency": "USD",
-  "processedAt": "2026-02-25T20:16:30Z",
-  "token": "pg-6e0c7...cdb",
-  "referenceId": "abc-123",
+  "appId": "DAWSON",
+  "transactionReferenceId": "550e8400-e29b-41d4-a716-446655440000",
+  "feeId": "PETITIONS_FILING_FEE",
+  "urlSuccess": "https://client.app/success",
+  "urlCancel": "https://client.app/cancel",
   "metadata": {
-    "feeId": "FEE-FILING-001"
+    "...": "fields depend on feeId (see Metadata schemas)"
   }
 }
-```
+````
 
-**Business/state errors**
-
-*   `409 CONFLICT` with `code=CONFLICT` if token is already completed or canceled.
-*   `404 NOT_FOUND` if token is unknown or expired.
-*   `502/504 DOWNSTREAM_ERROR` when Pay.gov cannot be reached or returns a retriable fault.
-
-**Example error (409)**
+**Response 200 — `InitPaymentResponse`**
 
 ```json
 {
-  "error": {
-    "code": "CONFLICT",
-    "message": "Transaction already completed",
-    "correlationId": "a1b2c3d4-..."
-  }
+  "token": "abc123token",
+  "paymentRedirect": "https://pay.gov/payment?token=abc123token&tcsAppID=USTC_APP"
 }
 ```
 
+**Errors**
+
+*   **400** `text/plain` — invalid request payload (e.g., missing body, validation error)
+*   **403** `text/plain` — forbidden/invalid/missing authentication
+*   **500** `text/plain` — internal server error
+
 ***
 
-### GET `/v1/health`
+### GET `/details/{appId}/{transactionReferenceId}`
 
-Lightweight health check to validate liveness (and optionally readiness).
+Returns the **overall payment status** and all associated **transaction records**. If any transaction is pending, the portal may query Pay.gov before responding.
 
-**Query params**
+**Security**
 
-*   `?check=downstream` (optional) — if provided, attempts a minimal downstream check (timeouts kept short). **TODO:** confirm behavior.
+*   SigV4
 
-**Response (200)**
+**Path parameters**
+
+*   `appId` — application identifier (e.g., `DAWSON`)
+*   `transactionReferenceId` — the transaction reference ID
+
+**Response 200 — `GetDetailsResponse`**
 
 ```json
-{ "status": "ok", "time": "2026-02-25T20:14:10Z" }
+{
+  "paymentStatus": "Success",
+  "transactions": [
+    {
+      "transactionStatus": "Success",
+      "paymentMethod": "Credit/Debit Card",
+      "returnDetail": "Transaction completed successfully",
+      "createdTimestamp": "2024-01-15T10:30:00Z",
+      "updatedTimestamp": "2024-01-15T10:35:00Z"
+    }
+  ]
+}
 ```
 
-**Response (503)**
+**Errors**
+
+*   **400** `text/plain` — invalid request (e.g., missing path params)
+*   **403** `text/plain` — forbidden/invalid/missing authentication
+*   **500** `text/plain` — internal server error
+
+***
+
+### POST `/process`
+
+Finalizes a payment after the user completes the Pay.gov form.
+
+> **Important:** This endpoint **always returns HTTP 200** for a handled request. Determine outcome by inspecting `paymentStatus` (or each `transactionStatus`). Both successful and failed payment processing use HTTP 200 responses.
+
+**Security**
+
+*   SigV4
+
+**Headers**
+
+    Content-Type: application/json
+    Idempotency-Key: <uuid-v4>     # recommended
+
+**Request body — `ProcessPaymentRequest`**
 
 ```json
-{ "status": "degraded", "dependency": "paygov", "correlationId": "..." }
+{
+  "appId": "DAWSON",
+  "token": "abc123token"
+}
 ```
 
+**Response 200 — `ProcessPaymentResponse`**
+
+```json
+{
+  "paymentStatus": "Success",
+  "transactions": [
+    {
+      "transactionStatus": "Success",
+      "paymentMethod": "Credit/Debit Card",
+      "returnDetail": "Transaction completed successfully",
+      "createdTimestamp": "2024-01-15T10:30:00Z",
+      "updatedTimestamp": "2024-01-15T10:35:00Z"
+    }
+  ]
+}
+```
+
+**Errors**
+
+*   **400** `text/plain` — invalid request payload (e.g., missing body)
+*   **403** `text/plain` — forbidden/invalid/missing authentication
+*   **500** `text/plain` — internal server error
+
 ***
 
-## Callback URLs
+## Schemas (Summary)
 
-The user journey involves redirects handled by Pay.gov (or the **USTC Pay Test Server** in dev). You specify:
+*   **FeeId** (enum): `PETITIONS_FILING_FEE`, `NONATTORNEY_EXAM_REGISTRATION`
+*   **Metadata** (anyOf):
+    *   **MetadataDawson**: `{ docketNumber: string }` (required)
+    *   **MetadataNonattorneyExam**: `{ email, fullName, accessCode }` (all required; `email` format)
+*   **InitPaymentRequest**: `{ appId, transactionReferenceId (uuid), feeId, urlSuccess (uri), urlCancel (uri), metadata }` (all required)
+*   **InitPaymentResponse**: `{ token, paymentRedirect (uri) }` (both required)
+*   **ProcessPaymentRequest**: `{ appId, token }` (both required)
+*   **ProcessPaymentResponse**: `{ paymentStatus (Success|Failed|Pending), transactions: TransactionRecordSummary[] }`
+*   **GetDetailsResponse**: `{ paymentStatus, transactions: TransactionRecordSummary[] }`
+*   **TransactionRecordSummary**: `{ transactionStatus (Received|Initiated|Success|Failed|Pending), paymentMethod (Credit/Debit Card|ACH|PayPal), returnDetail?, createdTimestamp (date-time)?, updatedTimestamp (date-time)? }`
 
-*   `successUrl` — The URL Pay.gov will redirect to after successful payment.
-*   `cancelUrl` — The URL Pay.gov will redirect to if the user cancels.
-
-**Portal does not call your app directly.** Your app should listen for the user’s browser return and then call `POST /v1/transactions/complete` with the original `token` and your `referenceId`.
-
-**Recommended pattern**
-
-1.  Initiate → receive `{ token, redirectUrl }`
-2.  Redirect user to `redirectUrl`
-3.  User returns to `successUrl` or `cancelUrl` (your app route)
-4.  Your app invokes `/v1/transactions/complete` (server‑side)
-5.  Show result to user
-
-***
-
-## Field Reference
-
-| Field         | Type         | Description                                                 |
-| ------------- | ------------ | ----------------------------------------------------------- |
-| `feeId`       | string       | Required. Identifier for the fee to be collected.           |
-| `amount`      | number       | Required. Decimal USD amount (e.g., `75.00`).               |
-| `currency`    | string       | Optional; default `USD`.                                    |
-| `referenceId` | string       | Required. Your system’s unique id for the transaction.      |
-| `payer.name`  | string       | Optional. For receipts or audit metadata.                   |
-| `payer.email` | string       | Optional. For receipts or contact.                          |
-| `successUrl`  | string (url) | Required. HTTPS. Accepts query parameters.                  |
-| `cancelUrl`   | string (url) | Required. HTTPS. Accepts query parameters.                  |
-| `token`       | string       | Token issued after initiation; used to complete.            |
-| `trackingId`  | string       | Final tracking/receipt identifier from Pay.gov.             |
-| `expiresAt`   | ISO datetime | When the token or redirect session expires, if applicable.  |
-| `metadata`    | object       | Optional. Free‑form key/value for your app (non‑sensitive). |
+> Return/error bodies and content‑types are exactly as defined in the OpenAPI document.
 
 ***
 
 ## Examples
 
-### Initiate (cURL)
+### `POST /init` (cURL with SigV4 headers)
+
+> Use your SigV4 signer or SDK to produce the `Authorization` and `X-Amz-Date` headers.
 
 ```bash
-curl -sS -X POST "$BASE_URL/v1/transactions/initiate" \
-  -H "Authorization: Bearer $TOKEN" \
+curl -sS -X POST "$BASE_URL/init" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
+  -H "X-Amz-Date: $(date -u +%Y%m%dT%H%M%SZ)" \
+  -H "Authorization: $(your_sigv4_header_here)" \
   -d '{
-    "feeId":"FEE-FILING-001",
-    "amount":75.00,
-    "currency":"USD",
-    "referenceId":"abc-123",
-    "successUrl":"https://app.example.gov/pay/success",
-    "cancelUrl":"https://app.example.gov/pay/cancel",
-    "metadata":{"caseNumber":"2026-USTC-0001"}
+    "appId": "DAWSON",
+    "transactionReferenceId": "550e8400-e29b-41d4-a716-446655440000",
+    "feeId": "PETITIONS_FILING_FEE",
+    "urlSuccess": "https://client.app/success",
+    "urlCancel": "https://client.app/cancel",
+    "metadata": { "docketNumber": "123-26" }
   }'
 ```
 
-### Complete (Node.js fetch)
+**Success (200)**
 
-```js
-const res = await fetch(`${BASE_URL}/v1/transactions/complete`, {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${TOKEN}`,
-    'Content-Type': 'application/json',
-    'Idempotency-Key': crypto.randomUUID()
-  },
-  body: JSON.stringify({
-    token: 'pg-6e0c7...cdb',
-    referenceId: 'abc-123'
-  })
-});
-
-if (!res.ok) {
-  const err = await res.json();
-  throw new Error(`${err.error.code}: ${err.error.message} [${err.error.correlationId}]`);
+```json
+{
+  "token": "abc123token",
+  "paymentRedirect": "https://pay.gov/payment?token=abc123token&tcsAppID=USTC_APP"
 }
-
-const result = await res.json();
-console.log(result.trackingId);
 ```
 
 ***
 
-## Testing with the USTC Pay Test Server
+### `GET /details/{appId}/{transactionReferenceId}`
 
-For local and dev testing, use the **[USTC Pay Test Server](https://github.com/ustaxcourt/ustc-pay-gov-test-server)** to simulate Pay.gov HCP:
-
-*   Point the portal’s downstream endpoint to the test server’s SOAP endpoints.
-*   The test server provides a simple UI with success/cancel buttons to mimic user behavior.
-*   Your app should still follow the same initiate → redirect → complete pattern.
-
-**TODO:** Add a quickstart snippet linking `running-locally.md` once finalized.
+```bash
+curl -sS "$BASE_URL/details/DAWSON/550e8400-e29b-41d4-a716-446655440000" \
+  -H "X-Amz-Date: $(date -u +%Y%m%dT%H%M%SZ)" \
+  -H "Authorization: $(your_sigv4_header_here)"
+```
 
 ***
 
-## Security & Compliance Notes
+### `POST /process` (Node.js; pseudo‑signer)
 
-*   **No PAN or sensitive payment data** passes through the portal—Pay.gov collects those details.
-*   Ensure logs **exclude tokens and PII**.
-*   Follow input validation guidance and use HTTPS everywhere.
-*   For vulnerabilities, follow **`/SECURITY.md`** (no public issues).
+```js
+const body = {
+  appId: 'DAWSON',
+  token: 'abc123token'
+};
+
+const { headers } = await signWithSigV4({
+  method: 'POST',
+  url: `${BASE_URL}/process`,
+  body: JSON.stringify(body),
+});
+
+const res = await fetch(`${BASE_URL}/process`, {
+  method: 'POST',
+  headers: {
+    ...headers,
+    'Content-Type': 'application/json',
+    'Idempotency-Key': crypto.randomUUID(),
+  },
+  body: JSON.stringify(body),
+});
+
+const result = await res.json(); // always 200; inspect fields below
+
+if (result.paymentStatus !== 'Success') {
+  // handle Failed/Pending
+}
+```
 
 ***
 
 ## Changelog
 
-*   **v1.0** — Initial publication of API reference (initiate/complete/health, error model, idempotency).
-
-***
-
-### Feedback
-
-If anything here is unclear or you need a new endpoint/field, please open a **Documentation Update** issue or a **Feature Request** with concrete examples.
+*   **v0.1.3 (current)** — Aligned docs exactly with OpenAPI 3.1: SigV4 auth, `/init`, `/process`, `/details/{appId}/{transactionReferenceId}`, schema field names, and plain‑text error responses.
+*   **Earlier drafts** — Deprecated `/v1/...` paths and Bearer-token notes removed (those described a previous iteration).
