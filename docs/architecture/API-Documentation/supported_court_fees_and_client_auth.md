@@ -14,12 +14,12 @@ Clients submit a `fee_id` to specify which fee they want to charge, along with m
 - **Fixed fees:** Amount is resolved from the Payment Portal's fees table (e.g., petition filing fee of $60)
 - **Variable fees:** Amount is provided by the client and validated by the Payment Portal (e.g., payment for copies where quantity varies)
 
-**Critical Constraint:** The `fee_id` provided by clients is used as the `tcs_app_id` when calling Pay.gov, since Pay.gov's API expects a field named `tcs_app_id`.
+**Critical Constraint:** The `fee_id` provided by clients is mapped to a `tcs_app_id` via the fees table. The `tcs_app_id` is a Pay.gov-provided identifier that we use when calling their API.
 
 This design ensures:
 - Clients explicitly declare payment intent via `fee_id`
 - Authorization prevents clients from charging unauthorized fees
-- The same identifier is used consistently from client request through to Pay.gov
+- Pay.gov identifiers (`tcs_app_id`) are abstracted from clients
 - Variable fee amounts are validated before processing
 - Consistent audit trail via metadata
 
@@ -28,13 +28,13 @@ This design ensures:
 ## Terminology
 
 - **`app_id`** — Identifier for a client application (e.g., `DAWSON`)
-- **`fee_id`** — Identifier for a fee type (e.g., `USTC_PETITION`). This is the same value as `tcs_app_id`
-- **`tcs_app_id`** — Pay.gov application identifier. This is the same value as `fee_id`, used specifically when calling Pay.gov's API
+- **`fee_id`** — Client-facing identifier for a fee type (e.g., `PETITION_FILING_FEE`, `NONATTORNEY_EXAM_REGISTRATION_FEE`). This is what clients send in API requests
+- **`tcs_app_id`** — Pay.gov application identifier (e.g., `TCSUSTAXCOURTANAEF`). We look this up from the fees table using the `fee_id` provided by the client
 - **`is_variable`** — Boolean indicating if fee amount is client-provided (true) or portal-determined (false)
 - **metadata** — Business context provided by clients to identify transaction type
 - **Payment Portal (PP)** — This system
 
-**Note:** `fee_id` and `tcs_app_id` contain the same value. We use `fee_id` in our internal API and database, and `tcs_app_id` when making Pay.gov API calls because that's the field name Pay.gov expects.
+**Note:** Clients send `fee_id` → Portal looks up `tcs_app_id` from database → Portal uses `tcs_app_id` when calling Pay.gov.
 
 ---
 
@@ -47,13 +47,13 @@ This design ensures:
    ↓
 2. Fee Validation (fee_id exists?)
    ↓
-3. Fee Lookup (fee_id → is_variable + amount)
+3. Authorization Check (app_id + fee_id)
    ↓
-4. Authorization Check (app_id + fee_id)
+4. Fee Lookup (fee_id → tcs_app_id + is_variable + amount)
    ↓
 5. Amount Resolution (fixed: use table, variable: use client amount)
    ↓
-6. Pay.gov Request Construction (fee_id becomes tcs_app_id)
+6. Pay.gov Request Construction (use tcs_app_id from lookup)
    ↓
 7. Transaction Initiation
 ```
@@ -70,19 +70,19 @@ Clients initiate payments by submitting:
 |-------|-------------|-------------|----------|
 | `app_id` | Client application identifier | Client | Always |
 | `fee_id` | Fee type identifier | Client | Always |
-| `transactionReferenceId` | Client-generated UUID for idempotency | Client | Always |
 | `urlSuccess` | Redirect URL after successful payment | Client | Always |
 | `urlCancel` | Redirect URL if payment is cancelled | Client | Always |
 | `metadata` | Business context for audit/reporting | Client | Always |
 | `amount` | Payment amount (only for variable fees) | Client | Variable fees only |
+
+**Note:** The Payment Portal generates the `agency_tracking_id` (used in Pay.gov requests) internally. Clients do not provide this value.
 
 **Example Request (Fixed Fee):**
 
 ```json
 {
   "app_id": "DAWSON",
-  "fee_id": "USTC_PETITION",
-  "transactionReferenceId": "550e8400-e29b-41d4-a716-446655440000",
+  "fee_id": "PETITION_FILING_FEE",
   "urlSuccess": "https://dawson.ustaxcourt.gov/payment/success",
   "urlCancel": "https://dawson.ustaxcourt.gov/payment/cancel",
   "metadata": {
@@ -97,8 +97,7 @@ Clients initiate payments by submitting:
 ```json
 {
   "app_id": "DAWSON",
-  "fee_id": "USTC_COPY",
-  "transactionReferenceId": "550e8400-e29b-41d4-a716-446655440000",
+  "fee_id": "COPY_REQUEST",
   "urlSuccess": "https://dawson.ustaxcourt.gov/payment/success",
   "urlCancel": "https://dawson.ustaxcourt.gov/payment/cancel",
   "amount": 45.00,
@@ -112,9 +111,9 @@ Clients initiate payments by submitting:
 **Note:** The `fee_id` values (e.g., `USTC_PETITION`, `USTC_COPY`) are used directly as `tcs_app_id` in Pay.gov requests.
 
 **Critical Constraints:**
-- Clients must provide `fee_id` to specify which fee to charge (this value is used as `tcs_app_id` in Pay.gov)
+- Clients must provide `fee_id` to specify which fee to charge
 - The `fee_id` must match a valid fee in the fees table
-- The `fee_id` must match the `tcs_app_id` configured in Pay.gov
+- The portal maps `fee_id` to the corresponding `tcs_app_id` for Pay.gov
 - Clients provide `amount` only for variable fees; for fixed fees, amount is resolved from the fees table
 - If `amount` is provided for a fixed fee, it is ignored
 - If `amount` is missing for a variable fee, request fails with `400 Bad Request`
@@ -157,7 +156,9 @@ Once `fee_id` is determined, the Payment Portal queries the `fees` table to reso
 
 ```sql
 CREATE TABLE fees (
-  fee_id          VARCHAR(50) PRIMARY KEY,  -- Same value used as tcs_app_id in Pay.gov calls
+  fee_id          VARCHAR(50) PRIMARY KEY,   -- Client-facing fee identifier
+  name            VARCHAR(100) NOT NULL,      -- Human-readable fee name
+  tcs_app_id      VARCHAR(50) NOT NULL,       -- Pay.gov application identifier
   is_variable     BOOLEAN NOT NULL DEFAULT false,
   amount          DECIMAL(10,2),  -- Required when is_variable = false, NULL when is_variable = true
   description     TEXT NOT NULL,
@@ -168,23 +169,23 @@ CREATE TABLE fees (
 
 **Example Data:**
 
-| fee_id | is_variable | amount | description |
-|--------|-------------|--------|-------------|
-| USTC_PETITION | false | 60.00 | Petition Filing Fee |
-| USTC_COPY | true | NULL | Document Copy Request (varies by page count) |
-| USTC_ADMISSION | false | 250.00 | Non-Attorney Exam Registration |
+| fee_id | name | tcs_app_id | is_variable | amount | description |
+|--------|------|------------|-------------|--------|-------------|
+| PETITION_FILING_FEE | Petition Filing | TCSUSTAXCOURTPETITION | false | 60.00 | Petition Filing Fee |
+| COPY_REQUEST | Document Copies | TCSUSTAXCOURTCOPY | true | NULL | Document Copy Request (varies by page count) |
+| NONATTORNEY_EXAM_REGISTRATION_FEE | Admission Exam | TCSUSTAXCOURTANAEF | false | 250.00 | Non-Attorney Exam Registration |
 
-**Note:** The `fee_id` value (e.g., `USTC_PETITION`) is used directly as the `tcs_app_id` when making Pay.gov API calls.
+**Note:** The `fee_id` is what clients send in their API requests. The `tcs_app_id` is the Pay.gov identifier that we use when calling Pay.gov's API.
 
 ### Lookup Query
 
 ```sql
-SELECT fee_id, is_variable, amount, description
+SELECT fee_id, name, tcs_app_id, is_variable, amount, description
 FROM fees
 WHERE fee_id = :fee_id;
 ```
 
-**Note:** The `fee_id` from this query is used as `tcs_app_id` in the Pay.gov request.
+**Note:** The `tcs_app_id` from this query is used when constructing the Pay.gov API request.
 
 ### Amount Resolution Logic
 
@@ -204,7 +205,6 @@ WHERE fee_id = :fee_id;
 | Fee not found | 400 | `FEE_NOT_FOUND` | Fee type is not available |
 | Variable fee, amount missing | 400 | `AMOUNT_REQUIRED` | Amount is required for variable fees |
 | Variable fee, invalid amount | 400 | `INVALID_AMOUNT` | Amount must be positive |
-| Fixed fee, amount ignored | N/A | N/A | Client amount ignored (logged for audit) |
 
 ---
 
@@ -217,7 +217,7 @@ After resolving the fee configuration, the Payment Portal validates that the req
 ```sql
 CREATE TABLE client_fee_permissions (
   app_id         VARCHAR(50) NOT NULL,
-  fee_id         VARCHAR(50) NOT NULL,  -- Same value as tcs_app_id in Pay.gov context
+  fee_id         VARCHAR(50) NOT NULL,  -- Client-facing fee identifier for authorization
   created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at     TIMESTAMP NOT NULL DEFAULT NOW(),
   PRIMARY KEY (app_id, fee_id),
@@ -229,9 +229,9 @@ CREATE TABLE client_fee_permissions (
 
 | app_id | fee_id |
 |--------|--------|
-| DAWSON | USTC_PETITION |
-| DAWSON | USTC_COPY |
-| EXAM_PORTAL | USTC_ADMISSION |
+| DAWSON | PETITION_FILING_FEE |
+| DAWSON | COPY_REQUEST |
+| EXAM_PORTAL | NONATTORNEY_EXAM_REGISTRATION_FEE |
 
 ### Authorization Query
 
@@ -272,13 +272,13 @@ After authorization is confirmed, the Payment Portal constructs the SOAP request
 
 | Field | Source | Example |
 |-------|--------|---------|
-| `tcs_app_id` | Client's `fee_id` (used directly) | `USTC_PETITION` |
-| `agency_tracking_id` | Client's `transactionReferenceId` | `550e8400-...` |
+| `tcs_app_id` | From fees table lookup | `TCSUSTAXCOURTPETITION` |
+| `agency_tracking_id` | Generated by Payment Portal (UUID) | `550e8400-...` |
 | `transaction_amount` | Fees table (fixed) OR client request (variable) | `60.00` |
 
 ```xml
 <startOnlineCollection>
-  <tcs_app_id>USTC_PETITION</tcs_app_id>
+  <tcs_app_id>TCSUSTAXCOURTPETITION</tcs_app_id>
   <agency_tracking_id>550e8400-e29b-41d4-a716-446655440000</agency_tracking_id>
   <transaction_amount>60.00</transaction_amount>
   <url_success>https://dawson.ustaxcourt.gov/payment/success</url_success>
@@ -294,11 +294,11 @@ Client Provides:    app_id, fee_id, metadata, redirects
       ↓
 PP Validates:       fee_id exists
       ↓
-PP Looks Up:        is_variable=false, amount (from fees table)
-      ↓
 PP Authorizes:      (app_id, fee_id) relationship
       ↓
-PP Sends to Pay.gov: fee_id as tcs_app_id, amount (from table), redirects
+PP Looks Up:        tcs_app_id, is_variable=false, amount (from fees table)
+      ↓
+PP Sends to Pay.gov: tcs_app_id (from lookup), amount (from table), redirects
 ```
 
 **Variable Fee Flow:**
@@ -307,11 +307,11 @@ Client Provides:    app_id, fee_id, amount, metadata, redirects
       ↓
 PP Validates:       fee_id exists, amount > 0
       ↓
-PP Looks Up:        is_variable=true (from fees table)
-      ↓
 PP Authorizes:      (app_id, fee_id) relationship
       ↓
-PP Sends to Pay.gov: fee_id as tcs_app_id, amount (from client), redirects
+PP Looks Up:        tcs_app_id, is_variable=true (from fees table)
+      ↓
+PP Sends to Pay.gov: tcs_app_id (from lookup), amount (from client), redirects
 ```
 
 ---
@@ -334,7 +334,7 @@ For **production and staging** (required):
 5. Verify migration applied successfully in each environment
 
 For **local development** (acceptable for testing):
-- Direct SQL: `INSERT INTO fees (fee_id, is_variable, amount, description) VALUES (...)`
+- Direct SQL: `INSERT INTO fees (fee_id, name, tcs_app_id, is_variable, amount, description) VALUES (...)`
 - Must still create migration before merging to main branch
 
 **Why migrations for production:**
@@ -367,16 +367,16 @@ VALUES ('NEW_CLIENT_APP', 'USTC_PETITION');
 **1. Create Fee Definition**
 
 ```sql
--- Fixed fee example (fee_id must match the tcs_app_id in Pay.gov)
-INSERT INTO fees (fee_id, is_variable, amount, description)
-VALUES ('USTC_NEW_APP', false, 100.00, 'New Fixed Fee Description');
+-- Fixed fee example
+INSERT INTO fees (fee_id, name, tcs_app_id, is_variable, amount, description)
+VALUES ('NEW_FIXED_FEE', 'New Application Fee', 'TCSUSTAXCOURTNEWAPP', false, 100.00, 'New Fixed Fee Description');
 
--- Variable fee example (fee_id must match the tcs_app_id in Pay.gov)
-INSERT INTO fees (fee_id, is_variable, amount, description)
-VALUES ('USTC_VAR_APP', true, NULL, 'New Variable Fee Description');
+-- Variable fee example
+INSERT INTO fees (fee_id, name, tcs_app_id, is_variable, amount, description)
+VALUES ('NEW_VARIABLE_FEE', 'Variable Service Fee', 'TCSUSTAXCOURTVARAPP', true, NULL, 'New Variable Fee Description');
 ```
 
-**Important:** The `fee_id` value must match the `tcs_app_id` configured in Pay.gov.
+**Important:** The `tcs_app_id` value must match the TCS application configured in Pay.gov.
 
 **2. Update API Documentation**
 
@@ -386,12 +386,12 @@ Add the new `fee_id` to your API documentation and client SDKs so clients know i
 
 ```sql
 INSERT INTO client_fee_permissions (app_id, fee_id)
-VALUES ('AUTHORIZED_CLIENT', 'USTC_NEW_APP');
+VALUES ('AUTHORIZED_CLIENT', 'NEW_FIXED_FEE');
 ```
 
 **4. Configure Pay.gov**
 
-Ensure the Pay.gov TCS application with ID `USTC_NEW_APP` is configured before deployment. This must match the `fee_id` in your fees table.
+Ensure the Pay.gov TCS application with ID `TCSUSTAXCOURTNEWAPP` is configured before deployment.
 
 **5. Deploy**
 
@@ -409,7 +409,7 @@ This design provides the following guarantees:
 | Variable fee amounts are validated | Amount presence and positivity checks for variable fees |
 | Clients cannot select unauthorized fees | Authorization table enforces app_id + fee_id relationship |
 | Fee identifiers are validated | fee_id must exist in fees table |
-| Consistent Pay.gov integration | fee_id used directly as tcs_app_id in Pay.gov calls |
+| Pay.gov identifiers are abstracted | Clients use fee_id; portal looks up tcs_app_id from database |
 | Authorization is auditable | All checks logged with context including amounts |
 
 ---
