@@ -89,6 +89,7 @@ module "api" {
   lambda_function_arns = module.lambda.function_arns
   environment          = local.environment == "dev" ? "dev" : local.environment
   stage_name           = local.environment == "dev" ? "dev" : local.environment
+  allowed_account_ids  = local.allowed_client_account_ids
 
 }
 
