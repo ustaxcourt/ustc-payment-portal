@@ -38,10 +38,11 @@ Maintainers are expected to:
 - Ensure consistency with project conventions
 - Uphold security, stability, and maintainability
 - Require tests and documentation updates for relevant changes
+- Any AI-generated code and documentation must be thoroughly tested and reviewed by the submitting author before being submitted for team PR review.
 
 ### 2. **Architecture & Direction**
 - Ensure changes comply with architectural goals
-- Approve or propose Architecture Decision Records (`/docs/architecture/decisions or .adr-dir`)
+- Approve or propose Architecture Decision Records (`/docs/architecture/decisions`)
 - Collaborate on system evolution and improvements
 
 ### 3. **Operational Excellence**
@@ -56,22 +57,5 @@ Maintainers are expected to:
 ### 5. **Documentation**
 - Maintain clear and current docs
 - Ensure new features or changes include updated documentation
+- Any AI generated documentation must be thoroughly tested and reviewed by the submitting author before being submitted for team PR review.
 
----
-
-## How Maintainers Are Added or Removed
-
-Generally:
-
-- New maintainers must be added to the
-  `@ustaxcourt/payment-portal-team`
-- Departing maintainers should be removed from the same team
-
-All updates should be performed through standard organization‑level processes.
-
----
-
-## 🙏 Thank You
-
-The maintainers ensure the Payment Portal remains secure, dependable, and easy to integrate with.
-Your work keeps the payment ecosystem stable for all USTC applications.
