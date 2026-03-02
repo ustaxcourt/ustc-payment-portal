@@ -8,13 +8,11 @@ The Payment Portal is the authoritative system for initiating payment transactio
 
 **Clients provide fee identifiers and business context; the Payment Portal validates authorization and manages Pay.gov integration.**
 
-Clients submit a `fee_id` to specify which fee they want to charge, along with metadata for audit purposes. The Payment Portal validates the fee exists, checks authorization, and constructs the Pay.gov request.
+Clients submit a `fee_id` to specify which fee they want to charge, along with metadata for audit purposes. The Payment Portal validates the fee exists, checks authorization, and constructs the Pay.gov request. The `fee_id` is mapped to a `tcs_app_id` (a Pay.gov-provided identifier) via the fees table, which is used when calling Pay.gov's API.
 
 **Fee Amount Determination:**
 - **Fixed fees:** Amount is resolved from the Payment Portal's fees table (e.g., petition filing fee of $60)
 - **Variable fees:** Amount is provided by the client and validated by the Payment Portal (e.g., payment for copies where quantity varies)
-
-**Critical Constraint:** The `fee_id` provided by clients is mapped to a `tcs_app_id` via the fees table. The `tcs_app_id` is a Pay.gov-provided identifier that we use when calling their API.
 
 This design ensures:
 - Clients explicitly declare payment intent via `fee_id`
@@ -113,7 +111,7 @@ Clients initiate payments by submitting:
 **Critical Constraints:**
 - Clients must provide `fee_id` to specify which fee to charge
 - The `fee_id` must match a valid fee in the fees table
-- The portal maps `fee_id` to the corresponding `tcs_app_id` for Pay.gov
+- The portal looks up the `tcs_app_id` from the fees table using the client-provided `fee_id`
 - Clients provide `amount` only for variable fees; for fixed fees, amount is resolved from the fees table
 - If `amount` is provided for a fixed fee, it is ignored
 - If `amount` is missing for a variable fee, request fails with `400 Bad Request`
@@ -260,7 +258,7 @@ WHERE app_id = :app_id
 }
 ```
 
-**Critical Security Note:** Authorization failures must not reveal whether the fee exists or is simply unauthorized. Return consistent `403 Forbidden` responses.
+**Note:** The system returns `400 FEE_NOT_FOUND` when the `fee_id` doesn't exist (Section 2) and `403 UNAUTHORIZED_FEE` when the fee exists but the client isn't authorized. This allows clients to debug typos in `fee_id` values, though it does allow enumeration of valid fees.
 
 ---
 
@@ -354,8 +352,8 @@ For **local development** (acceptable for testing):
 
 **Adding Client Authorization:**
 ```sql
-INSERT INTO client_fee_permissions (app_id, tcs_app_id)
-VALUES ('NEW_CLIENT_APP', 'USTC_PETITION');
+INSERT INTO client_fee_permissions (app_id, fee_id)
+VALUES ('NEW_CLIENT_APP', 'PETITION_FILING_FEE');
 ```
 
 ---
@@ -389,9 +387,17 @@ INSERT INTO client_fee_permissions (app_id, fee_id)
 VALUES ('AUTHORIZED_CLIENT', 'NEW_FIXED_FEE');
 ```
 
+**Important:** Any client that needs to charge this new fee must also have it added to their list of allowed fees in the Secrets Manager.
+
 **4. Configure Pay.gov**
 
-Ensure the Pay.gov TCS application with ID `TCSUSTAXCOURTNEWAPP` is configured before deployment.
+Coordinate with your Pay.gov liaison to set up a new TCS application. This requires:
+- Contacting the Pay.gov liaison to request a new TCS application
+- Requesting a new TCS application ID (e.g., `TCSUSTAXCOURTNEWAPP`)
+- Providing fee details (name, amount if fixed, description)
+- Confirming the TCS application is active before deploying code that uses it
+
+**Important:** The `tcs_app_id` value in your fees table must exactly match the TCS application ID provided by Pay.gov.
 
 **5. Deploy**
 
