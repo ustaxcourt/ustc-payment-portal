@@ -5,7 +5,11 @@ import { z } from "zod";
 extendZodWithOpenApi(z);
 
 export const FeeIdSchema = z
+<<<<<<< HEAD
   .enum(["PETITION_FILING_FEE", "NONATTORNEY_EXAM_REGISTRATION_FEE"])
+=======
+  .enum(["PETITION_FILING_FEE", "NONATTORNEY_EXAM_REGISTRATION"])
+>>>>>>> f729cca (changed var name for non attorney and petition filing fee)
   .openapi({
     description:
       "The fee type identifier. Available fee types:\n\n" +

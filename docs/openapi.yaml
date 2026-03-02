@@ -35,7 +35,11 @@ components:
       type: string
       enum:
         - PETITION_FILING_FEE
+<<<<<<< HEAD
         - NONATTORNEY_EXAM_REGISTRATION_FEE
+=======
+        - NONATTORNEY_EXAM_REGISTRATION
+>>>>>>> f729cca (changed var name for non attorney and petition filing fee)
       description: >-
         The fee type identifier. Available fee types:
 
@@ -105,7 +109,11 @@ components:
           type: string
           enum:
             - PETITION_FILING_FEE
+<<<<<<< HEAD
             - NONATTORNEY_EXAM_REGISTRATION_FEE
+=======
+            - NONATTORNEY_EXAM_REGISTRATION
+>>>>>>> f729cca (changed var name for non attorney and petition filing fee)
           description: >-
             The fee type identifier. Available fee types:
 
