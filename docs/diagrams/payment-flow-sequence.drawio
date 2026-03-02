@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Payment Authorization Flow" id="payment-auth">
-        <mxGraphModel dx="1158" dy="1008" grid="1" gridSize="10" guides="0" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1900" background="#ffffff" math="0" shadow="0">
+        <mxGraphModel dx="848" dy="422" grid="1" gridSize="10" guides="0" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1900" background="#ffffff" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -25,7 +25,7 @@
                 <mxCell id="paygov" value="Pay.gov (SOAP)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#f8cecc;strokeColor=#b85450;size=40;" parent="1" vertex="1">
                     <mxGeometry x="1200" y="80" width="140" height="1700" as="geometry"/>
                 </mxCell>
-                <mxCell id="step1" value="1: POST /payments { app_id, fee_id, transactionReferenceId, urls, metadata[, amount] }" style="html=1;verticalAlign=bottom;endArrow=block;entryX=0;entryY=0;" parent="1" source="client-lifeline" target="portal-lifeline" edge="1">
+                <mxCell id="step1" value="1: POST /init { app_id, fee_id, transactionReferenceId, urls, metadata[, amount] }" style="html=1;verticalAlign=bottom;endArrow=block;entryX=0;entryY=0;" parent="1" source="client-lifeline" target="portal-lifeline" edge="1">
                     <mxGeometry width="80" relative="1" as="geometry">
                         <mxPoint x="175" y="180" as="sourcePoint"/>
                         <mxPoint x="385" y="180" as="targetPoint"/>
