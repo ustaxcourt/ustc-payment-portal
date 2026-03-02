@@ -45,7 +45,9 @@ export const initPaymentHandler = (
   const request = JSON.parse(event.body);
 
   if (!request.feeId) {
-    return Promise.resolve(handleError(new InvalidRequestError("feeid is required for payment initialization")));
+    return Promise.resolve(
+      handleError(new InvalidRequestError("missing feeId"))
+    );
   }
 
   return lambdaHandler(
@@ -81,7 +83,7 @@ export const getDetailsHandler = (
     );
   }
 
-  // No feeId for read-only endpoint — IAM registration check is sufficient.
+  // getDetails is a read-only lookup — no feeId required, IAM registration check is sufficient.
   return lambdaHandler(
     event.pathParameters,
     event.requestContext,
