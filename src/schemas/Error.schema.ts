@@ -12,8 +12,14 @@ export const BadRequestErrorSchema = z
   .string()
   .openapi({
     description:
-      "Error message for invalid requests. May be plain text (e.g., 'missing body') " +
-      "or a JSON-stringified validation error object.",
+      "Error message for invalid requests (HTTP 400). May be plain text (e.g., 'missing body') " +
+      "or a JSON-stringified validation error object.\n\n" +
+      "Common error scenarios:\n" +
+      "- Missing required fields: 'missing body'\n" +
+      "- Invalid field values: 'invalid feeId'\n" +
+      "- Schema validation failures: JSON-stringified validation error\n" +
+      "- Fee not found: 'Fee type is not available'\n" +
+      "- Missing amount for variable fees: 'Amount is required for variable fees'",
     example: "missing body",
   })
   .openapi("BadRequestError");
@@ -21,7 +27,12 @@ export const BadRequestErrorSchema = z
 export const ForbiddenErrorSchema = z
   .string()
   .openapi({
-    description: "Plain text error message for authentication/authorization failures",
+    description:
+      "Plain text error message for authentication/authorization failures (HTTP 403).\n\n" +
+      "Common error scenarios:\n" +
+      "- Missing API key: 'Missing Authentication'\n" +
+      "- Invalid API key: 'Invalid API key'\n" +
+      "- Unauthorized fee access: Client not authorized to charge the requested fee",
     example: "Missing Authentication",
   })
   .openapi("ForbiddenError");
@@ -29,7 +40,10 @@ export const ForbiddenErrorSchema = z
 export const ServerErrorSchema = z
   .string()
   .openapi({
-    description: "Plain text error message for internal server errors",
+    description:
+      "Plain text error message for internal server errors (HTTP 500).\n\n" +
+      "Returned when an unexpected error occurs during request processing. " +
+      "If this error persists, contact support with the request details.",
     example: "Internal Server Error",
   })
   .openapi("ServerError");
