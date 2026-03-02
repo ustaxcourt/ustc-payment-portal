@@ -186,6 +186,6 @@ describeLambdaAuth("Lambda-level authorization", () => {
     // Lambda should reject with 403 and "Client not registered"
     // (API Gateway already accepted the request — signature was valid)
     expect(result.status).toBe(403);
-    expect(data.error).toContain("Client not registered");
+    expect(data.message).toContain("Client not registered");
   });
 });
