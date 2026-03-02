@@ -43,6 +43,11 @@ output "client_permissions_secret_id" {
   description = "Secret ID for client permissions (authorized IAM role ARNs and allowed fee IDs)"
 }
 
+output "allowed_account_ids_secret_id" {
+  value       = module.secrets.allowed_account_ids_secret_id
+  description = "Secret ID for allowed account IDs (cross-account API Gateway access)"
+}
+
 output "rds_endpoint" {
   value       = local.environment == "dev" ? module.rds[0].endpoint : null
   description = "RDS database endpoint (host:port)"

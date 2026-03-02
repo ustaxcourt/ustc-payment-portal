@@ -31,5 +31,12 @@ locals {
   name_prefix          = "ustc-payment-portal-stg"
   payment_url          = "https://qa.pay.gov/tcsonline/payment.do"
   soap_url             = "https://qa.tcs.pay.gov/services/TCSOnlineService/3.3/"
+
+  # AWS account IDs allowed to invoke the API Gateway cross-account
+  # Read from Secrets Manager - populated via AWS CLI/Console, not hardcoded
+  allowed_client_account_ids = try(
+    jsondecode(data.aws_secretsmanager_secret_version.allowed_account_ids.secret_string),
+    []
+  )
 }
 

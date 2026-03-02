@@ -37,7 +37,11 @@ locals {
   # Artifacts bucket policy ARN (constructed dynamically for PR workspaces)
   artifacts_bucket_policy_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/build-artifacts-access-policy"
 
-  # AWS account IDs allowed to invoke the API Gateway cross-account (e.g. DAWSON exp environments)
-  allowed_client_account_ids = ["216040614934"]
+  # AWS account IDs allowed to invoke the API Gateway cross-account
+  # Read from Secrets Manager - populated via AWS CLI/Console, not hardcoded
+  allowed_client_account_ids = try(
+    jsondecode(data.aws_secretsmanager_secret_version.allowed_account_ids.secret_string),
+    []
+  )
 }
 

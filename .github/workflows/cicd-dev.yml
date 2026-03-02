@@ -207,6 +207,11 @@ jobs:
           aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/client-permissions" --query SecretString --output text | \
           aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string file:///dev/stdin
 
+          # Copy allowed account IDs (for API Gateway cross-account resource policy)
+          ALLOWED_ACCOUNT_IDS_SECRET_ID=$(terraform output -raw allowed_account_ids_secret_id)
+          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/allowed-account-ids" --query SecretString --output text | \
+          aws secretsmanager put-secret-value --secret-id "$ALLOWED_ACCOUNT_IDS_SECRET_ID" --secret-string file:///dev/stdin
+
           echo "All secret values copied successfully"
         working-directory: terraform/environments/dev
 
@@ -221,6 +226,16 @@ jobs:
           npm ci
           echo "Running integration tests against: $BASE_URL"
           npm run test:integration
+
+      - name: SigV4 Smoke Test (PR environment)
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
+        env:
+          BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          echo "Running SigV4 enforcement smoke test against: $BASE_URL"
+          echo "This validates that API Gateway accepts signed requests and rejects unsigned requests."
+          npx jest src/test/integration/sigv4Smoke.test.ts --verbose
 
   pr_cleanup:
     needs: check_actor
@@ -425,6 +440,32 @@ jobs:
           TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
         run: terraform apply -auto-approve tfplan
+
+      - name: Get API URL (dev)
+        id: tf_outputs_dev
+        working-directory: terraform/environments/dev
+        run: |
+          API_URL=$(terraform output -raw api_gateway_url)
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "API Gateway URL: $API_URL"
+
+      - name: Setup Node (for smoke test)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies (for smoke test)
+        run: npm ci
+
+      - name: SigV4 Smoke Test (dev)
+        env:
+          BASE_URL: ${{ steps.tf_outputs_dev.outputs.api_url }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          echo "Running SigV4 enforcement smoke test against: $BASE_URL"
+          echo "This validates that API Gateway accepts signed requests and rejects unsigned requests."
+          npx jest src/test/integration/sigv4Smoke.test.ts --verbose
 
       - name: Cleanup PR artifacts (soft delete)
         if: ${{ success() }}

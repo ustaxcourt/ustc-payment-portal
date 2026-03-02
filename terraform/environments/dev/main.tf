@@ -91,6 +91,14 @@ module "api" {
   stage_name           = local.environment == "dev" ? "dev" : local.environment
   allowed_account_ids  = local.allowed_client_account_ids
 
+  depends_on = [module.secrets]
+}
+
+# Read allowed account IDs from Secrets Manager for API Gateway resource policy
+# This secret is seeded with [] and should be populated via AWS CLI/Console
+data "aws_secretsmanager_secret_version" "allowed_account_ids" {
+  secret_id  = module.secrets.allowed_account_ids_secret_id
+  depends_on = [module.secrets]
 }
 
 module "iam_cicd" {
