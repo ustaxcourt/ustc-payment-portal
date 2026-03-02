@@ -61,5 +61,9 @@ output "build_artifacts_bucket_name" {
 output "build_artifacts_bucket_arn" {
   value       = local.environment == "dev" ? module.artifacts_bucket[0].bucket_arn : data.aws_s3_bucket.existing_artifacts[0].arn
   description = "ARN for build artifacts bucket"
+}
 
+output "test_unauthorized_role_arn" {
+  value       = aws_iam_role.test_unauthorized.arn
+  description = "ARN of the test role for Lambda-level authorization testing (intentionally NOT in client-permissions)"
 }

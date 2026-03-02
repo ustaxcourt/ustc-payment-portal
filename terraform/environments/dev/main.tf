@@ -140,3 +140,67 @@ resource "aws_iam_role_policy_attachment" "ci_build_artifacts" {
   role       = module.iam_cicd.role_name
   policy_arn = local.environment == "dev" ? module.artifacts_bucket[0].build_artifacts_access_policy_arn : local.artifacts_bucket_policy_arn
 }
+
+# =============================================================================
+# Unauthorized Test Role (for Lambda-level authorization testing)
+# =============================================================================
+# This role is intentionally NOT added to the client-permissions secret.
+# It allows testing that Lambda correctly rejects requests from unregistered clients.
+# The role CAN call the API Gateway (same account = allowed by resource policy),
+# but will be rejected by Lambda with "Client not registered".
+
+resource "aws_iam_role" "test_unauthorized" {
+  name = "${local.name_prefix}-test-unauthorized-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = module.iam_cicd.role_arn
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Purpose = "Integration testing - Lambda authorization rejection"
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
+resource "aws_iam_role_policy" "test_unauthorized_api_invoke" {
+  name = "api-gateway-invoke"
+  role = aws_iam_role.test_unauthorized.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "execute-api:Invoke"
+        Resource = "${module.api.api_gateway_execution_arn}/*"
+      }
+    ]
+  })
+}
+
+# Allow the CI/CD deployer role to assume the test-unauthorized role
+resource "aws_iam_role_policy" "deployer_assume_test_role" {
+  name = "assume-test-unauthorized-role"
+  role = module.iam_cicd.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
+        Resource = aws_iam_role.test_unauthorized.arn
+      }
+    ]
+  })
+}
