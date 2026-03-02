@@ -151,8 +151,31 @@ resource "aws_iam_role_policy_attachment" "ci_build_artifacts" {
 
 # The shared dev deployer role used by GitHub Actions for all PR environments
 locals {
-  dev_deployer_role_name = "ustc-payment-processor-dev-cicd-deployer-role"
-  dev_deployer_role_arn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.dev_deployer_role_name}"
+  dev_deployer_role_name     = "ustc-payment-processor-dev-cicd-deployer-role"
+  dev_deployer_role_arn      = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.dev_deployer_role_name}"
+  test_unauthorized_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.name_prefix}-test-unauthorized-role"
+}
+
+# Grant the deployer permission to manage the test role's assume policy
+# This must be created BEFORE the test role is updated (hence no dependency on the role resource)
+resource "aws_iam_role_policy" "deployer_manage_test_role" {
+  name = "manage-test-role-${local.name_prefix}"
+  role = local.dev_deployer_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:UpdateAssumeRolePolicy",
+          "iam:GetRole",
+          "iam:UpdateRole"
+        ]
+        Resource = local.test_unauthorized_role_arn
+      }
+    ]
+  })
 }
 
 resource "aws_iam_role" "test_unauthorized" {
@@ -172,6 +195,9 @@ resource "aws_iam_role" "test_unauthorized" {
       }
     ]
   })
+
+  # Ensure permissions policy is attached before updating the role
+  depends_on = [aws_iam_role_policy.deployer_manage_test_role]
 
   tags = {
     Purpose = "Integration testing - Lambda authorization rejection"
@@ -209,6 +235,24 @@ resource "aws_iam_role_policy" "deployer_assume_test_role" {
         Effect   = "Allow"
         Action   = "sts:AssumeRole"
         Resource = aws_iam_role.test_unauthorized.arn
+      }
+    ]
+  })
+}
+
+# Allow the CI/CD deployer role to invoke API Gateway for smoke tests
+# The signedFetch() helper uses the shared role's credentials directly
+resource "aws_iam_role_policy" "deployer_invoke_api" {
+  name = "invoke-api-${local.name_prefix}"
+  role = local.dev_deployer_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "execute-api:Invoke"
+        Resource = "${module.api.api_gateway_execution_arn}/*"
       }
     ]
   })
