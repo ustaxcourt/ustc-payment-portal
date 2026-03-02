@@ -18,6 +18,7 @@ describe("initialize a payment", () => {
         trackingId: "my-tracking-id",
         amount: "10.00",
         appId,
+        feeId: "PETITIONS_FILING_FEE",
         urlSuccess: "https://example.com",
         urlCancel: "https://example.com",
       }),
