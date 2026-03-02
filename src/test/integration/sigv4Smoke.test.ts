@@ -50,6 +50,7 @@ describe("SigV4 enforcement smoke test (Phase 3.3)", () => {
     trackingId: "smoke-test",
     amount: 1,
     appId: "smoke",
+    feeId: "PETITIONS_FILING_FEE",
     urlSuccess: "https://example.com",
     urlCancel: "https://example.com",
   });
