@@ -44,6 +44,10 @@ export const initPaymentHandler = (
 
   const request = JSON.parse(event.body);
 
+  if (!request.feeId) {
+    return Promise.resolve(handleError(new InvalidRequestError("feeid is required for payment initialization")));
+  }
+
   return lambdaHandler(
     request,
     event.requestContext,
