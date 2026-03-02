@@ -32,6 +32,7 @@ describe("make a transaction", () => {
       trackingId: `test${randomNumber}`,
       amount: 20,
       appId,
+      feeId: "PETITIONS_FILING_FEE",
       urlSuccess: "http://example.com/success",
       urlCancel: "http://example.com/cancel",
     };
