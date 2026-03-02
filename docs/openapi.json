@@ -48,7 +48,7 @@
           "PETITIONS_FILING_FEE",
           "NONATTORNEY_EXAM_REGISTRATION"
         ],
-        "description": "The fee type identifier",
+        "description": "The fee type identifier. Available fee types:\n\n- `PETITIONS_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee type. See the API documentation for more details on fee authorization and supported fees.",
         "example": "PETITIONS_FILING_FEE"
       },
       "MetadataDawson": {
@@ -121,7 +121,7 @@
               "PETITIONS_FILING_FEE",
               "NONATTORNEY_EXAM_REGISTRATION"
             ],
-            "description": "The fee type identifier",
+            "description": "The fee type identifier. Available fee types:\n\n- `PETITIONS_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee type. See the API documentation for more details on fee authorization and supported fees.",
             "example": "PETITIONS_FILING_FEE"
           },
           "urlSuccess": {
@@ -184,17 +184,17 @@
       },
       "BadRequestError": {
         "type": "string",
-        "description": "Error message for invalid requests. May be plain text (e.g., 'missing body') or a JSON-stringified validation error object.",
+        "description": "Error message for invalid requests (HTTP 400). May be plain text (e.g., 'missing body') or a JSON-stringified validation error object.\n\nCommon error scenarios:\n- Missing required fields: 'missing body'\n- Invalid field values: 'invalid feeId'\n- Schema validation failures: JSON-stringified validation error\n- Fee not found: 'Fee type is not available'\n- Missing amount for variable fees: 'Amount is required for variable fees'",
         "example": "missing body"
       },
       "ForbiddenError": {
         "type": "string",
-        "description": "Plain text error message for authentication/authorization failures",
+        "description": "Plain text error message for authentication/authorization failures (HTTP 403).\n\nCommon error scenarios:\n- Missing API key: 'Missing Authentication'\n- Invalid API key: 'Invalid API key'\n- Unauthorized fee access: Client not authorized to charge the requested fee",
         "example": "Missing Authentication"
       },
       "ServerError": {
         "type": "string",
-        "description": "Plain text error message for internal server errors",
+        "description": "Plain text error message for internal server errors (HTTP 500).\n\nReturned when an unexpected error occurs during request processing. If this error persists, contact support with the request details.",
         "example": "Internal Server Error"
       },
       "GetDetailsResponse": {
