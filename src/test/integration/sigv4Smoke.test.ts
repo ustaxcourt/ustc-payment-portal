@@ -41,7 +41,7 @@ import { signedFetch } from "./sigv4Helper";
  *   NODE_ENV=stg BASE_URL=https://<api-id>.execute-api.us-east-1.amazonaws.com/stg \
  *   AWS_REGION=us-east-1 npx jest sigv4Smoke
  */
-describe("SigV4 enforcement smoke test (Phase 3.3)", () => {
+describe("SigV4 enforcement smoke test", () => {
   const baseUrl = process.env.BASE_URL;
 
   // A minimal valid /init body. We only need API Gateway to evaluate auth —
@@ -66,6 +66,10 @@ describe("SigV4 enforcement smoke test (Phase 3.3)", () => {
       body,
     });
 
+    const data = await result.json();
+    console.log(result);
+    console.log(data);
+
     // Pre-deployment:  passes (auth is NONE, Lambda handles it).
     // Post-deployment: passes (SigV4 accepted, Lambda handles it).
     expect(result.status).toBe(200);
@@ -77,6 +81,10 @@ describe("SigV4 enforcement smoke test (Phase 3.3)", () => {
       headers,
       body,
     });
+
+    const data = await result.json();
+    console.log(result);
+    console.log(data);
 
     // Pre-deployment:  FAILS — returns 200 because API Gateway auth is still NONE.
     // Post-deployment: passes — API Gateway rejects unsigned request with 403.
