@@ -155,7 +155,7 @@ Once `fee_id` is determined, the Payment Portal queries the `fees` table to reso
 ```sql
 CREATE TABLE fees (
   fee_id          VARCHAR(50) PRIMARY KEY,   -- Client-facing fee identifier
-  name            VARCHAR(100) NOT NULL,      -- Human-readable fee name
+  name            VARCHAR(100) NOT NULL,      -- Human-readable fee name, useful for finance dashboard
   tcs_app_id      VARCHAR(50) NOT NULL,       -- Pay.gov application identifier
   is_variable     BOOLEAN NOT NULL DEFAULT false,
   amount          DECIMAL(10,2),  -- Required when is_variable = false, NULL when is_variable = true
