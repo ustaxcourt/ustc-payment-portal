@@ -210,10 +210,19 @@ jobs:
           aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/client-permissions" --query SecretString --output text | \
           aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string file:///dev/stdin
 
-          # Copy allowed account IDs (for API Gateway cross-account resource policy)
+          # Copy allowed account IDs (for API Gateway cross-account resource policy).
+          # Guarded: this secret only exists in dev once PAY-008 has been deployed there.
+          # PR environments use the Terraform-seeded default ([]) when the source is absent —
+          # all CI integration tests run as the deployer role (same account) so they still pass.
           ALLOWED_ACCOUNT_IDS_SECRET_ID=$(terraform output -raw allowed_account_ids_secret_id)
-          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/allowed-account-ids" --query SecretString --output text | \
-          aws secretsmanager put-secret-value --secret-id "$ALLOWED_ACCOUNT_IDS_SECRET_ID" --secret-string file:///dev/stdin
+          ALLOWED_IDS=$(aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/allowed-account-ids" --query SecretString --output text 2>/dev/null || echo "")
+          if [ -n "$ALLOWED_IDS" ]; then
+            aws secretsmanager put-secret-value --secret-id "$ALLOWED_ACCOUNT_IDS_SECRET_ID" --secret-string "$ALLOWED_IDS"
+            echo "Copied allowed-account-ids from dev."
+          else
+            echo "Source secret 'ustc/pay-gov/dev/allowed-account-ids' not found — PR env will use Terraform-seeded default ([])."
+            echo "Expected on the first PR before PAY-008 is deployed to dev. CI tests will still pass."
+          fi
 
           echo "All secret values copied successfully"
         working-directory: terraform/environments/dev

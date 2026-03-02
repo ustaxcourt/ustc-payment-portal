@@ -27,6 +27,8 @@ Each client application needs a dedicated IAM role in their AWS account. The Pay
 
 When AWS services (like Lambda) receive a request, the caller identity arrives as an STS assumed-role ARN (`arn:aws:sts::ACCOUNT_ID:assumed-role/role-name/session`). The Payment Portal converts this back to the IAM role ARN for lookup. STS assumed-role ARNs drop any custom path prefix during this conversion — a role at a custom path cannot be matched against its stored ARN, and authorization will always fail.
 
+> **Debugging tip:** If your role uses a custom path prefix and authorization fails, the API will return a `403` with `"Client not registered"`. This is because the reconstructed ARN (without the path prefix) won't match the ARN stored in the client-permissions secret. Double-check the role ARN you provided at onboarding matches the format `arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME` with no path segment.
+
 ### The role must have permission to call the Payment Portal
 
 The role needs `execute-api:Invoke` permission on the Payment Portal API Gateway resource. The Payment Portal team will add the client's AWS account to the API Gateway resource policy as part of onboarding.
@@ -117,7 +119,7 @@ Collect from the client:
 - AWS account ID
 - Requested fee IDs
 
-Verify the role ARN is at the root path (no custom path segment between `role/` and the role name).
+Verify the role ARN is at the root path — no custom path segment between `role/` and the role name. If the ARN contains more than one segment after `role/` (e.g. `role/service/my-role`), ask the client to create a root-path role before proceeding.
 
 ### Step 2 — Update the client permissions secret
 
@@ -128,7 +130,7 @@ Add the new client entry to the `ustc/pay-gov/{env}/client-permissions` secret i
   {
     "clientName": "DAWSON",
     "clientRoleArn": "arn:aws:iam::111111111111:role/dawson-client",
-    "allowedFeeIds": ["PETITIONS_FILING_FEE", "ADMISSIONS_FEE"]
+    "allowedFeeIds": ["PETITIONS_FILING_FEE"]
   },
   {
     "clientName": "New Client Name",

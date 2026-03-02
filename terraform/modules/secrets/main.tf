@@ -54,6 +54,17 @@ resource "aws_secretsmanager_secret" "client_permissions" {
   tags                    = local.tags
 }
 
+# Seed client_permissions with an empty array so Lambda doesn't 500 on first deploy.
+# Actual client entries should be added via AWS CLI/Console after deployment.
+resource "aws_secretsmanager_secret_version" "client_permissions_initial" {
+  secret_id     = aws_secretsmanager_secret.client_permissions.id
+  secret_string = "[]"
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
 resource "aws_secretsmanager_secret" "allowed_account_ids" {
   name                    = "${local.basepath}/${var.allowed_account_ids_name}"
   description             = "JSON array of AWS account IDs allowed to invoke the API Gateway cross-account (${local.env})"

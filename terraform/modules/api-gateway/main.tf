@@ -160,6 +160,7 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_integration.process_integration.id,
       aws_api_gateway_integration.test_integration.id,
       aws_api_gateway_integration.details_integration.id,
+      aws_api_gateway_rest_api_policy.policy.id,
     ]))
   }
 

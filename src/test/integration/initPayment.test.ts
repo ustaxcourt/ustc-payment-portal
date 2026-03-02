@@ -28,10 +28,7 @@ describe("initialize a payment", () => {
     };
 
     // In local dev, API Gateway is not in the loop — plain fetch is fine.
-    // In deployed environments (stg/prod), API Gateway enforces AWS_IAM auth.
-    // We sign the request unconditionally so the test works in both cases:
-    //   - Pre-deployment:  extra SigV4 headers are ignored, returns 200 (auth still NONE in live env).
-    //   - Post-deployment: SigV4 headers satisfy AWS_IAM, returns 200 for the right reason.
+    // In deployed environments, API Gateway enforces AWS_IAM auth — sign with SigV4.
     const result = isLocal ? await fetch(url, options) : await signedFetch(url, options);
 
     const data = await result.json();
