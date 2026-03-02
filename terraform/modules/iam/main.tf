@@ -235,6 +235,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "iam:CreateRole",
           "iam:DeleteRole",
           "iam:UpdateRole",
+          "iam:UpdateAssumeRolePolicy",
           "iam:GetRole",
           "iam:ListRolePolicies",
           "iam:GetRolePolicy",
