@@ -54,6 +54,24 @@ resource "aws_secretsmanager_secret" "client_permissions" {
   tags                    = local.tags
 }
 
+resource "aws_secretsmanager_secret" "allowed_account_ids" {
+  name                    = "${local.basepath}/${var.allowed_account_ids_name}"
+  description             = "JSON array of AWS account IDs allowed to invoke the API Gateway cross-account (${local.env})"
+  recovery_window_in_days = var.recovery_window_in_days
+  tags                    = local.tags
+}
+
+# Seed the allowed_account_ids secret with an empty array so Terraform can read it
+# Actual account IDs should be added via AWS CLI/Console after deployment
+resource "aws_secretsmanager_secret_version" "allowed_account_ids_initial" {
+  secret_id     = aws_secretsmanager_secret.allowed_account_ids.id
+  secret_string = "[]"
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
 # IAM for Lambda to read these secrets
 data "aws_iam_policy_document" "lambda_secrets_read" {
   statement {

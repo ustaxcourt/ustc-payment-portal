@@ -53,7 +53,7 @@ const signer = new SignatureV4({
 async function signedFetch(
   url: string,
   method: string,
-  body?: string
+  body?: string,
 ): Promise<Response> {
   const parsedUrl = new URL(url);
 
@@ -87,7 +87,7 @@ const response = await signedFetch(
     amount: 60.00,
     urlSuccess: "https://your-app.com/payment/success",
     urlCancel: "https://your-app.com/payment/cancel",
-  })
+  }),
 );
 ```
 
@@ -112,6 +112,7 @@ This is for the Payment Portal team when onboarding a new client.
 ### Step 1 — Get client information
 
 Collect from the client:
+
 - IAM role ARN
 - AWS account ID
 - Requested fee IDs
@@ -139,11 +140,25 @@ Add the new client entry to the `ustc/pay-gov/{env}/client-permissions` secret i
 
 The Lambda will pick up the updated secret on the next cold start (or after the 5-minute cache TTL expires). Revocation is immediate after the cache expires — just remove the entry.
 
-### Step 3 — Update the API Gateway resource policy (Terraform)
+### Step 3 — Update the allowed account IDs secret
 
-Add the client's AWS account ID to the allowed accounts variable in Terraform and deploy.
+Add the client's AWS account ID to the `ustc/pay-gov/{env}/allowed-account-ids` secret in AWS Secrets Manager:
 
-This step requires a deployment and is separate from the Secrets Manager update — it controls which AWS accounts can even reach the API Gateway endpoint.
+```bash
+# Get current value
+aws secretsmanager get-secret-value \
+  --secret-id ustc/pay-gov/dev/allowed-account-ids \
+  --query SecretString --output text
+
+# Update with new account (example adding account 222222222222)
+aws secretsmanager put-secret-value \
+  --secret-id ustc/pay-gov/dev/allowed-account-ids \
+  --secret-string '["111111111111", "222222222222"]'
+```
+
+**Important:** After updating the secret, you must run `terraform apply` in the target environment. The API Gateway resource policy is generated at Terraform plan time from the secret value — changes to the secret are not automatically reflected until the next deployment.
+
+This is separate from the client permissions secret — the allowed-account-ids secret controls which AWS accounts can reach the API Gateway endpoint at all, while client-permissions controls which role ARNs are authorized for which fee IDs.
 
 ### Step 4 — Verify
 
