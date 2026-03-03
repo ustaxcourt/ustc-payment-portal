@@ -1,7 +1,6 @@
 // src/features/transactions/components/StatusTabs.tsx
 import * as React from 'react'
 import { Tabs, Tab, Chip, Box } from '@mui/material'
-import { alpha } from '@mui/material/styles'
 import type { TransactionStatus } from '../types'
 
 type StatusTabsValue = TransactionStatus
@@ -17,17 +16,12 @@ export default function StatusTabs({ value, counts, onChange }: StatusTabsProps)
     onChange(newValue)
   }
 
-  const tabSx = { textTransform: 'none', fontWeight: 600 }
-  const successBg = (theme: any) => ({ bgcolor: alpha(theme.palette.success.light, 0.25), borderRadius: 1 })
-  const failedBg = (theme: any) => ({ bgcolor: alpha(theme.palette.error.light, 0.25), borderRadius: 1 })
-  const pendingBg = (theme: any) => ({ bgcolor: alpha(theme.palette.warning.light, 0.25), borderRadius: 1 })
-
   return (
-    <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+    <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 0 }}>
       <Tabs
         value={value}
         onChange={handleChange}
-        variant="scrollable"
+        variant="fullWidth"
         allowScrollButtonsMobile
         aria-label="Transaction status tabs"
       >
@@ -38,7 +32,6 @@ export default function StatusTabs({ value, counts, onChange }: StatusTabsProps)
               Successful <Chip size="small" color="success" label={counts.SUCCESS} />
             </Box>
           }
-          sx={(theme) => ({ ...tabSx, ...(value === 'SUCCESS' ? successBg(theme) : {}) })}
         />
         <Tab
           value="FAILED"
@@ -47,7 +40,6 @@ export default function StatusTabs({ value, counts, onChange }: StatusTabsProps)
               Failed <Chip size="small" color="error" label={counts.FAILED} />
             </Box>
           }
-          sx={(theme) => ({ ...tabSx, ...(value === 'FAILED' ? failedBg(theme) : {}) })}
         />
         <Tab
           value="PENDING"
@@ -56,7 +48,6 @@ export default function StatusTabs({ value, counts, onChange }: StatusTabsProps)
               Pending <Chip size="small" color="warning" label={counts.PENDING} />
             </Box>
           }
-          sx={(theme) => ({ ...tabSx, ...(value === 'PENDING' ? pendingBg(theme) : {}) })}
         />
       </Tabs>
     </Box>

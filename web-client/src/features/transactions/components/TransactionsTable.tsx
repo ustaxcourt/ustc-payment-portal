@@ -7,9 +7,10 @@ import type { Transaction } from '../types'
 export interface TransactionsTableProps {
   rows: Transaction[]
   loading?: boolean
+  status: string
 }
 
-export default function TransactionsTable({ rows, loading }: TransactionsTableProps) {
+export default function TransactionsTable({ rows, loading, status }: TransactionsTableProps) {
   const columns = React.useMemo<GridColDef<Transaction>[]>(
     () => [
       {
@@ -50,26 +51,51 @@ export default function TransactionsTable({ rows, loading }: TransactionsTablePr
 
   return (
     <Box
-      sx={{
-        // let it size with content like in your mock
+      sx={(theme) => ({
+        height: 'calc(100vh - 230px)',
+        width: '100%',
+        border: `1px solid ${theme.palette.grey[700]}`,
+        borderColor: '#000',
+        borderRadius: 0,
         '& .MuiDataGrid-columnHeaders': { bgcolor: 'grey.100', fontWeight: 700 },
         '& .MuiDataGrid-cell': { alignItems: 'flex-start' },
-        '& .MuiDataGrid-row': {}
-      }}
+        paddingTop: 3,
+      })}
     >
       <DataGrid
         rows={rows}
         columns={columns}
         getRowId={(r) => r.id}
-        autoHeight
         disableColumnMenu
-        initialState={{
-          sorting: { sortModel: [{ field: 'timestamp', sort: 'desc' }] },
-          pagination: { paginationModel: { pageSize: 10, page: 0 } }
-        }}
-        pageSizeOptions={[10, 25, 50, 100]}
+        hideFooter
         loading={loading}
         density="comfortable"
+        initialState={{
+          sorting: { sortModel: [{ field: 'timestamp', sort: 'desc' }] },
+        }}
+
+        slotProps={{
+          root: { 'data-status': status },
+        }}
+
+        sx={(theme) => {
+          const tones = theme.app.headerTone
+          const tone =
+            status === 'SUCCESS'
+              ? { bg: tones.successBg, border: tones.successBorder }
+              : status === 'FAILED'
+                ? { bg: tones.failedBg, border: tones.failedBorder }
+                : { bg: tones.pendingBg, border: tones.pendingBorder }
+
+          return {
+            '& .MuiDataGrid-columnHeader': {
+              backgroundColor: tone.bg,
+              '&:hover': { backgroundColor: tone.bg },
+            },
+          }
+        }}
+        showCellVerticalBorder
+        showColumnVerticalBorder
       />
     </Box>
   )

@@ -10,6 +10,6 @@ export default function TransactionsStatusPage({ status }: { status: Transaction
   )
 
   return (
-    <TransactionsTable rows={rows} />
+    <TransactionsTable rows={rows} status={status} />
   )
 }
