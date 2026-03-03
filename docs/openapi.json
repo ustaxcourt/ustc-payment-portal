@@ -45,11 +45,11 @@
       "FeeId": {
         "type": "string",
         "enum": [
-          "PETITIONS_FILING_FEE",
-          "NONATTORNEY_EXAM_REGISTRATION"
+          "PETITION_FILING_FEE",
+          "NONATTORNEY_EXAM_REGISTRATION_FEE"
         ],
         "description": "The fee type identifier",
-        "example": "PETITIONS_FILING_FEE"
+        "example": "PETITION_FILING_FEE"
       },
       "MetadataDawson": {
         "type": "object",
@@ -99,7 +99,7 @@
             "$ref": "#/components/schemas/MetadataNonattorneyExam"
           }
         ],
-        "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. Note: Fee identifiers shown here (e.g., PETITIONS_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) are working names and may be renamed before release. See individual metadata schemas for field requirements."
+        "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. Note: Fee identifiers shown here (e.g., PETITION_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION_FEE) are working names and may be renamed before release. See individual metadata schemas for field requirements."
       },
       "InitPaymentRequest": {
         "type": "object",
@@ -118,11 +118,11 @@
           "feeId": {
             "type": "string",
             "enum": [
-              "PETITIONS_FILING_FEE",
-              "NONATTORNEY_EXAM_REGISTRATION"
+              "PETITION_FILING_FEE",
+              "NONATTORNEY_EXAM_REGISTRATION_FEE"
             ],
             "description": "The fee type identifier",
-            "example": "PETITIONS_FILING_FEE"
+            "example": "PETITION_FILING_FEE"
           },
           "urlSuccess": {
             "type": "string",
@@ -145,7 +145,7 @@
                 "$ref": "#/components/schemas/MetadataNonattorneyExam"
               }
             ],
-            "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. Note: Fee identifiers shown here (e.g., PETITIONS_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) are working names and may be renamed before release. See individual metadata schemas for field requirements."
+            "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. Note: Fee identifiers shown here (e.g., PETITION_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION_FEE) are working names and may be renamed before release. See individual metadata schemas for field requirements."
           }
         },
         "required": [

@@ -34,10 +34,10 @@ components:
     FeeId:
       type: string
       enum:
-        - PETITIONS_FILING_FEE
-        - NONATTORNEY_EXAM_REGISTRATION
+        - PETITION_FILING_FEE
+        - NONATTORNEY_EXAM_REGISTRATION_FEE
       description: The fee type identifier
-      example: PETITIONS_FILING_FEE
+      example: PETITION_FILING_FEE
     MetadataDawson:
       type: object
       properties:
@@ -69,12 +69,12 @@ components:
         - accessCode
     Metadata:
       anyOf:
-        - $ref: '#/components/schemas/MetadataDawson'
-        - $ref: '#/components/schemas/MetadataNonattorneyExam'
+        - $ref: "#/components/schemas/MetadataDawson"
+        - $ref: "#/components/schemas/MetadataNonattorneyExam"
       description: >-
         Metadata fields are dynamic and determined by the feeId value. Different
         fees require different metadata properties. Note: Fee identifiers shown
-        here (e.g., PETITIONS_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) are
+        here (e.g., PETITION_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION_FEE) are
         working names and may be renamed before release. See individual metadata
         schemas for field requirements.
     InitPaymentRequest:
@@ -92,10 +92,10 @@ components:
         feeId:
           type: string
           enum:
-            - PETITIONS_FILING_FEE
-            - NONATTORNEY_EXAM_REGISTRATION
+            - PETITION_FILING_FEE
+            - NONATTORNEY_EXAM_REGISTRATION_FEE
           description: The fee type identifier
-          example: PETITIONS_FILING_FEE
+          example: PETITION_FILING_FEE
         urlSuccess:
           type: string
           format: uri
@@ -108,13 +108,13 @@ components:
           example: https://client.app/cancel
         metadata:
           anyOf:
-            - $ref: '#/components/schemas/MetadataDawson'
-            - $ref: '#/components/schemas/MetadataNonattorneyExam'
+            - $ref: "#/components/schemas/MetadataDawson"
+            - $ref: "#/components/schemas/MetadataNonattorneyExam"
           description: >-
             Metadata fields are dynamic and determined by the feeId value.
             Different fees require different metadata properties. Note: Fee
-            identifiers shown here (e.g., PETITIONS_FILING_FEE,
-            NONATTORNEY_EXAM_REGISTRATION) are working names and may be renamed
+            identifiers shown here (e.g., PETITION_FILING_FEE,
+            NONATTORNEY_EXAM_REGISTRATION_FEE) are working names and may be renamed
             before release. See individual metadata schemas for field
             requirements.
       required:
@@ -171,7 +171,7 @@ components:
         transactions:
           type: array
           items:
-            $ref: '#/components/schemas/TransactionRecordSummary'
+            $ref: "#/components/schemas/TransactionRecordSummary"
           description: >-
             Array of all transaction records associated with this payment
             reference
@@ -207,12 +207,12 @@ components:
           type: string
           format: date-time
           description: Timestamp when the transaction was created
-          example: '2024-01-15T10:30:00Z'
+          example: "2024-01-15T10:30:00Z"
         updatedTimestamp:
           type: string
           format: date-time
           description: Timestamp when the transaction was last updated
-          example: '2024-01-15T10:35:00Z'
+          example: "2024-01-15T10:35:00Z"
       required:
         - transactionStatus
     TransactionRecord:
@@ -247,17 +247,17 @@ components:
         returnCode:
           type: string
           description: Return code from Pay.gov
-          example: '1000'
+          example: "1000"
         createdTimestamp:
           type: string
           format: date-time
           description: Timestamp when the transaction was created
-          example: '2024-01-15T10:30:00Z'
+          example: "2024-01-15T10:30:00Z"
         updatedTimestamp:
           type: string
           format: date-time
           description: Timestamp when the transaction was last updated
-          example: '2024-01-15T10:35:00Z'
+          example: "2024-01-15T10:35:00Z"
       required:
         - payGovTrackingId
         - transactionStatus
@@ -317,7 +317,7 @@ components:
         transactions:
           type: array
           items:
-            $ref: '#/components/schemas/TransactionRecordSummary'
+            $ref: "#/components/schemas/TransactionRecordSummary"
           description: >-
             Array of all transaction records associated with this payment
             reference
@@ -341,32 +341,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InitPaymentRequest'
+              $ref: "#/components/schemas/InitPaymentRequest"
       responses:
-        '200':
+        "200":
           description: Payment initialized successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InitPaymentResponse'
-        '400':
+                $ref: "#/components/schemas/InitPaymentResponse"
+        "400":
           description: Invalid request payload (e.g., missing body, validation error)
           content:
             text/plain:
               schema:
-                $ref: '#/components/schemas/BadRequestError'
-        '403':
+                $ref: "#/components/schemas/BadRequestError"
+        "403":
           description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             text/plain:
               schema:
-                $ref: '#/components/schemas/ForbiddenError'
-        '500':
+                $ref: "#/components/schemas/ForbiddenError"
+        "500":
           description: Internal server error
           content:
             text/plain:
               schema:
-                $ref: '#/components/schemas/ServerError'
+                $ref: "#/components/schemas/ServerError"
   /details/{appId}/{transactionReferenceId}:
     get:
       summary: Get transaction details
@@ -396,30 +396,30 @@ paths:
           name: transactionReferenceId
           in: path
       responses:
-        '200':
+        "200":
           description: Transaction details retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetDetailsResponse'
-        '400':
+                $ref: "#/components/schemas/GetDetailsResponse"
+        "400":
           description: Invalid request (e.g., missing path parameters)
           content:
             text/plain:
               schema:
-                $ref: '#/components/schemas/BadRequestError'
-        '403':
+                $ref: "#/components/schemas/BadRequestError"
+        "403":
           description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             text/plain:
               schema:
-                $ref: '#/components/schemas/ForbiddenError'
-        '500':
+                $ref: "#/components/schemas/ForbiddenError"
+        "500":
           description: Internal server error
           content:
             text/plain:
               schema:
-                $ref: '#/components/schemas/ServerError'
+                $ref: "#/components/schemas/ServerError"
   /process:
     post:
       summary: Process a payment
@@ -438,30 +438,30 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProcessPaymentRequest'
+              $ref: "#/components/schemas/ProcessPaymentRequest"
       responses:
-        '200':
+        "200":
           description: Payment processed. Check transactionStatus for Success or Failed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProcessPaymentResponse'
-        '400':
+                $ref: "#/components/schemas/ProcessPaymentResponse"
+        "400":
           description: Invalid request payload (e.g., missing body)
           content:
             text/plain:
               schema:
-                $ref: '#/components/schemas/BadRequestError'
-        '403':
+                $ref: "#/components/schemas/BadRequestError"
+        "403":
           description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             text/plain:
               schema:
-                $ref: '#/components/schemas/ForbiddenError'
-        '500':
+                $ref: "#/components/schemas/ForbiddenError"
+        "500":
           description: Internal server error
           content:
             text/plain:
               schema:
-                $ref: '#/components/schemas/ServerError'
+                $ref: "#/components/schemas/ServerError"
 webhooks: {}

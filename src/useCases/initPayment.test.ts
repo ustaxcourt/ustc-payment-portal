@@ -30,7 +30,7 @@ describe("initPayment", () => {
     const { token, paymentRedirect } = await initPayment(appContext, {
       amount: 20,
       appId: "asdf",
-      feeId: "PETITIONS_FILING_FEE",
+      feeId: "PETITION_FILING_FEE",
       urlCancel: "http://example.com",
       urlSuccess: "http://another-example.com",
       trackingId: "test-12345",

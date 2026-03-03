@@ -15,7 +15,7 @@ const validPermissions: ClientPermission[] = [
   {
     clientName: "DAWSON",
     clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
-    allowedFeeIds: ["PETITIONS_FILING_FEE", "ADMISSIONS_FEE"],
+    allowedFeeIds: ["PETITION_FILING_FEE", "ADMISSIONS_FEE"],
   },
   {
     clientName: "Test App",
