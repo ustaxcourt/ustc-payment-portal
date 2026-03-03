@@ -1,9 +1,10 @@
+// src/features/transactions/components/StatusTabs.tsx
 import * as React from 'react'
 import { Tabs, Tab, Chip, Box } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { TransactionStatus } from '../types'
 
-type StatusTabsValue = TransactionStatus | 'ALL'
+type StatusTabsValue = TransactionStatus
 
 export interface StatusTabsProps {
   value: StatusTabsValue
@@ -11,32 +12,15 @@ export interface StatusTabsProps {
   onChange: (value: StatusTabsValue) => void
 }
 
-export default function StatusTabs({
-  value,
-  counts,
-  onChange,
-}: StatusTabsProps) {
+export default function StatusTabs({ value, counts, onChange }: StatusTabsProps) {
   const handleChange = (_: React.SyntheticEvent, newValue: StatusTabsValue) => {
     onChange(newValue)
   }
 
-  const tabSx = {
-    textTransform: 'none',
-    fontWeight: 600
-  }
-
-  const successBg = (theme: any) => ({
-    bgcolor: alpha(theme.palette.success.light, 0.25),
-    borderRadius: 1
-  })
-  const failedBg = (theme: any) => ({
-    bgcolor: alpha(theme.palette.error.light, 0.25),
-    borderRadius: 1
-  })
-  const pendingBg = (theme: any) => ({
-    bgcolor: alpha(theme.palette.warning.light, 0.25),
-    borderRadius: 1
-  })
+  const tabSx = { textTransform: 'none', fontWeight: 600 }
+  const successBg = (theme: any) => ({ bgcolor: alpha(theme.palette.success.light, 0.25), borderRadius: 1 })
+  const failedBg = (theme: any) => ({ bgcolor: alpha(theme.palette.error.light, 0.25), borderRadius: 1 })
+  const pendingBg = (theme: any) => ({ bgcolor: alpha(theme.palette.warning.light, 0.25), borderRadius: 1 })
 
   return (
     <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
@@ -51,8 +35,7 @@ export default function StatusTabs({
           value="SUCCESS"
           label={
             <Box display="flex" alignItems="center" gap={1}>
-              Successful
-              <Chip size="small" color="success" label={counts.SUCCESS} />
+              Successful <Chip size="small" color="success" label={counts.SUCCESS} />
             </Box>
           }
           sx={(theme) => ({ ...tabSx, ...(value === 'SUCCESS' ? successBg(theme) : {}) })}
@@ -61,8 +44,7 @@ export default function StatusTabs({
           value="FAILED"
           label={
             <Box display="flex" alignItems="center" gap={1}>
-              Failed
-              <Chip size="small" color="error" label={counts.FAILED} />
+              Failed <Chip size="small" color="error" label={counts.FAILED} />
             </Box>
           }
           sx={(theme) => ({ ...tabSx, ...(value === 'FAILED' ? failedBg(theme) : {}) })}
@@ -71,8 +53,7 @@ export default function StatusTabs({
           value="PENDING"
           label={
             <Box display="flex" alignItems="center" gap={1}>
-              Pending
-              <Chip size="small" color="warning" label={counts.PENDING} />
+              Pending <Chip size="small" color="warning" label={counts.PENDING} />
             </Box>
           }
           sx={(theme) => ({ ...tabSx, ...(value === 'PENDING' ? pendingBg(theme) : {}) })}
