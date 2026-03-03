@@ -2,10 +2,10 @@
 import * as React from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Box, Typography } from '@mui/material'
-import FinanceDashboardHeader from '../../../components/FinanceDashboardHeader'
-import StatusTabs from '../components/StatusTabs'
-import { mockTransactions } from '../mock'
-import type { TransactionStatus } from '../types'
+import FinanceDashboardHeader from '../components/FinanceDashboardHeader'
+import StatusTabs from '../features/transactions/components/StatusTabs'
+import { mockTransactions } from '../features/transactions/mock'
+import type { TransactionStatus } from '../features/transactions/types'
 
 type StatusTabsValue = TransactionStatus // we won't use 'ALL' in the routed version
 
