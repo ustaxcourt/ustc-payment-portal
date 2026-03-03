@@ -79,9 +79,6 @@ resource "aws_api_gateway_method" "details_get" {
   resource_id   = aws_api_gateway_resource.details_tracking.id
   http_method   = "GET"
   authorization = "AWS_IAM"
-  request_parameters = {
-
-  }
 }
 
 # Resource policy — controls which AWS accounts can reach the API at all.

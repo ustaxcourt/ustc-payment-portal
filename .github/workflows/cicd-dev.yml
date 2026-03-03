@@ -205,10 +205,19 @@ jobs:
           aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/tcs-app-id" --query SecretString --output text | \
           aws secretsmanager put-secret-value --secret-id "$TCS_APP_ID_SECRET_ID" --secret-string file:///dev/stdin
 
-          # Copy client permissions (authorized IAM role ARNs for Lambda-level auth)
+          # Copy client permissions (authorized IAM role ARNs for Lambda-level auth).
+          # Guarded: this secret only exists in dev once PAY-008 has been deployed there.
+          # PR environments use the Terraform-seeded default ([]) when the source is absent —
+          # Lambda returns 403 "Client not registered" rather than 500, which is correct behavior.
           CLIENT_PERMISSIONS_SECRET_ID=$(terraform output -raw client_permissions_secret_id)
-          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/client-permissions" --query SecretString --output text | \
-          aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string file:///dev/stdin
+          CLIENT_PERMISSIONS=$(aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/client-permissions" --query SecretString --output text 2>/dev/null || echo "")
+          if [ -n "$CLIENT_PERMISSIONS" ]; then
+            aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string "$CLIENT_PERMISSIONS"
+            echo "Copied client-permissions from dev."
+          else
+            echo "Source secret 'ustc/pay-gov/dev/client-permissions' not found — PR env will use Terraform-seeded default ([])."
+            echo "Expected on the first PR before PAY-008 is deployed to dev. Lambda will return 403 for unregistered clients."
+          fi
 
           # Copy allowed account IDs (for API Gateway cross-account resource policy).
           # Guarded: this secret only exists in dev once PAY-008 has been deployed there.
