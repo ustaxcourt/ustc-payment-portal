@@ -20,7 +20,7 @@ describe("initPayment", () => {
     await expect(
       initPayment(appContext, {
         amount: 20,
-      } as any)
+      } as any),
     ).rejects.toThrow();
   });
 
@@ -30,6 +30,7 @@ describe("initPayment", () => {
     const { token, paymentRedirect } = await initPayment(appContext, {
       amount: 20,
       appId: "asdf",
+      feeId: "PETITIONS_FILING_FEE",
       urlCancel: "http://example.com",
       urlSuccess: "http://another-example.com",
       trackingId: "test-12345",

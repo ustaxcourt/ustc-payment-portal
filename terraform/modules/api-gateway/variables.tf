@@ -6,7 +6,7 @@ variable "environment" {
 variable "stage_name" {
   description = "Deployment stage name (e.g., dev)"
   type        = string
-  default = "dev"
+  default     = "dev"
 }
 
 variable "lambda_function_arns" {
@@ -18,5 +18,11 @@ variable "common_tags" {
   description = "Tags to apply to API resources"
   type        = map(string)
   default     = {}
+}
+
+variable "allowed_account_ids" {
+  description = "List of AWS account IDs allowed to invoke the API Gateway via cross-account IAM access. The deploying account is always allowed."
+  type        = list(string)
+  default     = []
 }
 

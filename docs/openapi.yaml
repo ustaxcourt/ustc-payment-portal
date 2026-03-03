@@ -411,7 +411,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/BadRequestError'
         '403':
-          description: Forbidden - invalid or missing API key
+          description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             text/plain:
               schema:
@@ -464,7 +464,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/BadRequestError'
         '403':
-          description: Forbidden - invalid or missing API key
+          description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             text/plain:
               schema:
@@ -508,7 +508,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/BadRequestError'
         '403':
-          description: Forbidden - invalid or missing API key
+          description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             text/plain:
               schema:

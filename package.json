@@ -53,6 +53,7 @@
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.4.0",
     "@aws-sdk/client-secrets-manager": "^3.901.0",
+    "@aws-sdk/client-sts": "^3.1000.0",
     "dotenv": "^17.2.2",
     "fast-xml-parser": "^5.2.5",
     "joi": "^18.0.2",
