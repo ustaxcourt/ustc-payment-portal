@@ -1,5 +1,5 @@
 import type { } from '@mui/x-data-grid/themeAugmentation' // For MuiDataGrid
-import { alpha, createTheme } from '@mui/material/styles'
+import { createTheme } from '@mui/material/styles'
 
 declare module '@mui/material/styles' {
   interface Theme {
@@ -112,10 +112,12 @@ const theme = createTheme({
           minHeight: 0,
           height: 36,
           borderRadius: 0,
+          padding: theme.spacing(3),
           paddingInline: theme.spacing(1.25),
           marginRight: theme.spacing(1),
           backgroundColor: '#efefef',
-          border: `1px solid ${theme.palette.grey[700]}`,
+          border: 0,
+          fontSize: 20,
 
           // Keep chip square if present
           '& .MuiChip-root': { height: 22, fontWeight: 700, borderRadius: 0 },
@@ -131,6 +133,7 @@ const theme = createTheme({
             borderBottomColor: 'transparent', // hide the tab's bottom border
             marginBottom: -1,                  // overlap the Tabs root border-bottom by 1px
             position: 'relative',
+            border: `1px solid ${theme.palette.grey[700]}`,
             zIndex: 3,
           },
           '&.Mui-selected.Mui-focusVisible': {
@@ -162,7 +165,6 @@ const theme = createTheme({
     // MuiDataGrid styles
     MuiDataGrid: {
       defaultProps: {
-        // your desired defaults
         disableColumnMenu: true,
         hideFooter: true,
         density: 'comfortable',
@@ -172,7 +174,8 @@ const theme = createTheme({
       styleOverrides: {
         root: ({ theme }) => ({
           borderRadius: 0,
-          // Header styles (background + bottom rule)
+
+          // Base gridlines (apply to all statuses)
           '& .MuiDataGrid-columnHeaders': {
             backgroundColor: theme.palette.grey[100],
             fontWeight: 700,
@@ -185,19 +188,32 @@ const theme = createTheme({
             fontWeight: 700,
             borderTop: 0,
             borderBottom: `1px solid ${theme.palette.grey[700]}`,
+            // Make header cells transparent so the container bg shows uniformly
+            backgroundColor: 'transparent',
+            '&:hover': { backgroundColor: 'transparent' },
+            '&.MuiDataGrid-columnHeader--moving': { backgroundColor: 'transparent' },
+            '&:focus, &:focus-within': { backgroundColor: 'transparent', outline: 'none' },
           },
-
-          // Horizontal row separators
+          '& .MuiDataGrid-columnHeaderTitleContainer, & .MuiDataGrid-iconButtonContainer': {
+            opacity: 1,
+          },
           '& .MuiDataGrid-row': {
             borderBottom: `1px solid ${theme.palette.grey[400]}`,
           },
-
-          // Ensure vertical separators are visible (older versions hide them)
           '& .MuiDataGrid-columnSeparator': {
             visibility: 'visible',
-            '& svg': {
-              color: theme.palette.grey[400],
-            },
+            '& svg': { color: theme.palette.grey[400] },
+          },
+
+          // ---- Status-scoped rules (root has data-status) ----
+          '&[data-status="SUCCESS"] .MuiDataGrid-columnHeaders': {
+            backgroundColor: theme.app.headerTone.successBg,
+          },
+          '&[data-status="FAILED"] .MuiDataGrid-columnHeaders': {
+            backgroundColor: theme.app.headerTone.failedBg,
+          },
+          '&[data-status="PENDING"] .MuiDataGrid-columnHeaders': {
+            backgroundColor: theme.app.headerTone.pendingBg,
           },
         }),
       },
