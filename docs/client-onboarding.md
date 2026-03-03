@@ -107,7 +107,7 @@ To be onboarded, provide the following:
 
 ---
 
-## Runbook: Adding a New Client
+## Adding a New Client
 
 This is for the Payment Portal team when onboarding a new client.
 
