@@ -1,7 +1,7 @@
 // src/features/transactions/pages/TransactionsLayout.tsx
 import * as React from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Box, Paper, Typography } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import FinanceDashboardHeader from '../../../components/FinanceDashboardHeader'
 import StatusTabs from '../components/StatusTabs'
 import { mockTransactions } from '../mock'

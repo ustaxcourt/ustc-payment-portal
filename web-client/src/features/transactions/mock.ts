@@ -1,8 +1,9 @@
+// mock.ts
 import type { Transaction } from './types'
 
-export const mockTransactions: Transaction[] = Array.from({ length: 12 }).map((_, i) => ({
+export const mockTransactions: Transaction[] = Array.from({ length: 100 }).map((_, i) => ({
   id: `tx-${i + 1}`,
-  timestamp: '2025-02-18T04:22:48Z',
+  timestamp: new Date(Date.now() - i * 60000).toISOString(), // 1 min apart
   feeType: 'Non-attorney Admissions Exam Fee',
   amount: 150,
   payType: ['PayPal', 'Credit Card', 'ACHDebit', 'Venmo'][i % 4],
