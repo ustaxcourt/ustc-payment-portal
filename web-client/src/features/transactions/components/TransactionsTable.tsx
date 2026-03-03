@@ -54,7 +54,7 @@ export default function TransactionsTable({ rows, loading }: TransactionsTablePr
         // let it size with content like in your mock
         '& .MuiDataGrid-columnHeaders': { bgcolor: 'grey.100', fontWeight: 700 },
         '& .MuiDataGrid-cell': { alignItems: 'flex-start' },
-        '& .MuiDataGrid-row': { borderBottom: '1px solid', borderColor: 'divider' }
+        '& .MuiDataGrid-row': {}
       }}
     >
       <DataGrid
