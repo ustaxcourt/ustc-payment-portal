@@ -165,17 +165,17 @@ jobs:
           # Check if outputs exist before trying to read them
           if terraform output api_gateway_url &>/dev/null; then
             API_URL=$(terraform output -raw api_gateway_url)
-            SECRET_ID=$(terraform output -raw api_access_token_secret_id)
             TCS_APP_ID_SECRET_ID=$(terraform output -raw tcs_app_id_secret_id)
-            
+            TEST_UNAUTHORIZED_ROLE_ARN=$(terraform output -raw test_unauthorized_role_arn 2>/dev/null || echo "")
+
             # Validate outputs are actual values (not warning text)
             if [[ "$API_URL" == https://* ]]; then
               echo "api_url=$API_URL" >> $GITHUB_OUTPUT
-              echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
               echo "tcs_app_id_secret_id=$TCS_APP_ID_SECRET_ID" >> $GITHUB_OUTPUT
+              echo "test_unauthorized_role_arn=$TEST_UNAUTHORIZED_ROLE_ARN" >> $GITHUB_OUTPUT
               echo "has_outputs=true" >> $GITHUB_OUTPUT
               echo "API Gateway URL: $API_URL"
-              echo "API Access Token Secret ID: $SECRET_ID"
+              echo "Test Unauthorized Role ARN: $TEST_UNAUTHORIZED_ROLE_ARN"
             else
               echo "has_outputs=false" >> $GITHUB_OUTPUT
               echo "Outputs exist but appear invalid; skipping integration tests."
@@ -189,10 +189,6 @@ jobs:
         if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' && github.event.pull_request.number }}
         run: |
           echo "Copying secret values from dev to PR environment..."
-
-          # Copy API access token
-          aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/access-token" --query SecretString --output text | \
-          aws secretsmanager put-secret-value --secret-id "${{ steps.tf_outputs.outputs.secret_id }}" --secret-string file:///dev/stdin
 
           # Copy certificate passphrase
           CERT_SECRET_ID=$(terraform output -raw cert_passphrase_secret_id)
@@ -209,6 +205,34 @@ jobs:
           aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/tcs-app-id" --query SecretString --output text | \
           aws secretsmanager put-secret-value --secret-id "$TCS_APP_ID_SECRET_ID" --secret-string file:///dev/stdin
 
+          # Copy client permissions (authorized IAM role ARNs for Lambda-level auth).
+          # Guarded: this secret only exists in dev once PAY-008 has been deployed there.
+          # PR environments use the Terraform-seeded default ([]) when the source is absent —
+          # Lambda returns 403 "Client not registered" rather than 500, which is correct behavior.
+          CLIENT_PERMISSIONS_SECRET_ID=$(terraform output -raw client_permissions_secret_id)
+          CLIENT_PERMISSIONS=$(aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/client-permissions" --query SecretString --output text 2>/dev/null || echo "")
+          if [ -n "$CLIENT_PERMISSIONS" ]; then
+            aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string "$CLIENT_PERMISSIONS"
+            echo "Copied client-permissions from dev."
+          else
+            echo "Source secret 'ustc/pay-gov/dev/client-permissions' not found — PR env will use Terraform-seeded default ([])."
+            echo "Expected on the first PR before PAY-008 is deployed to dev. Lambda will return 403 for unregistered clients."
+          fi
+
+          # Copy allowed account IDs (for API Gateway cross-account resource policy).
+          # Guarded: this secret only exists in dev once PAY-008 has been deployed there.
+          # PR environments use the Terraform-seeded default ([]) when the source is absent —
+          # all CI integration tests run as the deployer role (same account) so they still pass.
+          ALLOWED_ACCOUNT_IDS_SECRET_ID=$(terraform output -raw allowed_account_ids_secret_id)
+          ALLOWED_IDS=$(aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/allowed-account-ids" --query SecretString --output text 2>/dev/null || echo "")
+          if [ -n "$ALLOWED_IDS" ]; then
+            aws secretsmanager put-secret-value --secret-id "$ALLOWED_ACCOUNT_IDS_SECRET_ID" --secret-string "$ALLOWED_IDS"
+            echo "Copied allowed-account-ids from dev."
+          else
+            echo "Source secret 'ustc/pay-gov/dev/allowed-account-ids' not found — PR env will use Terraform-seeded default ([])."
+            echo "Expected on the first PR before PAY-008 is deployed to dev. CI tests will still pass."
+          fi
+
           echo "All secret values copied successfully"
         working-directory: terraform/environments/dev
 
@@ -218,12 +242,23 @@ jobs:
           NODE_ENV: test
           TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
           BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
-          API_ACCESS_TOKEN_SECRET_ID: ${{ steps.tf_outputs.outputs.secret_id }}
           TCS_APP_ID: ${{ steps.tf_outputs.outputs.tcs_app_id_secret_id }}
         run: |
           npm ci
           echo "Running integration tests against: $BASE_URL"
           npm run test:integration
+
+      - name: SigV4 Smoke Test (PR environment)
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
+        env:
+          BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          TEST_UNAUTHORIZED_ROLE_ARN: ${{ steps.tf_outputs.outputs.test_unauthorized_role_arn }}
+        run: |
+          echo "Running SigV4 enforcement smoke test against: $BASE_URL"
+          echo "This validates that API Gateway accepts signed requests and rejects unsigned requests."
+          echo "Test unauthorized role: $TEST_UNAUTHORIZED_ROLE_ARN"
+          npx jest src/test/integration/sigv4Smoke.test.ts --verbose
 
   pr_cleanup:
     needs: check_actor
@@ -428,6 +463,37 @@ jobs:
           TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
         run: terraform apply -auto-approve tfplan
+
+      - name: Get API URL (dev)
+        id: tf_outputs_dev
+        working-directory: terraform/environments/dev
+        run: |
+          API_URL=$(terraform output -raw api_gateway_url)
+          TEST_UNAUTHORIZED_ROLE_ARN=$(terraform output -raw test_unauthorized_role_arn 2>/dev/null || echo "")
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "test_unauthorized_role_arn=$TEST_UNAUTHORIZED_ROLE_ARN" >> $GITHUB_OUTPUT
+          echo "API Gateway URL: $API_URL"
+          echo "Test Unauthorized Role ARN: $TEST_UNAUTHORIZED_ROLE_ARN"
+
+      - name: Setup Node (for smoke test)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies (for smoke test)
+        run: npm ci
+
+      - name: SigV4 Smoke Test (dev)
+        env:
+          BASE_URL: ${{ steps.tf_outputs_dev.outputs.api_url }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          TEST_UNAUTHORIZED_ROLE_ARN: ${{ steps.tf_outputs_dev.outputs.test_unauthorized_role_arn }}
+        run: |
+          echo "Running SigV4 enforcement smoke test against: $BASE_URL"
+          echo "This validates that API Gateway accepts signed requests and rejects unsigned requests."
+          echo "Test unauthorized role: $TEST_UNAUTHORIZED_ROLE_ARN"
+          npx jest src/test/integration/sigv4Smoke.test.ts --verbose
 
       - name: Cleanup PR artifacts (soft delete)
         if: ${{ success() }}
