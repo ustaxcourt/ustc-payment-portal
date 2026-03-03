@@ -104,12 +104,20 @@ describe("authorizeClient", () => {
       ).rejects.toThrow("Client not authorized for feeId");
     });
 
-    it("throws for feeId that is similar but not exact match", async () => {
+    it("throws for feeId that is similar but not exact match (case sensitive)", async () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
 
-      // Case sensitive
+      // lowercase should fail - case sensitive matching
       await expect(
-        authorizeClient(dawsonClient.clientRoleArn, "PETITION_FILING_FEE")
+        authorizeClient(dawsonClient.clientRoleArn, "petition_filing_fee")
+      ).rejects.toThrow(ForbiddenError);
+    });
+
+    it("throws for completely unrelated feeId", async () => {
+      mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
+
+      await expect(
+        authorizeClient(dawsonClient.clientRoleArn, "TRANSCRIPT_GROUP_COPY_FEE")
       ).rejects.toThrow(ForbiddenError);
     });
   });
