@@ -84,9 +84,9 @@ const response = await signedFetch(
   "https://payments.ustaxcourt.gov/init",
   "POST",
   JSON.stringify({
-    feeId: "PETITIONS_FILING_FEE",
+    feeId: "PETITION_FILING_FEE",
     trackingId: "your-tracking-id",
-    amount: 60.00,
+    amount: 60.0,
     urlSuccess: "https://your-app.com/payment/success",
     urlCancel: "https://your-app.com/payment/cancel",
   }),
@@ -130,7 +130,7 @@ Add the new client entry to the `ustc/pay-gov/{env}/client-permissions` secret i
   {
     "clientName": "DAWSON",
     "clientRoleArn": "arn:aws:iam::111111111111:role/dawson-client",
-    "allowedFeeIds": ["PETITIONS_FILING_FEE"]
+    "allowedFeeIds": ["PETITION_FILING_FEE"]
   },
   {
     "clientName": "New Client Name",
