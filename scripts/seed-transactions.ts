@@ -99,7 +99,7 @@ async function seedTransactions() {
   const SEED_MODE = process.env.SEED_MODE;
 
   if (!DATABASE_URL) {
-    console.error('❌ Error: DATABASE_URL environment variable is required');
+    console.error('Error: DATABASE_URL environment variable is required');
     console.error('Usage: DATABASE_URL=postgresql://... npm run seed:transactions');
     process.exit(1);
   }
@@ -109,27 +109,27 @@ async function seedTransactions() {
   });
 
   try {
-    console.log('🔗 Connecting to database...');
+    console.log('Connecting to database...');
     await client.connect();
-    console.log('✅ Connected to database');
+    console.log('Connected to database');
 
     // Delete existing rows if in dev mode
     if (SEED_MODE === 'dev') {
-      console.log('🗑️  SEED_MODE=dev: Deleting existing transactions...');
+      console.log('SEED_MODE=dev: Deleting existing transactions...');
       const deleteResult = await client.query('DELETE FROM transactions');
-      console.log(`✅ Deleted ${deleteResult.rowCount} existing transactions`);
+      console.log(`Deleted ${deleteResult.rowCount} existing transactions`);
     }
 
     // Generate transactions
-    console.log(`📊 Generating ${NUM_TRANSACTIONS} dummy transactions...`);
+    console.log(`Generating ${NUM_TRANSACTIONS} dummy transactions...`);
     const transactions: Transaction[] = [];
     for (let i = 0; i < NUM_TRANSACTIONS; i++) {
       transactions.push(generateTransaction(i));
     }
-    console.log('✅ Generated transaction data');
+    console.log('Generated transaction data');
 
     // Build batch insert query
-    console.log('💾 Inserting transactions into database...');
+    console.log('Inserting transactions into database...');
 
     const values: any[] = [];
     const valuePlaceholders: string[] = [];
@@ -167,7 +167,7 @@ async function seedTransactions() {
     `;
 
     await client.query(insertQuery, values);
-    console.log(`✅ Inserted ${NUM_TRANSACTIONS} transactions`);
+    console.log(`Inserted ${NUM_TRANSACTIONS} transactions`);
 
     // Print summary statistics
     const statsResult = await client.query(`
@@ -180,7 +180,7 @@ async function seedTransactions() {
       ORDER BY count DESC
     `);
 
-    console.log('\n📈 Transaction Status Summary:');
+    console.log('\nTransaction Status Summary:');
     statsResult.rows.forEach((row) => {
       console.log(`   ${row.status.padEnd(15)} ${row.count.toString().padStart(4)} (${row.percentage}%)`);
     });
@@ -192,18 +192,18 @@ async function seedTransactions() {
       FROM transactions
     `);
 
-    console.log('\n📅 Date Range:');
+    console.log('\nDate Range:');
     console.log(`   Earliest: ${dateRangeResult.rows[0].earliest}`);
     console.log(`   Latest:   ${dateRangeResult.rows[0].latest}`);
 
-    console.log('\n🎉 Seeding completed successfully!');
+    console.log('\nSeeding completed successfully!');
 
   } catch (error) {
-    console.error('❌ Error during seeding:', error);
+    console.error('Error during seeding:', error);
     process.exit(1);
   } finally {
     await client.end();
-    console.log('🔌 Database connection closed');
+    console.log('Database connection closed');
   }
 }
 
