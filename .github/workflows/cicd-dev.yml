@@ -96,7 +96,7 @@ jobs:
            -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
            -backend-config="key=ustc-payment-portal/terraform.tfstate" \
            -backend-config="region=us-east-1" \
-           -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
+           -backend-config="use_lockfile=true" \
            -backend-config="encrypt=true"
 
       - name: Select/Create PR Workspace
@@ -289,7 +289,7 @@ jobs:
            -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
            -backend-config="key=ustc-payment-portal/terraform.tfstate" \
            -backend-config="region=us-east-1" \
-           -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
+           -backend-config="use_lockfile=true" \
            -backend-config="encrypt=true"
 
       - name: Select PR Workspace (if exists)
