@@ -6,6 +6,8 @@ This directory contains Infrastructure as Code for the USTC Payment Portal. It i
 
 This project requires **Terraform ~> 1.14.0**. The `~>` constraint means any 1.14.x version is supported, but 1.15+ is not until explicitly upgraded.
 
+See [Upgrading Terraform](#upgrading-terraform) for the complete upgrade process.
+
 ## State Locking
 
 As of March 2026, this project uses **S3 native locking** (`use_lockfile = true`) instead of DynamoDB. This feature was introduced in Terraform 1.10 and provides state locking directly via S3 without requiring a separate DynamoDB table.
@@ -178,6 +180,125 @@ Terraform then uses the exported `AWS_PROFILE` automatically. Alternatively, you
 export AWS_PROFILE=<profile-name>
 export AWS_SDK_LOAD_CONFIG=1
 ```
+
+---
+
+## Upgrading Terraform
+
+This section documents the process for upgrading Terraform to a new version.
+
+### Pre-Upgrade Checklist
+
+- [ ] Review [Terraform changelog](https://github.com/hashicorp/terraform/releases) for breaking changes
+- [ ] Check [AWS provider compatibility](https://registry.terraform.io/providers/hashicorp/aws/latest) with new Terraform version
+- [ ] Ensure all team members are aware of the upgrade timeline
+- [ ] Create a backup branch before starting
+
+### Files to Update
+
+When upgrading Terraform, update the version constraint in **all** of these locations:
+
+| File                                                        | Purpose                 |
+| ----------------------------------------------------------- | ----------------------- |
+| `terraform/versions.tf`                                     | Root module             |
+| `terraform/bootstrap/main.tf`                               | Bootstrap module        |
+| `terraform/environments/dev/versions.tf`                    | Dev environment         |
+| `terraform/environments/stg/versions.tf`                    | Staging environment     |
+| `terraform/environments/prod/versions.tf`                   | Production environment  |
+| `terraform/environments/foundation/dev-networking/main.tf`  | Dev networking          |
+| `terraform/environments/foundation/stg-networking/main.tf`  | Staging networking      |
+| `terraform/environments/foundation/prod-networking/main.tf` | Production networking   |
+| `terraform/modules/api-gateway/versions.tf`                 | API Gateway module      |
+| `terraform/modules/artifacts_bucket/versions.tf`            | Artifacts bucket module |
+| `terraform/modules/iam/versions.tf`                         | IAM module              |
+| `terraform/modules/lambda/versions.tf`                      | Lambda module           |
+| `terraform/modules/networking/versions.tf`                  | Networking module       |
+| `terraform/modules/rds/versions.tf`                         | RDS module              |
+
+### CI/CD Workflow Updates
+
+Update the Terraform version in GitHub Actions workflows:
+
+| File                                   | Lines to Update                             |
+| -------------------------------------- | ------------------------------------------- |
+| `.github/workflows/cicd-dev.yml`       | `terraform_version` parameter (3 locations) |
+| `.github/workflows/staging-deploy.yml` | `terraform_version` parameter               |
+| `.github/workflows/prod-deploy.yml`    | `terraform_version` parameter               |
+
+Example change:
+
+```yaml
+- name: Setup Terraform
+  uses: hashicorp/setup-terraform@v4
+  with:
+    terraform_version: ${{ vars.TERRAFORM_VERSION || '1.14.6' }} # Update this version
+```
+
+### GitHub Action Updates
+
+Check if `hashicorp/setup-terraform` has a new major version and update if needed:
+
+```yaml
+uses: hashicorp/setup-terraform@v4 # Check for newer versions
+```
+
+### Provider Lock File Regeneration
+
+After upgrading, regenerate the provider lock files to ensure cross-platform compatibility:
+
+```bash
+# For each environment directory (dev, stg, prod, and foundation directories)
+cd terraform/environments/dev
+terraform providers lock -platform=linux_amd64 -platform=darwin_amd64 -platform=darwin_arm64
+```
+
+### Local Development Setup
+
+After pulling a Terraform upgrade, each developer must reinitialize:
+
+```bash
+cd terraform/environments/dev
+terraform init -reconfigure -backend-config=backend.hcl
+```
+
+### Upgrade Steps
+
+1. **Create upgrade branch**
+
+   ```bash
+   git checkout -b PAY-XXX-Terraform-Update
+   ```
+
+2. **Update version constraints** in all files listed above using `~> X.Y.0` format
+
+3. **Update CI/CD workflows** with new version fallback
+
+4. **Regenerate provider lock files** (optional but recommended)
+
+5. **Test locally**
+
+   ```bash
+   cd terraform/environments/dev
+   terraform init -reconfigure -backend-config=backend.hcl
+   terraform validate
+   terraform plan
+   ```
+
+6. **Push and verify CI passes**
+
+7. **Coordinate deployment** — ensure no other Terraform operations are running during the rollout
+
+### Rollback Plan
+
+If issues arise after upgrading:
+
+1. Revert the PR or cherry-pick the revert
+2. Team members run `terraform init -reconfigure -backend-config=backend.hcl` to downgrade
+3. CI will automatically use the reverted version
+
+> **Important:** State files are forward-compatible but not always backward-compatible. If state format changes occurred, you may need to restore from S3 versioning.
+
+---
 
 ## Notes & Tips
 
