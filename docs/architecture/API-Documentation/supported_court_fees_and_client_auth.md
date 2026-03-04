@@ -26,7 +26,7 @@ This design ensures:
 ## Terminology
 
 - **`app_id`** — Identifier for a client application (e.g., `DAWSON`)
-- **`fee_id`** — Client-facing identifier for a fee type (e.g., `PETITION_FILING_FEE`, `NONATTORNEY_EXAM_REGISTRATION_FEE`). This is what clients send in API requests
+- **`fee_id`** — Client-facing identifier for a fee type (e.g., `PETITION_FILING_FEE`, `NONATTORNEY_EXAM_REGISTRATION`). This is what clients send in API requests
 - **`tcs_app_id`** — Pay.gov application identifier (e.g., `TCSUSTAXCOURTANAEF`). We look this up from the fees table using the `fee_id` provided by the client
 - **`is_variable`** — Boolean indicating if fee amount is client-provided (true) or portal-determined (false)
 - **metadata** — Business context provided by clients to identify transaction type
@@ -171,7 +171,7 @@ CREATE TABLE fees (
 |--------|------|------------|-------------|--------|-------------|
 | PETITION_FILING_FEE | Petition Filing | TCSUSTAXCOURTPETITION | false | 60.00 | Petition Filing Fee |
 | COPY_REQUEST | Document Copies | TCSUSTAXCOURTCOPY | true | NULL | Document Copy Request (varies by page count) |
-| NONATTORNEY_EXAM_REGISTRATION_FEE | Admission Exam | TCSUSTAXCOURTANAEF | false | 250.00 | Non-Attorney Exam Registration |
+| NONATTORNEY_EXAM_REGISTRATION | Admission Exam | TCSUSTAXCOURTANAEF | false | 250.00 | Non-Attorney Exam Registration |
 
 **Note:** The `fee_id` is what clients send in their API requests. The `tcs_app_id` is the Pay.gov identifier that we use when calling Pay.gov's API.
 
@@ -210,6 +210,8 @@ WHERE fee_id = :fee_id;
 
 After resolving the fee configuration, the Payment Portal validates that the requesting client is authorized to charge that fee.
 
+> **Implementation note:** The current implementation stores client permissions in **AWS Secrets Manager** (not a database table). The schema below documents the logical data model; the actual storage is the `ustc/pay-gov/{env}/client-permissions` secret. See [client-onboarding.md](../../client-onboarding.md#permitting-apps-to-charge-specific-fees) for operational steps to grant or revoke fee access.
+
 ### Client Permissions Table Schema
 
 ```sql
@@ -229,7 +231,7 @@ CREATE TABLE client_fee_permissions (
 |--------|--------|
 | DAWSON | PETITION_FILING_FEE |
 | DAWSON | COPY_REQUEST |
-| EXAM_PORTAL | NONATTORNEY_EXAM_REGISTRATION_FEE |
+| EXAM_PORTAL | NONATTORNEY_EXAM_REGISTRATION |
 
 ### Authorization Query
 
