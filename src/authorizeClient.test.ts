@@ -20,7 +20,7 @@ const dawsonClient: ClientPermission = {
 const nonattorneyClient: ClientPermission = {
   clientName: "Nonattorney Exam App",
   clientRoleArn: "arn:aws:iam::999999999999:role/nonattorney-client",
-  allowedFeeIds: ["NONATTORNEY_EXAM_REGISTRATION"],
+  allowedFeeIds: ["NONATTORNEY_EXAM_REGISTRATION_FEE"],
 };
 
 const localDevClient: ClientPermission = {
@@ -101,21 +101,21 @@ describe("authorizeClient", () => {
       ).resolves.not.toThrow();
     });
 
-    it("prevents DAWSON from charging NONATTORNEY_EXAM_REGISTRATION", async () => {
+    it("prevents DAWSON from charging NONATTORNEY_EXAM_REGISTRATION_FEE", async () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
 
       await expect(
-        authorizeClient(dawsonClient.clientRoleArn, "NONATTORNEY_EXAM_REGISTRATION")
+        authorizeClient(dawsonClient.clientRoleArn, "NONATTORNEY_EXAM_REGISTRATION_FEE")
       ).rejects.toThrow(ForbiddenError);
     });
   });
 
   describe("Nonattorney fee authorization", () => {
-    it("allows Nonattorney App to charge NONATTORNEY_EXAM_REGISTRATION", async () => {
+    it("allows Nonattorney App to charge NONATTORNEY_EXAM_REGISTRATION_FEE", async () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(nonattorneyClient);
 
       await expect(
-        authorizeClient(nonattorneyClient.clientRoleArn, "NONATTORNEY_EXAM_REGISTRATION")
+        authorizeClient(nonattorneyClient.clientRoleArn, "NONATTORNEY_EXAM_REGISTRATION_FEE")
       ).resolves.not.toThrow();
     });
 
