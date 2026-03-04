@@ -207,16 +207,26 @@ jobs:
 
           # Copy client permissions (authorized IAM role ARNs for Lambda-level auth).
           # Guarded: this secret only exists in dev once PAY-008 has been deployed there.
-          # PR environments use the Terraform-seeded default ([]) when the source is absent —
-          # Lambda returns 403 "Client not registered" rather than 500, which is correct behavior.
+          # When absent, seed PR env with the deployer role so integration tests (which run as that role) pass.
           CLIENT_PERMISSIONS_SECRET_ID=$(terraform output -raw client_permissions_secret_id)
           CLIENT_PERMISSIONS=$(aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/client-permissions" --query SecretString --output text 2>/dev/null || echo "")
           if [ -n "$CLIENT_PERMISSIONS" ]; then
             aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string "$CLIENT_PERMISSIONS"
             echo "Copied client-permissions from dev."
           else
-            echo "Source secret 'ustc/pay-gov/dev/client-permissions' not found — PR env will use Terraform-seeded default ([])."
-            echo "Expected on the first PR before PAY-008 is deployed to dev. Lambda will return 403 for unregistered clients."
+            echo "Source secret 'ustc/pay-gov/dev/client-permissions' not found — seeding PR env with deployer role for integration tests."
+            # Lambda expects IAM role ARN (arn:aws:iam::ACCOUNT:role/NAME); API Gateway sends assumed-role ARN.
+            CALLER_ARN=$(aws sts get-caller-identity --query Arn --output text)
+            ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+            ROLE_NAME=$(echo "$CALLER_ARN" | sed -n 's|.*assumed-role/\([^/]*\)/.*|\1|p')
+            if [ -n "$ROLE_NAME" ]; then
+              IAM_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
+              DEPLOYER_PERMISSIONS=$(jq -n --arg arn "$IAM_ROLE_ARN" '[{clientName: "CI Deployer", clientRoleArn: $arn, allowedFeeIds: ["*"]}]')
+              aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string "$DEPLOYER_PERMISSIONS"
+              echo "Seeded client-permissions with deployer role: $IAM_ROLE_ARN"
+            else
+              echo "Could not derive IAM role ARN from caller; integration tests may fail with 403 Client not registered."
+            fi
           fi
 
           # Copy allowed account IDs (for API Gateway cross-account resource policy).
