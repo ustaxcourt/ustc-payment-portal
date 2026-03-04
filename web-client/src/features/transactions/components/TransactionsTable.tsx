@@ -5,7 +5,7 @@ import {
   type GridKeyValue,
   type GridValueFormatter,
 } from '@mui/x-data-grid'
-import { Box } from '@mui/material'
+import { Box, Alert } from '@mui/material'
 import type { Transaction } from '../types'
 import GridSortIconCircle from './GridSortIconCircle'
 
@@ -13,6 +13,7 @@ export interface TransactionsTableProps {
   rows: Transaction[]
   loading?: boolean
   status: string
+  error: Error | null
 }
 
 /** Safely format an ISO date string as:
@@ -52,7 +53,7 @@ const nullableTextFormatter: GridValueFormatter<Transaction> = (value) => {
   return value ? String(value) : '—'
 }
 
-export default function TransactionsTable({ rows, loading, status }: TransactionsTableProps) {
+export default function TransactionsTable({ rows, loading, status, error }: TransactionsTableProps) {
   const columns = React.useMemo<GridColDef<Transaction>[]>(() => [
     {
       field: 'createdAt',
@@ -64,7 +65,6 @@ export default function TransactionsTable({ rows, loading, status }: Transaction
           {formatIsoToTwoLines(params.row.createdAt)}
         </Box>
       ),
-      // v8: comparator args are GridKeyValue
       sortComparator: (v1: GridKeyValue, v2: GridKeyValue) =>
         compareIsoStrings(v1 as string | null, v2 as string | null),
       sortable: true,
@@ -83,65 +83,29 @@ export default function TransactionsTable({ rows, loading, status }: Transaction
         compareIsoStrings(v1 as string | null, v2 as string | null),
       sortable: true,
     },
-    {
-      field: 'feeName',
-      headerName: 'Fee Name',
-      flex: 1.5,
-      minWidth: 240,
-      sortable: false,
-    },
-    {
-      field: 'feeIdentifier',
-      headerName: 'Fee Identifier',
-      flex: 1,
-      minWidth: 160,
-      sortable: false,
-    },
+    { field: 'feeName', headerName: 'Fee Name', flex: 1.5, minWidth: 240, sortable: false },
+    { field: 'feeIdentifier', headerName: 'Fee Identifier', flex: 1, minWidth: 160, sortable: false },
     {
       field: 'feeAmount',
       headerName: 'Amount',
       flex: 0.6,
       minWidth: 110,
       type: 'number',
-      valueFormatter: moneyFormatter, // typed as GridValueFormatter<Transaction>
+      valueFormatter: moneyFormatter,
       sortable: true,
     },
-    {
-      field: 'paymentMethod',
-      headerName: 'Payment Method',
-      flex: 1,
-      minWidth: 140,
-      sortable: false,
-    },
-    {
-      field: 'transactionStatus',
-      headerName: 'Status',
-      flex: 1,
-      minWidth: 130,
-      sortable: true,
-    },
-    {
-      field: 'agencyTrackingId',
-      headerName: 'Agency Tracking ID',
-      flex: 1.2,
-      minWidth: 180,
-      sortable: false,
-    },
+    { field: 'paymentMethod', headerName: 'Payment Method', flex: 1, minWidth: 140, sortable: false },
+    { field: 'transactionStatus', headerName: 'Status', flex: 1, minWidth: 130, sortable: true },
+    { field: 'agencyTrackingId', headerName: 'Agency Tracking ID', flex: 1.2, minWidth: 180, sortable: false },
     {
       field: 'paygovTrackingId',
       headerName: 'Pay.gov Tracking ID',
       flex: 1.2,
       minWidth: 180,
-      valueFormatter: nullableTextFormatter, // typed as GridValueFormatter<Transaction>
+      valueFormatter: nullableTextFormatter,
       sortable: false,
     },
-    {
-      field: 'transactionReferenceId',
-      headerName: 'Reference ID',
-      flex: 1.2,
-      minWidth: 180,
-      sortable: false,
-    },
+    { field: 'transactionReferenceId', headerName: 'Reference ID', flex: 1.2, minWidth: 180, sortable: false },
   ], [])
 
   return (
@@ -153,9 +117,23 @@ export default function TransactionsTable({ rows, loading, status }: Transaction
         borderColor: '#000',
         borderRadius: 0,
         paddingTop: 3,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1.5,
       })}
     >
-      {/* 👇 Important: make DataGrid generic over your row type */}
+      {error && (
+        <Alert
+          severity="error"
+          variant="outlined"
+          sx={{ mx: 1.5 }}
+          role="alert"
+          aria-live="assertive"
+        >
+          {error.message || 'Something went wrong while loading transactions.'}
+        </Alert>
+      )}
+
       <DataGrid<Transaction>
         rows={rows}
         columns={columns}
@@ -197,9 +175,7 @@ export default function TransactionsTable({ rows, loading, status }: Transaction
             background: 'transparent',
             '&:hover': { background: 'transparent' },
           },
-          '& .MuiDataGrid-columnHeaderTitle': {
-            fontWeight: 700,
-          },
+          '& .MuiDataGrid-columnHeaderTitle': { fontWeight: 700 },
           '& .MuiDataGrid-columnHeader': {
             '&.MuiDataGrid-columnHeader--sortable': { cursor: 'pointer' },
             '&:not(.MuiDataGrid-columnHeader--sortable) .MuiDataGrid-sortIcon, & :not(.MuiDataGrid-columnHeader--sortable) .MuiDataGrid-sortIconButton':
