@@ -7,9 +7,9 @@ locals {
     NODE_ENV                           = local.node_env
     PAYMENT_URL                        = local.payment_url
     SOAP_URL                           = local.soap_url
-    API_ACCESS_TOKEN_SECRET_ID         = module.secrets.api_access_token_secret_id
     CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
     PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = module.secrets.paygov_dev_server_token_secret_id
+    CLIENT_PERMISSIONS_SECRET_ID       = module.secrets.client_permissions_secret_id
     RDS_ENDPOINT                       = module.rds.endpoint
     RDS_SECRET_ARN                     = module.rds.master_user_secret_arn
   }
@@ -31,5 +31,12 @@ locals {
   name_prefix          = "ustc-payment-portal-stg"
   payment_url          = "https://qa.pay.gov/tcsonline/payment.do"
   soap_url             = "https://qa.tcs.pay.gov/services/TCSOnlineService/3.3/"
+
+  # AWS account IDs allowed to invoke the API Gateway cross-account
+  # Read from Secrets Manager - populated via AWS CLI/Console, not hardcoded
+  allowed_client_account_ids = try(
+    jsondecode(data.aws_secretsmanager_secret_version.allowed_account_ids.secret_string),
+    []
+  )
 }
 

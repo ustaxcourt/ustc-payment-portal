@@ -75,9 +75,10 @@ Stages should be one of `dev`, `stg`, and `prod`. The dev server should be confi
 
 | Environment Variable | Description                                                                                                      |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `API_ACCESS_TOKEN`   | An optional token that is used to make authorized requests to the development portal                             |
 | `BASE_URL`           | The URL of this payment portal (for running integration tests)                                                   |
 | `CERT_PASSPHRASE`    | The secret password for using the certificate as an httpsAgent                                                   |
+| `CLIENT_PERMISSIONS_SECRET_ID` | AWS Secrets Manager secret ID for the client permissions JSON array. Not needed locally — auth is bypassed when `LOCAL_DEV=true` |
+| `LOCAL_DEV`          | Set to `true` to bypass SigV4 auth for local development. Do not set in deployed environments.                   |
 | `NODE_ENV`           | The environment or stage for this application (`staging`, `development`, or `production`)                        |
 | `PAYMENT_URL`        | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated |
 | `SOAP_URL`           | The URL of the SOAP Server that handles payment requests made by this portal                                     |
@@ -92,7 +93,7 @@ See the `terraform/` directory for deployment configuration and instructions.
 
 ## Testing
 
-Right now there aren't many unit tests, but there are some integration tests that test the deployed application at the base url and the apiToken specified in `.env.dev`:
+Right now there aren't many unit tests, but there are some integration tests that test the deployed application at the base url specified in `.env.dev`:
 
 ```bash
 npm run test

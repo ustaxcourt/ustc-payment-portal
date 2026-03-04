@@ -89,7 +89,16 @@ module "api" {
   lambda_function_arns = module.lambda.function_arns
   environment          = local.environment == "dev" ? "dev" : local.environment
   stage_name           = local.environment == "dev" ? "dev" : local.environment
+  allowed_account_ids  = local.allowed_client_account_ids
 
+  depends_on = [module.secrets]
+}
+
+# Read allowed account IDs from Secrets Manager for API Gateway resource policy
+# This secret is seeded with [] and should be populated via AWS CLI/Console
+data "aws_secretsmanager_secret_version" "allowed_account_ids" {
+  secret_id  = module.secrets.allowed_account_ids_secret_id
+  depends_on = [module.secrets]
 }
 
 module "iam_cicd" {
@@ -130,4 +139,95 @@ data "aws_s3_bucket" "existing_artifacts" {
 resource "aws_iam_role_policy_attachment" "ci_build_artifacts" {
   role       = module.iam_cicd.role_name
   policy_arn = local.environment == "dev" ? module.artifacts_bucket[0].build_artifacts_access_policy_arn : local.artifacts_bucket_policy_arn
+}
+
+# =============================================================================
+# Unauthorized Test Role (for Lambda-level authorization testing)
+# =============================================================================
+# This role is intentionally NOT added to the client-permissions secret.
+# It allows testing that Lambda correctly rejects requests from unregistered clients.
+# The role CAN call the API Gateway (same account = allowed by resource policy),
+# but will be rejected by Lambda with "Client not registered".
+
+# The shared dev deployer role used by GitHub Actions for all PR environments
+locals {
+  dev_deployer_role_name = "ustc-payment-processor-dev-cicd-deployer-role"
+  dev_deployer_role_arn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.dev_deployer_role_name}"
+}
+
+resource "aws_iam_role" "test_unauthorized" {
+  name = "${local.name_prefix}-test-unauthorized-role"
+
+  # Trust policy: allow the SHARED dev deployer role (used by GitHub Actions)
+  # to assume this role, not the PR workspace's own role
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = local.dev_deployer_role_arn
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Purpose = "Integration testing - Lambda authorization rejection"
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
+resource "aws_iam_role_policy" "test_unauthorized_api_invoke" {
+  name = "api-gateway-invoke"
+  role = aws_iam_role.test_unauthorized.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "execute-api:Invoke"
+        Resource = "${module.api.api_gateway_execution_arn}/*"
+      }
+    ]
+  })
+}
+
+# Allow the CI/CD deployer role to assume the test-unauthorized role
+# Attaches to the SHARED dev deployer role, using unique policy name per workspace
+resource "aws_iam_role_policy" "deployer_assume_test_role" {
+  name = "assume-test-unauthorized-role-${local.name_prefix}"
+  role = local.dev_deployer_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
+        Resource = aws_iam_role.test_unauthorized.arn
+      }
+    ]
+  })
+}
+
+# Allow the CI/CD deployer role to invoke API Gateway for smoke tests
+# The signedFetch() helper uses the shared role's credentials directly
+resource "aws_iam_role_policy" "deployer_invoke_api" {
+  name = "invoke-api-${local.name_prefix}"
+  role = local.dev_deployer_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "execute-api:Invoke"
+        Resource = "${module.api.api_gateway_execution_arn}/*"
+      }
+    ]
+  })
 }

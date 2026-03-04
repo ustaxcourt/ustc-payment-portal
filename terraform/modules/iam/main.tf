@@ -159,11 +159,14 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       },
       {
         Effect = "Allow",
-        Action = ["apigateway:GET",
+        Action = [
+          "apigateway:GET",
           "apigateway:POST",
           "apigateway:PUT",
           "apigateway:PATCH",
-        "apigateway:DELETE"],
+          "apigateway:DELETE",
+          "apigateway:UpdateRestApiPolicy"
+        ],
         Resource = [
           "arn:aws:apigateway:${local.aws_region}::/restapis*",
           "arn:aws:apigateway:${local.aws_region}::/deployments*",
@@ -222,9 +225,9 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "secretsmanager:UntagResource"
         ],
         Resource = [
-            "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*",
-            "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
-          ]
+          "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*",
+          "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
+        ]
       },
       {
         Effect = "Allow", #iam role creation (for self-management)
@@ -232,6 +235,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "iam:CreateRole",
           "iam:DeleteRole",
           "iam:UpdateRole",
+          "iam:UpdateAssumeRolePolicy",
           "iam:GetRole",
           "iam:ListRolePolicies",
           "iam:GetRolePolicy",
@@ -327,6 +331,11 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
             "iam:AWSServiceName" = "rds.amazonaws.com"
           }
         }
+      },
+      {
+        Effect   = "Allow",
+        Action   = ["execute-api:Invoke"],
+        Resource = "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*"
       }
     ]
   })
