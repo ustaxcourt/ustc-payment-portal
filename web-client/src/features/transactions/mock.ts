@@ -1,4 +1,3 @@
-// mock.ts
 import type { Transaction, TransactionStatus, PaymentMethod } from './types'
 
 const agencyIds = [

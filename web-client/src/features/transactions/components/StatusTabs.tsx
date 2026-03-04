@@ -1,4 +1,3 @@
-// src/features/transactions/components/StatusTabs.tsx
 import * as React from 'react'
 import { Tabs, Tab, Chip, Box } from '@mui/material'
 import type { TransactionStatus } from '../types'
