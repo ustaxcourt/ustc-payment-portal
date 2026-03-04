@@ -1,4 +1,4 @@
-data "aws_region" "current"{}
+data "aws_region" "current" {}
 
 # API Gateway REST API
 resource "aws_api_gateway_rest_api" "rest" {
@@ -51,6 +51,20 @@ resource "aws_api_gateway_resource" "details_tracking" {
   path_part   = "{payGovTrackingId}"
 }
 
+# GET /dashboard
+resource "aws_api_gateway_resource" "dashboard" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
+  path_part   = "dashboard"
+}
+
+# GET /dashboard/transactions
+resource "aws_api_gateway_resource" "dashboard_transactions" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_resource.dashboard.id
+  path_part   = "transactions"
+}
+
 #Methods
 resource "aws_api_gateway_method" "init_post" {
   rest_api_id   = aws_api_gateway_rest_api.rest.id
@@ -83,45 +97,106 @@ resource "aws_api_gateway_method" "details_get" {
   }
 }
 
+resource "aws_api_gateway_method" "dashboard_transactions_get" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.dashboard_transactions.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+# CORS OPTIONS method for dashboard transactions
+resource "aws_api_gateway_method" "dashboard_transactions_options" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.dashboard_transactions.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
 #lambda integration
 
 resource "aws_api_gateway_integration" "init_integration" {
-  rest_api_id          = aws_api_gateway_rest_api.rest.id
-  resource_id          = aws_api_gateway_resource.init.id
-  http_method          = aws_api_gateway_method.init_post.http_method
-  type                 = "AWS_PROXY"
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.init.id
+  http_method             = aws_api_gateway_method.init_post.http_method
+  type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri         = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["initPayment"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["initPayment"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "process_integration" {
-  rest_api_id          = aws_api_gateway_rest_api.rest.id
-  resource_id          = aws_api_gateway_resource.process.id
-  http_method          = aws_api_gateway_method.process_post.http_method
-  type                 = "AWS_PROXY"
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.process.id
+  http_method             = aws_api_gateway_method.process_post.http_method
+  type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["processPayment"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["processPayment"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "test_integration" {
-  rest_api_id          = aws_api_gateway_rest_api.rest.id
-  resource_id          = aws_api_gateway_resource.test.id
-  http_method          = aws_api_gateway_method.test_get.http_method
-  type                 = "AWS_PROXY"
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.test.id
+  http_method             = aws_api_gateway_method.test_get.http_method
+  type                    = "AWS_PROXY"
   integration_http_method = "POST"
   uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["testCert"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "details_integration" {
-  rest_api_id          = aws_api_gateway_rest_api.rest.id
-  resource_id          = aws_api_gateway_resource.details_tracking.id
-  http_method          = aws_api_gateway_method.details_get.http_method
-  type                 = "AWS_PROXY"
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.details_tracking.id
+  http_method             = aws_api_gateway_method.details_get.http_method
+  type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                   = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getDetails"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getDetails"]}/invocations"
 }
 
-#Deployment 
+resource "aws_api_gateway_integration" "dashboard_transactions_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.dashboard_transactions.id
+  http_method             = aws_api_gateway_method.dashboard_transactions_get.http_method
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getDashboardTransactions"]}/invocations"
+}
+
+# CORS OPTIONS integration for dashboard transactions
+resource "aws_api_gateway_integration" "dashboard_transactions_options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  resource_id = aws_api_gateway_resource.dashboard_transactions.id
+  http_method = aws_api_gateway_method.dashboard_transactions_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+# CORS OPTIONS method response
+resource "aws_api_gateway_method_response" "dashboard_transactions_options_response" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  resource_id = aws_api_gateway_resource.dashboard_transactions.id
+  http_method = aws_api_gateway_method.dashboard_transactions_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+# CORS OPTIONS integration response
+resource "aws_api_gateway_integration_response" "dashboard_transactions_options_integration_response" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  resource_id = aws_api_gateway_resource.dashboard_transactions.id
+  http_method = aws_api_gateway_method.dashboard_transactions_options.http_method
+  status_code = aws_api_gateway_method_response.dashboard_transactions_options_response.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+#Deployment
 
 resource "aws_api_gateway_deployment" "deployment" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
@@ -132,6 +207,7 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_integration.process_integration.id,
       aws_api_gateway_integration.test_integration.id,
       aws_api_gateway_integration.details_integration.id,
+      aws_api_gateway_integration.dashboard_transactions_integration.id,
     ]))
   }
 
@@ -144,6 +220,7 @@ resource "aws_api_gateway_deployment" "deployment" {
     aws_api_gateway_integration.process_integration,
     aws_api_gateway_integration.test_integration,
     aws_api_gateway_integration.details_integration,
+    aws_api_gateway_integration.dashboard_transactions_integration,
   ]
 }
 
@@ -153,7 +230,7 @@ resource "aws_api_gateway_stage" "stage" {
   deployment_id = aws_api_gateway_deployment.deployment.id
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   stage_name    = var.stage_name
-  tags       = var.common_tags
+  tags          = var.common_tags
 }
 
 #These should go in api gateway
@@ -187,4 +264,12 @@ resource "aws_lambda_permission" "details_permissions" {
   function_name = var.lambda_function_arns["getDetails"]
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/details/*/*"
+}
+
+resource "aws_lambda_permission" "dashboard_transactions_permissions" {
+  statement_id  = "AllowAPIGatewayInvokeDashboardTransactions"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_function_arns["getDashboardTransactions"]
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/dashboard/transactions"
 }

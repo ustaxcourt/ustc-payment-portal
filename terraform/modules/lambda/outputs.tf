@@ -73,3 +73,18 @@ output "test_cert_invoke_arn" {
   description = "Invoke ARN of the testCert Lambda function"
   value       = aws_lambda_function.functions["testCert"].invoke_arn
 }
+
+output "get_dashboard_transactions_function_arn" {
+  description = "ARN of the getDashboardTransactions Lambda function"
+  value       = aws_lambda_function.functions["getDashboardTransactions"].arn
+}
+
+output "get_dashboard_transactions_function_name" {
+  description = "Name of the getDashboardTransactions Lambda function"
+  value       = aws_lambda_function.functions["getDashboardTransactions"].function_name
+}
+
+output "get_dashboard_transactions_invoke_arn" {
+  description = "Invoke ARN of the getDashboardTransactions Lambda function"
+  value       = aws_lambda_function.functions["getDashboardTransactions"].invoke_arn
+}

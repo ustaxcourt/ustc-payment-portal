@@ -9,6 +9,9 @@ locals {
     getDetails = {
       handler = "lambdaHandler.getDetailsHandler"
     }
+    getDashboardTransactions = {
+      handler = "getDashboardTransactions.getDashboardTransactionsHandler"
+    }
     testCert = {
       handler = "lambdaHandler.handler"
     }
