@@ -11,14 +11,17 @@ type StatusTabsValue = TransactionStatus // we won't use 'ALL' in the routed ver
 
 // Map route segment <-> domain status
 const pathToStatus: Record<string, StatusTabsValue | undefined> = {
-  successful: 'SUCCESS',
+  completed: 'COMPLETED',
   failed: 'FAILED',
   pending: 'PENDING',
 }
 const statusToPath: Record<StatusTabsValue, string> = {
-  SUCCESS: 'successful',
+  COMPLETED: 'completed',
   FAILED: 'failed',
   PENDING: 'pending',
+  CANCELED: 'cancelled',
+  REFUNDED: 'refunded',
+  UNKNOWN: 'unknown'
 }
 
 export default function TransactionsLayout() {
@@ -28,17 +31,17 @@ export default function TransactionsLayout() {
   // Derive the current status value from the URL
   const currentTab: StatusTabsValue = React.useMemo(() => {
     const seg = pathname.split('/').pop() || ''
-    return pathToStatus[seg] ?? 'SUCCESS'
+    return pathToStatus[seg] ?? 'COMPLETED'
   }, [pathname])
 
   // Compute counts for chips (replace with API counts later if you prefer)
   const counts = React.useMemo(() => {
     return mockTransactions.reduce(
       (acc, t) => {
-        acc[t.status]++
+        acc[t.transactionStatus]++
         return acc
       },
-      { SUCCESS: 0, FAILED: 0, PENDING: 0 } as Record<TransactionStatus, number>
+      { COMPLETED: 0, FAILED: 0, PENDING: 0 } as Record<TransactionStatus, number>
     )
   }, [])
 

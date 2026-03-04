@@ -1,12 +1,46 @@
-export type TransactionStatus = 'SUCCESS' | 'FAILED' | 'PENDING'
+/**
+ * Domain status for a transaction record.
+ * Keep this aligned with what your API actually returns.
+ */
+export type TransactionStatus =
+  | 'PENDING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELED'
+  | 'REFUNDED'
+  | 'UNKNOWN'
 
+/**
+ * Supported payment instruments in dev.
+ * Add/remove as your Payment Portal grows.
+ */
+export type PaymentMethod =
+  | 'card'
+  | 'ach'
+  | 'cash'
+  | 'paypal'
+  | 'apple_pay'
+  | 'google_pay'
+  | 'venmo'
+  | 'other'
+
+/**
+ * A single transaction row as displayed in the dashboard.
+ * Field names are camelCase to match common JSON/TS conventions.
+ * Comments show the label you specified in the Acceptance Criteria.
+ */
 export type Transaction = {
-  id: string
-  timestamp: string // ISO string
-  feeType: string
-  amount: number
-  payType: string
-  accountHolder: string
-  agencyId: string
-  status: TransactionStatus
+  agencyTrackingId: string /** Agency Tracking ID */
+  paygovTrackingId?: string | null /** Pay.gov Tracking ID (if one exists) */
+  feeName: string /** Fee Name */
+  feeIdentifier: string /** Fee Identifier */
+  feeAmount: number /** Fee Amount */
+  appClientName: string /** App/Client Name */
+  transactionReferenceId: string /** Transaction Reference ID */
+  transactionStatus: TransactionStatus /** Transaction Status */
+  paygovToken?: string | null /** Pay.gov token */
+  paymentMethod: PaymentMethod /** Payment Method */
+  lastUpdatedAt: string /** Last Updated Timestamp (ISO 8601) */
+  createdAt: string /** Created Timestamp (ISO 8601) */
+  metadata?: Record<string, unknown> | null /** Metadata supplied(free - form key / value bag) */
 }

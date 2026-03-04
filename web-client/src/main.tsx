@@ -14,13 +14,13 @@ const router = createBrowserRouter([
     path: '/',
     element: <App />,
     children: [
-      { index: true, element: <Navigate to="/transactions/successful" replace /> },
+      { index: true, element: <Navigate to="/transactions/completed" replace /> },
       {
         path: 'transactions',
         element: <TransactionsLayout />,
         children: [
-          { index: true, element: <Navigate to="successful" replace /> },
-          { path: 'successful', element: <TransactionsStatusPage status="SUCCESS" /> },
+          { index: true, element: <Navigate to="completed" replace /> },
+          { path: 'completed', element: <TransactionsStatusPage status="COMPLETED" /> },
           { path: 'failed', element: <TransactionsStatusPage status="FAILED" /> },
           { path: 'pending', element: <TransactionsStatusPage status="PENDING" /> },
         ],

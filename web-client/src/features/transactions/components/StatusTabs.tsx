@@ -26,10 +26,10 @@ export default function StatusTabs({ value, counts, onChange }: StatusTabsProps)
         aria-label="Transaction status tabs"
       >
         <Tab
-          value="SUCCESS"
+          value="COMPLETED"
           label={
             <Box display="flex" alignItems="center" gap={1}>
-              Successful <Chip size="small" color="success" label={counts.SUCCESS} />
+              Successful <Chip size="small" color="success" label={counts.COMPLETED} />
             </Box>
           }
         />
