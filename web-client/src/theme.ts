@@ -17,6 +17,17 @@ declare module '@mui/material/styles' {
   interface ThemeOptions {
     app?: Partial<Theme['app']>
   }
+  interface Palette {
+    completed: Palette['success'];
+    failed: Palette['error'];
+    pending: Palette['warning'];
+  }
+  interface PaletteOptions {
+    completed?: PaletteOptions['success'];
+    failed?: PaletteOptions['error'];
+    pending?: PaletteOptions['warning'];
+  }
+
 }
 
 const theme = createTheme({
@@ -30,16 +41,28 @@ const theme = createTheme({
       default: '#fff',
       paper: '#fff',
     },
+    completed: {
+      light: '#c5ee93',
+      main: '#2e7d32',
+    },
+    failed: {
+      light: '#f7bbb0',
+      main: '#c62828',
+    },
+    pending: {
+      light: '#ffe396',
+      main: '#f57c00',
+    }
   },
 
   // Uses app module above
   app: {
     headerTone: {
-      successBg: '#ebf5eb', // use palette.success later if you like
+      successBg: '#edf3ec', // use palette.success later if you like
       successBorder: '#2e7d32',
-      failedBg: '#ffe6e6',
+      failedBg: '#f8dfe2',
       failedBorder: '#c62828',
-      pendingBg: '#fff5da',
+      pendingBg: '#faf3d1',
       pendingBorder: '#f57c00',
     },
   },
@@ -108,7 +131,7 @@ const theme = createTheme({
       styleOverrides: {
         root: ({ theme }) => ({
           textTransform: 'none',
-          fontWeight: 700,
+          fontWeight: 500,
           minHeight: 0,
           height: 36,
           borderRadius: 0,
@@ -118,9 +141,11 @@ const theme = createTheme({
           backgroundColor: '#efefef',
           border: 0,
           fontSize: 20,
+          color: '#000',
 
           // Keep chip square if present
-          '& .MuiChip-root': { height: 22, fontWeight: 700, borderRadius: 0 },
+          '& .MuiChip-root': { height: 22, borderRadius: 0 },
+          '&.Mui-selected .MuiChip-root': { textDecoration: 'none !important' },
 
           // Keep square in all states
           '&:hover': { borderRadius: 0 },
@@ -135,6 +160,9 @@ const theme = createTheme({
             position: 'relative',
             border: `1px solid ${theme.palette.grey[700]}`,
             zIndex: 3,
+            color: 'black',
+            textDecoration: 'none',
+            fontWeight: 700,
           },
           '&.Mui-selected.Mui-focusVisible': {
             borderRadius: 0,
