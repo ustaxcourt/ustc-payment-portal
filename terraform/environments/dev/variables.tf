@@ -34,6 +34,12 @@ variable "testCert_s3_key" {
   default     = ""
 }
 
+variable "getDashboardTransactions_s3_key" {
+  description = "S3 key for getDashboardTransactions Lambda artifact"
+  type        = string
+  default     = ""
+}
+
 variable "initPayment_source_code_hash" {
   description = "Base64-encoded SHA256 hash for initPayment artifact"
   type        = string
@@ -54,6 +60,12 @@ variable "getDetails_source_code_hash" {
 
 variable "testCert_source_code_hash" {
   description = "Base64-encoded SHA256 hash for testCert artifact"
+  type        = string
+  default     = ""
+}
+
+variable "getDashboardTransactions_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for getDashboardTransactions artifact"
   type        = string
   default     = ""
 }
