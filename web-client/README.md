@@ -1,75 +1,349 @@
-# React + TypeScript + Vite
+# 🚀 USTC Payment Portal — Developer Guide
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Welcome to the Payment Portal web client.
+This document explains the project structure, conventions, and how to build new features in a consistent, maintainable way.
 
-Currently, two official plugins are available:
+We keep our stack intentionally **simple**:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+*   **React + TypeScript + Vite**
+*   **Local feature-based folder organization**
+*   **Composable reusable hooks (`useFetch`, `useGet`, `usePost`, etc.)**
+*   **Lightweight services using `fetch` (no Axios)**
+*   **Co-located mocks + feature APIs**
+*   **Clear rules for components, hooks, pages, and layouts**
 
-## React Compiler
+This README is your **DX rulebook**.
+Follow it → everything stays clean.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+***
 
-Note: This will impact Vite dev & build performances.
+# 📁 Project Structure
 
-## Expanding the ESLint configuration
+    src/
+      assets/                 # Static assets (SVG, images)
+      components/             # Truly shared UI components (used across features)
+      lib/
+        hooks/                # Generic reusable hooks (useFetch, useGet, usePost)
+        utils/                # Helpers not tied to any feature
+      features/
+        <feature-name>/
+          components/         # UI parts specific to this feature
+          api/                # Fetch/service functions returning domain types
+          hooks/              # Feature-specific hooks composed from generic hooks
+          mock.ts             # Mocks used during development/testing
+          types.ts            # Domain types for this feature only
+          pages/              # Pages responsible for rendering this feature
+      pages/                  # App-level pages (router-level)
+      layouts/                # Site-wide layouts
+      theme.ts                # MUI theme overrides
+      App.tsx                 # App shell
+      main.tsx                # Vite/React entry
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Why feature‑first organization?
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Because each feature is self-contained:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+*   UI
+*   API calls
+*   mocks
+*   hooks
+*   types
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Everything lives together → easier onboarding, easier refactoring, easier testing.
+
+***
+
+# 📦 Creating a New Feature
+
+Here is the required structure:
+
+    src/features/<feature-name>/
+      types.ts
+      mock.ts
+      api/
+        index.ts
+      components/
+        <Feature>Widget.tsx
+        <Feature>Table.tsx
+      hooks/
+        use<Feature>.ts
+      pages/
+        <Feature>Page.tsx
+
+### Example: a new `users` feature
+
+    src/features/users/
+      types.ts                ≈ User, UserRole, etc.
+      mock.ts                 ≈ mockUsers
+      api/
+        index.ts              ≈ fetchUsers, fetchUserById
+      components/
+        UsersTable.tsx
+        UserProfileCard.tsx
+      hooks/
+        useUsers.ts
+      pages/
+        UsersPage.tsx
+
+### Template you can copy/paste
+
+**types.ts**
+
+```ts
+export type User = {
+  id: string
+  name: string
+  email: string
+  createdAt: string
+}
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+**mock.ts**
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```ts
+export const mockUsers: User[] = [...]
 ```
+
+**api/index.ts**
+
+```ts
+import { mockUsers } from '../mock'
+
+export async function fetchUsers(signal?: AbortSignal) {
+  await new Promise(r => setTimeout(r, 250))
+  return mockUsers
+}
+```
+
+**hooks/useUsers.ts**
+
+```ts
+import { useFetch } from '../../../lib/hooks/useFetch'
+import { fetchUsers } from '../api'
+
+export function useUsers() {
+  return useFetch(() => fetchUsers(), [])
+}
+```
+
+**components/UsersTable.tsx**
+
+```ts
+export function UsersTable({ rows }) { ... }
+```
+
+**pages/UsersPage.tsx**
+
+```tsx
+export default function UsersPage() {
+  const { data, loading, error } = useUsers()
+  return <UsersTable rows={data ?? []} loading={loading} />
+}
+```
+
+***
+
+# 🔁 Reusing Shared Libraries
+
+We keep reusable building blocks in **`src/lib`**.
+
+## Shared hooks — `src/lib/hooks`
+
+These are generic utilities not tied to any feature.
+
+### `useFetch(fetcher, deps)`
+
+A universal async hook:
+
+*   `fetcher(signal) → Promise<T>`
+*   Automatically manages `loading`, `error`, `data`
+*   Supports cancellation via `AbortController`
+
+```ts
+const { data, loading, error, refetch } = useFetch(
+  (signal) => fetch('/api/users', { signal }).then(r => r.json()),
+  [id]
+)
+```
+
+### `useGet(url, deps)` & `usePost(url, body, deps)`
+
+Light wrappers around native fetch + `useFetch`.
+
+    src/lib/hooks/
+      useFetch.ts
+      http.ts                # useGet(), usePost()
+
+***
+
+# 🧩 Components — Rules & Conventions
+
+### 1) Shared UI components → `src/components/`
+
+Use this **only** if:
+
+*   It can be used across multiple features.
+*   It has no feature-specific logic.
+
+Examples:
+
+    src/components/Button.tsx
+    src/components/Modal.tsx
+    src/components/DataEmptyState.tsx
+
+### 2) Feature components → `src/features/<feature>/components/`
+
+These belong **only** to a single feature.
+
+Examples (Transactions):
+
+    TransactionsTable.tsx
+    GridSortIconCircle.tsx
+    StatusTabs.tsx
+
+Rules:
+
+*   No fetching inside components.
+*   Get all data via props.
+*   Keep them pure/presentational.
+
+***
+
+# 🧠 Hooks — Rules & Conventions
+
+### 1) Shared hooks → `src/lib/hooks/`
+
+*   Reusable across the entire application.
+*   No domain/types from features.
+*   Should handle generic behaviors (fetching, debouncing, intervals, etc.)
+
+### 2) Feature hooks → `src/features/<feature>/hooks/`
+
+Naming rule:
+
+    use<Feature><Action>.ts
+
+Example:
+
+    useTransactionsByStatus.ts
+    useUsers.ts
+    useInvoices.ts
+
+They should:
+
+*   Wrap `useFetch`, `useGet`, `usePost`, or any lower-level hook.
+*   Encode domain rules or transform data.
+*   Never contain UI logic.
+
+***
+
+# 📄 Pages — Rules & Conventions
+
+Pages live either in:
+
+**App-level pages:**
+
+    src/pages/
+
+**Feature-level pages:**
+
+    src/features/<feature>/pages/
+
+Pages:
+
+*   Own route-level responsibilities.
+*   Compose hooks + components.
+*   Pass props downward.
+*   Should NOT contain business logic or transformations.
+
+Example:
+
+```tsx
+export default function TransactionsStatusPage({ status }) {
+  const { data, loading, error } = useTransactionsByStatus(status)
+
+  return (
+    <TransactionsTable
+      rows={data ?? []}
+      loading={loading}
+      error={error}
+      status={status}
+    />
+  )
+}
+```
+
+***
+
+# 🧱 Layouts — Rules & Patterns
+
+Layouts define the surrounding structure around pages.
+
+Their home:
+
+    src/layouts/
+
+Purpose:
+
+*   Navigation bars
+*   Sidebars
+*   Shared headers/footers
+*   Consistent spacing & containers
+
+Never put business logic here.
+
+***
+
+# 🔌 API / Services — Rules
+
+API functions live in:
+
+    src/features/<feature>/api/
+
+Rules:
+
+*   One file per feature (`index.ts`).
+*   Keep them thin.
+*   Accept parameters & `signal` if applicable.
+*   Return typed domain models (e.g., `Transaction[]`).
+*   Do **not** use `fetch` in components — always via service.
+
+Example:
+
+```ts
+export async function fetchTransactionsByStatus(status, { signal }) {
+  const url = `/transactions?status=${status}`
+  const res = await fetch(url, { signal })
+  if (!res.ok) throw new Error('Failed to load')
+  return res.json() as Promise<Transaction[]>
+}
+```
+
+***
+
+# 🎭 Mocks — Rules
+
+Mocks live **beside** their feature:
+
+    src/features/<feature>/mock.ts
+
+Rules:
+
+*   Must follow the same type as real API.
+*   Should mimic API latency.
+*   Should be deterministic for UI dev & tests.
+*   You can toggle mock API usage in services using an env flag like:
+
+```ts
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+```
+
+***
+
+# 🛠 ESLint & React Compiler
+
+(Your original README content can stay; shortened here.)
+
+*   Vite + React Compiler enabled.
+*   ESLint recommended + TypeScript rules.
+*   Can switch to type-aware ESLint for production.
