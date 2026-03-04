@@ -217,7 +217,7 @@ jobs:
             echo "Source secret 'ustc/pay-gov/dev/client-permissions' not found — seeding PR env with deployer role for integration tests."
             # Lambda expects IAM role ARN (arn:aws:iam::ACCOUNT:role/NAME); API Gateway sends assumed-role ARN.
             CALLER_ARN=$(aws sts get-caller-identity --query Arn --output text)
-            ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+            ACCOUNT_ID=$(echo "$CALLER_ARN" | cut -d: -f5)
             ROLE_NAME=$(echo "$CALLER_ARN" | sed -n 's|.*assumed-role/\([^/]*\)/.*|\1|p')
             if [ -n "$ROLE_NAME" ]; then
               IAM_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
