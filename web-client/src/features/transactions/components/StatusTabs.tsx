@@ -1,6 +1,7 @@
 import * as React from 'react'
-import { Tabs, Tab, Chip, Box } from '@mui/material'
+import { Tabs, Tab, Box } from '@mui/material'
 import type { TransactionStatus } from '../types'
+import { StatusChip } from './StatusChip'
 
 type StatusTabsValue = TransactionStatus
 
@@ -28,7 +29,7 @@ export default function StatusTabs({ value, counts, onChange }: StatusTabsProps)
           value="COMPLETED"
           label={
             <Box display="flex" alignItems="center" gap={1}>
-              Successful <Chip size="small" color="success" label={counts.COMPLETED} />
+              Successful <StatusChip status="COMPLETED" label={counts.COMPLETED} />
             </Box>
           }
         />
@@ -36,7 +37,7 @@ export default function StatusTabs({ value, counts, onChange }: StatusTabsProps)
           value="FAILED"
           label={
             <Box display="flex" alignItems="center" gap={1}>
-              Failed <Chip size="small" color="error" label={counts.FAILED} />
+              Failed <StatusChip status="FAILED" label={counts.FAILED} />
             </Box>
           }
         />
@@ -44,7 +45,7 @@ export default function StatusTabs({ value, counts, onChange }: StatusTabsProps)
           value="PENDING"
           label={
             <Box display="flex" alignItems="center" gap={1}>
-              Pending <Chip size="small" color="warning" label={counts.PENDING} />
+              Pending <StatusChip status="PENDING" label={counts.PENDING} />
             </Box>
           }
         />
