@@ -26,7 +26,7 @@ This design ensures:
 ## Terminology
 
 - **`app_id`** — Identifier for a client application (e.g., `DAWSON`)
-- **`fee_id`** — Client-facing identifier for a fee type (e.g., `PETITION_FILING_FEE`, `NONATTORNEY_EXAM_REGISTRATION`). This is what clients send in API requests
+- **`fee_id`** — Client-facing identifier for a fee type (e.g., `PETITION_FILING_FEE`, `NONATTORNEY_EXAM_REGISTRATION_FEE`). This is what clients send in API requests
 - **`tcs_app_id`** — Pay.gov application identifier (e.g., `TCSUSTAXCOURTANAEF`). We look this up from the fees table using the `fee_id` provided by the client
 - **`is_variable`** — Boolean indicating if fee amount is client-provided (true) or portal-determined (false)
 - **metadata** — Business context provided by clients to identify transaction type
