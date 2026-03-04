@@ -1,4 +1,3 @@
-// src/features/transactions/pages/TransactionsLayout.tsx
 import * as React from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Box, Typography } from '@mui/material'
@@ -70,4 +69,3 @@ export default function TransactionsLayout() {
     </Box >
   )
 }
-``
