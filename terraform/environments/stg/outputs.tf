@@ -23,11 +23,6 @@ output "api_gateway_url" {
   description = "Base URL of the API Gateway for integration tests"
 }
 
-output "api_access_token_secret_id" {
-  value       = module.secrets.api_access_token_secret_id
-  description = "Secret ID for API access token (for integration tests)"
-}
-
 output "cert_passphrase_secret_id" {
   value       = module.secrets.cert_passphrase_secret_id
   description = "Secret ID for certificate passphrase"

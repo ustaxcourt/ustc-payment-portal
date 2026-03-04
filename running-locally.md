@@ -12,8 +12,11 @@ TCS_APP_ID="ustc-test-pay-gov-app"
 NODE_ENV="local"
 BASE_URL="http://localhost:8080"
 
+# Bypass SigV4 auth for local development (no API Gateway locally)
+# Do NOT set this in deployed environments
+LOCAL_DEV=true
+
 # Don't use Secrets Manager for local dev
-API_ACCESS_TOKEN_SECRET_ID=""
 CERT_PASSPHRASE_SECRET_ID=""
 
 # Local test server token (must match what you entered when starting test server)
@@ -21,5 +24,6 @@ CERT_PASSPHRASE_SECRET_ID=""
 PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID="asdf123"
 ```
 - Note that `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` needs to match the `ACCESS_TOKEN` defined in your `.env` in `ustc-pay-gov-test-server`
+- `LOCAL_DEV=true` bypasses AWS SigV4 authentication. Locally there is no API Gateway to verify signatures, so the auth pipeline returns a dummy IAM role ARN (`arn:aws:iam::000000000000:role/local-dev-role`) and skips the Secrets Manager permissions fetch entirely.
 - Run `npm install`
 - Run `npx ts-node src/devServer.ts`

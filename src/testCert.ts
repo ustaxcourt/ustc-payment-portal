@@ -4,6 +4,7 @@ import { APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "./appContext";
 import { getSecretString } from "./clients/secretsClient";
 
+// This is the handler for the /test endpoint.
 export const handler = async (): Promise<APIGatewayProxyResult> => {
   try {
     const appContext = createAppContext();

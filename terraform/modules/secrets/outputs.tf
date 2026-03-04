@@ -1,9 +1,3 @@
-#api_access_token to be removed in future stories
-output "api_access_token_secret_id" {
-  value       = aws_secretsmanager_secret.api_access_token.name
-  description = "SecretId (name) for API access token"
-}
-
 output "cert_passphrase_secret_id" {
   value       = aws_secretsmanager_secret.cert_passphrase.name
   description = "SecretId (name) for cert passphrase"
@@ -26,6 +20,16 @@ output "certificate_secret_id" {
 output "tcs_app_id_secret_id" {
   value       = aws_secretsmanager_secret.tcs_app_id.name
   description = "SecretId (name) for TCS Application ID"
+}
+
+output "client_permissions_secret_id" {
+  value       = aws_secretsmanager_secret.client_permissions.name
+  description = "SecretId (name) for client permissions"
+}
+
+output "allowed_account_ids_secret_id" {
+  value       = aws_secretsmanager_secret.allowed_account_ids.name
+  description = "SecretId (name) for allowed account IDs (cross-account API Gateway access)"
 }
 
 output "rds_credentials_secret_id" {
