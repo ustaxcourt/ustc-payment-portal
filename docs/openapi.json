@@ -48,7 +48,7 @@
           "PETITION_FILING_FEE",
           "NONATTORNEY_EXAM_REGISTRATION"
         ],
-        "description": "The fee type identifier. Available fee types:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee type. See the API documentation for more details on fee authorization and supported fees.",
+        "description": "The fee type identifier. Available fee types:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee type. See the API documentation for more details on fee authorization and supported fees.",
         "example": "PETITION_FILING_FEE"
       },
       "MetadataDawson": {
@@ -99,7 +99,7 @@
             "$ref": "#/components/schemas/MetadataNonattorneyExam"
           }
         ],
-        "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. Note: Fee identifiers shown here (e.g., PETITION_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION_FEE) are working names and may be renamed before release. See individual metadata schemas for field requirements."
+        "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. Note: Fee identifiers shown here (e.g., PETITION_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) are working names and may be renamed before release. See individual metadata schemas for field requirements."
       },
       "InitPaymentRequest": {
         "type": "object",
@@ -121,7 +121,7 @@
               "PETITION_FILING_FEE",
               "NONATTORNEY_EXAM_REGISTRATION"
             ],
-            "description": "The fee type identifier. Available fee types:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee type. See the API documentation for more details on fee authorization and supported fees.",
+            "description": "The fee type identifier. Available fee types:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee type. See the API documentation for more details on fee authorization and supported fees.",
             "example": "PETITION_FILING_FEE"
           },
           "urlSuccess": {
@@ -145,7 +145,7 @@
                 "$ref": "#/components/schemas/MetadataNonattorneyExam"
               }
             ],
-            "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. Note: Fee identifiers shown here (e.g., PETITION_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION_FEE) are working names and may be renamed before release. See individual metadata schemas for field requirements."
+            "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. Note: Fee identifiers shown here (e.g., PETITION_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) are working names and may be renamed before release. See individual metadata schemas for field requirements."
           }
         },
         "required": [

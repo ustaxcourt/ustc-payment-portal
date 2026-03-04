@@ -42,7 +42,7 @@ components:
 
         - `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)
 
-        - `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney
+        - `NONATTORNEY_EXAM_REGISTRATION`: Registration fee for nonattorney
         examination
 
 
@@ -86,7 +86,7 @@ components:
       description: >-
         Metadata fields are dynamic and determined by the feeId value. Different
         fees require different metadata properties. Note: Fee identifiers shown
-        here (e.g., PETITION_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION_FEE) are
+        here (e.g., PETITION_FILING_FEE, NONATTORNEY_EXAM_REGISTRATION) are
         working names and may be renamed before release. See individual metadata
         schemas for field requirements.
     InitPaymentRequest:
@@ -112,8 +112,8 @@ components:
 
             - `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)
 
-            - `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for
-            nonattorney examination
+            - `NONATTORNEY_EXAM_REGISTRATION`: Registration fee for nonattorney
+            examination
 
 
             Fee amounts are determined by the Payment Portal based on the fee
@@ -138,8 +138,8 @@ components:
             Metadata fields are dynamic and determined by the feeId value.
             Different fees require different metadata properties. Note: Fee
             identifiers shown here (e.g., PETITION_FILING_FEE,
-            NONATTORNEY_EXAM_REGISTRATION_FEE) are working names and may be
-            renamed before release. See individual metadata schemas for field
+            NONATTORNEY_EXAM_REGISTRATION) are working names and may be renamed
+            before release. See individual metadata schemas for field
             requirements.
       required:
         - appId

@@ -2,7 +2,6 @@ import { authorizeClient } from "./authorizeClient";
 import { ForbiddenError } from "./errors/forbidden";
 import {
   getClientByRoleArn,
-  clearPermissionsCache,
   ClientPermission,
 } from "./clients/permissionsClient";
 
@@ -16,6 +15,12 @@ const dawsonClient: ClientPermission = {
   clientName: "DAWSON",
   clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
   allowedFeeIds: ["PETITION_FILING_FEE", "ADMISSIONS_FEE"],
+};
+
+const nonattorneyClient: ClientPermission = {
+  clientName: "Nonattorney Exam App",
+  clientRoleArn: "arn:aws:iam::999999999999:role/nonattorney-client",
+  allowedFeeIds: ["NONATTORNEY_EXAM_REGISTRATION"],
 };
 
 const localDevClient: ClientPermission = {
@@ -88,6 +93,42 @@ describe("authorizeClient", () => {
       await expect(
         authorizeClient("arn:aws:iam::111111111111:role/unknown", "SOME_FEE")
       ).rejects.toThrow("Client not registered");
+    });
+  });
+
+  describe("DAWSON fee authorization", () => {
+    it("allows DAWSON to charge PETITION_FILING_FEE", async () => {
+      mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
+
+      await expect(
+        authorizeClient(dawsonClient.clientRoleArn, "PETITION_FILING_FEE")
+      ).resolves.not.toThrow();
+    });
+
+    it("prevents DAWSON from charging NONATTORNEY_EXAM_REGISTRATION", async () => {
+      mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
+
+      await expect(
+        authorizeClient(dawsonClient.clientRoleArn, "NONATTORNEY_EXAM_REGISTRATION")
+      ).rejects.toThrow(ForbiddenError);
+    });
+  });
+
+  describe("Nonattorney fee authorization", () => {
+    it("allows Nonattorney App to charge NONATTORNEY_EXAM_REGISTRATION", async () => {
+      mockGetClientByRoleArn.mockResolvedValueOnce(nonattorneyClient);
+
+      await expect(
+        authorizeClient(nonattorneyClient.clientRoleArn, "NONATTORNEY_EXAM_REGISTRATION")
+      ).resolves.not.toThrow();
+    });
+
+    it("prevents Nonattorney App from charging PETITION_FILING_FEE", async () => {
+      mockGetClientByRoleArn.mockResolvedValueOnce(nonattorneyClient);
+
+      await expect(
+        authorizeClient(nonattorneyClient.clientRoleArn, "PETITION_FILING_FEE")
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 
