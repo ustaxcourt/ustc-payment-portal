@@ -69,6 +69,18 @@ variable "additional_secret_arns" {
   default     = []
 }
 
+variable "client_permissions_name" {
+  description = "Name of the Secrets Manager secret that stores authorized client IAM role ARNs and allowed fee IDs"
+  type        = string
+  default     = "client-permissions"
+}
+
+variable "allowed_account_ids_name" {
+  description = "Name of the Secrets Manager secret that stores AWS account IDs allowed to invoke the API Gateway"
+  type        = string
+  default     = "allowed-account-ids"
+}
+
 variable "recovery_window_in_days" {
   description = "Days to retain deleted secrets before permanent removal (0=immediate, 7-30 for recoverability)"
   type        = number

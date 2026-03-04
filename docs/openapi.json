@@ -46,7 +46,7 @@
         "type": "string",
         "enum": [
           "PETITION_FILING_FEE",
-          "NONATTORNEY_EXAM_REGISTRATION"
+          "NONATTORNEY_EXAM_REGISTRATION_FEE"
         ],
         "description": "The fee type identifier. Available fee types:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee type. See the API documentation for more details on fee authorization and supported fees.",
         "example": "PETITION_FILING_FEE"
@@ -119,7 +119,7 @@
             "type": "string",
             "enum": [
               "PETITION_FILING_FEE",
-              "NONATTORNEY_EXAM_REGISTRATION"
+              "NONATTORNEY_EXAM_REGISTRATION_FEE"
             ],
             "description": "The fee type identifier. Available fee types:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee type. See the API documentation for more details on fee authorization and supported fees.",
             "example": "PETITION_FILING_FEE"
@@ -453,7 +453,7 @@
             }
           },
           "403": {
-            "description": "Forbidden - invalid or missing API key",
+            "description": "Forbidden - invalid SigV4 signature or client not authorized",
             "content": {
               "text/plain": {
                 "schema": {
@@ -533,7 +533,7 @@
             }
           },
           "403": {
-            "description": "Forbidden - invalid or missing API key",
+            "description": "Forbidden - invalid SigV4 signature or client not authorized",
             "content": {
               "text/plain": {
                 "schema": {
@@ -599,7 +599,7 @@
             }
           },
           "403": {
-            "description": "Forbidden - invalid or missing API key",
+            "description": "Forbidden - invalid SigV4 signature or client not authorized",
             "content": {
               "text/plain": {
                 "schema": {
