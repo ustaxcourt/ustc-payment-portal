@@ -249,7 +249,7 @@ After upgrading, regenerate the provider lock files to ensure cross-platform com
 ```bash
 # For each environment directory (dev, stg, prod, and foundation directories)
 cd terraform/environments/dev
-terraform providers lock -platform=linux_amd64 -platform=darwin_amd64 -platform=darwin_arm64
+terraform providers lock -platform=linux_amd64 -platform=darwin_arm64
 ```
 
 ### Local Development Setup
