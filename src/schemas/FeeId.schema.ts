@@ -10,7 +10,7 @@ export const FeeIdSchema = z
     description:
       "The fee type identifier. Available fee types:\n\n" +
       "- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n" +
-      "- `NONATTORNEY_EXAM_REGISTRATION`: Registration fee for nonattorney examination\n\n" +
+      "- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\n" +
       "Fee amounts are determined by the Payment Portal based on the fee type. " +
       "See the API documentation for more details on fee authorization and supported fees.",
     example: "PETITION_FILING_FEE",

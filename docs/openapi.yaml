@@ -42,7 +42,7 @@ components:
 
         - `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)
 
-        - `NONATTORNEY_EXAM_REGISTRATION`: Registration fee for nonattorney
+        - `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney
         examination
 
 
@@ -110,8 +110,8 @@ components:
 
             - `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)
 
-            - `NONATTORNEY_EXAM_REGISTRATION`: Registration fee for nonattorney
-            examination
+            - `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for
+            nonattorney examination
 
 
             Fee amounts are determined by the Payment Portal based on the fee

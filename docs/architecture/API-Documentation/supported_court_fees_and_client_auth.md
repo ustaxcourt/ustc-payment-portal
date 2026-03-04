@@ -171,7 +171,7 @@ CREATE TABLE fees (
 |--------|------|------------|-------------|--------|-------------|
 | PETITION_FILING_FEE | Petition Filing | TCSUSTAXCOURTPETITION | false | 60.00 | Petition Filing Fee |
 | COPY_REQUEST | Document Copies | TCSUSTAXCOURTCOPY | true | NULL | Document Copy Request (varies by page count) |
-| NONATTORNEY_EXAM_REGISTRATION | Admission Exam | TCSUSTAXCOURTANAEF | false | 250.00 | Non-Attorney Exam Registration |
+| NONATTORNEY_EXAM_REGISTRATION_FEE | Admission Exam | TCSUSTAXCOURTANAEF | false | 250.00 | Non-Attorney Exam Registration |
 
 **Note:** The `fee_id` is what clients send in their API requests. The `tcs_app_id` is the Pay.gov identifier that we use when calling Pay.gov's API.
 
@@ -227,11 +227,11 @@ CREATE TABLE client_fee_permissions (
 
 **Example Data:**
 
-| app_id | fee_id |
-|--------|--------|
-| DAWSON | PETITION_FILING_FEE |
-| DAWSON | COPY_REQUEST |
-| EXAM_PORTAL | NONATTORNEY_EXAM_REGISTRATION |
+| app_id      | fee_id                            |
+| ----------- | --------------------------------- |
+| DAWSON      | PETITION_FILING_FEE               |
+| DAWSON      | COPY_REQUEST                      |
+| EXAM_PORTAL | NONATTORNEY_EXAM_REGISTRATION_FEE |
 
 ### Authorization Query
 
