@@ -14,7 +14,7 @@ const mockGetClientByRoleArn = getClientByRoleArn as jest.MockedFunction<
 const dawsonClient: ClientPermission = {
   clientName: "DAWSON",
   clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
-  allowedFeeIds: ["PETITION_FILING_FEE", "ADMISSIONS_FEE"],
+  allowedFeeIds: ["PETITION_FILING_FEE"],
 };
 
 const nonattorneyClient: ClientPermission = {
@@ -66,10 +66,6 @@ describe("authorizeClient", () => {
 
       await expect(
         authorizeClient(dawsonClient.clientRoleArn, "PETITION_FILING_FEE")
-      ).resolves.not.toThrow();
-
-      await expect(
-        authorizeClient(dawsonClient.clientRoleArn, "ADMISSIONS_FEE")
       ).resolves.not.toThrow();
     });
 

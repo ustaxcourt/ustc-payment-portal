@@ -221,11 +221,16 @@ jobs:
             ROLE_NAME=$(echo "$CALLER_ARN" | sed -n 's|.*assumed-role/\([^/]*\)/.*|\1|p')
             if [ -n "$ROLE_NAME" ]; then
               IAM_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
+              # Wildcard allowedFeeIds so CI tests pass regardless of which fee IDs are added in the future.
+              # This entry is CI-only and never written to dev/stg/prod client-permissions.
               DEPLOYER_PERMISSIONS=$(jq -n --arg arn "$IAM_ROLE_ARN" '[{clientName: "CI Deployer", clientRoleArn: $arn, allowedFeeIds: ["*"]}]')
               aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string "$DEPLOYER_PERMISSIONS"
               echo "Seeded client-permissions with deployer role: $IAM_ROLE_ARN"
             else
-              echo "Could not derive IAM role ARN from caller; integration tests may fail with 403 Client not registered."
+              echo "ERROR: Could not derive IAM role ARN from caller identity: $CALLER_ARN"
+              echo "Expected an assumed-role ARN (arn:aws:sts::ACCOUNT:assumed-role/ROLE/SESSION)."
+              echo "Integration tests will fail with 403 Client not registered without this seed."
+              exit 1
             fi
           fi
 
