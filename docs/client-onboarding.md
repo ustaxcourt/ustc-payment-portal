@@ -129,10 +129,10 @@ Client permissions are stored in the `ustc/pay-gov/{env}/client-permissions` sec
 
 ### Currently supported fee IDs
 
-| Fee ID                          | Description                                             |
-| ------------------------------- | ------------------------------------------------------- |
-| `PETITION_FILING_FEE`           | Petition filing fee (fixed: $60)                        |
-| `NONATTORNEY_EXAM_REGISTRATION` | Non-attorney admissions exam registration (fixed: $250) |
+| Fee ID                              | Description                                             |
+| ----------------------------------- | ------------------------------------------------------- |
+| `PETITION_FILING_FEE`               | Petition filing fee (fixed: $60)                        |
+| `NONATTORNEY_EXAM_REGISTRATION_FEE` | Non-attorney admissions exam registration (fixed: $250) |
 
 For the full fee catalog including Pay.gov integration details, see [supported_court_fees_and_client_auth.md](architecture/API-Documentation/supported_court_fees_and_client_auth.md).
 
