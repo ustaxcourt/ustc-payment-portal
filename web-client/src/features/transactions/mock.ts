@@ -19,10 +19,10 @@ const appClients = [
 ]
 
 const feeCatalog = [
-  { feeName: 'Non-attorney Admissions Exam Fee', feeIdentifier: 'FEE-NAE-001', feeAmount: 150 },
-  { feeName: 'Attorney Registration Fee', feeIdentifier: 'FEE-ARF-010', feeAmount: 250 },
-  { feeName: 'Reinstatement Fee', feeIdentifier: 'FEE-RST-021', feeAmount: 95 },
-  { feeName: 'Certificate of Good Standing', feeIdentifier: 'FEE-CGS-005', feeAmount: 25 },
+  { feeName: 'Non-attorney Admissions Exam Fee', feeId: 'FEE-NAE-001', feeAmount: 150 },
+  { feeName: 'Attorney Registration Fee', feeId: 'FEE-ARF-010', feeAmount: 250 },
+  { feeName: 'Reinstatement Fee', feeId: 'FEE-RST-021', feeAmount: 95 },
+  { feeName: 'Certificate of Good Standing', feeId: 'FEE-CGS-005', feeAmount: 25 },
 ]
 
 const accountHolders = [
@@ -98,7 +98,7 @@ export const mockTransactions: Transaction[] = Array.from({ length: 100 }).map((
     agencyTrackingId: mkId('AGY', i),              /** Agency Tracking ID */
     paygovTrackingId,                              /** Pay.gov Tracking ID (if one exists) */
     feeName: fee.feeName,                          /** Fee Name */
-    feeIdentifier: fee.feeIdentifier,              /** Fee Identifier */
+    feeId: fee.feeId,                              /** Fee Identifier */
     feeAmount: fee.feeAmount,                      /** Fee Amount */
     appClientName,                                 /** App/Client Name */
     transactionReferenceId: mkId('TXREF', i),      /** Transaction Reference ID */

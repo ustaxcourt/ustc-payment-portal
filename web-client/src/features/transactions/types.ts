@@ -33,7 +33,7 @@ export type Transaction = {
   agencyTrackingId: string /** Agency Tracking ID */
   paygovTrackingId?: string | null /** Pay.gov Tracking ID (if one exists) */
   feeName: string /** Fee Name */
-  feeIdentifier: string /** Fee Identifier */
+  feeId: string /** Fee Identifier */
   feeAmount: number /** Fee Amount */
   appClientName: string /** App/Client Name */
   transactionReferenceId: string /** Transaction Reference ID */
