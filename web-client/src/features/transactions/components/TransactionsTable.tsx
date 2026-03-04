@@ -1,6 +1,10 @@
 import * as React from 'react'
-import { DataGrid } from '@mui/x-data-grid'
-import type { GridColDef } from '@mui/x-data-grid'
+import {
+  DataGrid,
+  type GridColDef,
+  type GridKeyValue,
+  type GridValueFormatter,
+} from '@mui/x-data-grid'
 import { Box } from '@mui/material'
 import type { Transaction } from '../types'
 import GridSortIconCircle from './GridSortIconCircle'
@@ -11,44 +15,134 @@ export interface TransactionsTableProps {
   status: string
 }
 
+/** Safely format an ISO date string as:
+ *   YYYY-MM-DD
+ *   HH:MM:SS
+ * Returns '—' if invalid/missing.
+ */
+function formatIsoToTwoLines(value: unknown): string {
+  if (typeof value !== 'string' || !value) return '—'
+  const ms = Date.parse(value)
+  if (Number.isNaN(ms)) return '—'
+  const iso = new Date(ms).toISOString()
+  return `${iso.slice(0, 10)}\n${iso.slice(11, 19)}`
+}
+
+/** Sort comparator that works on ISO strings, nulls, or undefined. */
+function compareIsoStrings(a?: string | null, b?: string | null): number {
+  const ta = typeof a === 'string' ? Date.parse(a) : NaN
+  const tb = typeof b === 'string' ? Date.parse(b) : NaN
+  const aValid = Number.isFinite(ta)
+  const bValid = Number.isFinite(tb)
+  if (aValid && bValid) return ta - tb
+  if (aValid && !bValid) return 1
+  if (!aValid && bValid) return -1
+  return 0
+}
+
+/** v8-compatible money formatter — note the generic <Transaction> */
+const moneyFormatter: GridValueFormatter<Transaction> = (value) => {
+  if (value == null) return '—'
+  const n = Number(value)
+  return Number.isFinite(n) ? `$${n.toFixed(2)}` : '—'
+}
+
+/** v8-compatible nullable text formatter — note the generic <Transaction> */
+const nullableTextFormatter: GridValueFormatter<Transaction> = (value) => {
+  return value ? String(value) : '—'
+}
+
 export default function TransactionsTable({ rows, loading, status }: TransactionsTableProps) {
-  const columns = React.useMemo<GridColDef<Transaction>[]>(
-    () => [
-      {
-        field: 'timestamp',
-        headerName: 'Timestamp',
-        flex: 1.2,
-        minWidth: 180,
-        valueGetter: (value) => {
-          // value is ISO string
-          const d = new Date(value as string)
-          // Match the screenshot style (date + time on new line)
-          return `${d.toISOString().slice(0, 10)}\n${d.toISOString().slice(11, 19)}`
-        },
-        renderCell: (params) => (
-          <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
-            {params.value as string}
-          </Box>
-        ),
-        sortComparator: (v1, v2) => v1.localeCompare(v2),
-        sortable: true
-      },
-      { field: 'feeType', headerName: 'Fee Type', flex: 1.5, minWidth: 220, sortable: false },
-      {
-        field: 'amount',
-        headerName: 'Amount',
-        flex: 0.8,
-        minWidth: 110,
-        type: 'number',
-        valueFormatter: ({ value }) => `$${Number(value).toFixed(2)}`,
-        sortable: true
-      },
-      { field: 'payType', headerName: 'Pay Type', flex: 1, minWidth: 120, sortable: false },
-      { field: 'accountHolder', headerName: 'Account Holder', flex: 1.2, minWidth: 180, sortable: false },
-      { field: 'agencyId', headerName: 'Agency ID', flex: 0.8, minWidth: 120, sortable: false }
-    ],
-    []
-  )
+  const columns = React.useMemo<GridColDef<Transaction>[]>(() => [
+    {
+      field: 'createdAt',
+      headerName: 'Created At',
+      flex: 1.2,
+      minWidth: 180,
+      renderCell: (params) => (
+        <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
+          {formatIsoToTwoLines(params.row.createdAt)}
+        </Box>
+      ),
+      // v8: comparator args are GridKeyValue
+      sortComparator: (v1: GridKeyValue, v2: GridKeyValue) =>
+        compareIsoStrings(v1 as string | null, v2 as string | null),
+      sortable: true,
+    },
+    {
+      field: 'lastUpdatedAt',
+      headerName: 'Last Updated',
+      flex: 1.2,
+      minWidth: 180,
+      renderCell: (params) => (
+        <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
+          {formatIsoToTwoLines(params.row.lastUpdatedAt)}
+        </Box>
+      ),
+      sortComparator: (v1: GridKeyValue, v2: GridKeyValue) =>
+        compareIsoStrings(v1 as string | null, v2 as string | null),
+      sortable: true,
+    },
+    {
+      field: 'feeName',
+      headerName: 'Fee Name',
+      flex: 1.5,
+      minWidth: 240,
+      sortable: false,
+    },
+    {
+      field: 'feeIdentifier',
+      headerName: 'Fee Identifier',
+      flex: 1,
+      minWidth: 160,
+      sortable: false,
+    },
+    {
+      field: 'feeAmount',
+      headerName: 'Amount',
+      flex: 0.6,
+      minWidth: 110,
+      type: 'number',
+      valueFormatter: moneyFormatter, // typed as GridValueFormatter<Transaction>
+      sortable: true,
+    },
+    {
+      field: 'paymentMethod',
+      headerName: 'Payment Method',
+      flex: 1,
+      minWidth: 140,
+      sortable: false,
+    },
+    {
+      field: 'transactionStatus',
+      headerName: 'Status',
+      flex: 1,
+      minWidth: 130,
+      sortable: true,
+    },
+    {
+      field: 'agencyTrackingId',
+      headerName: 'Agency Tracking ID',
+      flex: 1.2,
+      minWidth: 180,
+      sortable: false,
+    },
+    {
+      field: 'paygovTrackingId',
+      headerName: 'Pay.gov Tracking ID',
+      flex: 1.2,
+      minWidth: 180,
+      valueFormatter: nullableTextFormatter, // typed as GridValueFormatter<Transaction>
+      sortable: false,
+    },
+    {
+      field: 'transactionReferenceId',
+      headerName: 'Reference ID',
+      flex: 1.2,
+      minWidth: 180,
+      sortable: false,
+    },
+  ], [])
 
   return (
     <Box
@@ -61,16 +155,17 @@ export default function TransactionsTable({ rows, loading, status }: Transaction
         paddingTop: 3,
       })}
     >
-      <DataGrid
+      {/* 👇 Important: make DataGrid generic over your row type */}
+      <DataGrid<Transaction>
         rows={rows}
         columns={columns}
-        getRowId={(r) => r.id}
+        getRowId={(r) => r.agencyTrackingId}
         disableColumnMenu
         hideFooter
         loading={loading}
         density="comfortable"
         initialState={{
-          sorting: { sortModel: [{ field: 'timestamp', sort: 'desc' }] },
+          sorting: { sortModel: [{ field: 'createdAt', sort: 'desc' }] },
         }}
         slotProps={{
           root: { 'data-status': status },
@@ -81,46 +176,35 @@ export default function TransactionsTable({ rows, loading, status }: Transaction
           columnUnsortedIcon: () => <GridSortIconCircle dir="none" />,
         }}
         sx={(theme) => ({
-          // 1) Make header content stretch and push the icon to the far right
           '& .MuiDataGrid-columnHeaderTitleContainer': {
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',   // text left, icon right
+            justifyContent: 'space-between',
             width: '100%',
             gap: theme.spacing(1),
           },
-
-          // 2) Ensure the icon container is on the right and not dimmed by defaults
           '& .MuiDataGrid-sortIcon': {
             order: 2,
             marginLeft: 'auto',
-            color: '#111',        // black arrows to match your spec/screenshot
+            color: '#111',
             opacity: 1,
           },
-
-          // Some versions wrap the icon in a button container; push that as well
           '& .MuiDataGrid-sortIconButton': {
             order: 2,
             marginLeft: 'auto',
             color: '#111',
-            padding: 0,           // tidy spacing
+            padding: 0,
             background: 'transparent',
             '&:hover': { background: 'transparent' },
           },
-
-          // Tidy the title side (left part)
           '& .MuiDataGrid-columnHeaderTitle': {
             fontWeight: 700,
           },
-
-
           '& .MuiDataGrid-columnHeader': {
-            // hide sort affordance on non-sortable columns
             '&.MuiDataGrid-columnHeader--sortable': { cursor: 'pointer' },
             '&:not(.MuiDataGrid-columnHeader--sortable) .MuiDataGrid-sortIcon, & :not(.MuiDataGrid-columnHeader--sortable) .MuiDataGrid-sortIconButton':
               { display: 'none' },
           },
-
         })}
         showCellVerticalBorder
         showColumnVerticalBorder
