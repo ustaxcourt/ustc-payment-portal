@@ -116,11 +116,6 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Action   = ["s3:ListBucket"],
         Resource = "arn:aws:s3:::ustc-payment-portal-build-artifacts"
       },
-      { #lock table
-        Effect   = "Allow",
-        Action   = ["dynamodb:DescribeTable", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem"],
-        Resource = "arn:aws:dynamodb:${local.aws_region}:${data.aws_caller_identity.current.account_id}:table/${local.tf_lock_table_name}"
-      },
       {
         Effect = "Allow",
         Action = [

@@ -110,7 +110,6 @@ module "iam_cicd" {
   github_org               = local.github_org
   github_repo              = local.github_repo
   state_bucket_name        = local.state_bucket_name
-  state_lock_table_name    = local.state_lock_table_name
   state_object_keys        = local.state_object_keys
   lambda_exec_role_arn     = data.terraform_remote_state.foundation.outputs.lambda_role_arn
   lambda_name_prefix       = local.name_prefix
