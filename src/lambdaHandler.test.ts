@@ -42,7 +42,7 @@ jest.mock("./clients/permissionsClient", () => ({
   getClientByRoleArn: jest.fn().mockResolvedValue({
     clientName: "Test Client",
     clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
-    allowedFeeIds: ["PETITIONS_FILING_FEE", "ADMISSIONS_FEE"],
+    allowedFeeIds: ["PETITION_FILING_FEE", "ADMISSIONS_FEE"],
   }),
   clearPermissionsCache: jest.fn(),
 }));
@@ -78,7 +78,7 @@ describe("lambdaHandler", () => {
           urlCancel: "http://cancel.com",
           urlSuccess: "http://success.com",
           agencyTrackingId: "agency-123",
-          feeId: "PETITIONS_FILING_FEE",
+          feeId: "PETITION_FILING_FEE",
         }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
@@ -116,7 +116,7 @@ describe("lambdaHandler", () => {
 
     it("returns 403 when IAM principal is missing", async () => {
       const event = {
-        body: JSON.stringify({ feeId: "PETITIONS_FILING_FEE" }),
+        body: JSON.stringify({ feeId: "PETITION_FILING_FEE" }),
         headers: mockHeaders,
         requestContext: {
           ...mockRequestContext,
@@ -149,7 +149,7 @@ describe("lambdaHandler", () => {
         body: JSON.stringify({
           appId: "test-app",
           token: "payment-token",
-          feeId: "PETITIONS_FILING_FEE",
+          feeId: "PETITION_FILING_FEE",
         }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
@@ -177,7 +177,7 @@ describe("lambdaHandler", () => {
 
     it("returns 403 when IAM principal is invalid", async () => {
       const event = {
-        body: JSON.stringify({ feeId: "PETITIONS_FILING_FEE" }),
+        body: JSON.stringify({ feeId: "PETITION_FILING_FEE" }),
         headers: mockHeaders,
         requestContext: {
           ...mockRequestContext,

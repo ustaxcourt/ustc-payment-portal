@@ -15,7 +15,7 @@ const mockGetClientByRoleArn = getClientByRoleArn as jest.MockedFunction<
 const dawsonClient: ClientPermission = {
   clientName: "DAWSON",
   clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
-  allowedFeeIds: ["PETITIONS_FILING_FEE", "ADMISSIONS_FEE"],
+  allowedFeeIds: ["PETITION_FILING_FEE", "ADMISSIONS_FEE"],
 };
 
 const localDevClient: ClientPermission = {
@@ -52,7 +52,7 @@ describe("authorizeClient", () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
 
       await expect(
-        authorizeClient(dawsonClient.clientRoleArn, "PETITIONS_FILING_FEE")
+        authorizeClient(dawsonClient.clientRoleArn, "PETITION_FILING_FEE")
       ).resolves.not.toThrow();
     });
 
@@ -60,7 +60,7 @@ describe("authorizeClient", () => {
       mockGetClientByRoleArn.mockResolvedValue(dawsonClient);
 
       await expect(
-        authorizeClient(dawsonClient.clientRoleArn, "PETITIONS_FILING_FEE")
+        authorizeClient(dawsonClient.clientRoleArn, "PETITION_FILING_FEE")
       ).resolves.not.toThrow();
 
       await expect(
@@ -104,12 +104,20 @@ describe("authorizeClient", () => {
       ).rejects.toThrow("Client not authorized for feeId");
     });
 
-    it("throws for feeId that is similar but not exact match", async () => {
+    it("throws for feeId that is similar but not exact match (case sensitive)", async () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
 
-      // Case sensitive
+      // lowercase should fail - case sensitive matching
       await expect(
-        authorizeClient(dawsonClient.clientRoleArn, "petitions_filing_fee")
+        authorizeClient(dawsonClient.clientRoleArn, "petition_filing_fee")
+      ).rejects.toThrow(ForbiddenError);
+    });
+
+    it("throws for completely unrelated feeId", async () => {
+      mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
+
+      await expect(
+        authorizeClient(dawsonClient.clientRoleArn, "TRANSCRIPT_GROUP_COPY_FEE")
       ).rejects.toThrow(ForbiddenError);
     });
   });

@@ -51,7 +51,7 @@ describe("SigV4 enforcement smoke test", () => {
     trackingId: "smoke-test",
     amount: 1,
     appId: "smoke",
-    feeId: "PETITIONS_FILING_FEE",
+    feeId: "PETITION_FILING_FEE",
     urlSuccess: "https://example.com",
     urlCancel: "https://example.com",
   });
@@ -153,7 +153,7 @@ describeLambdaAuth("Lambda-level authorization", () => {
     trackingId: "auth-test",
     amount: 1,
     appId: "test",
-    feeId: "PETITIONS_FILING_FEE",
+    feeId: "PETITION_FILING_FEE",
     urlSuccess: "https://example.com",
     urlCancel: "https://example.com",
   });
