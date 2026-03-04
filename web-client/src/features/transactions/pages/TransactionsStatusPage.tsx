@@ -1,4 +1,3 @@
-// src/features/transactions/pages/TransactionsStatusPage.tsx
 import * as React from 'react'
 import TransactionsTable from '../components/TransactionsTable'
 import type { TransactionStatus } from '../types'
