@@ -6,8 +6,8 @@ import theme from './theme'
 import './index.css'
 
 import App from './App'
-import TransactionsLayout from './pages/TransactionsLayout'
-import TransactionsStatusPage from './pages/TransactionsStatusPage'
+import TransactionsLayout from './features/transactions/pages/TransactionsLayout'
+import TransactionsStatusPage from './features/transactions/pages/TransactionsStatusPage'
 
 const router = createBrowserRouter([
   {
