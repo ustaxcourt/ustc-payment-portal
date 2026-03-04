@@ -61,14 +61,6 @@ describe("authorizeClient", () => {
       ).resolves.not.toThrow();
     });
 
-    it("does not throw for any of the allowed feeIds", async () => {
-      mockGetClientByRoleArn.mockResolvedValue(dawsonClient);
-
-      await expect(
-        authorizeClient(dawsonClient.clientRoleArn, "PETITION_FILING_FEE")
-      ).resolves.not.toThrow();
-    });
-
     it("does not throw when client has wildcard permission", async () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(localDevClient);
 

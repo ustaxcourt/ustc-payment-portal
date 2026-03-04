@@ -126,6 +126,7 @@ Client permissions are stored in the `ustc/pay-gov/{env}/client-permissions` sec
 - **Adding a `feeId` to `allowedFeeIds`** — permits that app to charge the fee. Requests with that `feeId` will proceed.
 - **Omitting a `feeId` from `allowedFeeIds`** — blocks that app from charging the fee. Requests with an unauthorized `feeId` return `403 Forbidden` with `"Client not authorized for feeId"`.
 - **A client not present in the secret at all** — returns `403 Forbidden` with `"Client not registered"`.
+- **`"*"` in `allowedFeeIds`** — wildcard that permits all fee IDs. **Used only in local development and CI.** Never configure `"*"` in production secrets.
 
 ### Currently supported fee IDs
 
