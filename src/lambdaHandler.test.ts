@@ -42,7 +42,7 @@ jest.mock("./clients/permissionsClient", () => ({
   getClientByRoleArn: jest.fn().mockResolvedValue({
     clientName: "Test Client",
     clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
-    allowedFeeIds: ["PETITION_FILING_FEE", "ADMISSIONS_FEE"],
+    allowedFeeIds: ["PETITION_FILING_FEE"],
   }),
   clearPermissionsCache: jest.fn(),
 }));
