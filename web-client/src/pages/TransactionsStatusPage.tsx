@@ -5,7 +5,7 @@ import type { TransactionStatus } from '../features/transactions/types'
 
 export default function TransactionsStatusPage({ status }: { status: TransactionStatus }) {
   const rows = React.useMemo(
-    () => mockTransactions.filter((t) => t.status === status),
+    () => mockTransactions.filter((t) => t.transactionStatus === status),
     [status]
   )
 
