@@ -3,11 +3,10 @@ data "aws_caller_identity" "current" {}
 data "terraform_remote_state" "foundation" {
   backend = "s3"
   config = {
-    bucket         = "ustc-payment-portal-terraform-state-dev"
-    key            = "ustc-payment-portal/dev/networking.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "ustc-payment-portal-terraform-locks-dev"
-    encrypt        = true
+    bucket  = "ustc-payment-portal-terraform-state-dev"
+    key     = "ustc-payment-portal/dev/networking.tfstate"
+    region  = "us-east-1"
+    encrypt = true
   }
 }
 
