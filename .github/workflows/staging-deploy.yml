@@ -240,7 +240,7 @@ jobs:
           TRACKING="stg-smoke-$(date +%s)"
 
           echo "Using APP_ID=$APP_ID AMOUNT=$AMOUNT TRACKING_ID=$TRACKING"
-          printf '{"trackingId":"%s","amount":"%s","appId":"%s","feeId":"PETITIONS_FILING_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com"}' "$TRACKING" "$AMOUNT" "$APP_ID" > body.json
+          printf '{"trackingId":"%s","amount":"%s","appId":"%s","feeId":"PETITION_FILING_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com"}' "$TRACKING" "$AMOUNT" "$APP_ID" > body.json
 
           # POST to /init — signed with AWS SigV4 (IAM auth replaced the old Bearer token)
           INIT_STATUS=$(curl -s -o init.json -w '%{http_code}' -X POST "$API_URL/init" \
