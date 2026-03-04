@@ -2,10 +2,19 @@
 
 This directory contains Infrastructure as Code for the USTC Payment Portal. It is organized into layers with separate remote state keys per environment to enable safe, granular deployments.
 
+## Terraform Version
+
+This project requires **Terraform ~> 1.14.0**. The `~>` constraint means any 1.14.x version is supported, but 1.15+ is not until explicitly upgraded.
+
+## State Locking
+
+As of March 2026, this project uses **S3 native locking** (`use_lockfile = true`) instead of DynamoDB. This feature was introduced in Terraform 1.10 and provides state locking directly via S3 without requiring a separate DynamoDB table.
+
 ## Layout
 
 - **`terraform/bootstrap/`**
-  - Creates the S3 backend bucket and DynamoDB lock table used by Terraform remote state in each account.
+  - Creates the S3 backend bucket used by Terraform remote state in each account.
+  - **Note:** The DynamoDB lock tables are legacy and can be decommissioned (see [DynamoDB Cleanup](#dynamodb-cleanup-legacy) below).
 - **`terraform/environments/foundation/`**
   - Environment networking and base IAM (per environment/account).
   - `dev-networking/`, `stg-networking/`: VPC, subnets, security groups, IAM base.
@@ -33,10 +42,7 @@ From `terraform/environments/dev/locals.tf` and `terraform/environments/stg/loca
   - Foundation state key: `ustc-payment-portal/stg/networking.tfstate`
   - App state key: `ustc-payment-portal/stg/stg.tfstate`
 
-Locking is handled with DynamoDB tables per environment:
-
-- Dev: `ustc-payment-portal-terraform-locks-dev`
-- Stg: `ustc-payment-portal-terraform-locks-stg`
+Locking is handled with S3 native locking via `use_lockfile = true` in the backend configuration. This creates `.tflock` files in S3 alongside the state files.
 
 The app layer reads the foundation outputs via `data "terraform_remote_state" "foundation"` with the foundation state key. See:
 
@@ -45,7 +51,7 @@ The app layer reads the foundation outputs via `data "terraform_remote_state" "f
 
 ## One-time Bootstrap (per account)
 
-Run in the target AWS account to create the backend bucket and lock table for that account/environment. The provider region is defined in the module; confirm desired region.
+Run in the target AWS account to create the backend bucket for that account/environment. The provider region is defined in the module; confirm desired region.
 
 ```bash
 cd terraform/bootstrap
@@ -56,17 +62,15 @@ terraform init
 # Review
 terraform plan \
   -var "aws_region=us-east-1" \
-  -var "state_bucket_name=ustc-payment-portal-terraform-state-<env>" \
-  -var "lock_table_name=ustc-payment-portal-terraform-locks-<env>"
+  -var "state_bucket_name=ustc-payment-portal-terraform-state-<env>"
 
 # Apply
 terraform apply \
   -var "aws_region=us-east-1" \
-  -var "state_bucket_name=ustc-payment-portal-terraform-state-<env>" \
-  -var "lock_table_name=ustc-payment-portal-terraform-locks-<env>"
+  -var "state_bucket_name=ustc-payment-portal-terraform-state-<env>"
 ```
 
-Replace `<env>` with `dev` or `stg` depending on the target account.
+Replace `<env>` with `dev`, `stg`, or `prod` depending on the target account.
 
 ## Foundation (networking) layer
 
@@ -81,7 +85,7 @@ terraform init \
   -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
   -backend-config="key=ustc-payment-portal/dev/networking.tfstate" \
   -backend-config="region=us-east-1" \
-  -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
+  -backend-config="use_lockfile=true" \
   -backend-config="encrypt=true"
 
 terraform plan
@@ -97,7 +101,7 @@ terraform init \
   -backend-config="bucket=ustc-payment-portal-terraform-state-stg" \
   -backend-config="key=ustc-payment-portal/stg/networking.tfstate" \
   -backend-config="region=us-east-1" \
-  -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-stg" \
+  -backend-config="use_lockfile=true" \
   -backend-config="encrypt=true"
 
 terraform plan
@@ -118,7 +122,7 @@ terraform init \
   -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
   -backend-config="key=ustc-payment-portal/dev/dev.tfstate" \
   -backend-config="region=us-east-1" \
-  -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-dev" \
+  -backend-config="use_lockfile=true" \
   -backend-config="encrypt=true"
 
 # Optional: build/bundle Lambda code prior to plan/apply
@@ -138,7 +142,7 @@ terraform init \
   -backend-config="bucket=ustc-payment-portal-terraform-state-stg" \
   -backend-config="key=ustc-payment-portal/stg/stg.tfstate" \
   -backend-config="region=us-east-1" \
-  -backend-config="dynamodb_table=ustc-payment-portal-terraform-locks-stg" \
+  -backend-config="use_lockfile=true" \
   -backend-config="encrypt=true"
 
 # Optional: build/bundle Lambda code prior to plan/apply
@@ -178,6 +182,41 @@ export AWS_SDK_LOAD_CONFIG=1
 ## Notes & Tips
 
 - **Two state keys per environment**: keep foundation and app isolated to reduce blast radius and allow parallel workflows.
-- **Locks**: Ensure the DynamoDB lock table exists (via bootstrap) before running `terraform init` with the backend.
+- **S3 Native Locking**: Terraform 1.14+ uses `use_lockfile=true` for state locking via S3. No DynamoDB table required.
 - **Drift/plan checks**: Prefer `terraform plan` in CI with explicit backend config and upload a plan artifact for review.
 - **State permissions**: IAM for CI (`modules/iam`) is scoped to specific state object keys (see `state_object_keys` in `locals.tf`). Ensure keys match your environment naming.
+- **Local development**: After pulling this upgrade, run `terraform init -reconfigure -backend-config=backend.hcl` in each environment directory to switch to S3 locking.
+
+---
+
+## DynamoDB Cleanup (Legacy)
+
+The following DynamoDB tables were previously used for state locking but are no longer needed after migrating to S3 native locking:
+
+| Table Name                                 | Environment |
+| ------------------------------------------ | ----------- |
+| `ustc-payment-portal-terraform-locks-dev`  | Dev         |
+| `ustc-payment-portal-terraform-locks-stg`  | Staging     |
+| `ustc-payment-portal-terraform-locks-prod` | Production  |
+
+### Cleanup Steps
+
+**Prerequisites:** Ensure all CI/CD pipelines and local development workflows have successfully run with `use_lockfile=true` for at least 2 weeks before removing the tables.
+
+1. **Verify no active locks** in the DynamoDB tables:
+
+   ```bash
+   aws dynamodb scan --table-name ustc-payment-portal-terraform-locks-dev --select COUNT
+   ```
+
+2. **Delete the tables** (after verification period):
+
+   ```bash
+   aws dynamodb delete-table --table-name ustc-payment-portal-terraform-locks-dev
+   aws dynamodb delete-table --table-name ustc-payment-portal-terraform-locks-stg
+   aws dynamodb delete-table --table-name ustc-payment-portal-terraform-locks-prod
+   ```
+
+3. **Update bootstrap module** to remove `lock_table_name` variable and DynamoDB resource if still present.
+
+> **Note:** Keep the tables for a transition period to allow rollback if issues arise with S3 locking.
