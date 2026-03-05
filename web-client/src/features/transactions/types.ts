@@ -4,6 +4,7 @@
  */
 export type TransactionStatus =
   | 'PENDING'
+  | 'SUCCESS'
   | 'COMPLETED'
   | 'FAILED'
   | 'CANCELED'
