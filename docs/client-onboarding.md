@@ -139,11 +139,11 @@ For the full fee catalog including Pay.gov integration details, see [supported_c
 
 ### Updating permissions
 
-To grant or revoke a fee permission, update the Secrets Manager secret (see Step 2 of the runbook below). No code change or deployment is required — the Lambda picks up the updated secret after the 5-minute cache TTL expires. Revocation takes effect within the same window.
+To grant or revoke a fee permission, update the Secrets Manager secret (see Step 2 below). No code change or deployment is required — the Lambda picks up the updated secret after the 5-minute cache TTL expires. Revocation takes effect within the same window.
 
 ---
 
-## Runbook: Adding a New Client
+## How to Add a Client
 
 This is for the Payment Portal team when onboarding a new client.
 
