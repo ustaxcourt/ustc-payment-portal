@@ -22,7 +22,7 @@
     "test:integration": "npx jest ./src/test/integration/",
     "ci:publish": "npm run build && changeset publish --provenance",
     "generate:openapi": "ts-node src/openapi/generate.ts",
-    "start:server": "npx ts-node src/devServer.ts"
+    "start:server": "ts-node src/devServer.ts"
   },
   "keywords": [],
   "author": "",
