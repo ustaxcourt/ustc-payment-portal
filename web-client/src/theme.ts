@@ -18,12 +18,12 @@ declare module '@mui/material/styles' {
     app?: Partial<Theme['app']>
   }
   interface Palette {
-    completed: Palette['success'];
+    success: Palette['success'];
     failed: Palette['error'];
     pending: Palette['warning'];
   }
   interface PaletteOptions {
-    completed?: PaletteOptions['success'];
+    success?: PaletteOptions['success'];
     failed?: PaletteOptions['error'];
     pending?: PaletteOptions['warning'];
   }
@@ -41,7 +41,7 @@ const theme = createTheme({
       default: '#fff',
       paper: '#fff',
     },
-    completed: {
+    success: {
       light: '#c5ee93',
       main: '#2e7d32',
     },
