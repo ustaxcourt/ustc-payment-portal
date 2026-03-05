@@ -210,57 +210,27 @@ WHERE fee_id = :fee_id;
 
 After resolving the fee configuration, the Payment Portal validates that the requesting client is authorized to charge that fee.
 
-> **Implementation note:** The current implementation stores client permissions in **AWS Secrets Manager** (not a database table). The schema below documents the logical data model; the actual storage is the `ustc/pay-gov/{env}/client-permissions` secret. See [client-onboarding.md](../../client-onboarding.md#permitting-apps-to-charge-specific-fees) for operational steps to grant or revoke fee access.
+Client permissions are stored in the `ustc/pay-gov/{env}/client-permissions` secret in AWS Secrets Manager — not a database table. Each entry maps a client's IAM role ARN to the fee IDs they are permitted to charge:
 
-### Client Permissions Table Schema
-
-```sql
-CREATE TABLE client_fee_permissions (
-  app_id         VARCHAR(50) NOT NULL,
-  fee_id         VARCHAR(50) NOT NULL,  -- Client-facing fee identifier for authorization
-  created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at     TIMESTAMP NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (app_id, fee_id),
-  FOREIGN KEY (fee_id) REFERENCES fees(fee_id)
-);
+```json
+[
+  {
+    "clientName": "DAWSON",
+    "clientRoleArn": "arn:aws:iam::111111111111:role/dawson-client",
+    "allowedFeeIds": ["PETITION_FILING_FEE"]
+  }
+]
 ```
 
-**Example Data:**
-
-| app_id      | fee_id                            |
-| ----------- | --------------------------------- |
-| DAWSON      | PETITION_FILING_FEE               |
-| DAWSON      | COPY_REQUEST                      |
-| EXAM_PORTAL | NONATTORNEY_EXAM_REGISTRATION_FEE |
-
-### Authorization Query
-
-The authorization check validates that the client's `app_id` is permitted to use the requested `fee_id`:
-
-```sql
-SELECT 1
-FROM client_fee_permissions
-WHERE app_id = :app_id
-  AND fee_id = :fee_id;
-```
+The Lambda checks the caller's IAM role ARN (extracted from the API Gateway request context) against this secret on every request. See [client-onboarding.md](../../client-onboarding.md#permitting-apps-to-charge-specific-fees) for operational steps to grant or revoke fee access.
 
 ### Authorization Decision
 
 | Condition | Result | HTTP Response |
-|-----------|--------|---------------|
-| Record exists | Authorized | Continue processing |
-| No record | Not authorized | `403 Forbidden` |
-
-**Error Response Example:**
-
-```json
-{
-  "error": "UNAUTHORIZED_FEE",
-  "message": "Application 'DAWSON' is not authorized to charge fee 'ADMISSION_FEE'"
-}
-```
-
-**Note:** The system returns `400 FEE_NOT_FOUND` when the `fee_id` doesn't exist (Section 2) and `403 UNAUTHORIZED_FEE` when the fee exists but the client isn't authorized. This allows clients to debug typos in `fee_id` values, though it does allow enumeration of valid fees.
+| --------- | ------ | ------------- |
+| Role ARN found, fee ID in `allowedFeeIds` | Authorized | Continue processing |
+| Role ARN found, fee ID not in `allowedFeeIds` | Not authorized | `403 Forbidden` — `"Client not authorized for feeId"` |
+| Role ARN not found | Not registered | `403 Forbidden` — `"Client not registered"` |
 
 ---
 
@@ -350,13 +320,12 @@ For **local development** (acceptable for testing):
 ### Authorization Management
 
 **Who Owns Authorization Data:**
-- Authorization table is managed by Payment Portal
+
+- Client permissions are managed by the Payment Portal team via the `ustc/pay-gov/{env}/client-permissions` secret in AWS Secrets Manager
 
 **Adding Client Authorization:**
-```sql
-INSERT INTO client_fee_permissions (app_id, fee_id)
-VALUES ('NEW_CLIENT_APP', 'PETITION_FILING_FEE');
-```
+
+Update the secret to add the client's IAM role ARN and allowed fee IDs. No deployment required — Lambda picks up changes after the 5-minute cache TTL. See [client-onboarding.md](../../client-onboarding.md#permitting-apps-to-charge-specific-fees) for the full runbook.
 
 ---
 
@@ -384,12 +353,7 @@ Add the new `fee_id` to your API documentation and client SDKs so clients know i
 
 **3. Configure Client Authorization**
 
-```sql
-INSERT INTO client_fee_permissions (app_id, fee_id)
-VALUES ('AUTHORIZED_CLIENT', 'NEW_FIXED_FEE');
-```
-
-**Important:** Any client that needs to charge this new fee must also have it added to their list of allowed fees in the Secrets Manager.
+Update the `ustc/pay-gov/{env}/client-permissions` secret in Secrets Manager to add the new `fee_id` to each client's `allowedFeeIds` that needs access. No deployment required — Lambda picks up the change after the 5-minute cache TTL. See [client-onboarding.md](../../client-onboarding.md#permitting-apps-to-charge-specific-fees) for the full runbook.
 
 **4. Configure Pay.gov**
 
@@ -415,7 +379,7 @@ This design provides the following guarantees:
 |-----------|----------------------|
 | Clients cannot manipulate fixed fee amounts | Fixed amounts resolved from fees table only |
 | Variable fee amounts are validated | Amount presence and positivity checks for variable fees |
-| Clients cannot select unauthorized fees | Authorization table enforces app_id + fee_id relationship |
+| Clients cannot select unauthorized fees | Secrets Manager `client-permissions` enforces IAM role ARN → allowed fee ID relationship |
 | Fee identifiers are validated | fee_id must exist in fees table |
 | Pay.gov identifiers are abstracted | Clients use fee_id; portal looks up tcs_app_id from database |
 | Authorization is auditable | All checks logged with context including amounts |
