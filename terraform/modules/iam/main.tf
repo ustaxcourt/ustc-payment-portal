@@ -93,16 +93,9 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       },
       {
         Effect = "Allow",
-        Action = ["s3:GetObject", "s3:PutObject"],
+        Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
         Resource = [
           "arn:aws:s3:::${local.tf_state_bucket_name}/*"
-        ]
-      },
-      {
-        Effect = "Allow",
-        Action = ["s3:DeleteObject"],
-        Resource = [
-          "arn:aws:s3:::${local.tf_state_bucket_name}/env:/pr-*/*"
         ]
       },
       # Read access to build artifacts used for Lambda code updates
