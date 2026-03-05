@@ -37,9 +37,10 @@ const accountHolders = [
 ]
 
 const statusCycle: TransactionStatus[] = [
-  'COMPLETED',
+  'SUCCESS',
   'FAILED',
   'PENDING',
+  'COMPLETED',
   'CANCELED',
   'REFUNDED',
   'UNKNOWN',
