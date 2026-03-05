@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Payment Authorization Flow" id="payment-auth">
-        <mxGraphModel dx="2057" dy="1302" grid="1" gridSize="10" guides="0" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1900" background="#ffffff" math="0" shadow="0">
+        <mxGraphModel dx="477" dy="345" grid="1" gridSize="10" guides="0" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1900" background="#ffffff" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -19,7 +19,7 @@
                 <mxCell id="fees" value="Fees Table (DB)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#fff2cc;strokeColor=#d6b656;size=40;" parent="1" vertex="1">
                     <mxGeometry x="760" y="80" width="140" height="1700" as="geometry"/>
                 </mxCell>
-                <mxCell id="authz" value="Authorization Table (DB)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#fff2cc;strokeColor=#d6b656;size=40;" parent="1" vertex="1">
+                <mxCell id="authz" value="client-permissions (Secrets Manager)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#fff2cc;strokeColor=#d6b656;size=40;" parent="1" vertex="1">
                     <mxGeometry x="980" y="80" width="140" height="1700" as="geometry"/>
                 </mxCell>
                 <mxCell id="paygov" value="Pay.gov (SOAP)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#f8cecc;strokeColor=#b85450;size=40;" parent="1" vertex="1">
@@ -64,13 +64,13 @@
                 <mxCell id="authz-activation1" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
                     <mxGeometry x="1045" y="530" width="10" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="step4" value="4: SELECT 1 FROM client_fee_permissions WHERE app_id = :app_id AND fee_id = :fee_id" style="html=1;verticalAlign=bottom;endArrow=block;" parent="1" source="portal-lifeline" target="authz-activation1" edge="1">
+                <mxCell id="step4" value="4: Lookup clientRoleArn in client-permissions secret — check fee_id in allowedFeeIds" style="html=1;verticalAlign=bottom;endArrow=block;" parent="1" source="portal-lifeline" target="authz-activation1" edge="1">
                     <mxGeometry width="80" relative="1" as="geometry">
                         <mxPoint x="395" y="530" as="sourcePoint"/>
                         <mxPoint x="1045" y="530" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step5" value="5: authorized? (exists)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;" parent="1" source="authz-activation1" target="portal-lifeline" edge="1">
+                <mxCell id="step5" value="5: authorized? (feeId in allowedFeeIds)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;" parent="1" source="authz-activation1" target="portal-lifeline" edge="1">
                     <mxGeometry width="80" relative="1" as="geometry">
                         <mxPoint x="1045" y="570" as="sourcePoint"/>
                         <mxPoint x="395" y="570" as="targetPoint"/>
@@ -106,7 +106,7 @@
                 <mxCell id="alt3-label2" value="[Not authorized]" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontSize=11;" parent="1" vertex="1">
                     <mxGeometry x="150" y="810" width="120" height="20" as="geometry"/>
                 </mxCell>
-                <mxCell id="step9" value="9: 403 Forbidden (UNAUTHORIZED_FEE)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;strokeColor=#b85450;" parent="1" source="portal-lifeline" target="client-lifeline" edge="1">
+                <mxCell id="step9" value="9: 403 Forbidden (Client not authorized for feeId)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;strokeColor=#b85450;" parent="1" source="portal-lifeline" target="client-lifeline" edge="1">
                     <mxGeometry width="80" relative="1" as="geometry">
                         <mxPoint x="395" y="850" as="sourcePoint"/>
                         <mxPoint x="175" y="850" as="targetPoint"/>
@@ -141,13 +141,13 @@
                 <mxCell id="authz-activation2" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
                     <mxGeometry x="1045" y="1100" width="10" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="step11" value="11: SELECT 1 FROM client_fee_permissions WHERE app_id = :app_id AND fee_id = :fee_id" style="html=1;verticalAlign=bottom;endArrow=block;" parent="1" source="portal-lifeline" target="authz-activation2" edge="1">
+                <mxCell id="step11" value="11: Lookup clientRoleArn in client-permissions secret — check fee_id in allowedFeeIds" style="html=1;verticalAlign=bottom;endArrow=block;" parent="1" source="portal-lifeline" target="authz-activation2" edge="1">
                     <mxGeometry width="80" relative="1" as="geometry">
                         <mxPoint x="395" y="1100" as="sourcePoint"/>
                         <mxPoint x="1045" y="1100" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step12" value="12: authorized? (exists)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;" parent="1" source="authz-activation2" target="portal-lifeline" edge="1">
+                <mxCell id="step12" value="12: authorized? (feeId in allowedFeeIds)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;" parent="1" source="authz-activation2" target="portal-lifeline" edge="1">
                     <mxGeometry width="80" relative="1" as="geometry">
                         <mxPoint x="1045" y="1140" as="sourcePoint"/>
                         <mxPoint x="395" y="1140" as="targetPoint"/>
