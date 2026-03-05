@@ -86,7 +86,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: ${{ vars.TERRAFORM_VERSION || '1.14.6' }}
+          terraform_version: "1.14.6"
           terraform_wrapper: false
 
       - name: Terraform Init
@@ -273,7 +273,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: ${{ vars.TERRAFORM_VERSION || '1.14.6' }}
+          terraform_version: "1.14.6"
           terraform_wrapper: false
 
       - name: Configure AWS Credentials (OIDC - Dev)
@@ -416,7 +416,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: ${{ vars.TERRAFORM_VERSION || '1.14.6' }}
+          terraform_version: "1.14.6"
           terraform_wrapper: false
 
       - name: Terraform Init (dev backend)

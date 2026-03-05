@@ -185,7 +185,7 @@ jobs:
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_wrapper: false
-          terraform_version: ${{ vars.TERRAFORM_VERSION || '1.14.6' }}
+          terraform_version: "1.14.6"
 
       - name: Terraform Init (staging)
         working-directory: terraform/environments/stg

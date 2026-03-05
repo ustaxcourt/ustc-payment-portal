@@ -231,7 +231,7 @@ Example change:
 - name: Setup Terraform
   uses: hashicorp/setup-terraform@v4
   with:
-    terraform_version: ${{ vars.TERRAFORM_VERSION || '1.14.6' }} # Update this version
+    terraform_version: "1.14.6" # Update this version
 ```
 
 ### GitHub Action Updates
