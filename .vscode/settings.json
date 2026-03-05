@@ -2,5 +2,10 @@
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
   "editor.formatOnSave": true,
-  "editor.tabSize": 2
+  "editor.tabSize": 2,
+  "github.copilot.chat.agent.terminal.denyList": {
+    "/^git\\s+commit/": true,
+    "/^git\\s+push/": true,
+    "/^git\\s+(reset|clean|revert)/": true
+  }
 }
