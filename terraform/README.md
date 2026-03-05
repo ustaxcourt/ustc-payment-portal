@@ -338,6 +338,4 @@ The following DynamoDB tables were previously used for state locking but are no 
    aws dynamodb delete-table --table-name ustc-payment-portal-terraform-locks-prod
    ```
 
-3. **Run `terraform apply` in each environment's bootstrap directory** to destroy the DynamoDB tables from AWS (the Terraform resources and variables have already been removed from the codebase). (GH Actions should handle this once PR gets merged)
-
 > **Note:** Keep the tables for a transition period to allow rollback if issues arise with S3 locking.
