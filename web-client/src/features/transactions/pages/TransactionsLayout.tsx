@@ -6,16 +6,8 @@ import StatusTabs from '../components/StatusTabs'
 import { mockTransactions } from '../mock'
 import type { PaymentStatus } from '../types'
 
-// Map route segment <-> domain status
-const pathToStatus: Record<string, PaymentStatus | undefined> = {
-  success: 'SUCCESS',
-  failed: 'FAILED',
-  pending: 'PENDING',
-}
-const statusToPath: Record<PaymentStatus, string> = {
-  SUCCESS: 'success',
-  FAILED: 'failed',
-  PENDING: 'pending',
+const isPaymentStatus = (value: string): value is PaymentStatus => {
+  return value === 'success' || value === 'failed' || value === 'pending'
 }
 
 export default function TransactionsLayout() {
@@ -25,7 +17,7 @@ export default function TransactionsLayout() {
   // Derive the current status value from the URL
   const currentTab: PaymentStatus = React.useMemo(() => {
     const seg = pathname.split('/').pop() || ''
-    return pathToStatus[seg] ?? 'SUCCESS'
+    return isPaymentStatus(seg) ? seg : 'success'
   }, [pathname])
 
   // Compute counts for chips (replace with API counts later if you prefer)
@@ -35,13 +27,13 @@ export default function TransactionsLayout() {
         acc[t.paymentStatus]++
         return acc
       },
-      { SUCCESS: 0, FAILED: 0, PENDING: 0 } as Record<PaymentStatus, number>
+      { success: 0, failed: 0, pending: 0 } as Record<PaymentStatus, number>
     )
   }, [])
 
   // When the tab changes, navigate to the corresponding child route
   const handleTabChange = (value: PaymentStatus) => {
-    navigate(statusToPath[value]) // relative to /transactions
+    navigate(value)
   }
 
   return (
