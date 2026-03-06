@@ -8,13 +8,18 @@ export const getTransactions = async (
 ): Promise<void> => {
   try {
     const transactions = await Transaction.query()
-      .orderBy('createdAt', 'desc')
+      .orderBy('created_at', 'desc')
       .limit(100);
 
+    // Map to frontend format
+    const formattedTransactions = transactions.map(t => t.toFrontendFormat());
+
     res.json({
-      data: transactions,
+      data: formattedTransactions,
+      total: formattedTransactions.length,
     });
   } catch (error) {
     next(error);
   }
 };
+
