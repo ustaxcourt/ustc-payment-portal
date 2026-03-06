@@ -2,12 +2,12 @@ import * as React from 'react'
 import {
   DataGrid,
   type GridColDef,
-  type GridKeyValue,
   type GridValueFormatter,
 } from '@mui/x-data-grid'
 import { Box, Alert } from '@mui/material'
 import type { Transaction } from '../types'
 import GridSortIconCircle from './GridSortIconCircle'
+import dayjs from 'dayjs'
 
 export interface TransactionsTableProps {
   rows: Transaction[]
@@ -16,30 +16,19 @@ export interface TransactionsTableProps {
   error: Error | null
 }
 
-/** Safely format an ISO date string as:
- *   YYYY-MM-DD
- *   HH:MM:SS
- * Returns '—' if invalid/missing.
- */
-function formatIsoToTwoLines(value: unknown): string {
-  if (typeof value !== 'string' || !value) return '—'
-  const ms = Date.parse(value)
-  if (Number.isNaN(ms)) return '—'
-  const iso = new Date(ms).toISOString()
-  return `${iso.slice(0, 10)}\n${iso.slice(11, 19)}`
-}
+// ISO string -> Date | null (safe)
+const toDateOrNull = (v: unknown): Date | null => {
+  if (typeof v !== 'string' || !v) return null;
+  const d = dayjs(v);
+  return d.isValid() ? d.toDate() : null;
+};
 
-/** Sort comparator that works on ISO strings, nulls, or undefined. */
-function compareIsoStrings(a?: string | null, b?: string | null): number {
-  const ta = typeof a === 'string' ? Date.parse(a) : NaN
-  const tb = typeof b === 'string' ? Date.parse(b) : NaN
-  const aValid = Number.isFinite(ta)
-  const bValid = Number.isFinite(tb)
-  if (aValid && bValid) return ta - tb
-  if (aValid && !bValid) return 1
-  if (!aValid && bValid) return -1
-  return 0
-}
+// Display as "YYYY-MM-DD HH:mm:ss" using dayjs
+const fmtOneLine = (d: unknown): string => {
+  if (!(d instanceof Date)) return '—';
+  const m = dayjs(d);
+  return m.isValid() ? m.format('YYYY-MM-DD HH:mm:ss') : '—';
+};
 
 /** v8-compatible money formatter — note the generic <Transaction> */
 const moneyFormatter: GridValueFormatter<Transaction> = (value) => {
@@ -53,34 +42,31 @@ const nullableTextFormatter: GridValueFormatter<Transaction> = (value) => {
   return value ? String(value) : '—'
 }
 
-export default function TransactionsTable({ rows, loading, status, error }: TransactionsTableProps) {
-  const columns = React.useMemo<GridColDef<Transaction>[]>(() => [
+export default function TransactionsTable({ rows, loading, status, error }: TransactionsTableProps): React.ReactElement {
+  const columns: GridColDef<Transaction>[] = [
     {
       field: 'createdAt',
       headerName: 'Created At',
+      type: 'dateTime',
       flex: 1.2,
       minWidth: 180,
-      renderCell: (params) => (
-        <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
-          {formatIsoToTwoLines(params.row.createdAt)}
-        </Box>
-      ),
-      sortComparator: (v1: GridKeyValue, v2: GridKeyValue) =>
-        compareIsoStrings(v1 as string | null, v2 as string | null),
+      // IMPORTANT: MUI wants a Date for 'dateTime' columns
+      valueGetter: (_value: unknown, row: Transaction): Date | null =>
+        toDateOrNull(row.createdAt),
+      // Optional custom render with dayjs
+      renderCell: (params) => fmtOneLine(params.value),
+      // Built-in dateTime sorting works when the value is a Date, so no custom comparator needed
       sortable: true,
     },
     {
       field: 'lastUpdatedAt',
       headerName: 'Last Updated',
+      type: 'dateTime',
       flex: 1.2,
       minWidth: 180,
-      renderCell: (params) => (
-        <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
-          {formatIsoToTwoLines(params.row.lastUpdatedAt)}
-        </Box>
-      ),
-      sortComparator: (v1: GridKeyValue, v2: GridKeyValue) =>
-        compareIsoStrings(v1 as string | null, v2 as string | null),
+      valueGetter: (_value: unknown, row: Transaction): Date | null =>
+        toDateOrNull(row.lastUpdatedAt),
+      renderCell: (params) => fmtOneLine(params.value),
       sortable: true,
     },
     { field: 'feeName', headerName: 'Fee Name', flex: 1.5, minWidth: 240, sortable: false },
@@ -106,7 +92,7 @@ export default function TransactionsTable({ rows, loading, status, error }: Tran
       sortable: false,
     },
     { field: 'transactionReferenceId', headerName: 'Reference ID', flex: 1.2, minWidth: 180, sortable: false },
-  ], [])
+  ]
 
   return (
     <Box
