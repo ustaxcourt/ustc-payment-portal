@@ -38,17 +38,17 @@ const accountHolders = [
 ]
 
 const paymentStatusCycle: PaymentStatus[] = [
-  'SUCCESS',
-  'FAILED',
-  'PENDING',
+  'success',
+  'failed',
+  'pending',
 ]
 
 const transactionStatusCycle: TransactionStatus[] = [
-  'RECEIVED',
-  'INITIATED',
-  'PENDING',
-  'PROCESSED',
-  'FAILED',
+  'received',
+  'initiated',
+  'pending',
+  'processed',
+  'failed',
 ]
 
 // Legacy to new method mapping (for reference)

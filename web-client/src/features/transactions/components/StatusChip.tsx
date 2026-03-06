@@ -1,26 +1,25 @@
 import Chip, { type ChipProps } from '@mui/material/Chip';
 import { useTheme } from '@mui/material/styles';
-
-type Status = 'SUCCESS' | 'FAILED' | 'PENDING';
+import type { PaymentStatus } from '../types';
 
 interface StatusChipProps extends Omit<ChipProps, 'color'> {
-  status: Status;
+  status: PaymentStatus;
 }
 
 export function StatusChip({ status, ...props }: StatusChipProps) {
   const theme = useTheme();
   const map = {
-    SUCCESS: {
+    success: {
       bg: theme.palette.success?.light,
       fg: theme.palette.success?.main,
       bd: theme.palette.success?.main,
     },
-    FAILED: {
+    failed: {
       bg: theme.palette.failed?.light,
       fg: theme.palette.failed?.main,
       bd: theme.palette.failed?.main,
     },
-    PENDING: {
+    pending: {
       bg: theme.palette.pending?.light,
       fg: theme.palette.pending?.main,
       bd: theme.palette.pending?.main,
