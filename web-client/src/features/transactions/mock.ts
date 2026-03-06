@@ -53,13 +53,13 @@ const transactionStatusCycle: TransactionStatus[] = [
 
 // Legacy to new method mapping (for reference)
 // ['PayPal', 'Credit Card', 'ACHDebit', 'Venmo'] -> ['paypal','card','ach','venmo']
-const paymentMethods: PaymentMethod[] = ['paypal', 'card', 'ach', 'venmo', 'apple_pay', 'google_pay', 'cash', 'other']
+const paymentMethods: PaymentMethod[] = ['paypal', 'card', 'other']
 
 /**
  * Deterministic pseudo-random pick helper based on index.
  */
-function pick<T>(arr: T[], index: number): T {
-  return arr[index % arr.length]
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]
 }
 
 /**
@@ -78,11 +78,11 @@ export const mockTransactions: Transaction[] = Array.from({ length: 100 }).map((
   const lastUpdatedOffsetMin = (i * 7) % 31 // deterministic 0..30
   const lastUpdated = new Date(created.getTime() + lastUpdatedOffsetMin * 60_000)
 
-  const fee = pick(feeCatalog, i)
-  const clientName = pick(appClients, i)
-  const paymentMethod = pick(paymentMethods, i)
-  const paymentStatus = pick(paymentStatusCycle, i)
-  const transactionStatus = pick(transactionStatusCycle, i)
+  const fee = pick(feeCatalog)
+  const clientName = pick(appClients)
+  const paymentMethod = pick(paymentMethods)
+  const paymentStatus = pick(paymentStatusCycle)
+  const transactionStatus = pick(transactionStatusCycle)
 
   // Optional Pay.gov fields: only for some methods/status combinations
   const hasPaygov = ['card', 'ach', 'paypal', 'apple_pay', 'google_pay'].includes(paymentMethod)
@@ -93,8 +93,8 @@ export const mockTransactions: Transaction[] = Array.from({ length: 100 }).map((
   const maybeMetadata =
     i % 6 === 0
       ? {
-        accountHolder: pick(accountHolders, i),
-        agencyId: pick(agencyIds, i),
+        accountHolder: pick(accountHolders),
+        agencyId: pick(agencyIds),
         userAgent: ['Chrome', 'Safari', 'Firefox', 'Edge'][i % 4],
         isHighValue: fee.feeAmount >= 200 ? 'true' : 'false', // string now
       }
