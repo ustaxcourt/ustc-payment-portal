@@ -107,7 +107,43 @@ To be onboarded, provide the following:
 
 ---
 
-## Adding a New Client
+## Permitting Apps to Charge Specific Fees
+
+The Payment Portal authorizes each client application on a per-fee basis. Authorization is enforced in the Lambda handler — every request is checked against the client's registered permissions before any payment is initiated.
+
+### How it works
+
+Client permissions are stored in the `ustc/pay-gov/{env}/client-permissions` secret in AWS Secrets Manager. The secret value is a JSON **array** of client entries; each entry lists the fee IDs that client is permitted to charge and has this shape:
+
+```json
+{
+  "clientName": "DAWSON",
+  "clientRoleArn": "arn:aws:iam::111111111111:role/dawson-client",
+  "allowedFeeIds": ["PETITION_FILING_FEE"]
+}
+```
+
+- **Adding a `feeId` to `allowedFeeIds`** — permits that app to charge the fee. Requests with that `feeId` will proceed.
+- **Omitting a `feeId` from `allowedFeeIds`** — blocks that app from charging the fee. Requests with an unauthorized `feeId` return `403 Forbidden` with `"Client not authorized for feeId"`.
+- **A client not present in the secret at all** — returns `403 Forbidden` with `"Client not registered"`.
+- **`"*"` in `allowedFeeIds`** — wildcard that permits all fee IDs. **Used only in local development and CI.** Never configure `"*"` in production secrets.
+
+### Currently supported fee IDs
+
+| Fee ID                              | Description                                             |
+| ----------------------------------- | ------------------------------------------------------- |
+| `PETITION_FILING_FEE`               | Petition filing fee (fixed: $60)                        |
+| `NONATTORNEY_EXAM_REGISTRATION_FEE` | Non-attorney admissions exam registration (fixed: $250) |
+
+For the full fee catalog including Pay.gov integration details, see [supported_court_fees_and_client_auth.md](architecture/API-Documentation/supported_court_fees_and_client_auth.md).
+
+### Updating permissions
+
+To grant or revoke a fee permission, update the Secrets Manager secret (see Step 2 below). No code change or deployment is required — the Lambda picks up the updated secret after the 5-minute cache TTL expires. Revocation takes effect within the same window.
+
+---
+
+## How to Add a Client
 
 This is for the Payment Portal team when onboarding a new client.
 
