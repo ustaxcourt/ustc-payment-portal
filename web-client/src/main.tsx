@@ -20,9 +20,9 @@ const router = createBrowserRouter([
         element: <TransactionsLayout />,
         children: [
           { index: true, element: <Navigate to="success" replace /> },
-          { path: 'success', element: <TransactionsStatusPage status="SUCCESS" /> },
-          { path: 'failed', element: <TransactionsStatusPage status="FAILED" /> },
-          { path: 'pending', element: <TransactionsStatusPage status="PENDING" /> },
+          { path: 'success', element: <TransactionsStatusPage status="success" /> },
+          { path: 'failed', element: <TransactionsStatusPage status="failed" /> },
+          { path: 'pending', element: <TransactionsStatusPage status="pending" /> },
         ],
       },
     ],

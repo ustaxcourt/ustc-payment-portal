@@ -3,13 +3,13 @@
  * Keep this aligned with what your API actually returns.
  */
 export type TransactionStatus =
-  | 'RECEIVED'
-  | 'INITIATED'
-  | 'PENDING'
-  | 'PROCESSED'
-  | 'FAILED'
+  | 'received'
+  | 'initiated'
+  | 'pending'
+  | 'processed'
+  | 'failed'
 
-export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED'
+export type PaymentStatus = 'pending' | 'success' | 'failed'
 
 /**
  * Supported payment instruments in dev.
