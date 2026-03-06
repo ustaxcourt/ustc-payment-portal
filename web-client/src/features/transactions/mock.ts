@@ -1,4 +1,4 @@
-import type { Transaction, TransactionStatus, PaymentMethod } from './types'
+import type { Transaction, PaymentMethod, PaymentStatus, TransactionStatus } from './types'
 
 const agencyIds = [
   '26PHF07R',
@@ -16,6 +16,7 @@ const appClients = [
   'Licensing Console',
   'Compliance Tracker',
   'Public Payments',
+  'DAWSON'
 ]
 
 const feeCatalog = [
@@ -36,14 +37,18 @@ const accountHolders = [
   'Roy Rios',
 ]
 
-const statusCycle: TransactionStatus[] = [
+const paymentStatusCycle: PaymentStatus[] = [
   'SUCCESS',
   'FAILED',
   'PENDING',
-  'COMPLETED',
-  'CANCELED',
-  'REFUNDED',
-  'UNKNOWN',
+]
+
+const transactionStatusCycle: TransactionStatus[] = [
+  'RECEIVED',
+  'INITIATED',
+  'PENDING',
+  'PROCESSED',
+  'FAILED',
 ]
 
 // Legacy to new method mapping (for reference)
@@ -74,9 +79,10 @@ export const mockTransactions: Transaction[] = Array.from({ length: 100 }).map((
   const lastUpdated = new Date(created.getTime() + lastUpdatedOffsetMin * 60_000)
 
   const fee = pick(feeCatalog, i)
-  const appClientName = pick(appClients, i)
+  const clientName = pick(appClients, i)
   const paymentMethod = pick(paymentMethods, i)
-  const transactionStatus = pick(statusCycle, i)
+  const paymentStatus = pick(paymentStatusCycle, i)
+  const transactionStatus = pick(transactionStatusCycle, i)
 
   // Optional Pay.gov fields: only for some methods/status combinations
   const hasPaygov = ['card', 'ach', 'paypal', 'apple_pay', 'google_pay'].includes(paymentMethod)
@@ -90,10 +96,9 @@ export const mockTransactions: Transaction[] = Array.from({ length: 100 }).map((
         accountHolder: pick(accountHolders, i),
         agencyId: pick(agencyIds, i),
         userAgent: ['Chrome', 'Safari', 'Firefox', 'Edge'][i % 4],
-        // Useful for UI debugging: amounts and derived flags
-        isHighValue: fee.feeAmount >= 200,
+        isHighValue: fee.feeAmount >= 200 ? 'true' : 'false', // string now
       }
-      : null
+      : null;
 
   const tx: Transaction = {
     agencyTrackingId: mkId('AGY', i),              /** Agency Tracking ID */
@@ -101,8 +106,9 @@ export const mockTransactions: Transaction[] = Array.from({ length: 100 }).map((
     feeName: fee.feeName,                          /** Fee Name */
     feeId: fee.feeId,                              /** Fee Identifier */
     feeAmount: fee.feeAmount,                      /** Fee Amount */
-    appClientName,                                 /** App/Client Name */
+    clientName,                                    /** App/Client Name */
     transactionReferenceId: mkId('TXREF', i),      /** Transaction Reference ID */
+    paymentStatus,                                 /** Payment Status */
     transactionStatus,                             /** Transaction Status */
     paygovToken,                                   /** Pay.gov token */
     paymentMethod,                                 /** Payment Method */
