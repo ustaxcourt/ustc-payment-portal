@@ -16,18 +16,25 @@ export interface TransactionsTableProps {
   error: Error | null
 }
 
-// ISO string -> Date | null (safe)
+// Converts string → Date for MUI 'dateTime' columns
 const toDateOrNull = (v: unknown): Date | null => {
   if (typeof v !== 'string' || !v) return null;
   const d = dayjs(v);
   return d.isValid() ? d.toDate() : null;
 };
 
-// Display as "YYYY-MM-DD HH:mm:ss" using dayjs
-const fmtOneLine = (d: unknown): string => {
-  if (!(d instanceof Date)) return '—';
-  const m = dayjs(d);
-  return m.isValid() ? m.format('YYYY-MM-DD HH:mm:ss') : '—';
+// Day/time formatting in ONE LINE (cleaner for DataGrid)
+export const fmtDateTime = (v: unknown): string => {
+  if (!(v instanceof Date)) return '—';
+  return dayjs(v).format('YYYY-MM-DD HH:mm:ss');
+};
+
+// Metadata bullet formatting
+export const fmtMetadata = (metadata: Record<string, string> | null | undefined): string => {
+  if (!metadata) return '—';
+  return Object.entries(metadata)
+    .map(([k, v]) => `• ${k}: ${v}`)
+    .join('\n');
 };
 
 /** v8-compatible money formatter — note the generic <Transaction> */
@@ -50,12 +57,12 @@ export default function TransactionsTable({ rows, loading, status, error }: Tran
       type: 'dateTime',
       flex: 1.2,
       minWidth: 180,
-      // IMPORTANT: MUI wants a Date for 'dateTime' columns
-      valueGetter: (_value: unknown, row: Transaction): Date | null =>
-        toDateOrNull(row.createdAt),
-      // Optional custom render with dayjs
-      renderCell: (params) => fmtOneLine(params.value),
-      // Built-in dateTime sorting works when the value is a Date, so no custom comparator needed
+      valueGetter: (_value, row) => toDateOrNull(row.createdAt),
+      renderCell: (params) => (
+        <Box component="span" sx={{ whiteSpace: 'pre-line', fontVariantNumeric: 'tabular-nums' }}>
+          {fmtDateTime(params.value)}
+        </Box>
+      ),
       sortable: true,
     },
     {
@@ -64,13 +71,18 @@ export default function TransactionsTable({ rows, loading, status, error }: Tran
       type: 'dateTime',
       flex: 1.2,
       minWidth: 180,
-      valueGetter: (_value: unknown, row: Transaction): Date | null =>
-        toDateOrNull(row.lastUpdatedAt),
-      renderCell: (params) => fmtOneLine(params.value),
+      valueGetter: (_value, row) => toDateOrNull(row.lastUpdatedAt),
+      renderCell: (params) => (
+        <Box component="span" sx={{ whiteSpace: 'pre-line', fontVariantNumeric: 'tabular-nums' }}>
+          {fmtDateTime(params.value)}
+        </Box>
+      ),
       sortable: true,
     },
-    { field: 'feeName', headerName: 'Fee Name', flex: 1.5, minWidth: 240, sortable: false },
-    { field: 'feeIdentifier', headerName: 'Fee Identifier', flex: 1, minWidth: 160, sortable: false },
+
+    { field: 'feeName', headerName: 'Fee Name', flex: 1.4, minWidth: 230 },
+    { field: 'feeId', headerName: 'Fee Identifier', flex: 1, minWidth: 150 },
+
     {
       field: 'feeAmount',
       headerName: 'Amount',
@@ -80,19 +92,70 @@ export default function TransactionsTable({ rows, loading, status, error }: Tran
       valueFormatter: moneyFormatter,
       sortable: true,
     },
-    { field: 'paymentMethod', headerName: 'Payment Method', flex: 1, minWidth: 140, sortable: false },
-    { field: 'transactionStatus', headerName: 'Status', flex: 1, minWidth: 130, sortable: true },
-    { field: 'agencyTrackingId', headerName: 'Agency Tracking ID', flex: 1.2, minWidth: 180, sortable: false },
+
+    { field: 'clientName', headerName: 'Client Name', flex: 1.2, minWidth: 180 },
+
+    {
+      field: 'paymentMethod',
+      headerName: 'Payment Method',
+      flex: 1,
+      minWidth: 140,
+    },
+    {
+      field: 'paymentStatus',
+      headerName: 'Payment Status',
+      flex: 1,
+      minWidth: 130,
+      sortable: true,
+    },
+    {
+      field: 'transactionStatus',
+      headerName: 'Transaction Status',
+      flex: 1,
+      minWidth: 160,
+      valueFormatter: nullableTextFormatter,
+    },
+
+    { field: 'agencyTrackingId', headerName: 'Agency Tracking ID', flex: 1.2, minWidth: 180 },
+
     {
       field: 'paygovTrackingId',
       headerName: 'Pay.gov Tracking ID',
       flex: 1.2,
       minWidth: 180,
       valueFormatter: nullableTextFormatter,
-      sortable: false,
     },
-    { field: 'transactionReferenceId', headerName: 'Reference ID', flex: 1.2, minWidth: 180, sortable: false },
-  ]
+
+    {
+      field: 'paygovToken',
+      headerName: 'Pay.gov Token',
+      flex: 1,
+      minWidth: 160,
+      valueFormatter: nullableTextFormatter,
+    },
+
+    {
+      field: 'transactionReferenceId',
+      headerName: 'Reference ID',
+      flex: 1.2,
+      minWidth: 170,
+    },
+
+    {
+      field: 'metadata',
+      headerName: 'Metadata',
+      flex: 2,
+      minWidth: 260,
+      renderCell: (params) => (
+        <Box
+          component="span"
+          sx={{ whiteSpace: 'pre-line', fontSize: '0.85rem', lineHeight: 1.3 }}
+        >
+          {fmtMetadata(params.row.metadata)}
+        </Box>
+      ),
+    },
+  ];
 
   return (
     <Box

@@ -53,13 +53,13 @@ const transactionStatusCycle: TransactionStatus[] = [
 
 // Legacy to new method mapping (for reference)
 // ['PayPal', 'Credit Card', 'ACHDebit', 'Venmo'] -> ['paypal','card','ach','venmo']
-const paymentMethods: PaymentMethod[] = ['paypal', 'card', 'ach', 'venmo', 'apple_pay', 'google_pay', 'cash', 'other']
+const paymentMethods: PaymentMethod[] = ['paypal', 'card', 'other']
 
 /**
  * Deterministic pseudo-random pick helper based on index.
  */
-function pick<T>(arr: T[], index: number): T {
-  return arr[index % arr.length]
+function pick<T>(arr: T[], _index: number): T {
+  return arr[Math.floor(Math.random() * arr.length)]
 }
 
 /**
