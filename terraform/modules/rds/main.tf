@@ -42,8 +42,8 @@ resource "aws_db_instance" "main" {
   username = var.username
   password = var.manage_master_user_password ? null : var.password
 
-  # AWS provider treats setting both arguments as conflicting even when
-  # manage_master_user_password is false. Use null to omit the argument.
+  # AWS provider treats setting both `password` and `manage_master_user_password`
+  # as conflicting, even when manage_master_user_password is false. Use null to omit the argument.
   manage_master_user_password = var.manage_master_user_password ? true : null
 
   db_subnet_group_name   = var.db_subnet_group_name
