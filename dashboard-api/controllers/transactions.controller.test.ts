@@ -15,7 +15,7 @@ describe('GET /api/transactions/:paymentStatus', () => {
 
   it('should return transactions from the database', async () => {
     const response = await request(app)
-      .get('/api/transactions/SUCCESS')
+      .get('/api/transactions/success')
       .expect('Content-Type', /json/)
       .expect(200);
 
@@ -26,7 +26,7 @@ describe('GET /api/transactions/:paymentStatus', () => {
 
   it('should return transactions with correct schema', async () => {
     const response = await request(app)
-      .get('/api/transactions/SUCCESS')
+      .get('/api/transactions/success')
       .expect(200);
 
     if (response.body.data.length > 0) {
@@ -65,12 +65,12 @@ describe('GET /api/transactions/:paymentStatus', () => {
   it('should verify data is coming from database by checking transaction count', async () => {
     // Get count from API
     const apiResponse = await request(app)
-      .get('/api/transactions/SUCCESS')
+      .get('/api/transactions/success')
       .expect(200);
 
     // Get count directly from database for the same payment status
     const dbCount = await knex('transactions')
-      .where('payment_status', 'SUCCESS')
+      .where('payment_status', 'success')
       .count('* as count')
       .first();
     const dbTransactionCount = parseInt(dbCount?.count as string, 10);
@@ -88,13 +88,13 @@ describe('GET /api/transactions/:paymentStatus', () => {
   it('should transform database fields to frontend format correctly', async () => {
     // Get a transaction from the database
     const dbTransaction = await knex('transactions')
-      .where('payment_status', 'SUCCESS')
+      .where('payment_status', 'success')
       .first();
 
     if (dbTransaction) {
       // Get the same transaction from the API
       const response = await request(app)
-        .get('/api/transactions/SUCCESS')
+        .get('/api/transactions/success')
         .expect(200);
 
       const apiTransaction = response.body.data.find(

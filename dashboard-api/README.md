@@ -4,7 +4,7 @@ Minimal Express API for the Transaction Dashboard frontend.
 
 ## Stack
 
-- **Node.js** (>=24.12.0)
+- **Node.js** (>=18.0.0)
 - **Express** 5.x
 - **PostgreSQL** (via Docker)
 - **Knex** (query builder)
@@ -49,20 +49,26 @@ Note: These credentials must match your local PostgreSQL instance (see `docker-c
 Start the local API server:
 
 ```bash
-npm run dev:local
+npm run dev
 ```
 
 The API will be available at `http://localhost:3001`
 
 ## API Endpoints
 
-### GET /api/transactions
+### GET /api/transactions/:paymentStatus
 
-Returns the latest 100 transactions ordered by `created_at DESC`.
+Returns up to 100 transactions filtered by `paymentStatus`, ordered by `created_at DESC`.
+
+Supported values:
+
+- `success`
+- `failed`
+- `pending`
 
 **Request:**
 ```bash
-curl http://localhost:3001/api/transactions
+curl http://localhost:3001/api/transactions/failed
 ```
 
 **Response:**
@@ -70,24 +76,43 @@ curl http://localhost:3001/api/transactions
 {
   "data": [
     {
-      "id": "uuid",
-      "client_app": "payment-portal",
-      "external_reference_id": "REF-0001",
-      "fee_code": "FEE-001",
-      "amount_cents": 500,
-      "currency": "USD",
-      "status": "succeeded",
-      "created_at": "2026-03-05T19:55:03.000Z",
-      "updated_at": "2026-03-05T19:55:03.000Z"
+      "agencyTrackingId": "5ce10085-4bc4-4cb0-ac22-ce34f06fb9c8",
+      "paygovTrackingId": "PG-46caa4ac-532f-4ef4-b031-a3dc8b6f9658",
+      "feeName": "Filing Fee",
+      "feeId": "FEE-001",
+      "feeAmount": 211.82,
+      "clientName": "payment-portal",
+      "transactionReferenceId": "TXREF-00001",
+      "paymentStatus": "success",
+      "transactionStatus": "processed",
+      "paygovToken": "9e8287bc-9a25-4e8a-b95a-cae8d475a376",
+      "paymentMethod": "card",
+      "lastUpdatedAt": "2026-02-14T05:42:18.582Z",
+      "createdAt": "2026-02-11T04:51:10.582Z",
+      "metadata": {
+        "accountHolder": "John Doe",
+        "agencyId": "IRS"
+      }
     }
-  ]
+  ],
+  "total": 100
+}
+```
+
+**Error Response (invalid status):**
+
+```json
+{
+  "error": {
+    "message": "Invalid paymentStatus. Expected one of: pending, success, failed"
+  }
 }
 ```
 
 ## Project Structure
 
 ```
-src/
+dashboard-api/
   server.ts                   # Entry point
   app.ts                      # Express app configuration
   db/
@@ -106,3 +131,4 @@ src/
 - Error handling middleware catches and logs all errors
 - Connection pooling is configured via Knex (min: 2, max: 10)
 - The database schema is managed via Knex migrations (do not modify manually)
+- Transaction test data is generated in `db/seeds/01_transactions.ts`
