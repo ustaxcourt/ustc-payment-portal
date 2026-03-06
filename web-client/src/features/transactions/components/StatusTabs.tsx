@@ -1,18 +1,16 @@
 import * as React from 'react'
 import { Tabs, Tab, Box } from '@mui/material'
-import type { TransactionStatus } from '../types'
+import type { PaymentStatus } from '../types'
 import { StatusChip } from './StatusChip'
 
-type StatusTabsValue = TransactionStatus
-
 export interface StatusTabsProps {
-  value: StatusTabsValue
-  counts: Record<TransactionStatus, number>
-  onChange: (value: StatusTabsValue) => void
+  value: PaymentStatus
+  counts: Record<PaymentStatus, number>
+  onChange: (value: PaymentStatus) => void
 }
 
 export default function StatusTabs({ value, counts, onChange }: StatusTabsProps) {
-  const handleChange = (_: React.SyntheticEvent, newValue: StatusTabsValue) => {
+  const handleChange = (_: React.SyntheticEvent, newValue: PaymentStatus) => {
     onChange(newValue)
   }
 

@@ -3,13 +3,13 @@
  * Keep this aligned with what your API actually returns.
  */
 export type TransactionStatus =
+  | 'RECEIVED'
+  | 'INITIATED'
   | 'PENDING'
-  | 'SUCCESS'
-  | 'COMPLETED'
+  | 'PROCESSED'
   | 'FAILED'
-  | 'CANCELED'
-  | 'REFUNDED'
-  | 'UNKNOWN'
+
+export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED'
 
 /**
  * Supported payment instruments in dev.
@@ -36,12 +36,13 @@ export type Transaction = {
   feeName: string /** Fee Name */
   feeId: string /** Fee Identifier */
   feeAmount: number /** Fee Amount */
-  appClientName: string /** App/Client Name */
+  clientName: string /** App/Client Name */
   transactionReferenceId: string /** Transaction Reference ID */
-  transactionStatus: TransactionStatus /** Transaction Status */
+  paymentStatus: PaymentStatus /** Payment Status */
+  transactionStatus?: TransactionStatus /** Transaction Status */
   paygovToken?: string | null /** Pay.gov token */
   paymentMethod: PaymentMethod /** Payment Method */
   lastUpdatedAt: string /** Last Updated Timestamp (ISO 8601) */
   createdAt: string /** Created Timestamp (ISO 8601) */
-  metadata?: Record<string, unknown> | null /** Metadata supplied(free - form key / value bag) */
+  metadata?: Record<string, string> | null /** Metadata supplied(free - form key / value bag) */
 }
