@@ -1,8 +1,8 @@
-import type { Transaction, TransactionStatus } from '../types'
+import type { PaymentStatus, Transaction } from '../types'
 import { mockTransactions } from '../mock'
 
 export async function fetchTransactionsByStatus(
-  status: TransactionStatus,
+  status: PaymentStatus,
   opts?: { signal?: AbortSignal; latencyMs?: number }
 ): Promise<Transaction[]> {
   const { signal, latencyMs = 250 } = opts ?? {}
@@ -26,5 +26,5 @@ export async function fetchTransactionsByStatus(
     }
   })
 
-  return mockTransactions.filter((t) => t.transactionStatus === status)
+  return mockTransactions.filter((t) => t.paymentStatus === status)
 }

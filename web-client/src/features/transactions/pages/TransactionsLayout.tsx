@@ -4,24 +4,18 @@ import { Box, Typography } from '@mui/material'
 import FinanceDashboardHeader from '../../../components/FinanceDashboardHeader'
 import StatusTabs from '../components/StatusTabs'
 import { mockTransactions } from '../mock'
-import type { TransactionStatus } from '../types'
-
-type StatusTabsValue = TransactionStatus // we won't use 'ALL' in the routed version
+import type { PaymentStatus } from '../types'
 
 // Map route segment <-> domain status
-const pathToStatus: Record<string, StatusTabsValue | undefined> = {
+const pathToStatus: Record<string, PaymentStatus | undefined> = {
   success: 'SUCCESS',
   failed: 'FAILED',
   pending: 'PENDING',
 }
-const statusToPath: Record<StatusTabsValue, string> = {
+const statusToPath: Record<PaymentStatus, string> = {
   SUCCESS: 'success',
   FAILED: 'failed',
   PENDING: 'pending',
-  COMPLETED: 'completed',
-  CANCELED: 'cancelled',
-  REFUNDED: 'refunded',
-  UNKNOWN: 'unknown'
 }
 
 export default function TransactionsLayout() {
@@ -29,7 +23,7 @@ export default function TransactionsLayout() {
   const { pathname } = useLocation()
 
   // Derive the current status value from the URL
-  const currentTab: StatusTabsValue = React.useMemo(() => {
+  const currentTab: PaymentStatus = React.useMemo(() => {
     const seg = pathname.split('/').pop() || ''
     return pathToStatus[seg] ?? 'SUCCESS'
   }, [pathname])
@@ -38,15 +32,15 @@ export default function TransactionsLayout() {
   const counts = React.useMemo(() => {
     return mockTransactions.reduce(
       (acc, t) => {
-        acc[t.transactionStatus]++
+        acc[t.paymentStatus]++
         return acc
       },
-      { SUCCESS: 0, FAILED: 0, PENDING: 0 } as Record<TransactionStatus, number>
+      { SUCCESS: 0, FAILED: 0, PENDING: 0 } as Record<PaymentStatus, number>
     )
   }, [])
 
   // When the tab changes, navigate to the corresponding child route
-  const handleTabChange = (value: StatusTabsValue) => {
+  const handleTabChange = (value: PaymentStatus) => {
     navigate(statusToPath[value]) // relative to /transactions
   }
 
