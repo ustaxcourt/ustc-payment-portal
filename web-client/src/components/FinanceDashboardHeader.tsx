@@ -10,7 +10,7 @@ export interface FinanceDashboardHeaderProps {
 
 export default function FinanceDashboardHeader({
   title = 'Payment Portal',
-  subtitle = 'Finance Dashboard',
+  subtitle = '',
   rightContent,
   dividerThickness, // optional override
 }: FinanceDashboardHeaderProps) {
