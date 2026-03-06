@@ -9,6 +9,8 @@ export type TransactionStatus =
   | 'REFUNDED'
   | 'UNKNOWN';
 
+export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
+
 export type PaymentMethod =
   | 'card'
   | 'ach'
@@ -22,15 +24,20 @@ export type PaymentMethod =
 export default class Transaction extends Model {
   static tableName = 'transactions';
 
-  id!: string;
-  client_app!: string;
-  external_reference_id!: string;
-  fee_code!: string;
-  amount_cents!: number;
-  currency!: string;
-  status!: string;
+  agency_tracking_id!: string;
+  paygov_tracking_id?: string | null;
+  fee_name!: string;
+  fee_id!: string;
+  fee_amount!: number;
+  client_name!: string;
+  transaction_reference_id!: string;
+  payment_status!: PaymentStatus;
+  transaction_status?: TransactionStatus | null;
+  paygov_token?: string | null;
+  payment_method!: PaymentMethod;
   created_at!: string;
-  updated_at!: string;
+  last_updated_at!: string;
+  metadata?: Record<string, string> | null;
 
   // Virtual property to convert to frontend format
   toFrontendFormat(): {
@@ -39,39 +46,31 @@ export default class Transaction extends Model {
     feeName: string;
     feeId: string;
     feeAmount: number;
-    appClientName: string;
+    clientName: string;
     transactionReferenceId: string;
-    transactionStatus: TransactionStatus;
+    paymentStatus: PaymentStatus;
+    transactionStatus?: TransactionStatus;
     paygovToken?: string | null;
     paymentMethod: PaymentMethod;
     lastUpdatedAt: string;
     createdAt: string;
-    metadata?: Record<string, unknown> | null;
+    metadata?: Record<string, string> | null;
   } {
-    // Map database status to frontend status
-    const statusMap: Record<string, TransactionStatus> = {
-      pending: 'PENDING',
-      succeeded: 'SUCCESS',
-      completed: 'COMPLETED',
-      failed: 'FAILED',
-      canceled: 'CANCELED',
-      refunded: 'REFUNDED',
-    };
-
     return {
-      agencyTrackingId: this.id,
-      paygovTrackingId: null,
-      feeName: this.fee_code,
-      feeId: this.fee_code,
-      feeAmount: this.amount_cents / 100, // Convert cents to dollars
-      appClientName: this.client_app,
-      transactionReferenceId: this.external_reference_id,
-      transactionStatus: statusMap[this.status] || 'UNKNOWN',
-      paygovToken: null,
-      paymentMethod: 'card', // Default to card, you can add this to DB later
-      lastUpdatedAt: this.updated_at,
+      agencyTrackingId: this.agency_tracking_id,
+      paygovTrackingId: this.paygov_tracking_id ?? null,
+      feeName: this.fee_name,
+      feeId: this.fee_id,
+      feeAmount: Number(this.fee_amount),
+      clientName: this.client_name,
+      transactionReferenceId: this.transaction_reference_id,
+      paymentStatus: this.payment_status,
+      transactionStatus: this.transaction_status ?? undefined,
+      paygovToken: this.paygov_token ?? null,
+      paymentMethod: this.payment_method,
+      lastUpdatedAt: this.last_updated_at,
       createdAt: this.created_at,
-      metadata: null,
+      metadata: this.metadata ?? null,
     };
   }
 }
