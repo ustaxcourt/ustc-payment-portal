@@ -11,8 +11,8 @@ export async function seed(knex: Knex): Promise<void> {
     await knex('transactions').del();
 
     const clientNames = ['payment-portal', 'efile-portal', 'clerk-app'];
-    const paymentStatuses = ['PENDING', 'SUCCESS', 'FAILED'];
-    const transactionStatuses = ['PENDING', 'SUCCESS', 'COMPLETED', 'FAILED', 'CANCELED', 'REFUNDED', 'UNKNOWN', null];
+    const paymentStatuses = ['pending', 'success', 'failed'];
+    const transactionStatuses = ['received', 'initiated', 'pending', 'processed', 'failed'];
     const paymentMethods = ['card', 'ach', 'cash', 'paypal', 'apple_pay', 'google_pay', 'venmo', 'other'];
     const feeNames = ['Filing Fee', 'Access Fee', 'Transcript Fee'];
     const feeIds = ['FEE-001', 'FEE-002', 'FEE-003'];
