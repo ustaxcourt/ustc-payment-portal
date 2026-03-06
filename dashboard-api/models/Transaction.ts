@@ -1,15 +1,13 @@
 import { Model } from 'objection';
 
 export type TransactionStatus =
-  | 'PENDING'
-  | 'SUCCESS'
-  | 'COMPLETED'
-  | 'FAILED'
-  | 'CANCELED'
-  | 'REFUNDED'
-  | 'UNKNOWN';
+  | 'received'
+  | 'initiated'
+  | 'pending'
+  | 'processed'
+  | 'failed';
 
-export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
+export type PaymentStatus = 'pending' | 'success' | 'failed';
 
 export type PaymentMethod =
   | 'card'

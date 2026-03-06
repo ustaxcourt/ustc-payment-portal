@@ -29,14 +29,14 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.raw(`
     ALTER TABLE transactions
     ADD CONSTRAINT transactions_payment_status_valid
-    CHECK (payment_status IN ('PENDING', 'SUCCESS', 'FAILED'))
+    CHECK (payment_status IN ('pending', 'success', 'failed'))
   `);
   await knex.schema.raw(`
     ALTER TABLE transactions
     ADD CONSTRAINT transactions_transaction_status_valid
     CHECK (
       transaction_status IS NULL OR
-      transaction_status IN ('PENDING', 'SUCCESS', 'COMPLETED', 'FAILED', 'CANCELED', 'REFUNDED', 'UNKNOWN')
+      transaction_status IN ('received', 'initiated', 'pending', 'processed', 'failed')
     )
   `);
   await knex.schema.raw(`

@@ -63,8 +63,8 @@ export async function seed(knex: Knex): Promise<void> {
             client_name: pick(clientNames, i),
             transaction_reference_id: transactionReferenceId,
 
-            payment_status: pick(paymentStatuses, i),
-            transaction_status: pick(transactionStatuses, i),
+            payment_status: String(pick(paymentStatuses, i)).toLowerCase(),
+            transaction_status: String(pick(transactionStatuses, i)).toLowerCase(),
 
             payment_method: pick(paymentMethods, i),
             paygov_token: faker.datatype.boolean() ? faker.string.uuid() : null,
