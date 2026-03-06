@@ -26,6 +26,24 @@ export async function up(knex: Knex): Promise<void> {
     ADD CONSTRAINT transactions_fee_amount_nonneg
     CHECK (fee_amount >= 0)
   `);
+  await knex.schema.raw(`
+    ALTER TABLE transactions
+    ADD CONSTRAINT transactions_payment_status_valid
+    CHECK (payment_status IN ('PENDING', 'SUCCESS', 'FAILED'))
+  `);
+  await knex.schema.raw(`
+    ALTER TABLE transactions
+    ADD CONSTRAINT transactions_transaction_status_valid
+    CHECK (
+      transaction_status IS NULL OR
+      transaction_status IN ('PENDING', 'SUCCESS', 'COMPLETED', 'FAILED', 'CANCELED', 'REFUNDED', 'UNKNOWN')
+    )
+  `);
+  await knex.schema.raw(`
+    ALTER TABLE transactions
+    ADD CONSTRAINT transactions_payment_method_valid
+    CHECK (payment_method IN ('card', 'ach', 'cash', 'paypal', 'apple_pay', 'google_pay', 'venmo', 'other'))
+  `);
 
   // Indexes for common filters & sorting
   await knex.schema.alterTable('transactions', (t) => {
