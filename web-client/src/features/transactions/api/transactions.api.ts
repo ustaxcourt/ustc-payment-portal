@@ -1,30 +1,29 @@
 import type { PaymentStatus, Transaction } from '../types'
-import { mockTransactions } from '../mock'
+
+type TransactionsResponse = {
+  data: Transaction[]
+  total: number
+}
+
+const dashboardApiBaseUrl = (import.meta.env.VITE_DASHBOARD_API_BASE_URL as string | undefined)
+  ?.replace(/\/$/, '') ?? 'http://localhost:3001'
 
 export async function fetchTransactionsByStatus(
   status: PaymentStatus,
-  opts?: { signal?: AbortSignal; latencyMs?: number }
+  opts?: { signal?: AbortSignal }
 ): Promise<Transaction[]> {
-  const { signal, latencyMs = 250 } = opts ?? {}
+  const { signal } = opts ?? {}
 
-  // return fetch(`/transactions?status=${status}`, { signal })
-  // .then((res) => res.json())
-
-  // TODO: Replace this fetch script with above once path is available
-  await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(resolve, latencyMs)
-    if (signal) {
-      const onAbort = () => {
-        clearTimeout(timer)
-        reject(new DOMException('Aborted', 'AbortError'))
-      }
-      if (signal.aborted) {
-        onAbort()
-        return
-      }
-      signal.addEventListener('abort', onAbort, { once: true })
-    }
+  const url = `${dashboardApiBaseUrl}/api/transactions/${status}`
+  const response = await fetch(url, {
+    method: 'GET',
+    signal,
   })
 
-  return mockTransactions.filter((t) => t.paymentStatus === status)
+  if (!response.ok) {
+    throw new Error(`GET ${url} failed: ${response.status}`)
+  }
+
+  const payload = (await response.json()) as TransactionsResponse
+  return payload.data
 }
