@@ -1,5 +1,7 @@
 import type { PaymentStatus, Transaction } from '../types'
 
+export type PaymentStatusCounts = Record<PaymentStatus, number>
+
 export type TransactionsResponse = {
   data: Transaction[]
   total: number
@@ -26,4 +28,27 @@ export async function fetchTransactionsByStatus(
 
   const payload = (await response.json()) as TransactionsResponse
   return payload
+}
+
+export async function fetchTransactionPaymentStatus(
+  opts?: { signal?: AbortSignal }
+): Promise<PaymentStatusCounts> {
+  const { signal } = opts ?? {}
+
+  const url = `${dashboardApiBaseUrl}/api/transaction-payment-status`
+  const response = await fetch(url, {
+    method: 'GET',
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(`GET ${url} failed: ${response.status}`)
+  }
+
+  const payload = (await response.json()) as Partial<PaymentStatusCounts>
+  return {
+    success: payload.success ?? 0,
+    failed: payload.failed ?? 0,
+    pending: payload.pending ?? 0,
+  }
 }
