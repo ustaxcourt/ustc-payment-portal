@@ -12,10 +12,11 @@
     "start:prod": "cross-env NODE_ENV=production node dist/server.js",
     "dev": "nodemon --ext ts,json --exec ts-node server.ts",
     "dev:watch": "tsc --watch",
+    "knex": "node -r ts-node/register -r dotenv/config ./node_modules/knex/bin/cli.js --knexfile knexfile.ts",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"**/*.ts\"",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch --runInBand",
     "clean": "rm -rf dist"
   },
   "dependencies": {
