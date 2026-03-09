@@ -1,182 +1,142 @@
-# Transaction Dashboard Local Stack (Docker + Read-Only UI)
+# Transaction Dashboard Local Stack
 
-This document explains how the local Transaction Dashboard stack works in this repository, including service startup order, database initialization, and where to find deeper documentation.
+This document describes the local dashboard stack based on the current `docker-compose.yml`, API behavior, and migration/seed flow in this repository.
 
 ## Purpose
 
-The dashboard stack is designed for **local development and verification** of transaction data:
+The local stack is used to verify transaction dashboard behavior end-to-end:
 
-- `dashboard-api` serves transaction data from PostgreSQL.
-- `web-client` is a **read-only UI tool** used to inspect/filter transaction records.
-- Database schema/data are managed from the **root project** migration/seed scripts.
+- PostgreSQL stores transactions.
+- `dashboard-api` serves read-only transaction endpoints.
+- `web-client` renders tabs and DataGrid views for transaction statuses.
+- Root Knex migrations and seeds initialize data.
 
-## What Runs with `docker compose up`
+## Services Started by Docker Compose
 
-`docker-compose.yml` defines the following services:
+`docker compose up` starts these services in order:
 
 1. `postgres`
-   - PostgreSQL database for transaction records.
-   - Includes a healthcheck via `pg_isready`.
+- Image: `postgres:14`
+- Host port: `5432`
+- Env: `POSTGRES_USER=user`, `POSTGRES_PASSWORD=password`, `POSTGRES_DB=mydb`
+- Healthcheck: `pg_isready -U user -d mydb`
 
-2. `db-init` (one-shot init service)
-   - Runs from repository root.
-   - Executes:
-     - `npm run migrate:latest`
-     - `npm run seed:run`
-   - Exits after DB schema/data are initialized.
+2. `db-init` (one-shot initializer)
+- Runs from repository root (`/workspace`)
+- Waits for healthy `postgres`
+- Runs: `npm ci && npm run migrate:latest && npm run seed:run`
+- Uses DB env values with `DB_HOST=postgres`
+- Exits after successful schema/data initialization
 
 3. `dashboard-api`
-   - Waits for:
-     - `postgres` to be healthy
-     - `db-init` to complete successfully
-   - Runs in watch mode (`nodemon`) for TypeScript changes.
-   - Exposes API on container port `3001`.
+- Runs from `/app` with mount `./dashboard-api:/app`
+- Waits for `postgres` healthy and `db-init` success
+- Runs: `npm ci && npm run dev -- --legacy-watch`
+- Exposes host port `${DASHBOARD_API_PORT:-3001}`
+- Healthcheck: `GET /health`
 
 4. `web-client`
-   - Waits for `dashboard-api` to become healthy.
-   - Runs Vite dev server in watch/hot-reload mode.
-   - Uses `VITE_DASHBOARD_API_BASE_URL` to call the API.
+- Runs from `/app` with mount `./web-client:/app`
+- Waits for healthy `dashboard-api`
+- Runs: `npm ci && npm run dev -- --host 0.0.0.0 --port 5173`
+- Exposes host port `${WEB_CLIENT_PORT:-5173}`
+- Calls API via `VITE_DASHBOARD_API_BASE_URL=http://localhost:${DASHBOARD_API_PORT:-3001}`
 
-## Startup Sequence (Important)
+## Startup Sequence
 
-When you run compose:
+The effective startup sequence is:
 
-1. Postgres starts and becomes healthy.
-2. `db-init` runs root migrations + seeds.
-3. `dashboard-api` starts only after DB init succeeds.
-4. `web-client` starts after API healthcheck passes.
+1. Postgres becomes healthy.
+2. `db-init` applies root migrations and seeds.
+3. `dashboard-api` starts.
+4. `web-client` starts.
 
-This ensures UI does not load before data is available.
+This ordering prevents the UI/API from starting before the `transactions` table exists and has seed data.
 
-## Status/Data Contract Notes
+## API and Data Contract Used by the UI
 
-Current path and status filtering are lowercase in the dashboard flow:
+The web client fetches:
 
-- API path: `/api/transactions/:paymentStatus`
-- Valid `paymentStatus`: `pending`, `success`, `failed`
-- Common `transactionStatus` values in seeded data:
-  - `received`, `initiated`, `pending`, `processed`, `failed`
+- `GET /api/transactions/:paymentStatus`
+- `GET /api/transaction-payment-status`
 
-## Port Configuration
+Supported `paymentStatus` path values:
 
-Defaults:
+- `success`
+- `failed`
+- `pending`
 
-- API host port: `3001`
-- Web UI host port: `5173`
-- Postgres host port: `5432`
+`/api/transactions/:paymentStatus` returns:
 
-If ports are already in use, override at runtime:
-
-```bash
-DASHBOARD_API_PORT=3003 WEB_CLIENT_PORT=5174 docker compose up -d
+```json
+{
+  "data": [],
+  "total": 0
+}
 ```
 
-Then use:
+`/api/transaction-payment-status` returns counts object:
 
-- API: `http://localhost:3003/api/transactions/failed`
-- UI: `http://localhost:5174`
+```json
+{
+  "success": 0,
+  "failed": 0,
+  "pending": 0
+}
+```
 
-## Common Commands
+## Seeded Data Behavior
 
-### Start stack
+Current seed (`db/seeds/01_transactions.ts`) behavior:
+
+- Deletes existing rows from `transactions`
+- Inserts 200 generated rows in chunks of 50
+- Rotates payment status values across `pending`, `success`, `failed`
+- Populates optional fields (`paygov_tracking_id`, `paygov_token`, `metadata`) on some rows
+
+## Useful Local Commands
+
+Start stack in foreground:
 
 ```bash
 docker compose up
 ```
 
-### Start in background
+Start stack in background:
 
 ```bash
 docker compose up -d
 ```
 
-### Recreate services after compose/script changes
+Show logs:
 
 ```bash
-docker compose up -d --force-recreate db-init dashboard-api web-client
+docker compose logs -f postgres db-init dashboard-api web-client
 ```
 
-### View service logs
+Verify API quickly:
 
 ```bash
-docker compose logs -f db-init dashboard-api web-client
+curl http://localhost:3001/health
+curl http://localhost:3001/api/transactions/success
+curl http://localhost:3001/api/transaction-payment-status
 ```
 
-### Verify seeded data exists
-
-```bash
-curl http://localhost:3001/api/transactions/failed
-```
-
-## File Watch Behavior
-
-Compose is configured for dev file watching:
-
-- API container:
-  - bind mounts `./dashboard-api:/app`
-  - runs `nodemon` with `--legacy-watch`
-  - `CHOKIDAR_USEPOLLING=true`
-
-- Web container:
-  - bind mounts `./web-client:/app`
-  - runs `vite --host 0.0.0.0`
-  - `CHOKIDAR_USEPOLLING=true`
-
-This supports live reload in Docker on macOS.
-
-## Troubleshooting
-
-### 1) `relation "transactions" does not exist`
-
-Cause: API started before migrations ran.
-
-Fix:
-
-- Ensure `db-init` is part of startup and succeeds.
-- Check:
-
-```bash
-docker compose ps
-docker compose logs db-init
-```
-
-### 2) API returns empty data unexpectedly
-
-Checks:
-
-- Confirm `db-init` seeded successfully:
-
-```bash
-docker compose logs db-init
-```
-
-- Hit endpoint directly:
-
-```bash
-curl http://localhost:3001/api/transactions/failed
-```
-
-### 3) Port already in use
-
-Use port overrides:
+Override host ports:
 
 ```bash
 DASHBOARD_API_PORT=3003 WEB_CLIENT_PORT=5174 docker compose up -d
 ```
 
-### 4) Need fresh local state
+Reset local DB volume and reinitialize:
 
 ```bash
 docker compose down -v
 docker compose up
 ```
 
-## References
+## Related Documentation
 
-- Database migrations and seeding guide: [db/README.md](../db/README.md)
-- Dashboard API details: [dashboard-api/README.md](../dashboard-api/README.md)
-- Web client details: [web-client/README.md](../web-client/README.md)
-
-## Scope Reminder
-
-The web client in this project is intended as a **read-only dashboard tool** for transaction visibility and filtering during local development/integration work.
+- `db/README.md`
+- `dashboard-api/README.md`
+- `web-client/README.md`
