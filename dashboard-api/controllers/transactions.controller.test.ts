@@ -154,7 +154,7 @@ describe('GET /api/transaction-payment-status', () => {
     };
 
     dbRows.forEach((row) => {
-      const status = row.payment_status as 'success' | 'failed' | 'pending';
+      const status = (row.paymentStatus ?? row.payment_status) as 'success' | 'failed' | 'pending';
       if (status === 'success' || status === 'failed' || status === 'pending') {
         expected[status] = Number(row.count);
       }

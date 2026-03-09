@@ -20,6 +20,8 @@
     "test:coverage": "npm run test -- --coverage",
     "test:integration:dev": "NODE_ENV=local DOTENV_CONFIG_PATH=.env.dev npx jest ./src/test/integration/",
     "test:integration": "npx jest ./src/test/integration/",
+    "test:db:setup": "NODE_ENV=test npm run knex -- migrate:latest && NODE_ENV=test npm run knex -- seed:run",
+    "dashboard:test": "npm run test:db:setup && npm run --prefix dashboard-api test",
     "ci:publish": "npm run build && changeset publish --provenance",
     "generate:openapi": "ts-node src/openapi/generate.ts",
     "knex": "node -r ts-node/register -r dotenv/config ./node_modules/knex/bin/cli.js",
