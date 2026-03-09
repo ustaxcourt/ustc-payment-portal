@@ -1,105 +1,76 @@
 # Transaction Dashboard API
 
-Minimal Express API for the Transaction Dashboard frontend.
+Express API used by the transaction dashboard web client.
 
-## Stack
+## Runtime and Dependencies
 
-- **Node.js** (>=18.0.0)
-- **Express** 5.x
-- **PostgreSQL** (via Docker)
-- **Knex** (query builder)
-- **Objection ORM** (models)
-- **dotenv** (configuration)
+- Node.js `>=18.0.0`
+- Express 5
+- PostgreSQL (`pg`)
+- Knex + Objection
 
-## Prerequisites
+## How It Runs Locally
 
-1. PostgreSQL running locally via Docker:
-   ```bash
-   docker-compose up -d
-   ```
+Two common ways to run this API:
 
-2. Run migrations:
-   ```bash
-   npm run migrate:latest
-   ```
+1. Docker Compose (recommended for full stack)
+- Service name: `dashboard-api`
+- Default host port: `3001`
+- Health endpoint: `GET /health`
 
-3. Seed the database:
-   ```bash
-   npm run seed:run
-   ```
+2. Directly from `dashboard-api/`
+
+```bash
+npm ci
+npm run dev
+```
+
+When running directly, ensure Postgres is available and root migrations/seeds have been applied.
 
 ## Environment Variables
 
-Create a `.env` file:
+The API reads these values:
 
 ```env
 DB_HOST=localhost
 DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=dashboard
+DB_USER=user
+DB_PASSWORD=password
+DB_NAME=mydb
 API_PORT=3001
 NODE_ENV=development
 ```
 
-Note: These credentials must match your local PostgreSQL instance (see `docker-compose.yml`).
+For Docker Compose, `DB_HOST` is set to `postgres` in the container environment.
 
-## Running the API
+## Endpoints
 
-Start the local API server:
+### `GET /health`
 
-```bash
-npm run dev
+Returns:
+
+```json
+{ "status": "ok" }
 ```
 
-The API will be available at `http://localhost:3001`
+### `GET /api/transactions/:paymentStatus`
 
-## API Endpoints
+Valid `paymentStatus` values:
 
-### GET /api/transactions/:paymentStatus
-
-Returns up to 100 transactions filtered by `paymentStatus`, ordered by `created_at DESC`.
-
-Supported values:
-
+- `pending`
 - `success`
 - `failed`
-- `pending`
 
-**Request:**
-```bash
-curl http://localhost:3001/api/transactions/failed
-```
+Success response shape:
 
-**Response:**
 ```json
 {
-  "data": [
-    {
-      "agencyTrackingId": "5ce10085-4bc4-4cb0-ac22-ce34f06fb9c8",
-      "paygovTrackingId": "PG-46caa4ac-532f-4ef4-b031-a3dc8b6f9658",
-      "feeName": "Filing Fee",
-      "feeId": "FEE-001",
-      "feeAmount": 211.82,
-      "clientName": "payment-portal",
-      "transactionReferenceId": "TXREF-00001",
-      "paymentStatus": "success",
-      "transactionStatus": "processed",
-      "paygovToken": "9e8287bc-9a25-4e8a-b95a-cae8d475a376",
-      "paymentMethod": "card",
-      "lastUpdatedAt": "2026-02-14T05:42:18.582Z",
-      "createdAt": "2026-02-11T04:51:10.582Z",
-      "metadata": {
-        "accountHolder": "John Doe",
-        "agencyId": "IRS"
-      }
-    }
-  ],
-  "total": 100
+  "data": [],
+  "total": 0
 }
 ```
 
-**Error Response (invalid status):**
+Invalid status response:
 
 ```json
 {
@@ -109,26 +80,47 @@ curl http://localhost:3001/api/transactions/failed
 }
 ```
 
-## Project Structure
+### `GET /api/transaction-payment-status`
 
-```
-dashboard-api/
-  server.ts                   # Entry point
-  app.ts                      # Express app configuration
-  db/
-    knex.ts                   # Knex instance + Objection setup
-  models/
-    Transaction.ts            # Transaction model
-  controllers/
-    transactions.controller.ts # Business logic
-  routes/
-    transactions.routes.ts    # Route definitions
+Returns aggregated totals:
+
+```json
+{
+  "success": 0,
+  "failed": 0,
+  "pending": 0
+}
 ```
 
-## Development Notes
+## Data Source and Initialization
 
-- The API uses CORS to allow requests from any origin (suitable for local development)
-- Error handling middleware catches and logs all errors
-- Connection pooling is configured via Knex (min: 2, max: 10)
-- The database schema is managed via Knex migrations (do not modify manually)
-- Transaction test data is generated in `db/seeds/01_transactions.ts`
+The API reads from the root `transactions` table created by:
+
+- Migration: `db/migrations/20260305195503_init_db.ts`
+- Seed: `db/seeds/01_transactions.ts`
+
+In Compose, this is handled by `db-init` before the API starts.
+
+## Useful Commands
+
+From repository root:
+
+```bash
+docker compose up
+curl http://localhost:3001/health
+curl http://localhost:3001/api/transactions/success
+curl http://localhost:3001/api/transaction-payment-status
+```
+
+From `dashboard-api/` directory:
+
+```bash
+npm run test
+npm run test:coverage
+npm run lint
+```
+
+## Notes
+
+- CORS is enabled for local development (`Access-Control-Allow-Origin: *`).
+- Error middleware returns `{ error: { message } }` with status 500 for unexpected failures.

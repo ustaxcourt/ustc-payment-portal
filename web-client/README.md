@@ -1,349 +1,112 @@
-# 🚀 USTC Payment Portal — Developer Guide
+# Payment Portal Web Client
 
-Welcome to the Payment Portal web client.
-This document explains the project structure, conventions, and how to build new features in a consistent, maintainable way.
+React + TypeScript + Vite application for the transaction dashboard UI.
 
-We keep our stack intentionally **simple**:
+## What This App Does
 
-*   **React + TypeScript + Vite**
-*   **Local feature-based folder organization**
-*   **Composable reusable hooks (`useFetch`, `useGet`, `usePost`, etc.)**
-*   **Lightweight services using `fetch` (no Axios)**
-*   **Co-located mocks + feature APIs**
-*   **Clear rules for components, hooks, pages, and layouts**
+- Routes users to transaction status views:
+  - `/transactions/success`
+  - `/transactions/failed`
+  - `/transactions/pending`
+- Displays transaction rows in MUI DataGrid.
+- Reads aggregated tab counts and per-status transaction lists from `dashboard-api`.
 
-This README is your **DX rulebook**.
-Follow it → everything stays clean.
+The UI is read-only in the local dashboard flow.
 
-***
+## API Endpoints Used
 
-# 📁 Project Structure
+The app calls these API endpoints:
 
-    src/
-      assets/                 # Static assets (SVG, images)
-      components/             # Truly shared UI components (used across features)
-      lib/
-        hooks/                # Generic reusable hooks (useFetch, useGet, usePost)
-        utils/                # Helpers not tied to any feature
-      features/
-        <feature-name>/
-          components/         # UI parts specific to this feature
-          api/                # Fetch/service functions returning domain types
-          hooks/              # Feature-specific hooks composed from generic hooks
-          mock.ts             # Mocks used during development/testing
-          types.ts            # Domain types for this feature only
-          pages/              # Pages responsible for rendering this feature
-      pages/                  # App-level pages (router-level)
-      layouts/                # Site-wide layouts
-      theme.ts                # MUI theme overrides
-      App.tsx                 # App shell
-      main.tsx                # Vite/React entry
+- `GET /api/transactions/:status`
+- `GET /api/transaction-payment-status`
 
-### Why feature‑first organization?
+`status` values are `success`, `failed`, or `pending`.
 
-Because each feature is self-contained:
+The base URL comes from:
 
-*   UI
-*   API calls
-*   mocks
-*   hooks
-*   types
+- `VITE_DASHBOARD_API_BASE_URL`
 
-Everything lives together → easier onboarding, easier refactoring, easier testing.
+If unset, the app defaults to `http://localhost:3001`.
 
-***
+## Install and Run
 
-# 📦 Creating a New Feature
+From `web-client/`:
 
-Here is the required structure:
-
-    src/features/<feature-name>/
-      types.ts
-      mock.ts
-      api/
-        index.ts
-      components/
-        <Feature>Widget.tsx
-        <Feature>Table.tsx
-      hooks/
-        use<Feature>.ts
-      pages/
-        <Feature>Page.tsx
-
-### Example: a new `users` feature
-
-    src/features/users/
-      types.ts                ≈ User, UserRole, etc.
-      mock.ts                 ≈ mockUsers
-      api/
-        index.ts              ≈ fetchUsers, fetchUserById
-      components/
-        UsersTable.tsx
-        UserProfileCard.tsx
-      hooks/
-        useUsers.ts
-      pages/
-        UsersPage.tsx
-
-### Template you can copy/paste
-
-**types.ts**
-
-```ts
-export type User = {
-  id: string
-  name: string
-  email: string
-  createdAt: string
-}
+```bash
+npm ci
+npm run dev
 ```
 
-**mock.ts**
+Default local URL:
 
-```ts
-export const mockUsers: User[] = [...]
+- `http://localhost:5173`
+
+For full stack (recommended), run from repository root:
+
+```bash
+docker compose up
 ```
 
-**api/index.ts**
+## Scripts
 
-```ts
-import { mockUsers } from '../mock'
+- `npm run dev`: start Vite dev server
+- `npm run build`: type-check and build production assets
+- `npm run preview`: preview build output
+- `npm run preview:test`: preview on `127.0.0.1:4173` for Cypress
+- `npm run cypress:open`: open Cypress UI
+- `npm run cypress:run`: run Cypress headless
+- `npm run test:e2e`: build, preview, then run Cypress suite
 
-export async function fetchUsers(signal?: AbortSignal) {
-  await new Promise(r => setTimeout(r, 250))
-  return mockUsers
-}
+From repository root, equivalent command:
+
+```bash
+npm run web-client:test
 ```
 
-**hooks/useUsers.ts**
+## Test Coverage Notes
 
-```ts
-import { useFetch } from '../../../lib/hooks/useFetch'
-import { fetchUsers } from '../api'
+Current e2e coverage includes:
 
-export function useUsers() {
-  return useFetch(() => fetchUsers(), [])
-}
+- Route loading for each status page
+- Tab-click behavior that changes DataGrid rows
+- API error response handling
+- Delayed response behavior and empty-grid rendering
+- Tab count synchronization with count endpoint and per-tab totals
+
+Specs are under `cypress/e2e/`.
+
+## Key Source Locations
+
+- Router setup: `src/main.tsx`
+- Page layout and tab count updates: `src/features/transactions/pages/TransactionsLayout.tsx`
+- Status page wrapper: `src/features/transactions/pages/TransactionsStatusPage.tsx`
+- DataGrid: `src/features/transactions/components/TransactionsTable.tsx`
+- API client: `src/features/transactions/api/transactions.api.ts`
+
+## Local Troubleshooting
+
+If the UI loads but no data appears:
+
+1. Verify API is healthy:
+
+```bash
+curl http://localhost:3001/health
 ```
 
-**components/UsersTable.tsx**
+2. Verify transaction endpoint:
 
-```ts
-export function UsersTable({ rows }) { ... }
+```bash
+curl http://localhost:3001/api/transactions/success
 ```
 
-**pages/UsersPage.tsx**
+3. Verify status counts endpoint:
 
-```tsx
-export default function UsersPage() {
-  const { data, loading, error } = useUsers()
-  return <UsersTable rows={data ?? []} loading={loading} />
-}
+```bash
+curl http://localhost:3001/api/transaction-payment-status
 ```
 
-***
+If running with Docker Compose, check service logs:
 
-# 🔁 Reusing Shared Libraries
-
-We keep reusable building blocks in **`src/lib`**.
-
-## Shared hooks — `src/lib/hooks`
-
-These are generic utilities not tied to any feature.
-
-### `useFetch(fetcher, deps)`
-
-A universal async hook:
-
-*   `fetcher(signal) → Promise<T>`
-*   Automatically manages `loading`, `error`, `data`
-*   Supports cancellation via `AbortController`
-
-```ts
-const { data, loading, error, refetch } = useFetch(
-  (signal) => fetch('/api/users', { signal }).then(r => r.json()),
-  [id]
-)
+```bash
+docker compose logs -f dashboard-api web-client
 ```
-
-### `useGet(url, deps)` & `usePost(url, body, deps)`
-
-Light wrappers around native fetch + `useFetch`.
-
-    src/lib/hooks/
-      useFetch.ts
-      http.ts                # useGet(), usePost()
-
-***
-
-# 🧩 Components — Rules & Conventions
-
-### 1) Shared UI components → `src/components/`
-
-Use this **only** if:
-
-*   It can be used across multiple features.
-*   It has no feature-specific logic.
-
-Examples:
-
-    src/components/Button.tsx
-    src/components/Modal.tsx
-    src/components/DataEmptyState.tsx
-
-### 2) Feature components → `src/features/<feature>/components/`
-
-These belong **only** to a single feature.
-
-Examples (Transactions):
-
-    TransactionsTable.tsx
-    GridSortIconCircle.tsx
-    StatusTabs.tsx
-
-Rules:
-
-*   No fetching inside components.
-*   Get all data via props.
-*   Keep them pure/presentational.
-
-***
-
-# 🧠 Hooks — Rules & Conventions
-
-### 1) Shared hooks → `src/lib/hooks/`
-
-*   Reusable across the entire application.
-*   No domain/types from features.
-*   Should handle generic behaviors (fetching, debouncing, intervals, etc.)
-
-### 2) Feature hooks → `src/features/<feature>/hooks/`
-
-Naming rule:
-
-    use<Feature><Action>.ts
-
-Example:
-
-    useTransactionsByStatus.ts
-    useUsers.ts
-    useInvoices.ts
-
-They should:
-
-*   Wrap `useFetch`, `useGet`, `usePost`, or any lower-level hook.
-*   Encode domain rules or transform data.
-*   Never contain UI logic.
-
-***
-
-# 📄 Pages — Rules & Conventions
-
-Pages live either in:
-
-**App-level pages:**
-
-    src/pages/
-
-**Feature-level pages:**
-
-    src/features/<feature>/pages/
-
-Pages:
-
-*   Own route-level responsibilities.
-*   Compose hooks + components.
-*   Pass props downward.
-*   Should NOT contain business logic or transformations.
-
-Example:
-
-```tsx
-export default function TransactionsStatusPage({ status }) {
-  const { data, loading, error } = useTransactionsByStatus(status)
-
-  return (
-    <TransactionsTable
-      rows={data ?? []}
-      loading={loading}
-      error={error}
-      status={status}
-    />
-  )
-}
-```
-
-***
-
-# 🧱 Layouts — Rules & Patterns
-
-Layouts define the surrounding structure around pages.
-
-Their home:
-
-    src/layouts/
-
-Purpose:
-
-*   Navigation bars
-*   Sidebars
-*   Shared headers/footers
-*   Consistent spacing & containers
-
-Never put business logic here.
-
-***
-
-# 🔌 API / Services — Rules
-
-API functions live in:
-
-    src/features/<feature>/api/
-
-Rules:
-
-*   One file per feature (`index.ts`).
-*   Keep them thin.
-*   Accept parameters & `signal` if applicable.
-*   Return typed domain models (e.g., `Transaction[]`).
-*   Do **not** use `fetch` in components — always via service.
-
-Example:
-
-```ts
-export async function fetchTransactionsByStatus(status, { signal }) {
-  const url = `/transactions?status=${status}`
-  const res = await fetch(url, { signal })
-  if (!res.ok) throw new Error('Failed to load')
-  return res.json() as Promise<Transaction[]>
-}
-```
-
-***
-
-# 🎭 Mocks — Rules
-
-Mocks live **beside** their feature:
-
-    src/features/<feature>/mock.ts
-
-Rules:
-
-*   Must follow the same type as real API.
-*   Should mimic API latency.
-*   Should be deterministic for UI dev & tests.
-*   You can toggle mock API usage in services using an env flag like:
-
-```ts
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
-```
-
-***
-
-# 🛠 ESLint & React Compiler
-
-(Your original README content can stay; shortened here.)
-
-*   Vite + React Compiler enabled.
-*   ESLint recommended + TypeScript rules.
-*   Can switch to type-aware ESLint for production.
