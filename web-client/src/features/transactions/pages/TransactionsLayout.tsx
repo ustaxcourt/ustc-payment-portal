@@ -3,8 +3,17 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Box, Typography } from '@mui/material'
 import FinanceDashboardHeader from '../../../components/FinanceDashboardHeader'
 import StatusTabs from '../components/StatusTabs'
-import { mockTransactions } from '../mock'
+import { useTransactionsByStatus } from '../hooks/useTransactionByStatus'
 import type { PaymentStatus } from '../types'
+import type { Transaction } from '../types'
+
+export interface TransactionsLayoutContext {
+  status: PaymentStatus
+  rows: Transaction[]
+  total: number
+  loading: boolean
+  error: Error | null
+}
 
 const isPaymentStatus = (value: string): value is PaymentStatus => {
   return value === 'success' || value === 'failed' || value === 'pending'
@@ -20,16 +29,30 @@ export default function TransactionsLayout() {
     return isPaymentStatus(seg) ? seg : 'success'
   }, [pathname])
 
-  // Compute counts for chips (replace with API counts later if you prefer)
-  const counts = React.useMemo(() => {
-    return mockTransactions.reduce(
-      (acc, t) => {
-        acc[t.paymentStatus]++
-        return acc
-      },
-      { success: 0, failed: 0, pending: 0 } as Record<PaymentStatus, number>
-    )
-  }, [])
+  const { data, loading, error } = useTransactionsByStatus(currentTab)
+
+  const [counts, setCounts] = React.useState<Record<PaymentStatus, number>>({
+    success: 0,
+    failed: 0,
+    pending: 0,
+  })
+
+  React.useEffect(() => {
+    if (typeof data?.total !== 'number') {
+      return
+    }
+
+    setCounts((prev) => {
+      if (prev[currentTab] === data.total) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        [currentTab]: data.total,
+      }
+    })
+  }, [currentTab, data?.total])
 
   // When the tab changes, navigate to the corresponding child route
   const handleTabChange = (value: PaymentStatus) => {
@@ -51,7 +74,15 @@ export default function TransactionsLayout() {
           onChange={handleTabChange}
         />
 
-        <Outlet />
+        <Outlet
+          context={{
+            status: currentTab,
+            rows: data?.data ?? [],
+            total: data?.total ?? 0,
+            loading,
+            error,
+          } satisfies TransactionsLayoutContext}
+        />
       </Box>
     </Box >
   )

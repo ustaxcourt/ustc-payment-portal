@@ -1,6 +1,6 @@
 import type { PaymentStatus, Transaction } from '../types'
 
-type TransactionsResponse = {
+export type TransactionsResponse = {
   data: Transaction[]
   total: number
 }
@@ -11,7 +11,7 @@ const dashboardApiBaseUrl = (import.meta.env.VITE_DASHBOARD_API_BASE_URL as stri
 export async function fetchTransactionsByStatus(
   status: PaymentStatus,
   opts?: { signal?: AbortSignal }
-): Promise<Transaction[]> {
+): Promise<TransactionsResponse> {
   const { signal } = opts ?? {}
 
   const url = `${dashboardApiBaseUrl}/api/transactions/${status}`
@@ -25,5 +25,5 @@ export async function fetchTransactionsByStatus(
   }
 
   const payload = (await response.json()) as TransactionsResponse
-  return payload.data
+  return payload
 }
