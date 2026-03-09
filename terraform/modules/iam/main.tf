@@ -201,16 +201,17 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Effect = "Allow", #secrets manager
         Action = [
           "secretsmanager:CreateSecret",
+          "secretsmanager:DeleteResourcePolicy",
           "secretsmanager:DeleteSecret",
           "secretsmanager:DescribeSecret",
-          "secretsmanager:GetSecretValue",
-          "secretsmanager:PutSecretValue",
-          "secretsmanager:UpdateSecret",
           "secretsmanager:GetResourcePolicy",
+          "secretsmanager:GetSecretValue",
           "secretsmanager:PutResourcePolicy",
-          "secretsmanager:DeleteResourcePolicy",
+          "secretsmanager:PutSecretValue",
           "secretsmanager:TagResource",
-          "secretsmanager:UntagResource"
+          "secretsmanager:UntagResource",
+          "secretsmanager:UpdateSecret",
+          "secretsmanager:UpdateSecretVersionStage"
         ],
         Resource = [
           "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*",
@@ -328,6 +329,3 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
     ]
   })
 }
-
-
-
