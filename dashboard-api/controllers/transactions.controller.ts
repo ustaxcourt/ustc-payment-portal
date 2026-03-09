@@ -31,3 +31,16 @@ export const getTransactions = async (
   }
 };
 
+export const getTransactionPaymentStatus = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const totals = await TransactionModel.getAggregatedPaymentStatus();
+    res.json(totals);
+  } catch (error) {
+    next(error);
+  }
+};
+

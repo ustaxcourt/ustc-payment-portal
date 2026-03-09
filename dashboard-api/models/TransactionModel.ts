@@ -9,6 +9,8 @@ export type TransactionStatus =
 
 export type PaymentStatus = 'pending' | 'success' | 'failed';
 
+export type AggregatedPaymentStatus = Record<PaymentStatus, number>;
+
 export type PaymentMethod =
   | 'card'
   | 'ach'
@@ -44,5 +46,29 @@ export default class TransactionModel extends Model {
       .where('payment_status', paymentStatus)
       .orderBy('created_at', 'desc')
       .limit(100);
+  }
+
+  static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
+    const rows = await TransactionModel.query()
+      .select('payment_status')
+      .count('* as count')
+      .groupBy('payment_status');
+
+    const totals: AggregatedPaymentStatus = {
+      success: 0,
+      failed: 0,
+      pending: 0,
+    };
+
+    rows.forEach((row) => {
+      const paymentStatus = row.paymentStatus;
+
+      if (paymentStatus === 'success' || paymentStatus === 'failed' || paymentStatus === 'pending') {
+        const countValue = (row as unknown as { count: number | string }).count;
+        totals[paymentStatus] = Number(countValue);
+      }
+    });
+
+    return totals;
   }
 }
