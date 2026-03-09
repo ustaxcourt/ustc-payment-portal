@@ -25,6 +25,7 @@
     "dashboard:test:coverage": "npm run test:db:setup && npm run --prefix dashboard-api test:coverage",
     "web-client:test": "npm run --prefix web-client test:e2e",
     "web-client:test:coverage": "npm run --prefix web-client test:coverage",
+    "ci:install": "npm ci && npm ci --prefix web-client && npm ci --prefix dashboard-api",
     "ci:publish": "npm run build && changeset publish --provenance",
     "generate:openapi": "ts-node src/openapi/generate.ts",
     "knex": "node -r ts-node/register -r dotenv/config ./node_modules/knex/bin/cli.js",
