@@ -20,7 +20,7 @@
     "test:coverage": "npm run test -- --coverage",
     "test:integration:dev": "NODE_ENV=local DOTENV_CONFIG_PATH=.env.dev npx jest ./src/test/integration/",
     "test:integration": "npx jest ./src/test/integration/",
-    "test:db:setup": "NODE_ENV=test npm run knex -- migrate:latest && NODE_ENV=test npm run knex -- seed:run",
+    "test:db:setup": "node -r dotenv/config ./scripts/ensure-test-db.js && NODE_ENV=test npm run knex -- migrate:latest && NODE_ENV=test npm run knex -- seed:run",
     "dashboard:test": "npm run test:db:setup && npm run --prefix dashboard-api test",
     "dashboard:test:coverage": "npm run test:db:setup && npm run --prefix dashboard-api test:coverage",
     "web-client:test": "npm run --prefix web-client test:e2e",
