@@ -98,18 +98,18 @@ describe('GET /api/transactions/:paymentStatus', () => {
         .expect(200);
 
       const apiTransaction = response.body.data.find(
-        (t: any) => t.agencyTrackingId === dbTransaction.agency_tracking_id
+        (t: any) => t.agencyTrackingId === dbTransaction.agencyTrackingId
       );
 
       expect(apiTransaction).toBeDefined();
-      expect(apiTransaction.clientName).toBe(dbTransaction.client_name);
-      expect(apiTransaction.transactionReferenceId).toBe(dbTransaction.transaction_reference_id);
-      expect(apiTransaction.feeId).toBe(dbTransaction.fee_id);
-      expect(apiTransaction.feeName).toBe(dbTransaction.fee_name);
-      expect(apiTransaction.feeAmount).toBe(Number(dbTransaction.fee_amount));
-      expect(apiTransaction.paymentStatus).toBe(dbTransaction.payment_status);
-      expect(apiTransaction.lastUpdatedAt).toBe(new Date(dbTransaction.last_updated_at).toISOString());
-      expect(apiTransaction.createdAt).toBe(new Date(dbTransaction.created_at).toISOString());
+      expect(apiTransaction.clientName).toBe(dbTransaction.clientName);
+      expect(apiTransaction.transactionReferenceId).toBe(dbTransaction.transactionReferenceId);
+      expect(apiTransaction.feeId).toBe(dbTransaction.feeId);
+      expect(apiTransaction.feeName).toBe(dbTransaction.feeName);
+      expect(apiTransaction.feeAmount).toBe(Number(dbTransaction.feeAmount));
+      expect(apiTransaction.paymentStatus).toBe(dbTransaction.paymentStatus);
+      expect(apiTransaction.lastUpdatedAt).toBe(new Date(dbTransaction.lastUpdatedAt).toISOString());
+      expect(apiTransaction.createdAt).toBe(new Date(dbTransaction.createdAt).toISOString());
     }
   });
 

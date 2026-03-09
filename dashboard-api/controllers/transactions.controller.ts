@@ -1,9 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import Transaction from '../models/Transaction';
+import TransactionModel, { PaymentStatus } from '../models/TransactionModel';
 
 const allowedPaymentStatuses = ['pending', 'success', 'failed'] as const;
-
-type PaymentStatus = typeof allowedPaymentStatuses[number];
 
 export const getTransactions = async (
   req: Request,
@@ -22,17 +20,11 @@ export const getTransactions = async (
       return;
     }
 
-    const transactions = await Transaction.query()
-      .where('payment_status', paymentStatus)
-      .orderBy('created_at', 'desc')
-      .limit(100);
-
-    // Map to frontend format
-    const formattedTransactions = transactions.map(t => t.toFrontendFormat());
+    const transactions: TransactionModel[] = await TransactionModel.getByPaymentStatus(paymentStatus as PaymentStatus);
 
     res.json({
-      data: formattedTransactions,
-      total: formattedTransactions.length,
+      data: transactions,
+      total: transactions.length,
     });
   } catch (error) {
     next(error);
