@@ -35,14 +35,18 @@ Each environment uses two distinct S3 object keys for Terraform state stored in 
 - **[foundation]** Networking/IAM to be applied independently and infrequently.
 - **[app]** Application/API to be iterated and deployed frequently without risking foundation resources.
 
-From `terraform/environments/dev/locals.tf` and `terraform/environments/stg/locals.tf`:
+From the `backend.hcl` files in each environment directory:
 
 - **Dev** bucket: `ustc-payment-portal-terraform-state-dev`
   - Foundation state key: `ustc-payment-portal/dev/networking.tfstate`
-  - App state key: `ustc-payment-portal/dev/dev.tfstate`
+  - App state key: `ustc-payment-portal/dev/terraform.tfstate`
+  - PR workspace state key: `env:/pr-<N>/ustc-payment-portal/terraform.tfstate` (via `backend-pr.hcl`)
 - **Stg** bucket: `ustc-payment-portal-terraform-state-stg`
   - Foundation state key: `ustc-payment-portal/stg/networking.tfstate`
-  - App state key: `ustc-payment-portal/stg/stg.tfstate`
+  - App state key: `ustc-payment-portal/stg/terraform.tfstate`
+- **Prod** bucket: `ustc-payment-portal-terraform-state-prod`
+  - Foundation state key: `ustc-payment-portal/prod/networking.tfstate`
+  - App state key: `ustc-payment-portal/prod/terraform.tfstate`
 
 Locking is handled with S3 native locking via `use_lockfile = true` in the backend configuration. This creates `.tflock` files in S3 alongside the state files.
 
@@ -305,7 +309,7 @@ If issues arise after upgrading:
 - **Two state keys per environment**: keep foundation and app isolated to reduce blast radius and allow parallel workflows.
 - **S3 Native Locking**: Terraform 1.14+ uses `use_lockfile=true` for state locking via S3. No DynamoDB table required.
 - **Drift/plan checks**: Prefer `terraform plan` in CI with explicit backend config and upload a plan artifact for review.
-- **State permissions**: IAM for CI (`modules/iam`) is scoped to specific state object keys (see `state_object_keys` in `locals.tf`). Ensure keys match your environment naming.
+- **State permissions**: IAM for CI (`modules/iam`) grants `s3:GetObject`, `s3:PutObject`, and `s3:DeleteObject` on the entire state bucket (`/*`). `DeleteObject` on `/*` is required because PR workspace cleanup (`terraform workspace delete`) must remove state files at dynamic `env:/pr-<N>/...` paths that cannot be enumerated in advance. `state_object_keys` in `locals.tf` is used only for `terraform_remote_state` data source reads, not for IAM scoping.
 - **Local development**: After pulling this upgrade, run `terraform init -reconfigure -backend-config=backend.hcl` in each environment directory to switch to S3 locking.
 
 ---
