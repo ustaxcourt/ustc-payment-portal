@@ -2,17 +2,17 @@ import request from 'supertest';
 import app from '../app';
 import knex from '../db/knex';
 
+beforeAll(async () => {
+  // Wait for DB connection to be established
+  await knex.raw('SELECT 1');
+});
+
+afterAll(async () => {
+  // Close the database connection
+  await knex.destroy();
+});
+
 describe('GET /api/transactions/:paymentStatus', () => {
-  beforeAll(async () => {
-    // Wait for DB connection to be established
-    await knex.raw('SELECT 1');
-  });
-
-  afterAll(async () => {
-    // Close the database connection
-    await knex.destroy();
-  });
-
   it('should return transactions from the database', async () => {
     const response = await request(app)
       .get('/api/transactions/success')
@@ -119,5 +119,47 @@ describe('GET /api/transactions/:paymentStatus', () => {
       .expect(400);
 
     expect(response.body).toHaveProperty('error');
+  });
+});
+
+describe('GET /api/transaction-payment-status', () => {
+  it('should return aggregated payment status counts', async () => {
+    const response = await request(app)
+      .get('/api/transaction-payment-status')
+      .expect('Content-Type', /json/)
+      .expect(200);
+
+    expect(response.body).toHaveProperty('success');
+    expect(response.body).toHaveProperty('failed');
+    expect(response.body).toHaveProperty('pending');
+    expect(typeof response.body.success).toBe('number');
+    expect(typeof response.body.failed).toBe('number');
+    expect(typeof response.body.pending).toBe('number');
+  });
+
+  it('should match database payment_status aggregation', async () => {
+    const response = await request(app)
+      .get('/api/transaction-payment-status')
+      .expect(200);
+
+    const dbRows = await knex('transactions')
+      .select('payment_status')
+      .count('* as count')
+      .groupBy('payment_status');
+
+    const expected = {
+      success: 0,
+      failed: 0,
+      pending: 0,
+    };
+
+    dbRows.forEach((row) => {
+      const status = row.payment_status as 'success' | 'failed' | 'pending';
+      if (status === 'success' || status === 'failed' || status === 'pending') {
+        expected[status] = Number(row.count);
+      }
+    });
+
+    expect(response.body).toEqual(expected);
   });
 });
