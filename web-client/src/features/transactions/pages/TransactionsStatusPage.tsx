@@ -1,14 +1,15 @@
 import * as React from 'react'
+import { useOutletContext } from 'react-router-dom'
 import TransactionsTable from '../components/TransactionsTable'
 import type { PaymentStatus } from '../types'
-import { useTransactionsByStatus } from '../hooks/useTransactionByStatus'
+import type { TransactionsLayoutContext } from './TransactionsLayout'
 
 export default function TransactionsStatusPage({ status }: { status: PaymentStatus }): React.ReactElement {
-  const { data, loading, error } = useTransactionsByStatus(status)
+  const { rows, loading, error } = useOutletContext<TransactionsLayoutContext>()
 
   return (
     <TransactionsTable
-      rows={data ?? []}
+      rows={rows}
       loading={loading}
       status={status}
       error={error}
