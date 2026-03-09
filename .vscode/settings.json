@@ -4,15 +4,6 @@
   "editor.formatOnSave": true,
   "editor.tabSize": 2,
   "chat.tools.terminal.autoApprove": {
-    // Safe read-only commands - auto-approve
-    "/^git\\s+(status|diff|log|branch|show)\\b/": true,
-    "ls": true,
-    "cat": true,
-    "pwd": true,
-    "echo": true,
-    "cd": true,
-    "/^npm\\s+(test|run\\s+lint)\\b/": true,
-
     // Git write operations - block
     "/^git\\s+commit/": false,
     "/^git\\s+push/": false,
@@ -49,5 +40,4 @@
     "/^Remove-Item\\b/i": false,
     "/^Stop-Process\\b/i": false
   },
-  "chat.tools.global.autoApprove": false
 }
