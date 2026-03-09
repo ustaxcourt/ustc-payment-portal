@@ -92,12 +92,7 @@ jobs:
       - name: Terraform Init
         working-directory: terraform/environments/dev
         run: |
-          terraform init -input=false \
-           -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
-           -backend-config="key=ustc-payment-portal/terraform.tfstate" \
-           -backend-config="region=us-east-1" \
-           -backend-config="use_lockfile=true" \
-           -backend-config="encrypt=true"
+          terraform init -input=false -backend-config=backend-pr.hcl
 
       - name: Select/Create PR Workspace
         id: tfws
@@ -285,12 +280,7 @@ jobs:
       - name: Terraform Init (dev backend)
         working-directory: terraform/environments/dev
         run: |
-          terraform init -input=false \
-           -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
-           -backend-config="key=ustc-payment-portal/terraform.tfstate" \
-           -backend-config="region=us-east-1" \
-           -backend-config="use_lockfile=true" \
-           -backend-config="encrypt=true"
+          terraform init -input=false -backend-config=backend-pr.hcl
 
       - name: Select PR Workspace (if exists)
         id: ws
