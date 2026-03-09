@@ -41,6 +41,16 @@ export default class TransactionModel extends Model {
     return 'transactions';
   }
 
+  $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
+    const parsed = super.$parseDatabaseJson(json);
+
+    if (parsed.feeAmount !== undefined && parsed.feeAmount !== null) {
+      parsed.feeAmount = Number(parsed.feeAmount);
+    }
+
+    return parsed;
+  }
+
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
     return TransactionModel.query()
       .where('payment_status', paymentStatus)
