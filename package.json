@@ -22,6 +22,7 @@
     "test:integration": "npx jest ./src/test/integration/",
     "test:db:setup": "NODE_ENV=test npm run knex -- migrate:latest && NODE_ENV=test npm run knex -- seed:run",
     "dashboard:test": "npm run test:db:setup && npm run --prefix dashboard-api test",
+    "dashboard:test:coverage": "npm run test:db:setup && npm run --prefix dashboard-api test:coverage",
     "ci:publish": "npm run build && changeset publish --provenance",
     "generate:openapi": "ts-node src/openapi/generate.ts",
     "start:server": "ts-node src/devServer.ts",
