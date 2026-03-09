@@ -3,7 +3,9 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Box, Typography } from '@mui/material'
 import FinanceDashboardHeader from '../../../components/FinanceDashboardHeader'
 import StatusTabs from '../components/StatusTabs'
+import { useFetch } from '../../../lib/hooks/useFetch'
 import { useTransactionsByStatus } from '../hooks/useTransactionByStatus'
+import { fetchTransactionPaymentStatus } from '../api/transactions.api'
 import type { PaymentStatus } from '../types'
 import type { Transaction } from '../types'
 
@@ -30,6 +32,10 @@ export default function TransactionsLayout() {
   }, [pathname])
 
   const { data, loading, error } = useTransactionsByStatus(currentTab)
+  const { data: initialCounts } = useFetch(
+    (signal) => fetchTransactionPaymentStatus({ signal }),
+    []
+  )
 
   const [counts, setCounts] = React.useState<Record<PaymentStatus, number>>({
     success: 0,
@@ -37,6 +43,19 @@ export default function TransactionsLayout() {
     pending: 0,
   })
 
+  const hasInitializedCounts = React.useRef(false)
+
+  // Initialize the counts when the initial data is fetched
+  React.useEffect(() => {
+    if (!initialCounts || hasInitializedCounts.current) {
+      return
+    }
+
+    setCounts(initialCounts)
+    hasInitializedCounts.current = true
+  }, [initialCounts])
+
+  // Update the counts when the data changes
   React.useEffect(() => {
     if (typeof data?.total !== 'number') {
       return
