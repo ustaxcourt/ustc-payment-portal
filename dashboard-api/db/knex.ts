@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import Knex from 'knex';
-import { Model } from 'objection';
+import { Model, knexSnakeCaseMappers } from 'objection';
 import knexConfig from '../knexfile';
 
 const environment = process.env.NODE_ENV || 'development';
@@ -14,7 +14,10 @@ const connectionConfig = config.connection as any;
 console.log(`[Knex] Connecting to database: ${connectionConfig?.database || 'unknown'}`);
 console.log(`[Knex] Host: ${connectionConfig?.host || 'unknown'}:${connectionConfig?.port || 'unknown'}`);
 
-const knex = Knex(config);
+const knex = Knex({
+  ...config,
+  ...knexSnakeCaseMappers(),
+});
 
 // Test the connection
 knex.raw('SELECT 1')
