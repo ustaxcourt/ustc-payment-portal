@@ -16,6 +16,7 @@
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"**/*.ts\"",
     "test": "jest --runInBand",
+    "test:coverage": "jest --coverage --runInBand",
     "test:watch": "jest --watch --runInBand",
     "clean": "rm -rf dist"
   },
