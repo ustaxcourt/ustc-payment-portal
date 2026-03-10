@@ -4,40 +4,41 @@ import { Box, Typography } from '@mui/material'
 import FinanceDashboardHeader from '../../../components/FinanceDashboardHeader'
 import StatusTabs from '../components/StatusTabs'
 import { useFetch } from '../../../lib/hooks/useFetch'
-import { useTransactionsByStatus } from '../hooks/useTransactionByStatus'
+import { useTransactionsByTab } from '../hooks/useTransactionByStatus'
 import { fetchTransactionPaymentStatus } from '../api/transactions.api'
-import type { PaymentStatus } from '../types'
+import type { PaymentStatus, TabStatus } from '../types'
 import type { Transaction } from '../types'
 
 export interface TransactionsLayoutContext {
-  status: PaymentStatus
+  status: TabStatus
   rows: Transaction[]
   total: number
   loading: boolean
   error: Error | null
 }
 
-const isPaymentStatus = (value: string): value is PaymentStatus => {
-  return value === 'success' || value === 'failed' || value === 'pending'
+const isTabStatus = (value: string): value is TabStatus => {
+  return value === 'all' || value === 'success' || value === 'failed' || value === 'pending'
 }
 
 export default function TransactionsLayout() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
-  // Derive the current status value from the URL
-  const currentTab: PaymentStatus = React.useMemo(() => {
+  // Derive the current tab value from the URL
+  const currentTab: TabStatus = React.useMemo(() => {
     const seg = pathname.split('/').pop() || ''
-    return isPaymentStatus(seg) ? seg : 'success'
+    return isTabStatus(seg) ? seg : 'all'
   }, [pathname])
 
-  const { data, loading, error } = useTransactionsByStatus(currentTab)
+  const { data, loading, error } = useTransactionsByTab(currentTab)
   const { data: initialCounts } = useFetch(
     (signal) => fetchTransactionPaymentStatus({ signal }),
     []
   )
 
-  const [counts, setCounts] = React.useState<Record<PaymentStatus, number>>({
+  const [counts, setCounts] = React.useState<Record<TabStatus, number>>({
+    all: 0,
     success: 0,
     failed: 0,
     pending: 0,
@@ -45,17 +46,22 @@ export default function TransactionsLayout() {
 
   const hasInitializedCounts = React.useRef(false)
 
-  // Initialize the counts when the initial data is fetched
+  // Initialize the per-status counts when the initial data is fetched
   React.useEffect(() => {
     if (!initialCounts || hasInitializedCounts.current) {
       return
     }
 
-    setCounts(initialCounts)
+    setCounts((prev) => ({
+      ...prev,
+      success: initialCounts.success,
+      failed: initialCounts.failed,
+      pending: initialCounts.pending,
+    }))
     hasInitializedCounts.current = true
   }, [initialCounts])
 
-  // Update the counts when the data changes
+  // Update the count for the active tab whenever data changes
   React.useEffect(() => {
     if (typeof data?.total !== 'number') {
       return
@@ -74,7 +80,7 @@ export default function TransactionsLayout() {
   }, [currentTab, data?.total])
 
   // When the tab changes, navigate to the corresponding child route
-  const handleTabChange = (value: PaymentStatus) => {
+  const handleTabChange = (value: TabStatus) => {
     navigate(value)
   }
 

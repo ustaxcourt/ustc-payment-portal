@@ -3,6 +3,23 @@ import TransactionModel, { PaymentStatus } from '../models/TransactionModel';
 
 const allowedPaymentStatuses = ['pending', 'success', 'failed'] as const;
 
+export const getAllTransactions = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const transactions: TransactionModel[] = await TransactionModel.getAll();
+
+    res.json({
+      data: transactions,
+      total: transactions.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getTransactions = async (
   req: Request,
   res: Response,
