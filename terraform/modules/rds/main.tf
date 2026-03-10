@@ -42,7 +42,7 @@ resource "aws_db_instance" "main" {
   username = var.username
   password = var.manage_master_user_password ? null : var.password
 
-  manage_master_user_password = var.manage_master_user_password
+  manage_master_user_password = var.manage_master_user_password ? true : null
 
   db_subnet_group_name   = var.db_subnet_group_name
   vpc_security_group_ids = var.vpc_security_group_ids
@@ -53,11 +53,11 @@ resource "aws_db_instance" "main" {
   backup_retention_period = var.backup_retention_period
   multi_az                = var.multi_az
 
-  deletion_protection       = var.deletion_protection
-  skip_final_snapshot       = var.skip_final_snapshot
+  deletion_protection = var.deletion_protection
+  skip_final_snapshot = var.skip_final_snapshot
 
   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
-  final_snapshot_identifier = var.final_snapshot_identifier
+  final_snapshot_identifier       = var.final_snapshot_identifier
 
   tags = merge(var.tags, {
     Name = var.identifier
