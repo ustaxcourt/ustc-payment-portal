@@ -1,16 +1,16 @@
 import * as React from 'react'
 import { Tabs, Tab, Box } from '@mui/material'
-import type { PaymentStatus } from '../types'
+import type { TabStatus } from '../types'
 import { StatusChip } from './StatusChip'
 
 export interface StatusTabsProps {
-  value: PaymentStatus
-  counts: Record<PaymentStatus, number>
-  onChange: (value: PaymentStatus) => void
+  value: TabStatus
+  counts: Record<TabStatus, number>
+  onChange: (value: TabStatus) => void
 }
 
 export default function StatusTabs({ value, counts, onChange }: StatusTabsProps) {
-  const handleChange = (_: React.SyntheticEvent, newValue: PaymentStatus) => {
+  const handleChange = (_: React.SyntheticEvent, newValue: TabStatus) => {
     onChange(newValue)
   }
 
@@ -23,6 +23,14 @@ export default function StatusTabs({ value, counts, onChange }: StatusTabsProps)
         allowScrollButtonsMobile
         aria-label="Transaction status tabs"
       >
+        <Tab
+          value="all"
+          label={
+            <Box display="flex" alignItems="center" gap={1}>
+              All <StatusChip status="all" label={counts.all} />
+            </Box>
+          }
+        />
         <Tab
           value="success"
           label={

@@ -11,6 +11,9 @@ export type TransactionStatus =
 
 export type PaymentStatus = 'pending' | 'success' | 'failed'
 
+/** UI-level tab identifier — extends PaymentStatus with the 'all' aggregate tab. */
+export type TabStatus = PaymentStatus | 'all'
+
 /**
  * Supported payment instruments in dev.
  * Add/remove as your Payment Portal grows.

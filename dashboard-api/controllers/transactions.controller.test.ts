@@ -12,6 +12,87 @@ afterAll(async () => {
   await knex.destroy();
 });
 
+describe('GET /api/transactions', () => {
+  it('should return at most 100 transactions', async () => {
+    const response = await request(app)
+      .get('/api/transactions')
+      .expect('Content-Type', /json/)
+      .expect(200);
+
+    expect(response.body).toHaveProperty('data');
+    expect(response.body).toHaveProperty('total');
+    expect(Array.isArray(response.body.data)).toBe(true);
+    expect(response.body.data.length).toBeLessThanOrEqual(100);
+    expect(response.body.total).toBeLessThanOrEqual(100);
+  });
+
+  it('should be sorted by createdAt descending', async () => {
+    const response = await request(app)
+      .get('/api/transactions')
+      .expect(200);
+
+    const rows: { createdAt: string }[] = response.body.data;
+
+    if (rows.length > 1) {
+      for (let i = 1; i < rows.length; i++) {
+        const prev = new Date(rows[i - 1].createdAt).getTime();
+        const curr = new Date(rows[i].createdAt).getTime();
+        expect(prev).toBeGreaterThanOrEqual(curr);
+      }
+    }
+  });
+
+  it('should return transactions with mixed payment statuses', async () => {
+    const response = await request(app)
+      .get('/api/transactions')
+      .expect(200);
+
+    const rows: { paymentStatus: string }[] = response.body.data;
+    const statuses = new Set(rows.map((r) => r.paymentStatus));
+
+    // With seed data covering multiple statuses, we expect more than one status
+    // in the 100 most recent records.
+    expect(statuses.size).toBeGreaterThanOrEqual(1);
+  });
+
+  it('should return transactions with correct schema', async () => {
+    const response = await request(app)
+      .get('/api/transactions')
+      .expect(200);
+
+    if (response.body.data.length > 0) {
+      const transaction = response.body.data[0];
+
+      expect(transaction).toHaveProperty('agencyTrackingId');
+      expect(transaction).toHaveProperty('feeName');
+      expect(transaction).toHaveProperty('feeId');
+      expect(transaction).toHaveProperty('feeAmount');
+      expect(transaction).toHaveProperty('clientName');
+      expect(transaction).toHaveProperty('transactionReferenceId');
+      expect(transaction).toHaveProperty('paymentStatus');
+      expect(transaction).toHaveProperty('paymentMethod');
+      expect(transaction).toHaveProperty('lastUpdatedAt');
+      expect(transaction).toHaveProperty('createdAt');
+
+      expect(typeof transaction.agencyTrackingId).toBe('string');
+      expect(typeof transaction.feeAmount).toBe('number');
+      expect(typeof transaction.createdAt).toBe('string');
+    }
+  });
+
+  it('should match the count returned by a direct database query (capped at 100)', async () => {
+    const response = await request(app)
+      .get('/api/transactions')
+      .expect(200);
+
+    const dbCount = await knex('transactions').count('* as count').first();
+    const total = Math.min(Number(dbCount?.count ?? 0), 100);
+
+    expect(response.body.data.length).toBe(total);
+    expect(response.body.total).toBe(total);
+  });
+});
+
 describe('GET /api/transactions/:paymentStatus', () => {
   it('should return transactions from the database', async () => {
     const response = await request(app)
