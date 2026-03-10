@@ -30,6 +30,24 @@ export async function fetchTransactionsByStatus(
   return payload
 }
 
+export async function fetchAllTransactions(
+  opts?: { signal?: AbortSignal }
+): Promise<TransactionsResponse> {
+  const { signal } = opts ?? {}
+
+  const url = `${dashboardApiBaseUrl}/api/transactions`
+  const response = await fetch(url, {
+    method: 'GET',
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(`GET ${url} failed: ${response.status}`)
+  }
+
+  return (await response.json()) as TransactionsResponse
+}
+
 export async function fetchTransactionPaymentStatus(
   opts?: { signal?: AbortSignal }
 ): Promise<PaymentStatusCounts> {

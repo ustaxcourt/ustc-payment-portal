@@ -1,14 +1,19 @@
 import Chip, { type ChipProps } from '@mui/material/Chip';
 import { useTheme } from '@mui/material/styles';
-import type { PaymentStatus } from '../types';
+import type { TabStatus } from '../types';
 
 interface StatusChipProps extends Omit<ChipProps, 'color'> {
-  status: PaymentStatus;
+  status: TabStatus;
 }
 
 export function StatusChip({ status, ...props }: StatusChipProps) {
   const theme = useTheme();
-  const map = {
+  const map: Record<TabStatus, { bg: string; fg: string; bd: string }> = {
+    all: {
+      bg: '#e8eaf6',
+      fg: theme.palette.primary.main,
+      bd: theme.palette.primary.main,
+    },
     success: {
       bg: theme.palette.success?.light,
       fg: theme.palette.success?.main,
@@ -24,7 +29,8 @@ export function StatusChip({ status, ...props }: StatusChipProps) {
       fg: theme.palette.pending?.main,
       bd: theme.palette.pending?.main,
     },
-  }[status];
+  };
+  const colors = map[status];
 
   return (
     <Chip
@@ -34,8 +40,8 @@ export function StatusChip({ status, ...props }: StatusChipProps) {
         fontWeight: 700,
         fontSize: 15,
         p: 1,
-        bgcolor: map.bg,
-        color: 'map.fg',
+        bgcolor: colors.bg,
+        color: colors.fg,
         borderColor: 'transparent',
         borderWidth: 1,
         borderStyle: 'solid',
