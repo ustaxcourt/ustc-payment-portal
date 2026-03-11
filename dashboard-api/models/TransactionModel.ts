@@ -9,7 +9,7 @@ export type TransactionStatus =
 
 export type PaymentStatus = 'pending' | 'success' | 'failed';
 
-export type AggregatedPaymentStatus = Record<PaymentStatus, number>;
+export type AggregatedPaymentStatus = Record<PaymentStatus, number> & { total: number };
 
 export type PaymentMethod =
   | 'card'
@@ -74,6 +74,7 @@ export default class TransactionModel extends Model {
       success: 0,
       failed: 0,
       pending: 0,
+      total: 0,
     };
 
     rows.forEach((row) => {
@@ -84,6 +85,8 @@ export default class TransactionModel extends Model {
         totals[paymentStatus] = Number(countValue);
       }
     });
+
+    totals.total = Math.min(totals.success + totals.failed + totals.pending, 100);
 
     return totals;
   }

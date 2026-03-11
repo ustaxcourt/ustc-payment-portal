@@ -1,6 +1,6 @@
 import type { PaymentStatus, Transaction } from '../types'
 
-export type PaymentStatusCounts = Record<PaymentStatus, number>
+export type PaymentStatusCounts = Record<PaymentStatus, number> & { total: number }
 
 export type TransactionsResponse = {
   data: Transaction[]
@@ -64,9 +64,13 @@ export async function fetchTransactionPaymentStatus(
   }
 
   const payload = (await response.json()) as Partial<PaymentStatusCounts>
+  const success = payload.success ?? 0
+  const failed = payload.failed ?? 0
+  const pending = payload.pending ?? 0
   return {
-    success: payload.success ?? 0,
-    failed: payload.failed ?? 0,
-    pending: payload.pending ?? 0,
+    success,
+    failed,
+    pending,
+    total: payload.total ?? success + failed + pending,
   }
 }
