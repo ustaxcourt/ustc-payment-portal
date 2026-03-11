@@ -165,7 +165,7 @@ export default function TransactionsTable({ rows, loading, status, error }: Tran
         border: `1px solid ${theme.palette.grey[700]}`,
         borderColor: '#000',
         borderRadius: 0,
-        paddingTop: 3,
+        paddingTop: 0,
         display: 'flex',
         flexDirection: 'column',
         gap: 1.5,
@@ -175,7 +175,7 @@ export default function TransactionsTable({ rows, loading, status, error }: Tran
         <Alert
           severity="error"
           variant="outlined"
-          sx={{ mx: 1.5 }}
+          sx={{ mt: 1.5, mx: 1.5 }}
           role="alert"
           aria-live="assertive"
         >
@@ -183,7 +183,7 @@ export default function TransactionsTable({ rows, loading, status, error }: Tran
         </Alert>
       )}
 
-      <DataGrid<Transaction>
+      <DataGrid
         rows={rows}
         columns={columns}
         getRowId={(r) => r.agencyTrackingId}

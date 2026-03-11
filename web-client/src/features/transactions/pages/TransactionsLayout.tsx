@@ -6,7 +6,7 @@ import StatusTabs from '../components/StatusTabs'
 import { useFetch } from '../../../lib/hooks/useFetch'
 import { useTransactionsByTab } from '../hooks/useTransactionByStatus'
 import { fetchTransactionPaymentStatus } from '../api/transactions.api'
-import type { PaymentStatus, TabStatus } from '../types'
+import type { TabStatus } from '../types'
 import type { Transaction } from '../types'
 
 export interface TransactionsLayoutContext {
