@@ -8,10 +8,6 @@ extendZodWithOpenApi(z);
 
 export const InitPaymentRequestSchema = z
   .object({
-    appId: z.string().openapi({
-      description: "The application ID",
-      example: "DAWSON",
-    }),
     transactionReferenceId: z.uuid().openapi({
       description: "Unique UUID for the transaction reference",
       example: "550e8400-e29b-41d4-a716-446655440000",

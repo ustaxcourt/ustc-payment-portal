@@ -15,7 +15,7 @@ export const processPayment: ProcessPayment = async (
   request: ProcessPaymentRequest
 ) => {
   const req = new CompleteOnlineCollectionWithDetailsRequest({
-    tcsAppId: request.appId,
+    tcsAppId: "",
     token: request.token,
   });
   console.log("processPayment request", req);

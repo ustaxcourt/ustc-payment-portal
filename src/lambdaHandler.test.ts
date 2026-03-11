@@ -73,7 +73,6 @@ describe("lambdaHandler", () => {
     it("returns 200 with token on successful request", async () => {
       const event = {
         body: JSON.stringify({
-          tcsAppId: "test-app",
           transactionAmount: 100,
           urlCancel: "http://cancel.com",
           urlSuccess: "http://success.com",
@@ -147,7 +146,6 @@ describe("lambdaHandler", () => {
     it("returns 200 with transaction details on successful request", async () => {
       const event = {
         body: JSON.stringify({
-          appId: "test-app",
           token: "payment-token",
           feeId: "PETITION_FILING_FEE",
         }),
@@ -197,7 +195,6 @@ describe("lambdaHandler", () => {
     it("returns 200 without feeId in path params — IAM registration check is sufficient", async () => {
       const event = {
         pathParameters: {
-          appId: "test-app",
           payGovTrackingId: "tracking-123",
         },
         headers: mockHeaders,
@@ -238,7 +235,7 @@ describe("lambdaHandler", () => {
 
     it("returns 403 when IAM principal is missing", async () => {
       const event = {
-        pathParameters: { appId: "test", payGovTrackingId: "123" },
+        pathParameters: { payGovTrackingId: "123" },
         headers: mockHeaders,
         requestContext: {
           ...mockRequestContext,

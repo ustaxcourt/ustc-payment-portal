@@ -6,14 +6,23 @@ import {
 import { InitPaymentRequest } from "../types/InitPaymentRequest";
 import { InitPaymentResponse } from "../types/InitPaymentResponse";
 
+// Maps client-facing feeId to the Pay.gov TCS application ID.
+// Values must match the TCS application IDs configured in Pay.gov exactly.
+const feeToTcsAppId: Record<string, string> = {
+  PETITION_FILING_FEE: "TCSUSTAXCOURTPETITION",
+  NONATTORNEY_EXAM_REGISTRATION_FEE: "TCSUSTAXCOURTANAEF",
+};
+
 export type InitPayment = (
   appContext: AppContext,
   request: InitPaymentRequest
 ) => Promise<InitPaymentResponse>;
 
 export const initPayment: InitPayment = async (appContext, request) => {
+  const tcsAppId = feeToTcsAppId[request.feeId];
+
   const rawRequest = {
-    tcsAppId: request.appId,
+    tcsAppId,
     transactionAmount: request.amount,
     urlCancel: request.urlCancel,
     urlSuccess: request.urlSuccess,
@@ -32,6 +41,6 @@ export const initPayment: InitPayment = async (appContext, request) => {
 
   return {
     token: result.token,
-    paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${request.appId}`,
+    paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${tcsAppId}`,
   };
 };

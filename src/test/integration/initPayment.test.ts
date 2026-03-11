@@ -1,15 +1,8 @@
-import { getSecretString } from "../../clients/secretsClient";
 import { signedFetch } from "./sigv4Helper";
 
 describe("initialize a payment", () => {
   it("makes a request to the local payment portal", async () => {
-    let appId;
     const isLocal = process.env.NODE_ENV === "local";
-    if (isLocal) {
-      appId = process.env.TCS_APP_ID;
-    } else {
-      appId = await getSecretString(process.env.TCS_APP_ID as string);
-    }
 
     const url = `${process.env.BASE_URL}/init`;
     const options: RequestInit = {
@@ -17,7 +10,6 @@ describe("initialize a payment", () => {
       body: JSON.stringify({
         trackingId: "my-tracking-id",
         amount: "10.00",
-        appId,
         feeId: "PETITION_FILING_FEE",
         urlSuccess: "https://example.com",
         urlCancel: "https://example.com",
