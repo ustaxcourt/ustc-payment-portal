@@ -41,8 +41,8 @@ variable "create_deployer_role" {
 }
 
 variable "aws_region" {
-  type        = string
-  default     = "us-east-1"
+  type    = string
+  default = "us-east-1"
 }
 variable "project_name" {
   description = "Project name used for tagging and names"
@@ -95,12 +95,6 @@ variable "github_repo" {
 variable "state_bucket_name" {
   type        = string
   description = "Terraform backend S3 bucket (required if create_deployer_role=true)"
-  default     = ""
-}
-
-variable "state_lock_table_name" {
-  type        = string
-  description = "Terraform DynamoDB lock table (required if create_deployer_role=true)"
   default     = ""
 }
 
