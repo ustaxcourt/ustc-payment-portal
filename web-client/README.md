@@ -1,34 +1,40 @@
 # Payment Portal Web Client
 
-React + TypeScript + Vite application for the transaction dashboard UI.
+React + TypeScript + Vite application for viewing transactions by status.
 
-## What This App Does
+## Quick Reference
 
-- Routes users to transaction status views:
-  - `/transactions/success`
-  - `/transactions/failed`
-  - `/transactions/pending`
-- Displays transaction rows in MUI DataGrid.
-- Reads aggregated tab counts and per-status transaction lists from `dashboard-api`.
+- **Language**: TypeScript
+- **Framework**: React 18 + Router v7
+- **Build Tool**: Vite
+- **UI Library**: MUI DataGrid
+- **Port**: `5173`
+- **Node**: `>=24.12.0 <25.0.0`
 
-The UI is read-only in the local dashboard flow.
+## Overview
 
-## API Endpoints Used
+The web client provides a dashboard for viewing transactions organized by status:
 
-The app calls these API endpoints:
+- `/transactions/success` – Successful transactions
+- `/transactions/failed` – Failed transactions
+- `/transactions/pending` – Pending transactions
+- `/transactions/all` – All transactions
 
-- `GET /api/transactions/:status`
-- `GET /api/transaction-payment-status`
+The UI is **read-only** and displays transactions from the Dashboard API.
 
-`status` values are `success`, `failed`, or `pending`.
+## Running the Client
 
-The base URL comes from:
+### With Docker Compose (recommended)
 
-- `VITE_DASHBOARD_API_BASE_URL`
+See [DASHBOARD_README.md](../DASHBOARD_README.md) for full stack setup:
 
-If unset, the app defaults to `http://localhost:3001`.
+```bash
+docker compose up
+```
 
-## Install and Run
+Access at: http://localhost:5173
+
+### Standalone Development
 
 From `web-client/`:
 
@@ -37,31 +43,132 @@ npm ci
 npm run dev
 ```
 
-Default local URL:
+**Prerequisites**:
+- Dashboard API running on `localhost:3001` (or set `VITE_DASHBOARD_API_BASE_URL`)
+- Database initialized with seed data
 
-- `http://localhost:5173`
+---
 
-For full stack (recommended), run from repository root:
+## Features
 
-```bash
-docker compose up
+### Transaction Views
+
+The app renders transaction data in tabs and a Material-UI DataGrid:
+
+- **All Tab**: Shows count of all transactions
+- **Status Tabs**: Success, Failed, Pending – each with transaction count and detailed list
+- **DataGrid**: Displays transaction rows with columns for status, payment method, tracking ID, etc.
+
+### API Integration
+
+The client calls these endpoints on the Dashboard API:
+
+#### `GET /api/transactions/:status`
+
+Fetch transactions by status.
+
+**Path Parameters**:
+- `:status` – One of: `success`, `failed`, `pending`
+
+**Response**:
+```json
+{
+  "data": [...],
+  "total": 0
+}
 ```
 
-## Scripts
+#### `GET /api/transaction-payment-status`
 
-- `npm run dev`: start Vite dev server
-- `npm run build`: type-check and build production assets
-- `npm run preview`: preview build output
-- `npm run preview:test`: preview on `127.0.0.1:4173` for Cypress
-- `npm run cypress:open`: open Cypress UI
-- `npm run cypress:run`: run Cypress headless
-- `npm run test:e2e`: build, preview, then run Cypress suite
+Fetch aggregate status counts.
 
-From repository root, equivalent command:
+**Response**:
+```json
+{
+  "success": 67,
+  "failed": 67,
+  "pending": 66
+}
+```
+
+---
+
+## Environment Configuration
+
+### Build-Time via Vite
+
+```env
+VITE_DASHBOARD_API_BASE_URL=http://localhost:3001
+```
+
+If not set, defaults to `http://localhost:3001`.
+
+### Docker Compose
+
+The `docker-compose.yml` automatically sets:
+
+```env
+VITE_DASHBOARD_API_BASE_URL=http://localhost:DASHBOARD_API_PORT (default 3001)
+```
+
+Database port note for local stack users:
+
+- Host tools like PgAdmin should use PostgreSQL on `localhost:5433`
+- Containers connect to PostgreSQL on `postgres:5432`
+- If connecting to Postgres directly (outside Docker), use `5432`
+
+---
+
+## Testing
+
+### E2E Tests with Cypress
+
+From `web-client/`:
 
 ```bash
-npm run web-client:test
+npm run test:e2e          # Run Cypress tests
+npm run test:coverage     # Run with coverage report
 ```
+
+Or from repository root:
+
+```bash
+npm run web-client:test           # E2E tests
+npm run web-client:test:coverage  # E2E with coverage
+```
+
+---
+
+## Available Scripts
+
+From `web-client/`:
+
+```bash
+npm run dev              # Start dev server (hot reload)
+npm run build            # Build for production
+npm run preview          # Preview production build
+npm run test:e2e         # Run Cypress e2e tests
+npm run test:coverage    # Run tests with coverage report
+npm run lint             # Run ESLint
+npm run format           # Format code with Prettier
+```
+
+---
+
+## Development Notes
+
+- **Case Handling**: Routes are lowercase (`/transactions/success`), but internally converted to uppercase (`SUCCESS`) for API queries and type matching
+- **Navigation**: Uses React Router v7 for client-side routing
+- **Styling**: Material-UI components for consistent design
+- **Hot Reload**: Vite provides instant feedback during development
+
+---
+
+## See Also
+
+- [DASHBOARD_README.md](../DASHBOARD_README.md) – Complete stack setup and testing guide
+- [Dashboard API README](../dashboard-api/README.md) – API endpoints and configuration
+- [Database README](../db/README.md) – Migrations and seeds
 
 ## Test Coverage Notes
 

@@ -1,126 +1,156 @@
-# Transaction Dashboard API
+# Dashboard API
 
-Express API used by the transaction dashboard web client.
+Express API serving transaction data to the web client.
 
-## Runtime and Dependencies
+## Quick Reference
 
-- Node.js `>=18.0.0`
-- Express 5
-- PostgreSQL (`pg`)
-- Knex + Objection
+- **Language**: TypeScript
+- **Framework**: Express 5
+- **ORM**: Objection.js + Knex
+- **Database**: PostgreSQL 14
+- **Port**: `3001`
+- **Node**: `>=18.0.0`
 
-## How It Runs Locally
+## Running the API
 
-Two common ways to run this API:
+### With Docker Compose (recommended)
 
-1. Docker Compose (recommended for full stack)
-- Service name: `dashboard-api`
-- Default host port: `3001`
-- Health endpoint: `GET /health`
+See [DASHBOARD_README.md](../DASHBOARD_README.md) for full stack setup:
 
-2. Directly from `dashboard-api/`
+```bash
+docker compose up
+```
+
+### Standalone Development
+
+From `dashboard-api/`:
 
 ```bash
 npm ci
 npm run dev
 ```
 
-When running directly, ensure Postgres is available and root migrations/seeds have been applied.
+**Prerequisites**:
+- PostgreSQL running on `localhost:5433` when using Docker Compose (host access)
+- Use `postgres:5432` when connecting from inside Docker containers
+- Root migrations applied: `npm run migrate:latest` (from repo root)
+- Seeds populated: `npm run seed:run` (from repo root)
 
 ## Environment Variables
 
-The API reads these values:
-
 ```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=user
-DB_PASSWORD=password
-DB_NAME=mydb
-API_PORT=3001
-NODE_ENV=development
+DB_HOST=localhost        # Default: localhost
+DB_PORT=5433            # Default for host access with Docker Compose Postgres
+DB_USER=user            # Default: user
+DB_PASSWORD=password    # Default: password
+DB_NAME=mydb            # Default: mydb
+NODE_ENV=development    # development | test | production
 ```
 
-For Docker Compose, `DB_HOST` is set to `postgres` in the container environment.
+Port guidance:
 
-## Endpoints
+- Host tools (PgAdmin, psql on your machine) with Docker Compose: `localhost:5433`
+- Container-to-container (`dashboard-api` -> `postgres`): `postgres:5432`
+
+## API Endpoints
 
 ### `GET /health`
 
-Returns:
+Health check endpoint.
 
+**Response**:
 ```json
 { "status": "ok" }
 ```
 
-### `GET /api/transactions/:paymentStatus`
+### `GET /api/transactions/:status`
 
-Valid `paymentStatus` values:
+Fetch transactions by status.
 
-- `pending`
-- `success`
-- `failed`
+**Path Parameters**:
+- `:status` – One of: `success`, `failed`, `pending` (lowercase)
 
-Success response shape:
-
+**Success Response**:
 ```json
 {
-  "data": [],
+  "data": [
+    {
+      "id": "uuid",
+      "payment_status": "SUCCESS",
+      "payment_method": "PLASTIC_CARD",
+      "paygov_tracking_id": "optional",
+      "paygov_token": "optional",
+      "metadata": {}
+    }
+  ],
   "total": 0
 }
 ```
 
-Invalid status response:
-
+**Error Response** (invalid status):
 ```json
 {
   "error": {
-    "message": "Invalid paymentStatus. Expected one of: pending, success, failed"
+    "message": "Invalid paymentStatus. Expected one of: success, failed, pending"
   }
 }
 ```
 
 ### `GET /api/transaction-payment-status`
 
-Returns aggregated totals:
+Fetch aggregate status counts.
 
+**Response**:
 ```json
 {
-  "success": 0,
-  "failed": 0,
-  "pending": 0
+  "success": 67,
+  "failed": 67,
+  "pending": 66
 }
 ```
 
-## Data Source and Initialization
+---
 
-The API reads from the root `transactions` table created by:
+## Testing
 
-- Migration: `db/migrations/20260305195503_init_db.ts`
-- Seed: `db/seeds/01_transactions.ts`
-
-In Compose, this is handled by `db-init` before the API starts.
-
-## Useful Commands
-
-From repository root:
+From `dashboard-api/`:
 
 ```bash
-docker compose up
-curl http://localhost:3001/health
-curl http://localhost:3001/api/transactions/success
-curl http://localhost:3001/api/transaction-payment-status
+npm run test              # Run tests
+npm run test:coverage     # Run with coverage report
+npm run test:watch       # Watch mode
 ```
 
-From `dashboard-api/` directory:
+Or from repository root:
 
 ```bash
-npm run test
-npm run test:coverage
-npm run lint
+npm run dashboard:test           # Tests with DB setup/teardown
+npm run dashboard:test:coverage  # Coverage with DB setup/teardown
 ```
 
-## Notes
+---
 
-- CORS is enabled for local development (`Access-Control-Allow-Origin: *`).
-- Error middleware returns `{ error: { message } }` with status 500 for unexpected failures.
+## Data Initialization
+
+The API reads from the `transactions` table created by:
+
+- **Migration**: `db/migrations/20260305195503_init_db.ts`
+- **Seed**: `db/seeds/01_transactions.ts`
+
+When using Docker Compose, the `db-init` service handles this before the API starts.
+
+---
+
+## Development Notes
+
+- **CORS**: Enabled for local development (`Access-Control-Allow-Origin: *`)
+- **Errors**: Middleware returns `{ error: { message } }` with appropriate HTTP status
+- **Case Conversion**: Accepts lowercase path parameters and converts them to uppercase for database queries
+
+---
+
+## See Also
+
+- [DASHBOARD_README.md](../DASHBOARD_README.md) – Complete stack setup and testing guide
+- [Database README](../db/README.md) – Migrations and seeds
+- [Web Client README](../web-client/README.md)

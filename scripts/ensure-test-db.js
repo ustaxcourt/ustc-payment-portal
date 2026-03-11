@@ -1,7 +1,7 @@
 const { Client } = require('pg')
 
 const DB_HOST = process.env.DB_HOST || 'localhost'
-const DB_PORT = Number(process.env.DB_PORT || '5432')
+const DB_PORT = Number(process.env.DB_PORT || '5433')
 const DB_USER = process.env.DB_USER || 'user'
 const DB_PASSWORD = process.env.DB_PASSWORD || 'password'
 const BASE_DB_NAME = process.env.DB_NAME || 'mydb'

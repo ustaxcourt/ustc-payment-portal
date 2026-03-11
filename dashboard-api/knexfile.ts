@@ -3,7 +3,7 @@ import type { Knex } from 'knex';
 
 const {
   DB_HOST = 'localhost',
-  DB_PORT = '5432',
+  DB_PORT = '5433',
   DB_USER = 'user',
   DB_PASSWORD = 'password',
   DB_NAME = 'mydb',

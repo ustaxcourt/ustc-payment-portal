@@ -1,125 +1,113 @@
 # Database Migrations and Seeds
 
-This folder contains the migration and seed files used by the root Knex configuration (`knexfile.ts`).
+Knex.js migrations and seeds for the transaction dashboard database.
 
-## Current Schema and Seed Files
+## Files
 
-- Migration: `db/migrations/20260305195503_init_db.ts`
-- Seed: `db/seeds/01_transactions.ts`
+- **Migration**: `db/migrations/20260305195503_init_db.ts`
+  - Creates `transactions` table with columns for payment status, method, tracking IDs, etc.
+  - Defines CHECK constraints for valid enum values (uppercase)
 
-The migration creates the `transactions` table, constraints, and indexes.
-The seed deletes existing rows and inserts 200 generated transaction records.
+- **Seed**: `db/seeds/01_transactions.ts`
+  - Truncates existing transactions
+  - Generates and inserts 200 sample transaction records
+  - Distributes statuses evenly across `PENDING`, `SUCCESS`, `FAILED`
 
-## Connection Configuration
+## Controller Scripts
 
-Root `knexfile.ts` uses these defaults when env vars are not set:
+Root `knexfile.ts` defines the database connection and environment-specific databases:
+
+- **Development**: `mydb` (default)
+- **Test**: `mydb_test` (default)
+- **Production**: `DATABASE_URL` or env-based connection
+
+Connection defaults (override via env vars):
 
 ```env
 DB_HOST=localhost
-DB_PORT=5432
+DB_PORT=5433
 DB_USER=user
 DB_PASSWORD=password
 DB_NAME=mydb
 ```
 
-Environment-specific database selection:
+Port guidance for local stack:
 
-- `development`: `DB_NAME` (default `mydb`)
-- `test`: `${DB_NAME}_test` (default `mydb_test`)
-- `production`: `DATABASE_URL` if provided, else the same env-based connection object
+- Host access (PgAdmin, psql from macOS): `localhost:5433`
+- Docker internal access (service-to-service): `postgres:5432`
+- If you connect directly to a non-Docker Postgres instance, use `5432`
 
-## Root Scripts
+## Running Migrations and Seeds
 
 From repository root:
 
 ```bash
-npm run migrate:latest
-npm run migrate:rollback
-npm run migrate:list
-npm run seed:run
+npm run migrate:latest    # Apply all pending migrations
+npm run migrate:rollback  # Rollback last batch
+npm run migrate:list      # Show migration history
+npm run migrate:status    # Show pending vs applied
+npm run seed:run          # Run all seeds
 ```
 
-Knex CLI wrapper script:
+Advanced Knex CLI:
 
 ```bash
-npm run knex -- <knex-command>
+npm run knex -- <command>
+npm run knex -- migrate:make <name>
+npm run knex -- seed:make <name>
 ```
 
 ## Docker Compose Behavior
 
-`docker compose up` includes a one-shot `db-init` service that runs:
+When you run `docker compose up`:
+
+1. PostgreSQL starts and becomes healthy
+2. `db-init` service (one-shot) runs:
+   - `npm run migrate:latest` – Applies ALL migrations
+   - `npm run seed:run` – Populates with seed data
+3. Dashboard API depends on `db-init` completion
+4. Web Client depends on Dashboard API being healthy
+
+This ensures the schema and data exist before services access the database.
+
+In Compose, PostgreSQL is published as `5433:5432` (host:container).
+
+## With Test Database
+
+For testing, use `NODE_ENV=test`:
 
 ```bash
-npm ci && npm run migrate:latest && npm run seed:run
+npm run test:db:setup     # Create test DB, migrate, seed
+npm run test:db:teardown  # Rollback all migrations
 ```
 
-Inside Compose, `db-init` uses:
-
-- `DB_HOST=postgres`
-- `DB_PORT=5432`
-- `DB_USER=user`
-- `DB_PASSWORD=password`
-- `DB_NAME=mydb`
-
-This initializes schema and seed data before `dashboard-api` starts.
-
-## Test Database Setup
-
-Dashboard API test scripts use root `test:db:setup`, which now ensures the test DB exists before migrations:
+Or use the convenience scripts:
 
 ```bash
-npm run test:db:setup
+npm run dashboard:test:coverage   # Dashboard API tests with setup/teardown
+npm run web-client:test:coverage  # Web client tests with setup/teardown
 ```
 
-Behavior:
+## Schema Overview
 
-1. Runs `scripts/ensure-test-db.js` to create `${DB_NAME}_test` if missing.
-2. Runs test migrations (`NODE_ENV=test npm run knex -- migrate:latest`).
-3. Runs test seed (`NODE_ENV=test npm run knex -- seed:run`).
+The `transactions` table includes:
 
-This setup is used by:
+| Column | Type | Constraint |
+|--------|------|-----------|
+| `id` | UUID | PRIMARY KEY |
+| `payment_status` | VARCHAR | CHECK IN ('PENDING', 'SUCCESS', 'FAILED') |
+| `transaction_status` | VARCHAR | CHECK IN (uppercase values) |
+| `payment_method` | VARCHAR | CHECK IN ('PLASTIC_CARD', 'ACH', 'PAYPAL') |
+| `paygov_tracking_id` | VARCHAR | Optional |
+| `paygov_token` | VARCHAR | Optional |
+| `metadata` | JSONB | Optional |
+| `created_at` | TIMESTAMP | Default: now |
+| `updated_at` | TIMESTAMP | Default: now |
 
-- `npm run dashboard:test`
-- `npm run dashboard:test:coverage`
+---
 
-## Typical Local Workflow
+## See Also
 
-1. Start stack:
-
-```bash
-docker compose up
-```
-
-2. Verify API has data:
-
-```bash
-curl http://localhost:3001/api/transactions/success
-```
-
-3. For test runs that require test DB setup:
-
-```bash
-npm run dashboard:test:coverage
-```
-
-## Troubleshooting
-
-`database "mydb_test" does not exist`
-
-- Run `npm run test:db:setup` (it creates the test DB automatically).
-
-`relation "transactions" does not exist`
-
-- Check `db-init` logs and ensure migrations completed.
-
-```bash
-docker compose logs db-init
-```
-
-`ECONNREFUSED 127.0.0.1:5432`
-
-- Start Postgres via Compose:
-
-```bash
-docker compose up
-```
+- [DASHBOARD_README.md](../DASHBOARD_README.md) – Complete stack setup and testing
+- [Dashboard API README](../dashboard-api/README.md)
+- [Web Client README](../web-client/README.md)
