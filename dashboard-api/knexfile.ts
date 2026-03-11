@@ -7,7 +7,6 @@ const {
   DB_USER = 'user',
   DB_PASSWORD = 'password',
   DB_NAME = 'mydb',
-  NODE_ENV = 'development',
 } = process.env;
 
 const common: Knex.Config = {

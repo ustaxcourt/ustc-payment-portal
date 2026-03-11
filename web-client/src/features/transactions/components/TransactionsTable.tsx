@@ -24,13 +24,13 @@ const toDateOrNull = (v: unknown): Date | null => {
 };
 
 // Day/time formatting in ONE LINE (cleaner for DataGrid)
-export const fmtDateTime = (v: unknown): string => {
+const fmtDateTime = (v: unknown): string => {
   if (!(v instanceof Date)) return '—';
   return dayjs(v).format('YYYY-MM-DD HH:mm:ss');
 };
 
 // Metadata bullet formatting
-export const fmtMetadata = (metadata: Record<string, string> | null | undefined): string => {
+const fmtMetadata = (metadata: Record<string, string> | null | undefined): string => {
   if (!metadata) return '—';
   return Object.entries(metadata)
     .map(([k, v]) => `• ${k}: ${v}`)

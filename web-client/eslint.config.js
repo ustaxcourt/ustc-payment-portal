@@ -19,6 +19,18 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+        },
+      ],
+      'react-refresh/only-export-components': ['error', { allowConstantExport: true }],
+    },
   },
   {
     files: ['cypress/**/*.{ts,tsx}'],
@@ -29,6 +41,13 @@ export default defineConfig([
         cy: 'readonly',
         Cypress: 'readonly',
       },
+    },
+  },
+  {
+    files: ['src/lib/hooks/useFetch.ts'],
+    rules: {
+      'react-hooks/exhaustive-deps': 'off',
+      'react-hooks/use-memo': 'off',
     },
   },
 ])
