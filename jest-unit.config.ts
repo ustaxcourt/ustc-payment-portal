@@ -3,7 +3,13 @@ import type { Config } from "jest";
 const config: Config = {
   preset: "ts-jest",
   testEnvironment: "node",
-  testPathIgnorePatterns: ["/node_modules/", "/test/integration/", "/dist/"],
+  testPathIgnorePatterns: [
+    "/node_modules/",
+    "/test/integration/",
+    "/dist/",
+    "/dashboard-api/",
+    "/web-client/",
+  ],
 };
 
 export default config;

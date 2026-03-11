@@ -85,6 +85,7 @@ Fetch aggregate status counts.
 **Response**:
 ```json
 {
+  "total": 100,
   "success": 67,
   "failed": 67,
   "pending": 66
