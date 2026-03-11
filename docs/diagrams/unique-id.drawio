@@ -7,7 +7,7 @@
                 <mxCell id="14" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="2" target="8" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="2" value="AppId(Dawson)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+                <mxCell id="2" value="IAM Role ARN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
                     <mxGeometry x="180" y="160" width="130" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="15" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="5" target="8" edge="1">
@@ -91,7 +91,7 @@
                 <mxCell id="32" value="&lt;b&gt;NOTE: 1 CLIENT FEE -&amp;gt; 1 TRANSACTION CAN HAVE N PAYMENT ATTEMPTS UNTIL CANCEL OR SUCCESS&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="260" y="650" width="490" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="auth-note" value="&lt;b&gt;Authorization:&lt;/b&gt; Before processing a transaction, the App must be authorized for the fee for the specified token. Query client permissions, validate appId and feeId in AllowedFees. See: docs/architecture/authentication-authorization-flow.drawio" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;fontStyle=0;" parent="1" vertex="1">
+                <mxCell id="auth-note" value="&lt;b&gt;Authorization:&lt;/b&gt; Before processing a transaction, the App must be authorized for the fee for the specified token. Query client permissions, validate IAM role ARN and feeId in AllowedFees. See: docs/architecture/authentication-authorization-flow.drawio" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;fontStyle=0;" parent="1" vertex="1">
                     <mxGeometry x="390" y="560" width="350" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="33" value="Metadata String?&lt;div&gt;{&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;&quot;docketNumber&quot;: &quot;123456&quot;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;....more keyValue pairs depending on fee&lt;br&gt;&lt;/div&gt;&lt;div&gt;}&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;" parent="1" vertex="1">
@@ -118,7 +118,7 @@
                 <mxCell id="40" value="Metadata is a flexible JSON key/value structure that provides context about what the payment is for. Its shape varies by fee Id and is validated only against the expected keys for that fee Id." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-80" y="10" width="200" height="110" as="geometry"/>
                 </mxCell>
-                <UserObject label="{&#xa;  &quot;appId&quot;: &quot;DAWSON&quot;,&#xa;  &quot;transactionReferenceId&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,&#xa;  &quot;urlSuccess&quot;: &quot;https://client.app/success&quot;,&#xa;  &quot;urlCancel&quot;: &quot;https://client.app/cancel&quot;,&#xa;  &quot;metadata&quot;: {&#xa;    &quot;docketNumber&quot;: &quot;123456&quot;,&#xa;    &quot;petitionNumber&quot;: &quot;PET-7890&quot;&#xa;  }&#xa;}" link="{&#xa;  &quot;appId&quot;: &quot;DAWSON&quot;,&#xa;  &quot;transactionUUID&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,&#xa;  &quot;urlSuccess&quot;: &quot;https://client.app/success&quot;,&#xa;  &quot;urlCancel&quot;: &quot;https://client.app/cancel&quot;,&#xa;  &quot;metadata&quot;: {&#xa;    &quot;docketNumber&quot;: &quot;123456&quot;,&#xa;    &quot;petitionNumber&quot;: &quot;PET-7890&quot;&#xa;  }&#xa;}" id="42">
+                <UserObject label="{&#xa;  &quot;transactionReferenceId&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,&#xa;  &quot;urlSuccess&quot;: &quot;https://client.app/success&quot;,&#xa;  &quot;urlCancel&quot;: &quot;https://client.app/cancel&quot;,&#xa;  &quot;metadata&quot;: {&#xa;    &quot;docketNumber&quot;: &quot;123456&quot;,&#xa;    &quot;petitionNumber&quot;: &quot;PET-7890&quot;&#xa;  }&#xa;}" link="{&#xa;  &quot;transactionUUID&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,&#xa;  &quot;urlSuccess&quot;: &quot;https://client.app/success&quot;,&#xa;  &quot;urlCancel&quot;: &quot;https://client.app/cancel&quot;,&#xa;  &quot;metadata&quot;: {&#xa;    &quot;docketNumber&quot;: &quot;123456&quot;,&#xa;    &quot;petitionNumber&quot;: &quot;PET-7890&quot;&#xa;  }&#xa;}" id="42">
                     <mxCell style="text;whiteSpace=wrap;" parent="1" vertex="1">
                         <mxGeometry x="500" y="-150" width="450" height="170" as="geometry"/>
                     </mxCell>

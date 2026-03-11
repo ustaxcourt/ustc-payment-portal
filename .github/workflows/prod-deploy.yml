@@ -169,13 +169,11 @@ jobs:
       #     trap 'echo "Smoke test FAILED"; [ -f init.json ] && { echo "--- init.json ---"; cat init.json; echo "-----------------"; } || true' ERR
       #     echo "Running smoke test against: $API_URL"
 
-      #     # Fetch TCS app ID from Secrets Manager
-      #     APP_ID=$(aws secretsmanager get-secret-value --secret-id "$TCS_APP_ID_SECRET_ID" --query SecretString --output text)
       #     AMOUNT="6.00"
       #     TRACKING="prod-smoke-$(date +%s)"
 
-      #     echo "Using APP_ID=$APP_ID AMOUNT=$AMOUNT TRACKING_ID=$TRACKING"
-      #     printf '{"trackingId":"%s","amount":"%s","appId":"%s","feeId":"PETITION_FILING_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com"}' "$TRACKING" "$AMOUNT" "$APP_ID" > body.json
+      #     echo "Using AMOUNT=$AMOUNT TRACKING_ID=$TRACKING"
+      #     printf '{"trackingId":"%s","amount":"%s","feeId":"PETITION_FILING_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com"}' "$TRACKING" "$AMOUNT" > body.json
 
       #     # POST to /init — signed with AWS SigV4 (IAM auth replaced the old Bearer token)
       #     INIT_STATUS=$(curl -s -o init.json -w '%{http_code}' -X POST "$API_URL/init" \

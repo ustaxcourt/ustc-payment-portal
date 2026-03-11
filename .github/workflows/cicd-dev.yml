@@ -252,7 +252,6 @@ jobs:
           NODE_ENV: test
           TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
           BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
-          TCS_APP_ID: ${{ steps.tf_outputs.outputs.tcs_app_id_secret_id }}
         run: |
           npm ci
           echo "Running integration tests against: $BASE_URL"
