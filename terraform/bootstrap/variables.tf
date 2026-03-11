@@ -10,10 +10,5 @@ variable "state_bucket_name" {
   default     = "ustc-payment-portal-terraform-state-dev"
 }
 
-variable "lock_table_name" {
-  description = "Name of the DynamoDB table for Terraform state locking"
-  type        = string
-  default     = "ustc-payment-portal-terraform-locks-dev"
-}
 
 

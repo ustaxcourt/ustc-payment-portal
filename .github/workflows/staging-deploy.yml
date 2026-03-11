@@ -182,10 +182,10 @@ jobs:
       #     echo "testCert=$(get_hash '${{ steps.artifacts.outputs.testCert }}')" >> $GITHUB_OUTPUT
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_wrapper: false
-          terraform_version: ${{ vars.TERRAFORM_VERSION || '1.7.5' }}
+          terraform_version: "1.14.6"
 
       - name: Terraform Init (staging)
         working-directory: terraform/environments/stg

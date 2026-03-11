@@ -2,5 +2,42 @@
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
   "editor.formatOnSave": true,
-  "editor.tabSize": 2
+  "editor.tabSize": 2,
+  "chat.tools.terminal.autoApprove": {
+    // Git write operations - block
+    "/^git\\s+commit/": false,
+    "/^git\\s+push/": false,
+    "/^git\\s+reset/": false,
+    "/^git\\s+clean/": false,
+    "/^git\\s+revert/": false,
+    "/^git\\s+merge/": false,
+    "/^git\\s+rebase/": false,
+    "/^git\\s+cherry-pick/": false,
+    "/^git\\s+tag/": false,
+    "/^git\\s+stash/": false,
+
+    // Destructive file operations - block
+    "rm": false,
+    "rmdir": false,
+    "del": false,
+    "/^rm\\s+-rf/": false,
+
+    // System/permission changes - block
+    "sudo": false,
+    "chmod": false,
+    "chown": false,
+    "kill": false,
+    "killall": false,
+
+    // Network operations - block
+    "curl": false,
+    "wget": false,
+
+    // Dangerous execution - block
+    "eval": false,
+
+    // PowerShell equivalents - block
+    "/^Remove-Item\\b/i": false,
+    "/^Stop-Process\\b/i": false
+  },
 }

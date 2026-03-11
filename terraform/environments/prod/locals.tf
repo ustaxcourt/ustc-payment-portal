@@ -23,7 +23,6 @@ locals {
   github_org               = "ustaxcourt"
   github_repo              = "ustc-payment-portal"
   state_bucket_name        = "ustc-payment-portal-terraform-state-prod"
-  state_lock_table_name    = "ustc-payment-portal-terraform-locks-prod"
   state_object_keys = [
     "ustc-payment-portal/prod/*"
   ]

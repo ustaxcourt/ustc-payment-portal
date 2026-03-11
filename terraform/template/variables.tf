@@ -1,18 +1,18 @@
 variable "aws_region" {
-    description = "AWS region for resources"
-    type        = string 
-    default     = "us-east-1"
+  description = "AWS region for resources"
+  type        = string
+  default     = "us-east-1"
 }
 
 variable "environment" {
-    description = "Environment name"
-    type        = string
-    
+  description = "Environment name"
+  type        = string
+
 }
 
 variable "project_name" {
-    description = "Name of the project"
-    type        = string
+  description = "Name of the project"
+  type        = string
 }
 
 variable "custom_domain" {
@@ -110,9 +110,5 @@ variable "tf_state_bucket_name" {
   type        = string
 }
 
-variable "tf_lock_table_name" {
-  description = "Name of the DynamoDB table used for Terraform state locking for this environment"
-  type        = string
-}
 
 

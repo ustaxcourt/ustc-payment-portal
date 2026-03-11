@@ -3,11 +3,10 @@ data "aws_caller_identity" "current" {}
 data "terraform_remote_state" "foundation" {
   backend = "s3"
   config = {
-    bucket         = "ustc-payment-portal-terraform-state-dev"
-    key            = "ustc-payment-portal/dev/networking.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "ustc-payment-portal-terraform-locks-dev"
-    encrypt        = true
+    bucket  = "ustc-payment-portal-terraform-state-dev"
+    key     = "ustc-payment-portal/dev/networking.tfstate"
+    region  = "us-east-1"
+    encrypt = true
   }
 }
 
@@ -111,7 +110,6 @@ module "iam_cicd" {
   github_org               = local.github_org
   github_repo              = local.github_repo
   state_bucket_name        = local.state_bucket_name
-  state_lock_table_name    = local.state_lock_table_name
   state_object_keys        = local.state_object_keys
   lambda_exec_role_arn     = data.terraform_remote_state.foundation.outputs.lambda_role_arn
   lambda_name_prefix       = local.name_prefix
