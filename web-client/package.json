@@ -14,7 +14,8 @@
     "test": "npm run test:e2e",
     "test:e2e": "npm run build && start-server-and-test preview:test http://127.0.0.1:4173 cypress:run",
     "test:e2e:open": "npm run build && start-server-and-test preview:test http://127.0.0.1:4173 cypress:open",
-    "test:coverage": "npm run test:e2e"
+    "test:coverage": "npm run test:e2e",
+    "tsc": "tsc"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

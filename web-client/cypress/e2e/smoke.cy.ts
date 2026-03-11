@@ -1,19 +1,19 @@
 export { }
 
-type PaymentStatus = 'success' | 'failed' | 'pending'
+type PaymentStatus = 'SUCCESS' | 'FAILED' | 'PENDING'
 
 const transactionByStatus: Record<PaymentStatus, { feeName: string; agencyTrackingId: string }> = {
-  success: {
+  SUCCESS: {
     feeName: 'Fee Success Only',
-    agencyTrackingId: 'agency-success-001',
+    agencyTrackingId: 'agency-SUCCESS-001',
   },
-  failed: {
+  FAILED: {
     feeName: 'Fee Failed Only',
-    agencyTrackingId: 'agency-failed-001',
+    agencyTrackingId: 'agency-FAILED-001',
   },
-  pending: {
+  PENDING: {
     feeName: 'Fee Pending Only',
-    agencyTrackingId: 'agency-pending-001',
+    agencyTrackingId: 'agency-PENDING-001',
   },
 }
 
@@ -21,14 +21,14 @@ function mockTransactionsApi(): void {
   cy.intercept('GET', '**/api/transaction-payment-status', {
     statusCode: 200,
     body: {
-      success: 1,
-      failed: 1,
-      pending: 1,
+      SUCCESS: 1,
+      FAILED: 1,
+      PENDING: 1,
     },
   }).as('getStatusCounts')
 
   cy.intercept('GET', '**/api/transactions/*', (req) => {
-    const status = req.url.split('/').pop() as PaymentStatus
+    const status = req.url.split('/').pop()?.toUpperCase() as PaymentStatus
     const transaction = transactionByStatus[status]
 
     if (!transaction) {
@@ -49,9 +49,9 @@ function mockTransactionsApi(): void {
             clientName: 'Portal Client',
             transactionReferenceId: `ref-${status}-001`,
             paymentStatus: status,
-            transactionStatus: status === 'failed' ? 'failed' : 'processed',
+            transactionStatus: status === 'FAILED' ? 'FAILED' : 'PROCESSED',
             paygovToken: null,
-            paymentMethod: 'card',
+            paymentMethod: 'PLASTIC_CARD',
             lastUpdatedAt: '2026-03-09T12:00:00.000Z',
             createdAt: '2026-03-09T11:00:00.000Z',
             metadata: { source: 'cypress' },
@@ -73,21 +73,21 @@ describe('transactions status pages', () => {
     cy.wait('@getStatusCounts')
     cy.wait('@getTransactionsByStatus')
     cy.location('pathname').should('eq', '/transactions/success')
-    cy.get('[data-status="success"]').should('exist')
+    cy.get('[data-status="SUCCESS"]').should('exist')
     cy.contains('Fee Success Only').should('be.visible')
 
     cy.visit('/transactions/failed')
     cy.wait('@getStatusCounts')
     cy.wait('@getTransactionsByStatus')
     cy.location('pathname').should('eq', '/transactions/failed')
-    cy.get('[data-status="failed"]').should('exist')
+    cy.get('[data-status="FAILED"]').should('exist')
     cy.contains('Fee Failed Only').should('be.visible')
 
     cy.visit('/transactions/pending')
     cy.wait('@getStatusCounts')
     cy.wait('@getTransactionsByStatus')
     cy.location('pathname').should('eq', '/transactions/pending')
-    cy.get('[data-status="pending"]').should('exist')
+    cy.get('[data-status="PENDING"]').should('exist')
     cy.contains('Fee Pending Only').should('be.visible')
   })
 
@@ -96,20 +96,20 @@ describe('transactions status pages', () => {
     cy.wait('@getStatusCounts')
     cy.wait('@getTransactionsByStatus')
 
-    cy.get('[data-status="success"]').should('exist')
+    cy.get('[data-status="SUCCESS"]').should('exist')
     cy.contains('Fee Success Only').should('be.visible')
 
     cy.contains('[role="tab"]', /Failed/i).click()
     cy.wait('@getTransactionsByStatus')
     cy.location('pathname').should('eq', '/transactions/failed')
-    cy.get('[data-status="failed"]').should('exist')
+    cy.get('[data-status="FAILED"]').should('exist')
     cy.contains('Fee Failed Only').should('be.visible')
     cy.contains('Fee Success Only').should('not.exist')
 
     cy.contains('[role="tab"]', /Pending/i).click()
     cy.wait('@getTransactionsByStatus')
     cy.location('pathname').should('eq', '/transactions/pending')
-    cy.get('[data-status="pending"]').should('exist')
+    cy.get('[data-status="PENDING"]').should('exist')
     cy.contains('Fee Pending Only').should('be.visible')
     cy.contains('Fee Failed Only').should('not.exist')
   })

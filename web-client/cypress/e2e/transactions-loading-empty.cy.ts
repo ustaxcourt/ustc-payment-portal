@@ -5,9 +5,9 @@ describe('transactions loading and empty states', () => {
     cy.intercept('GET', '**/api/transaction-payment-status', {
       statusCode: 200,
       body: {
-        success: 1,
-        failed: 0,
-        pending: 0,
+        SUCCESS: 1,
+        FAILED: 0,
+        PENDING: 0,
       },
     }).as('getStatusCounts')
   })
@@ -19,17 +19,17 @@ describe('transactions loading and empty states', () => {
       body: {
         data: [
           {
-            agencyTrackingId: 'agency-success-loading-001',
+            agencyTrackingId: 'agency-SUCCESS-loading-001',
             paygovTrackingId: null,
             feeName: 'Fee Loaded After Delay',
-            feeId: 'fee-success-loading-001',
+            feeId: 'fee-SUCCESS-loading-001',
             feeAmount: 10,
             clientName: 'Portal Client',
-            transactionReferenceId: 'ref-success-loading-001',
-            paymentStatus: 'success',
-            transactionStatus: 'processed',
+            transactionReferenceId: 'ref-SUCCESS-loading-001',
+            paymentStatus: 'SUCCESS',
+            transactionStatus: 'PROCESSED',
             paygovToken: null,
-            paymentMethod: 'card',
+            paymentMethod: 'PLASTIC_CARD',
             lastUpdatedAt: '2026-03-09T12:00:00.000Z',
             createdAt: '2026-03-09T11:00:00.000Z',
             metadata: { source: 'cypress' },
@@ -62,7 +62,7 @@ describe('transactions loading and empty states', () => {
     cy.wait('@getStatusCounts')
     cy.wait('@getFailedTransactionsEmpty')
 
-    cy.get('[data-status="failed"]').should('exist')
+    cy.get('[data-status="FAILED"]').should('exist')
     cy.contains('No rows').should('be.visible')
   })
 })

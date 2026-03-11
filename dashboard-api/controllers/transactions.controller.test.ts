@@ -96,7 +96,7 @@ describe('GET /api/transactions', () => {
 describe('GET /api/transactions/:paymentStatus', () => {
   it('should return transactions from the database', async () => {
     const response = await request(app)
-      .get('/api/transactions/success')
+      .get('/api/transactions/SUCCESS')
       .expect('Content-Type', /json/)
       .expect(200);
 
@@ -107,7 +107,7 @@ describe('GET /api/transactions/:paymentStatus', () => {
 
   it('should return transactions with correct schema', async () => {
     const response = await request(app)
-      .get('/api/transactions/success')
+      .get('/api/transactions/SUCCESS')
       .expect(200);
 
     if (response.body.data.length > 0) {
@@ -146,12 +146,12 @@ describe('GET /api/transactions/:paymentStatus', () => {
   it('should verify data is coming from database by checking transaction count', async () => {
     // Get count from API
     const apiResponse = await request(app)
-      .get('/api/transactions/success')
+      .get('/api/transactions/SUCCESS')
       .expect(200);
 
     // Get count directly from database for the same payment status
     const dbCount = await knex('transactions')
-      .where('payment_status', 'success')
+      .where('payment_status', 'SUCCESS')
       .count('* as count')
       .first();
     const dbTransactionCount = parseInt(dbCount?.count as string, 10);
@@ -169,13 +169,13 @@ describe('GET /api/transactions/:paymentStatus', () => {
   it('should transform database fields to frontend format correctly', async () => {
     // Get a transaction from the database
     const dbTransaction = await knex('transactions')
-      .where('payment_status', 'success')
+      .where('payment_status', 'SUCCESS')
       .first();
 
     if (dbTransaction) {
       // Get the same transaction from the API
       const response = await request(app)
-        .get('/api/transactions/success')
+        .get('/api/transactions/SUCCESS')
         .expect(200);
 
       const apiTransaction = response.body.data.find(
@@ -210,12 +210,12 @@ describe('GET /api/transaction-payment-status', () => {
       .expect('Content-Type', /json/)
       .expect(200);
 
-    expect(response.body).toHaveProperty('success');
-    expect(response.body).toHaveProperty('failed');
-    expect(response.body).toHaveProperty('pending');
-    expect(typeof response.body.success).toBe('number');
-    expect(typeof response.body.failed).toBe('number');
-    expect(typeof response.body.pending).toBe('number');
+    expect(response.body).toHaveProperty('SUCCESS');
+    expect(response.body).toHaveProperty('FAILED');
+    expect(response.body).toHaveProperty('PENDING');
+    expect(typeof response.body.SUCCESS).toBe('number');
+    expect(typeof response.body.FAILED).toBe('number');
+    expect(typeof response.body.PENDING).toBe('number');
   });
 
   it('should match database payment_status aggregation', async () => {
@@ -229,17 +229,20 @@ describe('GET /api/transaction-payment-status', () => {
       .groupBy('payment_status');
 
     const expected = {
-      success: 0,
-      failed: 0,
-      pending: 0,
+      SUCCESS: 0,
+      FAILED: 0,
+      PENDING: 0,
+      total: 0,
     };
 
     dbRows.forEach((row) => {
-      const status = (row.paymentStatus ?? row.payment_status) as 'success' | 'failed' | 'pending';
-      if (status === 'success' || status === 'failed' || status === 'pending') {
+      const status = (row.paymentStatus ?? row.payment_status) as 'SUCCESS' | 'FAILED' | 'PENDING';
+      if (status === 'SUCCESS' || status === 'FAILED' || status === 'PENDING') {
         expected[status] = Number(row.count);
       }
     });
+
+    expected.total = Math.min(expected.SUCCESS + expected.FAILED + expected.PENDING, 100);
 
     expect(response.body).toEqual(expected);
   });

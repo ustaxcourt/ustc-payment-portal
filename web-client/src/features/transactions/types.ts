@@ -3,30 +3,25 @@
  * Keep this aligned with what your API actually returns.
  */
 export type TransactionStatus =
-  | 'received'
-  | 'initiated'
-  | 'pending'
-  | 'processed'
-  | 'failed'
+  | 'RECEIVED'
+  | 'INITIATED'
+  | 'PENDING'
+  | 'PROCESSED'
+  | 'FAILED'
 
-export type PaymentStatus = 'pending' | 'success' | 'failed'
+export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED'
 
 /** UI-level tab identifier — extends PaymentStatus with the 'all' aggregate tab. */
-export type TabStatus = PaymentStatus | 'all'
+export type TabStatus = PaymentStatus | 'ALL'
 
 /**
  * Supported payment instruments in dev.
  * Add/remove as your Payment Portal grows.
  */
 export type PaymentMethod =
-  | 'card'
-  | 'ach'
-  | 'cash'
-  | 'paypal'
-  | 'apple_pay'
-  | 'google_pay'
-  | 'venmo'
-  | 'other'
+  | 'PLASTIC_CARD'
+  | 'ACH'
+  | 'PAYPAL'
 
 /**
  * A single transaction row as displayed in the dashboard.

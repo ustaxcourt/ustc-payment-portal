@@ -14,7 +14,7 @@ export function useTransactionsByStatus(status: PaymentStatus) {
 export function useTransactionsByTab(tab: TabStatus) {
   return useFetch<TransactionsResponse>(
     (signal) =>
-      tab === 'all'
+      tab === 'ALL'
         ? fetchAllTransactions({ signal })
         : fetchTransactionsByStatus(tab, { signal }),
     [tab]

@@ -1,17 +1,17 @@
 export { }
 
-type PaymentStatus = 'success' | 'failed' | 'pending'
+type PaymentStatus = 'SUCCESS' | 'FAILED' | 'PENDING'
 
 const totalsByStatus: Record<PaymentStatus, number> = {
-  success: 2,
-  failed: 4,
-  pending: 1,
+  SUCCESS: 2,
+  FAILED: 4,
+  PENDING: 1,
 }
 
 const labelByStatus: Record<PaymentStatus, string> = {
-  success: 'Success Tab Row',
-  failed: 'Failed Tab Row',
-  pending: 'Pending Tab Row',
+  SUCCESS: 'Success Tab Row',
+  FAILED: 'Failed Tab Row',
+  PENDING: 'Pending Tab Row',
 }
 
 function assertTabCount(tabLabel: string, count: number): void {
@@ -23,14 +23,14 @@ describe('transactions tab counts', () => {
     cy.intercept('GET', '**/api/transaction-payment-status', {
       statusCode: 200,
       body: {
-        success: 9,
-        failed: 7,
-        pending: 5,
+        SUCCESS: 9,
+        FAILED: 7,
+        PENDING: 5,
       },
     }).as('getStatusCounts')
 
     cy.intercept('GET', '**/api/transactions/*', (req) => {
-      const status = req.url.split('/').pop() as PaymentStatus
+      const status = req.url.split('/').pop()?.toUpperCase() as PaymentStatus
       const total = totalsByStatus[status]
       const feeName = labelByStatus[status]
 
@@ -47,9 +47,9 @@ describe('transactions tab counts', () => {
               clientName: 'Portal Client',
               transactionReferenceId: `ref-${status}-count-001`,
               paymentStatus: status,
-              transactionStatus: status === 'failed' ? 'failed' : 'processed',
+              transactionStatus: status === 'FAILED' ? 'FAILED' : 'PROCESSED',
               paygovToken: null,
-              paymentMethod: 'card',
+              paymentMethod: 'PLASTIC_CARD',
               lastUpdatedAt: '2026-03-09T12:00:00.000Z',
               createdAt: '2026-03-09T11:00:00.000Z',
               metadata: { source: 'cypress' },

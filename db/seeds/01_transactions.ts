@@ -11,9 +11,9 @@ export async function seed(knex: Knex): Promise<void> {
     await knex('transactions').del();
 
     const clientNames = ['payment-portal', 'efile-portal', 'clerk-app'];
-    const paymentStatuses = ['pending', 'success', 'failed'];
-    const transactionStatuses = ['received', 'initiated', 'pending', 'processed', 'failed'];
-    const paymentMethods = ['card', 'ach', 'cash', 'paypal', 'apple_pay', 'google_pay', 'venmo', 'other'];
+    const paymentStatuses = ['PENDING', 'SUCCESS', 'FAILED'];
+    const transactionStatuses = ['RECEIVED', 'INITIATED', 'PENDING', 'PROCESSED', 'FAILED'];
+    const paymentMethods = ['PLASTIC_CARD', 'ACH', 'PAYPAL'];
     const feeNames = ['Filing Fee', 'Access Fee', 'Transcript Fee'];
     const feeIds = ['FEE-001', 'FEE-002', 'FEE-003'];
 
@@ -63,10 +63,10 @@ export async function seed(knex: Knex): Promise<void> {
             client_name: pick(clientNames, i),
             transaction_reference_id: transactionReferenceId,
 
-            payment_status: String(pick(paymentStatuses, i)).toLowerCase(),
-            transaction_status: String(pick(transactionStatuses, i)).toLowerCase(),
+            payment_status: faker.helpers.arrayElement(paymentStatuses) as 'PENDING' | 'SUCCESS' | 'FAILED',
+            transaction_status: faker.helpers.arrayElement(transactionStatuses) as 'RECEIVED' | 'INITIATED' | 'PENDING' | 'PROCESSED' | 'FAILED',
 
-            payment_method: pick(paymentMethods, i),
+            payment_method: faker.helpers.arrayElement(paymentMethods) as 'PLASTIC_CARD' | 'ACH' | 'PAYPAL',
             paygov_token: faker.datatype.boolean() ? faker.string.uuid() : null,
 
             metadata: maybeMetadata,

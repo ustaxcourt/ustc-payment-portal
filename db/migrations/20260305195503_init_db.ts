@@ -29,20 +29,20 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.raw(`
     ALTER TABLE transactions
     ADD CONSTRAINT transactions_payment_status_valid
-    CHECK (payment_status IN ('pending', 'success', 'failed'))
+    CHECK (payment_status IN ('PENDING', 'SUCCESS', 'FAILED'))
   `);
   await knex.schema.raw(`
     ALTER TABLE transactions
     ADD CONSTRAINT transactions_transaction_status_valid
     CHECK (
       transaction_status IS NULL OR
-      transaction_status IN ('received', 'initiated', 'pending', 'processed', 'failed')
+      transaction_status IN ('RECEIVED', 'INITIATED', 'PENDING', 'PROCESSED', 'FAILED')
     )
   `);
   await knex.schema.raw(`
     ALTER TABLE transactions
     ADD CONSTRAINT transactions_payment_method_valid
-    CHECK (payment_method IN ('card', 'ach', 'cash', 'paypal', 'apple_pay', 'google_pay', 'venmo', 'other'))
+    CHECK (payment_method IN ('PLASTIC_CARD', 'ACH', 'PAYPAL'))
   `);
 
   // Indexes for common filters & sorting

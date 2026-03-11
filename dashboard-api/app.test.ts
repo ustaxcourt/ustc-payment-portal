@@ -42,7 +42,7 @@ describe('app', () => {
     const app = loadAppWithRoutes();
 
     const response = await request(app)
-      .options('/api/transactions/success')
+      .options('/api/transactions/SUCCESS')
       .expect(200);
 
     expect(response.headers['access-control-allow-origin']).toBe('*');

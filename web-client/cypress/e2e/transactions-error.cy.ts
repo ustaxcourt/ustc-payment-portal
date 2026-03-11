@@ -5,9 +5,9 @@ describe('transactions errors', () => {
     cy.intercept('GET', '**/api/transaction-payment-status', {
       statusCode: 200,
       body: {
-        success: 1,
-        failed: 1,
-        pending: 1,
+        SUCCESS: 1,
+        FAILED: 1,
+        PENDING: 1,
       },
     }).as('getStatusCounts')
   })
@@ -23,7 +23,7 @@ describe('transactions errors', () => {
     cy.wait('@getStatusCounts')
     cy.wait('@getSuccessTransactions')
 
-    cy.get('[data-status="success"]').should('exist')
+    cy.get('[data-status="SUCCESS"]').should('exist')
     cy.get('[role="alert"]').should('be.visible').and('contain.text', 'failed: 500')
   })
 })

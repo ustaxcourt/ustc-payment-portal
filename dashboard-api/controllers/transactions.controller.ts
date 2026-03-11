@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import TransactionModel, { PaymentStatus } from '../models/TransactionModel';
 
-const allowedPaymentStatuses = ['pending', 'success', 'failed'] as const;
+const allowedPaymentStatuses = ['PENDING', 'SUCCESS', 'FAILED'] as const;
 
 export const getAllTransactions = async (
   _req: Request,
@@ -27,17 +27,18 @@ export const getTransactions = async (
 ): Promise<void> => {
   try {
     const { paymentStatus } = req.params;
+    const normalizedPaymentStatus = paymentStatus?.toUpperCase() as PaymentStatus | undefined;
 
-    if (!paymentStatus || !allowedPaymentStatuses.includes(paymentStatus as PaymentStatus)) {
+    if (!normalizedPaymentStatus || !allowedPaymentStatuses.includes(normalizedPaymentStatus)) {
       res.status(400).json({
         error: {
-          message: 'Invalid paymentStatus. Expected one of: pending, success, failed',
+          message: 'Invalid paymentStatus. Expected one of: PENDING, SUCCESS, FAILED',
         },
       });
       return;
     }
 
-    const transactions: TransactionModel[] = await TransactionModel.getByPaymentStatus(paymentStatus as PaymentStatus);
+    const transactions: TransactionModel[] = await TransactionModel.getByPaymentStatus(normalizedPaymentStatus);
 
     res.json({
       data: transactions,

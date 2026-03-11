@@ -18,7 +18,7 @@ export interface TransactionsLayoutContext {
 }
 
 const isTabStatus = (value: string): value is TabStatus => {
-  return value === 'all' || value === 'success' || value === 'failed' || value === 'pending'
+  return value === 'ALL' || value === 'SUCCESS' || value === 'FAILED' || value === 'PENDING'
 }
 
 export default function TransactionsLayout() {
@@ -28,7 +28,8 @@ export default function TransactionsLayout() {
   // Derive the current tab value from the URL
   const currentTab: TabStatus = React.useMemo(() => {
     const seg = pathname.split('/').pop() || ''
-    return isTabStatus(seg) ? seg : 'all'
+    const normalized = seg.toUpperCase()
+    return isTabStatus(normalized) ? normalized : 'ALL'
   }, [pathname])
 
   const { data, loading, error } = useTransactionsByTab(currentTab)
@@ -38,10 +39,10 @@ export default function TransactionsLayout() {
   )
 
   const [counts, setCounts] = React.useState<Record<TabStatus, number>>({
-    all: 0,
-    success: 0,
-    failed: 0,
-    pending: 0,
+    ALL: 0,
+    SUCCESS: 0,
+    FAILED: 0,
+    PENDING: 0,
   })
 
   const hasInitializedCounts = React.useRef(false)
@@ -54,10 +55,10 @@ export default function TransactionsLayout() {
 
     setCounts((prev) => ({
       ...prev,
-      all: initialCounts.total,
-      success: initialCounts.success,
-      failed: initialCounts.failed,
-      pending: initialCounts.pending,
+      ALL: initialCounts.total,
+      SUCCESS: initialCounts.SUCCESS,
+      FAILED: initialCounts.FAILED,
+      PENDING: initialCounts.PENDING,
     }))
     hasInitializedCounts.current = true
   }, [initialCounts])
@@ -82,7 +83,7 @@ export default function TransactionsLayout() {
 
   // When the tab changes, navigate to the corresponding child route
   const handleTabChange = (value: TabStatus) => {
-    navigate(value)
+    navigate(value.toLowerCase())
   }
 
   return (

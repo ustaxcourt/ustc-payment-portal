@@ -16,7 +16,7 @@ export async function fetchTransactionsByStatus(
 ): Promise<TransactionsResponse> {
   const { signal } = opts ?? {}
 
-  const url = `${dashboardApiBaseUrl}/api/transactions/${status}`
+  const url = `${dashboardApiBaseUrl}/api/transactions/${status.toLowerCase()}`
   const response = await fetch(url, {
     method: 'GET',
     signal,
@@ -64,13 +64,13 @@ export async function fetchTransactionPaymentStatus(
   }
 
   const payload = (await response.json()) as Partial<PaymentStatusCounts>
-  const success = payload.success ?? 0
-  const failed = payload.failed ?? 0
-  const pending = payload.pending ?? 0
+  const success = payload.SUCCESS ?? 0
+  const failed = payload.FAILED ?? 0
+  const pending = payload.PENDING ?? 0
   return {
-    success,
-    failed,
-    pending,
+    SUCCESS: success,
+    FAILED: failed,
+    PENDING: pending,
     total: payload.total ?? success + failed + pending,
   }
 }

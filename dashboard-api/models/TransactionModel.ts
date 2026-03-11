@@ -1,25 +1,20 @@
 import { Model } from 'objection';
 
 export type TransactionStatus =
-  | 'received'
-  | 'initiated'
-  | 'pending'
-  | 'processed'
-  | 'failed';
+  | 'RECEIVED'
+  | 'INITIATED'
+  | 'PENDING'
+  | 'PROCESSED'
+  | 'FAILED';
 
-export type PaymentStatus = 'pending' | 'success' | 'failed';
+export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
 
 export type AggregatedPaymentStatus = Record<PaymentStatus, number> & { total: number };
 
 export type PaymentMethod =
-  | 'card'
-  | 'ach'
-  | 'cash'
-  | 'paypal'
-  | 'apple_pay'
-  | 'google_pay'
-  | 'venmo'
-  | 'other';
+  | 'PLASTIC_CARD'
+  | 'ACH'
+  | 'PAYPAL';
 
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
@@ -71,22 +66,22 @@ export default class TransactionModel extends Model {
       .groupBy('payment_status');
 
     const totals: AggregatedPaymentStatus = {
-      success: 0,
-      failed: 0,
-      pending: 0,
+      SUCCESS: 0,
+      FAILED: 0,
+      PENDING: 0,
       total: 0,
     };
 
     rows.forEach((row) => {
       const paymentStatus = row.paymentStatus;
 
-      if (paymentStatus === 'success' || paymentStatus === 'failed' || paymentStatus === 'pending') {
+      if (paymentStatus === 'SUCCESS' || paymentStatus === 'FAILED' || paymentStatus === 'PENDING') {
         const countValue = (row as unknown as { count: number | string }).count;
         totals[paymentStatus] = Number(countValue);
       }
     });
 
-    totals.total = Math.min(totals.success + totals.failed + totals.pending, 100);
+    totals.total = Math.min(totals.SUCCESS + totals.FAILED + totals.PENDING, 100);
 
     return totals;
   }

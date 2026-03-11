@@ -24,34 +24,34 @@ export default function StatusTabs({ value, counts, onChange }: StatusTabsProps)
         aria-label="Transaction status tabs"
       >
         <Tab
-          value="all"
+          value="ALL"
           label={
             <Box display="flex" alignItems="center" gap={1}>
-              All <StatusChip status="all" label={counts.all} />
+              All <StatusChip status="ALL" label={counts.ALL} />
             </Box>
           }
         />
         <Tab
-          value="success"
+          value="SUCCESS"
           label={
             <Box display="flex" alignItems="center" gap={1}>
-              Successful <StatusChip status="success" label={counts.success} />
+              Successful <StatusChip status="SUCCESS" label={counts.SUCCESS} />
             </Box>
           }
         />
         <Tab
-          value="failed"
+          value="FAILED"
           label={
             <Box display="flex" alignItems="center" gap={1}>
-              Failed <StatusChip status="failed" label={counts.failed} />
+              Failed <StatusChip status="FAILED" label={counts.FAILED} />
             </Box>
           }
         />
         <Tab
-          value="pending"
+          value="PENDING"
           label={
             <Box display="flex" alignItems="center" gap={1}>
-              Pending <StatusChip status="pending" label={counts.pending} />
+              Pending <StatusChip status="PENDING" label={counts.PENDING} />
             </Box>
           }
         />

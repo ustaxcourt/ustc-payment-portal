@@ -234,7 +234,7 @@ const theme = createTheme({
           },
 
           // ---- Status-scoped rules (root has data-status) ----
-          '&[data-status="COMPLETED"] .MuiDataGrid-columnHeaders': {
+          '&[data-status="SUCCESS"] .MuiDataGrid-columnHeaders': {
             backgroundColor: theme.app.headerTone.successBg,
           },
           '&[data-status="FAILED"] .MuiDataGrid-columnHeaders': {
