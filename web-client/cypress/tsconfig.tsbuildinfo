@@ -1,0 +1,1 @@
+{"root":["./e2e/smoke.cy.ts","./e2e/transactions-counts.cy.ts","./e2e/transactions-error.cy.ts","./e2e/transactions-loading-empty.cy.ts","./support/commands.ts","./support/e2e.ts","../cypress.config.ts"],"version":"5.9.3"}

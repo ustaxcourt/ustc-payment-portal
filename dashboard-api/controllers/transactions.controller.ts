@@ -1,0 +1,64 @@
+import { Request, Response, NextFunction } from 'express';
+import TransactionModel, { PaymentStatus } from '../models/TransactionModel';
+
+const allowedPaymentStatuses = ['PENDING', 'SUCCESS', 'FAILED'] as const;
+
+export const getAllTransactions = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const transactions: TransactionModel[] = await TransactionModel.getAll();
+
+    res.json({
+      data: transactions,
+      total: transactions.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTransactions = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { paymentStatus } = req.params;
+    const normalizedPaymentStatus = paymentStatus?.toUpperCase() as PaymentStatus | undefined;
+
+    if (!normalizedPaymentStatus || !allowedPaymentStatuses.includes(normalizedPaymentStatus)) {
+      res.status(400).json({
+        error: {
+          message: 'Invalid paymentStatus. Expected one of: PENDING, SUCCESS, FAILED',
+        },
+      });
+      return;
+    }
+
+    const transactions: TransactionModel[] = await TransactionModel.getByPaymentStatus(normalizedPaymentStatus);
+
+    res.json({
+      data: transactions,
+      total: transactions.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTransactionPaymentStatus = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const totals = await TransactionModel.getAggregatedPaymentStatus();
+    res.json(totals);
+  } catch (error) {
+    next(error);
+  }
+};
+

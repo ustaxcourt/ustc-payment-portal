@@ -1,4 +1,5 @@
 import { ValidationError } from "joi";
+import { ZodError } from "zod";
 
 export const handleError = (err: any) => {
   console.error(`responding with an error`, err);
@@ -11,6 +12,14 @@ export const handleError = (err: any) => {
     return {
       statusCode: 400,
       body: JSON.stringify(err),
+    };
+  } else if (err instanceof ZodError) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        message: "Validation error",
+        errors: err.issues,
+      }),
     };
   }
   throw err;
