@@ -42,19 +42,19 @@ Port guidance for local stack:
 From repository root:
 
 ```bash
-npm run migrate:latest    # Apply all pending migrations
-npm run migrate:rollback  # Rollback last batch
-npm run migrate:list      # Show migration history
-npm run migrate:status    # Show pending vs applied
-npm run seed:run          # Run all seeds
+DB_PORT=5433 npm run migrate:latest    # Apply all pending migrations
+DB_PORT=5433 npm run migrate:rollback  # Rollback last batch
+DB_PORT=5433 npm run migrate:list      # Show migration history
+DB_PORT=5433 npm run migrate:status    # Show pending vs applied
+DB_PORT=5433 npm run seed:run          # Run all seeds
 ```
 
 Advanced Knex CLI:
 
 ```bash
-npm run knex -- <command>
-npm run knex -- migrate:make <name>
-npm run knex -- seed:make <name>
+DB_PORT=5433 npm run knex -- <command>
+DB_PORT=5433 npm run knex -- migrate:make <name>
+DB_PORT=5433 npm run knex -- seed:make <name>
 ```
 
 ## Docker Compose Behavior

@@ -33,8 +33,8 @@ npm run dev
 **Prerequisites**:
 - PostgreSQL running on `localhost:5433` when using Docker Compose (host access)
 - Use `postgres:5432` when connecting from inside Docker containers
-- Root migrations applied: `npm run migrate:latest` (from repo root)
-- Seeds populated: `npm run seed:run` (from repo root)
+- Root migrations applied: `DB_PORT=5433 npm run migrate:latest` (from repo root)
+- Seeds populated: `DB_PORT=5433 npm run seed:run` (from repo root)
 
 ## Environment Variables
 

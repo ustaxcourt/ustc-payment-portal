@@ -45,7 +45,9 @@ npm run dev
 
 **Prerequisites**:
 - Dashboard API running on `localhost:3001` (or set `VITE_DASHBOARD_API_BASE_URL`)
-- Database initialized with seed data
+- Database initialized with seed data:
+  - `DB_PORT=5433 npm run migrate:latest`
+  - `DB_PORT=5433 npm run seed:run`
 
 ---
 
@@ -117,6 +119,7 @@ Database port note for local stack users:
 - Host tools like PgAdmin should use PostgreSQL on `localhost:5433`
 - Containers connect to PostgreSQL on `postgres:5432`
 - If connecting to Postgres directly (outside Docker), use `5432`
+- Host-side migration scripts should be prefixed with `DB_PORT=5433`
 
 ---
 

@@ -17,8 +17,8 @@ This starts PostgreSQL, initializes the database, and launches the dashboard API
 If running services separately:
 
 ```bash
-npm run migrate:latest
-npm run seed:run
+DB_PORT=5433 npm run migrate:latest
+DB_PORT=5433 npm run seed:run
 ```
 
 ### Access the Application
@@ -260,10 +260,10 @@ DASHBOARD_API_PORT=3003 WEB_CLIENT_PORT=5174 docker compose up
 ### Database Operations (Root Level)
 
 ```bash
-npm run migrate:latest    # Apply pending migrations
-npm run migrate:rollback  # Rollback last batch
-npm run migrate:list      # Show migration history
-npm run seed:run          # Run seeds
+DB_PORT=5433 npm run migrate:latest    # Apply pending migrations
+DB_PORT=5433 npm run migrate:rollback  # Rollback last batch
+DB_PORT=5433 npm run migrate:list      # Show migration history
+DB_PORT=5433 npm run seed:run          # Run seeds
 ```
 
 PostgreSQL connection note:
@@ -276,13 +276,13 @@ PostgreSQL connection note:
 For advanced operations:
 
 ```bash
-npm run knex -- <command>
+DB_PORT=5433 npm run knex -- <command>
 ```
 
 Examples:
 ```bash
-npm run knex -- migrate:status
-npm run knex -- seed:make create_transactions
+DB_PORT=5433 npm run knex -- migrate:status
+DB_PORT=5433 npm run knex -- seed:make create_transactions
 ```
 
 ---
