@@ -5,9 +5,6 @@
 SOAP_URL="http://localhost:3366/wsdl"
 PAYMENT_URL="http://localhost:3366/pay"
 
-# Test credentials
-TCS_APP_ID="ustc-test-pay-gov-app"
-
 # Local settings
 NODE_ENV="local"
 BASE_URL="http://localhost:8080"
