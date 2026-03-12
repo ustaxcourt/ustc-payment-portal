@@ -15,7 +15,7 @@ export const processPayment: ProcessPayment = async (
   request: ProcessPaymentRequest
 ) => {
   const req = new CompleteOnlineCollectionWithDetailsRequest({
-    tcsAppId: "",
+    tcsAppId: "", // Pay.gov ignores tcsAppId here — the token alone identifies the transaction
     token: request.token,
   });
   console.log("processPayment request", req);

@@ -147,7 +147,6 @@ describe("lambdaHandler", () => {
       const event = {
         body: JSON.stringify({
           token: "payment-token",
-          feeId: "PETITION_FILING_FEE",
         }),
         headers: mockHeaders,
         requestContext: mockRequestContext,

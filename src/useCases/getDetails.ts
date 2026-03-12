@@ -22,7 +22,7 @@ export const getDetails: GetDetails = async (
   { payGovTrackingId }
 ) => {
   const req = new GetRequestRequest({
-    tcsAppId: "",
+    tcsAppId: "", // Pay.gov ignores tcsAppId here — the payGovTrackingId alone identifies the transaction
     payGovTrackingId,
   });
 

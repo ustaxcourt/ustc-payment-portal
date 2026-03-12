@@ -82,7 +82,6 @@ Stages should be one of `dev`, `stg`, and `prod`. The dev server should be confi
 | `PAYMENT_URL`        | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated |
 | `SOAP_URL`           | The URL of the SOAP Server that handles payment requests made by this portal                                     |
 | `SUBDOMAIN`          | The subdomain that the deployed application should assume                                                        |
-| `TCS_APP_ID`         | The identifier granted by Pay.gov for using their service (used for testing)                                     |
 
 ## Deployment
 

@@ -154,16 +154,13 @@ jobs:
         working-directory: terraform/environments/prod
         run: |
           API_URL=$(terraform output -raw api_gateway_url)
-          TCS_APP_ID_SECRET_ID=$(terraform output -raw tcs_app_id_secret_id 2>/dev/null)
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
-          echo "tcs_app_id_secret_id=$TCS_APP_ID_SECRET_ID" >> $GITHUB_OUTPUT
           echo "API Gateway URL: $API_URL"
 
       # - name: Smoke test /init and redirect reachability
       #   shell: bash
       #   env:
       #     API_URL: ${{ steps.tf_outputs.outputs.api_url }}
-      #     TCS_APP_ID_SECRET_ID: ${{ steps.tf_outputs.outputs.tcs_app_id_secret_id }}
       #   run: |
       #     set -euo pipefail
       #     trap 'echo "Smoke test FAILED"; [ -f init.json ] && { echo "--- init.json ---"; cat init.json; echo "-----------------"; } || true' ERR

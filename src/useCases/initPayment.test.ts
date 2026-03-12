@@ -24,6 +24,18 @@ describe("initPayment", () => {
     ).rejects.toThrow();
   });
 
+  it("throws InvalidRequestError with a clear message when feeId is unrecognized", async () => {
+    await expect(
+      initPayment(appContext, {
+        amount: 20,
+        feeId: "UNKNOWN_FEE",
+        urlCancel: "http://example.com",
+        urlSuccess: "http://example.com",
+        trackingId: "test-12345",
+      }),
+    ).rejects.toThrow("Unknown feeId: UNKNOWN_FEE");
+  });
+
   it("does not throw an error if we pass in a valid request", async () => {
     appContext.postHttpRequest = jest.fn().mockReturnValue(mockSoapResponse);
 
