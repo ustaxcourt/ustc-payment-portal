@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import Knex from 'knex';
 import { Model, knexSnakeCaseMappers } from 'objection';
 import knexConfig from '../knexfile';

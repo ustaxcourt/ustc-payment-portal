@@ -9,7 +9,7 @@ Express API serving transaction data to the web client.
 - **ORM**: Objection.js + Knex
 - **Database**: PostgreSQL 14
 - **Port**: `3001`
-- **Node**: `>=18.0.0`
+- **Node**: `>=20.0.0`
 
 ## Running the API
 
@@ -26,9 +26,12 @@ docker compose up
 From `dashboard-api/`:
 
 ```bash
+cp .env.example .env   # create local env file (edit values if needed)
 npm ci
 npm run dev
 ```
+
+The `dev`, `knex`, and `test` scripts all load `.env` via `node --env-file .env`. Create the file from `.env.example` before running any of them.
 
 **Prerequisites**:
 - PostgreSQL running on `localhost:5433` when using Docker Compose (host access)
@@ -38,14 +41,24 @@ npm run dev
 
 ## Environment Variables
 
+Create `dashboard-api/.env` from the provided example:
+
+```bash
+cp .env.example .env
+```
+
 ```env
+# dashboard-api/.env
 DB_HOST=localhost        # Default: localhost
 DB_PORT=5433            # Default for host access with Docker Compose Postgres
 DB_USER=user            # Default: user
 DB_PASSWORD=password    # Default: password
 DB_NAME=mydb            # Default: mydb
+API_PORT=3001           # Default: 3001
 NODE_ENV=development    # development | test | production
 ```
+
+Node v20+ loads `.env` natively — no third-party dotenv library is used. The `dev`, `knex`, and `test` scripts all invoke `node --env-file .env` before executing their commands. In Docker and CI, environment variables are injected directly so no `.env` file is needed there.
 
 Port guidance:
 

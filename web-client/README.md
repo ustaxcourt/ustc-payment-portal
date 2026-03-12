@@ -5,7 +5,7 @@ React + TypeScript + Vite application for viewing transactions by status.
 ## Quick Reference
 
 - **Language**: TypeScript
-- **Framework**: React 18 + Router v7
+- **Framework**: React 19 + Router v7
 - **Build Tool**: Vite
 - **UI Library**: MUI DataGrid
 - **Port**: `5173`
@@ -98,13 +98,23 @@ Fetch aggregate status counts.
 
 ## Environment Configuration
 
+Vite reads `.env` files automatically — no dotenv library is required.
+
+Create `web-client/.env` from the provided example:
+
+```bash
+# from web-client/
+cp .env.example .env
+```
+
 ### Build-Time via Vite
 
 ```env
+# web-client/.env
 VITE_DASHBOARD_API_BASE_URL=http://localhost:3001
 ```
 
-If not set, defaults to `http://localhost:3001`.
+If not set, defaults to `http://localhost:3001`. Vite only exposes variables prefixed with `VITE_` to the browser bundle.
 
 ### Docker Compose
 

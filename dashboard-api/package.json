@@ -10,20 +10,19 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "start:prod": "cross-env NODE_ENV=production node dist/server.js",
-    "dev": "nodemon --ext ts,json --exec ts-node server.ts",
+    "dev": "nodemon --ext ts,json --exec \"node --env-file .env -r ts-node/register server.ts\"",
     "dev:watch": "tsc --watch",
-    "knex": "node -r ts-node/register -r dotenv/config ./node_modules/knex/bin/cli.js --knexfile knexfile.ts",
+    "knex": "node --env-file .env -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.ts",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"**/*.ts\"",
-    "test": "jest --runInBand",
-    "test:coverage": "jest --coverage --runInBand",
-    "test:watch": "jest --watch --runInBand",
+    "test": "node --env-file .env ./node_modules/.bin/jest --runInBand",
+    "test:coverage": "node --env-file .env ./node_modules/.bin/jest --coverage --runInBand",
+    "test:watch": "node --env-file .env ./node_modules/.bin/jest --watch --runInBand",
     "clean": "rm -rf dist",
     "tsc": "tsc"
   },
   "dependencies": {
     "cors": "^2.8.6",
-    "dotenv": "^16.6.1",
     "express": "^5.2.1",
     "helmet": "^7.2.0",
     "knex": "^3.1.0",
@@ -51,6 +50,6 @@
     "typescript": "^5.3.3"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

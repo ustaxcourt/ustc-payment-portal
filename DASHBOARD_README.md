@@ -289,6 +289,42 @@ DB_PORT=5433 npm run knex -- seed:make create_transactions
 
 ## Environment Configuration
 
+### Local `.env` Files
+
+No third-party dotenv library is used. Node v20+ loads `.env` natively via `--env-file`.
+
+**dashboard-api** — create from example before running dev, knex, or test commands:
+
+```bash
+cp dashboard-api/.env.example dashboard-api/.env
+```
+
+```env
+# dashboard-api/.env
+DB_HOST=localhost
+DB_PORT=5433
+DB_USER=user
+DB_PASSWORD=password
+DB_NAME=mydb
+API_PORT=3001
+NODE_ENV=development
+```
+
+**web-client** — Vite reads `.env` automatically:
+
+```bash
+cp web-client/.env.example web-client/.env
+```
+
+```env
+# web-client/.env
+VITE_DASHBOARD_API_BASE_URL=http://localhost:3001
+```
+
+In Docker Compose and CI, environment variables are injected directly — no `.env` file is needed.
+
+### Connection Defaults (`knexfile.ts`)
+
 Connection defaults are defined in `knexfile.ts`:
 
 ```env
