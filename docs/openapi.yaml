@@ -407,13 +407,13 @@ paths:
             text/plain:
               schema:
                 $ref: '#/components/schemas/ServerError'
-  /details/{transactionReferenceId}:
+  /details/{payGovTrackingId}:
     get:
       summary: Get transaction details
       description: >-
         Retrieves the payment status and all transaction records associated with
-        a transaction reference ID. If there is a pending transaction, it will
-        query Pay.gov for the latest status before returning.
+        a Pay.gov tracking ID. If there is a pending transaction, it will query
+        Pay.gov for the latest status before returning.
       tags:
         - Payments
       security:
@@ -421,11 +421,11 @@ paths:
       parameters:
         - schema:
             type: string
-            description: The transaction reference ID
-            example: TXN-REF-123456789
+            description: The Pay.gov tracking ID
+            example: PAYGOV-TRACK-123456789
           required: true
-          description: The transaction reference ID
-          name: transactionReferenceId
+          description: The Pay.gov tracking ID
+          name: payGovTrackingId
           in: path
       responses:
         '200':
