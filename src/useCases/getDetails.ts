@@ -14,15 +14,15 @@ export type TransactionDetails = {
 
 export type GetDetails = (
   appContext: AppContext,
-  { payGovTrackingId }: GetDetailsRequest
+  { payGovTrackingId }: GetDetailsRequest,
 ) => Promise<TransactionDetails>;
 
 export const getDetails: GetDetails = async (
   appContext,
-  { payGovTrackingId }
+  { payGovTrackingId },
 ) => {
   const req = new GetRequestRequest({
-    tcsAppId: "", // Pay.gov ignores tcsAppId here — the payGovTrackingId alone identifies the transaction
+    tcsAppId: "",
     payGovTrackingId,
   });
 
