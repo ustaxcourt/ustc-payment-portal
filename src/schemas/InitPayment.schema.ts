@@ -1,16 +1,19 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 import { FeeIdSchema } from "./FeeId.schema";
-import { MetadataSchema } from "./Metadata.schema";
 
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);
 
 export const InitPaymentRequestSchema = z
   .object({
-    transactionReferenceId: z.uuid().openapi({
-      description: "Unique UUID for the transaction reference",
-      example: "550e8400-e29b-41d4-a716-446655440000",
+    trackingId: z.string().openapi({
+      description: "Client-provided identifier for the transaction",
+      example: "DAWSON-12345",
+    }),
+    amount: z.number().openapi({
+      description: "Transaction amount in dollars",
+      example: 60,
     }),
     feeId: FeeIdSchema,
     urlSuccess: z.url().openapi({
@@ -21,7 +24,6 @@ export const InitPaymentRequestSchema = z
       description: "URL to redirect to if payment is cancelled",
       example: "https://client.app/cancel",
     }),
-    metadata: MetadataSchema,
   })
   .openapi("InitPaymentRequest");
 

@@ -22,7 +22,7 @@ export const getDetails: GetDetails = async (
   { payGovTrackingId },
 ) => {
   const req = new GetRequestRequest({
-    tcsAppId: "",
+    tcsAppId: "", // Required by Pay.gov SOAP schema — payGovTrackingId alone identifies the transaction on this call
     payGovTrackingId,
   });
 
