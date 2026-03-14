@@ -15,7 +15,7 @@ export const processPayment: ProcessPayment = async (
   request: ProcessPaymentRequest,
 ) => {
   const req = new CompleteOnlineCollectionWithDetailsRequest({
-    tcsAppId: "",
+    tcsAppId: "", // Required by Pay.gov SOAP schema — token alone identifies the transaction on this call
     token: request.token,
   });
   console.log("processPayment request", req);

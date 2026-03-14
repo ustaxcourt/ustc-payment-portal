@@ -1,5 +1,5 @@
 import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
-import { InitPaymentRequest } from "../../types/InitPaymentRequest";
+import { InitPaymentRequest } from "../../schemas/InitPayment.schema";
 import { signedFetch } from "./sigv4Helper";
 
 describe("make a transaction", () => {
