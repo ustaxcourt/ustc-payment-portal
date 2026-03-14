@@ -104,11 +104,6 @@
       "InitPaymentRequest": {
         "type": "object",
         "properties": {
-          "appId": {
-            "type": "string",
-            "description": "The application ID",
-            "example": "DAWSON"
-          },
           "transactionReferenceId": {
             "type": "string",
             "format": "uuid",
@@ -149,7 +144,6 @@
           }
         },
         "required": [
-          "appId",
           "transactionReferenceId",
           "feeId",
           "urlSuccess",
@@ -363,11 +357,6 @@
       "ProcessPaymentRequest": {
         "type": "object",
         "properties": {
-          "appId": {
-            "type": "string",
-            "description": "The application ID",
-            "example": "DAWSON"
-          },
           "token": {
             "type": "string",
             "description": "The payment token received from Pay.gov after user completes payment form",
@@ -375,7 +364,6 @@
           }
         },
         "required": [
-          "appId",
           "token"
         ]
       },
@@ -475,10 +463,10 @@
         }
       }
     },
-    "/details/{appId}/{transactionReferenceId}": {
+    "/details/{payGovTrackingId}": {
       "get": {
         "summary": "Get transaction details",
-        "description": "Retrieves the payment status and all transaction records associated with a transaction reference ID. If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
+        "description": "Retrieves the payment status and all transaction records associated with a Pay.gov tracking ID. If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
         "tags": [
           "Payments"
         ],
@@ -491,23 +479,12 @@
           {
             "schema": {
               "type": "string",
-              "description": "The application ID",
-              "example": "DAWSON"
+              "description": "The Pay.gov tracking ID",
+              "example": "PAYGOV-TRACK-123456789"
             },
             "required": true,
-            "description": "The application ID",
-            "name": "appId",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "description": "The transaction reference ID",
-              "example": "TXN-REF-123456789"
-            },
-            "required": true,
-            "description": "The transaction reference ID",
-            "name": "transactionReferenceId",
+            "description": "The Pay.gov tracking ID",
+            "name": "payGovTrackingId",
             "in": "path"
           }
         ],

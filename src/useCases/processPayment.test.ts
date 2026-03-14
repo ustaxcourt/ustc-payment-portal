@@ -112,7 +112,6 @@ describe("processPayment", () => {
 
     it("returns the trackingId from the XML", async () => {
       const { trackingId } = await processPayment(appContext, {
-        appId: "asdf",
         token: "mock-token",
       });
 
@@ -121,7 +120,6 @@ describe("processPayment", () => {
 
     it("returns the transactionStatus from the XML", async () => {
       const { transactionStatus } = await processPayment(appContext, {
-        appId: "asdf",
         token: "mock-token",
       });
 
@@ -138,7 +136,6 @@ describe("processPayment", () => {
 
     it("does not return a trackingId", async () => {
       const { trackingId } = await processPayment(appContext, {
-        appId: "asdf",
         token: "mock-token",
       });
 
@@ -147,7 +144,6 @@ describe("processPayment", () => {
 
     it("returns transactionStatus failed", async () => {
       const { transactionStatus } = await processPayment(appContext, {
-        appId: "asdf",
         token: "mock-token",
       });
       expect(transactionStatus).toBe("Failed");
@@ -155,7 +151,6 @@ describe("processPayment", () => {
 
     it("returns a message that indicates why the transaction failed", async () => {
       const { message } = await processPayment(appContext, {
-        appId: "asdf",
         token: "mock-token",
       });
 
@@ -166,7 +161,6 @@ describe("processPayment", () => {
 
     it("returns the error code from the pyment processor that indicates why the transaction failed", async () => {
       const { code } = await processPayment(appContext, {
-        appId: "asdf",
         token: "mock-token",
       });
 
@@ -183,7 +177,6 @@ describe("processPayment", () => {
 
     it("Returns a trackingId", async () => {
       const { trackingId } = await processPayment(appContext, {
-        appId: "asdf",
         token: "mock-token",
       });
 
@@ -192,7 +185,6 @@ describe("processPayment", () => {
 
     it("returns Pending transaction status", async () => {
       const { transactionStatus } = await processPayment(appContext, {
-        appId: "asdf",
         token: "mock-token",
       });
       expect(transactionStatus).toBe("Pending");
@@ -206,7 +198,6 @@ describe("processPayment", () => {
         .mockReturnValue(mockFaultWithoutDetail);
 
       const { transactionStatus, message } = await processPayment(appContext, {
-        appId: "asdf",
         token: "mock-token",
       });
 
@@ -220,7 +211,6 @@ describe("processPayment", () => {
         .mockReturnValue(mockFaultWithoutTCSServiceFault);
 
       const { transactionStatus, message } = await processPayment(appContext, {
-        appId: "asdf",
         token: "mock-token",
       });
 

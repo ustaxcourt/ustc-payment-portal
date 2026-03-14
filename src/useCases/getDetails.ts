@@ -4,7 +4,6 @@ import { TransactionStatus } from "../types/TransactionStatus";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 
 export type GetDetailsRequest = {
-  appId: string;
   payGovTrackingId: string;
 };
 
@@ -15,15 +14,15 @@ export type TransactionDetails = {
 
 export type GetDetails = (
   appContext: AppContext,
-  { appId, payGovTrackingId }: GetDetailsRequest
+  { payGovTrackingId }: GetDetailsRequest,
 ) => Promise<TransactionDetails>;
 
 export const getDetails: GetDetails = async (
   appContext,
-  { appId, payGovTrackingId }
+  { payGovTrackingId },
 ) => {
   const req = new GetRequestRequest({
-    tcsAppId: appId,
+    tcsAppId: "", // Required by Pay.gov SOAP schema — payGovTrackingId alone identifies the transaction on this call
     payGovTrackingId,
   });
 
