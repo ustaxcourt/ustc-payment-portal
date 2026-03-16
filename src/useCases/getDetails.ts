@@ -22,7 +22,7 @@ export const getDetails: GetDetails = async (
   { payGovTrackingId },
 ) => {
   const req = new GetRequestRequest({
-    tcsAppId: "", // Required by Pay.gov SOAP schema — payGovTrackingId alone identifies the transaction on this call
+    tcsAppId: "", // Required by Pay.gov SOAP schema. TODO: once fees table is provisioned, tcsAppId will be pulled from the DB fees record using the feeId associated with this transaction
     payGovTrackingId,
   });
 
