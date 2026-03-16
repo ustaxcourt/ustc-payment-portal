@@ -73,3 +73,19 @@ output "test_cert_invoke_arn" {
   description = "Invoke ARN of the testCert Lambda function"
   value       = aws_lambda_function.functions["testCert"].invoke_arn
 }
+
+# Dashboard Lambda outputs
+output "get_all_transactions_invoke_arn" {
+  description = "Invoke ARN of the getAllTransactions Lambda function"
+  value       = aws_lambda_function.functions["getAllTransactions"].invoke_arn
+}
+
+output "get_transactions_by_status_invoke_arn" {
+  description = "Invoke ARN of the getTransactionsByStatus Lambda function"
+  value       = aws_lambda_function.functions["getTransactionsByStatus"].invoke_arn
+}
+
+output "get_transaction_payment_status_invoke_arn" {
+  description = "Invoke ARN of the getTransactionPaymentStatus Lambda function"
+  value       = aws_lambda_function.functions["getTransactionPaymentStatus"].invoke_arn
+}

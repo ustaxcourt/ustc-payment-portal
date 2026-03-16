@@ -169,8 +169,8 @@ resource "aws_s3_bucket_policy" "build_artifacts" {
         }
       },
       {
-        Sid       = "AllowStagingDeployerGetBucketLocation"
-        Effect    = "Allow"
+        Sid    = "AllowStagingDeployerGetBucketLocation"
+        Effect = "Allow"
         Principal = {
           AWS = var.staging_deployer_role_arn
         }
@@ -191,8 +191,8 @@ resource "aws_s3_bucket_policy" "build_artifacts" {
         Resource = "${aws_s3_bucket.build_artifacts.arn}/artifacts/dev/*"
       },
       {
-        Sid       = "AllowProdDeployerListDevPrefix"
-        Effect    = "Allow"
+        Sid    = "AllowProdDeployerListDevPrefix"
+        Effect = "Allow"
         Principal = {
           AWS = var.prod_deployer_role_arn
         }
@@ -205,8 +205,8 @@ resource "aws_s3_bucket_policy" "build_artifacts" {
         }
       },
       {
-        Sid       = "AllowProdDeployerGetBucketLocation"
-        Effect    = "Allow"
+        Sid    = "AllowProdDeployerGetBucketLocation"
+        Effect = "Allow"
         Principal = {
           AWS = var.prod_deployer_role_arn
         }

@@ -77,3 +77,13 @@ export const getDetailsHandler = (
     appContext.getUseCases().getDetails
   );
 };
+
+// ─── Dashboard handlers ───────────────────────────────────────────────────────
+// These endpoints query the RDS transactions table and live alongside the
+// existing payment handlers. The DB connection is initialised as a side-effect
+// of importing the knex module.
+export {
+  getAllTransactionsHandler,
+  getTransactionsByStatusHandler,
+  getTransactionPaymentStatusHandler,
+} from './dashboard/handlers/transactions.handler';

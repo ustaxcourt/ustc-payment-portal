@@ -80,10 +80,26 @@ npx esbuild src/testCert.ts \
   --minify \
   --keep-names
 
+# Bundle Dashboard Lambdas (all share lambdaHandler.ts entry)
+for func in getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
+  echo "Bundling ${func}..."
+  mkdir -p "dist/${func}"
+  npx esbuild src/lambdaHandler.ts \
+    --bundle \
+    --platform=node \
+    --target=node22 \
+    --format=cjs \
+    --outfile="dist/${func}/lambdaHandler.js" \
+    --external:aws-sdk \
+    --external:@aws-sdk/* \
+    --minify \
+    --keep-names
+done
+
 # Copy certificate files if they exist
 if [ -d "certs" ]; then
     echo "Copying certificate files..."
-    for func in initPayment processPayment getDetails testCert; do
+    for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
         if [ -d "dist/$func" ]; then
             cp -r certs dist/$func/
         fi
@@ -96,11 +112,14 @@ echo "  - dist/initPayment/lambdaHandler.js"
 echo "  - dist/processPayment/lambdaHandler.js"
 echo "  - dist/getDetails/lambdaHandler.js"
 echo "  - dist/testCert/lambdaHandler.js"
+echo "  - dist/getAllTransactions/lambdaHandler.js"
+echo "  - dist/getTransactionsByStatus/lambdaHandler.js"
+echo "  - dist/getTransactionPaymentStatus/lambdaHandler.js"
 
 # Show file sizes
 echo ""
 echo "Bundle sizes:"
-for func in initPayment processPayment getDetails testCert; do
+for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
     if [ -f "dist/$func/lambdaHandler.js" ]; then
         size=$(du -h "dist/$func/lambdaHandler.js" | cut -f1)
         echo "  - $func: $size"
