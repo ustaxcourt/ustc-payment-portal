@@ -33,9 +33,9 @@ services:
       - root_node_modules:/workspace/node_modules
     command: sh -c "npm ci && npm run migrate:latest && npm run seed:run"
 
-  dashboard-api:
+  backend:
     image: node:20
-    working_dir: /app
+    working_dir: /workspace
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,33 +47,32 @@ services:
       DB_USER: user
       DB_PASSWORD: password
       DB_NAME: mydb
-      API_PORT: 3001
       NODE_ENV: development
       CHOKIDAR_USEPOLLING: "true"
     ports:
-      - "${DASHBOARD_API_PORT:-3001}:3001"
+      - "${BACKEND_PORT:-8080}:8080"
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "node -e \"fetch('http://localhost:3001/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+          "node -e \"fetch('http://localhost:8080/').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
         ]
       interval: 5s
       timeout: 5s
       retries: 20
     volumes:
-      - ./dashboard-api:/app
-      - dashboard_api_node_modules:/app/node_modules
-    command: sh -c "npm ci && npm run dev -- --legacy-watch"
+      - ./:/workspace
+      - root_node_modules:/workspace/node_modules
+    command: sh -c "npm ci && npm run dev"
 
   web-client:
     image: node:20
     working_dir: /app
     depends_on:
-      dashboard-api:
+      backend:
         condition: service_healthy
     environment:
-      VITE_DASHBOARD_API_BASE_URL: http://localhost:${DASHBOARD_API_PORT:-3001}
+      VITE_DASHBOARD_API_BASE_URL: http://localhost:${BACKEND_PORT:-8080}
       CHOKIDAR_USEPOLLING: "true"
     ports:
       - "${WEB_CLIENT_PORT:-5173}:5173"
@@ -85,5 +84,4 @@ services:
 volumes:
   postgres_data:
   root_node_modules:
-  dashboard_api_node_modules:
   web_client_node_modules:

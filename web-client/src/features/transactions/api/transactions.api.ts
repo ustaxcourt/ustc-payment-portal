@@ -8,7 +8,7 @@ export type TransactionsResponse = {
 }
 
 const dashboardApiBaseUrl = (import.meta.env.VITE_DASHBOARD_API_BASE_URL as string | undefined)
-  ?.replace(/\/$/, '') ?? 'http://localhost:3001'
+  ?.replace(/\/$/, '') ?? 'http://localhost:8080'
 
 export async function fetchTransactionsByStatus(
   status: PaymentStatus,
