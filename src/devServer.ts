@@ -4,6 +4,8 @@ import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { generateOpenAPIDocument } from "./openapi/registry";
 import dotenv from "dotenv";
+import dashboardRoutes from "./dashboard/routes/transactions.routes";
+import "./dashboard/db/knex"; // initialises Knex + Objection for dashboard queries
 
 // Prefer .env.dev for local development, fallback to default .env
 const envPath = path.resolve(process.cwd(), ".env.dev");
@@ -58,6 +60,17 @@ app.get("/details/:appId/:payGovTrackingId", async (req, res) => {
 app.get("/", (req, res) => {
   res.send("hello world!");
 });
+
+// Dashboard API routes — same endpoints used by the Lambda handlers in production
+app.get("/transaction-payment-status", async (_req, res, next) => {
+  const { getTransactionPaymentStatus } = await import("./useCases/transactions");
+  try {
+    res.json(await getTransactionPaymentStatus());
+  } catch (err) {
+    next(err);
+  }
+});
+app.use("/transactions", dashboardRoutes);
 
 // start the express server
 app.listen(port, () => {

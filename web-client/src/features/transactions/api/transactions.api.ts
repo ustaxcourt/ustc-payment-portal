@@ -16,7 +16,7 @@ export async function fetchTransactionsByStatus(
 ): Promise<TransactionsResponse> {
   const { signal } = opts ?? {}
 
-  const url = `${dashboardApiBaseUrl}/api/transactions/${status}`
+  const url = `${dashboardApiBaseUrl}/transactions/${status}`
   const response = await fetch(url, {
     method: 'GET',
     signal,
@@ -35,7 +35,7 @@ export async function fetchAllTransactions(
 ): Promise<TransactionsResponse> {
   const { signal } = opts ?? {}
 
-  const url = `${dashboardApiBaseUrl}/api/transactions`
+  const url = `${dashboardApiBaseUrl}/transactions`
   const response = await fetch(url, {
     method: 'GET',
     signal,
@@ -53,7 +53,7 @@ export async function fetchTransactionPaymentStatus(
 ): Promise<PaymentStatusCounts> {
   const { signal } = opts ?? {}
 
-  const url = `${dashboardApiBaseUrl}/api/transaction-payment-status`
+  const url = `${dashboardApiBaseUrl}/transaction-payment-status`
   const response = await fetch(url, {
     method: 'GET',
     signal,
