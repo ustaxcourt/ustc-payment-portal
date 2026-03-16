@@ -225,7 +225,7 @@ resource "aws_lambda_permission" "details_permissions" {
 
 # Custom domain — only created when certificate_arn and custom_domain are provided.
 resource "aws_api_gateway_domain_name" "custom" {
-  count                    = var.custom_domain != "" ? 1 : 0
+  count                    = var.custom_domain != "" && var.certificate_arn != "" ? 1 : 0
   domain_name              = var.custom_domain
   regional_certificate_arn = var.certificate_arn
 
@@ -237,14 +237,14 @@ resource "aws_api_gateway_domain_name" "custom" {
 }
 
 resource "aws_api_gateway_base_path_mapping" "mapping" {
-  count       = var.custom_domain != "" ? 1 : 0
+  count       = var.custom_domain != "" && var.certificate_arn != "" ? 1 : 0
   api_id      = aws_api_gateway_rest_api.rest.id
   stage_name  = aws_api_gateway_stage.stage.stage_name
   domain_name = aws_api_gateway_domain_name.custom[0].domain_name
 }
 
 resource "aws_route53_record" "custom_domain" {
-  count   = var.custom_domain != "" ? 1 : 0
+  count   = var.custom_domain != "" && var.certificate_arn != "" ? 1 : 0
   name    = var.custom_domain
   type    = "A"
   zone_id = var.route53_zone_id
