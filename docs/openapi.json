@@ -104,15 +104,11 @@
       "InitPaymentRequest": {
         "type": "object",
         "properties": {
-          "trackingId": {
+          "transactionReferenceId": {
             "type": "string",
-            "description": "Client-provided identifier for the transaction",
-            "example": "DAWSON-12345"
-          },
-          "amount": {
-            "type": "number",
-            "description": "Transaction amount in dollars",
-            "example": 60
+            "format": "uuid",
+            "description": "Unique UUID for the transaction reference",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
           },
           "feeId": {
             "type": "string",
@@ -134,14 +130,25 @@
             "format": "uri",
             "description": "URL to redirect to if payment is cancelled",
             "example": "https://client.app/cancel"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetadataDawson"
+              },
+              {
+                "$ref": "#/components/schemas/MetadataNonattorneyExam"
+              }
+            ],
+            "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. See individual metadata schemas for field requirements."
           }
         },
         "required": [
-          "trackingId",
-          "amount",
+          "transactionReferenceId",
           "feeId",
           "urlSuccess",
-          "urlCancel"
+          "urlCancel",
+          "metadata"
         ]
       },
       "InitPaymentResponse": {
@@ -456,10 +463,10 @@
         }
       }
     },
-    "/details/{payGovTrackingId}": {
+    "/details/{transactionReferenceId}": {
       "get": {
         "summary": "Get transaction details",
-        "description": "Retrieves the payment status and all transaction records associated with a Pay.gov tracking ID. If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
+        "description": "Retrieves the payment status and all transaction records associated with a transaction reference ID. If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
         "tags": [
           "Payments"
         ],
@@ -472,12 +479,12 @@
           {
             "schema": {
               "type": "string",
-              "description": "The Pay.gov tracking ID",
-              "example": "PAYGOV-TRACK-123456789"
+              "description": "The transaction reference ID",
+              "example": "TXN-REF-123456789"
             },
             "required": true,
-            "description": "The Pay.gov tracking ID",
-            "name": "payGovTrackingId",
+            "description": "The transaction reference ID",
+            "name": "transactionReferenceId",
             "in": "path"
           }
         ],
