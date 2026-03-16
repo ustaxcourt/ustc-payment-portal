@@ -63,7 +63,7 @@ services:
     volumes:
       - ./:/workspace
       - root_node_modules:/workspace/node_modules
-    command: sh -c "npm ci && npm run dev"
+    command: sh -c "npm ci && npx ts-node src/devServer.ts"
 
   web-client:
     image: node:20

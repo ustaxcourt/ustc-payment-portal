@@ -1,21 +1,34 @@
 import express from "express";
 import path from "path";
+import dotenv from "dotenv";
+
+// Load .env.dev BEFORE any module reads process.env
+const envPath = path.resolve(process.cwd(), ".env.dev");
+dotenv.config({ path: envPath });
+
 import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { generateOpenAPIDocument } from "./openapi/registry";
-import dotenv from "dotenv";
 import dashboardRoutes from "./dashboard/routes/transactions.routes";
 import "./dashboard/db/knex"; // initialises Knex + Objection for dashboard queries
-
-// Prefer .env.dev for local development, fallback to default .env
-const envPath = path.resolve(process.cwd(), ".env.dev");
-dotenv.config({ path: envPath });
 
 const appContext = createAppContext();
 
 const app = express();
 app.use(express.json());
 const port = 8080; // default port to listen
+
+// CORS — allow the web-client dev server to call the API
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+    return;
+  }
+  next();
+});
 
 // Configure Express to use EJS
 app.set("views", path.join(__dirname, "views"));
