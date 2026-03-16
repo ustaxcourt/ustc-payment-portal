@@ -1,8 +1,9 @@
 locals {
-  aws_region   = "us-east-1"
-  environment  = "prod"
-  node_env     = "production"
-  mtls_enabled = true
+  aws_region    = "us-east-1"
+  environment   = "prod"
+  node_env      = "production"
+  mtls_enabled  = true
+  custom_domain = "payments.ustaxcourt.gov"
   lambda_env_base = {
     NODE_ENV                           = local.node_env
     PAYMENT_URL                        = local.payment_url

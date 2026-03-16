@@ -168,6 +168,17 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "*"
       },
       {
+        Effect = "Allow",
+        Action = [
+          "route53:ChangeResourceRecordSets",
+          "route53:ListResourceRecordSets",
+          "route53:GetHostedZone",
+          "route53:ListHostedZones",
+          "route53:GetChange"
+        ],
+        Resource = "*"
+      },
+      {
         Effect = "Allow", #cloudwatch logs
         Action = [
           "logs:CreateLogGroup",

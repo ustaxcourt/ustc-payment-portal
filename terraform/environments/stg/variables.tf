@@ -38,3 +38,15 @@ variable "testCert_source_code_hash" {
   type    = string
   default = ""
 }
+
+variable "certificate_arn" {
+  description = "ARN of the ACM certificate for the custom domain (stg-payments.ustaxcourt.gov)"
+  type        = string
+  default     = ""
+}
+
+variable "route53_zone_id" {
+  description = "Route53 hosted zone ID for ustaxcourt.gov"
+  type        = string
+  default     = ""
+}

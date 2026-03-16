@@ -69,6 +69,9 @@ module "api" {
   environment          = "stg"
   stage_name           = "stg"
   allowed_account_ids  = local.allowed_client_account_ids
+  custom_domain        = local.custom_domain
+  certificate_arn      = var.certificate_arn
+  route53_zone_id      = var.route53_zone_id
 
   depends_on = [module.secrets]
 }

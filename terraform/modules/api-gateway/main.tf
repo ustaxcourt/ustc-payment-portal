@@ -222,3 +222,36 @@ resource "aws_lambda_permission" "details_permissions" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/details/*"
 }
+
+# Custom domain — only created when certificate_arn and custom_domain are provided.
+resource "aws_api_gateway_domain_name" "custom" {
+  count                    = var.custom_domain != "" ? 1 : 0
+  domain_name              = var.custom_domain
+  regional_certificate_arn = var.certificate_arn
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
+
+  tags = var.common_tags
+}
+
+resource "aws_api_gateway_base_path_mapping" "mapping" {
+  count       = var.custom_domain != "" ? 1 : 0
+  api_id      = aws_api_gateway_rest_api.rest.id
+  stage_name  = aws_api_gateway_stage.stage.stage_name
+  domain_name = aws_api_gateway_domain_name.custom[0].domain_name
+}
+
+resource "aws_route53_record" "custom_domain" {
+  count   = var.custom_domain != "" ? 1 : 0
+  name    = var.custom_domain
+  type    = "A"
+  zone_id = var.route53_zone_id
+
+  alias {
+    name                   = aws_api_gateway_domain_name.custom[0].regional_domain_name
+    zone_id                = aws_api_gateway_domain_name.custom[0].regional_zone_id
+    evaluate_target_health = false
+  }
+}

@@ -89,6 +89,9 @@ module "api" {
   environment          = local.environment == "dev" ? "dev" : local.environment
   stage_name           = local.environment == "dev" ? "dev" : local.environment
   allowed_account_ids  = local.allowed_client_account_ids
+  custom_domain        = local.environment == "dev" ? local.custom_domain : ""
+  certificate_arn      = var.certificate_arn
+  route53_zone_id      = var.route53_zone_id
 
   depends_on = [module.secrets]
 }
