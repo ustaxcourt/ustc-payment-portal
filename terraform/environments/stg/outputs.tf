@@ -23,6 +23,11 @@ output "api_gateway_url" {
   description = "Base URL of the API Gateway for integration tests"
 }
 
+output "hosted_zone_nameservers" {
+  value       = aws_route53_zone.this.name_servers
+  description = "Nameservers for the hosted zone — share with ISD to set NS delegation records in ustaxcourt.gov"
+}
+
 output "cert_passphrase_secret_id" {
   value       = module.secrets.cert_passphrase_secret_id
   description = "Secret ID for certificate passphrase"

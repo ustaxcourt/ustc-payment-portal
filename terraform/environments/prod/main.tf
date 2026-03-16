@@ -67,6 +67,15 @@ module "rds" {
   }
 }
 
+resource "aws_route53_zone" "this" {
+  name = local.custom_domain
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
 module "api" {
   source = "../../modules/api-gateway"
 
@@ -76,7 +85,7 @@ module "api" {
   allowed_account_ids  = local.allowed_client_account_ids
   custom_domain        = local.custom_domain
   certificate_arn      = var.certificate_arn
-  route53_zone_id      = var.route53_zone_id
+  route53_zone_id      = aws_route53_zone.this.zone_id
 
   depends_on = [module.secrets]
 }
