@@ -90,11 +90,14 @@ components:
     InitPaymentRequest:
       type: object
       properties:
-        transactionReferenceId:
+        trackingId:
           type: string
-          format: uuid
-          description: Unique UUID for the transaction reference
-          example: 550e8400-e29b-41d4-a716-446655440000
+          description: Client-provided identifier for the transaction
+          example: DAWSON-12345
+        amount:
+          type: number
+          description: Transaction amount in dollars
+          example: 60
         feeId:
           type: string
           enum:
@@ -124,20 +127,12 @@ components:
           format: uri
           description: URL to redirect to if payment is cancelled
           example: https://client.app/cancel
-        metadata:
-          anyOf:
-            - $ref: '#/components/schemas/MetadataDawson'
-            - $ref: '#/components/schemas/MetadataNonattorneyExam'
-          description: >-
-            Metadata fields are dynamic and determined by the feeId value.
-            Different fees require different metadata properties. See individual
-            metadata schemas for field requirements.
       required:
-        - transactionReferenceId
+        - trackingId
+        - amount
         - feeId
         - urlSuccess
         - urlCancel
-        - metadata
     InitPaymentResponse:
       type: object
       properties:
