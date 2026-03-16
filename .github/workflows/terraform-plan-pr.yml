@@ -1,0 +1,99 @@
+name: Terraform Plan - PR
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to run terraform plan against"
+        required: false
+        default: dev
+        type: choice
+        options:
+          - dev
+          - stg
+          - prod
+      branch:
+        description: "Branch to plan from (required for stg/prod)"
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  terraform_plan:
+    name: Terraform Init, Validate, Plan
+    runs-on: ubuntu-latest
+    env:
+      TARGET_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'dev' }}
+      TARGET_REF: ${{ github.event_name == 'workflow_dispatch' && (inputs.branch != '' && inputs.branch || github.ref_name) || github.head_ref }}
+    steps:
+      - name: Validate manual inputs
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          if [[ "${TARGET_ENV}" != "dev" && -z "${{ inputs.branch }}" ]]; then
+            echo "Input 'branch' is required when environment is stg or prod."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch != '' && inputs.branch || github.ref }}
+
+      - name: Select AWS deployer role
+        id: role
+        run: |
+          case "${TARGET_ENV}" in
+            dev)
+              echo "role_arn=${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}" >> "$GITHUB_OUTPUT"
+              ;;
+            stg)
+              echo "role_arn=${{ secrets.STAGING_AWS_DEPLOYER_ROLE_ARN }}" >> "$GITHUB_OUTPUT"
+              ;;
+            prod)
+              echo "role_arn=${{ secrets.PROD_AWS_DEPLOYER_ROLE_ARN }}" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported environment: ${TARGET_ENV}"
+              exit 1
+              ;;
+          esac
+
+      - name: Workflow summary
+        run: |
+          echo "### Terraform plan selection" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Environment: ${TARGET_ENV}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Branch: ${TARGET_REF}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.role.outputs.role_arn }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.14.6"
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: terraform init -input=false -backend-config=backend.hcl
+        working-directory: terraform/environments/${{ env.TARGET_ENV }}
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: terraform/environments/${{ env.TARGET_ENV }}
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -lock-timeout=2m
+        working-directory: terraform/environments/${{ env.TARGET_ENV }}
