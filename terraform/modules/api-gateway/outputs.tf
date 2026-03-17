@@ -16,7 +16,7 @@ output "api_gateway_url" {
 }
 
 output "custom_domain_url" {
-  value       = var.custom_domain != "" && var.certificate_arn != "" ? "https://${var.custom_domain}" : null
+  value       = var.custom_domain != "" ? "https://${var.custom_domain}" : null
   description = "Custom domain URL for the API, if configured"
 }
 
