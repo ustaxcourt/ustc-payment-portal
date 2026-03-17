@@ -50,17 +50,11 @@ registry.register("TransactionStatus", TransactionStatusSchema);
 registry.register("PaymentStatus", PaymentStatusSchema);
 registry.register("PaymentMethod", PaymentMethodSchema);
 registry.register("ProcessPaymentRequest", ProcessPaymentRequestSchema);
-registry.register(
-  "ProcessPaymentResponse",
-  ProcessPaymentResponseSchema
-);
+registry.register("ProcessPaymentResponse", ProcessPaymentResponseSchema);
 registry.register("RecentTransactionsResponse", RecentTransactionsResponseSchema);
 registry.register("TransactionsByStatusPathParams", TransactionsByStatusPathParamsSchema);
 registry.register("TransactionsByStatusResponse", TransactionsByStatusResponseSchema);
-registry.register(
-  "TransactionPaymentStatusResponse",
-  TransactionPaymentStatusResponseSchema,
-);
+registry.register("TransactionPaymentStatusResponse", TransactionPaymentStatusResponseSchema);
 
 // ============================================
 // AWS Signature Version 4 Security Scheme

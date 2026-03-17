@@ -15,6 +15,8 @@ export type GetTransactionsByStatus = (
   request: TransactionsByStatusPathParams
 ) => Promise<TransactionsByStatusResponse>;
 
+export type IsValidPaymentStatus = (paymentStatus: string) => boolean;
+
 /**
  * Returns up to 100 transactions filtered by payment status.
  */
@@ -37,7 +39,7 @@ export const getTransactionsByStatus: GetTransactionsByStatus = async (
   });
 };
 
-export const isValidPaymentStatus = (paymentStatus: string): boolean => {
+export const isValidPaymentStatus: IsValidPaymentStatus = (paymentStatus: string): boolean => {
   return TransactionsByStatusPathParamsSchema.shape.paymentStatus.safeParse(
     paymentStatus,
   ).success;
