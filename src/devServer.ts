@@ -48,7 +48,7 @@ app.post("/process", async (req, res) => {
   res.json(result);
 });
 
-app.get("/details/:appId/:payGovTrackingId", async (req, res) => {
+app.get("/details/:payGovTrackingId", async (req, res) => {
   const result = await appContext
     .getUseCases()
     .getDetails(appContext, req.params);

@@ -1,23 +1,12 @@
 import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
 import { InitPaymentRequest } from "../../types/InitPaymentRequest";
-import { getSecretString } from "../../clients/secretsClient";
 import { signedFetch } from "./sigv4Helper";
 
 describe("make a transaction", () => {
   let token: string;
   let paymentRedirect: string;
   let payGovTrackingId: string;
-  let appId: string;
   let isLocal: boolean;
-
-  beforeAll(async () => {
-    isLocal = process.env.NODE_ENV === "local";
-    if (isLocal) {
-      appId = process.env.TCS_APP_ID as string;
-    } else {
-      appId = await getSecretString(process.env.TCS_APP_ID as string);
-    }
-  });
 
   // Helper so every portal call uses SigV4 in deployed envs, plain fetch locally.
   // Pre-deployment:  SigV4 headers are ignored (auth is still NONE), so all calls return 200.
@@ -25,13 +14,16 @@ describe("make a transaction", () => {
   const portalFetch = (url: string, options: RequestInit = {}): Promise<Response> =>
     isLocal ? fetch(url, options) : signedFetch(url, options);
 
+  beforeAll(() => {
+    isLocal = process.env.NODE_ENV === "local";
+  });
+
   it("should make a request to start a transaction", async () => {
     const randomNumber = Math.floor(Math.random() * 100000);
 
     const request: InitPaymentRequest = {
       trackingId: `test${randomNumber}`,
       amount: 20,
-      appId,
       feeId: "PETITION_FILING_FEE",
       urlSuccess: "http://example.com/success",
       urlCancel: "http://example.com/cancel",
@@ -65,13 +57,10 @@ describe("make a transaction", () => {
 
   it("should be able to process the transaction", async () => {
     const request: ProcessPaymentRequest = {
-      appId,
       token,
     };
 
-    console.log(
-      `Time to process the transaction with this appId ${appId}; token: ${token}`
-    );
+    console.log(`Time to process the transaction with token: ${token}`);
 
     const result = await portalFetch(`${process.env.BASE_URL}/process`, {
       method: "POST",
@@ -91,11 +80,11 @@ describe("make a transaction", () => {
 
   it("should be able to get the details about the transaction", async () => {
     console.log(
-      `Time to get the details with this appId ${appId}; payGovTrackingId: ${payGovTrackingId}`
+      `Time to get the details with payGovTrackingId: ${payGovTrackingId}`
     );
 
     const result = await portalFetch(
-      `${process.env.BASE_URL}/details/${appId}/${payGovTrackingId}`,
+      `${process.env.BASE_URL}/details/${payGovTrackingId}`,
       {
         headers: {
           "Content-Type": "application/json",

@@ -8,10 +8,6 @@ extendZodWithOpenApi(z);
 
 export const ProcessPaymentRequestSchema = z
   .object({
-    appId: z.string().openapi({
-      description: "The application ID",
-      example: "DAWSON",
-    }),
     token: z.string().openapi({
       description: "The payment token received from Pay.gov after user completes payment form",
       example: "abc123token",
