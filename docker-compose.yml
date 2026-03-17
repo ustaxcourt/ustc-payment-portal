@@ -28,10 +28,22 @@ services:
       DB_PASSWORD: password
       DB_NAME: mydb
       NODE_ENV: development
+      # Pass MIGRATION_MODE=1 to skip migrations and seeds (useful for testing/debugging)
+      MIGRATION_MODE: "0"
     volumes:
       - ./:/workspace
-      - db_init_node_modules:/workspace/node_modules
-    command: sh -c "npm ci && npm run migrate:latest && npm run seed:run"
+    command: >
+      sh -c '
+        echo "db-init: MIGRATION_MODE=$MIGRATION_MODE";
+
+        if [ "$MIGRATION_MODE" = "1" ]; then
+          echo "db-init: MIGRATION_MODE=1 → skipping db-init";
+          exit 0;
+        fi;
+
+        echo "db-init: MIGRATION_MODE=0 → running migrations + seeds";
+        npm ci && npm run migrate:latest && npm run seed:run
+      '
 
 volumes:
   postgres_data:

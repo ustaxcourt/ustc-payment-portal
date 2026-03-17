@@ -39,7 +39,9 @@
     "migrate:up": "npm run knex -- migrate:up $1",
     "migrate:down": "npm run knex -- migrate:down $1",
     "seed:make": "npm run knex -- seed:make $1",
-    "seed:run": "npm run knex -- seed:run"
+    "seed:run": "npm run knex -- seed:run",
+    "docker": "docker compose up",
+    "docker:migration": "MIGRATION_MODE=1 docker compose up"
   },
   "keywords": [],
   "author": "",
