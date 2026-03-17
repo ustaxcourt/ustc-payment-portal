@@ -42,7 +42,7 @@ CREATE TABLE transactions (
   id UUID PRIMARY KEY,
   payGovTrackingId VARCHAR(255) UNIQUE NOT NULL,
   agencyTrackingId VARCHAR(255) UNIQUE NOT NULL,
-  appId VARCHAR(50) NOT NULL REFERENCES applications(id),
+  clientName VARCHAR(50) NOT NULL REFERENCES applications(id),
   amount DECIMAL(10, 2) NOT NULL,
   feeType VARCHAR(100) NOT NULL,
   transactionStatus ENUM('Success', 'Failed', 'Pending', 'Stuck-Pending') NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE transactions (
   errorMessage TEXT NULL,
   paymentMethod ENUM('ACH', 'Credit', 'PayPal') NOT NULL,
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_appId (appId),
+  INDEX idx_clientName (clientName),
   INDEX idx_status (transactionStatus),
   INDEX idx_initiatedAt (initiatedAt)
 );

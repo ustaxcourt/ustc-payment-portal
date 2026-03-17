@@ -90,10 +90,6 @@ components:
     InitPaymentRequest:
       type: object
       properties:
-        appId:
-          type: string
-          description: The application ID
-          example: DAWSON
         transactionReferenceId:
           type: string
           format: uuid
@@ -137,7 +133,6 @@ components:
             Different fees require different metadata properties. See individual
             metadata schemas for field requirements.
       required:
-        - appId
         - transactionReferenceId
         - feeId
         - urlSuccess
@@ -340,10 +335,6 @@ components:
     ProcessPaymentRequest:
       type: object
       properties:
-        appId:
-          type: string
-          description: The application ID
-          example: DAWSON
         token:
           type: string
           description: >-
@@ -351,7 +342,6 @@ components:
             form
           example: abc123token
       required:
-        - appId
         - token
     ProcessPaymentResponse:
       type: object
@@ -417,7 +407,7 @@ paths:
             text/plain:
               schema:
                 $ref: '#/components/schemas/ServerError'
-  /details/{appId}/{transactionReferenceId}:
+  /details/{transactionReferenceId}:
     get:
       summary: Get transaction details
       description: >-
@@ -429,14 +419,6 @@ paths:
       security:
         - sigv4: []
       parameters:
-        - schema:
-            type: string
-            description: The application ID
-            example: DAWSON
-          required: true
-          description: The application ID
-          name: appId
-          in: path
         - schema:
             type: string
             description: The transaction reference ID

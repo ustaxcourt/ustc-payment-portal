@@ -61,7 +61,6 @@ describe("getDetails", () => {
 
     it("returns the trackingId from the XML", async () => {
       const { trackingId } = await getDetails(appContext, {
-        appId: "test-app-id",
         payGovTrackingId: mockPayGovTrackingId,
       });
 
@@ -70,7 +69,6 @@ describe("getDetails", () => {
 
     it("returns the transactionStatus from the XML", async () => {
       const { transactionStatus } = await getDetails(appContext, {
-        appId: "test-app-id",
         payGovTrackingId: mockPayGovTrackingId,
       });
 
@@ -87,7 +85,6 @@ describe("getDetails", () => {
 
     it("returns the trackingId", async () => {
       const { trackingId } = await getDetails(appContext, {
-        appId: "test-app-id",
         payGovTrackingId: mockPayGovTrackingId,
       });
 
@@ -96,7 +93,6 @@ describe("getDetails", () => {
 
     it("returns Pending transaction status", async () => {
       const { transactionStatus } = await getDetails(appContext, {
-        appId: "test-app-id",
         payGovTrackingId: mockPayGovTrackingId,
       });
 

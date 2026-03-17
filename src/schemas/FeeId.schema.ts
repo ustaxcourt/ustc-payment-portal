@@ -4,6 +4,8 @@ import { z } from "zod";
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);
 
+// TODO: replace with DB lookup once fees table is provisioned. This enum must stay in
+// sync with the feeToTcsAppId map in initPayment.ts until then.
 export const FeeIdSchema = z
   .enum(["PETITION_FILING_FEE", "NONATTORNEY_EXAM_REGISTRATION_FEE"])
   .openapi({

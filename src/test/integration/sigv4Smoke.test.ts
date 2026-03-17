@@ -50,7 +50,6 @@ describe("SigV4 enforcement smoke test", () => {
   const body = JSON.stringify({
     trackingId: "smoke-test",
     amount: 1,
-    appId: "smoke",
     feeId: "PETITION_FILING_FEE",
     urlSuccess: "https://example.com",
     urlCancel: "https://example.com",
@@ -152,7 +151,6 @@ describeLambdaAuth("Lambda-level authorization", () => {
   const body = JSON.stringify({
     trackingId: "auth-test",
     amount: 1,
-    appId: "test",
     feeId: "PETITION_FILING_FEE",
     urlSuccess: "https://example.com",
     urlCancel: "https://example.com",

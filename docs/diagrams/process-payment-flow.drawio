@@ -61,7 +61,7 @@
                         <mxPoint x="900" y="850" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step1" value="1. POST /process&#xa;{appId, token}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" edge="1">
+                <mxCell id="step1" value="1. POST /process&#xa;{token}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="100" y="300" as="sourcePoint"/>
                         <mxPoint x="260" y="300" as="targetPoint"/>

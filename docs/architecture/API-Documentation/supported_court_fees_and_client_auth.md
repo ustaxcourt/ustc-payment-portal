@@ -25,7 +25,6 @@ This design ensures:
 
 ## Terminology
 
-- **`app_id`** — Identifier for a client application (e.g., `DAWSON`)
 - **`fee_id`** — Client-facing identifier for a fee type (e.g., `PETITION_FILING_FEE`, `NONATTORNEY_EXAM_REGISTRATION_FEE`). This is what clients send in API requests
 - **`tcs_app_id`** — Pay.gov application identifier (e.g., `TCSUSTAXCOURTANAEF`). We look this up from the fees table using the `fee_id` provided by the client
 - **`is_variable`** — Boolean indicating if fee amount is client-provided (true) or portal-determined (false)
@@ -41,11 +40,11 @@ This design ensures:
 ### Request Processing Flow
 
 ```
-1. Client Request (fee_id + app_id + metadata)
+1. Client Request (fee_id + metadata)
    ↓
 2. Fee Validation (fee_id exists?)
    ↓
-3. Authorization Check (app_id + fee_id)
+3. Authorization Check (IAM role ARN + fee_id)
    ↓
 4. Fee Lookup (fee_id → tcs_app_id + is_variable + amount)
    ↓
@@ -66,7 +65,6 @@ Clients initiate payments by submitting:
 
 | Field | Description | Provided By | Required |
 |-------|-------------|-------------|----------|
-| `app_id` | Client application identifier | Client | Always |
 | `fee_id` | Fee type identifier | Client | Always |
 | `urlSuccess` | Redirect URL after successful payment | Client | Always |
 | `urlCancel` | Redirect URL if payment is cancelled | Client | Always |
@@ -79,7 +77,6 @@ Clients initiate payments by submitting:
 
 ```json
 {
-  "app_id": "DAWSON",
   "fee_id": "PETITION_FILING_FEE",
   "urlSuccess": "https://dawson.ustaxcourt.gov/payment/success",
   "urlCancel": "https://dawson.ustaxcourt.gov/payment/cancel",
@@ -94,7 +91,6 @@ Clients initiate payments by submitting:
 
 ```json
 {
-  "app_id": "DAWSON",
   "fee_id": "COPY_REQUEST",
   "urlSuccess": "https://dawson.ustaxcourt.gov/payment/success",
   "urlCancel": "https://dawson.ustaxcourt.gov/payment/cancel",
@@ -105,8 +101,6 @@ Clients initiate payments by submitting:
   }
 }
 ```
-
-**Note:** The `fee_id` values (e.g., `USTC_PETITION`, `USTC_COPY`) are used directly as `tcs_app_id` in Pay.gov requests.
 
 **Critical Constraints:**
 - Clients must provide `fee_id` to specify which fee to charge
@@ -260,11 +254,11 @@ After authorization is confirmed, the Payment Portal constructs the SOAP request
 
 **Fixed Fee Flow:**
 ```
-Client Provides:    app_id, fee_id, metadata, redirects
+Client Provides:    fee_id, metadata, redirects
       ↓
 PP Validates:       fee_id exists
       ↓
-PP Authorizes:      (app_id, fee_id) relationship
+PP Authorizes:      (IAM role ARN, fee_id) relationship
       ↓
 PP Looks Up:        tcs_app_id, is_variable=false, amount (from fees table)
       ↓
@@ -273,11 +267,11 @@ PP Sends to Pay.gov: tcs_app_id (from lookup), amount (from table), redirects
 
 **Variable Fee Flow:**
 ```
-Client Provides:    app_id, fee_id, amount, metadata, redirects
+Client Provides:    fee_id, amount, metadata, redirects
       ↓
 PP Validates:       fee_id exists, amount > 0
       ↓
-PP Authorizes:      (app_id, fee_id) relationship
+PP Authorizes:      (IAM role ARN, fee_id) relationship
       ↓
 PP Looks Up:        tcs_app_id, is_variable=true (from fees table)
       ↓

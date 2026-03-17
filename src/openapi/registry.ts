@@ -123,11 +123,11 @@ registry.registerPath({
 });
 
 // ============================================
-// GET /details/:appId/:transactionReferenceId - Get Transaction Details
+// GET /details/:transactionReferenceId - Get Transaction Details
 // ============================================
 registry.registerPath({
   method: "get",
-  path: "/details/{appId}/{transactionReferenceId}",
+  path: "/details/{transactionReferenceId}",
   summary: "Get transaction details",
   description:
     "Retrieves the payment status and all transaction records associated with a transaction reference ID. " +
@@ -136,10 +136,6 @@ registry.registerPath({
   security: [{ sigv4: [] }],
   request: {
     params: z.object({
-      appId: z.string().openapi({
-        description: "The application ID",
-        example: "DAWSON",
-      }),
       transactionReferenceId: z.string().openapi({
         description: "The transaction reference ID",
         example: "TXN-REF-123456789",

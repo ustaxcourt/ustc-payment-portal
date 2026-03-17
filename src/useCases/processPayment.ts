@@ -7,15 +7,15 @@ import { parseTransactionStatus } from "./parseTransactionStatus";
 
 export type ProcessPayment = (
   appContext: AppContext,
-  request: ProcessPaymentRequest
+  request: ProcessPaymentRequest,
 ) => Promise<ProcessPaymentResponse>;
 
 export const processPayment: ProcessPayment = async (
   appContext: AppContext,
-  request: ProcessPaymentRequest
+  request: ProcessPaymentRequest,
 ) => {
   const req = new CompleteOnlineCollectionWithDetailsRequest({
-    tcsAppId: request.appId,
+    tcsAppId: "", // Required by Pay.gov SOAP schema — token alone identifies the transaction on this call
     token: request.token,
   });
   console.log("processPayment request", req);

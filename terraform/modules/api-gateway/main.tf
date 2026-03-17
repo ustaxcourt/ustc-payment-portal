@@ -33,22 +33,16 @@ resource "aws_api_gateway_resource" "test" {
   path_part   = "test"
 }
 
-#GET /details/{appID}/{payGovTrackingID}
+#GET /details/{payGovTrackingId}
 resource "aws_api_gateway_resource" "details" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
   parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
   path_part   = "details"
 }
 
-resource "aws_api_gateway_resource" "details_app_id" {
-  rest_api_id = aws_api_gateway_rest_api.rest.id
-  parent_id   = aws_api_gateway_resource.details.id
-  path_part   = "{appId}"
-}
-
 resource "aws_api_gateway_resource" "details_tracking" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
-  parent_id   = aws_api_gateway_resource.details_app_id.id
+  parent_id   = aws_api_gateway_resource.details.id
   path_part   = "{payGovTrackingId}"
 }
 
@@ -226,5 +220,5 @@ resource "aws_lambda_permission" "details_permissions" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_arns["getDetails"]
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/details/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/details/*"
 }
