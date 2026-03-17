@@ -71,42 +71,29 @@ app.get("/", (req, res) => {
   res.send("hello world!");
 });
 
-app.get("/transactions/status", async (_req, res, next) => {
-  try {
-    const result = await appContext.getUseCases().getTransactionPaymentStatus();
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
 app.get("/transactions", async (_req, res, next) => {
-  try {
-    const result = await appContext.getUseCases().getRecentTransactions();
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
+  const result = await appContext
+    .getUseCases()
+    .getRecentTransactions(appContext);
+  res.json(result);
 });
 
 app.get("/transactions/:paymentStatus", async (req, res, next) => {
-  const { paymentStatus } = req.params;
-
-  if (!appContext.getUseCases().isValidPaymentStatus(paymentStatus)) {
-    res.status(400).json({
-      error: {
-        message: "Invalid paymentStatus. Expected one of: pending, success, failed",
-      },
-    });
-    return;
-  }
-
   try {
-    const result = await appContext.getUseCases().getTransactionsByStatus(paymentStatus);
+    const result = await appContext
+      .getUseCases()
+      .getTransactionsByStatus(appContext, req.params);
     res.json(result);
   } catch (err) {
     next(err);
   }
+});
+
+app.get("/transaction-payment-status", async (req, res, next) => {
+  const result = await appContext
+    .getUseCases()
+    .getTransactionPaymentStatus(appContext);
+  res.json(result);
 });
 
 // start the express server

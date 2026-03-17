@@ -3,12 +3,12 @@ import { AppContext } from "./types/AppContext";
 import { getDetails } from "./useCases/getDetails";
 import { initPayment } from "./useCases/initPayment";
 import { processPayment } from "./useCases/processPayment";
+import { getRecentTransactions } from "./useCases/getRecentTransactions";
 import {
-  getRecentTransactions,
-  getTransactionPaymentStatus,
   getTransactionsByStatus,
   isValidPaymentStatus,
-} from "./useCases/transactions";
+} from "./useCases/getTransactionsByStatus";
+import { getTransactionPaymentStatus } from "./useCases/getTransactionPaymentStatus";
 import * as https from "https";
 import fetch from "node-fetch";
 

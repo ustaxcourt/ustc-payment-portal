@@ -18,6 +18,10 @@ import {
   ProcessPaymentRequestSchema,
   ProcessPaymentResponseSchema,
   FeeIdSchema,
+  RecentTransactionsResponseSchema,
+  TransactionPaymentStatusResponseSchema,
+  TransactionsByStatusPathParamsSchema,
+  TransactionsByStatusResponseSchema,
   MetadataDawsonSchema,
   MetadataNonattorneyExamSchema,
   MetadataSchema,
@@ -49,6 +53,13 @@ registry.register("ProcessPaymentRequest", ProcessPaymentRequestSchema);
 registry.register(
   "ProcessPaymentResponse",
   ProcessPaymentResponseSchema
+);
+registry.register("RecentTransactionsResponse", RecentTransactionsResponseSchema);
+registry.register("TransactionsByStatusPathParams", TransactionsByStatusPathParamsSchema);
+registry.register("TransactionsByStatusResponse", TransactionsByStatusResponseSchema);
+registry.register(
+  "TransactionPaymentStatusResponse",
+  TransactionPaymentStatusResponseSchema,
 );
 
 // ============================================
@@ -216,6 +227,132 @@ registry.registerPath({
       content: {
         "text/plain": {
           schema: BadRequestErrorSchema,
+        },
+      },
+    },
+    403: {
+      description: "Forbidden - invalid SigV4 signature or client not authorized",
+      content: {
+        "text/plain": {
+          schema: ForbiddenErrorSchema,
+        },
+      },
+    },
+    500: {
+      description: "Internal server error",
+      content: {
+        "text/plain": {
+          schema: ServerErrorSchema,
+        },
+      },
+    },
+  },
+});
+
+// ============================================
+// GET /transactions - Recent Transactions
+// ============================================
+registry.registerPath({
+  method: "get",
+  path: "/transactions",
+  summary: "Get recent transactions",
+  description:
+    "Returns up to 100 most recent transactions across all payment statuses.",
+  tags: ["Payments"],
+  security: [{ sigv4: [] }],
+  responses: {
+    200: {
+      description: "Recent transactions retrieved successfully",
+      content: {
+        "application/json": {
+          schema: RecentTransactionsResponseSchema,
+        },
+      },
+    },
+    403: {
+      description: "Forbidden - invalid SigV4 signature or client not authorized",
+      content: {
+        "text/plain": {
+          schema: ForbiddenErrorSchema,
+        },
+      },
+    },
+    500: {
+      description: "Internal server error",
+      content: {
+        "text/plain": {
+          schema: ServerErrorSchema,
+        },
+      },
+    },
+  },
+});
+
+// ============================================
+// GET /transactions/{paymentStatus} - Transactions By Status
+// ============================================
+registry.registerPath({
+  method: "get",
+  path: "/transactions/{paymentStatus}",
+  summary: "Get transactions by payment status",
+  description: "Returns up to 100 transactions matching the requested payment status.",
+  tags: ["Payments"],
+  security: [{ sigv4: [] }],
+  request: {
+    params: TransactionsByStatusPathParamsSchema,
+  },
+  responses: {
+    200: {
+      description: "Transactions for the requested status retrieved successfully",
+      content: {
+        "application/json": {
+          schema: TransactionsByStatusResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: "Invalid payment status path parameter",
+      content: {
+        "text/plain": {
+          schema: BadRequestErrorSchema,
+        },
+      },
+    },
+    403: {
+      description: "Forbidden - invalid SigV4 signature or client not authorized",
+      content: {
+        "text/plain": {
+          schema: ForbiddenErrorSchema,
+        },
+      },
+    },
+    500: {
+      description: "Internal server error",
+      content: {
+        "text/plain": {
+          schema: ServerErrorSchema,
+        },
+      },
+    },
+  },
+});
+
+// ============================================
+// GET /transaction-payment-status - Aggregate Payment Status
+// ============================================
+registry.registerPath({
+  method: "get",
+  path: "/transaction-payment-status",
+  summary: "Get aggregate transaction payment status",
+  description: "Returns counts of transactions grouped by payment status.",
+  tags: ["Payments"],
+  security: [{ sigv4: [] }],
+  responses: {
+    200: {
+      description: "Aggregate status counts retrieved successfully",
+      content: {
+        "application/json": {
+          schema: TransactionPaymentStatusResponseSchema,
         },
       },
     },
