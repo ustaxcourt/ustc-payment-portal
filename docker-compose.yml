@@ -2,13 +2,13 @@ services:
   postgres:
     image: postgres:14
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_PASSWORD: password
       POSTGRES_USER: user
       POSTGRES_DB: mydb
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d mydb"]
+      test: [ "CMD-SHELL", "pg_isready -U user -d mydb" ]
       interval: 5s
       timeout: 5s
       retries: 10

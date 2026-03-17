@@ -22,6 +22,10 @@ DB_PASSWORD=password
 DB_NAME=mydb
 ```
 
+When running Postgres through `docker compose`, the host maps to `localhost:5433`.
+Use `DB_PORT=5433` for commands run from your local shell.
+Use the same host/port in PgAdmin: `localhost:5433`.
+
 Environment-specific database selection:
 
 - `development`: `DB_NAME` (default `mydb`)
@@ -33,10 +37,10 @@ Environment-specific database selection:
 From repository root:
 
 ```bash
-npm run migrate:latest
-npm run migrate:rollback
-npm run migrate:list
-npm run seed:run
+DB_PORT=5433 npm run migrate:latest
+DB_PORT=5433 npm run migrate:rollback
+DB_PORT=5433 npm run migrate:list
+DB_PORT=5433 npm run seed:run
 ```
 
 Knex CLI wrapper script:
@@ -62,6 +66,7 @@ Inside Compose, `db-init` uses:
 - `DB_NAME=mydb`
 
 This initializes schema and seed data before `dashboard-api` starts.
+This is correct for container-to-container networking (`db-init` to `postgres`).
 
 ## Test Database Setup
 
@@ -74,8 +79,10 @@ npm run test:db:setup
 Behavior:
 
 1. Runs `scripts/ensure-test-db.js` to create `${DB_NAME}_test` if missing.
-2. Runs test migrations (`NODE_ENV=test npm run knex -- migrate:latest`).
-3. Runs test seed (`NODE_ENV=test npm run knex -- seed:run`).
+2. Runs test migrations (`DB_PORT=5433 NODE_ENV=test npm run knex -- migrate:latest`) when invoked from local shell.
+3. Runs test seed (`DB_PORT=5433 NODE_ENV=test npm run knex -- seed:run`) when invoked from local shell.
+
+If your test database is running in local Compose, include `DB_PORT=5433` when running these from your shell.
 
 This setup is used by:
 
@@ -116,10 +123,17 @@ npm run dashboard:test:coverage
 docker compose logs db-init
 ```
 
-`ECONNREFUSED 127.0.0.1:5432`
+`ECONNREFUSED 127.0.0.1:5433`
 
 - Start Postgres via Compose:
 
 ```bash
 docker compose up
+```
+
+- Run migrations/seeds from shell using host-mapped port:
+
+```bash
+DB_PORT=5433 npm run migrate:latest
+DB_PORT=5433 npm run seed:run
 ```

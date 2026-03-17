@@ -17,7 +17,7 @@ The local stack is used to verify transaction dashboard behavior end-to-end:
 
 1. `postgres`
 - Image: `postgres:14`
-- Host port: `5432`
+- Host port: `5433` (container port remains `5432`)
 - Env: `POSTGRES_USER=user`, `POSTGRES_PASSWORD=password`, `POSTGRES_DB=mydb`
 - Healthcheck: `pg_isready -U user -d mydb`
 
@@ -25,7 +25,7 @@ The local stack is used to verify transaction dashboard behavior end-to-end:
 - Runs from repository root (`/workspace`)
 - Waits for healthy `postgres`
 - Runs: `npm ci && npm run migrate:latest && npm run seed:run`
-- Uses DB env values with `DB_HOST=postgres`
+- Uses DB env values with `DB_HOST=postgres` and `DB_PORT=5432`
 - Exits after successful schema/data initialization
 
 3. `dashboard-api`
@@ -126,6 +126,13 @@ Override host ports:
 
 ```bash
 DASHBOARD_API_PORT=3003 WEB_CLIENT_PORT=5174 docker compose up -d
+```
+
+Run root migrations/seeds from your shell against local Compose Postgres:
+
+```bash
+DB_PORT=5433 npm run migrate:latest
+DB_PORT=5433 npm run seed:run
 ```
 
 Reset local DB volume and reinitialize:
