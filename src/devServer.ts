@@ -1,16 +1,13 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
-
-// Load .env.dev BEFORE any module reads process.env
-const envPath = path.resolve(process.cwd(), ".env.dev");
-dotenv.config({ path: envPath });
-
 import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { generateOpenAPIDocument } from "./openapi/registry";
-import dashboardRoutes from "./dashboard/routes/transactions.routes";
-import "./dashboard/db/knex"; // initialises Knex + Objection for dashboard queries
+import "./db/knex"; // initialises Knex + Objection for dashboard queries
+
+const envPath = path.resolve(process.cwd(), ".env.dev");
+dotenv.config({ path: envPath });
 
 const appContext = createAppContext();
 
@@ -74,16 +71,43 @@ app.get("/", (req, res) => {
   res.send("hello world!");
 });
 
-// Dashboard API routes — same endpoints used by the Lambda handlers in production
-app.get("/transaction-payment-status", async (_req, res, next) => {
-  const { getTransactionPaymentStatus } = await import("./useCases/transactions");
+app.get("/transactions/status", async (_req, res, next) => {
   try {
-    res.json(await getTransactionPaymentStatus());
+    const result = await appContext.getUseCases().getTransactionPaymentStatus();
+    res.json(result);
   } catch (err) {
     next(err);
   }
 });
-app.use("/transactions", dashboardRoutes);
+
+app.get("/transactions", async (_req, res, next) => {
+  try {
+    const result = await appContext.getUseCases().getRecentTransactions();
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get("/transactions/:paymentStatus", async (req, res, next) => {
+  const { paymentStatus } = req.params;
+
+  if (!appContext.getUseCases().isValidPaymentStatus(paymentStatus)) {
+    res.status(400).json({
+      error: {
+        message: "Invalid paymentStatus. Expected one of: pending, success, failed",
+      },
+    });
+    return;
+  }
+
+  try {
+    const result = await appContext.getUseCases().getTransactionsByStatus(paymentStatus);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // start the express server
 app.listen(port, () => {

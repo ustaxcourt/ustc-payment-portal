@@ -1,7 +1,7 @@
 import TransactionModel, {
   AggregatedPaymentStatus,
   PaymentStatus,
-} from '../dashboard/models/TransactionModel';
+} from '../db/TransactionModel';
 
 export type TransactionsResponse = {
   data: TransactionModel[];

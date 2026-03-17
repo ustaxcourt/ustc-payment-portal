@@ -41,6 +41,10 @@ export default class TransactionModel extends Model {
     return 'transactions';
   }
 
+  static get idColumn() {
+    return 'agencyTrackingId';
+  }
+
   $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
     const parsed = super.$parseDatabaseJson(json);
 
@@ -53,22 +57,22 @@ export default class TransactionModel extends Model {
 
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
     return TransactionModel.query()
-      .where('payment_status', paymentStatus)
-      .orderBy('created_at', 'desc')
+      .where('paymentStatus', paymentStatus)
+      .orderBy('createdAt', 'desc')
       .limit(100);
   }
 
   static async getAll(): Promise<TransactionModel[]> {
     return TransactionModel.query()
-      .orderBy('created_at', 'desc')
+      .orderBy('createdAt', 'desc')
       .limit(100);
   }
 
   static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
     const rows = await TransactionModel.query()
-      .select('payment_status')
+      .select('paymentStatus')
       .count('* as count')
-      .groupBy('payment_status');
+      .groupBy('paymentStatus');
 
     const totals: AggregatedPaymentStatus = {
       success: 0,
@@ -86,7 +90,7 @@ export default class TransactionModel extends Model {
       }
     });
 
-    totals.total = Math.min(totals.success + totals.failed + totals.pending, 100);
+    totals.total = totals.success + totals.failed + totals.pending;
 
     return totals;
   }

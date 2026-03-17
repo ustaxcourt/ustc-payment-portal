@@ -21,9 +21,11 @@ const connection =
       database: NODE_ENV === 'test' ? `${DB_NAME}_test` : DB_NAME,
     };
 
-console.log(
-  `[Dashboard Knex] env=${NODE_ENV} db=${typeof connection === 'string' ? '(DATABASE_URL)' : connection.database}`
-);
+if (NODE_ENV !== 'production') {
+  console.log(
+    `[Dashboard Knex] env=${NODE_ENV} db=${typeof connection === 'string' ? '(DATABASE_URL)' : connection.database}`
+  );
+}
 
 const knex = Knex({
   client: 'pg',

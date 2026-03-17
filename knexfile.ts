@@ -1,14 +1,13 @@
-import 'dotenv/config';
 import type { Knex } from 'knex';
 require('dotenv').config({ path: process.env.DOTENV_CONFIG_PATH || '.env' });
 
 const {
-  DB_HOST = process.env.DB_HOST || 'localhost',
-  DB_PORT = process.env.DB_PORT || '5432',
-  DB_USER = process.env.DB_USER || 'user',
-  DB_PASSWORD = process.env.DB_PASSWORD || 'password',
-  DB_NAME = process.env.DB_NAME || 'mydb',
-  NODE_ENV = process.env.NODE_ENV || 'development',
+  DB_HOST = 'localhost',
+  DB_PORT = '5432',
+  DB_USER = 'user',
+  DB_PASSWORD = 'password',
+  DB_NAME = 'mydb',
+  NODE_ENV = 'development',
 } = process.env;
 
 const common: Knex.Config = {

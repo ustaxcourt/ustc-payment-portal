@@ -16,7 +16,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   db-init:
-    image: node:20
+    image: node:24
     working_dir: /workspace
     depends_on:
       postgres:
@@ -28,55 +28,11 @@ services:
       DB_PASSWORD: password
       DB_NAME: mydb
       NODE_ENV: development
+    volumes:
+      - ./:/workspace
+      - db_init_node_modules:/workspace/node_modules
     command: sh -c "npm ci && npm run migrate:latest && npm run seed:run"
-
-#   # backend:
-#   #   image: node:20
-#   #   working_dir: /workspace
-#   #   depends_on:
-#   #     postgres:
-#   #       condition: service_healthy
-#   #     db-init:
-#   #       condition: service_completed_successfully
-#   #   environment:
-#   #     DB_HOST: postgres
-#   #     DB_PORT: 5432
-#   #     DB_USER: user
-#   #     DB_PASSWORD: password
-#   #     DB_NAME: mydb
-#   #     NODE_ENV: development
-#   #     CHOKIDAR_USEPOLLING: "true"
-#   #   ports:
-#   #     - "${BACKEND_PORT:-8080}:8080"
-#   #   healthcheck:
-#   #     test:
-#   #       [
-#   #         "CMD-SHELL",
-#   #         "node -e \"fetch('http://localhost:8080/').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
-#   #       ]
-#   #     interval: 5s
-#   #     timeout: 5s
-#   #     retries: 20
-#   #   volumes:
-#   #     - ./:/workspace
-#   #     - root_node_modules:/workspace/node_modules
-#   #   command: sh -c "npm ci && npx ts-node src/devServer.ts"
-
-#   web-client:
-#     image: node:20
-#     working_dir: /app
-#     depends_on:
-#       backend:
-#         condition: service_healthy
-#     environment:
-#       VITE_DASHBOARD_API_BASE_URL: http://localhost:${BACKEND_PORT:-8080}
-#       CHOKIDAR_USEPOLLING: "true"
-#     ports:
-#       - "${WEB_CLIENT_PORT:-5173}:5173"
-#     volumes:
-#       - ./web-client:/app
-#       - web_client_node_modules:/app/node_modules
-#     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
 
 volumes:
   postgres_data:
+  db_init_node_modules:
