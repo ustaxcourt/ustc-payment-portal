@@ -58,8 +58,4 @@ variable "testCert_source_code_hash" {
   default     = ""
 }
 
-variable "certificate_arn" {
-  description = "ARN of the ACM certificate for the custom domain (dev-payments.ustaxcourt.gov)"
-  type        = string
-  default     = ""
-}
+

@@ -163,8 +163,15 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         ]
       },
       {
-        Effect   = "Allow",
-        Action   = ["acm:ListCertificates", "acm:DescribeCertificate"],
+        Effect = "Allow",
+        Action = [
+          "acm:ListCertificates",
+          "acm:DescribeCertificate",
+          "acm:RequestCertificate",
+          "acm:DeleteCertificate",
+          "acm:AddTagsToCertificate",
+          "acm:DescribeCertificate"
+        ],
         Resource = "*"
       },
       {
