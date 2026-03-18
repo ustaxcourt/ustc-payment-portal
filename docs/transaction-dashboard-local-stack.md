@@ -7,8 +7,7 @@ This document describes the local dashboard stack based on the current `docker-c
 The local stack is used to verify transaction dashboard behavior end-to-end:
 
 - PostgreSQL stores transactions.
-- `dashboard-api` serves read-only transaction endpoints.
-- `web-client` renders tabs and DataGrid views for transaction statuses.
+- `src/devServer.ts` serves read-only transaction endpoints via Express on port 8080.
 - Root Knex migrations and seeds initialize data.
 
 ## Services Started by Docker Compose
@@ -22,43 +21,39 @@ The local stack is used to verify transaction dashboard behavior end-to-end:
 - Healthcheck: `pg_isready -U user -d mydb`
 
 2. `db-init` (one-shot initializer)
+- Image: `node:24`
 - Runs from repository root (`/workspace`)
 - Waits for healthy `postgres`
 - Runs: `npm ci && npm run migrate:latest && npm run seed:run`
 - Uses DB env values with `DB_HOST=postgres` and `DB_PORT=5432`
+- Set `MIGRATION_MODE=1` to skip migrations/seeds (useful for debugging)
 - Exits after successful schema/data initialization
 
-3. `dashboard-api`
-- Runs from `/app` with mount `./dashboard-api:/app`
-- Waits for `postgres` healthy and `db-init` success
-- Runs: `npm ci && npm run dev -- --legacy-watch`
-- Exposes host port `${DASHBOARD_API_PORT:-3001}`
-- Healthcheck: `GET /health`
+## Running the Dev Server
 
-4. `web-client`
-- Runs from `/app` with mount `./web-client:/app`
-- Waits for healthy `dashboard-api`
-- Runs: `npm ci && npm run dev -- --host 0.0.0.0 --port 5173`
-- Exposes host port `${WEB_CLIENT_PORT:-5173}`
-- Calls API via `VITE_DASHBOARD_API_BASE_URL=http://localhost:${DASHBOARD_API_PORT:-3001}`
+After Docker Compose starts Postgres and seeds the database, run the Express dev server locally:
+
+```bash
+npx ts-node src/devServer.ts
+```
+
+The server starts on port 8080 and serves both the payment portal API and the dashboard transaction endpoints.
 
 ## Startup Sequence
 
-The effective startup sequence is:
-
 1. Postgres becomes healthy.
 2. `db-init` applies root migrations and seeds.
-3. `dashboard-api` starts.
-4. `web-client` starts.
+3. Run `npx ts-node src/devServer.ts` to start the API on port 8080.
 
-This ordering prevents the UI/API from starting before the `transactions` table exists and has seed data.
+This ordering prevents the API from starting before the `transactions` table exists and has seed data.
 
-## API and Data Contract Used by the UI
+## API Endpoints
 
-The web client fetches:
+The dashboard API serves the following endpoints:
 
-- `GET /api/transactions/:paymentStatus`
-- `GET /api/transaction-payment-status`
+- `GET /transactions` — all transactions (max 100)
+- `GET /transactions/:paymentStatus` — transactions filtered by status
+- `GET /transaction-payment-status` — aggregated counts
 
 Supported `paymentStatus` path values:
 
@@ -66,7 +61,7 @@ Supported `paymentStatus` path values:
 - `failed`
 - `pending`
 
-`/api/transactions/:paymentStatus` returns:
+`/transactions` and `/transactions/:paymentStatus` return:
 
 ```json
 {
@@ -75,13 +70,14 @@ Supported `paymentStatus` path values:
 }
 ```
 
-`/api/transaction-payment-status` returns counts object:
+`/transaction-payment-status` returns counts object:
 
 ```json
 {
   "success": 0,
   "failed": 0,
-  "pending": 0
+  "pending": 0,
+  "total": 0
 }
 ```
 
@@ -96,36 +92,36 @@ Current seed (`db/seeds/01_transactions.ts`) behavior:
 
 ## Useful Local Commands
 
-Start stack in foreground:
+Start Postgres and seed the database:
 
 ```bash
 docker compose up
 ```
 
-Start stack in background:
+Start Postgres in the background:
 
 ```bash
 docker compose up -d
 ```
 
-Show logs:
+Run the dev server (after Postgres is running):
 
 ```bash
-docker compose logs -f postgres db-init dashboard-api web-client
+npx ts-node src/devServer.ts
+```
+
+Show Docker logs:
+
+```bash
+docker compose logs -f postgres db-init
 ```
 
 Verify API quickly:
 
 ```bash
-curl http://localhost:3001/health
-curl http://localhost:3001/api/transactions/success
-curl http://localhost:3001/api/transaction-payment-status
-```
-
-Override host ports:
-
-```bash
-DASHBOARD_API_PORT=3003 WEB_CLIENT_PORT=5174 docker compose up -d
+curl http://localhost:8080/transactions
+curl http://localhost:8080/transactions/success
+curl http://localhost:8080/transaction-payment-status
 ```
 
 Run root migrations/seeds from your shell against local Compose Postgres:
@@ -145,5 +141,3 @@ docker compose up
 ## Related Documentation
 
 - `db/README.md`
-- `dashboard-api/README.md`
-- `web-client/README.md`
