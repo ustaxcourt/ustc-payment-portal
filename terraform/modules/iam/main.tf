@@ -170,7 +170,6 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "acm:RequestCertificate",
           "acm:DeleteCertificate",
           "acm:AddTagsToCertificate",
-          "acm:DescribeCertificate"
         ],
         Resource = "*"
       },
