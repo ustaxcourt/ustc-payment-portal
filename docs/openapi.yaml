@@ -208,11 +208,11 @@ components:
         paymentStatus:
           type: string
           enum:
-            - Success
-            - Failed
-            - Pending
+            - success
+            - failed
+            - pending
           description: Overall payment status representing the current state of the payment
-          example: Success
+          example: success
         transactions:
           type: array
           items:
@@ -319,11 +319,11 @@ components:
     PaymentStatus:
       type: string
       enum:
-        - Success
-        - Failed
-        - Pending
+        - success
+        - failed
+        - pending
       description: The overall status of the payment
-      example: Success
+      example: success
     PaymentMethod:
       type: string
       enum:
@@ -349,11 +349,11 @@ components:
         paymentStatus:
           type: string
           enum:
-            - Success
-            - Failed
-            - Pending
+            - success
+            - failed
+            - pending
           description: Overall payment status representing the current state of the payment
-          example: Success
+          example: success
         transactions:
           type: array
           items:
@@ -364,6 +364,169 @@ components:
       required:
         - paymentStatus
         - transactions
+    RecentTransactionsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardTransaction'
+          description: Up to 100 most recent transactions
+        total:
+          type: integer
+          minimum: 0
+          description: Total number of transactions returned in this response
+          example: 100
+      required:
+        - data
+        - total
+    DashboardTransaction:
+      type: object
+      properties:
+        agencyTrackingId:
+          type: string
+          description: Agency tracking ID for this transaction
+          example: 2f006f54-13a7-4e3d-9dc6-abb53bd4f891
+        paygovTrackingId:
+          type:
+            - string
+            - 'null'
+          description: Pay.gov tracking ID when available
+          example: PG-2f006f54-13a7-4e3d-9dc6-abb53bd4f891
+        feeName:
+          type: string
+          description: Human-readable fee name
+          example: Filing Fee
+        feeId:
+          type: string
+          description: Fee identifier
+          example: FEE-001
+        feeAmount:
+          type: number
+          description: Fee amount in USD
+          example: 60.5
+        clientName:
+          type: string
+          description: Client application name
+          example: payment-portal
+        transactionReferenceId:
+          type: string
+          description: Client-specific transaction reference
+          example: TXREF-00001
+        paymentStatus:
+          type: string
+          enum:
+            - success
+            - failed
+            - pending
+          description: The overall status of the payment
+          example: success
+        transactionStatus:
+          type:
+            - string
+            - 'null'
+          enum:
+            - received
+            - initiated
+            - pending
+            - processed
+            - failed
+            - null
+          description: The status of an individual transaction record
+          example: processed
+        paymentMethod:
+          type: string
+          enum:
+            - card
+            - ach
+            - cash
+            - paypal
+            - apple_pay
+            - google_pay
+            - venmo
+            - other
+          description: Payment method used for the transaction
+          example: card
+        paygovToken:
+          type:
+            - string
+            - 'null'
+          description: Pay.gov token associated with this transaction
+          example: 7f90d8de-e67f-4f8b-a12f-f429b675f2df
+        metadata:
+          type:
+            - object
+            - 'null'
+          additionalProperties:
+            type: string
+          description: Optional metadata associated with this transaction
+        createdAt:
+          type: string
+          format: date-time
+          description: Record creation timestamp
+          example: '2026-03-06T16:15:10.231Z'
+        lastUpdatedAt:
+          type: string
+          format: date-time
+          description: Record last updated timestamp
+          example: '2026-03-09T18:42:56.341Z'
+      required:
+        - agencyTrackingId
+        - feeName
+        - feeId
+        - feeAmount
+        - clientName
+        - transactionReferenceId
+        - paymentStatus
+        - paymentMethod
+        - createdAt
+        - lastUpdatedAt
+    TransactionsByStatusPathParams:
+      type: object
+      properties:
+        paymentStatus:
+          type: string
+          enum:
+            - success
+            - failed
+            - pending
+          description: Filter transactions by overall payment status
+          example: pending
+      required:
+        - paymentStatus
+    TransactionsByStatusResponse:
+      allOf:
+        - $ref: '#/components/schemas/RecentTransactionsResponse'
+        - type: object
+          properties: {}
+    TransactionPaymentStatusResponse:
+      type: object
+      properties:
+        pending:
+          type: integer
+          minimum: 0
+          description: Count of transactions currently pending
+          example: 5
+        success:
+          type: integer
+          minimum: 0
+          description: Count of successful transactions
+          example: 42
+        failed:
+          type: integer
+          minimum: 0
+          description: Count of failed transactions
+          example: 3
+        total:
+          type: integer
+          minimum: 0
+          description: Total transactions across all statuses
+          example: 50
+      required:
+        - pending
+        - success
+        - failed
+        - total
   parameters: {}
 paths:
   /init:
@@ -484,6 +647,106 @@ paths:
             text/plain:
               schema:
                 $ref: '#/components/schemas/BadRequestError'
+        '403':
+          description: Forbidden - invalid SigV4 signature or client not authorized
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+  /transactions:
+    get:
+      summary: Get recent transactions
+      description: Returns up to 100 most recent transactions across all payment statuses.
+      tags:
+        - Payments
+      security:
+        - sigv4: []
+      responses:
+        '200':
+          description: Recent transactions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecentTransactionsResponse'
+        '403':
+          description: Forbidden - invalid SigV4 signature or client not authorized
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+  /transactions/{paymentStatus}:
+    get:
+      summary: Get transactions by payment status
+      description: Returns up to 100 transactions matching the requested payment status.
+      tags:
+        - Payments
+      security:
+        - sigv4: []
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - success
+              - failed
+              - pending
+            description: Filter transactions by overall payment status
+            example: pending
+          required: true
+          description: Filter transactions by overall payment status
+          name: paymentStatus
+          in: path
+      responses:
+        '200':
+          description: Transactions for the requested status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionsByStatusResponse'
+        '400':
+          description: Invalid payment status path parameter
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '403':
+          description: Forbidden - invalid SigV4 signature or client not authorized
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+  /transaction-payment-status:
+    get:
+      summary: Get aggregate transaction payment status
+      description: Returns counts of transactions grouped by payment status.
+      tags:
+        - Payments
+      security:
+        - sigv4: []
+      responses:
+        '200':
+          description: Aggregate status counts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionPaymentStatusResponse'
         '403':
           description: Forbidden - invalid SigV4 signature or client not authorized
           content:
