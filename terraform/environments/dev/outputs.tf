@@ -24,6 +24,8 @@ output "api_gateway_url" {
 }
 
 output "hosted_zone_nameservers" {
+  # Returns [] for PR workspaces — the hosted zone is only created for the base dev environment,
+  # not for ephemeral per-PR environments (aws_route53_zone.this uses count and is skipped in PR workspaces)
   value       = local.environment == "dev" ? aws_route53_zone.this[0].name_servers : []
   description = "Nameservers for the hosted zone — share with ISD to set NS delegation records in ustaxcourt.gov"
 }
