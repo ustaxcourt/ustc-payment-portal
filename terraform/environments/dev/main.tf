@@ -160,6 +160,7 @@ module "iam_cicd" {
   lambda_exec_role_arn     = data.terraform_remote_state.foundation.outputs.lambda_role_arn
   lambda_name_prefix       = local.name_prefix
   create_lambda_exec_role  = false
+  route53_zone_id          = local.environment == "dev" ? aws_route53_zone.this[0].zone_id : ""
 }
 
 module "artifacts_bucket" {

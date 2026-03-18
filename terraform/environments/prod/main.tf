@@ -143,5 +143,6 @@ module "iam_cicd" {
   lambda_exec_role_arn     = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.name_prefix}-lambda-exec"
   lambda_name_prefix       = local.name_prefix
   create_lambda_exec_role  = true
+  route53_zone_id          = aws_route53_zone.this.zone_id
 }
 
