@@ -15,7 +15,10 @@ const app = express();
 app.use(express.json());
 const port = 8080; // default port to listen
 
-// CORS — allow the web-client dev server to call the API
+// Note: This is only needed for local development
+// when the web client is served from a different origin (e.g. localhost:3000).
+// In production, the web client will be served from the same origin as the API,
+// so CORS is not required.
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");

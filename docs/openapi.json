@@ -485,14 +485,9 @@
           "paymentMethod": {
             "type": "string",
             "enum": [
-              "card",
+              "plastic_card",
               "ach",
-              "cash",
-              "paypal",
-              "apple_pay",
-              "google_pay",
-              "venmo",
-              "other"
+              "paypal"
             ],
             "description": "Payment method used for the transaction",
             "example": "card"

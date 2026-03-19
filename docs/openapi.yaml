@@ -437,14 +437,9 @@ components:
         paymentMethod:
           type: string
           enum:
-            - card
+            - plastic_card
             - ach
-            - cash
             - paypal
-            - apple_pay
-            - google_pay
-            - venmo
-            - other
           description: Payment method used for the transaction
           example: card
         paygovToken:
