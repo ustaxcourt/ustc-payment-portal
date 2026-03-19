@@ -54,21 +54,35 @@ describe("TransactionModel", () => {
         { paymentStatus: "initiated", count: "99" },
       ];
 
+      const pagedData = {
+        results: new Array(100).fill({}),
+        total: 200,
+      };
+
       const groupBy = jest.fn().mockResolvedValue(rows);
       const count = jest.fn().mockReturnValue({ groupBy });
       const select = jest.fn().mockReturnValue({ count });
-      jest.spyOn(TransactionModel, "query").mockReturnValue({ select } as any);
+
+      const page = jest.fn().mockResolvedValue(pagedData);
+      const orderBy = jest.fn().mockReturnValue({ page });
+
+      const querySpy = jest.spyOn(TransactionModel, "query");
+      querySpy
+        .mockReturnValueOnce({ select } as any)
+        .mockReturnValueOnce({ orderBy } as any);
 
       const totals = await TransactionModel.getAggregatedPaymentStatus();
 
       expect(select).toHaveBeenCalledWith("paymentStatus");
       expect(count).toHaveBeenCalledWith("* as count");
       expect(groupBy).toHaveBeenCalledWith("paymentStatus");
+      expect(orderBy).toHaveBeenCalledWith("createdAt", "desc");
+      expect(page).toHaveBeenCalledWith(0, 100);
       expect(totals).toEqual({
         success: 4,
         failed: 2,
         pending: 3,
-        total: 9,
+        total: 100,
       });
     });
   });

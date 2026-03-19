@@ -68,7 +68,12 @@ export default class TransactionModel extends Model {
     const rows = await TransactionModel.query()
       .select('paymentStatus')
       .count('* as count')
-      .groupBy('paymentStatus');
+      .groupBy('paymentStatus')
+
+    // TODO: Update aggregation for success, failed, and pending in PAY-053
+    const data = await TransactionModel.query()
+      .orderBy('createdAt', 'desc')
+      .page(0, 100);
 
     const totals: AggregatedPaymentStatus = {
       success: 0,
@@ -86,8 +91,8 @@ export default class TransactionModel extends Model {
       }
     });
 
-    totals.total = totals.success + totals.failed + totals.pending;
-
+    // Use the total count from the paginated query
+    totals.total = data.results.length;
     return totals;
   }
 }
