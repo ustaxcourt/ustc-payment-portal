@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { generateOpenAPIDocument } from "./openapi/registry";
+import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
 import "./db/knex";
 
 const envPath = path.resolve(process.cwd(), ".env.dev");
@@ -81,7 +82,7 @@ app.get("/transactions", async (_req, res, next) => {
 app.get("/transactions/:paymentStatus", async (req, res, next) => {
   const result = await appContext
     .getUseCases()
-    .getTransactionsByStatus(appContext, req.params);
+    .getTransactionsByStatus(appContext, req.params as unknown as TransactionsByStatusPathParams);
   res.json(result);
 });
 
