@@ -17,7 +17,7 @@ export async function seed(knex: Knex): Promise<void> {
     const feeNames = ['Filing Fee', 'Access Fee', 'Transcript Fee'];
     const feeIds = ['FEE-001', 'FEE-002', 'FEE-003'];
 
-    const agencyIds = ['USTC', 'IRS', 'SSA', 'VA', 'DHS'];
+    const agencyIds = ['USTC', 'IRS'];
     const accountHolders = ['John Doe', 'Jane Smith', 'Alex Johnson', 'Client User'];
 
     // Small helper to rotate array values
