@@ -42,7 +42,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.raw(`
     ALTER TABLE transactions
     ADD CONSTRAINT transactions_payment_method_valid
-    CHECK (payment_method IN ('card', 'ach', 'cash', 'paypal', 'apple_pay', 'google_pay', 'venmo', 'other'))
+    CHECK (payment_method IN ('plastic_card', 'ach', 'paypal'))
   `);
 
   // Indexes for common filters & sorting

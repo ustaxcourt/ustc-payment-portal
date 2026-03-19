@@ -12,14 +12,10 @@ export type PaymentStatus = 'pending' | 'success' | 'failed';
 export type AggregatedPaymentStatus = Record<PaymentStatus, number> & { total: number };
 
 export type PaymentMethod =
-  | 'card'
+  | 'plastic_card'
   | 'ach'
-  | 'cash'
-  | 'paypal'
-  | 'apple_pay'
-  | 'google_pay'
-  | 'venmo'
-  | 'other';
+  | 'cash';
+
 
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;

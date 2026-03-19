@@ -13,7 +13,7 @@ export async function seed(knex: Knex): Promise<void> {
     const clientNames = ['payment-portal', 'efile-portal', 'clerk-app'];
     const paymentStatuses = ['pending', 'success', 'failed'];
     const transactionStatuses = ['received', 'initiated', 'pending', 'processed', 'failed'];
-    const paymentMethods = ['card', 'ach', 'cash', 'paypal', 'apple_pay', 'google_pay', 'venmo', 'other'];
+    const paymentMethods = ['plastic_card', 'ach', 'paypal'];
     const feeNames = ['Filing Fee', 'Access Fee', 'Transcript Fee'];
     const feeIds = ['FEE-001', 'FEE-002', 'FEE-003'];
 
