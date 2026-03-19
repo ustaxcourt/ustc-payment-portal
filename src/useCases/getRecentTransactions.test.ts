@@ -16,7 +16,7 @@ const transactionRow = {
   paymentStatus: "success",
   transactionStatus: "processed",
   paygovToken: "token-1",
-  paymentMethod: "card",
+  paymentMethod: "plastic_card",
   metadata: { source: "test" },
   createdAt,
   lastUpdatedAt,

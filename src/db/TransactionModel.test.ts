@@ -33,7 +33,7 @@ describe("TransactionModel", () => {
   });
 
   describe("getAll", () => {
-    it("queries newest rows and limits to 100", async () => {
+    it("queries newest rows without limits", async () => {
       const limit = jest.fn().mockResolvedValue([]);
       const orderBy = jest.fn().mockReturnValue({ limit });
       jest.spyOn(TransactionModel, "query").mockReturnValue({ orderBy } as any);

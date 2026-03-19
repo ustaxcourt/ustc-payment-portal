@@ -61,6 +61,7 @@ export default class TransactionModel extends Model {
   static async getAll(): Promise<TransactionModel[]> {
     return TransactionModel.query()
       .orderBy('createdAt', 'desc')
+      .limit(100);
   }
 
   static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
