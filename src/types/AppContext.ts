@@ -6,7 +6,6 @@ import { GetRecentTransactions } from "../useCases/getRecentTransactions";
 import { GetTransactionPaymentStatus } from "../useCases/getTransactionPaymentStatus";
 import {
   GetTransactionsByStatus,
-  IsValidPaymentStatus,
 } from "../useCases/getTransactionsByStatus";
 
 export type AppContext = {
@@ -19,6 +18,5 @@ export type AppContext = {
     getRecentTransactions: GetRecentTransactions;
     getTransactionPaymentStatus: GetTransactionPaymentStatus;
     getTransactionsByStatus: GetTransactionsByStatus;
-    isValidPaymentStatus: IsValidPaymentStatus;
   };
 };

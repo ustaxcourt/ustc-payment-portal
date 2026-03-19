@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { generateOpenAPIDocument } from "./openapi/registry";
-import "./db/knex"; // initialises Knex + Objection for dashboard queries
+import "./db/knex";
 
 const envPath = path.resolve(process.cwd(), ".env.dev");
 dotenv.config({ path: envPath });
@@ -79,14 +79,10 @@ app.get("/transactions", async (_req, res, next) => {
 });
 
 app.get("/transactions/:paymentStatus", async (req, res, next) => {
-  try {
-    const result = await appContext
-      .getUseCases()
-      .getTransactionsByStatus(appContext, req.params);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
+  const result = await appContext
+    .getUseCases()
+    .getTransactionsByStatus(appContext, req.params);
+  res.json(result);
 });
 
 app.get("/transaction-payment-status", async (req, res, next) => {
