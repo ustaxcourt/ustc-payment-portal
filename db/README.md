@@ -100,7 +100,7 @@ docker compose up
 2. Verify API has data:
 
 ```bash
-curl http://localhost:3001/api/transactions/success
+curl http://localhost:8080/transactions/success
 ```
 
 3. For test runs that require test DB setup:
