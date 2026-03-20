@@ -180,7 +180,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "*"
       },
       {
-        # Zone-scoped actions: manage records and tags within the specific hosted zone
+        # Zone-scoped actions: manage records and tags within hosted zones
         Effect = "Allow",
         Action = [
           "route53:ChangeResourceRecordSets",
