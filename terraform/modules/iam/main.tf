@@ -163,43 +163,6 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         ]
       },
       {
-        Effect = "Allow",
-        Action = [
-          "acm:ListCertificates",
-          "acm:DescribeCertificate",
-          "acm:RequestCertificate",
-          "acm:DeleteCertificate",
-          "acm:AddTagsToCertificate",
-        ],
-        Resource = "arn:aws:acm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:certificate/*"
-      },
-      {
-        # Zone-scoped actions: manage records and tags within the specific hosted zone
-        Effect = "Allow",
-        Action = [
-          "route53:ChangeResourceRecordSets",
-          "route53:ListResourceRecordSets",
-          "route53:GetHostedZone",
-          "route53:CreateHostedZone",
-          "route53:DeleteHostedZone",
-          "route53:ListTagsForResource",
-          "route53:ChangeTagsForResource"
-        ],
-        Resource = "arn:aws:route53:::hostedzone/${var.route53_zone_id}"
-      },
-      {
-        # Required by AWS — cannot be scoped to a specific resource
-        Effect   = "Allow",
-        Action   = ["route53:ListHostedZones"],
-        Resource = "*"
-      },
-      {
-        # Scoped to change tracking ARNs — required to poll propagation status
-        Effect   = "Allow",
-        Action   = ["route53:GetChange"],
-        Resource = "arn:aws:route53:::change/*"
-      },
-      {
         Effect = "Allow", #cloudwatch logs
         Action = [
           "logs:CreateLogGroup",
@@ -357,6 +320,57 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Effect   = "Allow",
         Action   = ["execute-api:Invoke"],
         Resource = "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*"
+      }
+    ]
+  })
+}
+
+# Route53 and ACM permissions are only needed in environments with a custom domain
+# (dev, stg, prod). PR ephemeral environments do not have a hosted zone.
+resource "aws_iam_role_policy" "github_actions_custom_domain" {
+  count = var.create_deployer_role && var.route53_zone_id != "" ? 1 : 0
+  name  = "${local.project_name}-${local.environment}-ci-deployer-custom-domain"
+  role  = aws_iam_role.github_actions_deployer[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "acm:ListCertificates",
+          "acm:DescribeCertificate",
+          "acm:RequestCertificate",
+          "acm:DeleteCertificate",
+          "acm:AddTagsToCertificate",
+        ],
+        Resource = "arn:aws:acm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:certificate/*"
+      },
+      {
+        # Zone-scoped actions: manage records and tags within the specific hosted zone
+        Effect = "Allow",
+        Action = [
+          "route53:ChangeResourceRecordSets",
+          "route53:ListResourceRecordSets",
+          "route53:GetHostedZone",
+          "route53:CreateHostedZone",
+          "route53:DeleteHostedZone",
+          "route53:ListTagsForResource",
+          "route53:ChangeTagsForResource"
+        ],
+        Resource = "arn:aws:route53:::hostedzone/${var.route53_zone_id}"
+      },
+      {
+        # Required by AWS — cannot be scoped to a specific resource
+        Effect   = "Allow",
+        Action   = ["route53:ListHostedZones"],
+        Resource = "*"
+      },
+      {
+        # Scoped to change tracking ARNs — required to poll propagation status
+        Effect   = "Allow",
+        Action   = ["route53:GetChange"],
+        Resource = "arn:aws:route53:::change/*"
       }
     ]
   })

@@ -106,6 +106,6 @@ variable "state_object_keys" {
 
 variable "route53_zone_id" {
   type        = string
-  description = "Route53 hosted zone ID to scope DNS permissions (required if create_deployer_role=true)"
+  description = "Route53 hosted zone ID to scope DNS permissions. Only required for deployed environments (dev, stg, prod) that have a custom domain. Leave empty for PR ephemeral environments."
   default     = ""
 }
