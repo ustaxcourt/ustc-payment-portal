@@ -190,7 +190,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "route53:ListTagsForResource",
           "route53:ChangeTagsForResource"
         ],
-        Resource = "arn:aws:route53:::hostedzone/${var.route53_zone_id}"
+        Resource = "arn:aws:route53:::hostedzone/*"
       },
       {
         # Required by AWS — cannot be scoped to a specific resource
