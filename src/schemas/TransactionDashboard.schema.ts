@@ -46,7 +46,7 @@ export const DashboardTransactionSchema = z
     }),
     feeId: z.string().openapi({
       description: "Fee identifier",
-      example: "FEE-001",
+      example: "PETITION_FILING_FEE",
     }),
     feeAmount: z.number().openapi({
       description: "Fee amount in USD",

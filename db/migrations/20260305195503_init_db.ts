@@ -3,8 +3,8 @@ import type { Knex } from 'knex';
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('transactions', (t) => {
     // Primary key (from Transaction.agencyTrackingId)
-    t.string('agency_tracking_id', 40).primary().comment('Agency Tracking ID');
-    t.string('paygov_tracking_id', 40).nullable().comment('Pay.gov Tracking ID (optional)');
+    t.string('agency_tracking_id', 21).primary().comment('Agency Tracking ID');
+    t.string('paygov_tracking_id', 21).nullable().comment('Pay.gov Tracking ID (optional)');
     t.string('transaction_reference_id', 36).notNullable().comment('Transaction Reference ID');
     t.string('fee_name', 255).notNullable().comment('Fee Name');
     t.string('fee_id', 100).notNullable().comment('Fee Identifier');
@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
     t.string('payment_status', 50).notNullable().comment('Payment Status');
     t.string('transaction_status', 50).nullable().comment('Transaction Status');
     t.string('payment_method', 50).notNullable().comment('Payment Method');
-    t.string('paygov_token', 40).nullable().comment('Pay.gov Token (optional)');
+    t.string('paygov_token', 32).nullable().comment('Pay.gov Token (optional)');
     t.jsonb('metadata').nullable().comment('Free-form metadata bag');
     t.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
     t.timestamp('last_updated_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
@@ -49,7 +49,4 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists('transactions');
-  await knex.schema.raw('DROP TYPE IF EXISTS payment_status_enum');
-  await knex.schema.raw('DROP TYPE IF EXISTS transaction_status_enum');
-  await knex.schema.raw('DROP TYPE IF EXISTS payment_method_enum');
 }
