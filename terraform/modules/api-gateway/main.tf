@@ -228,7 +228,7 @@ resource "aws_api_gateway_domain_name" "custom" {
   count                    = var.custom_domain != "" ? 1 : 0
   domain_name              = var.custom_domain
   regional_certificate_arn = var.certificate_arn
-
+  security_policy          = "TLS_1_2"
   lifecycle {
     precondition {
       condition     = var.certificate_arn != ""
