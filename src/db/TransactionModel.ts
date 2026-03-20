@@ -92,7 +92,7 @@ export default class TransactionModel extends Model {
     });
 
     // Use the total count from the paginated query
-    totals.total = data.total;
+    totals.total = data.results.length;
     return totals;
   }
 }
