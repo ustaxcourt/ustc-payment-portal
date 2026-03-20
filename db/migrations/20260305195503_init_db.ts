@@ -14,8 +14,8 @@ export async function up(knex: Knex): Promise<void> {
 
   await knex.schema.createTable('transactions', (t) => {
     // Primary key (from Transaction.agencyTrackingId)
-    t.string('agency_tracking_id', 36).primary().comment('Agency Tracking ID');
-    t.string('paygov_tracking_id', 36).nullable().comment('Pay.gov Tracking ID (optional)');
+    t.string('agency_tracking_id', 21).primary().comment('Agency Tracking ID');
+    t.string('paygov_tracking_id', 21).nullable().comment('Pay.gov Tracking ID (optional)');
     t.string('transaction_reference_id', 36).notNullable().comment('Transaction Reference ID');
     t.string('fee_name', 255).notNullable().comment('Fee Name');
     t.string('fee_id', 100).notNullable().comment('Fee Identifier');
@@ -24,7 +24,7 @@ export async function up(knex: Knex): Promise<void> {
     t.specificType('payment_status', 'payment_status_enum').notNullable().comment('Payment Status');
     t.specificType('transaction_status', 'transaction_status_enum').nullable().comment('Transaction Status');
     t.specificType('payment_method', 'payment_method_enum').notNullable().comment('Payment Method');
-    t.string('paygov_token', 36).nullable().comment('Pay.gov Token (optional)');
+    t.string('paygov_token', 32).nullable().comment('Pay.gov Token (optional)');
     t.jsonb('metadata').nullable().comment('Free-form metadata bag');
     t.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
     t.timestamp('last_updated_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
