@@ -1,5 +1,4 @@
 import type { Knex } from 'knex';
-import { randomUUID } from 'crypto';
 import { faker } from '@faker-js/faker';
 import dayjs from 'dayjs';
 
@@ -26,7 +25,7 @@ export async function seed(knex: Knex): Promise<void> {
     const rows = [];
 
     for (let i = 1; i <= 200; i++) {
-        const agencyTrackingId = randomUUID();
+        const agencyTrackingId = faker.string.uuid();
 
         // Transaction reference ID (unique per client)
         const transactionReferenceId = `TXREF-${i.toString().padStart(5, '0')}`;
@@ -54,7 +53,7 @@ export async function seed(knex: Knex): Promise<void> {
 
         rows.push({
             agency_tracking_id: agencyTrackingId,
-            paygov_tracking_id: faker.datatype.boolean() ? `PG-${randomUUID()}` : null,
+            paygov_tracking_id: faker.datatype.boolean() ? `PG-${faker.string.uuid()}` : null,
 
             fee_name: pick(feeNames, i),
             fee_id: pick(feeIds, i),
