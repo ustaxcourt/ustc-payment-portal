@@ -163,9 +163,46 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         ]
       },
       {
+        Effect = "Allow",
+        Action = [
+          "acm:ListCertificates",
+          "acm:DescribeCertificate",
+          "acm:RequestCertificate",
+          "acm:DeleteCertificate",
+          "acm:AddTagsToCertificate",
+        ],
+        Resource = "arn:aws:acm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:certificate/*"
+      },
+      {
+        # CreateHostedZone cannot be scoped to a specific zone — the zone doesn't exist yet at call time
         Effect   = "Allow",
-        Action   = ["acm:ListCertificates", "acm:DescribeCertificate"],
+        Action   = ["route53:CreateHostedZone"],
         Resource = "*"
+      },
+      {
+        # Zone-scoped actions: manage records and tags within hosted zones
+        Effect = "Allow",
+        Action = [
+          "route53:ChangeResourceRecordSets",
+          "route53:ListResourceRecordSets",
+          "route53:GetHostedZone",
+          "route53:DeleteHostedZone",
+          "route53:ListTagsForResource",
+          "route53:ChangeTagsForResource"
+        ],
+        Resource = "arn:aws:route53:::hostedzone/*"
+      },
+      {
+        # Required by AWS — cannot be scoped to a specific resource
+        Effect   = "Allow",
+        Action   = ["route53:ListHostedZones"],
+        Resource = "*"
+      },
+      {
+        # Scoped to change tracking ARNs — required to poll propagation status
+        Effect   = "Allow",
+        Action   = ["route53:GetChange"],
+        Resource = "arn:aws:route53:::change/*"
       },
       {
         Effect = "Allow", #cloudwatch logs

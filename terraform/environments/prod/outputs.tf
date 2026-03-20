@@ -23,6 +23,11 @@ output "api_gateway_url" {
   description = "API Gateway URL for the production environment"
 }
 
+output "hosted_zone_nameservers" {
+  value       = aws_route53_zone.this.name_servers
+  description = "Nameservers for the hosted zone — share with ISD to set NS delegation records in ustaxcourt.gov"
+}
+
 output "tcs_app_id_secret_id" {
   value       = module.secrets.tcs_app_id_secret_id
   description = "Secret ID for TCS App ID"

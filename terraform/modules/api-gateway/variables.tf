@@ -26,3 +26,21 @@ variable "allowed_account_ids" {
   default     = []
 }
 
+variable "custom_domain" {
+  description = "Custom domain name for the API (e.g. dev-payments.ustaxcourt.gov). Leave empty to skip domain setup."
+  type        = string
+  default     = ""
+}
+
+variable "certificate_arn" {
+  description = "ARN of the ACM certificate for the custom domain. Required when custom_domain is set."
+  type        = string
+  default     = ""
+}
+
+variable "route53_zone_id" {
+  description = "Route53 hosted zone ID for the domain. Required when custom_domain is set."
+  type        = string
+  default     = ""
+}
+
