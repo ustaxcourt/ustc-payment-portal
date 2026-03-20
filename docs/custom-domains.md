@@ -15,7 +15,7 @@ These are in our Terraform architecture at time of writing, but if for any reaso
 - A **route53 hosted zone** for each of our 3 environments, **dev, stg, and prod**.
 - `aws_acm_certificate`, DNS-validated certificate for the subdomain.
 - `aws_acm_certificate_validation`, waits for DNS propagation before unblocking Terraform apply.
-- `aws_route53_record` for certification validation, it's the CNAME record ACM requires to prove domain ownership.
+- `aws_route53_record` for certificate validation, it's the CNAME record ACM requires to prove domain ownership.
 
 #### API Gateway Module Changes
 
