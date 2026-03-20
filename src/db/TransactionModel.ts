@@ -14,7 +14,7 @@ export type AggregatedPaymentStatus = Record<PaymentStatus, number> & { total: n
 export type PaymentMethod =
   | 'plastic_card'
   | 'ach'
-  | 'cash';
+  | 'paypal';
 
 
 export default class TransactionModel extends Model {
@@ -92,7 +92,7 @@ export default class TransactionModel extends Model {
     });
 
     // Use the total count from the paginated query
-    totals.total = data.results.length;
+    totals.total = data.total;
     return totals;
   }
 }

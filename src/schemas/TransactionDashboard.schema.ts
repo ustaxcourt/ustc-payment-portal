@@ -20,7 +20,7 @@ export const DashboardPaymentMethodSchema = z
   .enum(['plastic_card', 'ach', 'paypal'])
   .openapi({
     description: "Payment method used for the transaction",
-    example: "card",
+    example: "plastic_card",
   });
 
 export type DashboardPaymentMethod = z.infer<typeof DashboardPaymentMethodSchema>;
