@@ -56,7 +56,7 @@ describe("TransactionModel", () => {
 
       const pagedData = {
         results: new Array(100).fill({}),
-        total: 200,
+        total: 100,
       };
 
       const groupBy = jest.fn().mockResolvedValue(rows);
