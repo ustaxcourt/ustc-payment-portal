@@ -94,7 +94,7 @@ Current seed (`db/seeds/01_transactions.ts`) behavior:
 - Rotates payment status values across `pending`, `success`, `failed`
 - Populates optional fields (`paygov_tracking_id`, `paygov_token`, `metadata`) on some rows
 
-## Useful Local Commands
+## Useful Local  Commands
 
 Start stack in foreground:
 
