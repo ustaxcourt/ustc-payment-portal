@@ -15,3 +15,8 @@ output "api_gateway_url" {
   description = "Base URL for API Gateway stage"
 }
 
+output "custom_domain_url" {
+  value       = var.custom_domain != "" ? "https://${var.custom_domain}" : null
+  description = "Custom domain URL for the API, if configured"
+}
+

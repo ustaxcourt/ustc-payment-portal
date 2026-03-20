@@ -67,6 +67,46 @@ module "rds" {
   }
 }
 
+resource "aws_route53_zone" "this" {
+  name = local.custom_domain
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
+resource "aws_acm_certificate" "this" {
+  domain_name       = local.custom_domain
+  validation_method = "DNS"
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.this.domain_validation_options : dvo.domain_name => dvo
+  }
+
+  zone_id = aws_route53_zone.this.zone_id
+  name    = each.value.resource_record_name
+  type    = each.value.resource_record_type
+  records = [each.value.resource_record_value]
+  ttl     = 60
+}
+
+resource "aws_acm_certificate_validation" "this" {
+  certificate_arn         = aws_acm_certificate.this.arn
+  validation_record_fqdns = [for r in aws_route53_record.cert_validation : r.fqdn]
+}
+
 module "api" {
   source = "../../modules/api-gateway"
 
@@ -74,8 +114,11 @@ module "api" {
   environment          = "prod"
   stage_name           = "prod"
   allowed_account_ids  = local.allowed_client_account_ids
+  custom_domain        = local.custom_domain
+  certificate_arn      = aws_acm_certificate_validation.this.certificate_arn
+  route53_zone_id      = aws_route53_zone.this.zone_id
 
-  depends_on = [module.secrets]
+  depends_on = [module.secrets, aws_acm_certificate_validation.this]
 }
 
 # Read allowed account IDs from Secrets Manager for API Gateway resource policy
@@ -100,5 +143,6 @@ module "iam_cicd" {
   lambda_exec_role_arn     = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.name_prefix}-lambda-exec"
   lambda_name_prefix       = local.name_prefix
   create_lambda_exec_role  = true
+  route53_zone_id          = aws_route53_zone.this.zone_id
 }
 
