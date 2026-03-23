@@ -169,6 +169,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "acm:DescribeCertificate",
           "acm:DeleteCertificate",
           "acm:AddTagsToCertificate",
+          "acm:ListTagsForCertificate"
         ],
         Resource = "arn:aws:acm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:certificate/*"
       },
