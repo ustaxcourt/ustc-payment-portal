@@ -191,7 +191,6 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "route53:ChangeResourceRecordSets",
           "route53:ListResourceRecordSets",
           "route53:GetHostedZone",
-          "route53:DeleteHostedZone",
           "route53:ListTagsForResource",
           "route53:ChangeTagsForResource"
         ],
