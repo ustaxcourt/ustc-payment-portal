@@ -1,5 +1,5 @@
 # Migration Lambda — Implementation Plan
-
+**Remove this doc before PR Merge**
 ## Overview
 
 Add a `migrationRunner` Lambda that runs `knex migrate:latest` against the hosted RDS instance
