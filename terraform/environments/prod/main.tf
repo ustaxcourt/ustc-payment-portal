@@ -74,6 +74,8 @@ resource "aws_route53_zone" "this" {
     Env     = local.environment
     Project = "ustc-payment-portal"
   }
+
+  depends_on = [module.iam_cicd]
 }
 
 resource "aws_acm_certificate" "this" {
@@ -88,6 +90,8 @@ resource "aws_acm_certificate" "this" {
   lifecycle {
     create_before_destroy = true
   }
+
+  depends_on = [module.iam_cicd]
 }
 
 resource "aws_route53_record" "cert_validation" {
@@ -141,8 +145,7 @@ module "iam_cicd" {
   state_bucket_name        = local.state_bucket_name
   state_object_keys        = local.state_object_keys
   lambda_exec_role_arn     = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.name_prefix}-lambda-exec"
-  lambda_name_prefix       = local.name_prefix
-  create_lambda_exec_role  = true
-  route53_zone_id          = aws_route53_zone.this.zone_id
+  lambda_name_prefix      = local.name_prefix
+  create_lambda_exec_role = true
 }
 

@@ -103,9 +103,3 @@ variable "state_object_keys" {
   description = "Exact state S3 object keys the role must manage (required if create_deployer_role=true)"
   default     = []
 }
-
-variable "route53_zone_id" {
-  type        = string
-  description = "Route53 hosted zone ID to scope DNS permissions (required if create_deployer_role=true)"
-  default     = ""
-}
