@@ -167,11 +167,16 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Action = [
           "acm:ListCertificates",
           "acm:DescribeCertificate",
-          "acm:RequestCertificate",
           "acm:DeleteCertificate",
           "acm:AddTagsToCertificate",
         ],
         Resource = "arn:aws:acm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:certificate/*"
+      },
+      {
+        # RequestCertificate cannot be scoped to a specific ARN — the cert doesn't exist yet at call time
+        Effect   = "Allow",
+        Action   = ["acm:RequestCertificate"],
+        Resource = "*"
       },
       {
         # CreateHostedZone cannot be scoped to a specific zone — the zone doesn't exist yet at call time
