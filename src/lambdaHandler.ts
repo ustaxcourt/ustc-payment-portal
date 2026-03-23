@@ -44,12 +44,6 @@ export const initPaymentHandler = (
 
   const request = JSON.parse(event.body);
 
-  if (!request.feeId) {
-    return Promise.resolve(
-      handleError(new InvalidRequestError("missing feeId"))
-    );
-  }
-
   return lambdaHandler(
     request,
     event.requestContext,

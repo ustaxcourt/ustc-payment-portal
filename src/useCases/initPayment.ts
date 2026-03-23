@@ -1,52 +1,37 @@
 import { AppContext } from "../types/AppContext";
-import {
-  StartOnlineCollectionRequest,
-  startOnlineCollectionSchema,
-} from "../entities/StartOnlineCollectionRequest";
-import { InvalidRequestError } from "../errors/invalidRequest";
-import { InitPaymentRequest } from "../types/InitPaymentRequest";
 import { InitPaymentResponse } from "../types/InitPaymentResponse";
-
-// TODO: replace with DB lookup once fees table is provisioned.
-// To add a new fee type in the meantime: add an entry here and redeploy.
-// The tcs_app_id value is provided by Pay.gov during onboarding. See docs/client-onboarding.md.
-const feeToTcsAppId: Record<string, string> = {
-  PETITION_FILING_FEE: "TCSUSTAXCOURTPETITION",
-  NONATTORNEY_EXAM_REGISTRATION_FEE: "TCSUSTAXCOURTANAEF",
-};
+import { InitPaymentRequestSchema } from "../schemas/InitPayment.schema";
+import { getFeeConfig } from "../fees";
+import { InvalidRequestError } from "../errors/invalidRequest";
 
 export type InitPayment = (
   appContext: AppContext,
-  request: InitPaymentRequest
+  request: Record<string, unknown>
 ) => Promise<InitPaymentResponse>;
 
-export const initPayment: InitPayment = async (appContext, request) => {
-  const tcsAppId = feeToTcsAppId[request.feeId];
+export const initPayment: InitPayment = async (_appContext, request) => {
+  const parsed = InitPaymentRequestSchema.safeParse(request);
 
-  if (!tcsAppId) {
-    throw new InvalidRequestError(`Unknown feeId: ${request.feeId}`);
+  if (!parsed.success) {
+    throw new InvalidRequestError(
+      parsed.error.issues.map((i) => i.message).join(", ")
+    );
   }
 
-  const rawRequest = {
-    tcsAppId,
-    transactionAmount: request.amount,
-    urlCancel: request.urlCancel,
-    urlSuccess: request.urlSuccess,
-    agencyTrackingId: request.trackingId,
-  };
+  const { feeId, amount } = parsed.data;
 
-  await startOnlineCollectionSchema.validateAsync(rawRequest);
+  const feeConfig = await getFeeConfig(feeId);
 
-  console.log("initPayment request:", rawRequest);
+  if (!feeConfig) {
+    throw new InvalidRequestError(`Unknown feeId: ${feeId}`);
+  }
 
-  const req = new StartOnlineCollectionRequest(rawRequest);
+  if (amount !== undefined && !feeConfig.isVariable) {
+    throw new InvalidRequestError(
+      `Fee ${feeId} does not allow variable amounts`
+    );
+  }
 
-  const result = await req.makeSoapRequest(appContext);
-
-  console.log(`initPayment result:`, result);
-
-  return {
-    token: result.token,
-    paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${tcsAppId}`,
-  };
+  // TODO: implement Pay.gov token retrieval (response shape is a stub)
+  return { token: "", paymentRedirect: "" };
 };

@@ -1,53 +1,81 @@
 import { initPayment } from "./initPayment";
+import { InvalidRequestError } from "../errors/invalidRequest";
 import { testAppContext as appContext } from "../test/testAppContext";
 
-const mockSoapResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
-  <S:Header>
-    <WorkContext xmlns="http://oracle.com/weblogic/soap/workarea/">rO0ABXdlABZ3ZWJsb2dpYy5hcHAudGNzb25saW5lAAAA1gAAACN3ZWJsb2dpYy53b3JrYXJlYS5TdHJpbmdXb3JrQ29udGV4dAAedjguMi4wLjgwMjAyMjlfMjAyM18wNV8wNF8xMzIyAAA=</WorkContext>
-  </S:Header>
-  <S:Body>
-    <ns2:startOnlineCollectionResponse xmlns:ns2="http://fms.treas.gov/services/tcsonline_3_1">
-      <startOnlineCollectionResponse>
-        <token>211d8c91c046404fb159b52d042a12ba</token>
-      </startOnlineCollectionResponse>
-    </ns2:startOnlineCollectionResponse>
-  </S:Body>
-</S:Envelope>`;
+const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
+const VALID_URLS = {
+  urlSuccess: "https://example.com/success",
+  urlCancel: "https://example.com/cancel",
+};
+
+const validPetitionRequest = {
+  transactionReferenceId: VALID_UUID,
+  feeId: "PETITION_FILING_FEE",
+  ...VALID_URLS,
+  metadata: { docketNumber: "123-26" },
+};
 
 describe("initPayment", () => {
-  it("throws an error if we pass in an invalid request", async () => {
-    await expect(
-      initPayment(appContext, {
-        amount: 20,
-      } as any),
-    ).rejects.toThrow();
+  it("returns a 200 stub for a valid PETITION_FILING_FEE request", async () => {
+    const result = await initPayment(appContext, validPetitionRequest);
+    expect(result).toBeDefined();
   });
 
-  it("throws InvalidRequestError with a clear message when feeId is unrecognized", async () => {
-    await expect(
-      initPayment(appContext, {
-        amount: 20,
-        feeId: "UNKNOWN_FEE",
-        urlCancel: "http://example.com",
-        urlSuccess: "http://example.com",
-        trackingId: "test-12345",
-      }),
-    ).rejects.toThrow("Unknown feeId: UNKNOWN_FEE");
-  });
-
-  it("does not throw an error if we pass in a valid request", async () => {
-    appContext.postHttpRequest = jest.fn().mockReturnValue(mockSoapResponse);
-
-    const { token, paymentRedirect } = await initPayment(appContext, {
-      amount: 20,
-      feeId: "PETITION_FILING_FEE",
-      urlCancel: "http://example.com",
-      urlSuccess: "http://another-example.com",
-      trackingId: "test-12345",
+  it("returns a 200 stub for a valid NONATTORNEY_EXAM_REGISTRATION_FEE request", async () => {
+    const result = await initPayment(appContext, {
+      transactionReferenceId: VALID_UUID,
+      feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+      ...VALID_URLS,
+      metadata: {
+        email: "applicant@example.com",
+        fullName: "John Doe",
+        accessCode: "ABC123",
+      },
     });
+    expect(result).toBeDefined();
+  });
 
-    expect(token).toBeTruthy();
-    expect(paymentRedirect).toBeTruthy();
+  it("throws InvalidRequestError when transactionReferenceId is not a UUID", async () => {
+    await expect(
+      initPayment(appContext, {
+        ...validPetitionRequest,
+        transactionReferenceId: "not-a-uuid",
+      })
+    ).rejects.toThrow(InvalidRequestError);
+  });
+
+  it("throws InvalidRequestError when feeId is unrecognized", async () => {
+    await expect(
+      initPayment(appContext, {
+        ...validPetitionRequest,
+        feeId: "UNKNOWN_FEE",
+      })
+    ).rejects.toThrow(InvalidRequestError);
+  });
+
+  it("throws InvalidRequestError when amount is supplied for a non-variable fee", async () => {
+    await expect(
+      initPayment(appContext, {
+        ...validPetitionRequest,
+        amount: 60,
+      })
+    ).rejects.toThrow("does not allow variable amounts");
+  });
+
+  it("throws InvalidRequestError when metadata does not match the feeId", async () => {
+    await expect(
+      initPayment(appContext, {
+        ...validPetitionRequest,
+        feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        metadata: { docketNumber: "123-26" },
+      })
+    ).rejects.toThrow(InvalidRequestError);
+  });
+
+  it("throws InvalidRequestError when metadata is missing", async () => {
+    const { metadata: _, ...withoutMetadata } = validPetitionRequest;
+    await expect(
+      initPayment(appContext, withoutMetadata)
+    ).rejects.toThrow(InvalidRequestError);
   });
 });
