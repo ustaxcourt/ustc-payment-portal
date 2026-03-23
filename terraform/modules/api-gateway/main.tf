@@ -1,3 +1,88 @@
+# Dashboard endpoints
+# GET /transactions
+resource "aws_api_gateway_resource" "transactions" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
+  path_part   = "transactions"
+}
+# GET /transactions/{paymentStatus}
+resource "aws_api_gateway_resource" "transactions_by_status" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_resource.transactions.id
+  path_part   = "{paymentStatus}"
+}
+# GET /transaction-payment-status
+resource "aws_api_gateway_resource" "transaction_payment_status" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
+  path_part   = "transaction-payment-status"
+}
+# Methods for dashboard endpoints (authorization = "NONE")
+resource "aws_api_gateway_method" "transactions_get" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.transactions.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+resource "aws_api_gateway_method" "transactions_by_status_get" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.transactions_by_status.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+resource "aws_api_gateway_method" "transaction_payment_status_get" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.transaction_payment_status.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+# Integrations for dashboard endpoints
+resource "aws_api_gateway_integration" "transactions_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.transactions.id
+  http_method             = aws_api_gateway_method.transactions_get.http_method
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getAllTransactions"]}/invocations"
+}
+resource "aws_api_gateway_integration" "transactions_by_status_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.transactions_by_status.id
+  http_method             = aws_api_gateway_method.transactions_by_status_get.http_method
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionsByStatus"]}/invocations"
+}
+resource "aws_api_gateway_integration" "transaction_payment_status_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.transaction_payment_status.id
+  http_method             = aws_api_gateway_method.transaction_payment_status_get.http_method
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionPaymentStatus"]}/invocations"
+}
+# Lambda permissions for dashboard endpoints
+resource "aws_lambda_permission" "transactions_permission" {
+  statement_id  = "AllowAPIGatewayInvokeTransactions"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_function_arns["getAllTransactions"]
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transactions"
+}
+resource "aws_lambda_permission" "transactions_by_status_permission" {
+  statement_id  = "AllowAPIGatewayInvokeTransactionsByStatus"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_function_arns["getTransactionsByStatus"]
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transactions/*"
+}
+resource "aws_lambda_permission" "transaction_payment_status_permission" {
+  statement_id  = "AllowAPIGatewayInvokeTransactionPaymentStatus"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_function_arns["getTransactionPaymentStatus"]
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transaction-payment-status"
+}
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
@@ -147,10 +232,16 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_method.process_post.id,
       aws_api_gateway_method.test_get.id,
       aws_api_gateway_method.details_get.id,
+      aws_api_gateway_method.transactions_get.id,
+      aws_api_gateway_method.transactions_by_status_get.id,
+      aws_api_gateway_method.transaction_payment_status_get.id,
       aws_api_gateway_integration.init_integration.id,
       aws_api_gateway_integration.process_integration.id,
       aws_api_gateway_integration.test_integration.id,
       aws_api_gateway_integration.details_integration.id,
+      aws_api_gateway_integration.transactions_integration.id,
+      aws_api_gateway_integration.transactions_by_status_integration.id,
+      aws_api_gateway_integration.transaction_payment_status_integration.id,
       aws_api_gateway_rest_api_policy.policy.id,
     ]))
   }
@@ -164,6 +255,9 @@ resource "aws_api_gateway_deployment" "deployment" {
     aws_api_gateway_integration.process_integration,
     aws_api_gateway_integration.test_integration,
     aws_api_gateway_integration.details_integration,
+    aws_api_gateway_integration.transactions_integration,
+    aws_api_gateway_integration.transactions_by_status_integration,
+    aws_api_gateway_integration.transaction_payment_status_integration,
   ]
 }
 

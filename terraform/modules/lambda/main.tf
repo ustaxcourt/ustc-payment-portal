@@ -12,6 +12,15 @@ locals {
     testCert = {
       handler = "lambdaHandler.handler"
     }
+    getAllTransactions = {
+      handler = "lambdaHandler.getAllTransactionsHandler"
+    }
+    getTransactionsByStatus = {
+      handler = "lambdaHandler.getTransactionsByStatusHandler"
+    }
+    getTransactionPaymentStatus = {
+      handler = "lambdaHandler.getTransactionPaymentStatusHandler"
+    }
   }
 }
 

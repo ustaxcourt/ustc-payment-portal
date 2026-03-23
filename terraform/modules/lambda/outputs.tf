@@ -34,6 +34,21 @@ output "process_payment_function_arn" {
   value       = aws_lambda_function.functions["processPayment"].arn
 }
 
+output "get_all_transactions_function_invoke_arn" {
+  description = "Invoke ARN of the getAllTransactions Lambda function"
+  value       = aws_lambda_function.functions["getAllTransactions"].invoke_arn
+}
+
+output "get_transactions_by_status_function_invoke_arn" {
+  description = "Invoke ARN of the getTransactionsByStatus Lambda function"
+  value       = aws_lambda_function.functions["getTransactionsByStatus"].invoke_arn
+}
+
+output "get_transaction_payment_status_function_invoke_arn" {
+  description = "Invoke ARN of the getTransactionPaymentStatus Lambda function"
+  value       = aws_lambda_function.functions["getTransactionPaymentStatus"].invoke_arn
+}
+
 output "process_payment_function_name" {
   description = "Name of the processPayment Lambda function"
   value       = aws_lambda_function.functions["processPayment"].function_name
