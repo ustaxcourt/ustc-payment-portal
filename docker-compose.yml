@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:14
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: user
+      POSTGRES_DB: mydb
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user -d mydb" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  db-init:
+    image: node:24
+    working_dir: /workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_NAME: mydb
+      NODE_ENV: development
+      # Pass MIGRATION_MODE=1 to skip migrations and seeds (useful for testing/debugging)
+      MIGRATION_MODE: "0"
+    volumes:
+      - ./:/workspace
+    command: >
+      sh -c '
+        echo "db-init: MIGRATION_MODE=$MIGRATION_MODE";
+
+        if [ "$MIGRATION_MODE" = "1" ]; then
+          echo "db-init: MIGRATION_MODE=1 → skipping db-init";
+          exit 0;
+        fi;
+
+        echo "db-init: MIGRATION_MODE=0 → running migrations + seeds";
+        npm ci && npm run migrate:latest && npm run seed:run
+      '
+
+volumes:
+  postgres_data:

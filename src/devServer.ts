@@ -1,19 +1,34 @@
 import express from "express";
 import path from "path";
+import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { generateOpenAPIDocument } from "./openapi/registry";
-import dotenv from "dotenv";
-
-// Prefer .env.dev for local development, fallback to default .env
-const envPath = path.resolve(process.cwd(), ".env.dev");
+import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
+const envPath = path.resolve(__dirname, "../.env.dev");
 dotenv.config({ path: envPath });
+import "./db/knex";
 
 const appContext = createAppContext();
 
 const app = express();
 app.use(express.json());
 const port = 8080; // default port to listen
+
+// Note: This is only needed for local development
+// when the web client is served from a different origin (e.g. localhost:3000).
+// In production, the web client will be served from the same origin as the API,
+// so CORS is not required.
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+    return;
+  }
+  next();
+});
 
 // Configure Express to use EJS
 app.set("views", path.join(__dirname, "views"));
@@ -57,6 +72,27 @@ app.get("/details/:payGovTrackingId", async (req, res) => {
 
 app.get("/", (req, res) => {
   res.send("hello world!");
+});
+
+app.get("/transactions", async (_req, res, next) => {
+  const result = await appContext
+    .getUseCases()
+    .getRecentTransactions(appContext);
+  res.json(result);
+});
+
+app.get("/transactions/:paymentStatus", async (req, res, next) => {
+  const result = await appContext
+    .getUseCases()
+    .getTransactionsByStatus(appContext, req.params as unknown as TransactionsByStatusPathParams);
+  res.json(result);
+});
+
+app.get("/transaction-payment-status", async (req, res, next) => {
+  const result = await appContext
+    .getUseCases()
+    .getTransactionPaymentStatus(appContext);
+  res.json(result);
 });
 
 // start the express server
