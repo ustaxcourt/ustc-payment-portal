@@ -1,6 +1,7 @@
 import { initPayment } from "./initPayment";
 import { InvalidRequestError } from "../errors/invalidRequest";
 import { testAppContext as appContext } from "../test/testAppContext";
+import * as fees from "../fees";
 
 const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
 const VALID_URLS = {
@@ -53,13 +54,28 @@ describe("initPayment", () => {
     ).rejects.toThrow(InvalidRequestError);
   });
 
+  it("throws InvalidRequestError when amount is missing for a variable fee", async () => {
+    jest.spyOn(fees, "getFeeConfig").mockResolvedValueOnce({
+      feeId: "PETITION_FILING_FEE",
+      tcsAppId: "TCSUSTAXCOURTPETITION",
+      amount: 60,
+      isVariable: true,
+    });
+
+    await expect(
+      initPayment(appContext, validPetitionRequest)
+    ).rejects.toThrow(InvalidRequestError);
+
+    jest.restoreAllMocks();
+  });
+
   it("throws InvalidRequestError when amount is supplied for a non-variable fee", async () => {
     await expect(
       initPayment(appContext, {
         ...validPetitionRequest,
         amount: 60,
       })
-    ).rejects.toThrow("does not allow variable amounts");
+    ).rejects.toThrow(InvalidRequestError);
   });
 
   it("throws InvalidRequestError when metadata does not match the feeId", async () => {

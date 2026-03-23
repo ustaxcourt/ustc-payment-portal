@@ -32,6 +32,12 @@ export const initPayment: InitPayment = async (_appContext, request) => {
     );
   }
 
+  if (amount === undefined && feeConfig.isVariable) {
+    throw new InvalidRequestError(
+      `Fee ${feeId} requires an amount`
+    );
+  }
+
   // TODO: implement Pay.gov token retrieval (response shape is a stub)
   return { token: "", paymentRedirect: "" };
 };

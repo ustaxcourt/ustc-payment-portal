@@ -8,11 +8,11 @@ describe("initialize a payment", () => {
     const options: RequestInit = {
       method: "POST",
       body: JSON.stringify({
-        trackingId: "my-tracking-id",
-        amount: "10.00",
+        transactionReferenceId: crypto.randomUUID(),
         feeId: "PETITION_FILING_FEE",
         urlSuccess: "https://example.com",
         urlCancel: "https://example.com",
+        metadata: { docketNumber: "123-26" },
       }),
       headers: {
         "Content-Type": "application/json",
