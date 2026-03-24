@@ -129,6 +129,11 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       },
       {
         Effect   = "Allow",
+        Action   = ["lambda:InvokeFunction"]
+        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor*-migrationRunner"
+      },
+      {
+        Effect   = "Allow",
         Action   = ["iam:PassRole"],
         Resource = local.lambda_exec_role_arn,
         Condition = {
