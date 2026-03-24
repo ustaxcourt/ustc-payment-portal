@@ -1,4 +1,5 @@
 import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
+import fs from "fs";
 import Knex from "knex";
 import path from "path";
 
@@ -10,6 +11,14 @@ type MigrationHandlerResult = {
 type RdsCredentials = {
   username: string;
   password: string;
+};
+
+type DatabaseConnection = {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
 };
 
 const parseEndpoint = (endpoint: string): { host: string; port: number } => {
@@ -45,35 +54,77 @@ const getRdsCredentials = async (secretArn: string): Promise<RdsCredentials> => 
   };
 };
 
-export const migrationHandler = async (): Promise<MigrationHandlerResult> => {
+const getLocalConnection = (): DatabaseConnection => {
+  const {
+    DB_HOST,
+    DB_PORT,
+    DB_USER,
+    DB_PASSWORD,
+    DB_NAME,
+  } = process.env;
+
+  if (!DB_HOST || !DB_PORT || !DB_USER || !DB_PASSWORD || !DB_NAME) {
+    throw new Error("DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, and DB_NAME are required for local migrations");
+  }
+
+  const port = Number(DB_PORT);
+
+  if (Number.isNaN(port)) {
+    throw new Error(`Invalid DB_PORT: ${DB_PORT}`);
+  }
+
+  return {
+    host: DB_HOST,
+    port,
+    user: DB_USER,
+    password: DB_PASSWORD,
+    database: DB_NAME,
+  };
+};
+
+const getDatabaseConnection = async (): Promise<DatabaseConnection> => {
   const secretArn = process.env["RDS_SECRET_ARN"];
   const endpoint = process.env["RDS_ENDPOINT"];
 
-  if (!secretArn) {
-    throw new Error("RDS_SECRET_ARN is required");
-  }
-  if (!endpoint) {
-    throw new Error("RDS_ENDPOINT is required");
+  if (!secretArn || !endpoint) {
+    return getLocalConnection();
   }
 
   const { host, port } = parseEndpoint(endpoint);
   const { username, password } = await getRdsCredentials(secretArn);
 
+  return {
+    host,
+    port,
+    user: username,
+    password,
+    database: "paymentportal",
+  };
+};
+
+const getMigrationsDirectory = (): string => {
+  const bundledDirectory = path.join(__dirname, "db", "migrations");
+
+  if (fs.existsSync(bundledDirectory)) {
+    return bundledDirectory;
+  }
+
+  return path.join(__dirname, "..", "db", "migrations");
+};
+
+// THIS WILL ONLY BE FOR CI/CD USAGE AND SHOULD NOT BE EXPOSED IN API GATEWAY
+export const migrationHandler = async (): Promise<MigrationHandlerResult> => {
+  const connection = await getDatabaseConnection();
+
   const knex = Knex({
     client: "pg",
-    connection: {
-      host,
-      port,
-      user: username,
-      password,
-      database: "paymentportal",
-    },
+    connection,
     pool: {
       min: 0,
       max: 1,
     },
     migrations: {
-      directory: path.join(__dirname, "db", "migrations"),
+      directory: getMigrationsDirectory(),
     },
   });
 

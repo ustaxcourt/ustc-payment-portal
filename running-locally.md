@@ -1,5 +1,5 @@
 # How to run Payment Portal locally for Development
-- Create a `.env.dev` and add the following:
+- Create a `.env` and add the following:
 ```
 # Point to LOCAL test server
 SOAP_URL="http://localhost:3366/wsdl"

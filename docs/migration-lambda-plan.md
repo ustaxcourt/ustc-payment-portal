@@ -34,7 +34,7 @@ depends on Tasks 4–6 being complete and plannable.
 
 ---
 
-### Task 1 — Create `src/migrationHandler.ts`
+### Task 1 — Create `src/migrationHandler.ts` DONE
 
 **Type:** New source file
 **Files touched:** `src/migrationHandler.ts`
@@ -382,7 +382,7 @@ output "function_names" {
 
 ```
 Part 1
-  ├── Task 1  (migrationHandler.ts)       → any engineer
+  ├── Task 1  (migrationHandler.ts)       → any engineer - DONE
   ├── Task 2  (build-lambda.sh)           → any engineer (unblock after Task 1)
   ├── Task 3  (lambda module timeout)     → any engineer
   ├── Task 4  (dev variables.tf)          → any engineer

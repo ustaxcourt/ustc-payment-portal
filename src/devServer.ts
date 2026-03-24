@@ -5,7 +5,8 @@ import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { generateOpenAPIDocument } from "./openapi/registry";
 import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
-const envPath = path.resolve(__dirname, "../.env.dev");
+import { migrationHandler } from "./migrationHandler";
+const envPath = path.resolve(__dirname, "../.env");
 dotenv.config({ path: envPath });
 import "./db/knex";
 
@@ -68,6 +69,12 @@ app.get("/details/:payGovTrackingId", async (req, res) => {
     .getUseCases()
     .getDetails(appContext, req.params);
   res.json(result);
+});
+
+// ONLY FOR LOCAL TESTING - DO NOT CONNECT TO API GATEWAY
+app.get("/migrations", async (req, res) => {
+  const result = await migrationHandler();
+  res.status(result.statusCode).json(JSON.parse(result.body));
 });
 
 app.get("/", (req, res) => {

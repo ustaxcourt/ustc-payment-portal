@@ -26,6 +26,11 @@ describe("migrationHandler", () => {
 
     process.env.RDS_SECRET_ARN = "arn:aws:secretsmanager:us-east-1:123456789012:secret:rds";
     process.env.RDS_ENDPOINT = "db.example.us-east-1.rds.amazonaws.com:5432";
+    process.env.DB_HOST = "localhost";
+    process.env.DB_PORT = "5433";
+    process.env.DB_USER = "local_user";
+    process.env.DB_PASSWORD = "local_password";
+    process.env.DB_NAME = "mydb";
 
     mockSend = jest.fn().mockResolvedValue({
       SecretString: JSON.stringify({
@@ -51,6 +56,11 @@ describe("migrationHandler", () => {
   afterEach(() => {
     delete process.env.RDS_SECRET_ARN;
     delete process.env.RDS_ENDPOINT;
+    delete process.env.DB_HOST;
+    delete process.env.DB_PORT;
+    delete process.env.DB_USER;
+    delete process.env.DB_PASSWORD;
+    delete process.env.DB_NAME;
   });
 
   it("reads credentials from Secrets Manager and runs knex migrate.latest", async () => {
@@ -94,5 +104,27 @@ describe("migrationHandler", () => {
 
     await expect(migrationHandler()).rejects.toThrow("migration failed");
     expect(mockDestroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses local DB env vars when RDS env vars are not set", async () => {
+    delete process.env.RDS_SECRET_ARN;
+    delete process.env.RDS_ENDPOINT;
+
+    const result = await migrationHandler();
+
+    expect(mockSecretsManagerClient).not.toHaveBeenCalled();
+    expect(mockSend).not.toHaveBeenCalled();
+    expect(mockKnex).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connection: expect.objectContaining({
+          host: "localhost",
+          port: 5433,
+          user: "local_user",
+          password: "local_password",
+          database: "mydb",
+        }),
+      }),
+    );
+    expect(result.statusCode).toBe(200);
   });
 });
