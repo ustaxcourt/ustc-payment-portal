@@ -162,32 +162,6 @@ jobs:
           TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_source_code_hash }}
         run: terraform apply -auto-approve tfplan
 
-      - name: Run DB migrations
-        if: ${{ steps.plan.outputs.exitcode == '2' || steps.plan.outputs.exitcode == '0' }}
-        working-directory: terraform/environments/dev
-        env:
-          TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
-        run: |
-          FUNCTION_NAME=$(terraform output -raw migration_runner_function_name 2>/dev/null \
-            || echo "ustc-payment-processor-${TF_VAR_namespace}-migrationRunner")
-          echo "Invoking migration Lambda: $FUNCTION_NAME"
-
-          aws lambda invoke \
-            --function-name "$FUNCTION_NAME" \
-            --payload '{}' \
-            --cli-binary-format raw-in-base64-out \
-            --log-type Tail \
-            response.json \
-            | tee invoke-meta.json
-
-          echo "--- Lambda response ---"
-          cat response.json
-
-          if jq -e '.FunctionError' invoke-meta.json > /dev/null 2>&1; then
-            echo "ERROR: Lambda reported a function error"
-            exit 1
-          fi
-
       - name: Smoke check (post-apply to verify the workspace)
         if: ${{ steps.plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/dev
