@@ -107,6 +107,12 @@ npx esbuild src/migrationHandler.ts \
   --outfile=dist/migrationRunner/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
+  --external:sqlite3 \
+  --external:mysql \
+  --external:mysql2 \
+  --external:tedious \
+  --external:pg-query-stream \
+  --external:better-sqlite3 \
   --minify \
   --keep-names
 
