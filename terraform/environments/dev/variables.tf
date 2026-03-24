@@ -99,4 +99,16 @@ variable "testCert_source_code_hash" {
   default     = ""
 }
 
+variable "migrationRunner_s3_key" {
+  description = "S3 key for migrationRunner Lambda artifact"
+  type        = string
+  default     = ""
+}
+
+variable "migrationRunner_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for migrationRunner artifact"
+  type        = string
+  default     = ""
+}
+
 
