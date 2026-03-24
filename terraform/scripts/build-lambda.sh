@@ -113,6 +113,7 @@ npx esbuild src/migrationHandler.ts \
   --external:tedious \
   --external:pg-query-stream \
   --external:better-sqlite3 \
+  --external:oracledb \
   --minify \
   --keep-names
 
