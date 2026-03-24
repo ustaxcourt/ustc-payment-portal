@@ -270,6 +270,24 @@ resource "aws_iam_role_policy" "deployer_assume_test_role" {
   })
 }
 
+# Allow the CI/CD deployer role to invoke the migrationRunner Lambda
+# Needed in PR workspaces where the shared dev role is used but not managed by iam_cicd
+resource "aws_iam_role_policy" "deployer_invoke_migration" {
+  name = "invoke-migration-runner-${local.name_prefix}"
+  role = local.dev_deployer_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["lambda:InvokeFunction"]
+        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:${local.name_prefix}-migrationRunner"
+      }
+    ]
+  })
+}
+
 # Allow the CI/CD deployer role to invoke API Gateway for smoke tests
 # The signedFetch() helper uses the shared role's credentials directly
 resource "aws_iam_role_policy" "deployer_invoke_api" {
