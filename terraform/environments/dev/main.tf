@@ -39,16 +39,18 @@ module "lambda" {
 
   artifact_bucket = var.artifact_bucket
   artifact_s3_keys = {
-    initPayment    = var.initPayment_s3_key
-    processPayment = var.processPayment_s3_key
-    getDetails     = var.getDetails_s3_key
-    testCert       = var.testCert_s3_key
+    initPayment     = var.initPayment_s3_key
+    processPayment  = var.processPayment_s3_key
+    getDetails      = var.getDetails_s3_key
+    testCert        = var.testCert_s3_key
+    migrationRunner = var.migrationRunner_s3_key
   }
   source_code_hashes = {
-    initPayment    = var.initPayment_source_code_hash
-    processPayment = var.processPayment_source_code_hash
-    getDetails     = var.getDetails_source_code_hash
-    testCert       = var.testCert_source_code_hash
+    initPayment     = var.initPayment_source_code_hash
+    processPayment  = var.processPayment_source_code_hash
+    getDetails      = var.getDetails_source_code_hash
+    testCert        = var.testCert_source_code_hash
+    migrationRunner = var.migrationRunner_source_code_hash
   }
 
   tags = {
@@ -162,8 +164,8 @@ module "iam_cicd" {
   state_bucket_name        = local.state_bucket_name
   state_object_keys        = local.state_object_keys
   lambda_exec_role_arn     = data.terraform_remote_state.foundation.outputs.lambda_role_arn
-  lambda_name_prefix      = local.name_prefix
-  create_lambda_exec_role = false
+  lambda_name_prefix       = local.name_prefix
+  create_lambda_exec_role  = false
 }
 
 module "artifacts_bucket" {
