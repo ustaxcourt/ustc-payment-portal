@@ -21,6 +21,10 @@ locals {
     getTransactionPaymentStatus = {
       handler = "lambdaHandler.getTransactionPaymentStatusHandler"
     }
+    migrationRunner = {
+      handler = "lambdaHandler.migrationHandler"
+      timeout = 120
+    }
   }
 }
 
@@ -34,6 +38,8 @@ resource "aws_lambda_function" "functions" {
   function_name = "${var.function_name_prefix}-${each.key}"
   role          = var.lambda_execution_role_arn
   handler       = each.value.handler
+
+  timeout = try(each.value.timeout, null)
 
   runtime = var.runtime
 

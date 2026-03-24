@@ -148,9 +148,9 @@ Using `try(..., null)` means Terraform omits the attribute for functions that do
 leaving them on the AWS default (3s) — no diff on existing resources.
 
 **Acceptance criteria:**
-- [ ] `migrationRunner` Lambda has a 120-second timeout in Terraform.
-- [ ] `terraform plan` shows **no changes** to existing Lambda functions.
-- [ ] Existing functions continue using the AWS default timeout.
+- [x] `migrationRunner` Lambda has a 120-second timeout in Terraform.
+- [x] `terraform plan` shows **no changes** to existing Lambda functions.
+- [x] Existing functions continue using the AWS default timeout.
 
 ---
 
@@ -180,8 +180,8 @@ variable "migrationRunner_source_code_hash" {
 ```
 
 **Acceptance criteria:**
-- [ ] Two new variables declared, matching the naming convention of existing variables.
-- [ ] `terraform validate` passes.
+- [x] Two new variables declared, matching the naming convention of existing variables.
+- [x] `terraform validate` passes.
 
 ---
 
