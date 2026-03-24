@@ -39,18 +39,24 @@ module "lambda" {
 
   artifact_bucket = var.artifact_bucket
   artifact_s3_keys = {
-    initPayment     = var.initPayment_s3_key
-    processPayment  = var.processPayment_s3_key
-    getDetails      = var.getDetails_s3_key
-    testCert        = var.testCert_s3_key
-    migrationRunner = var.migrationRunner_s3_key
+    initPayment                 = var.initPayment_s3_key
+    processPayment              = var.processPayment_s3_key
+    getDetails                  = var.getDetails_s3_key
+    testCert                    = var.testCert_s3_key
+    migrationRunner             = var.migrationRunner_s3_key
+    getAllTransactions          = var.getAllTransactions_s3_key
+    getTransactionsByStatus     = var.getTransactionsByStatus_s3_key
+    getTransactionPaymentStatus = var.getTransactionPaymentStatus_s3_key
   }
   source_code_hashes = {
-    initPayment     = var.initPayment_source_code_hash
-    processPayment  = var.processPayment_source_code_hash
-    getDetails      = var.getDetails_source_code_hash
-    testCert        = var.testCert_source_code_hash
-    migrationRunner = var.migrationRunner_source_code_hash
+    initPayment                 = var.initPayment_source_code_hash
+    processPayment              = var.processPayment_source_code_hash
+    getDetails                  = var.getDetails_source_code_hash
+    testCert                    = var.testCert_source_code_hash
+    migrationRunner             = var.migrationRunner_source_code_hash
+    getAllTransactions          = var.getAllTransactions_source_code_hash
+    getTransactionsByStatus     = var.getTransactionsByStatus_source_code_hash
+    getTransactionPaymentStatus = var.getTransactionPaymentStatus_source_code_hash
   }
 
   tags = {
