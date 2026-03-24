@@ -13,6 +13,7 @@ locals {
     CLIENT_PERMISSIONS_SECRET_ID       = module.secrets.client_permissions_secret_id
     RDS_ENDPOINT                       = local.environment == "dev" ? module.rds[0].endpoint : ""
     RDS_SECRET_ARN                     = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : ""
+    RDS_DB_NAME                        = local.environment == "dev" ? "paymentportal" : ""
   }
 
   lambda_env_mtls = local.mtls_enabled ? {

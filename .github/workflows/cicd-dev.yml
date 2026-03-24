@@ -504,6 +504,7 @@ jobs:
             --payload '{}' \
             --cli-binary-format raw-in-base64-out \
             --log-type Tail \
+            --cli-read-timeout 130 \
             response.json \
             | tee invoke-meta.json
 

@@ -93,12 +93,14 @@ const getDatabaseConnection = async (): Promise<DatabaseConnection> => {
   const { host, port } = parseEndpoint(endpoint);
   const { username, password } = await getRdsCredentials(secretArn);
 
+  const database = process.env.RDS_DB_NAME ?? "paymentportal";
+
   return {
     host,
     port,
     user: username,
     password,
-    database: "paymentportal",
+    database,
   };
 };
 
@@ -106,10 +108,13 @@ const getMigrationsDirectory = (): string => {
   const bundledDirectory = path.join(__dirname, "db", "migrations");
 
   if (fs.existsSync(bundledDirectory)) {
+    console.log(`[migrationHandler] using bundled migrations directory: ${bundledDirectory}`);
     return bundledDirectory;
   }
 
-  return path.join(__dirname, "..", "db", "migrations");
+  const sourceDirectory = path.join(__dirname, "..", "db", "migrations");
+  console.log(`[migrationHandler] using source migrations directory: ${sourceDirectory}`);
+  return sourceDirectory;
 };
 
 // THIS WILL ONLY BE FOR CI/CD USAGE AND SHOULD NOT BE EXPOSED IN API GATEWAY
@@ -122,6 +127,7 @@ export const migrationHandler = async (): Promise<MigrationHandlerResult> => {
     pool: {
       min: 0,
       max: 1,
+      acquireTimeoutMillis: 10000,
     },
     migrations: {
       directory: getMigrationsDirectory(),

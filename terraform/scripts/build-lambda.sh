@@ -129,6 +129,10 @@ fi
 
 # Copy migration files for migrationRunner
 echo "Copying migration files..."
+if [ ! -d "db/migrations" ]; then
+    echo "ERROR: db/migrations directory not found"
+    exit 1
+fi
 mkdir -p dist/migrationRunner/db/migrations
 cp -r db/migrations/. dist/migrationRunner/db/migrations/
 
