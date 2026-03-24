@@ -82,6 +82,7 @@ describe("migrationHandler", () => {
         pool: {
           min: 0,
           max: 1,
+          acquireTimeoutMillis: 10000,
         },
         migrations: expect.objectContaining({
           directory: expect.stringContaining("db/migrations"),
