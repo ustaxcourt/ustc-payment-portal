@@ -232,21 +232,14 @@ The CI/CD deployer role currently has `lambda:CreateFunction`, `lambda:UpdateFun
 and other management actions — but **not** `lambda:InvokeFunction`. The new CI step that
 calls `aws lambda invoke` will fail with `AccessDenied` without this.
 
-In the `aws_iam_role_policy.github_actions_permissions` resource, add `lambda:InvokeFunction`
-to the existing Lambda action block:
+**Below** the `aws_iam_role_policy.github_actions_permissions` resource, add the following resource block:
 
 ```hcl
-Action = [
-  "lambda:CreateFunction",
-  "lambda:UpdateFunctionCode",
-  ...existing actions...,
-  "lambda:InvokeFunction"   # ← add
-],
-Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor*"
+Action = ["lambda:InvokeFunction"]
+Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor*-migrationRunner"
 ```
 
-The resource ARN pattern `ustc-payment-processor*` already covers the migration Lambda since
-all functions share the same prefix.
+**This should only permit the migration lambda to be triggerable by CI/CD**
 
 **Acceptance criteria:**
 - [ ] `lambda:InvokeFunction` added to the deployer role policy.
