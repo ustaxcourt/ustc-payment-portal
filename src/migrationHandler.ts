@@ -86,8 +86,15 @@ const getDatabaseConnection = async (): Promise<DatabaseConnection> => {
   const secretArn = process.env.RDS_SECRET_ARN;
   const endpoint = process.env.RDS_ENDPOINT;
 
-  if (!secretArn || !endpoint) {
+  if (!secretArn && !endpoint) {
     return getLocalConnection();
+  }
+
+  if (!secretArn || !endpoint) {
+    throw new Error(
+      `Misconfiguration: RDS_SECRET_ARN and RDS_ENDPOINT must both be set or both be unset. ` +
+      `RDS_SECRET_ARN=${secretArn ? "set" : "unset"}, RDS_ENDPOINT=${endpoint ? "set" : "unset"}`
+    );
   }
 
   const { host, port } = parseEndpoint(endpoint);

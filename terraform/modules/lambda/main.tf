@@ -29,17 +29,17 @@ locals {
 }
 
 resource "aws_lambda_function" "functions" {
-  for_each = local.lambda_functions
+  for_each = var.artifact_s3_keys
 
   s3_bucket        = var.artifact_bucket
-  s3_key           = var.artifact_s3_keys[each.key]
+  s3_key           = each.value
   source_code_hash = var.source_code_hashes[each.key]
 
   function_name = "${var.function_name_prefix}-${each.key}"
   role          = var.lambda_execution_role_arn
-  handler       = each.value.handler
+  handler       = local.lambda_functions[each.key].handler
 
-  timeout = try(each.value.timeout, null)
+  timeout = try(local.lambda_functions[each.key].timeout, null)
 
   runtime = var.runtime
 
@@ -61,7 +61,7 @@ resource "aws_lambda_function" "functions" {
 }
 
 resource "aws_cloudwatch_log_group" "lambda_logs" {
-  for_each          = local.lambda_functions
+  for_each          = var.artifact_s3_keys
   name              = "/aws/lambda/${var.function_name_prefix}-${each.key}"
   retention_in_days = var.log_retention_days
   tags              = var.tags
