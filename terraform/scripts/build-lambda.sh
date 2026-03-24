@@ -127,19 +127,15 @@ if [ -d "certs" ]; then
     done
 fi
 
-# Compile migration files to JS for migrationRunner
+# Copy migration files for migrationRunner
 echo "Compiling migration files..."
-if [ ! -d "db/migrations" ]; then
-    echo "ERROR: db/migrations directory not found"
-    exit 1
-fi
 mkdir -p dist/migrationRunner/db/migrations
 npx esbuild db/migrations/*.ts \
   --bundle=false \
   --platform=node \
   --target=node22 \
   --format=cjs \
-  --outdir=dist/migrationRunner/db/migrations
+  --outdir=dist/migrationRunner/db/migrations/
 
 echo "Build completed successfully!"
 echo "Bundled Lambda functions ready:"
