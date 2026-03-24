@@ -83,8 +83,8 @@ const getLocalConnection = (): DatabaseConnection => {
 };
 
 const getDatabaseConnection = async (): Promise<DatabaseConnection> => {
-  const secretArn = process.env["RDS_SECRET_ARN"];
-  const endpoint = process.env["RDS_ENDPOINT"];
+  const secretArn = process.env.RDS_SECRET_ARN;
+  const endpoint = process.env.RDS_ENDPOINT;
 
   if (!secretArn || !endpoint) {
     return getLocalConnection();
