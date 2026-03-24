@@ -12,16 +12,6 @@ type RdsCredentials = {
   password: string;
 };
 
-const getRequiredEnvVar = (name: "RDS_SECRET_ARN" | "RDS_ENDPOINT"): string => {
-  const value = process.env[name];
-
-  if (!value) {
-    throw new Error(`${name} is required`);
-  }
-
-  return value;
-};
-
 const parseEndpoint = (endpoint: string): { host: string; port: number } => {
   const [host, portString] = endpoint.split(":");
   const port = Number(portString);
@@ -56,8 +46,16 @@ const getRdsCredentials = async (secretArn: string): Promise<RdsCredentials> => 
 };
 
 export const migrationHandler = async (): Promise<MigrationHandlerResult> => {
-  const secretArn = getRequiredEnvVar("RDS_SECRET_ARN");
-  const endpoint = getRequiredEnvVar("RDS_ENDPOINT");
+  const secretArn = process.env["RDS_SECRET_ARN"];
+  const endpoint = process.env["RDS_ENDPOINT"];
+
+  if (!secretArn) {
+    throw new Error("RDS_SECRET_ARN is required");
+  }
+  if (!endpoint) {
+    throw new Error("RDS_ENDPOINT is required");
+  }
+
   const { host, port } = parseEndpoint(endpoint);
   const { username, password } = await getRdsCredentials(secretArn);
 
