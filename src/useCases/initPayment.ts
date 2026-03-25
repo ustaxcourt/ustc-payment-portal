@@ -1,6 +1,5 @@
 import { AppContext } from "../types/AppContext";
-import { InitPaymentResponse } from "../types/InitPaymentResponse";
-import { InitPaymentRequestSchema } from "../schemas/InitPayment.schema";
+import { InitPaymentRequestSchema, InitPaymentResponse } from "../schemas/InitPayment.schema";
 import { getFeeConfig } from "../fees";
 import { InvalidRequestError } from "../errors/invalidRequest";
 
