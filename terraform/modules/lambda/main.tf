@@ -22,8 +22,9 @@ locals {
       handler = "lambdaHandler.getTransactionPaymentStatusHandler"
     }
     migrationRunner = {
-      handler = "lambdaHandler.migrationHandler"
-      timeout = 120
+      handler           = "lambdaHandler.migrationHandler"
+      timeout           = 120
+      ephemeral_storage = 5120
     }
   }
 }
@@ -48,9 +49,11 @@ resource "aws_lambda_function" "functions" {
     security_group_ids = var.security_group_ids
   }
 
-  # Increase /tmp storage to 5GB
-  ephemeral_storage {
-    size = 5120
+  dynamic "ephemeral_storage" {
+    for_each = try(local.lambda_functions[each.key].ephemeral_storage, null) != null ? [1] : []
+    content {
+      size = local.lambda_functions[each.key].ephemeral_storage
+    }
   }
 
   environment {

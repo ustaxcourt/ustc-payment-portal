@@ -107,6 +107,24 @@ describe("migrationHandler", () => {
     expect(mockDestroy).toHaveBeenCalledTimes(1);
   });
 
+  it("throws when only RDS_SECRET_ARN is set without RDS_ENDPOINT", async () => {
+    delete process.env.RDS_ENDPOINT;
+
+    await expect(migrationHandler()).rejects.toThrow(
+      "RDS_SECRET_ARN and RDS_ENDPOINT must both be set or both be unset"
+    );
+    expect(mockLatest).not.toHaveBeenCalled();
+  });
+
+  it("throws when only RDS_ENDPOINT is set without RDS_SECRET_ARN", async () => {
+    delete process.env.RDS_SECRET_ARN;
+
+    await expect(migrationHandler()).rejects.toThrow(
+      "RDS_SECRET_ARN and RDS_ENDPOINT must both be set or both be unset"
+    );
+    expect(mockLatest).not.toHaveBeenCalled();
+  });
+
   it("uses local DB env vars when RDS env vars are not set", async () => {
     delete process.env.RDS_SECRET_ARN;
     delete process.env.RDS_ENDPOINT;

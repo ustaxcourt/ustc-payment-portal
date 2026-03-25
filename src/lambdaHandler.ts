@@ -12,6 +12,7 @@ import { GetDetails } from "./useCases/getDetails";
 import { InitPayment } from "./useCases/initPayment";
 import { ProcessPayment } from "./useCases/processPayment";
 import { isValidPaymentStatus } from "./useCases/getTransactionsByStatus";
+import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
 
 const appContext = createAppContext();
 
@@ -139,7 +140,7 @@ export const getTransactionsByStatusHandler = async (
     return dashboardError(400, "Missing required path parameter: paymentStatus");
   }
   if (!isValidPaymentStatus(paymentStatus)) {
-    return dashboardError(400, `Invalid paymentStatus. Expected one of: ${["pending", "success", "failed"].join(", ")}`);
+    return dashboardError(400, `Invalid paymentStatus. Expected one of: ${PaymentStatusSchema.options.join(", ")}`);
   }
   try {
     const result = await appContext.getUseCases().getTransactionsByStatus(

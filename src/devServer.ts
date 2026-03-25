@@ -72,34 +72,48 @@ app.get("/details/:payGovTrackingId", async (req, res) => {
 });
 
 // ONLY FOR LOCAL TESTING - DO NOT CONNECT TO API GATEWAY
-app.get("/migrations", async (req, res) => {
-  const result = await migrationHandler();
-  res.status(result.statusCode).json(JSON.parse(result.body));
-});
+if (process.env.NODE_ENV !== "production") {
+  app.get("/migrations", async (req, res) => {
+    const result = await migrationHandler();
+    res.status(result.statusCode).json(JSON.parse(result.body));
+  });
+}
 
 app.get("/", (req, res) => {
   res.send("hello world!");
 });
 
 app.get("/transactions", async (_req, res, next) => {
-  const result = await appContext
-    .getUseCases()
-    .getRecentTransactions(appContext);
-  res.json(result);
+  try {
+    const result = await appContext
+      .getUseCases()
+      .getRecentTransactions(appContext);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
 });
 
 app.get("/transactions/:paymentStatus", async (req, res, next) => {
-  const result = await appContext
-    .getUseCases()
-    .getTransactionsByStatus(appContext, req.params as unknown as TransactionsByStatusPathParams);
-  res.json(result);
+  try {
+    const result = await appContext
+      .getUseCases()
+      .getTransactionsByStatus(appContext, req.params as unknown as TransactionsByStatusPathParams);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get("/transaction-payment-status", async (req, res, next) => {
-  const result = await appContext
-    .getUseCases()
-    .getTransactionPaymentStatus(appContext);
-  res.json(result);
+app.get("/transaction-payment-status", async (_req, res, next) => {
+  try {
+    const result = await appContext
+      .getUseCases()
+      .getTransactionPaymentStatus(appContext);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // start the express server
