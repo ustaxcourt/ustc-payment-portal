@@ -13,7 +13,7 @@ extendZodWithOpenApi(z);
 const metadataValidators = {
   PETITION_FILING_FEE: MetadataDawsonSchema,
   NONATTORNEY_EXAM_REGISTRATION_FEE: MetadataNonattorneyExamSchema,
-} as const satisfies Partial<Record<z.infer<typeof FeeIdSchema>, z.ZodSchema>>;
+} as const satisfies Record<z.infer<typeof FeeIdSchema>, z.ZodSchema>;
 
 export const InitPaymentRequestSchema = z
   .object({
@@ -39,9 +39,6 @@ export const InitPaymentRequestSchema = z
   })
   .superRefine((data, ctx) => {
     const validator = metadataValidators[data.feeId];
-    if (!validator) {
-      return;
-    }
     const result = validator.safeParse(data.metadata);
     if (!result.success) {
       ctx.addIssue({
