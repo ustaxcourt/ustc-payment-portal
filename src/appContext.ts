@@ -3,6 +3,11 @@ import { AppContext } from "./types/AppContext";
 import { getDetails } from "./useCases/getDetails";
 import { initPayment } from "./useCases/initPayment";
 import { processPayment } from "./useCases/processPayment";
+import { getRecentTransactions } from "./useCases/getRecentTransactions";
+import {
+  getTransactionsByStatus,
+} from "./useCases/getTransactionsByStatus";
+import { getTransactionPaymentStatus } from "./useCases/getTransactionPaymentStatus";
 import * as https from "https";
 import fetch from "node-fetch";
 
@@ -94,6 +99,9 @@ export const createAppContext = (): AppContext => {
       initPayment,
       processPayment,
       getDetails,
+      getRecentTransactions,
+      getTransactionPaymentStatus,
+      getTransactionsByStatus,
     }),
   };
 };
