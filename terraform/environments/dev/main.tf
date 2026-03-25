@@ -140,13 +140,14 @@ resource "aws_acm_certificate_validation" "this" {
 module "api" {
   source = "../../modules/api-gateway"
 
-  lambda_function_arns = module.lambda.function_arns
-  environment          = local.environment == "dev" ? "dev" : local.environment
-  stage_name           = local.environment == "dev" ? "dev" : local.environment
-  allowed_account_ids  = local.allowed_client_account_ids
-  custom_domain        = local.environment == "dev" ? local.custom_domain : ""
-  certificate_arn      = local.environment == "dev" ? aws_acm_certificate_validation.this[0].certificate_arn : ""
-  route53_zone_id      = local.environment == "dev" ? aws_route53_zone.this[0].zone_id : ""
+  lambda_function_arns     = module.lambda.function_arns
+  environment              = local.environment == "dev" ? "dev" : local.environment
+  stage_name               = local.environment == "dev" ? "dev" : local.environment
+  allowed_account_ids      = local.allowed_client_account_ids
+  dashboard_allowed_origin = local.dashboard_allowed_origin
+  custom_domain            = local.environment == "dev" ? local.custom_domain : ""
+  certificate_arn          = local.environment == "dev" ? aws_acm_certificate_validation.this[0].certificate_arn : ""
+  route53_zone_id          = local.environment == "dev" ? aws_route53_zone.this[0].zone_id : ""
 
   depends_on = [module.secrets, aws_acm_certificate_validation.this]
 }

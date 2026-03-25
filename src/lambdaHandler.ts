@@ -95,15 +95,21 @@ export const getDetailsHandler = (
 // ──────────────────────────────
 // Dashboard Lambda Handlers
 // ──────────────────────────────
+const DASHBOARD_CORS_HEADERS = {
+  "Access-Control-Allow-Origin": process.env.DASHBOARD_ALLOWED_ORIGIN ?? "*",
+  "Access-Control-Allow-Methods": "GET,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
 const dashboardOk = (body: unknown): APIGatewayProxyResult => ({
   statusCode: 200,
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json", ...DASHBOARD_CORS_HEADERS },
   body: JSON.stringify(body),
 });
 
 const dashboardError = (statusCode: number, message: string): APIGatewayProxyResult => ({
   statusCode,
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json", ...DASHBOARD_CORS_HEADERS },
   body: JSON.stringify({ message }),
 });
 

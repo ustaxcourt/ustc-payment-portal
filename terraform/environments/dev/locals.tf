@@ -14,6 +14,7 @@ locals {
     RDS_ENDPOINT                       = local.environment == "dev" ? module.rds[0].endpoint : ""
     RDS_SECRET_ARN                     = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : ""
     RDS_DB_NAME                        = local.environment == "dev" ? "paymentportal" : ""
+    DASHBOARD_ALLOWED_ORIGIN           = local.dashboard_allowed_origin
   }
 
   lambda_env_mtls = local.mtls_enabled ? {
@@ -37,6 +38,10 @@ locals {
 
   # Artifacts bucket policy ARN (constructed dynamically for PR workspaces)
   artifacts_bucket_policy_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/build-artifacts-access-policy"
+
+  # Origin allowed to call dashboard endpoints from the browser.
+  # then lock back to the custom domain once confirmed working.
+  dashboard_allowed_origin = "https://dashboard.dev-payments.ustaxcourt.gov"
 
   # AWS account IDs allowed to invoke the API Gateway cross-account
   # Read from Secrets Manager - populated via AWS CLI/Console, not hardcoded

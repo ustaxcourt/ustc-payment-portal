@@ -61,6 +61,118 @@ resource "aws_api_gateway_integration" "transaction_payment_status_integration" 
   integration_http_method = "POST"
   uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionPaymentStatus"]}/invocations"
 }
+# OPTIONS preflight for dashboard endpoints (MOCK integration — no Lambda invocation)
+resource "aws_api_gateway_method" "transactions_options" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.transactions.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+resource "aws_api_gateway_integration" "transactions_options_integration" {
+  rest_api_id          = aws_api_gateway_rest_api.rest.id
+  resource_id          = aws_api_gateway_resource.transactions.id
+  http_method          = aws_api_gateway_method.transactions_options.http_method
+  type                 = "MOCK"
+  request_templates    = { "application/json" = "{\"statusCode\": 200}" }
+}
+resource "aws_api_gateway_method_response" "transactions_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  resource_id = aws_api_gateway_resource.transactions.id
+  http_method = aws_api_gateway_method.transactions_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Headers" = true
+  }
+}
+resource "aws_api_gateway_integration_response" "transactions_options_response" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  resource_id = aws_api_gateway_resource.transactions.id
+  http_method = aws_api_gateway_method.transactions_options.http_method
+  status_code = aws_api_gateway_method_response.transactions_options_200.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'${var.dashboard_allowed_origin}'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type'"
+  }
+  depends_on = [aws_api_gateway_integration.transactions_options_integration]
+}
+
+resource "aws_api_gateway_method" "transactions_by_status_options" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.transactions_by_status.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+resource "aws_api_gateway_integration" "transactions_by_status_options_integration" {
+  rest_api_id          = aws_api_gateway_rest_api.rest.id
+  resource_id          = aws_api_gateway_resource.transactions_by_status.id
+  http_method          = aws_api_gateway_method.transactions_by_status_options.http_method
+  type                 = "MOCK"
+  request_templates    = { "application/json" = "{\"statusCode\": 200}" }
+}
+resource "aws_api_gateway_method_response" "transactions_by_status_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  resource_id = aws_api_gateway_resource.transactions_by_status.id
+  http_method = aws_api_gateway_method.transactions_by_status_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Headers" = true
+  }
+}
+resource "aws_api_gateway_integration_response" "transactions_by_status_options_response" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  resource_id = aws_api_gateway_resource.transactions_by_status.id
+  http_method = aws_api_gateway_method.transactions_by_status_options.http_method
+  status_code = aws_api_gateway_method_response.transactions_by_status_options_200.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'${var.dashboard_allowed_origin}'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type'"
+  }
+  depends_on = [aws_api_gateway_integration.transactions_by_status_options_integration]
+}
+
+resource "aws_api_gateway_method" "transaction_payment_status_options" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.transaction_payment_status.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+resource "aws_api_gateway_integration" "transaction_payment_status_options_integration" {
+  rest_api_id          = aws_api_gateway_rest_api.rest.id
+  resource_id          = aws_api_gateway_resource.transaction_payment_status.id
+  http_method          = aws_api_gateway_method.transaction_payment_status_options.http_method
+  type                 = "MOCK"
+  request_templates    = { "application/json" = "{\"statusCode\": 200}" }
+}
+resource "aws_api_gateway_method_response" "transaction_payment_status_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  resource_id = aws_api_gateway_resource.transaction_payment_status.id
+  http_method = aws_api_gateway_method.transaction_payment_status_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Headers" = true
+  }
+}
+resource "aws_api_gateway_integration_response" "transaction_payment_status_options_response" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  resource_id = aws_api_gateway_resource.transaction_payment_status.id
+  http_method = aws_api_gateway_method.transaction_payment_status_options.http_method
+  status_code = aws_api_gateway_method_response.transaction_payment_status_options_200.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'${var.dashboard_allowed_origin}'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type'"
+  }
+  depends_on = [aws_api_gateway_integration.transaction_payment_status_options_integration]
+}
+
 # Lambda permissions for dashboard endpoints
 resource "aws_lambda_permission" "transactions_permission" {
   statement_id  = "AllowAPIGatewayInvokeTransactions"
@@ -163,6 +275,9 @@ resource "aws_api_gateway_method" "details_get" {
 # Resource policy — controls which AWS accounts can reach the API at all.
 # The deploying account is always included so same-account callers (CI/CD, smoke tests) work.
 # Client accounts are added via var.allowed_account_ids — never hardcoded.
+#
+# Dashboard endpoints are browser-called and carry no AWS credentials, so they need a
+# separate public Allow scoped strictly to those paths. SigV4-protected routes are untouched.
 data "aws_iam_policy_document" "api_resource_policy" {
   statement {
     effect = "Allow"
@@ -175,6 +290,25 @@ data "aws_iam_policy_document" "api_resource_policy" {
     }
     actions   = ["execute-api:Invoke"]
     resources = ["${aws_api_gateway_rest_api.rest.execution_arn}/*"]
+  }
+
+  # Allow unauthenticated browser requests to dashboard endpoints only.
+  # Scoped to GET and OPTIONS on the three dashboard paths — /init, /process, /details remain SigV4-only.
+  statement {
+    effect = "Allow"
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+    actions = ["execute-api:Invoke"]
+    resources = [
+      "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transactions",
+      "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transactions/*",
+      "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transaction-payment-status",
+      "${aws_api_gateway_rest_api.rest.execution_arn}/*/OPTIONS/transactions",
+      "${aws_api_gateway_rest_api.rest.execution_arn}/*/OPTIONS/transactions/*",
+      "${aws_api_gateway_rest_api.rest.execution_arn}/*/OPTIONS/transaction-payment-status",
+    ]
   }
 }
 
@@ -235,6 +369,9 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_method.transactions_get.id,
       aws_api_gateway_method.transactions_by_status_get.id,
       aws_api_gateway_method.transaction_payment_status_get.id,
+      aws_api_gateway_method.transactions_options.id,
+      aws_api_gateway_method.transactions_by_status_options.id,
+      aws_api_gateway_method.transaction_payment_status_options.id,
       aws_api_gateway_integration.init_integration.id,
       aws_api_gateway_integration.process_integration.id,
       aws_api_gateway_integration.test_integration.id,
@@ -242,6 +379,9 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_integration.transactions_integration.id,
       aws_api_gateway_integration.transactions_by_status_integration.id,
       aws_api_gateway_integration.transaction_payment_status_integration.id,
+      aws_api_gateway_integration.transactions_options_integration.id,
+      aws_api_gateway_integration.transactions_by_status_options_integration.id,
+      aws_api_gateway_integration.transaction_payment_status_options_integration.id,
       aws_api_gateway_rest_api_policy.policy.id,
     ]))
   }
@@ -258,6 +398,9 @@ resource "aws_api_gateway_deployment" "deployment" {
     aws_api_gateway_integration.transactions_integration,
     aws_api_gateway_integration.transactions_by_status_integration,
     aws_api_gateway_integration.transaction_payment_status_integration,
+    aws_api_gateway_integration.transactions_options_integration,
+    aws_api_gateway_integration.transactions_by_status_options_integration,
+    aws_api_gateway_integration.transaction_payment_status_options_integration,
   ]
 }
 

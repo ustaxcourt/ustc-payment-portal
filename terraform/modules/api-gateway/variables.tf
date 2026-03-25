@@ -44,3 +44,9 @@ variable "route53_zone_id" {
   default     = ""
 }
 
+variable "dashboard_allowed_origin" {
+  description = "Origin allowed to call dashboard endpoints via CORS (e.g. https://dashboard.dev-payments.ustaxcourt.gov). Use '*' only during initial Amplify testing — lock it down to the custom domain before production."
+  type        = string
+  default     = "*"
+}
+
