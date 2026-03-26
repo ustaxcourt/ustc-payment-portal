@@ -383,6 +383,8 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_integration.transactions_by_status_options_integration.id,
       aws_api_gateway_integration.transaction_payment_status_options_integration.id,
       aws_api_gateway_rest_api_policy.policy.id,
+      aws_api_gateway_gateway_response.default_4xx.id,
+      aws_api_gateway_gateway_response.default_5xx.id,
     ]))
   }
 
@@ -458,6 +460,27 @@ resource "aws_lambda_permission" "details_permissions" {
   function_name = var.lambda_function_arns["getDetails"]
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/details/*"
+}
+
+# Gateway responses — inject CORS headers on API Gateway-generated errors (e.g. Lambda
+# timeout → 504, OOM → 502, throttle → 429). Without these the browser sees a CORS error
+# instead of the real HTTP status, making server-side failures very hard to diagnose.
+resource "aws_api_gateway_gateway_response" "default_4xx" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  response_type = "DEFAULT_4XX"
+
+  response_parameters = {
+    "gatewayresponse.header.Access-Control-Allow-Origin" = "'${var.dashboard_allowed_origin}'"
+  }
+}
+
+resource "aws_api_gateway_gateway_response" "default_5xx" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  response_type = "DEFAULT_5XX"
+
+  response_parameters = {
+    "gatewayresponse.header.Access-Control-Allow-Origin" = "'${var.dashboard_allowed_origin}'"
+  }
 }
 
 # Custom domain — only created when custom_domain is provided.
