@@ -35,7 +35,7 @@ module "lambda" {
   lambda_execution_role_arn = data.terraform_remote_state.foundation.outputs.lambda_role_arn
   subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
   security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
-  environment_variables     = local.lambda_env
+  environment_variables_by_function = local.lambda_env_by_function
 
   artifact_bucket = var.artifact_bucket
   artifact_s3_keys = {

@@ -57,7 +57,7 @@ resource "aws_lambda_function" "functions" {
   }
 
   environment {
-    variables = var.environment_variables
+    variables = var.environment_variables_by_function[each.key]
   }
 
   tags = var.tags

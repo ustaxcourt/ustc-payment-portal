@@ -4,7 +4,9 @@ locals {
   node_env      = "development"
   mtls_enabled  = false
   custom_domain = "dev-payments.ustaxcourt.gov"
-  lambda_env_base = {
+  # Payment Lambdas: initPayment, processPayment, getDetails, testCert
+  # Needs full secrets + RDS. mTLS vars included when enabled.
+  lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
     PAYMENT_URL                        = local.payment_url
     SOAP_URL                           = local.soap_url
@@ -14,14 +16,40 @@ locals {
     RDS_ENDPOINT                       = local.environment == "dev" ? module.rds[0].endpoint : ""
     RDS_SECRET_ARN                     = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : ""
     RDS_DB_NAME                        = local.environment == "dev" ? "paymentportal" : ""
-    DASHBOARD_ALLOWED_ORIGIN           = local.dashboard_allowed_origin
-  }
-
-  lambda_env_mtls = local.mtls_enabled ? {
+  }, local.mtls_enabled ? {
     PRIVATE_KEY_SECRET_ID = module.secrets.private_key_secret_id
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
-  } : {}
-  lambda_env               = merge(local.lambda_env_base, local.lambda_env_mtls)
+  } : {})
+
+  # Dashboard Lambdas: getAllTransactions, getTransactionsByStatus, getTransactionPaymentStatus
+  # authorization=NONE — must not receive payment secrets.
+  lambda_env_dashboard = {
+    NODE_ENV                 = local.node_env
+    RDS_ENDPOINT             = local.environment == "dev" ? module.rds[0].endpoint : ""
+    RDS_SECRET_ARN           = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : ""
+    RDS_DB_NAME              = local.environment == "dev" ? "paymentportal" : ""
+    DASHBOARD_ALLOWED_ORIGIN = local.dashboard_allowed_origin
+  }
+
+  # Migration Lambda: migrationRunner
+  # Needs RDS only — no payment secrets, no CORS origin.
+  lambda_env_migration = {
+    NODE_ENV       = local.node_env
+    RDS_ENDPOINT   = local.environment == "dev" ? module.rds[0].endpoint : ""
+    RDS_SECRET_ARN = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : ""
+    RDS_DB_NAME    = local.environment == "dev" ? "paymentportal" : ""
+  }
+
+  lambda_env_by_function = {
+    initPayment                 = local.lambda_env_payment
+    processPayment              = local.lambda_env_payment
+    getDetails                  = local.lambda_env_payment
+    testCert                    = local.lambda_env_payment
+    getAllTransactions           = local.lambda_env_dashboard
+    getTransactionsByStatus     = local.lambda_env_dashboard
+    getTransactionPaymentStatus = local.lambda_env_dashboard
+    migrationRunner             = local.lambda_env_migration
+  }
   github_oidc_provider_arn = "arn:aws:iam::723609007960:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"
   github_repo              = "ustc-payment-portal"
