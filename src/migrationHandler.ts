@@ -19,6 +19,7 @@ type DatabaseConnection = {
   user: string;
   password: string;
   database: string;
+  ssl?: { rejectUnauthorized: boolean };
 };
 
 const parseEndpoint = (endpoint: string): { host: string; port: number } => {
@@ -108,6 +109,7 @@ const getDatabaseConnection = async (): Promise<DatabaseConnection> => {
     user: username,
     password,
     database,
+    ssl: { rejectUnauthorized: true },
   };
 };
 
