@@ -253,52 +253,30 @@ resource "aws_iam_role_policy" "test_unauthorized_api_invoke" {
   })
 }
 
-# Allow the CI/CD deployer role to assume the test-unauthorized role
-# Attaches to the SHARED dev deployer role, using unique policy name per workspace
-resource "aws_iam_role_policy" "deployer_assume_test_role" {
-  name = "assume-test-unauthorized-role-${local.name_prefix}"
+# Consolidated policy for the shared dev deployer role per PR workspace.
+# Kept as one policy (3 statements) to stay well under AWS's 10 inline-policy limit
+# when multiple PR workspaces are active concurrently.
+resource "aws_iam_role_policy" "deployer_pr_workspace" {
+  name = "pr-workspace-${local.name_prefix}"
   role = local.dev_deployer_role_name
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AssumeTestUnauthorizedRole"
         Effect   = "Allow"
         Action   = "sts:AssumeRole"
         Resource = aws_iam_role.test_unauthorized.arn
-      }
-    ]
-  })
-}
-
-# Allow the CI/CD deployer role to invoke the migrationRunner Lambda
-# Needed in PR workspaces where the shared dev role is used but not managed by iam_cicd
-resource "aws_iam_role_policy" "deployer_invoke_migration" {
-  name = "invoke-migration-runner-${local.name_prefix}"
-  role = local.dev_deployer_role_name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
+      },
       {
+        Sid      = "InvokeMigrationRunner"
         Effect   = "Allow"
-        Action   = ["lambda:InvokeFunction"]
+        Action   = "lambda:InvokeFunction"
         Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:${local.name_prefix}-migrationRunner"
-      }
-    ]
-  })
-}
-
-# Allow the CI/CD deployer role to invoke API Gateway for smoke tests
-# The signedFetch() helper uses the shared role's credentials directly
-resource "aws_iam_role_policy" "deployer_invoke_api" {
-  name = "invoke-api-${local.name_prefix}"
-  role = local.dev_deployer_role_name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
+      },
       {
+        Sid      = "InvokeApiGateway"
         Effect   = "Allow"
         Action   = "execute-api:Invoke"
         Resource = "${module.api.api_gateway_execution_arn}/*"
