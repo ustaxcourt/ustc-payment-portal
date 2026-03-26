@@ -96,8 +96,13 @@ export const getDetailsHandler = (
 // ──────────────────────────────
 // Dashboard Lambda Handlers
 // ──────────────────────────────
+const dashboardAllowedOrigin = process.env.DASHBOARD_ALLOWED_ORIGIN;
+if (!dashboardAllowedOrigin) {
+  throw new Error("DASHBOARD_ALLOWED_ORIGIN env var is required but not set");
+}
+
 const DASHBOARD_CORS_HEADERS = {
-  "Access-Control-Allow-Origin": process.env.DASHBOARD_ALLOWED_ORIGIN ?? "*",
+  "Access-Control-Allow-Origin": dashboardAllowedOrigin,
   "Access-Control-Allow-Methods": "GET,OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
