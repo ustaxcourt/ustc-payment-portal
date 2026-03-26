@@ -96,26 +96,27 @@ export const getDetailsHandler = (
 // ──────────────────────────────
 // Dashboard Lambda Handlers
 // ──────────────────────────────
-const dashboardAllowedOrigin = process.env.DASHBOARD_ALLOWED_ORIGIN;
-if (!dashboardAllowedOrigin) {
-  throw new Error("DASHBOARD_ALLOWED_ORIGIN env var is required but not set");
-}
-
-const DASHBOARD_CORS_HEADERS = {
-  "Access-Control-Allow-Origin": dashboardAllowedOrigin,
-  "Access-Control-Allow-Methods": "GET,OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+const getDashboardCorsHeaders = () => {
+  const origin = process.env.DASHBOARD_ALLOWED_ORIGIN;
+  if (!origin) {
+    throw new Error("DASHBOARD_ALLOWED_ORIGIN env var is required but not set");
+  }
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
 };
 
 const dashboardOk = (body: unknown): APIGatewayProxyResult => ({
   statusCode: 200,
-  headers: { "Content-Type": "application/json", ...DASHBOARD_CORS_HEADERS },
+  headers: { "Content-Type": "application/json", ...getDashboardCorsHeaders() },
   body: JSON.stringify(body),
 });
 
 const dashboardError = (statusCode: number, message: string): APIGatewayProxyResult => ({
   statusCode,
-  headers: { "Content-Type": "application/json", ...DASHBOARD_CORS_HEADERS },
+  headers: { "Content-Type": "application/json", ...getDashboardCorsHeaders() },
   body: JSON.stringify({ message }),
 });
 
