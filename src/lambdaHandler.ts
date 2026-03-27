@@ -35,19 +35,30 @@ const lambdaHandler = async (
   }
 };
 
+
+const safeJsonParse = <T = any>(
+  body: string | null | undefined
+): { value?: T; error?: APIGatewayProxyResult } => {
+  if (!body) {
+    return { error: handleError(new InvalidRequestError("missing body")) };
+  }
+
+  try {
+    return { value: JSON.parse(body) };
+  } catch {
+    return {
+      error: handleError(
+        new InvalidRequestError("invalid JSON in request body")
+      ),
+    };
+  }
+};
+
 export const initPaymentHandler = (
   event: APIGatewayEvent
 ): Promise<APIGatewayProxyResult> => {
-  if (!event.body) {
-    return Promise.resolve(handleError(new InvalidRequestError("missing body")));
-  }
-
-  let request;
-  try {
-    request = JSON.parse(event.body);
-  } catch (err) {
-    return Promise.resolve(handleError(new InvalidRequestError("invalid JSON in request body")));
-  }
+  const { value: request, error } = safeJsonParse(event.body);
+  if (error) return Promise.resolve(error);
 
   return lambdaHandler(
     request,
@@ -60,21 +71,13 @@ export const initPaymentHandler = (
 export const processPaymentHandler = (
   event: APIGatewayEvent
 ): Promise<APIGatewayProxyResult> => {
-  if (!event.body) {
-    return Promise.resolve(handleError(new InvalidRequestError("missing body")));
-  }
-
-  let request;
-  try {
-    request = JSON.parse(event.body);
-  } catch (err) {
-    return Promise.resolve(handleError(new InvalidRequestError("invalid JSON in request body")));
-  }
+  const { value: request, error } = safeJsonParse(event.body);
+  if (error) return Promise.resolve(error);
 
   return lambdaHandler(
     request,
     event.requestContext,
-    appContext.getUseCases().processPayment,
+    appContext.getUseCases().processPayment
   );
 };
 
