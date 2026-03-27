@@ -94,4 +94,30 @@ describe("initPayment", () => {
       initPayment(appContext, withoutMetadata)
     ).rejects.toThrow(InvalidRequestError);
   });
+
+  it.each(["transactionReferenceId", "feeId", "urlSuccess", "urlCancel", "metadata"])(
+    "throws InvalidRequestError when %s is missing",
+    async (field) => {
+      const { [field]: _, ...withoutField } = validPetitionRequest as any;
+      await expect(initPayment(appContext, withoutField)).rejects.toThrow(InvalidRequestError);
+    }
+  );
+
+  it("throws InvalidRequestError when urlSuccess is not a valid URL", async () => {
+    await expect(
+      initPayment(appContext, {
+        ...validPetitionRequest,
+        urlSuccess: "not-a-url",
+      })
+    ).rejects.toThrow(InvalidRequestError);
+  });
+
+  it("throws InvalidRequestError when urlCancel is not a valid URL", async () => {
+    await expect(
+      initPayment(appContext, {
+        ...validPetitionRequest,
+        urlCancel: "not-a-url",
+      })
+    ).rejects.toThrow(InvalidRequestError);
+  });
 });

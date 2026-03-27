@@ -1,11 +1,14 @@
 import { AppContext } from "../types/AppContext";
-import { InitPaymentRequestSchema, InitPaymentResponse } from "../schemas/InitPayment.schema";
+import {
+  InitPaymentRequestSchema,
+  InitPaymentResponse,
+} from "../schemas/InitPayment.schema";
 import { getFeeConfig } from "../fees";
 import { InvalidRequestError } from "../errors/invalidRequest";
 
 export type InitPayment = (
   appContext: AppContext,
-  request: Record<string, unknown>
+  request: Record<string, unknown>,
 ) => Promise<InitPaymentResponse>;
 
 export const initPayment: InitPayment = async (_appContext, request) => {
@@ -13,7 +16,7 @@ export const initPayment: InitPayment = async (_appContext, request) => {
 
   if (!parsed.success) {
     throw new InvalidRequestError(
-      parsed.error.issues.map((i) => i.message).join(", ")
+      parsed.error.issues.map((i) => i.message).join(", "),
     );
   }
 
@@ -27,16 +30,14 @@ export const initPayment: InitPayment = async (_appContext, request) => {
 
   if (amount !== undefined && !feeConfig.isVariable) {
     throw new InvalidRequestError(
-      `Fee ${feeId} does not allow variable amounts`
+      `Fee ${feeId} does not allow variable amounts`,
     );
   }
 
   if (amount === undefined && feeConfig.isVariable) {
-    throw new InvalidRequestError(
-      `Fee ${feeId} requires an amount`
-    );
+    throw new InvalidRequestError(`Fee ${feeId} requires an amount`);
   }
 
   // TODO: implement Pay.gov token retrieval (response shape is a stub)
-  return { token: "", paymentRedirect: "" };
+  return { token: "", paymentRedirect: "https://stub.invalid" };
 };

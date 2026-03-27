@@ -16,5 +16,8 @@ export const handleError = (err: any) => {
       }),
     };
   }
-  throw err;
+  return {
+    statusCode: 500,
+    body: JSON.stringify({ message: "An unexpected error occurred" }),
+  };
 };
