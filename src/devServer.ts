@@ -5,8 +5,7 @@ import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { generateOpenAPIDocument } from "./openapi/registry";
 import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
-const envPath = path.resolve(__dirname, "../.env.dev");
-dotenv.config({ path: envPath });
+require('dotenv').config({ path: process.env.DOTENV_CONFIG_PATH || '.env' });
 import "./db/knex";
 
 const appContext = createAppContext();
