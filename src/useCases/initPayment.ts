@@ -7,6 +7,7 @@ import { InvalidRequestError } from "../errors/invalidRequest";
 import { InitPaymentRequest } from "../types/InitPaymentRequest";
 import { InitPaymentResponse } from "../types/InitPaymentResponse";
 import FeesModel from "../db/FeesModel";
+import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 
 export type InitPayment = (
   appContext: AppContext,
@@ -15,19 +16,19 @@ export type InitPayment = (
 
 export const initPayment: InitPayment = async (appContext, request) => {
   const fee = await FeesModel.getFeeById(request.feeId);
-  const tcsAppId = fee?.tcsAppId || null;
-
-  if (!tcsAppId) {
+  if (!fee || !fee.tcsAppId || !fee.amount) {
     throw new InvalidRequestError(`Unknown feeId: ${request.feeId}`);
   }
 
   const rawRequest = {
-    tcsAppId,
-    transactionAmount: request.amount,
-    urlCancel: request.urlCancel,
+    tcsAppId: fee.tcsAppId,
+    feeId: request.feeId,
     urlSuccess: request.urlSuccess,
-    // Clarification needed: Should the tracking ID be generated here or passed in from the client? For now, we'll generate it here to ensure uniqueness and consistency.
-    agencyTrackingId: request.trackingId,
+    urlCancel: request.urlCancel,
+    agencyTrackingId: generateAgencyTrackingId(),
+    clientName: request.clientName,
+    metadata: request.metadata,
+    transactionAmount: fee.amount,
   };
 
   startOnlineCollectionSchema.parse(rawRequest);
@@ -42,6 +43,6 @@ export const initPayment: InitPayment = async (appContext, request) => {
 
   return {
     token: result.token,
-    paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${tcsAppId}`,
+    paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${fee.tcsAppId}`,
   };
 };

@@ -8,10 +8,6 @@ extendZodWithOpenApi(z);
 
 export const InitPaymentRequestSchema = z
   .object({
-    transactionReferenceId: z.uuid().openapi({
-      description: "Unique UUID for the transaction reference",
-      example: "550e8400-e29b-41d4-a716-446655440000",
-    }),
     feeId: FeeIdSchema,
     urlSuccess: z.url().openapi({
       description: "URL to redirect to after successful payment",
@@ -22,6 +18,10 @@ export const InitPaymentRequestSchema = z
       example: "https://client.app/cancel",
     }),
     metadata: MetadataSchema,
+    clientName: z.string().openapi({
+      description: "Name of the client application initiating the payment",
+      example: "Test Client App",
+    }),
   })
   .openapi("InitPaymentRequest");
 

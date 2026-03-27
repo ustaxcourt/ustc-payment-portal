@@ -22,11 +22,11 @@ describe("make a transaction", () => {
     const randomNumber = Math.floor(Math.random() * 100000);
 
     const request: InitPaymentRequest = {
-      trackingId: `test${randomNumber}`,
-      amount: 20,
       feeId: "PETITION_FILING_FEE",
       urlSuccess: "http://example.com/success",
       urlCancel: "http://example.com/cancel",
+      metadata: { randomNumber: randomNumber.toString() },
+      clientName: "Test Client App",
     };
 
     const url = `${process.env.BASE_URL}/init`;

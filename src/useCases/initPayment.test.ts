@@ -5,7 +5,11 @@ jest.mock("../db/FeesModel", () => ({
   default: {
     getFeeById: jest.fn((feeId) => {
       if (feeId === "PETITION_FILING_FEE") {
-        return Promise.resolve({ feeId: "PETITION_FILING_FEE", tcsAppId: "TCS123" });
+        return Promise.resolve({
+          feeId: "PETITION_FILING_FEE",
+          tcsAppId: "TCS123",
+          amount: 20, // Add this line
+        });
       }
       return Promise.resolve(undefined);
     }),
@@ -41,11 +45,11 @@ describe("initPayment", () => {
   it("throws InvalidRequestError with a clear message when feeId is unrecognized", async () => {
     await expect(
       initPayment(appContext, {
-        amount: 20,
         feeId: "UNKNOWN_FEE",
         urlCancel: "http://example.com",
         urlSuccess: "http://example.com",
-        trackingId: "test-12345",
+        metadata: { key: "value" },
+        clientName: "Test Client App",
       }),
     ).rejects.toThrow("Unknown feeId: UNKNOWN_FEE");
   });
@@ -54,11 +58,11 @@ describe("initPayment", () => {
     appContext.postHttpRequest = jest.fn().mockReturnValue(mockSoapResponse);
 
     const { token, paymentRedirect } = await initPayment(appContext, {
-      amount: 20,
       feeId: "PETITION_FILING_FEE",
       urlCancel: "http://example.com",
       urlSuccess: "http://another-example.com",
-      trackingId: "test-12345",
+      metadata: { key1: "value1", key2: "value2" },
+      clientName: "Test Client App",
     });
 
     expect(token).toBeTruthy();
