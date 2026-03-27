@@ -109,4 +109,23 @@ export default class TransactionModel extends Model {
     totals.total = data.results.length;
     return totals;
   }
+
+  static async createReceived(data: Partial<TransactionModel>): Promise<TransactionModel> {
+    const newTransaction = await this.query().insertAndFetch({
+      ...data,
+      paymentStatus: 'pending',
+      transactionStatus: 'received',
+    });
+
+    return newTransaction;
+  }
+
+  static async updateToInitiated(agencyTrackingId: string, paygovToken: string): Promise<void> {
+    await this.query()
+      .patch({
+        transactionStatus: 'initiated',
+        paygovToken,
+      })
+      .where('agencyTrackingId', agencyTrackingId);
+  }
 }
