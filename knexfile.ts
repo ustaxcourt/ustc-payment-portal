@@ -25,6 +25,16 @@ const common: Knex.Config = {
 };
 
 const config: { [key: string]: Knex.Config } = {
+  local: {
+    ...common,
+    connection: {
+      host: DB_HOST,
+      port: Number(DB_PORT),
+      user: DB_USER,
+      password: DB_PASSWORD,
+      database: DB_NAME
+    }
+  },
   development: {
     ...common,
     connection: {
@@ -57,4 +67,4 @@ const config: { [key: string]: Knex.Config } = {
   }
 };
 
-export default config;
+module.exports = config;
