@@ -6,14 +6,7 @@ import {
 import { InvalidRequestError } from "../errors/invalidRequest";
 import { InitPaymentRequest } from "../types/InitPaymentRequest";
 import { InitPaymentResponse } from "../types/InitPaymentResponse";
-
-// TODO: replace with DB lookup once fees table is provisioned.
-// To add a new fee type in the meantime: add an entry here and redeploy.
-// The tcs_app_id value is provided by Pay.gov during onboarding. See docs/client-onboarding.md.
-const feeToTcsAppId: Record<string, string> = {
-  PETITION_FILING_FEE: "TCSUSTAXCOURTPETITION",
-  NONATTORNEY_EXAM_REGISTRATION_FEE: "TCSUSTAXCOURTANAEF",
-};
+import FeesModel from "../db/FeesModel";
 
 export type InitPayment = (
   appContext: AppContext,
@@ -21,7 +14,8 @@ export type InitPayment = (
 ) => Promise<InitPaymentResponse>;
 
 export const initPayment: InitPayment = async (appContext, request) => {
-  const tcsAppId = feeToTcsAppId[request.feeId];
+  const fee = await FeesModel.getFeeById(request.feeId);
+  const tcsAppId = fee?.tcsAppId || null;
 
   if (!tcsAppId) {
     throw new InvalidRequestError(`Unknown feeId: ${request.feeId}`);
@@ -32,6 +26,7 @@ export const initPayment: InitPayment = async (appContext, request) => {
     transactionAmount: request.amount,
     urlCancel: request.urlCancel,
     urlSuccess: request.urlSuccess,
+    // Clarification needed: Should the tracking ID be generated here or passed in from the client? For now, we'll generate it here to ensure uniqueness and consistency.
     agencyTrackingId: request.trackingId,
   };
 

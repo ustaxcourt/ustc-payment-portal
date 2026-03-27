@@ -1,3 +1,17 @@
+
+// Mock FeesModel before importing initPayment
+jest.mock("../db/FeesModel", () => ({
+  __esModule: true,
+  default: {
+    getFeeById: jest.fn((feeId) => {
+      if (feeId === "PETITION_FILING_FEE") {
+        return Promise.resolve({ feeId: "PETITION_FILING_FEE", tcsAppId: "TCS123" });
+      }
+      return Promise.resolve(undefined);
+    }),
+  },
+}));
+
 import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 

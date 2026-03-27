@@ -34,4 +34,8 @@ export default class FeesModel extends Model {
   static getAll() {
     return FeesModel.query().orderBy('createdAt', 'desc');
   }
+
+  static async getFeeById(feeId: string): Promise<FeesModel | undefined> {
+    return FeesModel.query().findById(feeId) || undefined;
+  }
 }
