@@ -127,6 +127,9 @@ const getMigrationsDirectory = (): string => {
 };
 
 // THIS WILL ONLY BE FOR CI/CD USAGE AND SHOULD NOT BE EXPOSED IN API GATEWAY
+// If we ever write integration tests for this Lambda or any of the dashboard endpoints,
+// we will need to setup PR emphemeral enviornments to spin up a RDS instance, otherwise the tests
+// will always fail. 
 export const migrationHandler = async (): Promise<MigrationHandlerResult> => {
   const connection = await getDatabaseConnection();
 

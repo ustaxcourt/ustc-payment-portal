@@ -95,6 +95,7 @@ export const getDetailsHandler = (
 
 // ──────────────────────────────
 // Dashboard Lambda Handlers
+// NOTE: If we write integration tests for these handlers, we will need to setup PR ephemeral environments to spin up a RDS instance, otherwise the tests will always fail.
 // ──────────────────────────────
 const getDashboardCorsHeaders = () => {
   const origin = process.env.DASHBOARD_ALLOWED_ORIGIN;
