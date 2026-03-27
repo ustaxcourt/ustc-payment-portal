@@ -38,6 +38,11 @@ export async function up(knex: Knex): Promise<void> {
     t.index(['is_variable'], 'idx_fees_is_variable');
   });
 
+  // Make payment_method nullable
+  await knex.schema.alterTable('transactions', (t) => {
+    t.string('payment_method', 50).nullable().alter();
+  });
+
   // Foreign key from transactions.fee_id to fees.fee_id
   await knex.schema.alterTable('transactions', (t) => {
     t.foreign('fee_id').references('fee_id').inTable('fees').onDelete('RESTRICT');
@@ -51,17 +56,32 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  // Add fee_name and fee_amount back to transactions
   await knex.schema.alterTable('transactions', (t) => {
-    t.string('fee_name', 255).notNullable().comment('Fee Name');
-    t.decimal('fee_amount', 12, 2).notNullable().comment('Fee Amount (USD)');
+    t.string('fee_name', 255).nullable().comment('Fee Name');
+    t.decimal('fee_amount', 12, 2).nullable().comment('Fee Amount (USD)');
   });
 
-  // Drop foreign key constraint first
+  await knex.raw(`
+    UPDATE transactions t
+    SET
+      fee_name = f.name,
+      fee_amount = f.amount
+    FROM fees f
+    WHERE t.fee_id = f.fee_id
+  `);
+
+  await knex.raw(`
+    UPDATE transactions
+    SET payment_method = ''
+    WHERE payment_method IS NULL
+  `);
+  await knex.schema.alterTable('transactions', (t) => {
+    t.string('payment_method', 50).notNullable().alter();
+  });
+
   await knex.schema.alterTable('transactions', (t) => {
     t.dropForeign(['fee_id']);
   });
 
-  // Then drop the fees table
   await knex.schema.dropTableIfExists('fees');
 }

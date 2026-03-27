@@ -1,4 +1,5 @@
 import { Model } from 'objection';
+import FeesModel from './FeesModel';
 
 export type TransactionStatus =
   | 'received'
@@ -39,6 +40,19 @@ export default class TransactionModel extends Model {
 
   static get idColumn() {
     return 'agencyTrackingId';
+  }
+
+  static get relationMappings() {
+    return {
+      fees: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: FeesModel,
+        join: {
+          from: 'transactions.feeId',
+          to: 'fees.feeId',
+        },
+      },
+    };
   }
 
   $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {

@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import { knexSnakeCaseMappers } from 'objection';
 require('dotenv').config({ path: process.env.DOTENV_CONFIG_PATH || '.env' });
 
 const {
@@ -21,7 +22,8 @@ const common: Knex.Config = {
     directory: './db/seeds',
     extension: 'ts'
   },
-  pool: { min: 2, max: 10 }
+  pool: { min: 2, max: 10 },
+  ...knexSnakeCaseMappers(),
 };
 
 const config: { [key: string]: Knex.Config } = {
