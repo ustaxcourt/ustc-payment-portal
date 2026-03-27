@@ -8,11 +8,14 @@ describe("initialize a payment", () => {
     const options: RequestInit = {
       method: "POST",
       body: JSON.stringify({
-        trackingId: "my-tracking-id",
-        amount: "10.00",
+        tcsAppId: "TEST_TCS_APP_ID",
         feeId: "PETITION_FILING_FEE",
-        urlSuccess: "https://example.com",
-        urlCancel: "https://example.com",
+        urlSuccess: "https://example.com/success",
+        urlCancel: "https://example.com/cancel",
+        agencyTrackingId: "test-agency-tracking-id-123",
+        clientName: "Test Client App",
+        metadata: { integration: "true" },
+        transactionAmount: "10.00",
       }),
       headers: {
         "Content-Type": "application/json",
