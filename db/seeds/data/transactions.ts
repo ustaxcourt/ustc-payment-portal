@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import dayjs from 'dayjs';
 import FeesModel from '../../../src/db/FeesModel';
+import { generateAgencyTrackingId } from '../../../src/utils/generateTrackingId';
 
 type GenerateTransactionsParams = {
   successTransactions: number;
@@ -40,7 +41,6 @@ export const generateTransactions = async ({
     const agencyId = faker.helpers.arrayElement(agencyIds);
     const fee = faker.helpers.arrayElement(feesList);
     agencyCounters[agencyId] += 1;
-    const agencyTrackingId = `${agencyId}-${agencyCounters[agencyId].toString().padStart(9, '0')}`;
     const transactionReferenceId = `TXN-REF-${faker.number.int({ min: 0, max: 999999999 }).toString().padStart(9, '0')}`;
     const createdAt = dayjs()
       .subtract(faker.number.int({ min: 1, max: 40 }), 'day')
@@ -57,7 +57,7 @@ export const generateTransactions = async ({
       isHighValue: faker.number.int({ min: 100, max: 900 }) >= 200 ? 'true' : 'false',
     };
     return {
-      agency_tracking_id: agencyTrackingId,
+      agency_tracking_id: generateAgencyTrackingId(),
       paygov_tracking_id: faker.datatype.boolean() ? faker.string.alphanumeric({ length: 20, casing: 'upper' }) : null,
       fee_id: fee.feeId,
       client_name: faker.helpers.arrayElement(clientNames),
