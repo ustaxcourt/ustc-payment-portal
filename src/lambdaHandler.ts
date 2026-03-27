@@ -42,7 +42,12 @@ export const initPaymentHandler = (
     return Promise.resolve(handleError(new InvalidRequestError("missing body")));
   }
 
-  const request = JSON.parse(event.body);
+  let request;
+  try {
+    request = JSON.parse(event.body);
+  } catch (err) {
+    return Promise.resolve(handleError(new InvalidRequestError("invalid JSON in request body")));
+  }
 
   return lambdaHandler(
     request,
@@ -59,7 +64,12 @@ export const processPaymentHandler = (
     return Promise.resolve(handleError(new InvalidRequestError("missing body")));
   }
 
-  const request = JSON.parse(event.body);
+  let request;
+  try {
+    request = JSON.parse(event.body);
+  } catch (err) {
+    return Promise.resolve(handleError(new InvalidRequestError("invalid JSON in request body")));
+  }
 
   return lambdaHandler(
     request,
