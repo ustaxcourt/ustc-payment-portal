@@ -439,7 +439,7 @@
           "feeId": {
             "type": "string",
             "description": "Fee identifier",
-            "example": "FEE-001"
+            "example": "PETITION_FILING_FEE"
           },
           "feeAmount": {
             "type": "number",
@@ -490,7 +490,7 @@
               "paypal"
             ],
             "description": "Payment method used for the transaction",
-            "example": "card"
+            "example": "plastic_card"
           },
           "paygovToken": {
             "type": [

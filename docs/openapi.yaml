@@ -400,7 +400,7 @@ components:
         feeId:
           type: string
           description: Fee identifier
-          example: FEE-001
+          example: PETITION_FILING_FEE
         feeAmount:
           type: number
           description: Fee amount in USD
@@ -441,7 +441,7 @@ components:
             - ach
             - paypal
           description: Payment method used for the transaction
-          example: card
+          example: plastic_card
         paygovToken:
           type:
             - string
