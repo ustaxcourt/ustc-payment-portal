@@ -14,7 +14,6 @@ export const getRecentTransactions: GetRecentTransactions = async (
   _appContext: AppContext,
 ) => {
   const data = await TransactionModel.getAll();
-
   return RecentTransactionsResponseSchema.parse({
     data,
     total: data.length,

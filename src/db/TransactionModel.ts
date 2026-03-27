@@ -21,9 +21,7 @@ export type PaymentMethod =
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
-  feeName!: string;
   feeId!: string;
-  feeAmount!: number;
   clientName!: string;
   transactionReferenceId!: string;
   paymentStatus!: PaymentStatus;
@@ -44,7 +42,7 @@ export default class TransactionModel extends Model {
 
   static get relationMappings() {
     return {
-      fees: {
+      fee: {
         relation: Model.BelongsToOneRelation,
         modelClass: FeesModel,
         join: {
@@ -66,26 +64,38 @@ export default class TransactionModel extends Model {
   }
 
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
-    return TransactionModel.query()
+    return this.query()
+      .withGraphJoined('fee')
+      .select(
+        'transactions.*',
+        'fee.name as feeName',
+        'fee.amount as feeAmount'
+      )
       .where('paymentStatus', paymentStatus)
       .orderBy('createdAt', 'desc')
       .limit(100);
   }
 
   static async getAll(): Promise<TransactionModel[]> {
-    return TransactionModel.query()
-      .orderBy('createdAt', 'desc')
-      .limit(100);
+      return this.query()
+        .withGraphJoined('fee')
+        .select(
+          'transactions.*',
+          'fee.name as feeName',
+          'fee.amount as feeAmount'
+        )
+        .orderBy('createdAt', 'desc')
+        .limit(100);
   }
 
   static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
-    const rows = await TransactionModel.query()
+    const rows = await this.query()
       .select('paymentStatus')
       .count('* as count')
       .groupBy('paymentStatus')
 
     // TODO: Update aggregation for success, failed, and pending in PAY-053
-    const data = await TransactionModel.query()
+    const data = await this.query()
       .orderBy('createdAt', 'desc')
       .page(0, 100);
 
