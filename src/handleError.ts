@@ -5,7 +5,10 @@ export const handleError = (err: any) => {
   if (err.statusCode && err.statusCode < 500) {
     return {
       statusCode: err.statusCode,
-      body: JSON.stringify({ message: err.message }),
+      body: JSON.stringify({
+        message: err.message,
+        errors: [],
+      }),
     };
   } else if (err instanceof ZodError) {
     return {
@@ -18,6 +21,9 @@ export const handleError = (err: any) => {
   }
   return {
     statusCode: 500,
-    body: JSON.stringify({ message: "An unexpected error occurred" }),
+    body: JSON.stringify({
+      message: "An unexpected error occurred",
+      errors: [],
+    }),
   };
 };
