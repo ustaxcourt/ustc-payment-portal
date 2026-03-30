@@ -17,10 +17,21 @@ const metadataValidators = {
 
 export const InitPaymentRequestSchema = z
   .object({
-    transactionReferenceId: z.uuid().openapi({
-      description: "Unique UUID for the transaction reference",
-      example: "550e8400-e29b-41d4-a716-446655440000",
-    }),
+    transactionReferenceId: z
+      .uuid()
+      .refine(
+        (val) =>
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            val,
+          ),
+        "transactionReferenceId must be a UUIDv4",
+      )
+      .openapi({
+        description:
+          "Client-generated UUIDv4 uniquely identifying this transaction. " +
+          "Must be randomly generated (not derived from names or timestamps).",
+        example: "550e8400-e29b-41d4-a716-446655440000",
+      }),
     feeId: FeeIdSchema,
     amount: z.number().positive().optional().openapi({
       description:

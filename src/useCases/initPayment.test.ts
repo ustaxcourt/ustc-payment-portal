@@ -64,7 +64,7 @@ describe("initPayment", () => {
 
     await expect(
       initPayment(appContext, validPetitionRequest)
-    ).rejects.toThrow(InvalidRequestError);
+    ).rejects.toThrow("requires an amount");
 
     jest.restoreAllMocks();
   });
@@ -75,8 +75,17 @@ describe("initPayment", () => {
         ...validPetitionRequest,
         amount: 60,
       })
-    ).rejects.toThrow(InvalidRequestError);
+    ).rejects.toThrow("does not allow variable amounts");
   });
+
+  it.each([0, -1, -100])(
+    "throws InvalidRequestError when amount is %p (schema rejects non-positive values)",
+    async (amount) => {
+      await expect(
+        initPayment(appContext, { ...validPetitionRequest, amount })
+      ).rejects.toThrow(InvalidRequestError);
+    },
+  );
 
   it("throws InvalidRequestError when metadata does not match the feeId", async () => {
     await expect(
@@ -85,7 +94,7 @@ describe("initPayment", () => {
         feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
         metadata: { docketNumber: "123-26" },
       })
-    ).rejects.toThrow(InvalidRequestError);
+    ).rejects.toThrow("Metadata is invalid");
   });
 
   it("throws InvalidRequestError when metadata is missing", async () => {
