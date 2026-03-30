@@ -4,7 +4,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('fees', (t) => {
     t.string('fee_id', 100).primary().comment('Fee Identifier');
     t.string('name', 255).notNullable().comment('Fee Name');
-    t.string('tcs_app_id', 100).notNullable().comment('TCS Application ID');
+    t.string('tcs_app_id', 21).notNullable().comment('TCS Application ID');
     t.boolean('is_variable').notNullable().defaultTo(false).comment('Whether the fee amount is variable');
     t.decimal('amount', 12, 2).nullable().comment('Fee Amount (USD), null if is_variable=true');
     t.text('description').nullable().comment('Fee Description');
