@@ -8,6 +8,7 @@ import { extractCallerArn } from "./extractCallerArn";
 import { authorizeClient } from "./authorizeClient";
 import { handleError } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
+import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
 import { GetDetails } from "./useCases/getDetails";
 import { InitPayment } from "./useCases/initPayment";
 import { ProcessPayment } from "./useCases/processPayment";
@@ -57,14 +58,23 @@ const safeJsonParse = <T = any>(
 export const initPaymentHandler = (
   event: APIGatewayEvent
 ): Promise<APIGatewayProxyResult> => {
-  const { value: request, error } = safeJsonParse(event.body);
+  const { value: rawBody, error } = safeJsonParse(event.body);
   if (error) return Promise.resolve(error);
 
+  const parsed = InitPaymentRequestSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return Promise.resolve(
+      handleError(new InvalidRequestError(
+        parsed.error.issues.map((i) => i.message).join(", ")
+      ))
+    );
+  }
+
   return lambdaHandler(
-    request,
+    parsed.data,
     event.requestContext,
     appContext.getUseCases().initPayment,
-    request.feeId
+    parsed.data.feeId
   );
 };
 

@@ -113,9 +113,28 @@ describe("lambdaHandler", () => {
       expect(JSON.parse(result.body)).toHaveProperty("message");
     });
 
+    it("returns 400 when request body fails schema validation", async () => {
+      const event = {
+        body: JSON.stringify({ feeId: "PETITION_FILING_FEE" }), // missing required fields
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await initPaymentHandler(event);
+
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body)).toHaveProperty("message");
+    });
+
     it("returns 403 when IAM principal is missing", async () => {
       const event = {
-        body: JSON.stringify({ feeId: "PETITION_FILING_FEE" }),
+        body: JSON.stringify({
+          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+          feeId: "PETITION_FILING_FEE",
+          urlSuccess: "https://example.com/success",
+          urlCancel: "https://example.com/cancel",
+          metadata: { docketNumber: "123-26" },
+        }),
         headers: mockHeaders,
         requestContext: {
           ...mockRequestContext,
@@ -130,7 +149,13 @@ describe("lambdaHandler", () => {
 
     it("returns 403 when feeId is not in client allowedFeeIds", async () => {
       const event = {
-        body: JSON.stringify({ feeId: "UNAUTHORIZED_FEE" }),
+        body: JSON.stringify({
+          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+          feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+          urlSuccess: "https://example.com/success",
+          urlCancel: "https://example.com/cancel",
+          metadata: { email: "test@example.com", fullName: "Test User", accessCode: "ABC123" },
+        }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;

@@ -1,6 +1,6 @@
 import { AppContext } from "../types/AppContext";
 import {
-  InitPaymentRequestSchema,
+  InitPaymentRequest,
   InitPaymentResponse,
 } from "../schemas/InitPayment.schema";
 import { getFeeConfig } from "../fees";
@@ -8,19 +8,11 @@ import { InvalidRequestError } from "../errors/invalidRequest";
 
 export type InitPayment = (
   appContext: AppContext,
-  request: Record<string, unknown>,
+  request: InitPaymentRequest,
 ) => Promise<InitPaymentResponse>;
 
 export const initPayment: InitPayment = async (_appContext, request) => {
-  const parsed = InitPaymentRequestSchema.safeParse(request);
-
-  if (!parsed.success) {
-    throw new InvalidRequestError(
-      parsed.error.issues.map((i) => i.message).join(", "),
-    );
-  }
-
-  const { feeId, amount } = parsed.data;
+  const { feeId, amount } = request;
 
   const feeConfig = await getFeeConfig(feeId);
 
