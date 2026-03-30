@@ -1,3 +1,12 @@
+jest.mock("../db/TransactionModel", () => ({
+  __esModule: true,
+  default: {
+    createReceived: jest.fn((data) => Promise.resolve({ ...data, agencyTrackingId: data.agencyTrackingId || "MOCK-TRACKING-ID" })),
+    updateToInitiated: jest.fn(() => Promise.resolve()),
+    updateToFailed: jest.fn(() => Promise.resolve()),
+  },
+}));
+
 
 // Mock FeesModel before importing initPayment
 jest.mock("../db/FeesModel", () => ({
@@ -54,8 +63,9 @@ describe("initPayment", () => {
     ).rejects.toThrow("Unknown feeId: UNKNOWN_FEE");
   });
 
-  it("does not throw an error if we pass in a valid request", async () => {
+  it("does not throw an error if we pass in a valid request and updates transaction status", async () => {
     appContext.postHttpRequest = jest.fn().mockReturnValue(mockSoapResponse);
+    const TransactionModel = require("../db/TransactionModel").default;
 
     const { token, paymentRedirect } = await initPayment(appContext, {
       feeId: "PETITION_FILING_FEE",
@@ -65,7 +75,26 @@ describe("initPayment", () => {
       clientName: "Test Client App",
     });
 
+    expect(TransactionModel.createReceived).toHaveBeenCalled();
+    expect(TransactionModel.updateToInitiated).toHaveBeenCalled();
     expect(token).toBeTruthy();
     expect(paymentRedirect).toBeTruthy();
+  });
+
+  it("updates transaction to failed if SOAP request fails", async () => {
+    appContext.postHttpRequest = jest.fn().mockImplementation(() => { throw new Error("SOAP error"); });
+    const TransactionModel = require("../db/TransactionModel").default;
+
+    await expect(
+      initPayment(appContext, {
+        feeId: "PETITION_FILING_FEE",
+        urlCancel: "http://example.com",
+        urlSuccess: "http://another-example.com",
+        metadata: { key1: "value1", key2: "value2" },
+        clientName: "Test Client App",
+      })
+    ).rejects.toThrow("Failed to initiate payment: SOAP error");
+    expect(TransactionModel.createReceived).toHaveBeenCalled();
+    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
   });
 });

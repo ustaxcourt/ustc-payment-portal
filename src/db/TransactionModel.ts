@@ -138,4 +138,13 @@ export default class TransactionModel extends Model {
       })
       .where('agencyTrackingId', agencyTrackingId);
   }
+
+  static async updateToFailed(agencyTrackingId: string): Promise<void> {
+    await this.query()
+      .patch({
+        transactionStatus: 'failed',
+        paymentStatus: 'failed',
+      })
+      .where('agencyTrackingId', agencyTrackingId);
+  }
 }
