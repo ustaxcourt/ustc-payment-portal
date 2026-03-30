@@ -90,11 +90,6 @@ components:
     InitPaymentRequest:
       type: object
       properties:
-        transactionReferenceId:
-          type: string
-          format: uuid
-          description: Unique UUID for the transaction reference
-          example: 550e8400-e29b-41d4-a716-446655440000
         feeId:
           type: string
           enum:
@@ -132,12 +127,16 @@ components:
             Metadata fields are dynamic and determined by the feeId value.
             Different fees require different metadata properties. See individual
             metadata schemas for field requirements.
+        clientName:
+          type: string
+          description: Name of the client application initiating the payment
+          example: Test Client App
       required:
-        - transactionReferenceId
         - feeId
         - urlSuccess
         - urlCancel
         - metadata
+        - clientName
     InitPaymentResponse:
       type: object
       properties:
