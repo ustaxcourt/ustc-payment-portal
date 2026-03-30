@@ -42,7 +42,9 @@ jest.mock("./TransactionModel", () => {
       static query = jest.fn(() => ({
         findById: (id: string) => Promise.resolve(id === mockTransaction?.agencyTrackingId ? mockTransaction : undefined),
       }));
-      constructor() {}
+      constructor() {
+        // intentionally left blank
+      }
       $parseDatabaseJson(json: Record<string, unknown>) {
         return MockTransactionModel.$parseDatabaseJson(json);
       }
