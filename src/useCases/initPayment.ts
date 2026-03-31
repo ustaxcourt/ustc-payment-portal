@@ -5,14 +5,16 @@ import {
 } from "../schemas/InitPayment.schema";
 import { getFeeConfig } from "../fees";
 import { InvalidRequestError } from "../errors/invalidRequest";
+import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 
 export type InitPayment = (
   appContext: AppContext,
   request: InitPaymentRequest,
 ) => Promise<InitPaymentResponse>;
 
-export const initPayment: InitPayment = async (_appContext, request) => {
-  const { feeId, amount } = request;
+export const initPayment: InitPayment = async (appContext, request) => {
+  const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel } =
+    request;
 
   const feeConfig = await getFeeConfig(feeId);
 
@@ -30,6 +32,20 @@ export const initPayment: InitPayment = async (_appContext, request) => {
     throw new InvalidRequestError(`Fee ${feeId} requires an amount`);
   }
 
-  // TODO: implement Pay.gov token retrieval (response shape is a stub)
-  return { token: "", paymentRedirect: "https://stub.invalid" };
+  const transactionAmount = feeConfig.isVariable ? amount! : feeConfig.amount;
+
+  const req = new StartOnlineCollectionRequest({
+    tcsAppId: feeConfig.tcsAppId,
+    agencyTrackingId: transactionReferenceId,
+    transactionAmount,
+    urlSuccess,
+    urlCancel,
+  });
+
+  const result = await req.makeSoapRequest(appContext);
+
+  return {
+    token: result.token,
+    paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${feeConfig.tcsAppId}`,
+  };
 };

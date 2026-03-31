@@ -2,6 +2,7 @@ import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as fees from "../fees";
+import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
 
 const validPetitionRequest: InitPaymentRequest = {
   transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
@@ -11,13 +12,26 @@ const validPetitionRequest: InitPaymentRequest = {
   metadata: { docketNumber: "123-26" },
 };
 
+const mockSoapRequest = (token: string) => {
+  jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+    .mockResolvedValueOnce({ token });
+};
+
 describe("initPayment", () => {
-  it("returns a stub response for a valid PETITION_FILING_FEE request", async () => {
-    const result = await initPayment(appContext, validPetitionRequest);
-    expect(result).toBeDefined();
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
-  it("returns a stub response for a valid NONATTORNEY_EXAM_REGISTRATION_FEE request", async () => {
+  it("returns a token and paymentRedirect for a valid PETITION_FILING_FEE request", async () => {
+    mockSoapRequest("test-token-123");
+    const result = await initPayment(appContext, validPetitionRequest);
+    expect(result.token).toBe("test-token-123");
+    expect(result.paymentRedirect).toContain("test-token-123");
+    expect(result.paymentRedirect).toContain("TCSUSTAXCOURTPETITION");
+  });
+
+  it("returns a token and paymentRedirect for a valid NONATTORNEY_EXAM_REGISTRATION_FEE request", async () => {
+    mockSoapRequest("test-token-456");
     const result = await initPayment(appContext, {
       transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
       feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
@@ -29,7 +43,8 @@ describe("initPayment", () => {
         accessCode: "ABC123",
       },
     });
-    expect(result).toBeDefined();
+    expect(result.token).toBe("test-token-456");
+    expect(result.paymentRedirect).toContain("TCSUSTAXCOURTANAEF");
   });
 
   it("throws InvalidRequestError when amount is missing for a variable fee", async () => {
@@ -43,8 +58,6 @@ describe("initPayment", () => {
     await expect(
       initPayment(appContext, validPetitionRequest)
     ).rejects.toThrow("requires an amount");
-
-    jest.restoreAllMocks();
   });
 
   it("throws InvalidRequestError when amount is supplied for a non-variable fee", async () => {
