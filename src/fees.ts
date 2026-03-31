@@ -25,5 +25,5 @@ const fees: FeeConfig[] = [
   },
 ];
 
-export const getFeeConfig = async (feeId: FeeId): Promise<FeeConfig | undefined> =>
+export const getFeeConfig = (feeId: FeeId): FeeConfig | undefined =>
   fees.find((f) => f.feeId === feeId);

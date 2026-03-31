@@ -16,7 +16,7 @@ export const initPayment: InitPayment = async (appContext, request) => {
   const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel } =
     request;
 
-  const feeConfig = await getFeeConfig(feeId);
+  const feeConfig = getFeeConfig(feeId);
 
   if (!feeConfig) {
     throw new InvalidRequestError(`Unknown feeId: ${feeId}`);

@@ -48,7 +48,7 @@ describe("initPayment", () => {
   });
 
   it("throws InvalidRequestError when amount is missing for a variable fee", async () => {
-    jest.spyOn(fees, "getFeeConfig").mockResolvedValueOnce({
+    jest.spyOn(fees, "getFeeConfig").mockReturnValueOnce({
       feeId: "PETITION_FILING_FEE",
       tcsAppId: "TCSUSTAXCOURTPETITION",
       amount: 60,
