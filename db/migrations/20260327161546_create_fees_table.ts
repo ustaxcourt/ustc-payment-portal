@@ -41,6 +41,7 @@ export async function up(knex: Knex): Promise<void> {
   // Make payment_method nullable
   await knex.schema.alterTable('transactions', (t) => {
     t.string('payment_method', 50).nullable().alter();
+    t.string('paygov_token', 36).nullable().alter();
   });
 
   // Foreign key from transactions.fee_id to fees.fee_id
@@ -59,6 +60,7 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.alterTable('transactions', (t) => {
     t.string('fee_name', 255).nullable().comment('Fee Name');
     t.decimal('fee_amount', 12, 2).nullable().comment('Fee Amount (USD)');
+    t.string('paygov_token', 32).nullable().alter();
   });
 
   await knex.raw(`
