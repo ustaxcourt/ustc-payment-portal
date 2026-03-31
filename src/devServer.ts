@@ -73,9 +73,13 @@ app.get("/details/:payGovTrackingId", async (req, res) => {
 
 // ONLY FOR LOCAL TESTING - DO NOT CONNECT TO API GATEWAY
 if (process.env.NODE_ENV !== "production") {
-  app.get("/migrations", async (req, res) => {
-    const result = await migrationHandler();
-    res.status(result.statusCode).json(JSON.parse(result.body));
+  app.get("/migrations", async (req, res, next) => {
+    try {
+      const result = await migrationHandler();
+      res.status(result.statusCode).json(JSON.parse(result.body));
+    } catch (err) {
+      next(err);
+    }
   });
 }
 

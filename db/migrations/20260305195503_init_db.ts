@@ -65,6 +65,6 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.raw('DROP TRIGGER IF EXISTS trg_transactions_last_updated_at ON transactions');
-  await knex.schema.raw('DROP FUNCTION IF EXISTS set_last_updated_at');
+  await knex.schema.raw('DROP FUNCTION IF EXISTS set_last_updated_at()');
   await knex.schema.dropTableIfExists('transactions');
 }

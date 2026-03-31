@@ -54,5 +54,6 @@ variable "route53_zone_id" {
 variable "dashboard_allowed_origin" {
   description = "Origin allowed to call dashboard endpoints via CORS (e.g. https://dashboard.dev-payments.ustaxcourt.gov). Must be explicitly set — no default to prevent accidentally opening CORS to all origins."
   type        = string
+  default     = ""
 }
 
