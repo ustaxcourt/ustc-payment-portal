@@ -330,21 +330,25 @@ data "aws_iam_policy_document" "api_resource_policy" {
 
   # Allow unauthenticated browser requests to dashboard endpoints only.
   # Scoped to GET and OPTIONS on the three dashboard paths — /init, /process, /details remain SigV4-only.
-  statement {
-    effect = "Allow"
-    principals {
-      type        = "*"
-      identifiers = ["*"]
+  dynamic "statement" {
+    for_each = var.enable_public_dashboard ? [1] : []
+
+    content {
+      effect = "Allow"
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+      actions = ["execute-api:Invoke"]
+      resources = [
+        "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transactions",
+        "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transactions/*",
+        "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transaction-payment-status",
+        "${aws_api_gateway_rest_api.rest.execution_arn}/*/OPTIONS/transactions",
+        "${aws_api_gateway_rest_api.rest.execution_arn}/*/OPTIONS/transactions/*",
+        "${aws_api_gateway_rest_api.rest.execution_arn}/*/OPTIONS/transaction-payment-status",
+      ]
     }
-    actions = ["execute-api:Invoke"]
-    resources = [
-      "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transactions",
-      "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transactions/*",
-      "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transaction-payment-status",
-      "${aws_api_gateway_rest_api.rest.execution_arn}/*/OPTIONS/transactions",
-      "${aws_api_gateway_rest_api.rest.execution_arn}/*/OPTIONS/transactions/*",
-      "${aws_api_gateway_rest_api.rest.execution_arn}/*/OPTIONS/transaction-payment-status",
-    ]
   }
 }
 
@@ -439,14 +443,12 @@ resource "aws_api_gateway_deployment" "deployment" {
     aws_api_gateway_integration.process_integration,
     aws_api_gateway_integration.test_integration,
     aws_api_gateway_integration.details_integration,
-
-    try(aws_api_gateway_integration.transactions_integration[0], null),
-    try(aws_api_gateway_integration.transactions_by_status_integration[0], null),
-    try(aws_api_gateway_integration.transaction_payment_status_integration[0], null),
-
-    try(aws_api_gateway_integration.transactions_options_integration[0], null),
-    try(aws_api_gateway_integration.transactions_by_status_options_integration[0], null),
-    try(aws_api_gateway_integration.transaction_payment_status_options_integration[0], null),
+    aws_api_gateway_integration.transactions_integration,
+    aws_api_gateway_integration.transactions_by_status_integration,
+    aws_api_gateway_integration.transaction_payment_status_integration,
+    aws_api_gateway_integration.transactions_options_integration,
+    aws_api_gateway_integration.transactions_by_status_options_integration,
+    aws_api_gateway_integration.transaction_payment_status_options_integration,
   ]
 }
 
