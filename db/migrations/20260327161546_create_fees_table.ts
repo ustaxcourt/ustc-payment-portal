@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
       name: 'Petition Filing Fee',
       tcs_app_id: 'TCSUSTAXCOURTPETITION',
       is_variable: false,
-      amount: 250,
+      amount: 60,
       description: 'Fee charged for filing a petition with the U.S. Tax Court.',
     },
     {
