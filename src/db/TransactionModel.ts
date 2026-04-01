@@ -27,7 +27,7 @@ export default class TransactionModel extends Model {
   paymentStatus!: PaymentStatus;
   transactionStatus?: TransactionStatus | null;
   paygovToken?: string | null;
-  paymentMethod!: PaymentMethod;
+  paymentMethod?: PaymentMethod | null;
   createdAt!: string;
   lastUpdatedAt!: string;
   metadata?: Record<string, string> | null;

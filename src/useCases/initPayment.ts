@@ -1,66 +1,67 @@
 import { AppContext } from "../types/AppContext";
 import {
-  StartOnlineCollectionRequest,
-  startOnlineCollectionSchema,
-} from "../entities/StartOnlineCollectionRequest";
+  InitPaymentRequest,
+  InitPaymentResponse,
+} from "../schemas/InitPayment.schema";
 import { InvalidRequestError } from "../errors/invalidRequest";
-import { InitPaymentRequest } from "../types/InitPaymentRequest";
-import { InitPaymentResponse } from "../types/InitPaymentResponse";
 import FeesModel from "../db/FeesModel";
 import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
+import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
+
+type InitPaymentInternalRequest = InitPaymentRequest & { clientName: string };
 
 export type InitPayment = (
   appContext: AppContext,
-  request: InitPaymentRequest
+  request: InitPaymentInternalRequest,
 ) => Promise<InitPaymentResponse>;
 
 export const initPayment: InitPayment = async (appContext, request) => {
-  const fee = await FeesModel.getFeeById(request.feeId);
-  if (!fee || !fee.tcsAppId || !fee.amount) {
-    throw new InvalidRequestError(`Unknown feeId: ${request.feeId}`);
+  const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel, clientName } = request;
+
+  const fee = await FeesModel.getFeeById(feeId);
+  if (!fee || !fee.tcsAppId) {
+    throw new InvalidRequestError(`Unknown feeId: ${feeId}`);
   }
 
-  const rawRequest = {
+  if (amount !== undefined && !fee.isVariable) {
+    throw new InvalidRequestError(`Fee ${feeId} does not allow variable amounts`);
+  }
+
+  if (amount === undefined && fee.isVariable) {
+    throw new InvalidRequestError(`Fee ${feeId} requires an amount`);
+  }
+
+  const transactionAmount = fee.isVariable ? amount! : fee.amount!;
+  const agencyTrackingId = generateAgencyTrackingId();
+
+  const req = new StartOnlineCollectionRequest({
     tcsAppId: fee.tcsAppId,
-    feeId: request.feeId,
-    urlSuccess: request.urlSuccess,
-    urlCancel: request.urlCancel,
-    agencyTrackingId: generateAgencyTrackingId(),
-    clientName: request.clientName,
-    metadata: request.metadata,
-    transactionAmount: fee.amount,
-  };
-
-  startOnlineCollectionSchema.parse(rawRequest);
-
-  console.log("initPayment request:", rawRequest);
-
-  const req = new StartOnlineCollectionRequest(rawRequest);
+    agencyTrackingId,
+    transactionAmount,
+    urlSuccess,
+    urlCancel,
+  });
 
   let result;
   try {
-    const newTransaction = await TransactionModel.createReceived({
-      agencyTrackingId: rawRequest.agencyTrackingId,
-      feeId: rawRequest.feeId,
-      clientName: rawRequest.clientName,
-      transactionReferenceId: rawRequest.agencyTrackingId,
+    await TransactionModel.createReceived({
+      agencyTrackingId,
+      feeId,
+      clientName,
+      transactionReferenceId,
       paymentStatus: 'pending',
       transactionStatus: 'received',
-      paymentMethod: 'plastic_card', // TODO: Update with actual payment method
       createdAt: new Date().toISOString(),
       lastUpdatedAt: new Date().toISOString(),
-      metadata: rawRequest.metadata,
+      metadata: request.metadata,
     });
 
     result = await req.makeSoapRequest(appContext);
-    console.log(`initPayment result:`, result);
 
-    const updatedTransaction = await TransactionModel.updateToInitiated(rawRequest.agencyTrackingId, result.token);
-    console.log("Updated transaction to initiated in DB:", updatedTransaction);
+    await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
-    // If it fails, update transaction status to failed, use the error handler
-    await TransactionModel.updateToFailed(rawRequest.agencyTrackingId);
+    await TransactionModel.updateToFailed(agencyTrackingId);
     throw new Error(`Failed to initiate payment: ${err instanceof Error ? err.message : String(err)}`);
   }
 

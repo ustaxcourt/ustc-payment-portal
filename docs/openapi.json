@@ -104,6 +104,12 @@
       "InitPaymentRequest": {
         "type": "object",
         "properties": {
+          "transactionReferenceId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Client-generated UUIDv4 uniquely identifying this transaction. Must be randomly generated (not derived from names or timestamps).",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
           "feeId": {
             "type": "string",
             "enum": [
@@ -112,6 +118,12 @@
             ],
             "description": "The fee type identifier. Available fee types:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee type. See the API documentation for more details on fee authorization and supported fees.",
             "example": "PETITION_FILING_FEE"
+          },
+          "amount": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Override amount in dollars. Only valid for fees that allow variable amounts.",
+            "example": 60
           },
           "urlSuccess": {
             "type": "string",
@@ -135,19 +147,14 @@
               }
             ],
             "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. See individual metadata schemas for field requirements."
-          },
-          "clientName": {
-            "type": "string",
-            "description": "Name of the client application initiating the payment",
-            "example": "Test Client App"
           }
         },
         "required": [
+          "transactionReferenceId",
           "feeId",
           "urlSuccess",
           "urlCancel",
-          "metadata",
-          "clientName"
+          "metadata"
         ]
       },
       "InitPaymentResponse": {

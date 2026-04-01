@@ -51,7 +51,7 @@ app.get("/openapi.json", (req, res) => {
 app.post("/init", async (req, res) => {
   const result = await appContext
     .getUseCases()
-    .initPayment(appContext, req.body);
+    .initPayment(appContext, { ...req.body, clientName: "DEV" });
   res.json(result);
 });
 

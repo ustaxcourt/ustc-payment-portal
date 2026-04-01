@@ -7,8 +7,6 @@ jest.mock("../db/TransactionModel", () => ({
   },
 }));
 
-
-// Mock FeesModel before importing initPayment
 jest.mock("../db/FeesModel", () => ({
   __esModule: true,
   default: {
@@ -16,8 +14,17 @@ jest.mock("../db/FeesModel", () => ({
       if (feeId === "PETITION_FILING_FEE") {
         return Promise.resolve({
           feeId: "PETITION_FILING_FEE",
-          tcsAppId: "TCS123",
-          amount: 20, // Add this line
+          tcsAppId: "TCSUSTAXCOURTPETITION",
+          amount: 250,
+          isVariable: false,
+        });
+      }
+      if (feeId === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
+        return Promise.resolve({
+          feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+          tcsAppId: "TCSUSTAXCOURTANAEF",
+          amount: 250,
+          isVariable: false,
         });
       }
       return Promise.resolve(undefined);
@@ -27,72 +34,99 @@ jest.mock("../db/FeesModel", () => ({
 
 import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
+import { InitPaymentRequest } from "../schemas/InitPayment.schema";
+import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
 
-const mockSoapResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
-  <S:Header>
-    <WorkContext xmlns="http://oracle.com/weblogic/soap/workarea/">rO0ABXdlABZ3ZWJsb2dpYy5hcHAudGNzb25saW5lAAAA1gAAACN3ZWJsb2dpYy53b3JrYXJlYS5TdHJpbmdXb3JrQ29udGV4dAAedjguMi4wLjgwMjAyMjlfMjAyM18wNV8wNF8xMzIyAAA=</WorkContext>
-  </S:Header>
-  <S:Body>
-    <ns2:startOnlineCollectionResponse xmlns:ns2="http://fms.treas.gov/services/tcsonline_3_1">
-      <startOnlineCollectionResponse>
-        <token>211d8c91c046404fb159b52d042a12ba</token>
-      </startOnlineCollectionResponse>
-    </ns2:startOnlineCollectionResponse>
-  </S:Body>
-</S:Envelope>`;
+const validPetitionRequest: InitPaymentRequest & { clientName: string } = {
+  transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+  feeId: "PETITION_FILING_FEE",
+  urlSuccess: "https://example.com/success",
+  urlCancel: "https://example.com/cancel",
+  metadata: { docketNumber: "123-26" },
+  clientName: "Test Client App",
+};
+
+const mockSoapRequest = (token: string) => {
+  jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+    .mockResolvedValueOnce({ token });
+};
 
 describe("initPayment", () => {
-  it("throws an error if we pass in an invalid request", async () => {
-    await expect(
-      initPayment(appContext, {
-        amount: 20,
-      } as any),
-    ).rejects.toThrow();
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("throws InvalidRequestError with a clear message when feeId is unrecognized", async () => {
     await expect(
       initPayment(appContext, {
-        feeId: "UNKNOWN_FEE",
-        urlCancel: "http://example.com",
-        urlSuccess: "http://example.com",
-        metadata: { key: "value" },
+        transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+        feeId: "UNKNOWN_FEE" as any,
+        urlCancel: "https://example.com/cancel",
+        urlSuccess: "https://example.com/success",
+        metadata: { docketNumber: "123-26" },
         clientName: "Test Client App",
       }),
     ).rejects.toThrow("Unknown feeId: UNKNOWN_FEE");
   });
 
-  it("does not throw an error if we pass in a valid request and updates transaction status", async () => {
-    appContext.postHttpRequest = jest.fn().mockReturnValue(mockSoapResponse);
+  it("returns a token and paymentRedirect for a valid PETITION_FILING_FEE request", async () => {
+    mockSoapRequest("test-token-123");
     const TransactionModel = require("../db/TransactionModel").default;
 
-    const { token, paymentRedirect } = await initPayment(appContext, {
-      feeId: "PETITION_FILING_FEE",
-      urlCancel: "http://example.com",
-      urlSuccess: "http://another-example.com",
-      metadata: { key1: "value1", key2: "value2" },
-      clientName: "Test Client App",
-    });
+    const result = await initPayment(appContext, validPetitionRequest);
 
+    expect(result.token).toBe("test-token-123");
+    expect(result.paymentRedirect).toContain("test-token-123");
+    expect(result.paymentRedirect).toContain("TCSUSTAXCOURTPETITION");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToInitiated).toHaveBeenCalled();
-    expect(token).toBeTruthy();
-    expect(paymentRedirect).toBeTruthy();
+  });
+
+  it("returns a token and paymentRedirect for a valid NONATTORNEY_EXAM_REGISTRATION_FEE request", async () => {
+    mockSoapRequest("test-token-456");
+    const result = await initPayment(appContext, {
+      transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+      feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+      urlSuccess: "https://example.com/success",
+      urlCancel: "https://example.com/cancel",
+      metadata: {
+        email: "applicant@example.com",
+        fullName: "John Doe",
+        accessCode: "ABC123",
+      },
+      clientName: "Test Client App",
+    });
+    expect(result.token).toBe("test-token-456");
+    expect(result.paymentRedirect).toContain("TCSUSTAXCOURTANAEF");
+  });
+
+  it("throws InvalidRequestError when amount is missing for a variable fee", async () => {
+    const FeesModel = require("../db/FeesModel").default;
+    FeesModel.getFeeById.mockResolvedValueOnce({
+      feeId: "PETITION_FILING_FEE",
+      tcsAppId: "TCSUSTAXCOURTPETITION",
+      amount: 60,
+      isVariable: true,
+    });
+
+    await expect(
+      initPayment(appContext, validPetitionRequest)
+    ).rejects.toThrow("requires an amount");
+  });
+
+  it("throws InvalidRequestError when amount is supplied for a non-variable fee", async () => {
+    await expect(
+      initPayment(appContext, { ...validPetitionRequest, amount: 60 })
+    ).rejects.toThrow("does not allow variable amounts");
   });
 
   it("updates transaction to failed if SOAP request fails", async () => {
-    appContext.postHttpRequest = jest.fn().mockImplementation(() => { throw new Error("SOAP error"); });
+    jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+      .mockRejectedValueOnce(new Error("SOAP error"));
     const TransactionModel = require("../db/TransactionModel").default;
 
     await expect(
-      initPayment(appContext, {
-        feeId: "PETITION_FILING_FEE",
-        urlCancel: "http://example.com",
-        urlSuccess: "http://another-example.com",
-        metadata: { key1: "value1", key2: "value2" },
-        clientName: "Test Client App",
-      })
+      initPayment(appContext, validPetitionRequest)
     ).rejects.toThrow("Failed to initiate payment: SOAP error");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();

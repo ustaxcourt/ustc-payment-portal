@@ -48,11 +48,11 @@ describe("SigV4 enforcement smoke test", () => {
   // A minimal valid /init body. We only need API Gateway to evaluate auth —
   // the Lambda response doesn't matter for the 403 case.
   const body = JSON.stringify({
-    trackingId: "smoke-test",
-    amount: 1,
+    transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
     feeId: "PETITION_FILING_FEE",
     urlSuccess: "https://example.com",
     urlCancel: "https://example.com",
+    metadata: { docketNumber: "123-26" },
   });
 
   const headers: Record<string, string> = {
@@ -149,11 +149,11 @@ describeLambdaAuth("Lambda-level authorization", () => {
   const baseUrl = process.env.BASE_URL;
 
   const body = JSON.stringify({
-    trackingId: "auth-test",
-    amount: 1,
+    transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
     feeId: "PETITION_FILING_FEE",
     urlSuccess: "https://example.com",
     urlCancel: "https://example.com",
+    metadata: { docketNumber: "123-26" },
   });
 
   const headers: Record<string, string> = {
