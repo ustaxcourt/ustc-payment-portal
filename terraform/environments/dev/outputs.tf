@@ -74,3 +74,8 @@ output "test_unauthorized_role_arn" {
   value       = aws_iam_role.test_unauthorized.arn
   description = "ARN of the test role for Lambda-level authorization testing (intentionally NOT in client-permissions)"
 }
+
+output "migration_runner_function_name" {
+  description = "Name of the migration runner Lambda function"
+  value       = module.lambda.function_names["migrationRunner"]
+}

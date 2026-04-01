@@ -12,19 +12,35 @@ locals {
     testCert = {
       handler = "lambdaHandler.handler"
     }
+    getAllTransactions = {
+      handler = "lambdaHandler.getAllTransactionsHandler"
+    }
+    getTransactionsByStatus = {
+      handler = "lambdaHandler.getTransactionsByStatusHandler"
+    }
+    getTransactionPaymentStatus = {
+      handler = "lambdaHandler.getTransactionPaymentStatusHandler"
+    }
+    migrationRunner = {
+      handler           = "lambdaHandler.migrationHandler"
+      timeout           = 120
+      ephemeral_storage = 5120
+    }
   }
 }
 
 resource "aws_lambda_function" "functions" {
-  for_each = local.lambda_functions
+  for_each = var.artifact_s3_keys
 
   s3_bucket        = var.artifact_bucket
-  s3_key           = var.artifact_s3_keys[each.key]
+  s3_key           = each.value
   source_code_hash = var.source_code_hashes[each.key]
 
   function_name = "${var.function_name_prefix}-${each.key}"
   role          = var.lambda_execution_role_arn
-  handler       = each.value.handler
+  handler       = local.lambda_functions[each.key].handler
+
+  timeout = try(local.lambda_functions[each.key].timeout, null)
 
   runtime = var.runtime
 
@@ -33,20 +49,22 @@ resource "aws_lambda_function" "functions" {
     security_group_ids = var.security_group_ids
   }
 
-  # Increase /tmp storage to 5GB
-  ephemeral_storage {
-    size = 5120
+  dynamic "ephemeral_storage" {
+    for_each = try(local.lambda_functions[each.key].ephemeral_storage, null) != null ? [1] : []
+    content {
+      size = local.lambda_functions[each.key].ephemeral_storage
+    }
   }
 
   environment {
-    variables = var.environment_variables
+    variables = var.environment_variables_by_function[each.key]
   }
 
   tags = var.tags
 }
 
 resource "aws_cloudwatch_log_group" "lambda_logs" {
-  for_each          = local.lambda_functions
+  for_each          = var.artifact_s3_keys
   name              = "/aws/lambda/${var.function_name_prefix}-${each.key}"
   retention_in_days = var.log_retention_days
   tags              = var.tags

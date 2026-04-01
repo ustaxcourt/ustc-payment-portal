@@ -1,3 +1,10 @@
+
+variable "enable_public_dashboard" {
+  description = "If true, enables unauthenticated public access to dashboard endpoints (GET/OPTIONS for /transactions, /transactions/{status}, /transaction-payment-status). Should only be true in dev."
+  type        = bool
+  default     = false
+}
+
 variable "environment" {
   description = "Environment where the API Gateway is being deployed"
   type        = string
@@ -40,6 +47,12 @@ variable "certificate_arn" {
 
 variable "route53_zone_id" {
   description = "Route53 hosted zone ID for the domain. Required when custom_domain is set."
+  type        = string
+  default     = ""
+}
+
+variable "dashboard_allowed_origin" {
+  description = "Origin allowed to call dashboard endpoints via CORS (e.g. https://dashboard.dev-payments.ustaxcourt.gov). Must be explicitly set — no default to prevent accidentally opening CORS to all origins."
   type        = string
   default     = ""
 }

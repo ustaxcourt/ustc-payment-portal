@@ -115,10 +115,18 @@ jobs:
           TF_VAR_processPayment_s3_key: ${{ steps.upload_artifacts_pr.outputs.processPayment_s3_key }}
           TF_VAR_getDetails_s3_key: ${{ steps.upload_artifacts_pr.outputs.getDetails_s3_key }}
           TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_pr.outputs.testCert_s3_key }}
+          TF_VAR_migrationRunner_s3_key: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_s3_key }}
+          TF_VAR_getAllTransactions_s3_key: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_s3_key }}
+          TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_s3_key }}
+          TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_s3_key }}
           TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.initPayment_source_code_hash }}
           TF_VAR_processPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.processPayment_source_code_hash }}
           TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getDetails_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.testCert_source_code_hash }}
+          TF_VAR_migrationRunner_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_source_code_hash }}
+          TF_VAR_getAllTransactions_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_source_code_hash }}
+          TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_source_code_hash }}
+          TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_source_code_hash }}
         run: |
           set +e
           terraform plan -input=false -lock-timeout=2m -detailed-exitcode -out=tfplan
@@ -140,10 +148,18 @@ jobs:
           TF_VAR_processPayment_s3_key: ${{ steps.upload_artifacts_pr.outputs.processPayment_s3_key }}
           TF_VAR_getDetails_s3_key: ${{ steps.upload_artifacts_pr.outputs.getDetails_s3_key }}
           TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_pr.outputs.testCert_s3_key }}
+          TF_VAR_migrationRunner_s3_key: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_s3_key }}
+          TF_VAR_getAllTransactions_s3_key: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_s3_key }}
+          TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_s3_key }}
+          TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_s3_key }}
           TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.initPayment_source_code_hash }}
           TF_VAR_processPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.processPayment_source_code_hash }}
           TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getDetails_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.testCert_source_code_hash }}
+          TF_VAR_migrationRunner_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_source_code_hash }}
+          TF_VAR_getAllTransactions_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_source_code_hash }}
+          TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_source_code_hash }}
+          TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_source_code_hash }}
         run: terraform apply -auto-approve tfplan
 
       - name: Smoke check (post-apply to verify the workspace)
@@ -430,10 +446,18 @@ jobs:
           TF_VAR_processPayment_s3_key: ${{ steps.promote_artifacts.outputs.processPayment_s3_key }}
           TF_VAR_getDetails_s3_key: ${{ steps.promote_artifacts.outputs.getDetails_s3_key }}
           TF_VAR_testCert_s3_key: ${{ steps.promote_artifacts.outputs.testCert_s3_key }}
+          TF_VAR_migrationRunner_s3_key: ${{ steps.promote_artifacts.outputs.migrationRunner_s3_key }}
+          TF_VAR_getAllTransactions_s3_key: ${{ steps.promote_artifacts.outputs.getAllTransactions_s3_key }}
+          TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_s3_key }}
+          TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_s3_key }}
           TF_VAR_initPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.initPayment_source_code_hash }}
           TF_VAR_processPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.processPayment_source_code_hash }}
           TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
+          TF_VAR_migrationRunner_source_code_hash: ${{ steps.promote_artifacts.outputs.migrationRunner_source_code_hash }}
+          TF_VAR_getAllTransactions_source_code_hash: ${{ steps.promote_artifacts.outputs.getAllTransactions_source_code_hash }}
+          TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_source_code_hash }}
+          TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_source_code_hash }}
         run: |
           terraform plan -input=false -out=tfplan
           terraform show -no-color tfplan > tfplan.txt || true
@@ -455,11 +479,42 @@ jobs:
           TF_VAR_processPayment_s3_key: ${{ steps.promote_artifacts.outputs.processPayment_s3_key }}
           TF_VAR_getDetails_s3_key: ${{ steps.promote_artifacts.outputs.getDetails_s3_key }}
           TF_VAR_testCert_s3_key: ${{ steps.promote_artifacts.outputs.testCert_s3_key }}
+          TF_VAR_migrationRunner_s3_key: ${{ steps.promote_artifacts.outputs.migrationRunner_s3_key }}
+          TF_VAR_getAllTransactions_s3_key: ${{ steps.promote_artifacts.outputs.getAllTransactions_s3_key }}
+          TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_s3_key }}
+          TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_s3_key }}
           TF_VAR_initPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.initPayment_source_code_hash }}
           TF_VAR_processPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.processPayment_source_code_hash }}
           TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
+          TF_VAR_migrationRunner_source_code_hash: ${{ steps.promote_artifacts.outputs.migrationRunner_source_code_hash }}
+          TF_VAR_getAllTransactions_source_code_hash: ${{ steps.promote_artifacts.outputs.getAllTransactions_source_code_hash }}
+          TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_source_code_hash }}
+          TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_source_code_hash }}
         run: terraform apply -auto-approve tfplan
+
+      - name: Run DB migrations (dev)
+        working-directory: terraform/environments/dev
+        run: |
+          FUNCTION_NAME=$(terraform output -raw migration_runner_function_name)
+          echo "Invoking migration Lambda: $FUNCTION_NAME"
+
+          aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload '{}' \
+            --cli-binary-format raw-in-base64-out \
+            --log-type Tail \
+            --cli-read-timeout 130 \
+            response.json \
+            | tee invoke-meta.json
+
+          echo "--- Lambda response ---"
+          cat response.json
+
+          if jq -e '.FunctionError' invoke-meta.json > /dev/null 2>&1; then
+            echo "ERROR: Lambda reported a function error"
+            exit 1
+          fi
 
       - name: Get API URL (dev)
         id: tf_outputs_dev

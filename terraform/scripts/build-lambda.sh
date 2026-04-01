@@ -80,15 +80,62 @@ npx esbuild src/testCert.ts \
   --minify \
   --keep-names
 
+# Bundle Dashboard Lambdas (all share lambdaHandler.ts entry)
+for func in getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
+  echo "Bundling ${func}..."
+  mkdir -p "dist/${func}"
+  npx esbuild src/lambdaHandler.ts \
+    --bundle \
+    --platform=node \
+    --target=node22 \
+    --format=cjs \
+    --outfile="dist/${func}/lambdaHandler.js" \
+    --external:aws-sdk \
+    --external:@aws-sdk/* \
+    --minify \
+    --keep-names
+done
+
+# Bundle Migration Runner Lambda
+echo "Bundling migrationRunner..."
+mkdir -p dist/migrationRunner
+npx esbuild src/migrationHandler.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/migrationRunner/lambdaHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  --external:sqlite3 \
+  --external:mysql \
+  --external:mysql2 \
+  --external:tedious \
+  --external:pg-query-stream \
+  --external:better-sqlite3 \
+  --external:oracledb \
+  --minify \
+  --keep-names
+
 # Copy certificate files if they exist
 if [ -d "certs" ]; then
     echo "Copying certificate files..."
-    for func in initPayment processPayment getDetails testCert; do
+    for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
         if [ -d "dist/$func" ]; then
             cp -r certs dist/$func/
         fi
     done
 fi
+
+# Copy migration files for migrationRunner
+echo "Compiling migration files..."
+mkdir -p dist/migrationRunner/db/migrations
+npx esbuild db/migrations/*.ts \
+  --bundle=false \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outdir=dist/migrationRunner/db/migrations/
 
 echo "Build completed successfully!"
 echo "Bundled Lambda functions ready:"
@@ -96,11 +143,15 @@ echo "  - dist/initPayment/lambdaHandler.js"
 echo "  - dist/processPayment/lambdaHandler.js"
 echo "  - dist/getDetails/lambdaHandler.js"
 echo "  - dist/testCert/lambdaHandler.js"
+echo "  - dist/getAllTransactions/lambdaHandler.js"
+echo "  - dist/getTransactionsByStatus/lambdaHandler.js"
+echo "  - dist/getTransactionPaymentStatus/lambdaHandler.js"
+echo "  - dist/migrationRunner/lambdaHandler.js"
 
 # Show file sizes
 echo ""
 echo "Bundle sizes:"
-for func in initPayment processPayment getDetails testCert; do
+for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus migrationRunner; do
     if [ -f "dist/$func/lambdaHandler.js" ]; then
         size=$(du -h "dist/$func/lambdaHandler.js" | cut -f1)
         echo "  - $func: $size"

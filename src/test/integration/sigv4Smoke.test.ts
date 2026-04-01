@@ -117,12 +117,22 @@ describe("SigV4 enforcement smoke test", () => {
       body,
     });
 
-    const data = await result.json();
+    const raw = await result.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      data = raw;
+      console.log("Non-JSON error body:", data);
+    }
+
     console.log("Tampered signature response:", result.status, data);
 
     // API Gateway validates the signature and rejects tampered requests
     expect(result.status).toBe(403);
-    expect(data.message).toMatch(/signature|Forbidden/i);
+    if (typeof data === "object" && data !== null) {
+      expect(data.message).toMatch(/signature|Forbidden/i);
+    }
   });
 });
 

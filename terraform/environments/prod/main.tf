@@ -16,7 +16,7 @@ module "lambda" {
   lambda_execution_role_arn = module.iam_cicd.lambda_role_arn
   subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
   security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
-  environment_variables     = local.lambda_env
+  environment_variables_by_function = local.lambda_env_by_function
 
   # Consume dev artifacts by SHA (keys and optional hashes passed from workflow)
   artifact_bucket = var.artifact_bucket

@@ -1,13 +1,9 @@
 import { Model } from 'objection';
+import type { DashboardTransactionStatus } from '../schemas/TransactionDashboard.schema';
+import type { PaymentStatus } from '../schemas/PaymentStatus.schema';
 
-export type TransactionStatus =
-  | 'received'
-  | 'initiated'
-  | 'pending'
-  | 'processed'
-  | 'failed';
-
-export type PaymentStatus = 'pending' | 'success' | 'failed';
+export type TransactionStatus = DashboardTransactionStatus;
+export type { PaymentStatus };
 
 export type AggregatedPaymentStatus = Record<PaymentStatus, number> & { total: number };
 
@@ -70,7 +66,6 @@ export default class TransactionModel extends Model {
       .count('* as count')
       .groupBy('paymentStatus')
 
-    // TODO: Update aggregation for success, failed, and pending in PAY-053
     const data = await TransactionModel.query()
       .orderBy('createdAt', 'desc')
       .page(0, 100);

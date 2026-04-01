@@ -24,13 +24,14 @@ export const getTransactionsByStatus: GetTransactionsByStatus = async (
   _appContext: AppContext,
   request: TransactionsByStatusPathParams
 ): Promise<TransactionsByStatusResponse> => {
-  if (!isValidPaymentStatus(request.paymentStatus)) {
+  const parsed = TransactionsByStatusPathParamsSchema.safeParse(request);
+  if (!parsed.success) {
     throw new InvalidRequestError(
       "Invalid paymentStatus. Expected one of: success, failed, pending",
     );
   }
 
-  const { paymentStatus } = TransactionsByStatusPathParamsSchema.parse(request);
+  const { paymentStatus } = parsed.data;
   const data = await TransactionModel.getByPaymentStatus(paymentStatus);
 
   return TransactionsByStatusResponseSchema.parse({

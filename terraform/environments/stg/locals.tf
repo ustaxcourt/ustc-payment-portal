@@ -4,7 +4,7 @@ locals {
   node_env      = "staging"
   mtls_enabled  = true
   custom_domain = "stg-payments.ustaxcourt.gov"
-  lambda_env_base = {
+  lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
     PAYMENT_URL                        = local.payment_url
     SOAP_URL                           = local.soap_url
@@ -13,13 +13,17 @@ locals {
     CLIENT_PERMISSIONS_SECRET_ID       = module.secrets.client_permissions_secret_id
     RDS_ENDPOINT                       = module.rds.endpoint
     RDS_SECRET_ARN                     = module.rds.master_user_secret_arn
-  }
-
-  lambda_env_mtls = local.mtls_enabled ? {
+  }, local.mtls_enabled ? {
     PRIVATE_KEY_SECRET_ID = module.secrets.private_key_secret_id
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
-  } : {}
-  lambda_env               = merge(local.lambda_env_base, local.lambda_env_mtls)
+  } : {})
+
+  lambda_env_by_function = {
+    initPayment    = local.lambda_env_payment
+    processPayment = local.lambda_env_payment
+    getDetails     = local.lambda_env_payment
+    testCert       = local.lambda_env_payment
+  }
   github_oidc_provider_arn = "arn:aws:iam::747103385969:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"
   github_repo              = "ustc-payment-portal"
