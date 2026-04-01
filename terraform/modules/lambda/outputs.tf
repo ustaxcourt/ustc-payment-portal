@@ -34,6 +34,10 @@ output "process_payment_function_arn" {
   value       = aws_lambda_function.functions["processPayment"].arn
 }
 
+# For dashboard-related Lambdas (e.g., getAllTransactions, getTransactionsByStatus,
+# getTransactionPaymentStatus), consumers should use the module-level
+# `function_invoke_arns` output map instead of per-function invoke ARN outputs.
+
 output "process_payment_function_name" {
   description = "Name of the processPayment Lambda function"
   value       = aws_lambda_function.functions["processPayment"].function_name
