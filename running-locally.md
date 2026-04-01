@@ -1,26 +1,13 @@
 # How to run Payment Portal locally for Development
-- Create a `.env.dev` and add the following:
-```
-# Point to LOCAL test server
-SOAP_URL="http://localhost:3366/wsdl"
-PAYMENT_URL="http://localhost:3366/pay"
 
-# Local settings
-NODE_ENV="local"
-BASE_URL="http://localhost:8080"
+1.  At repo root run `cp .env.example .env` (Creates `.env` file from `.env.example`)
+  - See [.env.example](./.env.example) in this repository for environment variable examples. (Already has the values needed for running locally)
+  -  Note that `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` needs to match the `ACCESS_TOKEN` defined in your `.env` in `ustc-pay-gov-test-server`
+  - `LOCAL_DEV=true` bypasses AWS SigV4 authentication. Locally there is no API Gateway to verify signatures, so the auth pipeline returns a dummy IAM role ARN (`arn:aws:iam::000000000000:role/local-dev-role`) and skips the Secrets Manager permissions fetch entirely.
+2. Run `npm install` at repo root.
+3. Run `docker compose up` to spin up a local instance of the Payment Portal database.
 
-# Bypass SigV4 auth for local development (no API Gateway locally)
-# Do NOT set this in deployed environments
-LOCAL_DEV=true
-
-# Don't use Secrets Manager for local dev
-CERT_PASSPHRASE_SECRET_ID=""
-
-# Local test server token (must match what you entered when starting test server)
-# This will be used directly since NODE_ENV=local
-PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID="asdf123"
-```
-- Note that `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` needs to match the `ACCESS_TOKEN` defined in your `.env` in `ustc-pay-gov-test-server`
-- `LOCAL_DEV=true` bypasses AWS SigV4 authentication. Locally there is no API Gateway to verify signatures, so the auth pipeline returns a dummy IAM role ARN (`arn:aws:iam::000000000000:role/local-dev-role`) and skips the Secrets Manager permissions fetch entirely.
-- Run `npm install`
-- Run `npx ts-node src/devServer.ts`
+#### What if I need to stop my DB?
+  - Use `docker compose down` to gracefully stop the DB container. (Removes the container, but keeps the volume with the DB data)
+  - Use `docker compose down -v` to gracefully stop the container and **wipe the container's volume**. Note that this will delete any data in your local DB.
+4. Open a new terminal window and run `npx ts-node src/devServer.ts`
