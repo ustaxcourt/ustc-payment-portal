@@ -123,7 +123,7 @@ echo "========================================="
 echo "Promotion Complete!"
 echo "========================================="
 echo "Artifacts available at:"
-for func in initPayment processPayment getDetails testCert; do
+for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
   echo "  - ${func}: s3://${BUCKET}/${TARGET_PREFIX}/${func}.zip"
 done
 echo "========================================="
