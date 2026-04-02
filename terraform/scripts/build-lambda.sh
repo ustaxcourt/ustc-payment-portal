@@ -24,6 +24,18 @@ fi
 # Bundle each Lambda function individually using esbuild
 echo "Bundling Lambda functions with esbuild..."
 
+# Knex optional dialect modules — not used at runtime (pg is used); must be excluded
+# from all bundles that transitively import knex (lambdaHandler.ts → knex.ts → knex).
+KNEX_EXTERNALS=(
+  --external:sqlite3
+  --external:mysql
+  --external:mysql2
+  --external:tedious
+  --external:pg-query-stream
+  --external:better-sqlite3
+  --external:oracledb
+)
+
 # Bundle Init Payment Lambda
 echo "Bundling initPayment..."
 mkdir -p dist/initPayment
@@ -35,6 +47,7 @@ npx esbuild src/lambdaHandler.ts \
   --outfile=dist/initPayment/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
   --minify \
   --keep-names
 
@@ -49,6 +62,7 @@ npx esbuild src/lambdaHandler.ts \
   --outfile=dist/processPayment/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
   --minify \
   --keep-names
 
@@ -63,6 +77,7 @@ npx esbuild src/lambdaHandler.ts \
   --outfile=dist/getDetails/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
   --minify \
   --keep-names
 
@@ -92,6 +107,7 @@ for func in getAllTransactions getTransactionsByStatus getTransactionPaymentStat
     --outfile="dist/${func}/lambdaHandler.js" \
     --external:aws-sdk \
     --external:@aws-sdk/* \
+    "${KNEX_EXTERNALS[@]}" \
     --minify \
     --keep-names
 done
@@ -107,13 +123,7 @@ npx esbuild src/migrationHandler.ts \
   --outfile=dist/migrationRunner/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
-  --external:sqlite3 \
-  --external:mysql \
-  --external:mysql2 \
-  --external:tedious \
-  --external:pg-query-stream \
-  --external:better-sqlite3 \
-  --external:oracledb \
+  "${KNEX_EXTERNALS[@]}" \
   --minify \
   --keep-names
 
