@@ -28,7 +28,6 @@ describe("initialize a payment", () => {
     console.log(data);
 
     expect(result.status).toBe(200);
-    // token is a stub empty string until Pay.gov integration is complete
-    expect(typeof data.token).toBe("string");
+    expect(data.token).toBeTruthy();
   });
 });
