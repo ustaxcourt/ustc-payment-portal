@@ -30,11 +30,11 @@ resource "aws_secretsmanager_secret_version" "rds_credentials" {
 }
 
 module "lambda" {
-  source                    = "../../modules/lambda"
-  function_name_prefix      = local.name_prefix
-  lambda_execution_role_arn = data.terraform_remote_state.foundation.outputs.lambda_role_arn
-  subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
-  security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
+  source                            = "../../modules/lambda"
+  function_name_prefix              = local.name_prefix
+  lambda_execution_role_arn         = data.terraform_remote_state.foundation.outputs.lambda_role_arn
+  subnet_ids                        = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
+  security_group_ids                = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
   environment_variables_by_function = local.lambda_env_by_function
 
   artifact_bucket = var.artifact_bucket
@@ -184,6 +184,40 @@ module "artifacts_bucket" {
   manage_bucket_policy        = true
   staging_deployer_role_arn   = "arn:aws:iam::747103385969:role/ustc-payment-processor-stg-cicd-deployer-role"
   prod_deployer_role_arn      = "arn:aws:iam::802939326821:role/ustc-payment-processor-prod-cicd-deployer-role"
+}
+
+resource "aws_ssm_parameter" "dev_rds_endpoint" {
+  count = local.environment == "dev" ? 1 : 0
+  name  = "/ustc/pay-gov/dev/rds-endpoint"
+  type  = "String"
+  value = module.rds[0].endpoint
+
+  tags = {
+    Env     = "dev"
+    Project = "ustc-payment-portal"
+  }
+}
+
+resource "aws_ssm_parameter" "dev_rds_secret_arn" {
+  count = local.environment == "dev" ? 1 : 0
+  name  = "/ustc/pay-gov/dev/rds-secret-arn"
+  type  = "String"
+  value = module.secrets.rds_credentials_secret_arn
+
+  tags = {
+    Env     = "dev"
+    Project = "ustc-payment-portal"
+  }
+}
+
+data "aws_ssm_parameter" "dev_rds_endpoint" {
+  count = local.environment != "dev" ? 1 : 0
+  name  = "/ustc/pay-gov/dev/rds-endpoint"
+}
+
+data "aws_ssm_parameter" "dev_rds_secret_arn" {
+  count = local.environment != "dev" ? 1 : 0
+  name  = "/ustc/pay-gov/dev/rds-secret-arn"
 }
 
 # Reference existing bucket in PR workspaces

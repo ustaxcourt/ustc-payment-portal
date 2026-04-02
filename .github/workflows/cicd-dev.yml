@@ -266,6 +266,44 @@ jobs:
             echo "PR workspace not yet provisioned; skipping integration tests until outputs exist."
           fi
 
+      - name: Create PR database
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
+        working-directory: terraform/environments/dev
+        run: |
+          FUNCTION_NAME=$(terraform output -raw migration_runner_function_name)
+          echo "Creating database via: $FUNCTION_NAME"
+          aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload '{"command":"create-db"}' \
+            --cli-binary-format raw-in-base64-out \
+            --log-type Tail \
+            --cli-read-timeout 130 \
+            response.json | tee invoke-meta.json
+          cat response.json
+          if jq -e '.FunctionError' invoke-meta.json > /dev/null 2>&1; then
+            echo "ERROR: create-db Lambda reported a function error"
+            exit 1
+          fi
+
+      - name: Run DB migrations (PR)
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
+        working-directory: terraform/environments/dev
+        run: |
+          FUNCTION_NAME=$(terraform output -raw migration_runner_function_name)
+          echo "Running migrations via: $FUNCTION_NAME"
+          aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload '{"command":"migrate"}' \
+            --cli-binary-format raw-in-base64-out \
+            --log-type Tail \
+            --cli-read-timeout 130 \
+            response.json | tee invoke-meta.json
+          cat response.json
+          if jq -e '.FunctionError' invoke-meta.json > /dev/null 2>&1; then
+            echo "ERROR: migrate Lambda reported a function error"
+            exit 1
+          fi
+
       - name: Copy secrets from dev (for PR environments)
         if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' && github.event.pull_request.number }}
         run: |
@@ -386,17 +424,24 @@ jobs:
           WS="pr-${PR_NUMBER}"
           (terraform workspace select "$WS" && echo "workspace=$WS" >> $GITHUB_OUTPUT) || echo "no_ws=true" >> $GITHUB_OUTPUT
 
-      - name: Drop PR database
+      - name: Drop PR database (best-effort)
         if: ${{ steps.ws.outputs.no_ws != 'true' }}
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+        working-directory: terraform/environments/dev
         run: |
-          aws lambda invoke \
-            --function-name ustc-payment-processor-pr-${PR_NUMBER}-migrationHandler \
-            --payload '{"command":"drop-db"}' \
-            --cli-binary-format raw-in-base64-out \
-            response.json || true
-          cat response.json || true
+          FUNCTION_NAME=$(terraform output -raw migration_runner_function_name 2>/dev/null || true)
+          if [ -z "$FUNCTION_NAME" ]; then
+            echo "Could not resolve migration runner function name — skipping drop-db"
+          else
+            echo "Dropping database via: $FUNCTION_NAME"
+            aws lambda invoke \
+              --function-name "$FUNCTION_NAME" \
+              --payload '{"command":"drop-db"}' \
+              --cli-binary-format raw-in-base64-out \
+              --log-type Tail \
+              --cli-read-timeout 130 \
+              response.json || true
+            cat response.json || true
+          fi
 
       - name: Terraform Plan Destroy (PR workspace)
         if: ${{ steps.ws.outputs.no_ws != 'true' }}
