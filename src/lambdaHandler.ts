@@ -16,6 +16,14 @@ import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
 import { getKnex } from "./db/knex";
 
 const appContext = createAppContext();
+if (process.env.RDS_SECRET_ARN) {
+  getKnex().catch((err) =>
+    console.error(
+      "[lambdaHandler] Failed to initialise knex on cold start:",
+      err,
+    ),
+  );
+}
 
 type LambdaHandler = ProcessPayment | InitPayment | GetDetails;
 
@@ -23,7 +31,7 @@ const lambdaHandler = async (
   request: any,
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler,
-  feeId?: string
+  feeId?: string,
 ): Promise<APIGatewayProxyResult> => {
   try {
     const roleArn = extractCallerArn(requestContext);
@@ -39,17 +47,19 @@ const lambdaHandler = async (
 };
 
 export const initPaymentHandler = (
-  event: APIGatewayEvent
+  event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
   if (!event.body) {
-    return Promise.resolve(handleError(new InvalidRequestError("missing body")));
+    return Promise.resolve(
+      handleError(new InvalidRequestError("missing body")),
+    );
   }
 
   const request = JSON.parse(event.body);
 
   if (!request.feeId) {
     return Promise.resolve(
-      handleError(new InvalidRequestError("missing feeId"))
+      handleError(new InvalidRequestError("missing feeId")),
     );
   }
 
@@ -57,15 +67,17 @@ export const initPaymentHandler = (
     request,
     event.requestContext,
     appContext.getUseCases().initPayment,
-    request.feeId
+    request.feeId,
   );
 };
 
 export const processPaymentHandler = (
-  event: APIGatewayEvent
+  event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
   if (!event.body) {
-    return Promise.resolve(handleError(new InvalidRequestError("missing body")));
+    return Promise.resolve(
+      handleError(new InvalidRequestError("missing body")),
+    );
   }
 
   const request = JSON.parse(event.body);
@@ -77,20 +89,19 @@ export const processPaymentHandler = (
   );
 };
 
-
 export const getDetailsHandler = (
-  event: APIGatewayEvent
+  event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
   if (!event.pathParameters) {
     return Promise.resolve(
-      handleError(new InvalidRequestError("missing required information"))
+      handleError(new InvalidRequestError("missing required information")),
     );
   }
   // getDetails is a read-only lookup — no feeId required, IAM registration check is sufficient.
   return lambdaHandler(
     event.pathParameters,
     event.requestContext,
-    appContext.getUseCases().getDetails
+    appContext.getUseCases().getDetails,
   );
 };
 
@@ -116,7 +127,10 @@ const dashboardOk = (body: unknown): APIGatewayProxyResult => ({
   body: JSON.stringify(body),
 });
 
-const dashboardError = (statusCode: number, message: string): APIGatewayProxyResult => ({
+const dashboardError = (
+  statusCode: number,
+  message: string,
+): APIGatewayProxyResult => ({
   statusCode,
   headers: { "Content-Type": "application/json", ...getDashboardCorsHeaders() },
   body: JSON.stringify({ message }),
@@ -126,37 +140,47 @@ const dashboardError = (statusCode: number, message: string): APIGatewayProxyRes
  * GET /transactions
  * Returns the 100 most recent transactions across all statuses.
  */
-export const getAllTransactionsHandler = async (): Promise<APIGatewayProxyResult> => {
-  try {
-    await getKnex();
-    const result = await appContext.getUseCases().getRecentTransactions(appContext);
-    return dashboardOk(result);
-  } catch (err) {
-    console.error("[Dashboard] getAllTransactions error:", err);
-    return dashboardError(500, "Internal server error");
-  }
-};
+export const getAllTransactionsHandler =
+  async (): Promise<APIGatewayProxyResult> => {
+    try {
+      const result = await appContext
+        .getUseCases()
+        .getRecentTransactions(appContext);
+      return dashboardOk(result);
+    } catch (err) {
+      console.error("[Dashboard] getAllTransactions error:", err);
+      return dashboardError(500, "Internal server error");
+    }
+  };
 
 /**
  * GET /transactions/{paymentStatus}
  * Returns up to 100 transactions filtered by payment status.
  */
 export const getTransactionsByStatusHandler = async (
-  event: APIGatewayEvent
+  event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
   const paymentStatus = event.pathParameters?.paymentStatus;
   if (!paymentStatus) {
-    return dashboardError(400, "Missing required path parameter: paymentStatus");
+    return dashboardError(
+      400,
+      "Missing required path parameter: paymentStatus",
+    );
   }
   if (!isValidPaymentStatus(paymentStatus)) {
-    return dashboardError(400, `Invalid paymentStatus. Expected one of: ${PaymentStatusSchema.options.join(", ")}`);
+    return dashboardError(
+      400,
+      `Invalid paymentStatus. Expected one of: ${PaymentStatusSchema.options.join(
+        ", ",
+      )}`,
+    );
   }
   try {
-    await getKnex();
-    const result = await appContext.getUseCases().getTransactionsByStatus(
-      appContext,
-      { paymentStatus: paymentStatus as "pending" | "success" | "failed" }
-    );
+    const result = await appContext
+      .getUseCases()
+      .getTransactionsByStatus(appContext, {
+        paymentStatus: paymentStatus as "pending" | "success" | "failed",
+      });
     return dashboardOk(result);
   } catch (err) {
     console.error("[Dashboard] getTransactionsByStatus error:", err);
@@ -168,13 +192,15 @@ export const getTransactionsByStatusHandler = async (
  * GET /transaction-payment-status
  * Returns aggregated counts per payment status.
  */
-export const getTransactionPaymentStatusHandler = async (): Promise<APIGatewayProxyResult> => {
-  try {
-    await getKnex();
-    const result = await appContext.getUseCases().getTransactionPaymentStatus(appContext);
-    return dashboardOk(result);
-  } catch (err) {
-    console.error("[Dashboard] getTransactionPaymentStatus error:", err);
-    return dashboardError(500, "Internal server error");
-  }
-};
+export const getTransactionPaymentStatusHandler =
+  async (): Promise<APIGatewayProxyResult> => {
+    try {
+      const result = await appContext
+        .getUseCases()
+        .getTransactionPaymentStatus(appContext);
+      return dashboardOk(result);
+    } catch (err) {
+      console.error("[Dashboard] getTransactionPaymentStatus error:", err);
+      return dashboardError(500, "Internal server error");
+    }
+  };
