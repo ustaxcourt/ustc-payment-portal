@@ -341,12 +341,12 @@ data "aws_iam_policy_document" "api_resource_policy" {
       }
       actions = ["execute-api:Invoke"]
       resources = [
-        "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transactions",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transactions/*",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transaction-payment-status",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/*/OPTIONS/transactions",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/*/OPTIONS/transactions/*",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/*/OPTIONS/transaction-payment-status",
+        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transactions",
+        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transactions/*",
+        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transaction-payment-status",
+        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transactions",
+        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transactions/*",
+        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transaction-payment-status",
       ]
     }
   }
@@ -428,7 +428,7 @@ resource "aws_api_gateway_deployment" "deployment" {
       try(aws_api_gateway_integration.transactions_by_status_options_integration[0].id, ""),
       try(aws_api_gateway_integration.transaction_payment_status_options_integration[0].id, ""),
 
-      aws_api_gateway_rest_api_policy.policy.id,
+      aws_api_gateway_rest_api_policy.policy.policy,
       aws_api_gateway_gateway_response.default_4xx.id,
       aws_api_gateway_gateway_response.default_5xx.id,
     ]))
