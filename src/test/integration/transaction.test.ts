@@ -1,5 +1,5 @@
 import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
-import { InitPaymentRequest } from "../../types/InitPaymentRequest";
+import { InitPaymentRequest } from "../../schemas/InitPayment.schema";
 import { signedFetch } from "./sigv4Helper";
 
 describe("make a transaction", () => {
@@ -22,11 +22,11 @@ describe("make a transaction", () => {
     const randomNumber = Math.floor(Math.random() * 100000);
 
     const request: InitPaymentRequest = {
-      trackingId: `test${randomNumber}`,
-      amount: 20,
+      transactionReferenceId: crypto.randomUUID(),
       feeId: "PETITION_FILING_FEE",
       urlSuccess: "http://example.com/success",
       urlCancel: "http://example.com/cancel",
+      metadata: { docketNumber: `${randomNumber}-26` },
     };
 
     const url = `${process.env.BASE_URL}/init`;

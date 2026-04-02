@@ -8,6 +8,7 @@ import { extractCallerArn } from "./extractCallerArn";
 import { authorizeClient } from "./authorizeClient";
 import { handleError } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
+import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
 import { GetDetails } from "./useCases/getDetails";
 import { InitPayment } from "./useCases/initPayment";
 import { ProcessPayment } from "./useCases/processPayment";
@@ -46,41 +47,48 @@ const lambdaHandler = async (
   }
 };
 
+const safeJsonParse = <T = any>(
+  body: string | null | undefined
+): { value?: T; error?: APIGatewayProxyResult } => {
+  if (!body) {
+    return { error: handleError(new InvalidRequestError("missing body")) };
+  }
+
+  try {
+    return { value: JSON.parse(body) };
+  } catch {
+    return {
+      error: handleError(
+        new InvalidRequestError("invalid JSON in request body")
+      ),
+    };
+  }
+};
+
 export const initPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  if (!event.body) {
-    return Promise.resolve(
-      handleError(new InvalidRequestError("missing body")),
-    );
-  }
+  const { value: rawBody, error } = safeJsonParse(event.body);
+  if (error) return Promise.resolve(error);
 
-  const request = JSON.parse(event.body);
-
-  if (!request.feeId) {
-    return Promise.resolve(
-      handleError(new InvalidRequestError("missing feeId")),
-    );
+  const parsed = InitPaymentRequestSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return Promise.resolve(handleError(parsed.error));
   }
 
   return lambdaHandler(
-    request,
+    parsed.data,
     event.requestContext,
     appContext.getUseCases().initPayment,
-    request.feeId,
+    parsed.data.feeId,
   );
 };
 
 export const processPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  if (!event.body) {
-    return Promise.resolve(
-      handleError(new InvalidRequestError("missing body")),
-    );
-  }
-
-  const request = JSON.parse(event.body);
+  const { value: request, error } = safeJsonParse(event.body);
+  if (error) return Promise.resolve(error);
 
   return lambdaHandler(
     request,
