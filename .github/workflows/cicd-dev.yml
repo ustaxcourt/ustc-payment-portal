@@ -232,6 +232,25 @@ jobs:
             exit 1
           fi
 
+      - name: Seed PR database
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
+        working-directory: terraform/environments/dev
+        run: |
+          FUNCTION_NAME=$(terraform output -raw migration_runner_function_name)
+          echo "Seeding database via: $FUNCTION_NAME"
+          aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload '{"command":"seed"}' \
+            --cli-binary-format raw-in-base64-out \
+            --log-type Tail \
+            --cli-read-timeout 130 \
+            response.json | tee invoke-meta.json
+          cat response.json
+          if jq -e '.FunctionError' invoke-meta.json > /dev/null 2>&1; then
+            echo "ERROR: seed Lambda reported a function error"
+            exit 1
+          fi
+
       - name: Copy secrets from dev (for PR environments)
         if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' && github.event.pull_request.number }}
         run: |
