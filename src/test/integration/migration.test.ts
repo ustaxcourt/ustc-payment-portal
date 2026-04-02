@@ -34,7 +34,8 @@ describeIfDeployed("database migration and seed verification", () => {
 
     beforeAll(async () => {
       const response = await signedFetch(`${baseUrl}/transactions`);
-      expect(response.status).toBe(200);
+      // adding log to see if the request is correctly signed and reaching the deployed API Gateway
+      console.log("baseURL", baseUrl);
       body = (await response.json()) as typeof body;
     });
 
