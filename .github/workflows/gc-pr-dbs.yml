@@ -26,43 +26,28 @@ jobs:
           role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Find and drop orphaned PR databases
+      - name: Drop stale PR databases via dev migrationRunner
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
-          echo "Fetching recently closed PRs..."
-          CLOSED_PRS=$(gh pr list \
+          echo "Fetching open PR numbers..."
+          OPEN_PRS=$(gh pr list \
             --repo "${{ github.repository }}" \
-            --state closed \
+            --state open \
             --limit 100 \
             --json number \
-            --jq '.[].number')
+            --jq '[.[].number]')
 
-          if [ -z "$CLOSED_PRS" ]; then
-            echo "No closed PRs found. Nothing to clean up."
-            exit 0
-          fi
+          echo "Open PRs: $OPEN_PRS"
 
-          for PR_NUMBER in $CLOSED_PRS; do
-            FUNCTION_NAME="ustc-payment-processor-pr-${PR_NUMBER}-migrationHandler"
-            echo "Checking PR #${PR_NUMBER} — Lambda: $FUNCTION_NAME"
+          PAYLOAD=$(jq -n --argjson prs "$OPEN_PRS" '{"command":"gc-dbs","openPrNumbers":$prs}')
 
-            # Check if the Lambda function still exists (PR env may already be destroyed via pr_cleanup)
-            if ! aws lambda get-function --function-name "$FUNCTION_NAME" > /dev/null 2>&1; then
-              echo "  Lambda not found — skipping PR #${PR_NUMBER}"
-              continue
-            fi
-
-            echo "  Invoking drop-db for PR #${PR_NUMBER}..."
-            aws lambda invoke \
-              --function-name "$FUNCTION_NAME" \
-              --payload '{"command":"drop-db"}' \
-              --cli-binary-format raw-in-base64-out \
-              response.json || true
-            cat response.json || true
-            echo ""
-          done
-
-          echo "GC complete."
+          echo "Invoking dev migrationRunner with gc-dbs..."
+          aws lambda invoke \
+            --function-name ustc-payment-processor-migrationRunner \
+            --payload "$PAYLOAD" \
+            --cli-binary-format raw-in-base64-out \
+            response.json
+          cat response.json

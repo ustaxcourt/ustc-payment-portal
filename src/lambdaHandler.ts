@@ -151,6 +151,7 @@ const dashboardError = (
 export const getAllTransactionsHandler =
   async (): Promise<APIGatewayProxyResult> => {
     try {
+      await getKnex();
       const result = await appContext
         .getUseCases()
         .getRecentTransactions(appContext);
@@ -184,6 +185,7 @@ export const getTransactionsByStatusHandler = async (
     );
   }
   try {
+    await getKnex();
     const result = await appContext
       .getUseCases()
       .getTransactionsByStatus(appContext, {
@@ -203,6 +205,7 @@ export const getTransactionsByStatusHandler = async (
 export const getTransactionPaymentStatusHandler =
   async (): Promise<APIGatewayProxyResult> => {
     try {
+      await getKnex();
       const result = await appContext
         .getUseCases()
         .getTransactionPaymentStatus(appContext);

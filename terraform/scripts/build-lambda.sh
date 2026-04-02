@@ -137,7 +137,7 @@ if [ -d "certs" ]; then
     done
 fi
 
-# Copy migration files for migrationRunner
+# Copy migration and seed files for migrationRunner
 echo "Compiling migration files..."
 mkdir -p dist/migrationRunner/db/migrations
 npx esbuild db/migrations/*.ts \
@@ -146,6 +146,15 @@ npx esbuild db/migrations/*.ts \
   --target=node22 \
   --format=cjs \
   --outdir=dist/migrationRunner/db/migrations/
+
+echo "Compiling seed files..."
+mkdir -p dist/migrationRunner/db/seeds
+npx esbuild db/seeds/*.ts \
+  --bundle=false \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outdir=dist/migrationRunner/db/seeds/
 
 echo "Build completed successfully!"
 echo "Bundled Lambda functions ready:"

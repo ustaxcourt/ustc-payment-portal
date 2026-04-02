@@ -381,8 +381,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "ssm:GetParameter",
           "ssm:GetParameters",
           "ssm:AddTagsToResource",
-          "ssm:ListTagsForResource",
-          "ssm:DescribeParameters"
+          "ssm:ListTagsForResource"
         ],
         Resource = "arn:aws:ssm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/ustc/pay-gov/dev/rds-*"
       }
