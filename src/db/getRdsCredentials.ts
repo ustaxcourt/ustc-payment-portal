@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 import { getSecretString } from "../clients/secretsClient";
 
 export interface RdsConnectionConfig {
@@ -6,7 +8,7 @@ export interface RdsConnectionConfig {
   user: string;
   password: string;
   database: string;
-  ssl: { rejectUnauthorized: boolean };
+  ssl: { rejectUnauthorized: boolean; ca?: Buffer };
 }
 
 // Cached per Lambda container lifetime — SecretsManager is only called on cold start.
@@ -46,10 +48,14 @@ export async function getRdsCredentials(): Promise<RdsConnectionConfig> {
   if (!username) throw new Error("RDS secret is missing 'username' field");
   if (!password) throw new Error("RDS secret is missing 'password' field");
 
-  // rejectUnauthorized: false is intentional — Lambda connects to RDS within a
-  // private VPC, so MITM risk is minimal. Enabling full verification would
-  // require bundling the AWS RDS CA cert and keeping it updated as certs rotate.
-  cached = { host, port, user: username, password, database: RDS_DB_NAME, ssl: { rejectUnauthorized: false } };
+  // Use proper TLS verification when the RDS CA bundle is available (deployed Lambda),
+  // fall back to rejectUnauthorized: false for local dev without the bundle.
+  const caPath = join(__dirname, "rds-ca-bundle.pem");
+  const ssl = existsSync(caPath)
+    ? { rejectUnauthorized: true, ca: readFileSync(caPath) }
+    : { rejectUnauthorized: false };
+
+  cached = { host, port, user: username, password, database: RDS_DB_NAME, ssl };
   return cached;
 }
 

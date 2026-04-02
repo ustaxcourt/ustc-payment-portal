@@ -139,8 +139,13 @@ fi
 
 # Download Amazon RDS CA bundle for TLS certificate verification
 echo "Downloading RDS CA bundle..."
-curl -sSf -o dist/migrationRunner/rds-ca-bundle.pem \
+curl -sSf -o /tmp/rds-ca-bundle.pem \
   https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem
+
+# Copy CA bundle to all Lambda functions that connect to RDS
+for func in migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
+  cp /tmp/rds-ca-bundle.pem "dist/${func}/rds-ca-bundle.pem"
+done
 
 # Copy migration and seed files for migrationRunner
 echo "Compiling migration files..."
