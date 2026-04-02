@@ -7,10 +7,11 @@ import Knex from "knex";
 import path from "path";
 import { parseRdsEndpoint } from "./db/getRdsCredentials";
 
-type Command = "create-db" | "drop-db" | "migrate" | "seed" | "verify";
+type Command = "create-db" | "drop-db" | "migrate" | "seed" | "verify" | "gc-dbs";
 
 type MigrationHandlerEvent = {
   command?: Command;
+  openPrNumbers?: number[];
 };
 
 type MigrationHandlerResult = {
@@ -97,7 +98,7 @@ const getDatabaseConnection = async (): Promise<DatabaseConnection> => {
     user: username,
     password,
     database,
-    ssl: { rejectUnauthorized: true },
+    ssl: { rejectUnauthorized: false },
   };
 };
 
@@ -124,7 +125,7 @@ const getMaintenanceKnex = async (): Promise<ReturnType<typeof Knex>> => {
       user: username,
       password,
       database: "postgres",
-      ssl: { rejectUnauthorized: true },
+      ssl: { rejectUnauthorized: false },
     },
     pool: { min: 0, max: 1, acquireTimeoutMillis: 10000 },
   });
@@ -208,6 +209,33 @@ const dropDb = async (): Promise<MigrationHandlerResult> => {
   }
 };
 
+/**
+ * Drops all paymentportal_pr_* databases that are not in the provided list of open PR numbers.
+ * Invoked by the nightly GC workflow on the always-present dev migrationRunner Lambda,
+ * so cleanup succeeds even when the per-PR Lambda no longer exists.
+ */
+const gcDbs = async (openPrNumbers: number[]): Promise<MigrationHandlerResult> => {
+  const knex = await getMaintenanceKnex();
+  const dropped: string[] = [];
+  try {
+    const result = await knex.raw<{ rows: { datname: string }[] }>(
+      `SELECT datname FROM pg_database WHERE datname LIKE 'paymentportal_pr_%'`,
+    );
+    for (const { datname } of result.rows) {
+      const match = datname.match(/^paymentportal_pr_(\d+)$/);
+      if (!match) continue;
+      const prNumber = Number(match[1]);
+      if (openPrNumbers.includes(prNumber)) continue;
+      await knex.raw(`DROP DATABASE IF EXISTS ?? WITH (FORCE)`, [datname]);
+      dropped.push(datname);
+      console.log(`[migrationHandler] gc-dbs: dropped ${datname}`);
+    }
+  } finally {
+    await knex.destroy();
+  }
+  return { statusCode: 200, body: JSON.stringify({ dropped }) };
+};
+
 // THIS WILL ONLY BE FOR CI/CD USAGE AND SHOULD NOT BE EXPOSED IN API GATEWAY
 // If we ever write integration tests for this Lambda or any of the dashboard endpoints,
 // we will need to setup PR ephemeral environments to spin up a RDS instance, otherwise the tests
@@ -225,6 +253,7 @@ export const migrationHandler = async (
 
   if (command === "create-db") return createDb();
   if (command === "drop-db") return dropDb();
+  if (command === "gc-dbs") return gcDbs(event?.openPrNumbers ?? []);
 
   const connection = await getDatabaseConnection();
 

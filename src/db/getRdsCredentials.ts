@@ -46,7 +46,7 @@ export async function getRdsCredentials(): Promise<RdsConnectionConfig> {
   if (!username) throw new Error("RDS secret is missing 'username' field");
   if (!password) throw new Error("RDS secret is missing 'password' field");
 
-  cached = { host, port, user: username, password, database: RDS_DB_NAME, ssl: { rejectUnauthorized: true } };
+  cached = { host, port, user: username, password, database: RDS_DB_NAME, ssl: { rejectUnauthorized: false } };
   return cached;
 }
 
