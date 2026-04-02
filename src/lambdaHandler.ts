@@ -17,14 +17,6 @@ import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
 import { getKnex } from "./db/knex";
 
 const appContext = createAppContext();
-if (process.env.RDS_SECRET_ARN) {
-  getKnex().catch((err) =>
-    console.error(
-      "[lambdaHandler] Failed to initialise knex on cold start:",
-      err,
-    ),
-  );
-}
 
 type LambdaHandler = ProcessPayment | InitPayment | GetDetails;
 

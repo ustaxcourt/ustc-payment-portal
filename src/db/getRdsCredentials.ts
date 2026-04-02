@@ -46,6 +46,9 @@ export async function getRdsCredentials(): Promise<RdsConnectionConfig> {
   if (!username) throw new Error("RDS secret is missing 'username' field");
   if (!password) throw new Error("RDS secret is missing 'password' field");
 
+  // rejectUnauthorized: false is intentional — Lambda connects to RDS within a
+  // private VPC, so MITM risk is minimal. Enabling full verification would
+  // require bundling the AWS RDS CA cert and keeping it updated as certs rotate.
   cached = { host, port, user: username, password, database: RDS_DB_NAME, ssl: { rejectUnauthorized: false } };
   return cached;
 }
