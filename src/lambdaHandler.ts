@@ -13,6 +13,7 @@ import { InitPayment } from "./useCases/initPayment";
 import { ProcessPayment } from "./useCases/processPayment";
 import { isValidPaymentStatus } from "./useCases/getTransactionsByStatus";
 import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
+import { getKnex } from "./db/knex";
 
 const appContext = createAppContext();
 
@@ -127,6 +128,7 @@ const dashboardError = (statusCode: number, message: string): APIGatewayProxyRes
  */
 export const getAllTransactionsHandler = async (): Promise<APIGatewayProxyResult> => {
   try {
+    await getKnex();
     const result = await appContext.getUseCases().getRecentTransactions(appContext);
     return dashboardOk(result);
   } catch (err) {
@@ -150,6 +152,7 @@ export const getTransactionsByStatusHandler = async (
     return dashboardError(400, `Invalid paymentStatus. Expected one of: ${PaymentStatusSchema.options.join(", ")}`);
   }
   try {
+    await getKnex();
     const result = await appContext.getUseCases().getTransactionsByStatus(
       appContext,
       { paymentStatus: paymentStatus as "pending" | "success" | "failed" }
@@ -167,6 +170,7 @@ export const getTransactionsByStatusHandler = async (
  */
 export const getTransactionPaymentStatusHandler = async (): Promise<APIGatewayProxyResult> => {
   try {
+    await getKnex();
     const result = await appContext.getUseCases().getTransactionPaymentStatus(appContext);
     return dashboardOk(result);
   } catch (err) {
