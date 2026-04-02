@@ -148,6 +148,7 @@ module "api" {
   custom_domain            = local.environment == "dev" ? local.custom_domain : ""
   certificate_arn          = local.environment == "dev" ? aws_acm_certificate_validation.this[0].certificate_arn : ""
   route53_zone_id          = local.environment == "dev" ? aws_route53_zone.this[0].zone_id : ""
+  enable_public_dashboard  = startswith(local.environment, "pr-") || local.environment == "dev"
 
   depends_on = [module.secrets, aws_acm_certificate_validation.this]
 }
