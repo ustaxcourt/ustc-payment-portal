@@ -39,6 +39,13 @@ jest.mock("./TransactionModel", () => {
         }
         return Promise.resolve();
       });
+      static updateToFailed = jest.fn((agencyTrackingId) => {
+        if (mockTransaction && mockTransaction.agencyTrackingId === agencyTrackingId) {
+          mockTransaction.transactionStatus = "failed";
+          mockTransaction.paymentStatus = "failed";
+        }
+        return Promise.resolve();
+      });
       static query = jest.fn(() => ({
         findById: (id: string) => Promise.resolve(id === mockTransaction?.agencyTrackingId ? mockTransaction : undefined),
       }));
@@ -120,6 +127,24 @@ describe("TransactionModel", () => {
       expect(transaction.transactionStatus).toBe('received');
       expect(transaction.paymentStatus).toBe('pending');
       agencyTrackingId = transaction.agencyTrackingId;
+    });
+  });
+
+  describe("updateToFailed", () => {
+    it("should set both transactionStatus and paymentStatus to failed", async () => {
+      await TransactionModel.createReceived({
+        agencyTrackingId: "TEST-123",
+        feeId: "PETITION_FILING_FEE",
+        clientName: "test-client",
+        transactionReferenceId: "TXN-REF-001",
+        paymentMethod: 'plastic_card' as PaymentMethod,
+      });
+
+      await TransactionModel.updateToFailed("TEST-123");
+
+      const updated = await TransactionModel.query().findById("TEST-123");
+      expect(updated?.transactionStatus).toBe("failed");
+      expect(updated?.paymentStatus).toBe("failed");
     });
   });
 
