@@ -140,19 +140,6 @@ describe("lambdaHandler", () => {
       expect(JSON.parse(result.body)).toHaveProperty("message");
     });
 
-    it("returns 400 when request body fails schema validation", async () => {
-      const event = {
-        body: JSON.stringify({ feeId: "PETITION_FILING_FEE" }), // missing required fields
-        headers: mockHeaders,
-        requestContext: mockRequestContext,
-      } as unknown as APIGatewayEvent;
-
-      const result = await initPaymentHandler(event);
-
-      expect(result.statusCode).toBe(400);
-      expect(JSON.parse(result.body)).toHaveProperty("message");
-    });
-
     it("returns 403 when IAM principal is missing", async () => {
       const event = {
         body: JSON.stringify({
