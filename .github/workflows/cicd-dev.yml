@@ -162,6 +162,78 @@ jobs:
           TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_source_code_hash }}
         run: terraform apply -auto-approve tfplan
 
+      - name: Create PR database
+        if: ${{ steps.plan.outputs.exitcode == '2' }}
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          aws lambda invoke \
+            --function-name ustc-payment-processor-pr-${PR_NUMBER}-migrationHandler \
+            --payload '{"command":"create-db"}' \
+            --cli-binary-format raw-in-base64-out \
+            response.json
+          cat response.json
+          if jq -e '.errorMessage' response.json > /dev/null 2>&1; then
+            echo "ERROR: create-db failed"
+            exit 1
+          fi
+
+      - name: Run migrations on PR database
+        if: ${{ steps.plan.outputs.exitcode == '2' }}
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          aws lambda invoke \
+            --function-name ustc-payment-processor-pr-${PR_NUMBER}-migrationHandler \
+            --payload '{"command":"migrate"}' \
+            --cli-binary-format raw-in-base64-out \
+            response.json
+          cat response.json
+          if jq -e '.errorMessage' response.json > /dev/null 2>&1; then
+            echo "ERROR: migrate failed"
+            exit 1
+          fi
+
+      - name: Seed PR database
+        if: ${{ steps.plan.outputs.exitcode == '2' }}
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          aws lambda invoke \
+            --function-name ustc-payment-processor-pr-${PR_NUMBER}-migrationHandler \
+            --payload '{"command":"seed"}' \
+            --cli-binary-format raw-in-base64-out \
+            response.json
+          cat response.json
+          if jq -e '.errorMessage' response.json > /dev/null 2>&1; then
+            echo "ERROR: seed failed"
+            exit 1
+          fi
+
+      - name: Verify migration version
+        if: ${{ steps.plan.outputs.exitcode == '2' }}
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          aws lambda invoke \
+            --function-name ustc-payment-processor-pr-${PR_NUMBER}-migrationHandler \
+            --payload '{"command":"verify"}' \
+            --cli-binary-format raw-in-base64-out \
+            response.json
+          cat response.json
+          if jq -e '.errorMessage' response.json > /dev/null 2>&1; then
+            echo "ERROR: verify failed"
+            exit 1
+          fi
+          VERSION=$(jq -r '.body | fromjson | .version' response.json)
+          echo "Current migration version: $VERSION"
+          EXPECTED="20260305195503_init_db"
+          if [[ "$VERSION" != "$EXPECTED" ]]; then
+            echo "ERROR: Expected migration version '$EXPECTED' but got '$VERSION'"
+            exit 1
+          fi
+          echo "Migration version verified: $VERSION"
+
       - name: Smoke check (post-apply to verify the workspace)
         if: ${{ steps.plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/dev
@@ -313,6 +385,18 @@ jobs:
         run: |
           WS="pr-${PR_NUMBER}"
           (terraform workspace select "$WS" && echo "workspace=$WS" >> $GITHUB_OUTPUT) || echo "no_ws=true" >> $GITHUB_OUTPUT
+
+      - name: Drop PR database
+        if: ${{ steps.ws.outputs.no_ws != 'true' }}
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          aws lambda invoke \
+            --function-name ustc-payment-processor-pr-${PR_NUMBER}-migrationHandler \
+            --payload '{"command":"drop-db"}' \
+            --cli-binary-format raw-in-base64-out \
+            response.json || true
+          cat response.json || true
 
       - name: Terraform Plan Destroy (PR workspace)
         if: ${{ steps.ws.outputs.no_ws != 'true' }}
@@ -501,7 +585,7 @@ jobs:
 
           aws lambda invoke \
             --function-name "$FUNCTION_NAME" \
-            --payload '{}' \
+            --payload '{"command":"migrate"}' \
             --cli-binary-format raw-in-base64-out \
             --log-type Tail \
             --cli-read-timeout 130 \
