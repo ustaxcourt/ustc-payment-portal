@@ -98,6 +98,24 @@ describe("lambdaHandler", () => {
       expect(calledWith.clientName).toBe("Test Client");
     });
 
+    it("returns 400 with structured errors array when request schema validation fails", async () => {
+      const event = {
+        body: JSON.stringify({ feeId: "PETITION_FILING_FEE" }), // missing required fields
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await initPaymentHandler(event);
+      expect(result.statusCode).toBe(400);
+
+      const body = JSON.parse(result.body);
+      expect(body.message).toBe("Validation error");
+      expect(Array.isArray(body.errors)).toBe(true);
+      expect(body.errors.length).toBeGreaterThan(0);
+      expect(body.errors[0]).toHaveProperty("path");
+      expect(body.errors[0]).toHaveProperty("message");
+    });
+
     it("returns 400 with JSON body when body is missing", async () => {
       const event = {
         body: null,

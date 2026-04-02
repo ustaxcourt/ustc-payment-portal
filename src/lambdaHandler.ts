@@ -70,11 +70,7 @@ export const initPaymentHandler = (
 
   const parsed = InitPaymentRequestSchema.safeParse(rawBody);
   if (!parsed.success) {
-    return Promise.resolve(
-      handleError(new InvalidRequestError(
-        parsed.error.issues.map((i) => i.message).join(", ")
-      ))
-    );
+    return Promise.resolve(handleError(parsed.error));
   }
 
   return lambdaHandler(
