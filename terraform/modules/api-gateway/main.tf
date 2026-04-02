@@ -2,7 +2,7 @@
 # Dashboard endpoints (dev only)
 ###############################
 locals {
-  enable_dashboard_endpoints = var.environment == "dev"
+  enable_dashboard_endpoints = var.environment == "dev" || startswith(var.environment, "pr-")
 }
 
 resource "aws_api_gateway_resource" "transactions" {
