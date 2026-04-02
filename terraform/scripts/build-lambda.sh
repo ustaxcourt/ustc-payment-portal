@@ -137,6 +137,11 @@ if [ -d "certs" ]; then
     done
 fi
 
+# Download Amazon RDS CA bundle for TLS certificate verification
+echo "Downloading RDS CA bundle..."
+curl -sSf -o dist/migrationRunner/rds-ca-bundle.pem \
+  https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem
+
 # Copy migration and seed files for migrationRunner
 echo "Compiling migration files..."
 mkdir -p dist/migrationRunner/db/migrations

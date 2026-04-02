@@ -7,7 +7,13 @@ import Knex from "knex";
 import path from "path";
 import { parseRdsEndpoint } from "./db/getRdsCredentials";
 
-type Command = "create-db" | "drop-db" | "migrate" | "seed" | "verify" | "gc-dbs";
+type Command =
+  | "create-db"
+  | "drop-db"
+  | "migrate"
+  | "seed"
+  | "verify"
+  | "gc-dbs";
 
 type MigrationHandlerEvent = {
   command?: Command;
@@ -28,7 +34,9 @@ type DatabaseConnection = {
   ssl?: { rejectUnauthorized: boolean };
 };
 
-const getRdsSecret = async (secretArn: string): Promise<{ username: string; password: string }> => {
+const getRdsSecret = async (
+  secretArn: string,
+): Promise<{ username: string; password: string }> => {
   const secretsManager = new SecretsManagerClient({});
   const response = await secretsManager.send(
     new GetSecretValueCommand({ SecretId: secretArn }),
@@ -38,7 +46,10 @@ const getRdsSecret = async (secretArn: string): Promise<{ username: string; pass
     throw new Error(`Secret "${secretArn}" does not contain a SecretString`);
   }
 
-  const secret = JSON.parse(response.SecretString) as Partial<{ username: string; password: string }>;
+  const secret = JSON.parse(response.SecretString) as Partial<{
+    username: string;
+    password: string;
+  }>;
 
   if (!secret.username || !secret.password) {
     throw new Error(`Secret "${secretArn}" must include username and password`);
@@ -71,6 +82,14 @@ const getLocalConnection = (): DatabaseConnection => {
   };
 };
 
+const getRdsSslConfig = (): { rejectUnauthorized: boolean; ca?: Buffer } => {
+  const caPath = path.join(__dirname, "rds-ca-bundle.pem");
+  if (fs.existsSync(caPath)) {
+    return { rejectUnauthorized: true, ca: fs.readFileSync(caPath) };
+  }
+  return { rejectUnauthorized: false };
+};
+
 const getDatabaseConnection = async (): Promise<DatabaseConnection> => {
   const secretArn = process.env.RDS_SECRET_ARN;
   const endpoint = process.env.RDS_ENDPOINT;
@@ -98,7 +117,7 @@ const getDatabaseConnection = async (): Promise<DatabaseConnection> => {
     user: username,
     password,
     database,
-    ssl: { rejectUnauthorized: false },
+    ssl: getRdsSslConfig(),
   };
 };
 
@@ -125,7 +144,7 @@ const getMaintenanceKnex = async (): Promise<ReturnType<typeof Knex>> => {
       user: username,
       password,
       database: "postgres",
-      ssl: { rejectUnauthorized: false },
+      ssl: getRdsSslConfig(),
     },
     pool: { min: 0, max: 1, acquireTimeoutMillis: 10000 },
   });
@@ -214,7 +233,9 @@ const dropDb = async (): Promise<MigrationHandlerResult> => {
  * Invoked by the nightly GC workflow on the always-present dev migrationRunner Lambda,
  * so cleanup succeeds even when the per-PR Lambda no longer exists.
  */
-const gcDbs = async (openPrNumbers: number[]): Promise<MigrationHandlerResult> => {
+const gcDbs = async (
+  openPrNumbers: number[],
+): Promise<MigrationHandlerResult> => {
   const knex = await getMaintenanceKnex();
   const dropped: string[] = [];
   try {
@@ -253,7 +274,14 @@ export const migrationHandler = async (
 
   if (command === "create-db") return createDb();
   if (command === "drop-db") return dropDb();
-  if (command === "gc-dbs") return gcDbs(event?.openPrNumbers ?? []);
+  if (command === "gc-dbs") {
+    if (!event?.openPrNumbers?.length) {
+      throw new Error(
+        "gc-dbs requires a non-empty openPrNumbers array — omitting it would drop all PR databases",
+      );
+    }
+    return gcDbs(event.openPrNumbers);
+  }
 
   const connection = await getDatabaseConnection();
 
