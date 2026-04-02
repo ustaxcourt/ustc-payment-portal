@@ -39,10 +39,10 @@ describeIfDeployed("database migration and seed verification", () => {
 
     beforeAll(async () => {
       const response = await fetch(`${baseUrl}/transactions`);
-      console.log("Response status:", response.status);
-      const text = await response.text();
-      console.log("Response body:", text);
-      body = JSON.parse(text) as typeof body;
+      if (!response.ok) {
+        throw new Error(`GET /transactions failed: ${response.status} ${await response.text()}`);
+      }
+      body = (await response.json()) as typeof body;
     });
 
     it("should return the expected number of seeded rows", () => {
