@@ -1,5 +1,3 @@
-import { signedFetch } from "./sigv4Helper";
-
 /**
  * Section F — DB-exercising integration tests (PAY-271).
  *
@@ -8,12 +6,15 @@ import { signedFetch } from "./sigv4Helper";
  *   2. Seeded data is present and queryable through the dashboard API endpoints.
  *   3. The PR database is isolated (scoped to TEST_NAMESPACE).
  *
+ * Dashboard endpoints (/transactions, /transactions/{paymentStatus},
+ * /transaction-payment-status) are public (authorization = NONE) — no SigV4
+ * signing is required.
+ *
  * Prerequisites (handled by the CI workflow before this test runs):
  *   - PR database created  (migrationHandler: create-db)
  *   - Migrations applied    (migrationHandler: migrate)
  *   - Seeds applied         (migrationHandler: seed)
  *   - BASE_URL set to the PR API Gateway URL
- *   - AWS credentials available for SigV4 signing
  *
  * For the migration version check (knex.migrate.currentVersion), see the
  * "Verify migration version" CI step in cicd-dev.yml which invokes the
@@ -23,9 +24,13 @@ import { signedFetch } from "./sigv4Helper";
 const TOTAL_SEEDED_ROWS = 100;
 
 const baseUrl = process.env.BASE_URL;
+const isDeployed =
+  !!baseUrl &&
+  baseUrl.startsWith("https://") &&
+  process.env.NODE_ENV !== "local";
 
 // Skip the entire suite when not running against a deployed environment.
-const describeIfDeployed = baseUrl ? describe : describe.skip;
+const describeIfDeployed = isDeployed ? describe : describe.skip;
 
 describeIfDeployed("database migration and seed verification", () => {
   // ── GET /transactions ─────────────────────────────────────────────────────
@@ -33,7 +38,7 @@ describeIfDeployed("database migration and seed verification", () => {
     let body: { data: Record<string, unknown>[]; total: number };
 
     beforeAll(async () => {
-      const response = await signedFetch(`${baseUrl}/transactions`);
+      const response = await fetch(`${baseUrl}/transactions`);
       console.log("Response status:", response.status);
       const text = await response.text();
       console.log("Response body:", text);
@@ -91,7 +96,7 @@ describeIfDeployed("database migration and seed verification", () => {
     it.each(["pending", "success", "failed"])(
       "should return rows for payment status '%s'",
       async (status) => {
-        const response = await signedFetch(
+        const response = await fetch(
           `${baseUrl}/transactions/${status}`,
         );
         expect(response.status).toBe(200);
@@ -113,7 +118,7 @@ describeIfDeployed("database migration and seed verification", () => {
     );
 
     it("should reject an invalid payment status with 400", async () => {
-      const response = await signedFetch(
+      const response = await fetch(
         `${baseUrl}/transactions/nonexistent`,
       );
       expect(response.status).toBe(400);
@@ -123,7 +128,7 @@ describeIfDeployed("database migration and seed verification", () => {
   // ── GET /transaction-payment-status ───────────────────────────────────────
   describe("GET /transaction-payment-status (aggregated counts)", () => {
     it("should return status counts that match the seeded total", async () => {
-      const response = await signedFetch(
+      const response = await fetch(
         `${baseUrl}/transaction-payment-status`,
       );
       expect(response.status).toBe(200);
