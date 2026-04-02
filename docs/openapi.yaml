@@ -93,7 +93,9 @@ components:
         transactionReferenceId:
           type: string
           format: uuid
-          description: Unique UUID for the transaction reference
+          description: >-
+            Client-generated UUIDv4 uniquely identifying this transaction. Must
+            be randomly generated (not derived from names or timestamps).
           example: 550e8400-e29b-41d4-a716-446655440000
         feeId:
           type: string
@@ -114,6 +116,13 @@ components:
             type. See the API documentation for more details on fee
             authorization and supported fees.
           example: PETITION_FILING_FEE
+        amount:
+          type: number
+          exclusiveMinimum: 0
+          description: >-
+            Override amount in dollars. Only valid for fees that allow variable
+            amounts.
+          example: 60
         urlSuccess:
           type: string
           format: uri
@@ -400,7 +409,7 @@ components:
         feeId:
           type: string
           description: Fee identifier
-          example: FEE-001
+          example: PETITION_FILING_FEE
         feeAmount:
           type: number
           description: Fee amount in USD
@@ -441,7 +450,7 @@ components:
             - ach
             - paypal
           description: Payment method used for the transaction
-          example: card
+          example: plastic_card
         paygovToken:
           type:
             - string

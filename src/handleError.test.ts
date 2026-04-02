@@ -2,48 +2,31 @@ import { handleError } from "./handleError";
 import { z } from "zod";
 
 describe("handleError", () => {
-  it("returns an object with the statusCode if the statusCode is set and less than 500", () => {
-    const error = {
-      statusCode: 403,
-      message: "You are not authorized to view this test",
-    };
-    expect(handleError(error)).toMatchObject({
-      statusCode: 403,
-      body: JSON.stringify({ message: "You are not authorized to view this test" }),
-    });
+  it("returns the statusCode and message for known client errors (< 500)", () => {
+    const result = handleError({ statusCode: 403, message: "Forbidden" });
+    expect(result.statusCode).toBe(403);
+    expect(JSON.parse(result.body).message).toBe("Forbidden");
   });
 
-  it("re-throws the error if statusCode is set and greater than 500", () => {
-    let result;
-    try {
-      result = handleError({
-        statusCode: 500,
-        message: "Something broke",
-      });
-    } catch (err) {
-      expect(err).toMatchObject({
-        statusCode: 500,
-        message: "Something broke",
-      });
-    }
-    expect(result).toBeUndefined();
+  it("returns 500 with a generic message for known server errors (>= 500)", () => {
+    const result = handleError({ statusCode: 500, message: "Something broke" });
+    expect(result.statusCode).toBe(500);
+    expect(JSON.parse(result.body).message).toBe("An unexpected error occurred");
   });
 
-  it("returns a 400 error if the error is a ZodError", () => {
-    // Generate a real ZodError by parsing invalid data
+  it("returns 500 with a generic message for unrecognized errors", () => {
+    const result = handleError(new Error("Unexpected failure"));
+    expect(result.statusCode).toBe(500);
+    expect(JSON.parse(result.body).message).toBe("An unexpected error occurred");
+  });
+
+  it("returns 400 with validation details for ZodErrors", () => {
     const schema = z.object({ trackingId: z.string() });
-    let zodError: z.ZodError | undefined;
-    try {
-      schema.parse({}); // missing trackingId
-    } catch (e) {
-      zodError = e as z.ZodError;
-    }
+    const { error } = schema.safeParse({});
 
-    expect(zodError).toBeDefined();
-    const result = handleError(zodError);
-    expect(result).toMatchObject({
-      statusCode: 400,
-    });
+    const result = handleError(error!);
+    expect(result.statusCode).toBe(400);
+
     const body = JSON.parse(result.body);
     expect(body.message).toBe("Validation error");
     expect(body.errors).toHaveLength(1);
