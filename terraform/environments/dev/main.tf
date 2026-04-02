@@ -35,20 +35,28 @@ module "lambda" {
   lambda_execution_role_arn = data.terraform_remote_state.foundation.outputs.lambda_role_arn
   subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
   security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
-  environment_variables     = local.lambda_env
+  environment_variables_by_function = local.lambda_env_by_function
 
   artifact_bucket = var.artifact_bucket
   artifact_s3_keys = {
-    initPayment    = var.initPayment_s3_key
-    processPayment = var.processPayment_s3_key
-    getDetails     = var.getDetails_s3_key
-    testCert       = var.testCert_s3_key
+    initPayment                 = var.initPayment_s3_key
+    processPayment              = var.processPayment_s3_key
+    getDetails                  = var.getDetails_s3_key
+    testCert                    = var.testCert_s3_key
+    migrationRunner             = var.migrationRunner_s3_key
+    getAllTransactions          = var.getAllTransactions_s3_key
+    getTransactionsByStatus     = var.getTransactionsByStatus_s3_key
+    getTransactionPaymentStatus = var.getTransactionPaymentStatus_s3_key
   }
   source_code_hashes = {
-    initPayment    = var.initPayment_source_code_hash
-    processPayment = var.processPayment_source_code_hash
-    getDetails     = var.getDetails_source_code_hash
-    testCert       = var.testCert_source_code_hash
+    initPayment                 = var.initPayment_source_code_hash
+    processPayment              = var.processPayment_source_code_hash
+    getDetails                  = var.getDetails_source_code_hash
+    testCert                    = var.testCert_source_code_hash
+    migrationRunner             = var.migrationRunner_source_code_hash
+    getAllTransactions          = var.getAllTransactions_source_code_hash
+    getTransactionsByStatus     = var.getTransactionsByStatus_source_code_hash
+    getTransactionPaymentStatus = var.getTransactionPaymentStatus_source_code_hash
   }
 
   tags = {
@@ -132,13 +140,14 @@ resource "aws_acm_certificate_validation" "this" {
 module "api" {
   source = "../../modules/api-gateway"
 
-  lambda_function_arns = module.lambda.function_arns
-  environment          = local.environment == "dev" ? "dev" : local.environment
-  stage_name           = local.environment == "dev" ? "dev" : local.environment
-  allowed_account_ids  = local.allowed_client_account_ids
-  custom_domain        = local.environment == "dev" ? local.custom_domain : ""
-  certificate_arn      = local.environment == "dev" ? aws_acm_certificate_validation.this[0].certificate_arn : ""
-  route53_zone_id      = local.environment == "dev" ? aws_route53_zone.this[0].zone_id : ""
+  lambda_function_arns     = module.lambda.function_arns
+  environment              = local.environment == "dev" ? "dev" : local.environment
+  stage_name               = local.environment == "dev" ? "dev" : local.environment
+  allowed_account_ids      = local.allowed_client_account_ids
+  dashboard_allowed_origin = local.dashboard_allowed_origin
+  custom_domain            = local.environment == "dev" ? local.custom_domain : ""
+  certificate_arn          = local.environment == "dev" ? aws_acm_certificate_validation.this[0].certificate_arn : ""
+  route53_zone_id          = local.environment == "dev" ? aws_route53_zone.this[0].zone_id : ""
 
   depends_on = [module.secrets, aws_acm_certificate_validation.this]
 }
@@ -162,8 +171,8 @@ module "iam_cicd" {
   state_bucket_name        = local.state_bucket_name
   state_object_keys        = local.state_object_keys
   lambda_exec_role_arn     = data.terraform_remote_state.foundation.outputs.lambda_role_arn
-  lambda_name_prefix      = local.name_prefix
-  create_lambda_exec_role = false
+  lambda_name_prefix       = local.name_prefix
+  create_lambda_exec_role  = false
 }
 
 module "artifacts_bucket" {
@@ -244,34 +253,30 @@ resource "aws_iam_role_policy" "test_unauthorized_api_invoke" {
   })
 }
 
-# Allow the CI/CD deployer role to assume the test-unauthorized role
-# Attaches to the SHARED dev deployer role, using unique policy name per workspace
-resource "aws_iam_role_policy" "deployer_assume_test_role" {
-  name = "assume-test-unauthorized-role-${local.name_prefix}"
+# Consolidated policy for the shared dev deployer role per PR workspace.
+# Kept as one policy (3 statements) to stay well under AWS's 10 inline-policy limit
+# when multiple PR workspaces are active concurrently.
+resource "aws_iam_role_policy" "deployer_pr_workspace" {
+  name = "pr-workspace-${local.name_prefix}"
   role = local.dev_deployer_role_name
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AssumeTestUnauthorizedRole"
         Effect   = "Allow"
         Action   = "sts:AssumeRole"
         Resource = aws_iam_role.test_unauthorized.arn
-      }
-    ]
-  })
-}
-
-# Allow the CI/CD deployer role to invoke API Gateway for smoke tests
-# The signedFetch() helper uses the shared role's credentials directly
-resource "aws_iam_role_policy" "deployer_invoke_api" {
-  name = "invoke-api-${local.name_prefix}"
-  role = local.dev_deployer_role_name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
+      },
       {
+        Sid      = "InvokeMigrationRunner"
+        Effect   = "Allow"
+        Action   = "lambda:InvokeFunction"
+        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:${local.name_prefix}-migrationRunner"
+      },
+      {
+        Sid      = "InvokeApiGateway"
         Effect   = "Allow"
         Action   = "execute-api:Invoke"
         Resource = "${module.api.api_gateway_execution_arn}/*"

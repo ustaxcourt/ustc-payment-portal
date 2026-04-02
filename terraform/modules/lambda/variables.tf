@@ -26,9 +26,9 @@ variable "security_group_ids" {
   type        = list(string)
 }
 
-variable "environment_variables" {
-  description = "Environment variables for Lambda functions"
-  type        = map(string)
+variable "environment_variables_by_function" {
+  description = "Per-function environment variable maps, keyed by function name"
+  type        = map(map(string))
   default     = {}
 }
 

@@ -5,7 +5,9 @@ import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { generateOpenAPIDocument } from "./openapi/registry";
 import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
-dotenv.config({ path: process.env.DOTENV_CONFIG_PATH || '.env' });
+import { migrationHandler } from "./migrationHandler";
+const envPath = path.resolve(__dirname, "../.env");
+dotenv.config({ path: envPath });
 import "./db/knex";
 
 const appContext = createAppContext();
@@ -69,29 +71,53 @@ app.get("/details/:payGovTrackingId", async (req, res) => {
   res.json(result);
 });
 
+// ONLY FOR LOCAL TESTING - DO NOT CONNECT TO API GATEWAY
+if (process.env.NODE_ENV !== "production") {
+  app.get("/migrations", async (req, res, next) => {
+    try {
+      const result = await migrationHandler();
+      res.status(result.statusCode).json(JSON.parse(result.body));
+    } catch (err) {
+      next(err);
+    }
+  });
+}
+
 app.get("/", (req, res) => {
   res.send("hello world!");
 });
 
 app.get("/transactions", async (_req, res, next) => {
-  const result = await appContext
-    .getUseCases()
-    .getRecentTransactions(appContext);
-  res.json(result);
+  try {
+    const result = await appContext
+      .getUseCases()
+      .getRecentTransactions(appContext);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
 });
 
 app.get("/transactions/:paymentStatus", async (req, res, next) => {
-  const result = await appContext
-    .getUseCases()
-    .getTransactionsByStatus(appContext, req.params as unknown as TransactionsByStatusPathParams);
-  res.json(result);
+  try {
+    const result = await appContext
+      .getUseCases()
+      .getTransactionsByStatus(appContext, req.params as unknown as TransactionsByStatusPathParams);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get("/transaction-payment-status", async (req, res, next) => {
-  const result = await appContext
-    .getUseCases()
-    .getTransactionPaymentStatus(appContext);
-  res.json(result);
+app.get("/transaction-payment-status", async (_req, res, next) => {
+  try {
+    const result = await appContext
+      .getUseCases()
+      .getTransactionPaymentStatus(appContext);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // start the express server

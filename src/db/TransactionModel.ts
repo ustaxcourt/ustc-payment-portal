@@ -1,14 +1,10 @@
 import { Model } from 'objection';
 import FeesModel from './FeesModel';
+import type { DashboardTransactionStatus } from '../schemas/TransactionDashboard.schema';
+import type { PaymentStatus } from '../schemas/PaymentStatus.schema';
 
-export type TransactionStatus =
-  | 'received'
-  | 'initiated'
-  | 'pending'
-  | 'processed'
-  | 'failed';
-
-export type PaymentStatus = 'pending' | 'success' | 'failed';
+export type TransactionStatus = DashboardTransactionStatus;
+export type { PaymentStatus };
 
 export type AggregatedPaymentStatus = Record<PaymentStatus, number> & { total: number };
 

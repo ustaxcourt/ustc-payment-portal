@@ -91,7 +91,7 @@ See the `terraform/` directory for deployment configuration and instructions.
 
 ## Testing
 
-Right now there aren't many unit tests, but there are some integration tests that test the deployed application at the base url specified in `.env.dev`:
+Right now there aren't many unit tests, but there are some integration tests that test the deployed application at the base url specified in `.env`:
 
 ```bash
 npm run test
