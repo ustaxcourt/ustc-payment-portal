@@ -150,10 +150,11 @@ npx esbuild db/migrations/*.ts \
 echo "Compiling seed files..."
 mkdir -p dist/migrationRunner/db/seeds
 npx esbuild db/seeds/*.ts \
-  --bundle=false \
+  --bundle \
   --platform=node \
   --target=node22 \
   --format=cjs \
+  --external:knex \
   --outdir=dist/migrationRunner/db/seeds/
 
 echo "Build completed successfully!"
