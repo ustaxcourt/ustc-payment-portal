@@ -4,6 +4,8 @@ import {
   getDetailsHandler,
 } from "./lambdaHandler";
 import { APIGatewayEvent } from "aws-lambda";
+import { PayGovError } from "./errors/payGovError";
+import { ServerError } from "./errors/serverError";
 
 // Reusable mock for appContext with dynamic use case injection
 const useCasesMock = {
@@ -178,6 +180,44 @@ describe("lambdaHandler", () => {
 
       expect(result.statusCode).toBe(403);
       expect(JSON.parse(result.body).message).toBe("Client not authorized for feeId");
+    });
+
+    it("returns 504 when initPayment throws PayGovError", async () => {
+      useCasesMock.initPayment = jest.fn().mockRejectedValue(new PayGovError());
+
+      const event = {
+        body: JSON.stringify({
+          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+          feeId: "PETITION_FILING_FEE",
+          urlSuccess: "https://example.com/success",
+          urlCancel: "https://example.com/cancel",
+          metadata: { docketNumber: "123-26" },
+        }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await initPaymentHandler(event);
+      expect(result.statusCode).toBe(504);
+    });
+
+    it("returns 500 when initPayment throws an unexpected error", async () => {
+      useCasesMock.initPayment = jest.fn().mockRejectedValue(new ServerError("DB exploded"));
+
+      const event = {
+        body: JSON.stringify({
+          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+          feeId: "PETITION_FILING_FEE",
+          urlSuccess: "https://example.com/success",
+          urlCancel: "https://example.com/cancel",
+          metadata: { docketNumber: "123-26" },
+        }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await initPaymentHandler(event);
+      expect(result.statusCode).toBe(500);
     });
   });
 

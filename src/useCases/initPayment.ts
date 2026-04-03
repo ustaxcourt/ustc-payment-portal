@@ -4,6 +4,8 @@ import {
   InitPaymentResponse,
 } from "../schemas/InitPayment.schema";
 import { InvalidRequestError } from "../errors/invalidRequest";
+import { PayGovError } from "../errors/payGovError";
+import { ServerError } from "../errors/serverError";
 import FeesModel from "../db/FeesModel";
 import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
@@ -57,12 +59,24 @@ export const initPayment: InitPayment = async (appContext, request) => {
       metadata: request.metadata,
     });
 
-    result = await req.makeSoapRequest(appContext);
+    try {
+      result = await req.makeSoapRequest(appContext);
+    } catch (soapErr) {
+      throw new PayGovError(
+        `Failed to communicate with Pay.gov: ${soapErr instanceof Error ? soapErr.message : String(soapErr)}`
+      );
+    }
 
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
     await TransactionModel.updateToFailed(agencyTrackingId);
-    throw new Error(`Failed to initiate payment: ${err instanceof Error ? err.message : String(err)}`);
+
+    if (err instanceof PayGovError) {
+      throw err;
+    }
+    throw new ServerError(
+      `Failed to initiate payment: ${err instanceof Error ? err.message : String(err)}`
+    );
   }
 
   return {

@@ -8,10 +8,16 @@ describe("handleError", () => {
     expect(JSON.parse(result.body).message).toBe("Forbidden");
   });
 
-  it("returns 500 with a generic message for known server errors (>= 500)", () => {
+  it("passes through statusCode and message for typed server errors (>= 500)", () => {
     const result = handleError({ statusCode: 500, message: "Something broke" });
     expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).message).toBe("An unexpected error occurred");
+    expect(JSON.parse(result.body).message).toBe("Something broke");
+  });
+
+  it("passes through statusCode and message for 504 errors", () => {
+    const result = handleError({ statusCode: 504, message: "Failed to communicate with Pay.gov" });
+    expect(result.statusCode).toBe(504);
+    expect(JSON.parse(result.body).message).toBe("Failed to communicate with Pay.gov");
   });
 
   it("returns 500 with a generic message for unrecognized errors", () => {

@@ -36,6 +36,8 @@ import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
+import { PayGovError } from "../errors/payGovError";
+import { ServerError } from "../errors/serverError";
 
 const validPetitionRequest: InitPaymentRequest & { clientName: string } = {
   transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
@@ -120,15 +122,25 @@ describe("initPayment", () => {
     ).rejects.toThrow("does not allow variable amounts");
   });
 
-  it("updates transaction to failed if SOAP request fails", async () => {
+  it("throws PayGovError and updates transaction to failed if SOAP request fails", async () => {
     jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
       .mockRejectedValueOnce(new Error("SOAP error"));
     const TransactionModel = require("../db/TransactionModel").default;
 
     await expect(
       initPayment(appContext, validPetitionRequest)
-    ).rejects.toThrow("Failed to initiate payment: SOAP error");
+    ).rejects.toBeInstanceOf(PayGovError);
     expect(TransactionModel.createReceived).toHaveBeenCalled();
+    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+  });
+
+  it("throws ServerError and updates transaction to failed if DB write fails", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.createReceived.mockRejectedValueOnce(new Error("DB connection lost"));
+
+    await expect(
+      initPayment(appContext, validPetitionRequest)
+    ).rejects.toBeInstanceOf(ServerError);
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
   });
 });

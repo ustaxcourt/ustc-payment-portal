@@ -124,6 +124,14 @@ registry.registerPath({
         },
       },
     },
+    504: {
+      description: "Gateway timeout — failed to communicate with Pay.gov",
+      content: {
+        "text/plain": {
+          schema: ServerErrorSchema,
+        },
+      },
+    },
   },
 });
 

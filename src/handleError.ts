@@ -2,7 +2,7 @@ import { ZodError } from "zod";
 
 export const handleError = (err: any) => {
   console.error(`responding with an error`, err);
-  if (err.statusCode && err.statusCode < 500) {
+  if (err.statusCode) {
     return {
       statusCode: err.statusCode,
       body: JSON.stringify({
