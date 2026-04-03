@@ -48,8 +48,8 @@ export async function getRdsCredentials(): Promise<RdsConnectionConfig> {
   if (!username) throw new Error("RDS secret is missing 'username' field");
   if (!password) throw new Error("RDS secret is missing 'password' field");
 
-  // Use proper TLS verification when the RDS CA bundle is available (deployed Lambda),
-  // fall back to rejectUnauthorized: false for local dev without the bundle.
+  // Use proper TLS verification when the RDS CA bundle is available (deployed Lambda).
+  // Fall back to rejectUnauthorized: false for local dev without the bundle.
   const caPath = join(__dirname, "rds-ca-bundle.pem");
   const ssl = existsSync(caPath)
     ? { rejectUnauthorized: true, ca: readFileSync(caPath) }
