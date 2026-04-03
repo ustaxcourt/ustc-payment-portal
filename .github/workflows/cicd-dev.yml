@@ -213,6 +213,9 @@ jobs:
             exit 1
           fi
 
+      # Migrations must run before seeding — seed files depend on the schema
+      # created by migrations (tables, columns, constraints). Reversing this
+      # order would cause the seed to fail on a blank database.
       - name: Run DB migrations (PR)
         if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
         working-directory: terraform/environments/dev

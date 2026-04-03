@@ -262,4 +262,134 @@ describe("migrationHandler", () => {
       "RDS_MASTER_SECRET_ARN is not set",
     );
   });
+
+  it("drop-db refuses to drop a non-PR database", async () => {
+    process.env.RDS_DB_NAME = "paymentportal";
+
+    await expect(migrationHandler({ command: "drop-db" })).rejects.toThrow(
+      'Refusing to drop "paymentportal"',
+    );
+    expect(mockRaw).not.toHaveBeenCalled();
+  });
+
+  describe("gc-dbs", () => {
+    beforeEach(() => {
+      mockSend.mockResolvedValue({ SecretString: MASTER_SECRET });
+    });
+
+    it("throws when openPrNumbers is not provided", async () => {
+      await expect(migrationHandler({ command: "gc-dbs" })).rejects.toThrow(
+        "gc-dbs requires a non-empty openPrNumbers array",
+      );
+      expect(mockRaw).not.toHaveBeenCalled();
+    });
+
+    it("throws when openPrNumbers is an empty array", async () => {
+      await expect(
+        migrationHandler({ command: "gc-dbs", openPrNumbers: [] }),
+      ).rejects.toThrow("gc-dbs requires a non-empty openPrNumbers array");
+      expect(mockRaw).not.toHaveBeenCalled();
+    });
+
+    it("drops databases for closed PRs and keeps open ones", async () => {
+      mockRaw.mockResolvedValueOnce({
+        rows: [
+          { datname: "paymentportal_pr_10" },
+          { datname: "paymentportal_pr_20" },
+          { datname: "paymentportal_pr_30" },
+        ],
+      });
+      mockRaw.mockResolvedValue(undefined);
+
+      const result = await migrationHandler({
+        command: "gc-dbs",
+        openPrNumbers: [20],
+      });
+
+      // pr_10 and pr_30 are closed — should be dropped
+      expect(mockRaw).toHaveBeenCalledWith(
+        "DROP DATABASE IF EXISTS ?? WITH (FORCE)",
+        ["paymentportal_pr_10"],
+      );
+      expect(mockRaw).toHaveBeenCalledWith(
+        "DROP DATABASE IF EXISTS ?? WITH (FORCE)",
+        ["paymentportal_pr_30"],
+      );
+      // pr_20 is open — must NOT be dropped
+      expect(mockRaw).not.toHaveBeenCalledWith(
+        "DROP DATABASE IF EXISTS ?? WITH (FORCE)",
+        ["paymentportal_pr_20"],
+      );
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          dropped: ["paymentportal_pr_10", "paymentportal_pr_30"],
+        }),
+      });
+    });
+
+    it("drops nothing when all PR databases are still open", async () => {
+      mockRaw.mockResolvedValueOnce({
+        rows: [
+          { datname: "paymentportal_pr_10" },
+          { datname: "paymentportal_pr_20" },
+        ],
+      });
+
+      const result = await migrationHandler({
+        command: "gc-dbs",
+        openPrNumbers: [10, 20],
+      });
+
+      expect(mockRaw).toHaveBeenCalledTimes(1); // only the SELECT
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({ dropped: [] }),
+      });
+    });
+
+    it("skips database names that do not match the expected pattern", async () => {
+      mockRaw.mockResolvedValueOnce({
+        rows: [
+          { datname: "paymentportal_pr_10" },
+          { datname: "paymentportal_pr_unexpected_name" },
+        ],
+      });
+      mockRaw.mockResolvedValue(undefined);
+
+      const result = await migrationHandler({
+        command: "gc-dbs",
+        openPrNumbers: [99],
+      });
+
+      // pr_10 dropped (not in open list), unexpected_name skipped
+      expect(mockRaw).toHaveBeenCalledWith(
+        "DROP DATABASE IF EXISTS ?? WITH (FORCE)",
+        ["paymentportal_pr_10"],
+      );
+      expect(mockRaw).not.toHaveBeenCalledWith(
+        expect.anything(),
+        ["paymentportal_pr_unexpected_name"],
+      );
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({ dropped: ["paymentportal_pr_10"] }),
+      });
+    });
+
+    it("destroys the knex connection even when a drop fails", async () => {
+      mockRaw
+        .mockResolvedValueOnce({
+          rows: [{ datname: "paymentportal_pr_10" }],
+        })
+        .mockRejectedValueOnce(new Error("drop failed"));
+
+      await expect(
+        migrationHandler({ command: "gc-dbs", openPrNumbers: [99] }),
+      ).rejects.toThrow("drop failed");
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+    });
+  });
 });

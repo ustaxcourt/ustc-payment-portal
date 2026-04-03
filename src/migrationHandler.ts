@@ -177,6 +177,10 @@ const getSeedsDirectory = (): string => {
   return path.join(__dirname, "..", "db", "seeds");
 };
 
+// TODO: For better isolation, create a dedicated PostgreSQL user scoped to each
+// PR database rather than reusing the shared admin credentials. This would prevent
+// a PR environment from accidentally accessing another PR's database.
+// At current team size this is low risk, but worth revisiting at DAWSON scale.
 const createDb = async (): Promise<MigrationHandlerResult> => {
   const dbName = process.env.RDS_DB_NAME;
   if (!dbName) throw new Error("RDS_DB_NAME is not set");
@@ -215,6 +219,12 @@ const createDb = async (): Promise<MigrationHandlerResult> => {
 const dropDb = async (): Promise<MigrationHandlerResult> => {
   const dbName = process.env.RDS_DB_NAME;
   if (!dbName) throw new Error("RDS_DB_NAME is not set");
+
+  if (!/^paymentportal_pr_\d+$/.test(dbName)) {
+    throw new Error(
+      `Refusing to drop "${dbName}" — drop-db is only allowed for PR databases (paymentportal_pr_<number>)`,
+    );
+  }
 
   const knex = await getMaintenanceKnex();
   try {
