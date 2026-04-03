@@ -35,7 +35,7 @@ function createKnexFromEnv(): ReturnType<typeof Knex> {
   return Knex({ client: 'pg', connection, pool: { min: 2, max: 10 }, ...knexSnakeCaseMappers() });
 }
 
-// Local dev / test path: initialise synchronously so that importing this module
+// Local dev / test path:  initialise synchronously so that importing this module
 // in devServer.ts still triggers Model.knex() as a side effect.
 if (!RDS_SECRET_ARN) {
   knexInstance = createKnexFromEnv();
