@@ -1,14 +1,12 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
-import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { generateOpenAPIDocument } from "./openapi/registry";
 import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
 import { migrationHandler } from "./migrationHandler";
 import { handleError } from "./handleError";
-const envPath = path.resolve(__dirname, "../.env");
-dotenv.config({ path: envPath });
 import "./db/knex";
 
 const appContext = createAppContext();
