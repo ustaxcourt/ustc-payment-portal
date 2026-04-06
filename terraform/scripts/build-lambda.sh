@@ -92,6 +92,7 @@ npx esbuild src/testCert.ts \
   --outfile=dist/testCert/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
   --minify \
   --keep-names
 
