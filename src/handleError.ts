@@ -1,29 +1,54 @@
 import { ZodError } from "zod";
+import { PayGovError } from "./errors/payGovError";
 
-export const handleError = (err: any) => {
+export const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type,Authorization",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+};
+
+export const buildResponse = (
+  statusCode: number,
+  body: { message: string; errors: unknown[] }
+) => ({
+  statusCode,
+  headers: corsHeaders,
+  body: JSON.stringify(body),
+});
+
+export const handleError = (err: unknown) => {
   console.error(`responding with an error`, err);
-  if (err.statusCode) {
-    return {
-      statusCode: err.statusCode,
-      body: JSON.stringify({
-        message: err.message,
-        errors: [],
-      }),
-    };
-  } else if (err instanceof ZodError) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        message: "Validation error",
-        errors: err.issues,
-      }),
-    };
-  }
-  return {
-    statusCode: 500,
-    body: JSON.stringify({
-      message: "An unexpected error occurred",
+
+  if (err instanceof PayGovError) {
+    return buildResponse(504, {
+      message: err.message,
       errors: [],
-    }),
-  };
+    });
+  }
+
+  if (
+    err &&
+    typeof err === "object" &&
+    "statusCode" in err &&
+    typeof (err as { statusCode: number }).statusCode === "number" &&
+    (err as { statusCode: number }).statusCode < 500
+  ) {
+    const typedErr = err as { statusCode: number; message: string };
+    return buildResponse(typedErr.statusCode, {
+      message: typedErr.message,
+      errors: [],
+    });
+  }
+
+  if (err instanceof ZodError) {
+    return buildResponse(400, {
+      message: "Validation error",
+      errors: err.issues,
+    });
+  }
+
+  return buildResponse(500, {
+    message: "An unexpected error occurred",
+    errors: [],
+  });
 };

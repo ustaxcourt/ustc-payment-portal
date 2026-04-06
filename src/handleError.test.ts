@@ -1,4 +1,5 @@
 import { handleError } from "./handleError";
+import { PayGovError } from "./errors/payGovError";
 import { z } from "zod";
 
 describe("handleError", () => {
@@ -8,14 +9,14 @@ describe("handleError", () => {
     expect(JSON.parse(result.body).message).toBe("Forbidden");
   });
 
-  it("passes through statusCode and message for typed server errors (>= 500)", () => {
+  it("returns 500 with a generic message for unhandled server errors — does not leak internal messages", () => {
     const result = handleError({ statusCode: 500, message: "Something broke" });
     expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).message).toBe("Something broke");
+    expect(JSON.parse(result.body).message).toBe("An unexpected error occurred");
   });
 
-  it("passes through statusCode and message for 504 errors", () => {
-    const result = handleError({ statusCode: 504, message: "Failed to communicate with Pay.gov" });
+  it("returns 504 for PayGovError instances with the Pay.gov message", () => {
+    const result = handleError(new PayGovError("Failed to communicate with Pay.gov"));
     expect(result.statusCode).toBe(504);
     expect(JSON.parse(result.body).message).toBe("Failed to communicate with Pay.gov");
   });
