@@ -176,6 +176,26 @@ module "iam_cicd" {
   create_lambda_exec_role  = false
 }
 
+resource "aws_iam_role_policy" "shared_lambda_secrets_access" {
+  count = local.environment == "dev" ? 1 : 0
+  name  = "ustc-payment-portal-shared-lambda-secrets-access"
+  role  = element(reverse(split("/", data.terraform_remote_state.foundation.outputs.lambda_role_arn)), 0)
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = ["secretsmanager:GetSecretValue"]
+        Resource = [
+          "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*",
+          "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
+        ]
+      }
+    ]
+  })
+}
+
 module "artifacts_bucket" {
   count  = local.environment == "dev" ? 1 : 0
   source = "../../modules/artifacts_bucket"

@@ -7,11 +7,13 @@ describe("initialize a payment", () => {
   const transactionReferenceId = crypto.randomUUID();
 
   afterAll(async () => {
-    if (isLocal) {
+    if (isLocal && knex) {
       await TransactionModel.query()
         .where({ transactionReferenceId })
         .delete();
-      await knex.destroy();
+      if (typeof knex.destroy === 'function') {
+        await knex.destroy();
+      }
     }
   });
 
