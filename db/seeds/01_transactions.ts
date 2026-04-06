@@ -3,7 +3,7 @@ import { faker } from '@faker-js/faker';
 import dayjs from 'dayjs';
 
 /**
- * Seed: Inserts baseline 200 fake-but-realistic transaction records.
+ * Seed: Inserts baseline fake-but-realistic transaction records.
  */
 export async function seed(knex: Knex): Promise<void> {
     // Clear out previous data

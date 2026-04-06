@@ -24,6 +24,18 @@ fi
 # Bundle each Lambda function individually using esbuild
 echo "Bundling Lambda functions with esbuild..."
 
+# Knex optional dialect modules — not used at runtime (pg is used); must be excluded
+# from all bundles that transitively import knex (lambdaHandler.ts → knex.ts → knex).
+KNEX_EXTERNALS=(
+  --external:sqlite3
+  --external:mysql
+  --external:mysql2
+  --external:tedious
+  --external:pg-query-stream
+  --external:better-sqlite3
+  --external:oracledb
+)
+
 # Bundle Init Payment Lambda
 echo "Bundling initPayment..."
 mkdir -p dist/initPayment
@@ -35,6 +47,7 @@ npx esbuild src/lambdaHandler.ts \
   --outfile=dist/initPayment/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
   --minify \
   --keep-names
 
@@ -49,6 +62,7 @@ npx esbuild src/lambdaHandler.ts \
   --outfile=dist/processPayment/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
   --minify \
   --keep-names
 
@@ -63,6 +77,7 @@ npx esbuild src/lambdaHandler.ts \
   --outfile=dist/getDetails/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
   --minify \
   --keep-names
 
@@ -77,6 +92,7 @@ npx esbuild src/testCert.ts \
   --outfile=dist/testCert/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
   --minify \
   --keep-names
 
@@ -92,6 +108,7 @@ for func in getAllTransactions getTransactionsByStatus getTransactionPaymentStat
     --outfile="dist/${func}/lambdaHandler.js" \
     --external:aws-sdk \
     --external:@aws-sdk/* \
+    "${KNEX_EXTERNALS[@]}" \
     --minify \
     --keep-names
 done
@@ -107,13 +124,7 @@ npx esbuild src/migrationHandler.ts \
   --outfile=dist/migrationRunner/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
-  --external:sqlite3 \
-  --external:mysql \
-  --external:mysql2 \
-  --external:tedious \
-  --external:pg-query-stream \
-  --external:better-sqlite3 \
-  --external:oracledb \
+  "${KNEX_EXTERNALS[@]}" \
   --minify \
   --keep-names
 
@@ -127,7 +138,17 @@ if [ -d "certs" ]; then
     done
 fi
 
-# Copy migration files for migrationRunner
+# Download Amazon RDS CA bundle for TLS certificate verification
+echo "Downloading RDS CA bundle..."
+curl -sSf -o /tmp/rds-ca-bundle.pem \
+  https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem
+
+# Copy CA bundle to all Lambda functions that connect to RDS
+for func in initPayment processPayment getDetails migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
+  cp /tmp/rds-ca-bundle.pem "dist/${func}/rds-ca-bundle.pem"
+done
+
+# Copy migration and seed files for migrationRunner
 echo "Compiling migration files..."
 mkdir -p dist/migrationRunner/db/migrations
 npx esbuild db/migrations/*.ts \
@@ -136,6 +157,16 @@ npx esbuild db/migrations/*.ts \
   --target=node22 \
   --format=cjs \
   --outdir=dist/migrationRunner/db/migrations/
+
+echo "Compiling seed files..."
+mkdir -p dist/migrationRunner/db/seeds
+npx esbuild db/seeds/*.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --external:knex \
+  --outdir=dist/migrationRunner/db/seeds/
 
 echo "Build completed successfully!"
 echo "Bundled Lambda functions ready:"

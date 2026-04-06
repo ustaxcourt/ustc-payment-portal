@@ -6,6 +6,10 @@ locals {
   custom_domain = "dev-payments.ustaxcourt.gov"
   # Payment Lambdas: initPayment, processPayment, getDetails, testCert
   # Needs full secrets + RDS. mTLS vars included when enabled.
+  rds_endpoint   = local.environment == "dev" ? module.rds[0].endpoint : data.aws_ssm_parameter.dev_rds_endpoint[0].value
+  rds_secret_arn = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : data.aws_ssm_parameter.dev_rds_secret_arn[0].value
+  rds_db_name    = local.environment == "dev" ? "paymentportal" : "paymentportal_${replace(local.environment, "-", "_")}"
+
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
     PAYMENT_URL                        = local.payment_url
@@ -13,9 +17,9 @@ locals {
     CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
     PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = module.secrets.paygov_dev_server_token_secret_id
     CLIENT_PERMISSIONS_SECRET_ID       = module.secrets.client_permissions_secret_id
-    RDS_ENDPOINT                       = local.environment == "dev" ? module.rds[0].endpoint : ""
-    RDS_SECRET_ARN                     = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : ""
-    RDS_DB_NAME                        = local.environment == "dev" ? "paymentportal" : ""
+    RDS_ENDPOINT                       = local.rds_endpoint
+    RDS_SECRET_ARN                     = local.rds_secret_arn
+    RDS_DB_NAME                        = local.rds_db_name
   }, local.mtls_enabled ? {
     PRIVATE_KEY_SECRET_ID = module.secrets.private_key_secret_id
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
@@ -25,19 +29,21 @@ locals {
   # authorization=NONE — must not receive payment secrets.
   lambda_env_dashboard = {
     NODE_ENV                 = local.node_env
-    RDS_ENDPOINT             = local.environment == "dev" ? module.rds[0].endpoint : ""
-    RDS_SECRET_ARN           = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : ""
-    RDS_DB_NAME              = local.environment == "dev" ? "paymentportal" : ""
+    RDS_ENDPOINT             = local.rds_endpoint
+    RDS_SECRET_ARN           = local.rds_secret_arn
+    RDS_DB_NAME              = local.rds_db_name
     DASHBOARD_ALLOWED_ORIGIN = local.dashboard_allowed_origin
   }
 
   # Migration Lambda: migrationRunner
   # Needs RDS only — no payment secrets, no CORS origin.
+  # RDS_MASTER_SECRET_ARN uses the same admin credentials — required for CREATE/DROP DATABASE.
   lambda_env_migration = {
-    NODE_ENV       = local.node_env
-    RDS_ENDPOINT   = local.environment == "dev" ? module.rds[0].endpoint : ""
-    RDS_SECRET_ARN = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : ""
-    RDS_DB_NAME    = local.environment == "dev" ? "paymentportal" : ""
+    NODE_ENV              = local.node_env
+    RDS_ENDPOINT          = local.rds_endpoint
+    RDS_SECRET_ARN        = local.rds_secret_arn
+    RDS_MASTER_SECRET_ARN = local.rds_secret_arn
+    RDS_DB_NAME           = local.rds_db_name
   }
 
   lambda_env_by_function = {

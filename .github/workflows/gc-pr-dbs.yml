@@ -1,0 +1,53 @@
+name: GC - Orphaned PR Databases
+
+on:
+  schedule:
+    # Runs nightly at 02:00 UTC
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+
+jobs:
+  gc_pr_databases:
+    name: Drop orphaned PR databases
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Configure AWS Credentials (OIDC - Dev)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Drop stale PR databases via dev migrationRunner
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          echo "Fetching open PR numbers..."
+          OPEN_PRS=$(gh pr list \
+            --repo "${{ github.repository }}" \
+            --state open \
+            --limit 100 \
+            --json number \
+            --jq '[.[].number]')
+
+          echo "Open PRs: $OPEN_PRS"
+
+          PAYLOAD=$(jq -n --argjson prs "$OPEN_PRS" '{"command":"gc-dbs","openPrNumbers":$prs}')
+
+          echo "Invoking dev migrationRunner with gc-dbs..."
+          aws lambda invoke \
+            --function-name ustc-payment-processor-migrationRunner \
+            --payload "$PAYLOAD" \
+            --cli-binary-format raw-in-base64-out \
+            response.json
+          cat response.json
