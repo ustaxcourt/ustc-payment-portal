@@ -73,15 +73,15 @@ export default class TransactionModel extends Model {
   }
 
   static async getAll(): Promise<TransactionModel[]> {
-      return this.query()
-        .withGraphJoined('fee')
-        .select(
-          'transactions.*',
-          'fee.name as feeName',
-          'fee.amount as feeAmount'
-        )
-        .orderBy('createdAt', 'desc')
-        .limit(100);
+    return this.query()
+      .withGraphJoined('fee')
+      .select(
+        'transactions.*',
+        'fee.name as feeName',
+        'fee.amount as feeAmount'
+      )
+      .orderBy('createdAt', 'desc')
+      .limit(100);
   }
 
   static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
@@ -116,7 +116,7 @@ export default class TransactionModel extends Model {
     return totals;
   }
 
-  static async createReceived(data: Partial<TransactionModel>): Promise<TransactionModel> {
+  static async createReceived(data: Omit<Partial<TransactionModel>, 'paymentStatus' | 'transactionStatus'>): Promise<TransactionModel> {
     const newTransaction = await this.query().insertAndFetch({
       ...data,
       paymentStatus: 'pending',
