@@ -372,6 +372,18 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Effect   = "Allow",
         Action   = ["execute-api:Invoke"],
         Resource = "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ssm:PutParameter",
+          "ssm:DeleteParameter",
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:AddTagsToResource",
+          "ssm:ListTagsForResource"
+        ],
+        Resource = "arn:aws:ssm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/ustc/pay-gov/dev/rds-*"
       }
     ]
   })
