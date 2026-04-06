@@ -1,7 +1,7 @@
 import { Model } from 'objection';
+import FeesModel from './FeesModel';
 import type { DashboardTransactionStatus } from '../schemas/TransactionDashboard.schema';
 import type { PaymentStatus } from '../schemas/PaymentStatus.schema';
-import { getKnex } from './knex';
 
 export type TransactionStatus = DashboardTransactionStatus;
 export type { PaymentStatus };
@@ -17,15 +17,13 @@ export type PaymentMethod =
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
-  feeName!: string;
   feeId!: string;
-  feeAmount!: number;
   clientName!: string;
   transactionReferenceId!: string;
   paymentStatus!: PaymentStatus;
   transactionStatus?: TransactionStatus | null;
   paygovToken?: string | null;
-  paymentMethod!: PaymentMethod;
+  paymentMethod?: PaymentMethod | null;
   createdAt!: string;
   lastUpdatedAt!: string;
   metadata?: Record<string, string> | null;
@@ -36,6 +34,19 @@ export default class TransactionModel extends Model {
 
   static get idColumn() {
     return 'agencyTrackingId';
+  }
+
+  static get relationMappings() {
+    return {
+      fee: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: FeesModel,
+        join: {
+          from: 'transactions.feeId',
+          to: 'fees.feeId',
+        },
+      },
+    };
   }
 
   $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
@@ -49,7 +60,6 @@ export default class TransactionModel extends Model {
   }
 
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
-    await getKnex();
     return TransactionModel.query()
       .where('paymentStatus', paymentStatus)
       .orderBy('createdAt', 'desc')
@@ -57,20 +67,19 @@ export default class TransactionModel extends Model {
   }
 
   static async getAll(): Promise<TransactionModel[]> {
-    await getKnex();
     return TransactionModel.query()
       .orderBy('createdAt', 'desc')
       .limit(100);
   }
 
   static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
-    await getKnex();
     const rows = await TransactionModel.query()
       .select('paymentStatus')
       .count('* as count')
       .groupBy('paymentStatus')
 
-    const data = await TransactionModel.query()
+    // TODO: Update aggregation for success, failed, and pending in PAY-053
+    const data = await this.query()
       .orderBy('createdAt', 'desc')
       .page(0, 100);
 
@@ -93,5 +102,33 @@ export default class TransactionModel extends Model {
     // Use the total count from the paginated query
     totals.total = data.results.length;
     return totals;
+  }
+
+  static async createReceived(data: Omit<Partial<TransactionModel>, 'paymentStatus' | 'transactionStatus'>): Promise<TransactionModel> {
+    const newTransaction = await this.query().insertAndFetch({
+      ...data,
+      paymentStatus: 'pending',
+      transactionStatus: 'received',
+    });
+
+    return newTransaction;
+  }
+
+  static async updateToInitiated(agencyTrackingId: string, paygovToken: string): Promise<void> {
+    await this.query()
+      .patch({
+        transactionStatus: 'initiated',
+        paygovToken,
+      })
+      .where('agencyTrackingId', agencyTrackingId);
+  }
+
+  static async updateToFailed(agencyTrackingId: string): Promise<void> {
+    await this.query()
+      .patch({
+        transactionStatus: 'failed',
+        paymentStatus: 'failed',
+      })
+      .where('agencyTrackingId', agencyTrackingId);
   }
 }

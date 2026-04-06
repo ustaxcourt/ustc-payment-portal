@@ -5,8 +5,8 @@ import {
 } from "aws-lambda";
 import { createAppContext } from "./appContext";
 import { extractCallerArn } from "./extractCallerArn";
-import { authorizeClient } from "./authorizeClient";
-import { handleError } from "./handleError";
+import { authorizeClient, ClientPermission } from "./authorizeClient";
+import { handleError, corsHeaders } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
 import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
 import { GetDetails } from "./useCases/getDetails";
@@ -24,13 +24,16 @@ const lambdaHandler = async (
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler,
   feeId?: string,
+  enrichRequest?: (client: ClientPermission, request: any) => any
 ): Promise<APIGatewayProxyResult> => {
   try {
     const roleArn = extractCallerArn(requestContext);
-    await authorizeClient(roleArn, feeId);
-    const result = await callback(appContext, request);
+    const client = await authorizeClient(roleArn, feeId);
+    const resolvedRequest = enrichRequest ? enrichRequest(client, request) : request;
+    const result = await callback(appContext, resolvedRequest);
     return {
       statusCode: 200,
+      headers: corsHeaders,
       body: JSON.stringify(result),
     };
   } catch (err) {
@@ -72,6 +75,7 @@ export const initPaymentHandler = (
     event.requestContext,
     appContext.getUseCases().initPayment,
     parsed.data.feeId,
+    (client, req) => ({ ...req, clientName: client.clientName })
   );
 };
 
@@ -108,6 +112,11 @@ export const getDetailsHandler = (
 // Dashboard Lambda Handlers
 // NOTE: If we write integration tests for these handlers, we will need to setup PR ephemeral environments to spin up a RDS instance, otherwise the tests will always fail.
 // ──────────────────────────────
+
+// Dashboard handlers use a separate, environment-configurable CORS origin (DASHBOARD_ALLOWED_ORIGIN)
+// rather than the shared `corsHeaders` constant used by the payment handlers. This is intentional:
+// the dashboard is an internal tool with a deployment-specific origin, while the payment API is
+// accessed by registered external clients whose origin is fixed at build time.
 const getDashboardCorsHeaders = () => {
   const origin = process.env.DASHBOARD_ALLOWED_ORIGIN;
   if (!origin) {
