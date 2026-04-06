@@ -1,6 +1,6 @@
 import { AppContext } from "../types/AppContext";
 import {
-  InitPaymentRequest,
+  InitPaymentInternalRequest,
   InitPaymentResponse,
 } from "../schemas/InitPayment.schema";
 import { InvalidRequestError } from "../errors/invalidRequest";
@@ -10,8 +10,6 @@ import FeesModel from "../db/FeesModel";
 import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
-
-type InitPaymentInternalRequest = InitPaymentRequest & { clientName: string };
 
 export type InitPayment = (
   appContext: AppContext,
