@@ -1,6 +1,7 @@
 import { Model } from 'objection';
 import type { DashboardTransactionStatus } from '../schemas/TransactionDashboard.schema';
 import type { PaymentStatus } from '../schemas/PaymentStatus.schema';
+import { getKnex } from './knex';
 
 export type TransactionStatus = DashboardTransactionStatus;
 export type { PaymentStatus };
@@ -48,6 +49,7 @@ export default class TransactionModel extends Model {
   }
 
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
+    await getKnex();
     return TransactionModel.query()
       .where('paymentStatus', paymentStatus)
       .orderBy('createdAt', 'desc')
@@ -55,12 +57,14 @@ export default class TransactionModel extends Model {
   }
 
   static async getAll(): Promise<TransactionModel[]> {
+    await getKnex();
     return TransactionModel.query()
       .orderBy('createdAt', 'desc')
       .limit(100);
   }
 
   static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
+    await getKnex();
     const rows = await TransactionModel.query()
       .select('paymentStatus')
       .count('* as count')
