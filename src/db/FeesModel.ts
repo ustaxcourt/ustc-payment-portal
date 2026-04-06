@@ -1,4 +1,5 @@
 import { Model } from 'objection';
+import { getKnex } from './knex';
 
 export default class FeesModel extends Model {
   feeId!: string;
@@ -36,6 +37,7 @@ export default class FeesModel extends Model {
   }
 
   static async getFeeById(feeId: string): Promise<FeesModel | undefined> {
+    await getKnex();
     return FeesModel.query().findById(feeId) || undefined;
   }
 }
