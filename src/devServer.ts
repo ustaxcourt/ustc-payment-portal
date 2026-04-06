@@ -6,6 +6,7 @@ import { createAppContext } from "./appContext";
 import { generateOpenAPIDocument } from "./openapi/registry";
 import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
 import { migrationHandler } from "./migrationHandler";
+import { handleError } from "./handleError";
 const envPath = path.resolve(__dirname, "../.env");
 dotenv.config({ path: envPath });
 import "./db/knex";
@@ -51,24 +52,39 @@ app.get("/openapi.json", (req, res) => {
 
 // define a route handler for the default home page
 app.post("/init", async (req, res) => {
-  const result = await appContext
-    .getUseCases()
-    .initPayment(appContext, { ...req.body, clientName: "DEV" });
-  res.json(result);
+  try {
+    const result = await appContext
+      .getUseCases()
+      .initPayment(appContext, req.body);
+    res.json(result);
+  } catch (err) {
+    const { statusCode, body } = handleError(err);
+    res.status(statusCode).json(JSON.parse(body));
+  }
 });
 
 app.post("/process", async (req, res) => {
-  const result = await appContext
-    .getUseCases()
-    .processPayment(appContext, req.body);
-  res.json(result);
+  try {
+    const result = await appContext
+      .getUseCases()
+      .processPayment(appContext, req.body);
+    res.json(result);
+  } catch (err) {
+    const { statusCode, body } = handleError(err);
+    res.status(statusCode).json(JSON.parse(body));
+  }
 });
 
 app.get("/details/:payGovTrackingId", async (req, res) => {
-  const result = await appContext
-    .getUseCases()
-    .getDetails(appContext, req.params);
-  res.json(result);
+  try {
+    const result = await appContext
+      .getUseCases()
+      .getDetails(appContext, req.params);
+    res.json(result);
+  } catch (err) {
+    const { statusCode, body } = handleError(err);
+    res.status(statusCode).json(JSON.parse(body));
+  }
 });
 
 // ONLY FOR LOCAL TESTING - DO NOT CONNECT TO API GATEWAY

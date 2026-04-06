@@ -1,26 +1,45 @@
 import Knex from 'knex';
-import { Model } from 'objection';
-import { getKnexConfigForEnv } from './knexConfig';
+import { Model, knexSnakeCaseMappers } from 'objection';
+import { getRdsCredentials } from './getRdsCredentials';
 
-const NODE_ENV = process.env.NODE_ENV || 'development';
-const knexConfig = getKnexConfigForEnv(NODE_ENV);
+const {
+  DB_HOST = 'localhost',
+  DB_PORT = '5432',
+  DB_USER = 'user',
+  DB_PASSWORD = 'password',
+  DB_NAME = 'mydb',
+  NODE_ENV = 'development',
+  RDS_SECRET_ARN,
+} = process.env;
 
-if (NODE_ENV !== 'production') {
-  const connection = knexConfig.connection;
-  const dbName =
-    typeof connection === 'string'
-      ? '(DATABASE_URL)'
-      : connection && typeof connection === 'object' && 'database' in connection
-        ? String(connection.database)
-        : '(unknown)';
-  console.log(
-    `[Dashboard Knex] env=${NODE_ENV} db=${dbName}`
-  );
-}
+let knexInstance: ReturnType<typeof Knex> | null = null;
 
-const knex = Knex(knexConfig);
+function createKnexFromEnv(): ReturnType<typeof Knex> {
+  const connection =
+    NODE_ENV === 'production' && process.env.DATABASE_URL
+      ? process.env.DATABASE_URL
+      : {
+        host: DB_HOST,
+        port: Number(DB_PORT),
+        user: DB_USER,
+        password: DB_PASSWORD,
+        database: NODE_ENV === 'test' ? `${DB_NAME}_test` : DB_NAME,
+      };
 
-// Bind Objection models to this Knex instance
-Model.knex(knex);
+  if (NODE_ENV !== 'production') {
+    console.log(
+      `[Dashboard Knex] env=${NODE_ENV} db=${typeof connection === 'string' ? '(DATABASE_URL)' : connection.database}`
+    );
+  }
 
-export default knex;
+  const knex = Knex({
+    client: 'pg',
+    connection,
+    pool: { min: 2, max: 10 },
+    ...knexSnakeCaseMappers(),
+  });
+
+  // Bind Objection models to this Knex instance
+  Model.knex(knex);
+
+  export default knex;

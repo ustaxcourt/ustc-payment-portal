@@ -60,32 +60,20 @@ export default class TransactionModel extends Model {
   }
 
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
-    return this.query()
-      .withGraphJoined('fee')
-      .select(
-        'transactions.*',
-        'fee.name as feeName',
-        'fee.amount as feeAmount'
-      )
+    return TransactionModel.query()
       .where('paymentStatus', paymentStatus)
       .orderBy('createdAt', 'desc')
       .limit(100);
   }
 
   static async getAll(): Promise<TransactionModel[]> {
-    return this.query()
-      .withGraphJoined('fee')
-      .select(
-        'transactions.*',
-        'fee.name as feeName',
-        'fee.amount as feeAmount'
-      )
+    return TransactionModel.query()
       .orderBy('createdAt', 'desc')
       .limit(100);
   }
 
   static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
-    const rows = await this.query()
+    const rows = await TransactionModel.query()
       .select('paymentStatus')
       .count('* as count')
       .groupBy('paymentStatus')
