@@ -114,6 +114,11 @@ export const getDetailsHandler = (
 // Dashboard Lambda Handlers
 // NOTE: If we write integration tests for these handlers, we will need to setup PR ephemeral environments to spin up a RDS instance, otherwise the tests will always fail.
 // ──────────────────────────────
+
+// Dashboard handlers use a separate, environment-configurable CORS origin (DASHBOARD_ALLOWED_ORIGIN)
+// rather than the shared `corsHeaders` constant used by the payment handlers. This is intentional:
+// the dashboard is an internal tool with a deployment-specific origin, while the payment API is
+// accessed by registered external clients whose origin is fixed at build time.
 const getDashboardCorsHeaders = () => {
   const origin = process.env.DASHBOARD_ALLOWED_ORIGIN;
   if (!origin) {
