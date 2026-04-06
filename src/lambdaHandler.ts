@@ -5,8 +5,8 @@ import {
 } from "aws-lambda";
 import { createAppContext } from "./appContext";
 import { extractCallerArn } from "./extractCallerArn";
-import { authorizeClient } from "./authorizeClient";
-import { handleError } from "./handleError";
+import { authorizeClient, ClientPermission } from "./authorizeClient";
+import { handleError, corsHeaders } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
 import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
 import { GetDetails } from "./useCases/getDetails";
@@ -24,18 +24,16 @@ const lambdaHandler = async (
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler,
   feeId?: string,
-  injectClientName?: boolean
+  enrichRequest?: (client: ClientPermission, request: any) => any
 ): Promise<APIGatewayProxyResult> => {
   try {
     const roleArn = extractCallerArn(requestContext);
     const client = await authorizeClient(roleArn, feeId);
-    // For initPayment, inject clientName into the request
-    if (injectClientName && typeof request === 'object') {
-      request.clientName = client.clientName;
-    }
-    const result = await callback(appContext, request);
+    const resolvedRequest = enrichRequest ? enrichRequest(client, request) : request;
+    const result = await callback(appContext, resolvedRequest);
     return {
       statusCode: 200,
+      headers: corsHeaders,
       body: JSON.stringify(result),
     };
   } catch (err) {
@@ -78,7 +76,7 @@ export const initPaymentHandler = (
     event.requestContext,
     appContext.getUseCases().initPayment,
     parsed.data.feeId,
-    true // inject clientName for initPayment
+    (client, req) => ({ ...req, clientName: client.clientName })
   );
 };
 

@@ -55,6 +55,7 @@ const mockSoapRequest = (token: string) => {
 
 describe("initPayment", () => {
   afterEach(() => {
+    jest.clearAllMocks();
     jest.restoreAllMocks();
   });
 
@@ -134,13 +135,13 @@ describe("initPayment", () => {
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
   });
 
-  it("throws ServerError and updates transaction to failed if DB write fails", async () => {
+  it("throws ServerError and does not call updateToFailed if createReceived fails", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
     TransactionModel.createReceived.mockRejectedValueOnce(new Error("DB connection lost"));
 
     await expect(
       initPayment(appContext, validPetitionRequest)
     ).rejects.toBeInstanceOf(ServerError);
-    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
   });
 });

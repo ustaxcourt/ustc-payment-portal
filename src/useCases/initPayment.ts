@@ -45,7 +45,7 @@ export const initPayment: InitPayment = async (appContext, request) => {
     urlCancel,
   });
 
-  let result;
+  let recordCreated = false;
   try {
     await TransactionModel.createReceived({
       agencyTrackingId,
@@ -56,7 +56,9 @@ export const initPayment: InitPayment = async (appContext, request) => {
       lastUpdatedAt: new Date().toISOString(),
       metadata: request.metadata,
     });
+    recordCreated = true;
 
+    let result;
     try {
       result = await req.makeSoapRequest(appContext);
     } catch (soapErr) {
@@ -66,8 +68,15 @@ export const initPayment: InitPayment = async (appContext, request) => {
     }
 
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
+
+    return {
+      token: result.token,
+      paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${fee.tcsAppId}`,
+    };
   } catch (err) {
-    await TransactionModel.updateToFailed(agencyTrackingId);
+    if (recordCreated) {
+      await TransactionModel.updateToFailed(agencyTrackingId);
+    }
 
     if (err instanceof PayGovError) {
       throw err;
@@ -76,9 +85,4 @@ export const initPayment: InitPayment = async (appContext, request) => {
       `Failed to initiate payment: ${err instanceof Error ? err.message : String(err)}`
     );
   }
-
-  return {
-    token: result.token,
-    paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${fee.tcsAppId}`,
-  };
 };

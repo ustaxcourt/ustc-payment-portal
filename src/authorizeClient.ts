@@ -1,6 +1,8 @@
 import { ForbiddenError } from "./errors/forbidden";
 import { getClientByRoleArn, ClientPermission } from "./clients/permissionsClient";
 
+export type { ClientPermission };
+
 /**
  * Validates that the client (identified by IAM role ARN) is registered and,
  * when a feeId is provided, authorized to access that fee type.
