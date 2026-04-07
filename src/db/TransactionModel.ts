@@ -64,14 +64,14 @@ export default class TransactionModel extends Model {
     return TransactionModel.query()
       .withGraphJoined('fee')
       .where('paymentStatus', paymentStatus)
-      .orderBy('created_at', 'desc')
+      .orderBy('transactions.created_at', 'desc')
       .limit(100);
   }
 
   static async getAll(): Promise<TransactionModel[]> {
     return TransactionModel.query()
       .withGraphJoined('fee')
-      .orderBy('created_at', 'desc')
+      .orderBy('transactions.created_at', 'desc')
       .limit(100);
   }
 
