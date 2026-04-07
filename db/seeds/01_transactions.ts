@@ -14,8 +14,8 @@ export async function seed(knex: Knex): Promise<void> {
     const transactionStatuses = ['received', 'initiated', 'pending', 'processed', 'failed'];
     const paymentMethods = ['plastic_card', 'ach', 'paypal'];
     const feesList = [
-        { feeId: 'PETITION_FILING_FEE', feeAmount: 150.00, feeName: 'Petition Filing Fee' },
-        { feeId: 'NONATTORNEY_EXAM_REGISTRATION_FEE', feeAmount: 200.00, feeName: 'Non-Attorney Exam Registration Fee' }
+        { feeId: 'PETITION_FILING_FEE' },
+        { feeId: 'NONATTORNEY_EXAM_REGISTRATION_FEE' },
     ];
 
     const agencyIds = ['USTC', 'IRS'];
@@ -66,9 +66,7 @@ export async function seed(knex: Knex): Promise<void> {
             agency_tracking_id: agencyTrackingId,
             paygov_tracking_id: faker.datatype.boolean() ? faker.string.alphanumeric({ length: 20, casing: 'upper' }) : null,
 
-            fee_name: fee.feeName,
             fee_id: fee.feeId,
-            fee_amount: fee.feeAmount,
 
             client_name: faker.helpers.arrayElement(clientNames),
             transaction_reference_id: transactionReferenceId,
