@@ -2,7 +2,7 @@ import { Model } from 'objection';
 
 export default class FeesModel extends Model {
   feeId!: string;
-  feeName!: string;
+  name!: string;
   tcsAppId!: string;
   isVariable!: boolean;
   amount?: number | null;

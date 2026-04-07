@@ -33,10 +33,15 @@ export const getTransactionsByStatus: GetTransactionsByStatus = async (
 
   const { paymentStatus } = parsed.data;
   const data = await TransactionModel.getByPaymentStatus(paymentStatus);
+  const mapped = data.map((tx) => ({
+    ...tx,
+    feeName: tx.fee?.name ?? '',
+    feeAmount: tx.fee?.amount ?? 0,
+  }));
 
   return TransactionsByStatusResponseSchema.parse({
-    data,
-    total: data.length,
+    data: mapped,
+    total: mapped.length,
   });
 };
 

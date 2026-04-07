@@ -14,8 +14,13 @@ export const getRecentTransactions: GetRecentTransactions = async (
   _appContext: AppContext,
 ) => {
   const data = await TransactionModel.getAll();
+  const mapped = data.map((tx) => ({
+    ...tx,
+    feeName: tx.fee?.name ?? '',
+    feeAmount: tx.fee?.amount ?? 0,
+  }));
   return RecentTransactionsResponseSchema.parse({
-    data,
-    total: data.length,
+    data: mapped,
+    total: mapped.length,
   });
 };

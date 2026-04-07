@@ -50,7 +50,7 @@ describe("FeesModel", () => {
       expect(result).toBeUndefined();
     });
     it("should return the fee if found", async () => {
-      const fee = { feeId: "FEE123", feeName: "Test Fee" };
+      const fee = { feeId: "FEE123", name: "Test Fee" };
       findById.mockReturnValueOnce(fee);
       const result = await FeesModel.getFeeById("FEE123");
       expect(result).toBe(fee);

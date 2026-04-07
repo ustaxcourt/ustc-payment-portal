@@ -27,6 +27,7 @@ export default class TransactionModel extends Model {
   createdAt!: string;
   lastUpdatedAt!: string;
   metadata?: Record<string, string> | null;
+  fee?: FeesModel;
 
   static get tableName() {
     return 'transactions';
@@ -61,6 +62,7 @@ export default class TransactionModel extends Model {
 
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
     return TransactionModel.query()
+      .withGraphJoined('fee')
       .where('paymentStatus', paymentStatus)
       .orderBy('created_at', 'desc')
       .limit(100);
@@ -68,6 +70,7 @@ export default class TransactionModel extends Model {
 
   static async getAll(): Promise<TransactionModel[]> {
     return TransactionModel.query()
+      .withGraphJoined('fee')
       .orderBy('created_at', 'desc')
       .limit(100);
   }
@@ -76,12 +79,7 @@ export default class TransactionModel extends Model {
     const rows = await TransactionModel.query()
       .select('paymentStatus')
       .count('* as count')
-      .groupBy('paymentStatus')
-
-    // TODO: Update aggregation for success, failed, and pending in PAY-053
-    const data = await this.query()
-      .orderBy('created_at', 'desc')
-      .page(0, 100);
+      .groupBy('paymentStatus');
 
     const totals: AggregatedPaymentStatus = {
       success: 0,
@@ -99,8 +97,7 @@ export default class TransactionModel extends Model {
       }
     });
 
-    // Use the total count from the paginated query
-    totals.total = data.results.length;
+    totals.total = totals.success + totals.failed + totals.pending;
     return totals;
   }
 

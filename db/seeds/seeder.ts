@@ -15,8 +15,8 @@ export async function seed(knex: Knex): Promise<void> {
 
     await knex('fees').insert(generateFees());
     await knex('transactions').insert(await generateTransactions({
-        successTransactions: 200,
-        failedTransactions: 50,
-        pendingTransactions: 20
+        successTransactions: 34,
+        failedTransactions: 33,
+        pendingTransactions: 33,
     }));
 }
