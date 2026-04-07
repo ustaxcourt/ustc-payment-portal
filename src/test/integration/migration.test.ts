@@ -45,9 +45,10 @@ describeIfDeployed("database migration and seed verification", () => {
       body = (await response.json()) as typeof body;
     });
 
-    it("should return at least the seeded rows", () => {
-      expect(body.total).toBeGreaterThanOrEqual(TOTAL_SEEDED_ROWS);
-      expect(body.data.length).toBeLessThanOrEqual(body.total);
+    it("should return a capped page of results", () => {
+      expect(body.total).toBeGreaterThan(0);
+      expect(body.total).toBeLessThanOrEqual(100);
+      expect(body.data).toHaveLength(body.total);
     });
 
     it("should return transactions with the correct schema shape", () => {

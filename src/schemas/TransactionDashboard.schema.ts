@@ -62,7 +62,7 @@ export const DashboardTransactionSchema = z
     }),
     paymentStatus: PaymentStatusSchema,
     transactionStatus: DashboardTransactionStatusSchema.nullable().optional(),
-    paymentMethod: DashboardPaymentMethodSchema,
+    paymentMethod: DashboardPaymentMethodSchema.nullable().optional(),
     paygovToken: z.string().nullable().optional().openapi({
       description: "Pay.gov token associated with this transaction",
       example: "7f90d8de-e67f-4f8b-a12f-f429b675f2df",
