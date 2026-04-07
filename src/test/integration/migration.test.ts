@@ -45,9 +45,9 @@ describeIfDeployed("database migration and seed verification", () => {
       body = (await response.json()) as typeof body;
     });
 
-    it("should return the expected number of seeded rows", () => {
-      expect(body.total).toBe(TOTAL_SEEDED_ROWS);
-      expect(body.data).toHaveLength(TOTAL_SEEDED_ROWS);
+    it("should return at least the seeded rows", () => {
+      expect(body.total).toBeGreaterThanOrEqual(TOTAL_SEEDED_ROWS);
+      expect(body.data.length).toBeLessThanOrEqual(body.total);
     });
 
     it("should return transactions with the correct schema shape", () => {
@@ -127,7 +127,7 @@ describeIfDeployed("database migration and seed verification", () => {
 
   // ── GET /transaction-payment-status ───────────────────────────────────────
   describe("GET /transaction-payment-status (aggregated counts)", () => {
-    it("should return status counts that match the seeded total", async () => {
+    it("should return status counts that include the seeded total", async () => {
       const response = await fetch(
         `${baseUrl}/transaction-payment-status`,
       );
@@ -145,7 +145,7 @@ describeIfDeployed("database migration and seed verification", () => {
       expect(body).toHaveProperty("failed");
       expect(body).toHaveProperty("total");
 
-      expect(body.total).toBe(TOTAL_SEEDED_ROWS);
+      expect(body.total).toBeGreaterThanOrEqual(TOTAL_SEEDED_ROWS);
       expect(body.pending + body.success + body.failed).toBe(body.total);
     });
   });

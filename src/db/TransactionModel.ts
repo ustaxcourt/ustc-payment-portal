@@ -67,7 +67,7 @@ export default class TransactionModel extends Model {
     return TransactionModel.query()
       .alias('t')
       .leftJoin('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.feeName as feeName', 'f.amount as feeAmount')
+      .select('t.*', 'f.name as feeName', 'f.amount as feeAmount')
       .where('t.paymentStatus', paymentStatus)
       .orderBy('t.createdAt', 'desc')
       .limit(100);
@@ -78,7 +78,7 @@ export default class TransactionModel extends Model {
     return TransactionModel.query()
       .alias('t')
       .leftJoin('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.feeName as feeName', 'f.amount as feeAmount')
+      .select('t.*', 'f.name as feeName', 'f.amount as feeAmount')
       .orderBy('t.createdAt', 'desc')
       .limit(100);
   }
