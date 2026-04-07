@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
     t.string('client_name', 100).notNullable().comment('App/Client Name');
     t.string('payment_status', 50).notNullable().comment('Payment Status');
     t.string('transaction_status', 50).nullable().comment('Transaction Status');
-    t.string('payment_method', 50).notNullable().comment('Payment Method');
+    t.string('payment_method', 50).nullable().comment('Payment Method');
     t.string('paygov_token', 32).nullable().comment('Pay.gov Token (optional)');
     t.jsonb('metadata').nullable().comment('Free-form metadata bag');
     t.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
