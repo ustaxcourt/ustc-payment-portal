@@ -5,6 +5,7 @@ import {
 } from "../schemas/InitPayment.schema";
 import { getFeeConfig } from "../fees";
 import { InvalidRequestError } from "../errors/invalidRequest";
+import { PayGovError } from "../errors/payGovError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 
 export type InitPayment = (
@@ -42,7 +43,12 @@ export const initPayment: InitPayment = async (appContext, request) => {
     urlCancel,
   });
 
-  const result = await req.makeSoapRequest(appContext);
+  let result;
+  try {
+    result = await req.makeSoapRequest(appContext);
+  } catch (err) {
+    throw new PayGovError();
+  }
 
   return {
     token: result.token,

@@ -3,6 +3,7 @@ import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as fees from "../fees";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
+import { PayGovError } from "../errors/payGovError";
 
 const validPetitionRequest: InitPaymentRequest = {
   transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
@@ -64,5 +65,13 @@ describe("initPayment", () => {
     await expect(
       initPayment(appContext, { ...validPetitionRequest, amount: 60 })
     ).rejects.toThrow("does not allow variable amounts");
+  });
+
+  it("throws PayGovError when Pay.gov SOAP request fails", async () => {
+    jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+      .mockRejectedValueOnce(new Error("ECONNREFUSED"));
+    await expect(
+      initPayment(appContext, validPetitionRequest)
+    ).rejects.toThrow(PayGovError);
   });
 });

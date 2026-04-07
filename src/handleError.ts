@@ -1,4 +1,5 @@
 import { ZodError } from "zod";
+import { PayGovError } from "./errors/payGovError";
 
 export const handleError = (err: any) => {
   console.error(`responding with an error`, err);
@@ -18,11 +19,19 @@ export const handleError = (err: any) => {
         errors: err.issues,
       }),
     };
+  } else if (err instanceof PayGovError) {
+    return {
+      statusCode: 504,
+      body: JSON.stringify({
+        message: err.message,
+        errors: [],
+      }),
+    };
   }
   return {
     statusCode: 500,
     body: JSON.stringify({
-      message: "An unexpected error occurred",
+      message: "An unexpected error occurred while processing the request",
       errors: [],
     }),
   };
