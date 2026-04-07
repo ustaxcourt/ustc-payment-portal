@@ -67,11 +67,21 @@ describe("initPayment", () => {
     ).rejects.toThrow("does not allow variable amounts");
   });
 
-  it("throws PayGovError when Pay.gov SOAP request fails", async () => {
+  it("throws PayGovError when Pay.gov SOAP request fails with a network error", async () => {
+    const networkError = Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" });
     jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
-      .mockRejectedValueOnce(new Error("ECONNREFUSED"));
+      .mockRejectedValueOnce(networkError);
     await expect(
       initPayment(appContext, validPetitionRequest)
     ).rejects.toThrow(PayGovError);
+  });
+
+  it("rethrows non-network errors from makeSoapRequest", async () => {
+    const parseError = new TypeError("Unexpected token in XML");
+    jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+      .mockRejectedValueOnce(parseError);
+    await expect(
+      initPayment(appContext, validPetitionRequest)
+    ).rejects.toThrow(parseError);
   });
 });

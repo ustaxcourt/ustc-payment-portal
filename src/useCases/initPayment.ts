@@ -8,6 +8,19 @@ import { InvalidRequestError } from "../errors/invalidRequest";
 import { PayGovError } from "../errors/payGovError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 
+const NETWORK_ERROR_CODES = new Set([
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "ENOTFOUND",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+]);
+
+const isNetworkError = (err: unknown): boolean =>
+  err instanceof Error &&
+  NETWORK_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
+
 export type InitPayment = (
   appContext: AppContext,
   request: InitPaymentRequest,
@@ -43,15 +56,16 @@ export const initPayment: InitPayment = async (appContext, request) => {
     urlCancel,
   });
 
-  let result;
   try {
-    result = await req.makeSoapRequest(appContext);
+    const result = await req.makeSoapRequest(appContext);
+    return {
+      token: result.token,
+      paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${feeConfig.tcsAppId}`,
+    };
   } catch (err) {
-    throw new PayGovError();
+    if (isNetworkError(err)) {
+      throw new PayGovError();
+    }
+    throw err;
   }
-
-  return {
-    token: result.token,
-    paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${feeConfig.tcsAppId}`,
-  };
 };
