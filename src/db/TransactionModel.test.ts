@@ -63,8 +63,6 @@ import TransactionModel, { PaymentMethod } from "./TransactionModel";
 
 
 describe("TransactionModel", () => {
-  let agencyTrackingId: string;
-
   afterEach(() => {
     mockTransaction = null;
   });
@@ -126,7 +124,6 @@ describe("TransactionModel", () => {
       expect(transaction.agencyTrackingId).toBe(data.agencyTrackingId);
       expect(transaction.transactionStatus).toBe('received');
       expect(transaction.paymentStatus).toBe('pending');
-      agencyTrackingId = transaction.agencyTrackingId;
     });
   });
 
@@ -151,24 +148,21 @@ describe("TransactionModel", () => {
   describe("updateToInitiated", () => {
     it('should update transaction to initiated', async () => {
       const paygovToken = 'TOKEN123456';
-      // Directly mock TransactionModel.query for this test
-      const mockFindById = jest.fn((id) => Promise.resolve(id === agencyTrackingId ? {
-        agencyTrackingId,
-        transactionStatus: 'initiated',
-        paygovToken,
-      } : undefined));
-      const originalQuery = TransactionModel.query;
-      (TransactionModel as any).query = jest.fn(() => ({ findById: mockFindById }));
 
-      await TransactionModel.updateToInitiated(agencyTrackingId, paygovToken);
+      // Set up a transaction to update — no dependency on prior tests
+      const created = await TransactionModel.createReceived({
+        agencyTrackingId: 'INIT-TEST-123',
+        feeId: 'PETITION_FILING_FEE',
+        clientName: 'test-client',
+        transactionReferenceId: 'TXN-REF-002',
+      });
 
-      const updated = await TransactionModel.query().findById(agencyTrackingId);
+      await TransactionModel.updateToInitiated(created.agencyTrackingId, paygovToken);
+
+      const updated = await TransactionModel.query().findById(created.agencyTrackingId);
       expect(updated).toBeDefined();
       expect(updated?.transactionStatus).toBe('initiated');
       expect(updated?.paygovToken).toBe(paygovToken);
-
-      // Restore original query after test
-      (TransactionModel as any).query = originalQuery;
     });
   });
 });

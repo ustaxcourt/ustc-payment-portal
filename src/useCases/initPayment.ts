@@ -60,9 +60,8 @@ export const initPayment: InitPayment = async (appContext, request) => {
     try {
       result = await req.makeSoapRequest(appContext);
     } catch (soapErr) {
-      throw new PayGovError(
-        `Failed to communicate with Pay.gov: ${soapErr instanceof Error ? soapErr.message : String(soapErr)}`
-      );
+      console.error("[initPayment] Pay.gov SOAP request failed:", soapErr);
+      throw new PayGovError("Failed to communicate with Pay.gov");
     }
 
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);

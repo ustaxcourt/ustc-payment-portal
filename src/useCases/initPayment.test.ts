@@ -34,12 +34,12 @@ jest.mock("../db/FeesModel", () => ({
 
 import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
-import { InitPaymentRequest } from "../schemas/InitPayment.schema";
+import { InitPaymentInternalRequest } from "../schemas/InitPayment.schema";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
 import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 
-const validPetitionRequest: InitPaymentRequest & { clientName: string } = {
+const validPetitionRequest: InitPaymentInternalRequest = {
   transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
   feeId: "PETITION_FILING_FEE",
   urlSuccess: "https://example.com/success",

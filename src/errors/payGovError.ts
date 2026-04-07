@@ -3,5 +3,6 @@ export class PayGovError extends Error {
 
   constructor(message: string = "Failed to communicate with Pay.gov") {
     super(message);
+    this.name = "PayGovError";
   }
 }

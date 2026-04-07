@@ -1,13 +1,16 @@
 import { ZodError } from "zod";
 import { PayGovError } from "./errors/payGovError";
 
+// Wildcard origin is intentional: this API is called by IAM SigV4-authenticated Lambda clients,
+// not browsers with cookies, so a wildcard does not introduce CSRF or credential-leakage risk.
+// Dashboard handlers use a separate, configurable origin — see getDashboardCorsHeaders in lambdaHandler.ts.
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type,Authorization",
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-export const buildResponse = (
+const buildResponse = (
   statusCode: number,
   body: { message: string; errors: unknown[] }
 ) => ({

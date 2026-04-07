@@ -6,6 +6,7 @@ import {
 import { APIGatewayEvent } from "aws-lambda";
 import { PayGovError } from "./errors/payGovError";
 import { ServerError } from "./errors/serverError";
+import { corsHeaders } from "./handleError";
 
 // Reusable mock for appContext with dynamic use case injection
 const useCasesMock = {
@@ -94,6 +95,7 @@ describe("lambdaHandler", () => {
       const result = await initPaymentHandler(event);
 
       expect(result.statusCode).toBe(200);
+      expect(result.headers).toEqual(corsHeaders);
       expect(JSON.parse(result.body)).toHaveProperty("token");
       // Check that clientName was injected into the request
       const calledWith = mockInitPayment.mock.calls[0][1];

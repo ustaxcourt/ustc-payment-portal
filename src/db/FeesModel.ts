@@ -36,6 +36,6 @@ export default class FeesModel extends Model {
   }
 
   static async getFeeById(feeId: string): Promise<FeesModel | undefined> {
-    return FeesModel.query().findById(feeId) || undefined;
+    return FeesModel.query().findById(feeId);
   }
 }
