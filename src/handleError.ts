@@ -21,7 +21,7 @@ export const handleError = (err: any) => {
     };
   } else if (err instanceof PayGovError) {
     return {
-      statusCode: 504,
+      statusCode: err.statusCode,
       body: JSON.stringify({
         message: err.message,
         errors: [],

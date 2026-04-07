@@ -212,11 +212,20 @@ components:
         this error persists, contact support with the request details.
       example: Internal Server Error
     GatewayError:
-      type: string
+      type: object
       description: >-
-        Error message returned when the server encounters an error communicating
+        Error response returned when the server encounters an error communicating
         with Pay.gov (HTTP 504).
-      example: Error communicating with Pay.gov
+      properties:
+        message:
+          type: string
+          example: Error communicating with Pay.gov
+        errors:
+          type: array
+          items: {}
+      required:
+        - message
+        - errors
     GetDetailsResponse:
       type: object
       properties:
@@ -583,7 +592,7 @@ paths:
         '504':
           description: Error communicating with Pay.gov
           content:
-            text/plain:
+            application/json:
               schema:
                 $ref: '#/components/schemas/GatewayError'
   /details/{transactionReferenceId}:
