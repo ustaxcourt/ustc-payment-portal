@@ -35,7 +35,6 @@ export const generateTransactions = async ({
   const paymentMethods = ['plastic_card', 'ach', 'paypal'];
 
   const agencyIds = ['USTC', 'IRS'];
-
   const makeRow = (payment_status: string) => {
     const agencyId = faker.helpers.arrayElement(agencyIds);
     const feeId = faker.helpers.arrayElement(feesList);

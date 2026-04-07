@@ -71,14 +71,6 @@ export const initPayment: InitPayment = async (appContext, request) => {
       paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${fee.tcsAppId}`,
     };
   } catch (err) {
-    console.error("[initPayment] Error during payment initiation:", {
-      agencyTrackingId,
-      feeId,
-      recordCreated,
-      errorName: err instanceof Error ? err.name : typeof err,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
-
     if (recordCreated) {
       await TransactionModel.updateToFailed(agencyTrackingId);
     }
