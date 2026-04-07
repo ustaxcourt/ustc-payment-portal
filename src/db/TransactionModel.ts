@@ -62,13 +62,13 @@ export default class TransactionModel extends Model {
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
     return TransactionModel.query()
       .where('paymentStatus', paymentStatus)
-      .orderBy('createdAt', 'desc')
+      .orderBy('created_at', 'desc')
       .limit(100);
   }
 
   static async getAll(): Promise<TransactionModel[]> {
     return TransactionModel.query()
-      .orderBy('createdAt', 'desc')
+      .orderBy('created_at', 'desc')
       .limit(100);
   }
 
@@ -80,7 +80,7 @@ export default class TransactionModel extends Model {
 
     // TODO: Update aggregation for success, failed, and pending in PAY-053
     const data = await this.query()
-      .orderBy('createdAt', 'desc')
+      .orderBy('created_at', 'desc')
       .page(0, 100);
 
     const totals: AggregatedPaymentStatus = {
