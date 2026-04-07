@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import dayjs from 'dayjs';
-import FeesModel from '../../../src/db/FeesModel';
 import { generateAgencyTrackingId } from '../../../src/utils/generateTrackingId';
+import { generateFees } from './fees';
 
 type GenerateTransactionsParams = {
   successTransactions: number;
@@ -29,18 +29,16 @@ export const generateTransactions = async ({
   failedTransactions,
   pendingTransactions,
 }: GenerateTransactionsParams): Promise<TransactionRow[]> => {
-  const feesList = await FeesModel.getAll().select('fee_id');
+  const feesList = generateFees().map((f) => f.fee_id);
   const clientNames = ['payment-portal', 'efile-portal', 'clerk-app'];
   const transactionStatuses = ['received', 'initiated', 'pending', 'processed', 'failed'];
   const paymentMethods = ['plastic_card', 'ach', 'paypal'];
 
   const agencyIds = ['USTC', 'IRS'];
-  const agencyCounters: Record<string, number> = Object.fromEntries(agencyIds.map((agencyId) => [agencyId, 0]));
 
   const makeRow = (payment_status: string) => {
     const agencyId = faker.helpers.arrayElement(agencyIds);
-    const fee = faker.helpers.arrayElement(feesList);
-    agencyCounters[agencyId] += 1;
+    const feeId = faker.helpers.arrayElement(feesList);
     const transactionReferenceId = `TXN-REF-${faker.number.int({ min: 0, max: 999999999 }).toString().padStart(9, '0')}`;
     const createdAt = dayjs()
       .subtract(faker.number.int({ min: 1, max: 40 }), 'day')
@@ -59,7 +57,7 @@ export const generateTransactions = async ({
     return {
       agency_tracking_id: generateAgencyTrackingId(),
       paygov_tracking_id: faker.datatype.boolean() ? faker.string.alphanumeric({ length: 20, casing: 'upper' }) : null,
-      fee_id: fee.feeId,
+      fee_id: feeId,
       client_name: faker.helpers.arrayElement(clientNames),
       transaction_reference_id: transactionReferenceId,
       payment_status,
