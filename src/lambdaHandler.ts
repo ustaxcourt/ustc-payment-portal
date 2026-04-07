@@ -3,10 +3,11 @@ import {
   APIGatewayEvent,
   APIGatewayEventRequestContext,
 } from "aws-lambda";
+import "./db/knex";
 import { createAppContext } from "./appContext";
 import { extractCallerArn } from "./extractCallerArn";
 import { authorizeClient } from "./authorizeClient";
-import { handleError } from "./handleError";
+import { handleError, corsHeaders } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
 import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
 import { GetDetails } from "./useCases/getDetails";
@@ -31,6 +32,7 @@ const lambdaHandler = async (
     const result = await callback(appContext, request);
     return {
       statusCode: 200,
+      headers: corsHeaders,
       body: JSON.stringify(result),
     };
   } catch (err) {
@@ -56,23 +58,30 @@ const safeJsonParse = <T = any>(
   }
 };
 
-export const initPaymentHandler = (
+export const initPaymentHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
   const { value: rawBody, error } = safeJsonParse(event.body);
-  if (error) return Promise.resolve(error);
+  if (error) return error;
 
   const parsed = InitPaymentRequestSchema.safeParse(rawBody);
-  if (!parsed.success) {
-    return Promise.resolve(handleError(parsed.error));
-  }
+  if (!parsed.success) return handleError(parsed.error);
 
-  return lambdaHandler(
-    parsed.data,
-    event.requestContext,
-    appContext.getUseCases().initPayment,
-    parsed.data.feeId,
-  );
+  try {
+    const roleArn = extractCallerArn(event.requestContext);
+    const clientName = await authorizeClient(roleArn, parsed.data.feeId);
+    const result = await appContext.getUseCases().initPayment(appContext, {
+      ...parsed.data,
+      clientName,
+    });
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify(result),
+    };
+  } catch (err) {
+    return handleError(err);
+  }
 };
 
 export const processPaymentHandler = (

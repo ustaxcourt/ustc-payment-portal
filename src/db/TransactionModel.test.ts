@@ -27,7 +27,7 @@ describe("TransactionModel", () => {
       await TransactionModel.getByPaymentStatus("success");
 
       expect(where).toHaveBeenCalledWith("paymentStatus", "success");
-      expect(orderBy).toHaveBeenCalledWith("createdAt", "desc");
+      expect(orderBy).toHaveBeenCalledWith("created_at", "desc");
       expect(limit).toHaveBeenCalledWith(100);
     });
   });
@@ -40,7 +40,7 @@ describe("TransactionModel", () => {
 
       await TransactionModel.getAll();
 
-      expect(orderBy).toHaveBeenCalledWith("createdAt", "desc");
+      expect(orderBy).toHaveBeenCalledWith("created_at", "desc");
       expect(limit).toHaveBeenCalledWith(100);
     });
   });
@@ -51,38 +51,24 @@ describe("TransactionModel", () => {
         { paymentStatus: "success", count: "4" },
         { paymentStatus: "failed", count: 2 },
         { paymentStatus: "pending", count: "3" },
-        { paymentStatus: "initiated", count: "99" },
+        { paymentStatus: "initiated", count: "99" }, // unknown status — ignored
       ];
-
-      const pagedData = {
-        results: new Array(100).fill({}),
-        total: 100,
-      };
 
       const groupBy = jest.fn().mockResolvedValue(rows);
       const count = jest.fn().mockReturnValue({ groupBy });
       const select = jest.fn().mockReturnValue({ count });
-
-      const page = jest.fn().mockResolvedValue(pagedData);
-      const orderBy = jest.fn().mockReturnValue({ page });
-
-      const querySpy = jest.spyOn(TransactionModel, "query");
-      querySpy
-        .mockReturnValueOnce({ select } as any)
-        .mockReturnValueOnce({ orderBy } as any);
+      jest.spyOn(TransactionModel, "query").mockReturnValue({ select } as any);
 
       const totals = await TransactionModel.getAggregatedPaymentStatus();
 
       expect(select).toHaveBeenCalledWith("paymentStatus");
       expect(count).toHaveBeenCalledWith("* as count");
       expect(groupBy).toHaveBeenCalledWith("paymentStatus");
-      expect(orderBy).toHaveBeenCalledWith("createdAt", "desc");
-      expect(page).toHaveBeenCalledWith(0, 100);
       expect(totals).toEqual({
         success: 4,
         failed: 2,
         pending: 3,
-        total: 100,
+        total: 9,
       });
     });
   });

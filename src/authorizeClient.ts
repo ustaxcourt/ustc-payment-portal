@@ -12,7 +12,7 @@ import { getClientByRoleArn } from "./clients/permissionsClient";
 export const authorizeClient = async (
   roleArn: string,
   feeId?: string
-): Promise<void> => {
+): Promise<string> => {
   const client = await getClientByRoleArn(roleArn);
 
   if (!client) {
@@ -21,15 +21,17 @@ export const authorizeClient = async (
 
   // Exit case if there's no feeId provided - only initPayment requires feeId authorization
   if (feeId === undefined) {
-    return;
+    return client.clientName;
   }
 
   // Check for wildcard permission (used in local dev)
   if (client.allowedFeeIds.includes("*")) {
-    return;
+    return client.clientName;
   }
 
   if (!client.allowedFeeIds.includes(feeId)) {
     throw new ForbiddenError("Client not authorized for feeId");
   }
+
+  return client.clientName;
 };
