@@ -1,5 +1,6 @@
 import Knex from 'knex';
 import { Model, knexSnakeCaseMappers } from 'objection';
+import { getRdsCredentials } from './getRdsCredentials';
 
 const {
   DB_HOST = 'localhost',
@@ -8,29 +9,35 @@ const {
   DB_PASSWORD = 'password',
   DB_NAME = 'mydb',
   NODE_ENV = 'development',
+  RDS_ENDPOINT,
+  RDS_SECRET_ARN,
 } = process.env;
 
-const connection =
-  NODE_ENV === 'production' && process.env.DATABASE_URL
-    ? process.env.DATABASE_URL
+const useRds = Boolean(RDS_ENDPOINT && RDS_SECRET_ARN);
+
+if (NODE_ENV !== 'production') {
+  const dbLabel = useRds
+    ? `(RDS: ${RDS_ENDPOINT})`
+    : NODE_ENV === 'test'
+      ? `${DB_NAME}_test`
+      : DB_NAME;
+  console.log(`[Knex] env=${NODE_ENV} db=${dbLabel}`);
+}
+
+// When RDS_ENDPOINT + RDS_SECRET_ARN are present (deployed Lambda), resolve credentials
+// from Secrets Manager and connect with SSL. Otherwise use plain env vars for local dev/test.
+const knex = Knex({
+  client: 'pg',
+  connection: useRds
+    ? () => getRdsCredentials()
     : {
       host: DB_HOST,
       port: Number(DB_PORT),
       user: DB_USER,
       password: DB_PASSWORD,
       database: NODE_ENV === 'test' ? `${DB_NAME}_test` : DB_NAME,
-    };
-
-if (NODE_ENV !== 'production') {
-  console.log(
-    `[Knex] env=${NODE_ENV} db=${typeof connection === 'string' ? '(DATABASE_URL)' : connection.database}`
-  );
-}
-
-const knex = Knex({
-  client: 'pg',
-  connection,
-  pool: { min: 2, max: 10 },
+    },
+  pool: { min: 0, max: 10 },
   ...knexSnakeCaseMappers(),
 });
 

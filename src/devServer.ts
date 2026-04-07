@@ -53,9 +53,10 @@ app.get("/openapi.json", (req, res) => {
 // define a route handler for the default home page
 app.post("/init", async (req, res) => {
   try {
+    // In local dev, lambdaHandler/authorizeClient is bypassed, so inject a dev clientName directly.
     const result = await appContext
       .getUseCases()
-      .initPayment(appContext, req.body);
+      .initPayment(appContext, { ...req.body, clientName: "LOCAL_DEV" });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
