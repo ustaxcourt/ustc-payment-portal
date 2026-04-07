@@ -1,7 +1,12 @@
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
   default: {
-    createReceived: jest.fn((data) => Promise.resolve({ ...data, agencyTrackingId: data.agencyTrackingId || "MOCK-TRACKING-ID" })),
+    createReceived: jest.fn((data) =>
+      Promise.resolve({
+        ...data,
+        agencyTrackingId: data.agencyTrackingId || "MOCK-TRACKING-ID",
+      }),
+    ),
     updateToInitiated: jest.fn(() => Promise.resolve()),
     updateToFailed: jest.fn(() => Promise.resolve()),
   },
@@ -47,7 +52,11 @@ const validPetitionRequest: InitPaymentRequest & { clientName: string } = {
 };
 
 const mockSoapRequest = (token: string) => {
-  jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+  jest
+    .spyOn(
+      SoapRequestModule.StartOnlineCollectionRequest.prototype,
+      "makeSoapRequest",
+    )
     .mockResolvedValueOnce({ token });
 };
 
@@ -109,25 +118,29 @@ describe("initPayment", () => {
       isVariable: true,
     });
 
-    await expect(
-      initPayment(appContext, validPetitionRequest)
-    ).rejects.toThrow("requires an amount");
+    await expect(initPayment(appContext, validPetitionRequest)).rejects.toThrow(
+      "requires an amount",
+    );
   });
 
   it("throws InvalidRequestError when amount is supplied for a non-variable fee", async () => {
     await expect(
-      initPayment(appContext, { ...validPetitionRequest, amount: 60 })
+      initPayment(appContext, { ...validPetitionRequest, amount: 60 }),
     ).rejects.toThrow("does not allow variable amounts");
   });
 
   it("updates transaction to failed if SOAP request fails", async () => {
-    jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+    jest
+      .spyOn(
+        SoapRequestModule.StartOnlineCollectionRequest.prototype,
+        "makeSoapRequest",
+      )
       .mockRejectedValueOnce(new Error("SOAP error"));
     const TransactionModel = require("../db/TransactionModel").default;
 
-    await expect(
-      initPayment(appContext, validPetitionRequest)
-    ).rejects.toThrow("Failed to initiate payment: SOAP error");
+    await expect(initPayment(appContext, validPetitionRequest)).rejects.toThrow(
+      "Failed to initiate payment: SOAP error",
+    );
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
   });

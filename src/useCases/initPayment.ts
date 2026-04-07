@@ -17,7 +17,14 @@ export type InitPayment = (
 ) => Promise<InitPaymentResponse>;
 
 export const initPayment: InitPayment = async (appContext, request) => {
-  const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel, clientName } = request;
+  const {
+    feeId,
+    amount,
+    transactionReferenceId,
+    urlSuccess,
+    urlCancel,
+    clientName,
+  } = request;
 
   const fee = await FeesModel.getFeeById(feeId);
   if (!fee || !fee.tcsAppId) {
@@ -25,7 +32,9 @@ export const initPayment: InitPayment = async (appContext, request) => {
   }
 
   if (amount !== undefined && !fee.isVariable) {
-    throw new InvalidRequestError(`Fee ${feeId} does not allow variable amounts`);
+    throw new InvalidRequestError(
+      `Fee ${feeId} does not allow variable amounts`,
+    );
   }
 
   if (amount === undefined && fee.isVariable) {
@@ -50,8 +59,8 @@ export const initPayment: InitPayment = async (appContext, request) => {
       feeId,
       clientName,
       transactionReferenceId,
-      paymentStatus: 'pending',
-      transactionStatus: 'received',
+      paymentStatus: "pending",
+      transactionStatus: "received",
       createdAt: new Date().toISOString(),
       lastUpdatedAt: new Date().toISOString(),
       metadata: request.metadata,
@@ -62,7 +71,11 @@ export const initPayment: InitPayment = async (appContext, request) => {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
     await TransactionModel.updateToFailed(agencyTrackingId);
-    throw new Error(`Failed to initiate payment: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(
+      `Failed to initiate payment: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
   }
 
   return {
