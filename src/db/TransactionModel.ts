@@ -19,6 +19,8 @@ export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
   feeId!: string;
+  feeName?: string | null;
+  feeAmount?: number | null;
   clientName!: string;
   transactionReferenceId!: string;
   paymentStatus!: PaymentStatus;
@@ -63,15 +65,21 @@ export default class TransactionModel extends Model {
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
     await getKnex();
     return TransactionModel.query()
-      .where('paymentStatus', paymentStatus)
-      .orderBy('createdAt', 'desc')
+      .alias('t')
+      .leftJoin('fees as f', 't.feeId', 'f.feeId')
+      .select('t.*', 'f.feeName as feeName', 'f.amount as feeAmount')
+      .where('t.paymentStatus', paymentStatus)
+      .orderBy('t.createdAt', 'desc')
       .limit(100);
   }
 
   static async getAll(): Promise<TransactionModel[]> {
     await getKnex();
     return TransactionModel.query()
-      .orderBy('createdAt', 'desc')
+      .alias('t')
+      .leftJoin('fees as f', 't.feeId', 'f.feeId')
+      .select('t.*', 'f.feeName as feeName', 'f.amount as feeAmount')
+      .orderBy('t.createdAt', 'desc')
       .limit(100);
   }
 

@@ -29,7 +29,7 @@ export const generateTransactions = async ({
   failedTransactions,
   pendingTransactions,
 }: GenerateTransactionsParams): Promise<TransactionRow[]> => {
-  const feesList = await FeesModel.getAll().select('fee_id');
+  const feesList = await FeesModel.query().select('feeId');
   const clientNames = ['payment-portal', 'efile-portal', 'clerk-app'];
   const transactionStatuses = ['received', 'initiated', 'pending', 'processed', 'failed'];
   const paymentMethods = ['plastic_card', 'ach', 'paypal'];

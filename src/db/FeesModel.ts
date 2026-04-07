@@ -32,11 +32,13 @@ export default class FeesModel extends Model {
     };
   }
 
-  static getAll() {
+  static async getAll() {
+    await getKnex();
     return FeesModel.query().orderBy('createdAt', 'desc');
   }
 
   static async getFeeById(feeId: string): Promise<FeesModel | undefined> {
+    await getKnex();
     return FeesModel.query().findById(feeId) || undefined;
   }
 }
