@@ -56,6 +56,8 @@ export const InitPaymentRequestSchema = z
 
 export type InitPaymentRequest = z.infer<typeof InitPaymentRequestSchema>;
 
+export type InitPaymentInternalRequest = InitPaymentRequest & { clientName: string };
+
 export const InitPaymentResponseSchema = z
   .object({
     token: z.string().openapi({

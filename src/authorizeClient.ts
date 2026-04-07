@@ -1,5 +1,7 @@
 import { ForbiddenError } from "./errors/forbidden";
-import { getClientByRoleArn } from "./clients/permissionsClient";
+import { getClientByRoleArn, ClientPermission } from "./clients/permissionsClient";
+
+export type { ClientPermission };
 
 /**
  * Validates that the client (identified by IAM role ARN) is registered and,
@@ -12,7 +14,7 @@ import { getClientByRoleArn } from "./clients/permissionsClient";
 export const authorizeClient = async (
   roleArn: string,
   feeId?: string
-): Promise<void> => {
+): Promise<ClientPermission> => {
   const client = await getClientByRoleArn(roleArn);
 
   if (!client) {
@@ -21,15 +23,17 @@ export const authorizeClient = async (
 
   // Exit case if there's no feeId provided - only initPayment requires feeId authorization
   if (feeId === undefined) {
-    return;
+    return client;
   }
 
   // Check for wildcard permission (used in local dev)
   if (client.allowedFeeIds.includes("*")) {
-    return;
+    return client;
   }
 
   if (!client.allowedFeeIds.includes(feeId)) {
     throw new ForbiddenError("Client not authorized for feeId");
   }
+
+  return client;
 };
