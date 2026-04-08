@@ -65,14 +65,30 @@ export const initPayment: InitPayment = async (appContext, request) => {
       lastUpdatedAt: new Date().toISOString(),
       metadata: request.metadata,
     });
+  } catch (err) {
+    throw new Error(
+      `Failed to record received transaction: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
 
+  try {
     result = await req.makeSoapRequest(appContext);
-
-    await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
     await TransactionModel.updateToFailed(agencyTrackingId);
     throw new Error(
       `Failed to initiate payment: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+
+  try {
+    await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
+  } catch (err) {
+    throw new Error(
+      `Payment was initiated but failed to persist initiated status: ${
         err instanceof Error ? err.message : String(err)
       }`,
     );
