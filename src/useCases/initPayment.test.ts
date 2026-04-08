@@ -67,6 +67,13 @@ describe("initPayment", () => {
     ).rejects.toThrow("does not allow variable amounts");
   });
 
+  it("throws InvalidRequestError when feeId is unknown", async () => {
+    jest.spyOn(fees, "getFeeConfig").mockResolvedValueOnce(undefined);
+    await expect(
+      initPayment(appContext, validPetitionRequest)
+    ).rejects.toThrow(`Unknown feeId: ${validPetitionRequest.feeId}`);
+  });
+
   it("throws PayGovError when Pay.gov SOAP request fails with a network error", async () => {
     const networkError = Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" });
     jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
