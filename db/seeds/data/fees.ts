@@ -26,6 +26,5 @@ export const generateFees = (): FeesRow[] => {
       description: 'Fee for non-attorneys to register for an examination with the U.S. Tax Court.',
     },
   ];
-  console.log("Generated fees:", fees.length);
   return fees;
 };
