@@ -61,8 +61,6 @@ export const initPayment: InitPayment = async (appContext, request) => {
       transactionReferenceId,
       paymentStatus: "pending",
       transactionStatus: "received",
-      createdAt: new Date().toISOString(),
-      lastUpdatedAt: new Date().toISOString(),
       metadata: request.metadata,
     });
   } catch (err) {
