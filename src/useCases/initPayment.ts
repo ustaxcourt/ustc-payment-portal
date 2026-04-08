@@ -52,7 +52,7 @@ export const initPayment: InitPayment = async (appContext, request) => {
     urlCancel,
   });
 
-  let result;
+  let result: Awaited<ReturnType<typeof req.makeSoapRequest>>;
   try {
     await TransactionModel.createReceived({
       agencyTrackingId,
