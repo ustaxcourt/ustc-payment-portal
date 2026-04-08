@@ -19,8 +19,8 @@ export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
   feeId!: string;
-  feeName?: string | null;
-  feeAmount?: number | null;
+  transactionAmount!: number;
+  feeName?: string;
   clientName!: string;
   transactionReferenceId!: string;
   paymentStatus!: PaymentStatus;
@@ -55,8 +55,8 @@ export default class TransactionModel extends Model {
   $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
     const parsed = super.$parseDatabaseJson(json);
 
-    if (parsed.feeAmount !== undefined && parsed.feeAmount !== null) {
-      parsed.feeAmount = Number(parsed.feeAmount);
+    if (parsed.transactionAmount !== undefined && parsed.transactionAmount !== null) {
+      parsed.transactionAmount = Number(parsed.transactionAmount);
     }
 
     return parsed;
@@ -66,8 +66,8 @@ export default class TransactionModel extends Model {
     await getKnex();
     return TransactionModel.query()
       .alias('t')
-      .leftJoin('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.name as feeName', 'f.amount as feeAmount')
+      .join('fees as f', 't.feeId', 'f.feeId')
+      .select('t.*', 'f.name as feeName')
       .where('t.paymentStatus', paymentStatus)
       .orderBy('t.createdAt', 'desc')
       .limit(100);
@@ -77,8 +77,8 @@ export default class TransactionModel extends Model {
     await getKnex();
     return TransactionModel.query()
       .alias('t')
-      .leftJoin('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.name as feeName', 'f.amount as feeAmount')
+      .join('fees as f', 't.feeId', 'f.feeId')
+      .select('t.*', 'f.name as feeName')
       .orderBy('t.createdAt', 'desc')
       .limit(100);
   }

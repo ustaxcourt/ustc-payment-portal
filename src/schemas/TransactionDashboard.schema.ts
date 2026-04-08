@@ -48,8 +48,8 @@ export const DashboardTransactionSchema = z
       description: "Fee identifier",
       example: "PETITION_FILING_FEE",
     }),
-    feeAmount: z.number().openapi({
-      description: "Fee amount in USD",
+    transactionAmount: z.number().openapi({
+      description: "Actual amount charged for this transaction (USD)",
       example: 60.5,
     }),
     clientName: z.string().openapi({

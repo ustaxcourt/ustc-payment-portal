@@ -59,7 +59,7 @@ describeIfDeployed("database migration and seed verification", () => {
       expect(row).toHaveProperty("transactionReferenceId");
       expect(row).toHaveProperty("feeName");
       expect(row).toHaveProperty("feeId");
-      expect(row).toHaveProperty("feeAmount");
+      expect(row).toHaveProperty("transactionAmount");
       expect(row).toHaveProperty("clientName");
       expect(row).toHaveProperty("paymentStatus");
       expect(row).toHaveProperty("transactionStatus");
@@ -87,7 +87,7 @@ describeIfDeployed("database migration and seed verification", () => {
 
     it("should have non-negative fee amounts", () => {
       for (const row of body.data) {
-        expect(Number(row.feeAmount)).toBeGreaterThanOrEqual(0);
+        expect(Number(row.transactionAmount)).toBeGreaterThanOrEqual(0);
       }
     });
   });

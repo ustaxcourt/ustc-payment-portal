@@ -57,6 +57,7 @@ export const initPayment: InitPayment = async (appContext, request) => {
     await TransactionModel.createReceived({
       agencyTrackingId,
       feeId,
+      transactionAmount,
       clientName,
       transactionReferenceId,
       paymentStatus: "pending",

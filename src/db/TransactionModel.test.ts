@@ -10,8 +10,8 @@ jest.mock("./TransactionModel", () => {
     default: class MockTransactionModel {
       static $parseDatabaseJson(json: Record<string, unknown>) {
         const parsed = { ...json };
-        if (parsed.feeAmount !== undefined && parsed.feeAmount !== null) {
-          parsed.feeAmount = Number(parsed.feeAmount);
+        if (parsed.transactionAmount !== undefined && parsed.transactionAmount !== null) {
+          parsed.transactionAmount = Number(parsed.transactionAmount);
         }
         return parsed;
       }
@@ -70,14 +70,14 @@ describe("TransactionModel", () => {
   });
 
   describe("$parseDatabaseJson", () => {
-    it("converts feeAmount to number", () => {
+    it("converts transactionAmount to number", () => {
       const model = new TransactionModel();
 
       const parsed = model.$parseDatabaseJson({
-        feeAmount: "150.25",
+        transactionAmount: "150.25",
       });
 
-      expect(parsed.feeAmount).toBe(150.25);
+      expect(parsed.transactionAmount).toBe(150.25);
     });
   });
 
