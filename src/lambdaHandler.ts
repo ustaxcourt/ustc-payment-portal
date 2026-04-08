@@ -30,7 +30,7 @@ const lambdaHandler = async (
     const roleArn = extractCallerArn(requestContext);
     const client = await authorizeClient(roleArn, feeId);
     // For initPayment, inject clientName into the request
-    if (injectClientName && client && typeof request === 'object') {
+    if (injectClientName && client && request != null && typeof request === 'object') {
       request.clientName = client.clientName;
     }
     const result = await callback(appContext, request);
