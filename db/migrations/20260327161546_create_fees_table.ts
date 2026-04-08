@@ -12,26 +12,6 @@ export async function up(knex: Knex): Promise<void> {
     t.timestamp('updated_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
   });
 
-  // Insert initial fees
-  await knex.table('fees').insert([
-    {
-      fee_id: 'PETITION_FILING_FEE',
-      name: 'Petition Filing Fee',
-      tcs_app_id: 'TCSUSTAXCOURTPETITION',
-      is_variable: false,
-      amount: 60,
-      description: 'Fee charged for filing a petition with the U.S. Tax Court.',
-    },
-    {
-      fee_id: 'NONATTORNEY_EXAM_REGISTRATION_FEE',
-      name: 'Non-Attorney Exam Registration Fee',
-      tcs_app_id: 'TCSUSTAXCOURTANAEF',
-      is_variable: false,
-      amount: 250,
-      description: 'Fee for non-attorneys to register for an examination with the U.S. Tax Court.',
-    },
-  ]);
-
   // Indexes
   await knex.schema.alterTable('fees', (t) => {
     t.index(['tcs_app_id'], 'idx_fees_tcs_app_id');

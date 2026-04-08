@@ -21,7 +21,7 @@
  * migrationHandler verify command directly.
  */
 
-const TOTAL_SEEDED_ROWS = 270; // 200 success + 50 failed + 20 pending from seeder.ts
+const TOTAL_SEEDED_ROWS = 270; // 200 success + 50 failed + 20 pending from 02_dummy_data.ts
 
 const baseUrl = process.env.BASE_URL;
 const isDeployed =

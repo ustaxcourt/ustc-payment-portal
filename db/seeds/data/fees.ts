@@ -7,6 +7,7 @@ type FeesRow = {
   description: string;
 };
 
+// Insert new fee_ids here to get them registered in the DB. Added via seeding.
 export const generateFees = (): FeesRow[] => {
   const fees = [
     {
