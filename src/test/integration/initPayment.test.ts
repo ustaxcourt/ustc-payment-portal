@@ -1,11 +1,14 @@
 import { signedFetch } from "./sigv4Helper";
 
-describe("POST /init", () => {
-  const url = `${process.env.BASE_URL}/init`;
+const baseUrl = process.env.BASE_URL;
+const isDeployed = baseUrl && !baseUrl.includes("localhost");
+const describeWithEnv = isDeployed ? describe : describe.skip;
+
+describeWithEnv("POST /init", () => {
   const isLocal = process.env.NODE_ENV === "local";
 
   const portalFetch = (options: RequestInit) =>
-    isLocal ? fetch(url, options) : signedFetch(url, options);
+    isLocal ? fetch(`${baseUrl}/init`, options) : signedFetch(`${baseUrl}/init`, options);
 
   it("returns 200 with token and paymentRedirect for a valid request", async () => {
     const result = await portalFetch({
