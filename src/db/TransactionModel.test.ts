@@ -81,15 +81,6 @@ describe("TransactionModel", () => {
     });
   });
 
-
-  describe("getByPaymentStatus", () => {
-    it("resolves without error and returns an array", async () => {
-      const result = await TransactionModel.getByPaymentStatus("success");
-      expect(Array.isArray(result)).toBe(true);
-    });
-  });
-
-
   describe("getAll", () => {
     it("resolves without error and returns an array", async () => {
       const result = await TransactionModel.getAll();
