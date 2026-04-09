@@ -140,7 +140,7 @@ describe("initPayment", () => {
     const TransactionModel = require("../db/TransactionModel").default;
 
     await expect(initPayment(appContext, validPetitionRequest)).rejects.toThrow(
-      "Failed to initiate payment: SOAP error",
+      "SOAP error",
     );
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
