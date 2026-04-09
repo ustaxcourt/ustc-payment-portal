@@ -41,6 +41,7 @@ import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
+import { PayGovError } from "../errors/payGovError";
 
 const validPetitionRequest: InitPaymentRequest & { clientName: string } = {
   transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
@@ -143,5 +144,23 @@ describe("initPayment", () => {
     );
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+  });
+
+  it("throws PayGovError when Pay.gov SOAP request fails with a network error", async () => {
+    const networkError = Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" });
+    jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+      .mockRejectedValueOnce(networkError);
+    await expect(
+      initPayment(appContext, validPetitionRequest)
+    ).rejects.toThrow(PayGovError);
+  });
+
+  it("rethrows non-network errors from makeSoapRequest", async () => {
+    const parseError = new TypeError("Unexpected token in XML");
+    jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+      .mockRejectedValueOnce(parseError);
+    await expect(
+      initPayment(appContext, validPetitionRequest)
+    ).rejects.toThrow(parseError);
   });
 });
