@@ -11,6 +11,7 @@ import { generateFees } from "./data/fees";
  * To add a new fee or update an existing one, edit generateFees() in
  * ./data/fees.ts and re-run seed:run. The upsert on fee_id means existing
  * fees are updated in place and new ones are inserted.
+ * To remove a fee, write a migration — this seed does not delete rows.
  */
 export async function seed(knex: Knex): Promise<void> {
   await knex("fees").insert(generateFees()).onConflict("fee_id").merge();

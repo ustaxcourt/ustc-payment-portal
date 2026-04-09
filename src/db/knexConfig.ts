@@ -61,6 +61,8 @@ export const knexConfigs: Record<SupportedEnv, Knex.Config> = {
 };
 
 export const getKnexConfigForEnv = (env = process.env.NODE_ENV || 'development'): Knex.Config => {
-	const normalized = (env as SupportedEnv);
-	return knexConfigs[normalized] || knexConfigs.development;
+	if (!(env in knexConfigs)) {
+		throw new Error(`Unknown NODE_ENV "${env}". Expected one of: ${Object.keys(knexConfigs).join(', ')}`);
+	}
+	return knexConfigs[env as SupportedEnv];
 };
