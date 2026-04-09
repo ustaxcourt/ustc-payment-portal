@@ -19,8 +19,8 @@ export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
   feeId!: string;
-  feeName?: string | null;
   transactionAmount!: number;
+  feeName?: string;
   clientName!: string;
   transactionReferenceId!: string;
   paymentStatus!: PaymentStatus;

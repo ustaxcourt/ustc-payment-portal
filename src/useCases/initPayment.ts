@@ -60,7 +60,6 @@ export const initPayment: InitPayment = async (appContext, request) => {
       transactionAmount,
       clientName,
       transactionReferenceId,
-      transactionAmount,
       paymentStatus: "pending",
       transactionStatus: "received",
       metadata: request.metadata,
