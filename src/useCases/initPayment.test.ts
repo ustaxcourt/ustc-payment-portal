@@ -41,6 +41,7 @@ import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
+import { PayGovError } from "../errors/payGovError";
 
 const validPetitionRequest: InitPaymentRequest & { clientName: string } = {
   transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
@@ -131,17 +132,37 @@ describe("initPayment", () => {
     ).rejects.toThrow("does not allow variable amounts");
   });
 
-  it("updates transaction to failed if SOAP request fails", async () => {
+  it("throws PayGovError when Pay.gov SOAP request fails with a network error", async () => {
+    const networkError = Object.assign(new Error("connect ECONNREFUSED"), {
+      code: "ECONNREFUSED",
+    });
     jest
       .spyOn(
         SoapRequestModule.StartOnlineCollectionRequest.prototype,
         "makeSoapRequest",
       )
-      .mockRejectedValueOnce(new Error("SOAP error"));
+      .mockRejectedValueOnce(networkError);
     const TransactionModel = require("../db/TransactionModel").default;
 
     await expect(initPayment(appContext, validPetitionRequest)).rejects.toThrow(
-      "Failed to initiate payment: SOAP error",
+      PayGovError,
+    );
+    expect(TransactionModel.createReceived).toHaveBeenCalled();
+    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+  });
+
+  it("wraps non-network SOAP errors and marks transaction failed", async () => {
+    const parseError = new TypeError("Unexpected token in XML");
+    jest
+      .spyOn(
+        SoapRequestModule.StartOnlineCollectionRequest.prototype,
+        "makeSoapRequest",
+      )
+      .mockRejectedValueOnce(parseError);
+    const TransactionModel = require("../db/TransactionModel").default;
+
+    await expect(initPayment(appContext, validPetitionRequest)).rejects.toThrow(
+      "Failed to initiate payment: Unexpected token in XML",
     );
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();

@@ -7,9 +7,23 @@ import { InvalidRequestError } from "../errors/invalidRequest";
 import FeesModel from "../db/FeesModel";
 import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
+import { PayGovError } from "../errors/payGovError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 
 type InitPaymentInternalRequest = InitPaymentRequest & { clientName: string };
+
+const NETWORK_ERROR_CODES = new Set([
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "ENOTFOUND",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+]);
+
+const isNetworkError = (err: unknown): boolean =>
+  err instanceof Error &&
+  NETWORK_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
 
 export type InitPayment = (
   appContext: AppContext,
@@ -60,7 +74,6 @@ export const initPayment: InitPayment = async (appContext, request) => {
       transactionAmount,
       clientName,
       transactionReferenceId,
-      transactionAmount,
       paymentStatus: "pending",
       transactionStatus: "received",
       metadata: request.metadata,
@@ -77,6 +90,9 @@ export const initPayment: InitPayment = async (appContext, request) => {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
     await TransactionModel.updateToFailed(agencyTrackingId);
+    if (isNetworkError(err)) {
+      throw new PayGovError();
+    }
     throw new Error(
       `Failed to initiate payment: ${
         err instanceof Error ? err.message : String(err)
