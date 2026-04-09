@@ -1,12 +1,19 @@
 import { signedFetch } from "./sigv4Helper";
 
-describe("initialize a payment", () => {
-  it("makes a request to the local payment portal", async () => {
-    const isLocal = process.env.NODE_ENV === "local";
+const baseUrl = process.env.BASE_URL;
+const isDeployed = baseUrl && !baseUrl.includes("localhost");
+const describeWithEnv = isDeployed ? describe : describe.skip;
 
-    const url = `${process.env.BASE_URL}/init`;
-    const options: RequestInit = {
+describeWithEnv("POST /init", () => {
+  const isLocal = process.env.NODE_ENV === "local";
+
+  const portalFetch = (options: RequestInit) =>
+    isLocal ? fetch(`${baseUrl}/init`, options) : signedFetch(`${baseUrl}/init`, options);
+
+  it("returns 200 with token and paymentRedirect for a valid request", async () => {
+    const result = await portalFetch({
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         transactionReferenceId: crypto.randomUUID(),
         feeId: "PETITION_FILING_FEE",
@@ -14,20 +21,22 @@ describe("initialize a payment", () => {
         urlCancel: "https://example.com",
         metadata: { docketNumber: "123-26" },
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    };
-
-    // In local dev, API Gateway is not in the loop — plain fetch is fine.
-    // In deployed environments, API Gateway enforces AWS_IAM auth — sign with SigV4.
-    const result = isLocal ? await fetch(url, options) : await signedFetch(url, options);
+    });
 
     const data = await result.json();
-    console.log(result);
-    console.log(data);
 
     expect(result.status).toBe(200);
     expect(data.token).toBeTruthy();
+    expect(data.paymentRedirect).toContain(data.token);
+  });
+
+  it("returns 400 for a request with missing required fields", async () => {
+    const result = await portalFetch({
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feeId: "PETITION_FILING_FEE" }),
+    });
+
+    expect(result.status).toBe(400);
   });
 });

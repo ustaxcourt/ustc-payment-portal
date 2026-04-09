@@ -3,6 +3,7 @@ import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as fees from "../fees";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
+import { PayGovError } from "../errors/payGovError";
 
 const validPetitionRequest: InitPaymentRequest = {
   transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
@@ -64,5 +65,30 @@ describe("initPayment", () => {
     await expect(
       initPayment(appContext, { ...validPetitionRequest, amount: 60 })
     ).rejects.toThrow("does not allow variable amounts");
+  });
+
+  it("throws InvalidRequestError when feeId is unknown", async () => {
+    jest.spyOn(fees, "getFeeConfig").mockResolvedValueOnce(undefined);
+    await expect(
+      initPayment(appContext, validPetitionRequest)
+    ).rejects.toThrow(`Unknown feeId: ${validPetitionRequest.feeId}`);
+  });
+
+  it("throws PayGovError when Pay.gov SOAP request fails with a network error", async () => {
+    const networkError = Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" });
+    jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+      .mockRejectedValueOnce(networkError);
+    await expect(
+      initPayment(appContext, validPetitionRequest)
+    ).rejects.toThrow(PayGovError);
+  });
+
+  it("rethrows non-network errors from makeSoapRequest", async () => {
+    const parseError = new TypeError("Unexpected token in XML");
+    jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+      .mockRejectedValueOnce(parseError);
+    await expect(
+      initPayment(appContext, validPetitionRequest)
+    ).rejects.toThrow(parseError);
   });
 });
