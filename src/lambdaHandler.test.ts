@@ -70,11 +70,12 @@ const mockHeaders = {
   "Content-Type": "application/json",
 };
 
-
 describe("lambdaHandler", () => {
   describe("initPaymentHandler", () => {
-    it("returns 200 with token on successful request and injects clientName", async () => {
-      const mockInitPayment = jest.fn().mockResolvedValue({ token: "test-token-123" });
+    it("returns 200 with token on successful request and client", async () => {
+      const mockInitPayment = jest
+        .fn()
+        .mockResolvedValue({ token: "test-token-123" });
       useCasesMock.initPayment = mockInitPayment;
 
       const event = {
@@ -93,7 +94,7 @@ describe("lambdaHandler", () => {
 
       expect(result.statusCode).toBe(200);
       expect(JSON.parse(result.body)).toHaveProperty("token");
-      // Check that clientName was injected into the request
+      // Check that client was passed to use case with correct clientName from mocked permissionsClient
       const calledWith = mockInitPayment.mock.calls[0][1];
       expect(calledWith.client.clientName).toBe("Test Client");
     });
@@ -168,7 +169,11 @@ describe("lambdaHandler", () => {
           feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
           urlSuccess: "https://example.com/success",
           urlCancel: "https://example.com/cancel",
-          metadata: { email: "test@example.com", fullName: "Test User", accessCode: "ABC123" },
+          metadata: {
+            email: "test@example.com",
+            fullName: "Test User",
+            accessCode: "ABC123",
+          },
         }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
@@ -177,7 +182,9 @@ describe("lambdaHandler", () => {
       const result = await initPaymentHandler(event);
 
       expect(result.statusCode).toBe(403);
-      expect(JSON.parse(result.body).message).toBe("Client not authorized for feeId");
+      expect(JSON.parse(result.body).message).toBe(
+        "Client not authorized for feeId",
+      );
     });
   });
 
