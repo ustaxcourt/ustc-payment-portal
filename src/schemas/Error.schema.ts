@@ -83,7 +83,13 @@ export const ServerErrorSchema = z
   .openapi("ServerError");
 
 export const GatewayErrorSchema = z
-  .object(JsonErrorSchema.shape)
+  .object({
+    ...JsonErrorSchema.shape,
+    message: z.string().openapi({
+      description: "Human-readable summary of the gateway failure",
+      example: "Error communicating with Pay.gov",
+    }),
+  })
   .openapi({
     description:
       "JSON error response for Pay.gov communication failures (HTTP 504). " +
@@ -95,7 +101,7 @@ export const GatewayErrorSchema = z
   })
   .openapi("GatewayError");
 
-// Generic error schema (for backward compatibility)
+// Generic JSON error schema
 export const ErrorResponseSchema = z
   .object(JsonErrorSchema.shape)
   .openapi({

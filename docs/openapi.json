@@ -348,8 +348,8 @@
         "properties": {
           "message": {
             "type": "string",
-            "description": "Human-readable error summary",
-            "example": "An unexpected error occurred while processing the request"
+            "description": "Human-readable summary of the gateway failure",
+            "example": "Error communicating with Pay.gov"
           },
           "errors": {
             "type": "array",
