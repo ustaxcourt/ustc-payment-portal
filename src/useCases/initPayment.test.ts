@@ -42,14 +42,20 @@ import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
 import { PayGovError } from "../errors/payGovError";
+import { ClientPermission } from "../types/ClientPermission";
 
-const validPetitionRequest: InitPaymentRequest & { clientName: string } = {
+const mockClient: ClientPermission = {
+  clientName: "Test Client App",
+  clientRoleArn: "arn:aws:iam::123456789012:role/test-client",
+  allowedFeeIds: ["*"],
+};
+
+const validPetitionRequest: InitPaymentRequest = {
   transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
   feeId: "PETITION_FILING_FEE",
   urlSuccess: "https://example.com/success",
   urlCancel: "https://example.com/cancel",
   metadata: { docketNumber: "123-26" },
-  clientName: "Test Client App",
 };
 
 const mockSoapRequest = (token: string) => {
@@ -69,12 +75,14 @@ describe("initPayment", () => {
   it("throws InvalidRequestError with a clear message when feeId is unrecognized", async () => {
     await expect(
       initPayment(appContext, {
-        transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-        feeId: "UNKNOWN_FEE" as any,
-        urlCancel: "https://example.com/cancel",
-        urlSuccess: "https://example.com/success",
-        metadata: { docketNumber: "123-26" },
-        clientName: "Test Client App",
+        client: mockClient,
+        request: {
+          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+          feeId: "UNKNOWN_FEE" as any,
+          urlCancel: "https://example.com/cancel",
+          urlSuccess: "https://example.com/success",
+          metadata: { docketNumber: "123-26" },
+        },
       }),
     ).rejects.toThrow("Unknown feeId: UNKNOWN_FEE");
   });
@@ -83,7 +91,10 @@ describe("initPayment", () => {
     mockSoapRequest("test-token-123");
     const TransactionModel = require("../db/TransactionModel").default;
 
-    const result = await initPayment(appContext, validPetitionRequest);
+    const result = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
 
     expect(result.token).toBe("test-token-123");
     expect(result.paymentRedirect).toContain("test-token-123");
@@ -95,16 +106,18 @@ describe("initPayment", () => {
   it("returns a token and paymentRedirect for a valid NONATTORNEY_EXAM_REGISTRATION_FEE request", async () => {
     mockSoapRequest("test-token-456");
     const result = await initPayment(appContext, {
-      transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-      feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
-      urlSuccess: "https://example.com/success",
-      urlCancel: "https://example.com/cancel",
-      metadata: {
-        email: "applicant@example.com",
-        fullName: "John Doe",
-        accessCode: "ABC123",
+      client: mockClient,
+      request: {
+        transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+        feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        urlSuccess: "https://example.com/success",
+        urlCancel: "https://example.com/cancel",
+        metadata: {
+          email: "applicant@example.com",
+          fullName: "John Doe",
+          accessCode: "ABC123",
+        },
       },
-      clientName: "Test Client App",
     });
     expect(result.token).toBe("test-token-456");
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTANAEF");
@@ -119,14 +132,20 @@ describe("initPayment", () => {
       isVariable: true,
     });
 
-    await expect(initPayment(appContext, validPetitionRequest)).rejects.toThrow(
-      "requires an amount",
-    );
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toThrow("requires an amount");
   });
 
   it("throws InvalidRequestError when amount is supplied for a non-variable fee", async () => {
     await expect(
-      initPayment(appContext, { ...validPetitionRequest, amount: 60 }),
+      initPayment(appContext, {
+        client: mockClient,
+        request: { ...validPetitionRequest, amount: 60 },
+      }),
     ).rejects.toThrow("does not allow variable amounts");
   });
 
@@ -139,28 +158,47 @@ describe("initPayment", () => {
       .mockRejectedValueOnce(new Error("SOAP error"));
     const TransactionModel = require("../db/TransactionModel").default;
 
-    await expect(initPayment(appContext, validPetitionRequest)).rejects.toThrow(
-      "SOAP error",
-    );
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toThrow("SOAP error");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
   });
 
   it("throws PayGovError when Pay.gov SOAP request fails with a network error", async () => {
-    const networkError = Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" });
-    jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+    const networkError = Object.assign(new Error("connect ECONNREFUSED"), {
+      code: "ECONNREFUSED",
+    });
+    jest
+      .spyOn(
+        SoapRequestModule.StartOnlineCollectionRequest.prototype,
+        "makeSoapRequest",
+      )
       .mockRejectedValueOnce(networkError);
     await expect(
-      initPayment(appContext, validPetitionRequest)
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
     ).rejects.toThrow(PayGovError);
   });
 
   it("rethrows non-network errors from makeSoapRequest", async () => {
     const parseError = new TypeError("Unexpected token in XML");
-    jest.spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+    jest
+      .spyOn(
+        SoapRequestModule.StartOnlineCollectionRequest.prototype,
+        "makeSoapRequest",
+      )
       .mockRejectedValueOnce(parseError);
     await expect(
-      initPayment(appContext, validPetitionRequest)
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
     ).rejects.toThrow(parseError);
   });
 });

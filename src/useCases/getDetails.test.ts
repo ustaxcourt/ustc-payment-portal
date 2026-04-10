@@ -1,5 +1,12 @@
 import { getDetails } from "./getDetails";
 import { testAppContext as appContext } from "../test/testAppContext";
+import { ClientPermission } from "../types/ClientPermission";
+
+const mockClient: ClientPermission = {
+  clientName: "Test Client",
+  clientRoleArn: "arn:aws:iam::123456789012:role/test-client",
+  allowedFeeIds: ["*"],
+};
 
 const mockPayGovTrackingId = "test-tracking-id-12345";
 
@@ -47,8 +54,11 @@ describe("getDetails", () => {
   it("throws an error if we pass in an invalid request", async () => {
     await expect(
       getDetails(appContext, {
-        foo: "bar",
-      } as any)
+        client: mockClient,
+        request: {
+          foo: "bar",
+        } as any,
+      }),
     ).rejects.toThrow();
   });
 
@@ -61,7 +71,8 @@ describe("getDetails", () => {
 
     it("returns the trackingId from the XML", async () => {
       const { trackingId } = await getDetails(appContext, {
-        payGovTrackingId: mockPayGovTrackingId,
+        client: mockClient,
+        request: { payGovTrackingId: mockPayGovTrackingId },
       });
 
       expect(trackingId).toEqual(mockPayGovTrackingId);
@@ -69,7 +80,8 @@ describe("getDetails", () => {
 
     it("returns the transactionStatus from the XML", async () => {
       const { transactionStatus } = await getDetails(appContext, {
-        payGovTrackingId: mockPayGovTrackingId,
+        client: mockClient,
+        request: { payGovTrackingId: mockPayGovTrackingId },
       });
 
       expect(transactionStatus).toEqual("Success");
@@ -85,7 +97,8 @@ describe("getDetails", () => {
 
     it("returns the trackingId", async () => {
       const { trackingId } = await getDetails(appContext, {
-        payGovTrackingId: mockPayGovTrackingId,
+        client: mockClient,
+        request: { payGovTrackingId: mockPayGovTrackingId },
       });
 
       expect(trackingId).toBe(mockPayGovTrackingId);
@@ -93,7 +106,8 @@ describe("getDetails", () => {
 
     it("returns Pending transaction status", async () => {
       const { transactionStatus } = await getDetails(appContext, {
-        payGovTrackingId: mockPayGovTrackingId,
+        client: mockClient,
+        request: { payGovTrackingId: mockPayGovTrackingId },
       });
 
       expect(transactionStatus).toBe("Pending");
