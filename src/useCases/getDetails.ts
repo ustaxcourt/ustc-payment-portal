@@ -26,10 +26,8 @@ export const getDetails: GetDetails = async (
   params,
 ) => {
   const {
-    client: _client,
     request,
   } = params;
-  void _client;
   const { payGovTrackingId } = request;
 
   const req = new GetRequestRequest({
