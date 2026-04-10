@@ -48,6 +48,24 @@ export const ServerErrorSchema = z
   })
   .openapi("ServerError");
 
+export const GatewayErrorSchema = z
+  .object({
+    message: z.string().openapi({
+      description: "Human-readable summary of the gateway failure",
+      example: "Error communicating with Pay.gov",
+    }),
+    errors: z.array(z.string()).openapi({
+      description: "Additional gateway error details",
+      example: ["Timed out waiting for response from Pay.gov"],
+    }),
+  })
+  .openapi({
+    description:
+      "JSON error response for Pay.gov communication failures (HTTP 504). " +
+      "Returned when the API cannot receive a timely response from Pay.gov.",
+  })
+  .openapi("GatewayError");
+
 // Generic error schema (for backward compatibility)
 export const ErrorResponseSchema = z
   .string()

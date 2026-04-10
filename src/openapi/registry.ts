@@ -9,6 +9,7 @@ import {
   BadRequestErrorSchema,
   ForbiddenErrorSchema,
   ServerErrorSchema,
+  GatewayErrorSchema,
   GetDetailsResponseSchema,
   TransactionRecordSchema,
   TransactionRecordSummarySchema,
@@ -43,6 +44,7 @@ registry.register("ErrorResponse", ErrorResponseSchema);
 registry.register("BadRequestError", BadRequestErrorSchema);
 registry.register("ForbiddenError", ForbiddenErrorSchema);
 registry.register("ServerError", ServerErrorSchema);
+registry.register("GatewayError", GatewayErrorSchema);
 registry.register("GetDetailsResponse", GetDetailsResponseSchema);
 registry.register("TransactionRecord", TransactionRecordSchema);
 registry.register("TransactionRecordSummary", TransactionRecordSummarySchema);
@@ -121,6 +123,14 @@ registry.registerPath({
       content: {
         "text/plain": {
           schema: ServerErrorSchema,
+        },
+      },
+    },
+    504: {
+      description: "Gateway timeout communicating with Pay.gov",
+      content: {
+        "application/json": {
+          schema: GatewayErrorSchema,
         },
       },
     },

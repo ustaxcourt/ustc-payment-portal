@@ -197,6 +197,31 @@
         "description": "Plain text error message for internal server errors (HTTP 500).\n\nReturned when an unexpected error occurs during request processing. If this error persists, contact support with the request details.",
         "example": "Internal Server Error"
       },
+      "GatewayError": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable summary of the gateway failure",
+            "example": "Error communicating with Pay.gov"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Additional gateway error details",
+            "example": [
+              "Timed out waiting for response from Pay.gov"
+            ]
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ],
+        "description": "JSON error response for Pay.gov communication failures (HTTP 504). Returned when the API cannot receive a timely response from Pay.gov."
+      },
       "GetDetailsResponse": {
         "type": "object",
         "properties": {
@@ -672,6 +697,16 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway timeout communicating with Pay.gov",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
                 }
               }
             }
