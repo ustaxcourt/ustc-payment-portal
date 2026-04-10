@@ -59,7 +59,7 @@ app.post("/init", async (req, res) => {
   try {
     const result = await appContext
       .getUseCases()
-      .initPayment(appContext, { client: devClient, request: req.body);
+      .initPayment(appContext, { client: devClient, request: req.body });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
@@ -71,7 +71,7 @@ app.post("/process", async (req, res) => {
   try {
     const result = await appContext
       .getUseCases()
-      .processPayment(appContext, req.body);
+      .processPayment(appContext, { client: devClient, request: req.body });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
@@ -83,7 +83,7 @@ app.get("/details/:payGovTrackingId", async (req, res) => {
   try {
     const result = await appContext
       .getUseCases()
-      .getDetails(appContext, req.params);
+      .getDetails(appContext, { client: devClient, request: req.params });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);

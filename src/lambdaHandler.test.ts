@@ -95,7 +95,7 @@ describe("lambdaHandler", () => {
       expect(JSON.parse(result.body)).toHaveProperty("token");
       // Check that clientName was injected into the request
       const calledWith = mockInitPayment.mock.calls[0][1];
-      expect(calledWith.clientName).toBe("Test Client");
+      expect(calledWith.client.clientName).toBe("Test Client");
     });
 
     it("returns 400 with structured errors array when request schema validation fails", async () => {
