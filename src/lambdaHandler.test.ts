@@ -189,7 +189,7 @@ describe("lambdaHandler", () => {
     it("returns 200 with transaction details on successful request", async () => {
       const event = {
         body: JSON.stringify({
-          token: "payment-token",
+          token: crypto.randomUUID(),
         }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
@@ -283,7 +283,7 @@ describe("lambdaHandler", () => {
 
     it("returns 400 when request has unknown fields (strict mode)", async () => {
       const event = {
-        body: JSON.stringify({ token: "abc", evil: true }),
+        body: JSON.stringify({ token: crypto.randomUUID(), evil: true }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
@@ -295,7 +295,7 @@ describe("lambdaHandler", () => {
 
     it("returns 403 when IAM principal is invalid", async () => {
       const event = {
-        body: JSON.stringify({ token: "payment-token" }),
+        body: JSON.stringify({ token: crypto.randomUUID() }),
         headers: mockHeaders,
         requestContext: {
           ...mockRequestContext,
