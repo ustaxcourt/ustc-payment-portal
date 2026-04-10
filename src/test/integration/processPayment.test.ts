@@ -4,13 +4,13 @@ const baseUrl = process.env.BASE_URL;
 const isDeployed = baseUrl && !baseUrl.includes("localhost");
 const describeWithEnv = isDeployed ? describe : describe.skip;
 
-describeWithEnv("POST /processPayment", () => {
+describeWithEnv("POST /process", () => {
   const isLocal = process.env.NODE_ENV === "local";
 
   const portalFetch = (options: RequestInit) =>
     isLocal
-      ? fetch(`${baseUrl}/processPayment`, options)
-      : signedFetch(`${baseUrl}/processPayment`, options);
+      ? fetch(`${baseUrl}/process`, options)
+      : signedFetch(`${baseUrl}/process`, options);
 
   it("returns 400 when body is malformed JSON", async () => {
     const result = await portalFetch({
