@@ -7,10 +7,9 @@ import { InvalidRequestError } from "../errors/invalidRequest";
 import FeesModel from "../db/FeesModel";
 import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
-
-type InitPaymentInternalRequest = InitPaymentRequest & { clientName: string };
 import { PayGovError } from "../errors/payGovError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
+import { ClientPermission } from "../types/ClientPermission";
 
 const NETWORK_ERROR_CODES = new Set([
   "ECONNREFUSED",
@@ -27,18 +26,19 @@ const isNetworkError = (err: unknown): boolean =>
 
 export type InitPayment = (
   appContext: AppContext,
-  request: InitPaymentInternalRequest,
+  params: {
+    client: ClientPermission;
+    request: InitPaymentRequest;
+  },
 ) => Promise<InitPaymentResponse>;
 
-export const initPayment: InitPayment = async (appContext, request) => {
-  const {
-    feeId,
-    amount,
-    transactionReferenceId,
-    urlSuccess,
-    urlCancel,
-    clientName,
-  } = request;
+export const initPayment: InitPayment = async (
+  appContext,
+  { client, request },
+) => {
+  const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel } =
+    request;
+  const { clientName } = client;
 
   const fee = await FeesModel.getFeeById(feeId);
   if (!fee || !fee.tcsAppId) {
@@ -90,7 +90,7 @@ export const initPayment: InitPayment = async (appContext, request) => {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
     await TransactionModel.updateToFailed(agencyTrackingId);
-     if (isNetworkError(err)) {
+    if (isNetworkError(err)) {
       throw new PayGovError();
     }
     throw err;

@@ -4,15 +4,19 @@ import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
 import { ProcessPaymentResponse } from "../types/ProcessPaymentResponse";
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { parseTransactionStatus } from "./parseTransactionStatus";
+import { ClientPermission } from "../types/ClientPermission";
 
 export type ProcessPayment = (
   appContext: AppContext,
-  request: ProcessPaymentRequest,
+  params: {
+    client: ClientPermission;
+    request: ProcessPaymentRequest;
+  },
 ) => Promise<ProcessPaymentResponse>;
 
 export const processPayment: ProcessPayment = async (
   appContext: AppContext,
-  request: ProcessPaymentRequest,
+  { request },
 ) => {
   const req = new CompleteOnlineCollectionWithDetailsRequest({
     tcsAppId: "", // Required by Pay.gov SOAP schema — token alone identifies the transaction on this call
