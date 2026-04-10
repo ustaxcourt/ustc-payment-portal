@@ -15,10 +15,14 @@ interface PermissionsCache {
 let cache: PermissionsCache | null = null;
 
 /** Cache TTL in milliseconds (default: 5 minutes) */
-const CACHE_TTL_MS = parseInt(
-  process.env.CLIENT_PERMISSIONS_CACHE_TTL_MS || "300000",
+const DEFAULT_CACHE_TTL_MS = 300000;
+const parsedCacheTtlMs = parseInt(
+  process.env.CLIENT_PERMISSIONS_CACHE_TTL_MS || `${DEFAULT_CACHE_TTL_MS}`,
   10,
 );
+const CACHE_TTL_MS = Number.isFinite(parsedCacheTtlMs)
+  ? parsedCacheTtlMs
+  : DEFAULT_CACHE_TTL_MS;
 
 /**
  * Mock client permissions for local development.
