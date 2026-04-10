@@ -2,14 +2,16 @@ import {
   getClientPermissions,
   getClientByRoleArn,
   clearPermissionsCache,
-  ClientPermission,
 } from "./permissionsClient";
 import { getSecretString } from "./secretsClient";
 import { ServerError } from "../errors/serverError";
+import { ClientPermission } from "../types/ClientPermission";
 
 jest.mock("./secretsClient");
 
-const mockGetSecretString = getSecretString as jest.MockedFunction<typeof getSecretString>;
+const mockGetSecretString = getSecretString as jest.MockedFunction<
+  typeof getSecretString
+>;
 
 const validPermissions: ClientPermission[] = [
   {
@@ -41,7 +43,9 @@ describe("permissionsClient", () => {
 
   describe("getClientPermissions", () => {
     it("fetches and returns permissions from Secrets Manager", async () => {
-      mockGetSecretString.mockResolvedValueOnce(JSON.stringify(validPermissions));
+      mockGetSecretString.mockResolvedValueOnce(
+        JSON.stringify(validPermissions),
+      );
 
       const result = await getClientPermissions();
 
@@ -50,7 +54,9 @@ describe("permissionsClient", () => {
     });
 
     it("caches permissions and does not refetch within TTL", async () => {
-      mockGetSecretString.mockResolvedValueOnce(JSON.stringify(validPermissions));
+      mockGetSecretString.mockResolvedValueOnce(
+        JSON.stringify(validPermissions),
+      );
 
       // First call - fetches from Secrets Manager
       await getClientPermissions();
@@ -65,7 +71,7 @@ describe("permissionsClient", () => {
 
       await expect(getClientPermissions()).rejects.toThrow(ServerError);
       await expect(getClientPermissions()).rejects.toThrow(
-        "CLIENT_PERMISSIONS_SECRET_ID environment variable not set"
+        "CLIENT_PERMISSIONS_SECRET_ID environment variable not set",
       );
     });
 
@@ -74,19 +80,23 @@ describe("permissionsClient", () => {
 
       await expect(getClientPermissions()).rejects.toThrow(ServerError);
       await expect(getClientPermissions()).rejects.toThrow(
-        "Failed to fetch client permissions"
+        "Failed to fetch client permissions",
       );
     });
 
     it("throws ServerError when permissions is not an array", async () => {
-      mockGetSecretString.mockResolvedValueOnce(JSON.stringify({ not: "array" }));
+      mockGetSecretString.mockResolvedValueOnce(
+        JSON.stringify({ not: "array" }),
+      );
 
       await expect(getClientPermissions()).rejects.toThrow(ServerError);
     });
 
     it("throws ServerError when permission entry is missing required fields", async () => {
       const invalidPermissions = [{ clientName: "Missing fields" }];
-      mockGetSecretString.mockResolvedValueOnce(JSON.stringify(invalidPermissions));
+      mockGetSecretString.mockResolvedValueOnce(
+        JSON.stringify(invalidPermissions),
+      );
 
       await expect(getClientPermissions()).rejects.toThrow(ServerError);
     });
@@ -104,7 +114,9 @@ describe("permissionsClient", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].clientName).toBe("Local Development");
-      expect(result[0].clientRoleArn).toBe("arn:aws:iam::000000000000:role/local-dev-role");
+      expect(result[0].clientRoleArn).toBe(
+        "arn:aws:iam::000000000000:role/local-dev-role",
+      );
       expect(mockGetSecretString).not.toHaveBeenCalled();
     });
   });
@@ -116,7 +128,7 @@ describe("permissionsClient", () => {
 
     it("returns client permission when role ARN matches", async () => {
       const result = await getClientByRoleArn(
-        "arn:aws:iam::123456789012:role/dawson-client"
+        "arn:aws:iam::123456789012:role/dawson-client",
       );
 
       expect(result).toEqual(validPermissions[0]);
@@ -124,7 +136,7 @@ describe("permissionsClient", () => {
 
     it("returns null when role ARN does not match any client", async () => {
       const result = await getClientByRoleArn(
-        "arn:aws:iam::111111111111:role/unknown-role"
+        "arn:aws:iam::111111111111:role/unknown-role",
       );
 
       expect(result).toBeNull();
@@ -132,7 +144,7 @@ describe("permissionsClient", () => {
 
     it("returns correct client when multiple clients exist", async () => {
       const result = await getClientByRoleArn(
-        "arn:aws:iam::999888777666:role/test-app"
+        "arn:aws:iam::999888777666:role/test-app",
       );
 
       expect(result).toEqual(validPermissions[1]);

@@ -107,7 +107,8 @@ describe("processPayment", () => {
       processPayment(appContext, {
         client: mockClient,
         request: {
-        foo: 20,} as any,
+          foo: 20,
+        } as any,
       }),
     ).rejects.toThrow();
   });
@@ -173,7 +174,7 @@ describe("processPayment", () => {
       );
     });
 
-    it("returns the error code from the pyment processor that indicates why the transaction failed", async () => {
+    it("returns the error code from the payment processor that indicates why the transaction failed", async () => {
       const { code } = await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },

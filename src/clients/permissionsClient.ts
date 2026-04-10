@@ -1,19 +1,7 @@
 import { getSecretString } from "./secretsClient";
 import { ServerError } from "../errors/serverError";
 import { LOCAL_DEV_ROLE_ARN } from "../extractCallerArn";
-
-/**
- * Represents a client's permissions for accessing the Payment Portal.
- * Stored in Secrets Manager as a JSON array.
- */
-export interface ClientPermission {
-  /** Human-readable client name (e.g., "DAWSON", "Nonattorney Admissions Exam App") */
-  clientName: string;
-  /** IAM role ARN for the client (e.g., "arn:aws:iam::123456789012:role/dawson-client") */
-  clientRoleArn: string;
-  /** List of feeIds this client is authorized to use */
-  allowedFeeIds: string[];
-}
+import { ClientPermission } from "../types/ClientPermission";
 
 /**
  * Cache for client permissions to avoid per-request Secrets Manager calls.
@@ -27,7 +15,10 @@ interface PermissionsCache {
 let cache: PermissionsCache | null = null;
 
 /** Cache TTL in milliseconds (default: 5 minutes) */
-const CACHE_TTL_MS = parseInt(process.env.CLIENT_PERMISSIONS_CACHE_TTL_MS || "300000", 10);
+const CACHE_TTL_MS = parseInt(
+  process.env.CLIENT_PERMISSIONS_CACHE_TTL_MS || "300000",
+  10,
+);
 
 /**
  * Mock client permissions for local development.
@@ -62,7 +53,9 @@ export const getClientPermissions = async (): Promise<ClientPermission[]> => {
 
   const secretId = process.env.CLIENT_PERMISSIONS_SECRET_ID;
   if (!secretId) {
-    throw new ServerError("CLIENT_PERMISSIONS_SECRET_ID environment variable not set");
+    throw new ServerError(
+      "CLIENT_PERMISSIONS_SECRET_ID environment variable not set",
+    );
   }
 
   try {
@@ -75,7 +68,11 @@ export const getClientPermissions = async (): Promise<ClientPermission[]> => {
     }
 
     for (const perm of permissions) {
-      if (!perm.clientName || !perm.clientRoleArn || !Array.isArray(perm.allowedFeeIds)) {
+      if (
+        !perm.clientName ||
+        !perm.clientRoleArn ||
+        !Array.isArray(perm.allowedFeeIds)
+      ) {
         throw new Error("Invalid client permission structure");
       }
     }
@@ -88,7 +85,10 @@ export const getClientPermissions = async (): Promise<ClientPermission[]> => {
 
     return permissions;
   } catch (error) {
-    console.error("Failed to fetch client permissions from Secrets Manager", error);
+    console.error(
+      "Failed to fetch client permissions from Secrets Manager",
+      error,
+    );
     throw new ServerError("Failed to fetch client permissions");
   }
 };
@@ -100,7 +100,7 @@ export const getClientPermissions = async (): Promise<ClientPermission[]> => {
  * @returns The client's permissions, or null if not found
  */
 export const getClientByRoleArn = async (
-  roleArn: string
+  roleArn: string,
 ): Promise<ClientPermission | null> => {
   const permissions = await getClientPermissions();
   return permissions.find((p) => p.clientRoleArn === roleArn) || null;

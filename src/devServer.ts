@@ -8,12 +8,18 @@ import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
 import { migrationHandler } from "./migrationHandler";
 import { handleError } from "./handleError";
 import "./db/knex";
+import { ClientPermission } from "./types/ClientPermission";
 
 const appContext = createAppContext();
 
 const app = express();
 app.use(express.json());
 const port = 8080; // default port to listen
+const devClient: ClientPermission = {
+  clientName: "Dev Client App",
+  clientRoleArn: "arn:aws:iam::123456789012:role/dev-client",
+  allowedFeeIds: ["*"],
+};
 
 // Note: This is only needed for local development
 // when the web client is served from a different origin (e.g. localhost:3000).
@@ -53,7 +59,7 @@ app.post("/init", async (req, res) => {
   try {
     const result = await appContext
       .getUseCases()
-      .initPayment(appContext, { ...req.body, clientName: "DEV" });
+      .initPayment(appContext, { client: devClient, request: req.body);
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
