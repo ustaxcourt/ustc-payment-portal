@@ -13,7 +13,6 @@
 **Change:**
 - Add `.strict()` to the object so unknown keys are rejected (payment endpoints should fail loudly on unexpected fields).
 - Add `.min(1)` to `token` so empty strings are rejected.
-- If the story requires `appId`, add it as a required `z.string().min(1)`. **Open question for the team — confirm before coding.**
 
 **Why:** Schema is the single source of truth for request shape. Tightening it here means every call site (handler, tests, OpenAPI doc) gets the stricter rules for free.
 
