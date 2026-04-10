@@ -21,13 +21,7 @@ export type GetDetails = (
   },
 ) => Promise<TransactionDetails>;
 
-export const getDetails: GetDetails = async (
-  appContext,
-  params,
-) => {
-  const {
-    request,
-  } = params;
+export const getDetails: GetDetails = async (appContext, { request }) => {
   const { payGovTrackingId } = request;
 
   const req = new GetRequestRequest({
