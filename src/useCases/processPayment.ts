@@ -16,8 +16,9 @@ export type ProcessPayment = (
 
 export const processPayment: ProcessPayment = async (
   appContext: AppContext,
-  { request },
+  { client: _client, request },
 ) => {
+  void _client;
   const req = new CompleteOnlineCollectionWithDetailsRequest({
     tcsAppId: "", // Required by Pay.gov SOAP schema — token alone identifies the transaction on this call
     token: request.token,

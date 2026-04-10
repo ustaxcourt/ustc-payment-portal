@@ -105,8 +105,10 @@ describe("processPayment", () => {
   it("throws an error if we pass in an invalid request", async () => {
     await expect(
       processPayment(appContext, {
-        foo: 20,
-      } as any),
+        client: mockClient,
+        request: {
+        foo: 20,} as any,
+      }),
     ).rejects.toThrow();
   });
 

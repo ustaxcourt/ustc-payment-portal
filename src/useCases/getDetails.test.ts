@@ -54,8 +54,11 @@ describe("getDetails", () => {
   it("throws an error if we pass in an invalid request", async () => {
     await expect(
       getDetails(appContext, {
-        foo: "bar",
-      } as any),
+        client: mockClient,
+        request: {
+          foo: "bar",
+        } as any,
+      }),
     ).rejects.toThrow();
   });
 

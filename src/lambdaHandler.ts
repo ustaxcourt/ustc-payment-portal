@@ -28,7 +28,7 @@ const lambdaHandler = async (
   try {
     const roleArn = extractCallerArn(requestContext);
     const client = await authorizeClient(roleArn, feeId);
-    const result = await callback(appContext, { client, ...request });
+    const result = await callback(appContext, { client, request });
     return {
       statusCode: 200,
       body: JSON.stringify(result),
