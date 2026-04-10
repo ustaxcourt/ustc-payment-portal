@@ -1,5 +1,12 @@
 import { processPayment } from "./processPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
+import { ClientPermission } from "../types/ClientPermission";
+
+const mockClient: ClientPermission = {
+  clientName: "Test Client",
+  clientRoleArn: "arn:aws:iam::123456789012:role/test-client",
+  allowedFeeIds: ["*"],
+};
 
 const mockPayGovTrackingId = "211d8c91c046404fb159b52d042a12ba";
 const mockPendingResponse = `<?xml version="1.0" encoding="UTF-8"?>
@@ -99,7 +106,7 @@ describe("processPayment", () => {
     await expect(
       processPayment(appContext, {
         foo: 20,
-      } as any)
+      } as any),
     ).rejects.toThrow();
   });
 
@@ -112,7 +119,8 @@ describe("processPayment", () => {
 
     it("returns the trackingId from the XML", async () => {
       const { trackingId } = await processPayment(appContext, {
-        token: "mock-token",
+        client: mockClient,
+        request: { token: "mock-token" },
       });
 
       expect(trackingId).toEqual(mockPayGovTrackingId);
@@ -120,7 +128,8 @@ describe("processPayment", () => {
 
     it("returns the transactionStatus from the XML", async () => {
       const { transactionStatus } = await processPayment(appContext, {
-        token: "mock-token",
+        client: mockClient,
+        request: { token: "mock-token" },
       });
 
       expect(transactionStatus).toEqual("Success");
@@ -136,7 +145,8 @@ describe("processPayment", () => {
 
     it("does not return a trackingId", async () => {
       const { trackingId } = await processPayment(appContext, {
-        token: "mock-token",
+        client: mockClient,
+        request: { token: "mock-token" },
       });
 
       expect(trackingId).toBeUndefined();
@@ -144,24 +154,27 @@ describe("processPayment", () => {
 
     it("returns transactionStatus failed", async () => {
       const { transactionStatus } = await processPayment(appContext, {
-        token: "mock-token",
+        client: mockClient,
+        request: { token: "mock-token" },
       });
       expect(transactionStatus).toBe("Failed");
     });
 
     it("returns a message that indicates why the transaction failed", async () => {
       const { message } = await processPayment(appContext, {
-        token: "mock-token",
+        client: mockClient,
+        request: { token: "mock-token" },
       });
 
       expect(message).toBe(
-        "The card has been declined, the transaction will not be processed."
+        "The card has been declined, the transaction will not be processed.",
       );
     });
 
     it("returns the error code from the pyment processor that indicates why the transaction failed", async () => {
       const { code } = await processPayment(appContext, {
-        token: "mock-token",
+        client: mockClient,
+        request: { token: "mock-token" },
       });
 
       expect(code).toBe(3001);
@@ -177,7 +190,8 @@ describe("processPayment", () => {
 
     it("Returns a trackingId", async () => {
       const { trackingId } = await processPayment(appContext, {
-        token: "mock-token",
+        client: mockClient,
+        request: { token: "mock-token" },
       });
 
       expect(trackingId).toBe(mockPayGovTrackingId);
@@ -185,7 +199,8 @@ describe("processPayment", () => {
 
     it("returns Pending transaction status", async () => {
       const { transactionStatus } = await processPayment(appContext, {
-        token: "mock-token",
+        client: mockClient,
+        request: { token: "mock-token" },
       });
       expect(transactionStatus).toBe("Pending");
     });
@@ -198,7 +213,8 @@ describe("processPayment", () => {
         .mockReturnValue(mockFaultWithoutDetail);
 
       const { transactionStatus, message } = await processPayment(appContext, {
-        token: "mock-token",
+        client: mockClient,
+        request: { token: "mock-token" },
       });
 
       expect(transactionStatus).toBe("Failed");
@@ -211,7 +227,8 @@ describe("processPayment", () => {
         .mockReturnValue(mockFaultWithoutTCSServiceFault);
 
       const { transactionStatus, message } = await processPayment(appContext, {
-        token: "mock-token",
+        client: mockClient,
+        request: { token: "mock-token" },
       });
 
       expect(transactionStatus).toBe("Failed");
