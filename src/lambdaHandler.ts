@@ -3,12 +3,14 @@ import {
   APIGatewayEvent,
   APIGatewayEventRequestContext,
 } from "aws-lambda";
+import { ZodType } from "zod";
 import { createAppContext } from "./appContext";
 import { extractCallerArn } from "./extractCallerArn";
 import { authorizeClient } from "./authorizeClient";
 import { handleError } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
 import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
+import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
 import { GetDetails } from "./useCases/getDetails";
 import { InitPayment } from "./useCases/initPayment";
 import { ProcessPayment } from "./useCases/processPayment";
@@ -56,33 +58,50 @@ const safeJsonParse = <T = any>(
   }
 };
 
+/**
+ * Parses a JSON body and validates it against a Zod schema.
+ * Returns either the typed, validated value or a pre-built 400 error response.
+ */
+const parseAndValidate = <T>(
+  body: string | null | undefined,
+  schema: ZodType<T>,
+): { value?: T; error?: APIGatewayProxyResult } => {
+  const parsed = safeJsonParse(body);
+  if (parsed.error) return { error: parsed.error };
+
+  const result = schema.safeParse(parsed.value);
+  if (!result.success) {
+    return { error: handleError(result.error) };
+  }
+
+  return { value: result.data };
+};
+
 export const initPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const { value: rawBody, error } = safeJsonParse(event.body);
+  const { value, error } = parseAndValidate(event.body, InitPaymentRequestSchema);
   if (error) return Promise.resolve(error);
 
-  const parsed = InitPaymentRequestSchema.safeParse(rawBody);
-  if (!parsed.success) {
-    return Promise.resolve(handleError(parsed.error));
-  }
-
   return lambdaHandler(
-    parsed.data,
+    value,
     event.requestContext,
     appContext.getUseCases().initPayment,
-    parsed.data.feeId,
+    value!.feeId,
   );
 };
 
 export const processPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const { value: request, error } = safeJsonParse(event.body);
+  const { value, error } = parseAndValidate(
+    event.body,
+    ProcessPaymentRequestSchema,
+  );
   if (error) return Promise.resolve(error);
 
   return lambdaHandler(
-    request,
+    value,
     event.requestContext,
     appContext.getUseCases().processPayment,
   );

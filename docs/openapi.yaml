@@ -211,18 +211,28 @@ components:
         Returned when an unexpected error occurs during request processing. If
         this error persists, contact support with the request details.
       example: Internal Server Error
-    GatewayError:
+    ValidationErrorResponse:
       type: object
-      description: >-
-        Error response returned when the server encounters an error communicating
-        with Pay.gov (HTTP 504).
       properties:
         message:
           type: string
-          example: Error communicating with Pay.gov
+          description: >-
+            Human-readable summary. 'Validation error' for Zod failures;
+            otherwise the thrown error's message (e.g. 'missing body', 'invalid
+            JSON in request body').
+          example: Validation error
         errors:
           type: array
           items: {}
+          description: >-
+            Structured issue list. For Zod failures this contains ZodIssue
+            objects with `path`, `message`, and `code`. Empty array for non-Zod
+            errors.
+          example:
+            - code: invalid_type
+              path:
+                - token
+              message: Required
       required:
         - message
         - errors
@@ -361,12 +371,14 @@ components:
       properties:
         token:
           type: string
+          minLength: 1
           description: >-
             The payment token received from Pay.gov after user completes payment
             form
           example: abc123token
       required:
         - token
+      additionalProperties: false
     ProcessPaymentResponse:
       type: object
       properties:
@@ -589,12 +601,6 @@ paths:
             text/plain:
               schema:
                 $ref: '#/components/schemas/ServerError'
-        '504':
-          description: Error communicating with Pay.gov
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GatewayError'
   /details/{transactionReferenceId}:
     get:
       summary: Get transaction details
@@ -667,11 +673,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProcessPaymentResponse'
         '400':
-          description: Invalid request payload (e.g., missing body)
+          description: >-
+            Invalid request payload. Returned when the body is missing, not
+            valid JSON, or fails schema validation (missing `token`, wrong type,
+            empty string, or unknown fields in strict mode).
           content:
-            text/plain:
+            application/json:
               schema:
-                $ref: '#/components/schemas/BadRequestError'
+                $ref: '#/components/schemas/ValidationErrorResponse'
         '403':
           description: Forbidden - invalid SigV4 signature or client not authorized
           content:

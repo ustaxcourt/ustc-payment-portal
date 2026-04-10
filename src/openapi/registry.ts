@@ -9,6 +9,7 @@ import {
   BadRequestErrorSchema,
   ForbiddenErrorSchema,
   ServerErrorSchema,
+  ValidationErrorResponseSchema,
   GetDetailsResponseSchema,
   TransactionRecordSchema,
   TransactionRecordSummarySchema,
@@ -43,6 +44,7 @@ registry.register("ErrorResponse", ErrorResponseSchema);
 registry.register("BadRequestError", BadRequestErrorSchema);
 registry.register("ForbiddenError", ForbiddenErrorSchema);
 registry.register("ServerError", ServerErrorSchema);
+registry.register("ValidationErrorResponse", ValidationErrorResponseSchema);
 registry.register("GetDetailsResponse", GetDetailsResponseSchema);
 registry.register("TransactionRecord", TransactionRecordSchema);
 registry.register("TransactionRecordSummary", TransactionRecordSummarySchema);
@@ -217,10 +219,12 @@ registry.registerPath({
       },
     },
     400: {
-      description: "Invalid request payload (e.g., missing body)",
+      description:
+        "Invalid request payload. Returned when the body is missing, not valid JSON, " +
+        "or fails schema validation (missing `token`, wrong type, empty string, or unknown fields in strict mode).",
       content: {
-        "text/plain": {
-          schema: BadRequestErrorSchema,
+        "application/json": {
+          schema: ValidationErrorResponseSchema,
         },
       },
     },
