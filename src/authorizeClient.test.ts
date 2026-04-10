@@ -2,8 +2,8 @@ import { authorizeClient } from "./authorizeClient";
 import { ForbiddenError } from "./errors/forbidden";
 import {
   getClientByRoleArn,
-  ClientPermission,
 } from "./clients/permissionsClient";
+import { ClientPermission } from "./types/ClientPermission";
 
 jest.mock("./clients/permissionsClient");
 
