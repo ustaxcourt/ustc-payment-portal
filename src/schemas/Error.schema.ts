@@ -18,7 +18,6 @@ const ErrorDetailSchema = z.object({}).catchall(z.unknown()).openapi({
 const JsonErrorSchema = z.object({
   message: z.string().openapi({
     description: "Human-readable error summary",
-    example: "An unexpected error occurred while processing the request",
   }),
   errors: z.array(ErrorDetailSchema).openapi({
     description: "Additional error details",

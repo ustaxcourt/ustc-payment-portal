@@ -182,8 +182,7 @@
         "properties": {
           "message": {
             "type": "string",
-            "description": "Human-readable error summary",
-            "example": "An unexpected error occurred while processing the request"
+            "description": "Human-readable error summary"
           },
           "errors": {
             "type": "array",
@@ -221,8 +220,7 @@
         "properties": {
           "message": {
             "type": "string",
-            "description": "Human-readable error summary",
-            "example": "An unexpected error occurred while processing the request"
+            "description": "Human-readable error summary"
           },
           "errors": {
             "type": "array",
@@ -270,8 +268,7 @@
         "properties": {
           "message": {
             "type": "string",
-            "description": "Human-readable error summary",
-            "example": "An unexpected error occurred while processing the request"
+            "description": "Human-readable error summary"
           },
           "errors": {
             "type": "array",
@@ -309,8 +306,7 @@
         "properties": {
           "message": {
             "type": "string",
-            "description": "Human-readable error summary",
-            "example": "An unexpected error occurred while processing the request"
+            "description": "Human-readable error summary"
           },
           "errors": {
             "type": "array",

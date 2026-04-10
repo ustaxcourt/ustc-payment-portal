@@ -168,7 +168,6 @@ components:
         message:
           type: string
           description: Human-readable error summary
-          example: An unexpected error occurred while processing the request
         errors:
           type: array
           items:
@@ -200,7 +199,6 @@ components:
         message:
           type: string
           description: Human-readable error summary
-          example: An unexpected error occurred while processing the request
         errors:
           type: array
           items:
@@ -246,7 +244,6 @@ components:
         message:
           type: string
           description: Human-readable error summary
-          example: An unexpected error occurred while processing the request
         errors:
           type: array
           items:
@@ -290,7 +287,6 @@ components:
         message:
           type: string
           description: Human-readable error summary
-          example: An unexpected error occurred while processing the request
         errors:
           type: array
           items:
