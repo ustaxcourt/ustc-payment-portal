@@ -42,6 +42,8 @@ if (!RDS_SECRET_ARN) {
   Model.knex(knexInstance);
 }
 
+export default knexInstance;
+
 // Lambda path: RDS_SECRET_ARN is set. Callers must await getKnex() before any
 // query. Cached so SecretsManager is only hit on cold start.
 export async function getKnex(): Promise<ReturnType<typeof Knex>> {

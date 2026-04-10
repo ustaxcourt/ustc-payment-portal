@@ -1,4 +1,5 @@
 import { Model } from 'objection';
+import FeesModel from './FeesModel';
 import type { DashboardTransactionStatus } from '../schemas/TransactionDashboard.schema';
 import type { PaymentStatus } from '../schemas/PaymentStatus.schema';
 import { getKnex } from './knex';
@@ -17,15 +18,15 @@ export type PaymentMethod =
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
-  feeName!: string;
   feeId!: string;
-  feeAmount!: number;
+  transactionAmount!: number;
+  feeName?: string;
   clientName!: string;
   transactionReferenceId!: string;
   paymentStatus!: PaymentStatus;
   transactionStatus?: TransactionStatus | null;
   paygovToken?: string | null;
-  paymentMethod!: PaymentMethod;
+  paymentMethod?: PaymentMethod | null;
   createdAt!: string;
   lastUpdatedAt!: string;
   metadata?: Record<string, string> | null;
@@ -38,11 +39,24 @@ export default class TransactionModel extends Model {
     return 'agencyTrackingId';
   }
 
+  static get relationMappings() {
+    return {
+      fee: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: FeesModel,
+        join: {
+          from: 'transactions.feeId',
+          to: 'fees.feeId',
+        },
+      },
+    };
+  }
+
   $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
     const parsed = super.$parseDatabaseJson(json);
 
-    if (parsed.feeAmount !== undefined && parsed.feeAmount !== null) {
-      parsed.feeAmount = Number(parsed.feeAmount);
+    if (parsed.transactionAmount !== undefined && parsed.transactionAmount !== null) {
+      parsed.transactionAmount = Number(parsed.transactionAmount);
     }
 
     return parsed;
@@ -51,15 +65,21 @@ export default class TransactionModel extends Model {
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
     await getKnex();
     return TransactionModel.query()
-      .where('paymentStatus', paymentStatus)
-      .orderBy('createdAt', 'desc')
+      .alias('t')
+      .join('fees as f', 't.feeId', 'f.feeId')
+      .select('t.*', 'f.name as feeName')
+      .where('t.paymentStatus', paymentStatus)
+      .orderBy('t.createdAt', 'desc')
       .limit(100);
   }
 
   static async getAll(): Promise<TransactionModel[]> {
     await getKnex();
     return TransactionModel.query()
-      .orderBy('createdAt', 'desc')
+      .alias('t')
+      .join('fees as f', 't.feeId', 'f.feeId')
+      .select('t.*', 'f.name as feeName')
+      .orderBy('t.createdAt', 'desc')
       .limit(100);
   }
 
@@ -68,11 +88,7 @@ export default class TransactionModel extends Model {
     const rows = await TransactionModel.query()
       .select('paymentStatus')
       .count('* as count')
-      .groupBy('paymentStatus')
-
-    const data = await TransactionModel.query()
-      .orderBy('createdAt', 'desc')
-      .page(0, 100);
+      .groupBy('paymentStatus');
 
     const totals: AggregatedPaymentStatus = {
       success: 0,
@@ -90,8 +106,41 @@ export default class TransactionModel extends Model {
       }
     });
 
-    // Use the total count from the paginated query
-    totals.total = data.results.length;
+    totals.total = rows.reduce((sum, row) => {
+      const countValue = (row as unknown as { count: number | string }).count;
+      return sum + Number(countValue);
+    }, 0);
     return totals;
+  }
+
+  static async createReceived(data: Partial<TransactionModel>): Promise<TransactionModel> {
+    await getKnex();
+    const newTransaction = await this.query().insertAndFetch({
+      ...data,
+      paymentStatus: 'pending',
+      transactionStatus: 'received',
+    });
+
+    return newTransaction;
+  }
+
+  static async updateToInitiated(agencyTrackingId: string, paygovToken: string): Promise<void> {
+    await getKnex();
+    await this.query()
+      .patch({
+        transactionStatus: 'initiated',
+        paygovToken,
+      })
+      .where('agencyTrackingId', agencyTrackingId);
+  }
+
+  static async updateToFailed(agencyTrackingId: string): Promise<void> {
+    await getKnex();
+    await this.query()
+      .patch({
+        transactionStatus: 'failed',
+        paymentStatus: 'failed',
+      })
+      .where('agencyTrackingId', agencyTrackingId);
   }
 }

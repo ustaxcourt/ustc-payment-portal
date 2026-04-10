@@ -165,7 +165,7 @@ npx esbuild db/seeds/*.ts \
   --platform=node \
   --target=node22 \
   --format=cjs \
-  --external:knex \
+  "${KNEX_EXTERNALS[@]}" \
   --outdir=dist/migrationRunner/db/seeds/
 
 echo "Build completed successfully!"

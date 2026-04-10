@@ -4,6 +4,7 @@ import {
 } from "@aws-sdk/client-secrets-manager";
 import fs from "fs";
 import Knex from "knex";
+import { knexSnakeCaseMappers } from "objection";
 import path from "path";
 import { parseRdsEndpoint } from "./db/getRdsCredentials";
 
@@ -300,6 +301,7 @@ export const migrationHandler = async (
     connection,
     pool: { min: 0, max: 1, acquireTimeoutMillis: 10000 },
     migrations: { directory: getMigrationsDirectory() },
+    ...knexSnakeCaseMappers(),
   });
 
   try {

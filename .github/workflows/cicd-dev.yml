@@ -318,7 +318,6 @@ jobs:
       - name: Integration tests (PR environment)
         if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
         env:
-          NODE_ENV: test
           TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
           BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
         run: |

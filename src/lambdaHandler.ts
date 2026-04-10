@@ -24,10 +24,15 @@ const lambdaHandler = async (
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler,
   feeId?: string,
+  injectClientName?: boolean
 ): Promise<APIGatewayProxyResult> => {
   try {
     const roleArn = extractCallerArn(requestContext);
-    await authorizeClient(roleArn, feeId);
+    const client = await authorizeClient(roleArn, feeId);
+    // For initPayment, inject clientName into the request
+    if (injectClientName && client && request != null && typeof request === 'object') {
+      request.clientName = client.clientName;
+    }
     const result = await callback(appContext, request);
     return {
       statusCode: 200,
@@ -72,6 +77,7 @@ export const initPaymentHandler = (
     event.requestContext,
     appContext.getUseCases().initPayment,
     parsed.data.feeId,
+    true // inject clientName for initPayment
   );
 };
 

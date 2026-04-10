@@ -3,8 +3,12 @@ import {
   InitPaymentRequest,
   InitPaymentResponse,
 } from "../schemas/InitPayment.schema";
-import { getFeeConfig } from "../fees";
 import { InvalidRequestError } from "../errors/invalidRequest";
+import FeesModel from "../db/FeesModel";
+import { generateAgencyTrackingId } from "../utils/generateTrackingId";
+import TransactionModel from "../db/TransactionModel";
+
+type InitPaymentInternalRequest = InitPaymentRequest & { clientName: string };
 import { PayGovError } from "../errors/payGovError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 
@@ -23,49 +27,87 @@ const isNetworkError = (err: unknown): boolean =>
 
 export type InitPayment = (
   appContext: AppContext,
-  request: InitPaymentRequest,
+  request: InitPaymentInternalRequest,
 ) => Promise<InitPaymentResponse>;
 
 export const initPayment: InitPayment = async (appContext, request) => {
-  const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel } =
-    request;
+  const {
+    feeId,
+    amount,
+    transactionReferenceId,
+    urlSuccess,
+    urlCancel,
+    clientName,
+  } = request;
 
-  const feeConfig = await getFeeConfig(feeId);
-
-  if (!feeConfig) {
+  const fee = await FeesModel.getFeeById(feeId);
+  if (!fee || !fee.tcsAppId) {
     throw new InvalidRequestError(`Unknown feeId: ${feeId}`);
   }
 
-  if (amount !== undefined && !feeConfig.isVariable) {
+  if (amount !== undefined && !fee.isVariable) {
     throw new InvalidRequestError(
       `Fee ${feeId} does not allow variable amounts`,
     );
   }
 
-  if (amount === undefined && feeConfig.isVariable) {
+  if (amount === undefined && fee.isVariable) {
     throw new InvalidRequestError(`Fee ${feeId} requires an amount`);
   }
 
-  const transactionAmount = feeConfig.isVariable ? amount! : feeConfig.amount;
+  const transactionAmount = fee.isVariable ? amount! : fee.amount!;
+  const agencyTrackingId = generateAgencyTrackingId();
 
   const req = new StartOnlineCollectionRequest({
-    tcsAppId: feeConfig.tcsAppId,
-    agencyTrackingId: transactionReferenceId,
+    tcsAppId: fee.tcsAppId,
+    agencyTrackingId,
     transactionAmount,
     urlSuccess,
     urlCancel,
   });
 
+  let result: Awaited<ReturnType<typeof req.makeSoapRequest>>;
   try {
-    const result = await req.makeSoapRequest(appContext);
-    return {
-      token: result.token,
-      paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${feeConfig.tcsAppId}`,
-    };
+    await TransactionModel.createReceived({
+      agencyTrackingId,
+      feeId,
+      transactionAmount,
+      clientName,
+      transactionReferenceId,
+      paymentStatus: "pending",
+      transactionStatus: "received",
+      metadata: request.metadata,
+    });
   } catch (err) {
-    if (isNetworkError(err)) {
+    throw new Error(
+      `Failed to record received transaction: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+
+  try {
+    result = await req.makeSoapRequest(appContext);
+  } catch (err) {
+    await TransactionModel.updateToFailed(agencyTrackingId);
+     if (isNetworkError(err)) {
       throw new PayGovError();
     }
     throw err;
   }
+
+  try {
+    await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
+  } catch (err) {
+    throw new Error(
+      `Payment was initiated but failed to persist initiated status: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+
+  return {
+    token: result.token,
+    paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${fee.tcsAppId}`,
+  };
 };
