@@ -35,12 +35,12 @@ describe("authorizeClient", () => {
   });
 
   describe("with no feeId (read-only endpoint)", () => {
-    it("does not throw when feeId is omitted — only registration check applies", async () => {
+    it("returns the client when feeId is omitted — only registration check applies", async () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
 
       await expect(
         authorizeClient(dawsonClient.clientRoleArn)
-      ).resolves.not.toThrow();
+      ).resolves.toEqual(dawsonClient);
     });
 
     it("throws when client is unregistered even without a feeId", async () => {
@@ -53,20 +53,20 @@ describe("authorizeClient", () => {
   });
 
   describe("with valid client and feeId", () => {
-    it("does not throw when client is authorized for the feeId", async () => {
+    it("returns the client when client is authorized for the feeId", async () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
 
       await expect(
         authorizeClient(dawsonClient.clientRoleArn, "PETITION_FILING_FEE")
-      ).resolves.not.toThrow();
+      ).resolves.toEqual(dawsonClient);
     });
 
-    it("does not throw when client has wildcard permission", async () => {
+    it("returns the client when client has wildcard permission", async () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(localDevClient);
 
       await expect(
         authorizeClient(localDevClient.clientRoleArn, "ANY_FEE_ID")
-      ).resolves.not.toThrow();
+      ).resolves.toEqual(localDevClient);
     });
   });
 
@@ -85,12 +85,12 @@ describe("authorizeClient", () => {
   });
 
   describe("DAWSON fee authorization", () => {
-    it("allows DAWSON to charge PETITION_FILING_FEE", async () => {
+    it("allows DAWSON to charge PETITION_FILING_FEE and returns client", async () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(dawsonClient);
 
       await expect(
         authorizeClient(dawsonClient.clientRoleArn, "PETITION_FILING_FEE")
-      ).resolves.not.toThrow();
+      ).resolves.toEqual(dawsonClient);
     });
 
     it("prevents DAWSON from charging NONATTORNEY_EXAM_REGISTRATION_FEE", async () => {
@@ -103,12 +103,12 @@ describe("authorizeClient", () => {
   });
 
   describe("Nonattorney fee authorization", () => {
-    it("allows Nonattorney App to charge NONATTORNEY_EXAM_REGISTRATION_FEE", async () => {
+    it("allows Nonattorney App to charge NONATTORNEY_EXAM_REGISTRATION_FEE and returns client", async () => {
       mockGetClientByRoleArn.mockResolvedValueOnce(nonattorneyClient);
 
       await expect(
         authorizeClient(nonattorneyClient.clientRoleArn, "NONATTORNEY_EXAM_REGISTRATION_FEE")
-      ).resolves.not.toThrow();
+      ).resolves.toEqual(nonattorneyClient);
     });
 
     it("prevents Nonattorney App from charging PETITION_FILING_FEE", async () => {
