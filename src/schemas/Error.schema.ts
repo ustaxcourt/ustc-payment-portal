@@ -4,73 +4,105 @@ import { z } from "zod";
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);
 
-// Note: The actual error response body is a plain string,
-// not a JSON object. The HTTP status code is in the response header.
-// For validation errors, the body is a JSON-stringified validation error object.
+const ErrorDetailSchema = z.object({}).catchall(z.unknown()).openapi({
+  description: "A structured error detail object (for example a Zod validation issue)",
+  example: {
+    code: "invalid_type",
+    expected: "string",
+    received: "undefined",
+    path: ["urlSuccess"],
+    message: "Required",
+  },
+});
+
+const JsonErrorSchema = z.object({
+  message: z.string().openapi({
+    description: "Human-readable error summary",
+    example: "An unexpected error occurred while processing the request",
+  }),
+  errors: z.array(ErrorDetailSchema).openapi({
+    description: "Additional error details",
+    example: [],
+  }),
+});
 
 export const BadRequestErrorSchema = z
-  .string()
+  .object(JsonErrorSchema.shape)
   .openapi({
     description:
-      "Error message for invalid requests (HTTP 400). May be plain text (e.g., 'missing body') " +
-      "or a JSON-stringified validation error object.\n\n" +
+      "JSON error response for invalid requests (HTTP 400).\n\n" +
       "Common error scenarios:\n" +
-      "- Missing required fields: 'missing body'\n" +
-      "- Invalid field values: 'invalid feeId'\n" +
-      "- Schema validation failures: JSON-stringified validation error\n" +
-      "- Fee not found: 'Fee type is not available'\n" +
-      "- Missing amount for variable fees: 'Amount is required for variable fees'",
-    example: "missing body",
+      "- Missing required fields\n" +
+      "- Invalid field values\n" +
+      "- Schema validation failures\n" +
+      "- Fee not found\n" +
+      "- Missing amount for variable fees",
+    example: {
+      message: "Validation error",
+      errors: [
+        {
+          code: "invalid_type",
+          expected: "string",
+          received: "undefined",
+          path: ["urlSuccess"],
+          message: "Required",
+        },
+      ],
+    },
   })
   .openapi("BadRequestError");
 
 export const ForbiddenErrorSchema = z
-  .string()
+  .object(JsonErrorSchema.shape)
   .openapi({
     description:
-      "Plain text error message for authentication/authorization failures (HTTP 403).\n\n" +
+      "JSON error response for authentication/authorization failures (HTTP 403).\n\n" +
       "Common error scenarios:\n" +
-      "- Missing API key: 'Missing Authentication'\n" +
-      "- Invalid API key: 'Invalid API key'\n" +
+      "- Missing API key\n" +
+      "- Invalid API key\n" +
       "- Unauthorized fee access: Client not authorized to charge the requested fee",
-    example: "Missing Authentication",
+    example: {
+      message: "Missing Authentication",
+      errors: [],
+    },
   })
   .openapi("ForbiddenError");
 
 export const ServerErrorSchema = z
-  .string()
+  .object(JsonErrorSchema.shape)
   .openapi({
     description:
-      "Plain text error message for internal server errors (HTTP 500).\n\n" +
+      "JSON error response for internal server errors (HTTP 500).\n\n" +
       "Returned when an unexpected error occurs during request processing. " +
       "If this error persists, contact support with the request details.",
-    example: "Internal Server Error",
+    example: {
+      message: "An unexpected error occurred while processing the request",
+      errors: [],
+    },
   })
   .openapi("ServerError");
 
 export const GatewayErrorSchema = z
-  .object({
-    message: z.string().openapi({
-      description: "Human-readable summary of the gateway failure",
-      example: "Error communicating with Pay.gov",
-    }),
-    errors: z.array(z.string()).openapi({
-      description: "Additional gateway error details",
-      example: ["Timed out waiting for response from Pay.gov"],
-    }),
-  })
+  .object(JsonErrorSchema.shape)
   .openapi({
     description:
       "JSON error response for Pay.gov communication failures (HTTP 504). " +
       "Returned when the API cannot receive a timely response from Pay.gov.",
+    example: {
+      message: "Error communicating with Pay.gov",
+      errors: [],
+    },
   })
   .openapi("GatewayError");
 
 // Generic error schema (for backward compatibility)
 export const ErrorResponseSchema = z
-  .string()
+  .object(JsonErrorSchema.shape)
   .openapi({
-    description: "Plain text error message",
-    example: "Invalid Request",
+    description: "Generic JSON error response",
+    example: {
+      message: "Invalid Request",
+      errors: [],
+    },
   })
   .openapi("ErrorResponse");
