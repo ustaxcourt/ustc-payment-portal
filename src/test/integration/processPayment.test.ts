@@ -12,6 +12,18 @@ describeWithEnv("POST /process", () => {
       ? fetch(`${baseUrl}/process`, options)
       : signedFetch(`${baseUrl}/process`, options);
 
+  it("reaches Lambda with a valid-format token (auth diagnostic)", async () => {
+    const result = await portalFetch({
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: crypto.randomUUID() }),
+    });
+    // Any non-403 means the request passed API Gateway IAM auth and reached Lambda.
+    // 200 = Pay.gov accepted; 4xx/5xx from Lambda = Pay.gov rejected or validation error.
+    // 403 = API Gateway rejected before Lambda ran (credentials/permissions problem).
+    expect(result.status).not.toBe(403);
+  });
+
   it("returns 400 when body is malformed JSON", async () => {
     const result = await portalFetch({
       method: "POST",
