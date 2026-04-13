@@ -5,7 +5,19 @@ import {
 } from "./lambdaHandler";
 import { APIGatewayEvent } from "aws-lambda";
 
-// Mock the appContext module
+// Reusable mock for appContext with dynamic use case injection
+const useCasesMock = {
+  initPayment: jest.fn().mockResolvedValue({ token: "test-token-123" }),
+  processPayment: jest.fn().mockResolvedValue({
+    trackingId: "track-123",
+    transactionStatus: "Success",
+  }),
+  getDetails: jest.fn().mockResolvedValue({
+    trackingId: "track-123",
+    transactionStatus: "Success",
+  }),
+};
+
 jest.mock("./appContext", () => ({
   createAppContext: jest.fn(() => ({
     getHttpsAgent: jest.fn(),
@@ -23,17 +35,7 @@ jest.mock("./appContext", () => ({
           </ns2:startOnlineCollectionResponse>
         </S:Body>
       </S:Envelope>`),
-    getUseCases: () => ({
-      initPayment: jest.fn().mockResolvedValue({ token: "test-token-123" }),
-      processPayment: jest.fn().mockResolvedValue({
-        trackingId: "track-123",
-        transactionStatus: "Success",
-      }),
-      getDetails: jest.fn().mockResolvedValue({
-        trackingId: "track-123",
-        transactionStatus: "Success",
-      }),
-    }),
+    getUseCases: () => useCasesMock,
   })),
 }));
 
@@ -70,7 +72,12 @@ const mockHeaders = {
 
 describe("lambdaHandler", () => {
   describe("initPaymentHandler", () => {
-    it("returns 200 with token on successful request", async () => {
+    it("returns 200 with token on successful request and client", async () => {
+      const mockInitPayment = jest
+        .fn()
+        .mockResolvedValue({ token: "test-token-123" });
+      useCasesMock.initPayment = mockInitPayment;
+
       const event = {
         body: JSON.stringify({
           transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
@@ -87,6 +94,9 @@ describe("lambdaHandler", () => {
 
       expect(result.statusCode).toBe(200);
       expect(JSON.parse(result.body)).toHaveProperty("token");
+      // Check that client was passed to use case with correct clientName from mocked permissionsClient
+      const calledWith = mockInitPayment.mock.calls[0][1];
+      expect(calledWith.client.clientName).toBe("Test Client");
     });
 
     it("returns 400 with structured errors array when request schema validation fails", async () => {
@@ -131,19 +141,6 @@ describe("lambdaHandler", () => {
       expect(JSON.parse(result.body)).toHaveProperty("message");
     });
 
-    it("returns 400 when request body fails schema validation", async () => {
-      const event = {
-        body: JSON.stringify({ feeId: "PETITION_FILING_FEE" }), // missing required fields
-        headers: mockHeaders,
-        requestContext: mockRequestContext,
-      } as unknown as APIGatewayEvent;
-
-      const result = await initPaymentHandler(event);
-
-      expect(result.statusCode).toBe(400);
-      expect(JSON.parse(result.body)).toHaveProperty("message");
-    });
-
     it("returns 403 when IAM principal is missing", async () => {
       const event = {
         body: JSON.stringify({
@@ -172,7 +169,11 @@ describe("lambdaHandler", () => {
           feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
           urlSuccess: "https://example.com/success",
           urlCancel: "https://example.com/cancel",
-          metadata: { email: "test@example.com", fullName: "Test User", accessCode: "ABC123" },
+          metadata: {
+            email: "test@example.com",
+            fullName: "Test User",
+            accessCode: "ABC123",
+          },
         }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
@@ -181,7 +182,9 @@ describe("lambdaHandler", () => {
       const result = await initPaymentHandler(event);
 
       expect(result.statusCode).toBe(403);
-      expect(JSON.parse(result.body).message).toBe("Client not authorized for feeId");
+      expect(JSON.parse(result.body).message).toBe(
+        "Client not authorized for feeId",
+      );
     });
   });
 

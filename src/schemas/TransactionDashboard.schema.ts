@@ -48,8 +48,8 @@ export const DashboardTransactionSchema = z
       description: "Fee identifier",
       example: "PETITION_FILING_FEE",
     }),
-    feeAmount: z.number().openapi({
-      description: "Fee amount in USD",
+    transactionAmount: z.number().openapi({
+      description: "Actual amount charged for this transaction (USD)",
       example: 60.5,
     }),
     clientName: z.string().openapi({
@@ -62,7 +62,7 @@ export const DashboardTransactionSchema = z
     }),
     paymentStatus: PaymentStatusSchema,
     transactionStatus: DashboardTransactionStatusSchema.nullable().optional(),
-    paymentMethod: DashboardPaymentMethodSchema,
+    paymentMethod: DashboardPaymentMethodSchema.nullable().optional(),
     paygovToken: z.string().nullable().optional().openapi({
       description: "Pay.gov token associated with this transaction",
       example: "7f90d8de-e67f-4f8b-a12f-f429b675f2df",

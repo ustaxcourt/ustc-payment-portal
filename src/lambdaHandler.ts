@@ -29,8 +29,8 @@ const lambdaHandler = async (
 ): Promise<APIGatewayProxyResult> => {
   try {
     const roleArn = extractCallerArn(requestContext);
-    await authorizeClient(roleArn, feeId);
-    const result = await callback(appContext, request);
+    const client = await authorizeClient(roleArn, feeId);
+    const result = await callback(appContext, { client, request });
     return {
       statusCode: 200,
       body: JSON.stringify(result),
