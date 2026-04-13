@@ -1,6 +1,6 @@
-# Implementation Plan: `processPayment` Request Validation
+# Implementation Plan: `process` Request Validation
 
-**Goal:** Make `POST /processPayment` reject invalid requests with HTTP 400 and a clear error message, matching the pattern already used by `initPaymentHandler`.
+**Goal:** Make `POST /process` reject invalid requests with HTTP 400 and a clear error message, matching the pattern already used by `initPaymentHandler`.
 
 **Why now:** [src/lambdaHandler.ts:78-89](src/lambdaHandler.ts#L78-L89) parses the JSON body but skips schema validation, so malformed requests reach the use case and fail deep in the SOAP call instead of at the edge.
 
