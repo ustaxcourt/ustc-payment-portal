@@ -60,5 +60,13 @@ describeWithEnv("POST /process", () => {
     expect(result.status).toBe(400);
     const data = await result.json();
     expect(data.message).toBe("Validation error");
+    expect(data.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "unrecognized_keys",
+          keys: expect.arrayContaining(["extra"]),
+        }),
+      ]),
+    );
   });
 });

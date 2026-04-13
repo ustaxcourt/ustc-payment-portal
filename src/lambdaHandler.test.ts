@@ -299,14 +299,23 @@ describe("lambdaHandler", () => {
 
     it("returns 400 when request has unknown fields (strict mode)", async () => {
       const event = {
-        body: JSON.stringify({ token: crypto.randomUUID(), evil: true }),
+        body: JSON.stringify({ token: crypto.randomUUID(), extra: true }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
 
       const result = await processPaymentHandler(event);
       expect(result.statusCode).toBe(400);
-      expect(JSON.parse(result.body).message).toBe("Validation error");
+      const body = JSON.parse(result.body);
+      expect(body.message).toBe("Validation error");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "unrecognized_keys",
+            keys: expect.arrayContaining(["extra"]),
+          }),
+        ]),
+      );
     });
 
     it("propagates PayGovError status when use case throws", async () => {
