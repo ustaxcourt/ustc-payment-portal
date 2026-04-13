@@ -413,11 +413,11 @@ components:
         paymentMethod:
           type: string
           enum:
-            - Credit/Debit Card
-            - ACH
-            - PayPal
+            - plastic_card
+            - ach
+            - paypal
           description: Method of payment
-          example: Credit/Debit Card
+          example: plastic_card
         returnDetail:
           type: string
           description: Detailed return message from Pay.gov
@@ -454,11 +454,11 @@ components:
         paymentMethod:
           type: string
           enum:
-            - Credit/Debit Card
-            - ACH
-            - PayPal
+            - plastic_card
+            - ach
+            - paypal
           description: Method of payment
-          example: Credit/Debit Card
+          example: plastic_card
         returnDetail:
           type: string
           description: Detailed return message from Pay.gov
@@ -501,11 +501,11 @@ components:
     PaymentMethod:
       type: string
       enum:
-        - Credit/Debit Card
-        - ACH
-        - PayPal
+        - plastic_card
+        - ach
+        - paypal
       description: Method of payment
-      example: Credit/Debit Card
+      example: plastic_card
     ProcessPaymentRequest:
       type: object
       properties:
