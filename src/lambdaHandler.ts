@@ -40,17 +40,22 @@ const lambdaHandler = async (
   }
 };
 
+type ParseResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: APIGatewayProxyResult };
+
 const safeJsonParse = <T = any>(
   body: string | null | undefined
-): { value?: T; error?: APIGatewayProxyResult } => {
+): ParseResult<T> => {
   if (!body) {
-    return { error: handleError(new InvalidRequestError("missing body")) };
+    return { ok: false, error: handleError(new InvalidRequestError("missing body")) };
   }
 
   try {
-    return { value: JSON.parse(body) };
+    return { ok: true, value: JSON.parse(body) };
   } catch {
     return {
+      ok: false,
       error: handleError(
         new InvalidRequestError("invalid JSON in request body")
       ),
@@ -65,43 +70,43 @@ const safeJsonParse = <T = any>(
 const parseAndValidate = <T>(
   body: string | null | undefined,
   schema: ZodType<T>,
-): { value?: T; error?: APIGatewayProxyResult } => {
+): ParseResult<T> => {
   const parsed = safeJsonParse(body);
-  if (parsed.error) return { error: parsed.error };
+  if (!parsed.ok) return parsed;
 
   const result = schema.safeParse(parsed.value);
   if (!result.success) {
-    return { error: handleError(result.error) };
+    return { ok: false, error: handleError(result.error) };
   }
 
-  return { value: result.data };
+  return { ok: true, value: result.data };
 };
 
 export const initPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const { value, error } = parseAndValidate(event.body, InitPaymentRequestSchema);
-  if (error) return Promise.resolve(error);
+  const result = parseAndValidate(event.body, InitPaymentRequestSchema);
+  if (!result.ok) return Promise.resolve(result.error);
 
   return lambdaHandler(
-    value,
+    result.value,
     event.requestContext,
     appContext.getUseCases().initPayment,
-    value!.feeId,
+    result.value.feeId,
   );
 };
 
 export const processPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const { value, error } = parseAndValidate(
+  const result = parseAndValidate(
     event.body,
     ProcessPaymentRequestSchema,
   );
-  if (error) return Promise.resolve(error);
+  if (!result.ok) return Promise.resolve(result.error);
 
   return lambdaHandler(
-    value,
+    result.value,
     event.requestContext,
     appContext.getUseCases().processPayment,
   );
