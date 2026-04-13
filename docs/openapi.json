@@ -393,9 +393,10 @@
         "properties": {
           "token": {
             "type": "string",
-            "minLength": 1,
-            "description": "The payment token received from Pay.gov after user completes payment form",
-            "example": "abc123token"
+            "minLength": 32,
+            "maxLength": 36,
+            "description": "The payment token received from Pay.gov after user completes payment form. Must be 32 to 36 characters long.",
+            "example": "abcdefghijklmnopqrstuvwxyz123456"
           }
         },
         "required": [
@@ -477,9 +478,9 @@
             "description": "Fee identifier",
             "example": "PETITION_FILING_FEE"
           },
-          "feeAmount": {
+          "transactionAmount": {
             "type": "number",
-            "description": "Fee amount in USD",
+            "description": "Actual amount charged for this transaction (USD)",
             "example": 60.5
           },
           "clientName": {
@@ -519,11 +520,15 @@
             "example": "processed"
           },
           "paymentMethod": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "enum": [
               "plastic_card",
               "ach",
-              "paypal"
+              "paypal",
+              null
             ],
             "description": "Payment method used for the transaction",
             "example": "plastic_card"
@@ -563,11 +568,10 @@
           "agencyTrackingId",
           "feeName",
           "feeId",
-          "feeAmount",
+          "transactionAmount",
           "clientName",
           "transactionReferenceId",
           "paymentStatus",
-          "paymentMethod",
           "createdAt",
           "lastUpdatedAt"
         ]

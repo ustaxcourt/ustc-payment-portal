@@ -371,11 +371,12 @@ components:
       properties:
         token:
           type: string
-          minLength: 1
+          minLength: 32
+          maxLength: 36
           description: >-
             The payment token received from Pay.gov after user completes payment
-            form
-          example: abc123token
+            form. Must be 32 to 36 characters long.
+          example: abcdefghijklmnopqrstuvwxyz123456
       required:
         - token
       additionalProperties: false
@@ -437,9 +438,9 @@ components:
           type: string
           description: Fee identifier
           example: PETITION_FILING_FEE
-        feeAmount:
+        transactionAmount:
           type: number
-          description: Fee amount in USD
+          description: Actual amount charged for this transaction (USD)
           example: 60.5
         clientName:
           type: string
@@ -471,11 +472,14 @@ components:
           description: The status of an individual transaction record
           example: processed
         paymentMethod:
-          type: string
+          type:
+            - string
+            - 'null'
           enum:
             - plastic_card
             - ach
             - paypal
+            - null
           description: Payment method used for the transaction
           example: plastic_card
         paygovToken:
@@ -505,11 +509,10 @@ components:
         - agencyTrackingId
         - feeName
         - feeId
-        - feeAmount
+        - transactionAmount
         - clientName
         - transactionReferenceId
         - paymentStatus
-        - paymentMethod
         - createdAt
         - lastUpdatedAt
     TransactionsByStatusPathParams:
