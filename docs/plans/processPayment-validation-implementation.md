@@ -12,13 +12,14 @@
 
 **Change:**
 - Add `.strict()` to the object so unknown keys are rejected (payment endpoints should fail loudly on unexpected fields).
-- Add `.min(1)` to `token` so empty strings are rejected.
+- Add `.min(32).max(36)` to `token` — Pay.gov tokens are 32 chars; the upper bound of 36 provides flexibility while the Pay.gov test server is being updated. This rejects empty strings, short values, and anything clearly not a token.
 
 **Why:** Schema is the single source of truth for request shape. Tightening it here means every call site (handler, tests, OpenAPI doc) gets the stricter rules for free.
 
 **Done when:**
 - `ProcessPaymentRequestSchema.safeParse({ token: "" }).success === false`
-- `ProcessPaymentRequestSchema.safeParse({ token: "x", extra: 1 }).success === false`
+- `ProcessPaymentRequestSchema.safeParse({ token: "short" }).success === false`
+- `ProcessPaymentRequestSchema.safeParse({ token: crypto.randomUUID(), extra: 1 }).success === false`
 - Existing tests that use the schema still pass (or are updated if they relied on lax behavior).
 
 ---
@@ -33,7 +34,7 @@
 
 **Done when:**
 - `processPaymentHandler({ body: "{}" })` returns `statusCode: 400`.
-- `processPaymentHandler({ body: '{"token":"abc"}' })` reaches the use case with a typed `ProcessPaymentRequest`.
+- `processPaymentHandler({ body: JSON.stringify({ token: crypto.randomUUID() }) })` reaches the use case with a typed `ProcessPaymentRequest`.
 - No changes needed in `handleError.ts` or `processPayment.ts`.
 
 **Depends on:** Step 1.
@@ -48,22 +49,23 @@
 
 | # | Input | Expected |
 |---|---|---|
-| 1 | Valid body `{ token: "abc" }` | 200, use case called once with typed request |
+| 1 | Valid body `{ token: crypto.randomUUID() }` | 200, use case called once with typed request |
 | 2 | `body: null` | 400, message contains "missing body" |
 | 3 | `body: ""` | 400, message contains "missing body" |
 | 4 | `body: "{not json"` | 400, message contains "invalid JSON" |
 | 5 | `body: "{}"` | 400, `errors` array has issue at path `["token"]` |
 | 6 | `body: '{"token":123}'` | 400, Zod type error |
-| 7 | `body: '{"token":""}'` | 400, Zod min-length error |
-| 8 | `body: '{"token":"x","extra":1}'` | 400 (strict mode) |
-| 9 | Use case throws `PayGovError` | Status from the error, not 500 |
-| 10 | Use case throws generic `Error` | 500, generic message |
+| 7 | `body: '{"token":""}'` | 400, Zod min-length error (fails min(32)) |
+| 8 | `body: '{"token":"short"}'` | 400, Zod min-length error (fails min(32)) |
+| 9 | `body: JSON.stringify({ token: crypto.randomUUID(), extra: 1 })` | 400 (strict mode — extra key rejected) |
+| 10 | Use case throws `PayGovError` | Status from the error, not 500 |
+| 11 | Use case throws generic `Error` | 500, generic message |
 
 For every 400 case, assert both `statusCode` **and** body shape `{ message, errors }` — the shape is the public contract.
 
 **Why:** These are fast, deterministic, and lock in the validation behavior so future refactors don't regress it. Cases 9 & 10 guard the error-propagation path through `handleError`.
 
-**Done when:** All tests pass; running with Step 2 reverted causes cases 5–8 to fail (sanity check that they actually test the new code).
+**Done when:** All tests pass; running with Step 2 reverted causes cases 5–9 to fail (sanity check that they actually test the new code).
 
 **Depends on:** Step 2.
 
