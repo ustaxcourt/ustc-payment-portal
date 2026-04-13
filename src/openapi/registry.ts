@@ -10,6 +10,7 @@ import {
   ForbiddenErrorSchema,
   ServerErrorSchema,
   ValidationErrorResponseSchema,
+  GatewayErrorSchema,
   GetDetailsResponseSchema,
   TransactionRecordSchema,
   TransactionRecordSummarySchema,
@@ -45,6 +46,7 @@ registry.register("BadRequestError", BadRequestErrorSchema);
 registry.register("ForbiddenError", ForbiddenErrorSchema);
 registry.register("ServerError", ServerErrorSchema);
 registry.register("ValidationErrorResponse", ValidationErrorResponseSchema);
+registry.register("GatewayError", GatewayErrorSchema);
 registry.register("GetDetailsResponse", GetDetailsResponseSchema);
 registry.register("TransactionRecord", TransactionRecordSchema);
 registry.register("TransactionRecordSummary", TransactionRecordSummarySchema);
@@ -105,7 +107,7 @@ registry.registerPath({
     400: {
       description: "Invalid request payload (e.g., missing body, validation error)",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: BadRequestErrorSchema,
         },
       },
@@ -113,7 +115,7 @@ registry.registerPath({
     403: {
       description: "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: ForbiddenErrorSchema,
         },
       },
@@ -121,8 +123,16 @@ registry.registerPath({
     500: {
       description: "Internal server error",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: ServerErrorSchema,
+        },
+      },
+    },
+    504: {
+      description: "Gateway timeout communicating with Pay.gov",
+      content: {
+        "application/json": {
+          schema: GatewayErrorSchema,
         },
       },
     },
@@ -161,7 +171,7 @@ registry.registerPath({
     400: {
       description: "Invalid request (e.g., missing path parameters)",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: BadRequestErrorSchema,
         },
       },
@@ -169,7 +179,7 @@ registry.registerPath({
     403: {
       description: "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: ForbiddenErrorSchema,
         },
       },
@@ -177,7 +187,7 @@ registry.registerPath({
     500: {
       description: "Internal server error",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: ServerErrorSchema,
         },
       },
@@ -231,7 +241,7 @@ registry.registerPath({
     403: {
       description: "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: ForbiddenErrorSchema,
         },
       },
@@ -239,8 +249,16 @@ registry.registerPath({
     500: {
       description: "Internal server error",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: ServerErrorSchema,
+        },
+      },
+    },
+    504: {
+      description: "Gateway timeout communicating with Pay.gov",
+      content: {
+        "application/json": {
+          schema: GatewayErrorSchema,
         },
       },
     },
@@ -270,7 +288,7 @@ registry.registerPath({
     403: {
       description: "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: ForbiddenErrorSchema,
         },
       },
@@ -278,7 +296,7 @@ registry.registerPath({
     500: {
       description: "Internal server error",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: ServerErrorSchema,
         },
       },
@@ -311,7 +329,7 @@ registry.registerPath({
     400: {
       description: "Invalid payment status path parameter",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: BadRequestErrorSchema,
         },
       },
@@ -319,7 +337,7 @@ registry.registerPath({
     403: {
       description: "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: ForbiddenErrorSchema,
         },
       },
@@ -327,7 +345,7 @@ registry.registerPath({
     500: {
       description: "Internal server error",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: ServerErrorSchema,
         },
       },
@@ -357,7 +375,7 @@ registry.registerPath({
     403: {
       description: "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: ForbiddenErrorSchema,
         },
       },
@@ -365,7 +383,7 @@ registry.registerPath({
     500: {
       description: "Internal server error",
       content: {
-        "text/plain": {
+        "application/json": {
           schema: ServerErrorSchema,
         },
       },

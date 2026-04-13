@@ -178,24 +178,166 @@
         ]
       },
       "ErrorResponse": {
-        "type": "string",
-        "description": "Plain text error message",
-        "example": "Invalid Request"
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error summary"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": {},
+              "description": "A structured error detail object (for example a Zod validation issue)",
+              "example": {
+                "code": "invalid_type",
+                "expected": "string",
+                "received": "undefined",
+                "path": [
+                  "urlSuccess"
+                ],
+                "message": "Required"
+              }
+            },
+            "description": "Additional error details",
+            "example": []
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ],
+        "description": "Generic JSON error response",
+        "example": {
+          "message": "Invalid Request",
+          "errors": []
+        }
       },
       "BadRequestError": {
-        "type": "string",
-        "description": "Error message for invalid requests (HTTP 400). May be plain text (e.g., 'missing body') or a JSON-stringified validation error object.\n\nCommon error scenarios:\n- Missing required fields: 'missing body'\n- Invalid field values: 'invalid feeId'\n- Schema validation failures: JSON-stringified validation error\n- Fee not found: 'Fee type is not available'\n- Missing amount for variable fees: 'Amount is required for variable fees'",
-        "example": "missing body"
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error summary"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": {},
+              "description": "A structured error detail object (for example a Zod validation issue)",
+              "example": {
+                "code": "invalid_type",
+                "expected": "string",
+                "received": "undefined",
+                "path": [
+                  "urlSuccess"
+                ],
+                "message": "Required"
+              }
+            },
+            "description": "Additional error details",
+            "example": []
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ],
+        "description": "JSON error response for invalid requests (HTTP 400).\n\nCommon error scenarios:\n- Missing required fields\n- Invalid field values\n- Schema validation failures\n- Fee not found\n- Missing amount for variable fees",
+        "example": {
+          "message": "Validation error",
+          "errors": [
+            {
+              "code": "invalid_type",
+              "expected": "string",
+              "received": "undefined",
+              "path": [
+                "urlSuccess"
+              ],
+              "message": "Required"
+            }
+          ]
+        }
       },
       "ForbiddenError": {
-        "type": "string",
-        "description": "Plain text error message for authentication/authorization failures (HTTP 403).\n\nCommon error scenarios:\n- Missing API key: 'Missing Authentication'\n- Invalid API key: 'Invalid API key'\n- Unauthorized fee access: Client not authorized to charge the requested fee",
-        "example": "Missing Authentication"
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error summary"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": {},
+              "description": "A structured error detail object (for example a Zod validation issue)",
+              "example": {
+                "code": "invalid_type",
+                "expected": "string",
+                "received": "undefined",
+                "path": [
+                  "urlSuccess"
+                ],
+                "message": "Required"
+              }
+            },
+            "description": "Additional error details",
+            "example": []
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ],
+        "description": "JSON error response for authentication/authorization failures (HTTP 403).\n\nCommon error scenarios:\n- Missing API key\n- Invalid API key\n- Unauthorized fee access: Client not authorized to charge the requested fee",
+        "example": {
+          "message": "Missing Authentication",
+          "errors": []
+        }
       },
       "ServerError": {
-        "type": "string",
-        "description": "Plain text error message for internal server errors (HTTP 500).\n\nReturned when an unexpected error occurs during request processing. If this error persists, contact support with the request details.",
-        "example": "Internal Server Error"
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error summary"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": {},
+              "description": "A structured error detail object (for example a Zod validation issue)",
+              "example": {
+                "code": "invalid_type",
+                "expected": "string",
+                "received": "undefined",
+                "path": [
+                  "urlSuccess"
+                ],
+                "message": "Required"
+              }
+            },
+            "description": "Additional error details",
+            "example": []
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ],
+        "description": "JSON error response for internal server errors (HTTP 500).\n\nReturned when an unexpected error occurs during request processing. If this error persists, contact support with the request details.",
+        "example": {
+          "message": "An unexpected error occurred while processing the request",
+          "errors": []
+        }
       },
       "ValidationErrorResponse": {
         "type": "object",
@@ -224,6 +366,45 @@
           "message",
           "errors"
         ]
+      },
+      "GatewayError": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable summary of the gateway failure",
+            "example": "Error communicating with Pay.gov"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": {},
+              "description": "A structured error detail object (for example a Zod validation issue)",
+              "example": {
+                "code": "invalid_type",
+                "expected": "string",
+                "received": "undefined",
+                "path": [
+                  "urlSuccess"
+                ],
+                "message": "Required"
+              }
+            },
+            "description": "Additional error details",
+            "example": []
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ],
+        "description": "JSON error response for Pay.gov communication failures (HTTP 504). Returned when the API cannot receive a timely response from Pay.gov.",
+        "example": {
+          "message": "Error communicating with Pay.gov",
+          "errors": []
+        }
       },
       "GetDetailsResponse": {
         "type": "object",
@@ -680,7 +861,7 @@
           "400": {
             "description": "Invalid request payload (e.g., missing body, validation error)",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestError"
                 }
@@ -690,7 +871,7 @@
           "403": {
             "description": "Forbidden - invalid SigV4 signature or client not authorized",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenError"
                 }
@@ -700,9 +881,19 @@
           "500": {
             "description": "Internal server error",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway timeout communicating with Pay.gov",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
                 }
               }
             }
@@ -749,7 +940,7 @@
           "400": {
             "description": "Invalid request (e.g., missing path parameters)",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestError"
                 }
@@ -759,7 +950,7 @@
           "403": {
             "description": "Forbidden - invalid SigV4 signature or client not authorized",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenError"
                 }
@@ -769,7 +960,7 @@
           "500": {
             "description": "Internal server error",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServerError"
                 }
@@ -825,7 +1016,7 @@
           "403": {
             "description": "Forbidden - invalid SigV4 signature or client not authorized",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenError"
                 }
@@ -835,9 +1026,19 @@
           "500": {
             "description": "Internal server error",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway timeout communicating with Pay.gov",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
                 }
               }
             }
@@ -871,7 +1072,7 @@
           "403": {
             "description": "Forbidden - invalid SigV4 signature or client not authorized",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenError"
                 }
@@ -881,7 +1082,7 @@
           "500": {
             "description": "Internal server error",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServerError"
                 }
@@ -935,7 +1136,7 @@
           "400": {
             "description": "Invalid payment status path parameter",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestError"
                 }
@@ -945,7 +1146,7 @@
           "403": {
             "description": "Forbidden - invalid SigV4 signature or client not authorized",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenError"
                 }
@@ -955,7 +1156,7 @@
           "500": {
             "description": "Internal server error",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServerError"
                 }
@@ -991,7 +1192,7 @@
           "403": {
             "description": "Forbidden - invalid SigV4 signature or client not authorized",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenError"
                 }
@@ -1001,7 +1202,7 @@
           "500": {
             "description": "Internal server error",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServerError"
                 }
