@@ -4,6 +4,7 @@ import {
   getDetailsHandler,
 } from "./lambdaHandler";
 import { APIGatewayEvent } from "aws-lambda";
+import { PayGovError } from "./errors/payGovError";
 
 // Reusable mock for appContext with dynamic use case injection
 const useCasesMock = {
@@ -284,6 +285,18 @@ describe("lambdaHandler", () => {
       expect(JSON.parse(result.body).message).toBe("Validation error");
     });
 
+    it("returns 400 when token is too short (under 32 chars)", async () => {
+      const event = {
+        body: JSON.stringify({ token: "short" }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await processPaymentHandler(event);
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body).message).toBe("Validation error");
+    });
+
     it("returns 400 when request has unknown fields (strict mode)", async () => {
       const event = {
         body: JSON.stringify({ token: crypto.randomUUID(), evil: true }),
@@ -294,6 +307,32 @@ describe("lambdaHandler", () => {
       const result = await processPaymentHandler(event);
       expect(result.statusCode).toBe(400);
       expect(JSON.parse(result.body).message).toBe("Validation error");
+    });
+
+    it("propagates PayGovError status when use case throws", async () => {
+      useCasesMock.processPayment.mockRejectedValueOnce(new PayGovError());
+
+      const event = {
+        body: JSON.stringify({ token: crypto.randomUUID() }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await processPaymentHandler(event);
+      expect(result.statusCode).toBe(504);
+    });
+
+    it("returns 500 when use case throws a generic error", async () => {
+      useCasesMock.processPayment.mockRejectedValueOnce(new Error("unexpected"));
+
+      const event = {
+        body: JSON.stringify({ token: crypto.randomUUID() }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await processPaymentHandler(event);
+      expect(result.statusCode).toBe(500);
     });
 
     it("returns 403 when IAM principal is invalid", async () => {
