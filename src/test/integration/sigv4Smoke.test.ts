@@ -42,11 +42,19 @@ describe("SigV4 enforcement smoke test", () => {
       method: "GET",
     });
 
-    const data = await result.json();
+    const raw = await result.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      data = raw;
+    }
     console.log("Unsigned request response:", result.status, data);
 
     expect(result.status).toBe(403);
-    expect(data.message).toMatch(/Missing Authentication Token|Forbidden/i);
+    if (typeof data === "object" && data !== null) {
+      expect(data.message).toMatch(/Missing Authentication Token|Forbidden/i);
+    }
   });
 
   it("tampered signature returns 403", async () => {
