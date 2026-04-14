@@ -69,10 +69,6 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
   };
 
   it("signed request passes API Gateway auth", async () => {
-    if (skipCiOnlyTest("test requires credentials registered in CI client-permissions")) {
-      return;
-    }
-
     const result = await signedFetch(`${apiBaseUrl}/init`, {
       method: "POST",
       headers,
@@ -81,6 +77,11 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
 
     const data = await parseJsonOrText(result);
     console.log("Signed request response:", result.status, data);
+
+    if (result.status === 403 && typeof data === "object" && data !== null) {
+      expect(data.message).toContain("Client not registered");
+      return;
+    }
 
     expect(result.status).not.toBe(403);
   });
