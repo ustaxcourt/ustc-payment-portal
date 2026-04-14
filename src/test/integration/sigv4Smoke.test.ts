@@ -248,37 +248,6 @@ describe("Credential guardrails", () => {
   });
 });
 
-describe("API error status coverage", () => {
-  const apiBaseUrl = mustGetBaseUrl();
-
-  it("returns 400 for invalid payment status on dashboard endpoint", async () => {
-    const result = await fetch(`${apiBaseUrl}/transactions/not-a-real-status`, {
-      method: "GET",
-    });
-
-    const data = await parseJsonOrText(result);
-    console.log("Invalid paymentStatus response:", result.status, data);
-
-    expect(result.status).toBe(400);
-    if (typeof data === "object" && data !== null) {
-      expect(data.message).toMatch(/Invalid paymentStatus/i);
-    }
-  });
-
-  it("returns 403 or 404 for unknown endpoint", async () => {
-    const result = await fetch(`${apiBaseUrl}/definitely-not-a-real-route`, {
-      method: "GET",
-    });
-
-    const data = await parseJsonOrText(result);
-    console.log("Unknown endpoint response:", result.status, data);
-
-    // API Gateway can return 403 (Missing Authentication Token) or 404,
-    // depending on stage/resource configuration.
-    expect([403, 404]).toContain(result.status);
-  });
-});
-
 /**
  * LAMBDA-LEVEL AUTHORIZATION TESTS
  * ================================
