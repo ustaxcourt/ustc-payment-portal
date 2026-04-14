@@ -48,7 +48,8 @@ const safeJsonParse = <T = any>(
   body: string | null | undefined
 ): ParseResult<T> => {
   if (!body) {
-    return { ok: false, error: handleError(new InvalidRequestError("missing body")) };
+    const error = handleError(new InvalidRequestError("missing body"));
+    return { ok: false, error };
   }
 
   try {
