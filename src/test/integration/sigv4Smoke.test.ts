@@ -3,6 +3,16 @@ import { signedFetch, signRequest, assumeRole, signedFetchWithCredentials } from
 const baseUrl = process.env.BASE_URL;
 const hasSigningCredentials =
   Boolean(process.env.AWS_ACCESS_KEY_ID) && Boolean(process.env.AWS_SECRET_ACCESS_KEY);
+const isLocalCiOnlySkipMode = Boolean(process.env.DEV_AWS_DEPLOYER_ROLE_ARN);
+
+const skipCiOnlyTest = (reason: string): boolean => {
+  if (!isLocalCiOnlySkipMode) {
+    return false;
+  }
+
+  console.log(`Skipping: ${reason}`);
+  return true;
+};
 
 const mustGetBaseUrl = (): string => {
   if (!baseUrl) {
@@ -59,9 +69,7 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
   };
 
   it("signed request passes API Gateway auth", async () => {
-    const devDeployerRoleArn = process.env.DEV_AWS_DEPLOYER_ROLE_ARN;
-    if (devDeployerRoleArn) {
-      console.log("Skipping: test requires credentials registered in CI client-permissions");
+    if (skipCiOnlyTest("test requires credentials registered in CI client-permissions")) {
       return;
     }
 
@@ -71,7 +79,9 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
       body,
     });
 
-    // ... rest of test
+    const data = await parseJsonOrText(result);
+    console.log("Signed request response:", result.status, data);
+
     expect(result.status).not.toBe(403);
   });
 
@@ -175,9 +185,7 @@ describeWithCreds("SigV4 helper behavior and credential handling", () => {
   });
 
   it("signedFetchWithCredentials returns 200 with explicit credentials", async () => {
-    const devDeployerRoleArn = process.env.DEV_AWS_DEPLOYER_ROLE_ARN;
-    if (devDeployerRoleArn) {
-      console.log("Skipping: test requires credentials registered in CI client-permissions");
+    if (skipCiOnlyTest("test requires credentials registered in CI client-permissions")) {
       return;
     }
 
@@ -309,9 +317,7 @@ describeLambdaAuth("Lambda-level authorization", () => {
     // to assume it. This test runs in CI where the runner IS already the deployer role.
     // Locally, this test is skipped because we cannot chain role assumptions with
     // the current helper (would require modifying assumeRole to accept explicit credentials).
-    const devDeployerRoleArn = process.env.DEV_AWS_DEPLOYER_ROLE_ARN;
-    if (devDeployerRoleArn) {
-      console.log("Skipping: test requires CI execution (runner must be deployer role)");
+    if (skipCiOnlyTest("test requires CI execution (runner must be deployer role)")) {
       return;
     }
 

@@ -340,7 +340,16 @@ jobs:
           echo "Running SigV4 enforcement smoke test against: $BASE_URL"
           echo "This validates that API Gateway accepts signed requests and rejects unsigned requests."
           echo "Test unauthorized role: $TEST_UNAUTHORIZED_ROLE_ARN"
-          npx jest src/test/integration/sigv4Smoke.test.ts --verbose
+          npm run test:integration:sigv4
+
+      - name: Upload SigV4 coverage (PR environment)
+        if: ${{ always() && steps.tf_outputs.outputs.has_outputs == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: sigv4-coverage-pr-${{ github.run_id }}
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 7
 
   pr_cleanup:
     needs: check_actor
@@ -633,7 +642,16 @@ jobs:
           echo "Running SigV4 enforcement smoke test against: $BASE_URL"
           echo "This validates that API Gateway accepts signed requests and rejects unsigned requests."
           echo "Test unauthorized role: $TEST_UNAUTHORIZED_ROLE_ARN"
-          npx jest src/test/integration/sigv4Smoke.test.ts --verbose
+          npm run test:integration:sigv4
+
+      - name: Upload SigV4 coverage (dev)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: sigv4-coverage-dev-${{ github.run_id }}
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Cleanup PR artifacts (soft delete)
         if: ${{ success() }}
