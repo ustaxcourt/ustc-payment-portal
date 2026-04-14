@@ -1,7 +1,6 @@
 import { signedFetch, signRequest, assumeRole, signedFetchWithCredentials } from "./sigv4Helper";
 
 /**
- *
  * PURPOSE
  * -------
  * Validates that API Gateway enforces AWS_IAM authorization:
@@ -9,112 +8,63 @@ import { signedFetch, signRequest, assumeRole, signedFetchWithCredentials } from
  *   - Unsigned requests → 403  (no Authorization header = rejected by API Gateway)
  *   - Tampered signatures → 403 (API Gateway detects signature mismatch)
  *
- * CURRENT STATUS (pre-deployment of Phase 1 Terraform)
- * -----------------------------------------------------
- * These tests CANNOT pass simultaneously until Phase 1 is deployed:
- *
- *   ✅ "signed request returns 200"
- *      PASSES — but for the wrong reason. API Gateway authorization is still
- *      set to NONE in the live environment, so the extra SigV4 headers are
- *      ignored and the Lambda handles the request normally.
- *
- *   ❌ "unsigned request returns 403"
- *      FAILS — returns 200. Without AWS_IAM enforcement on API Gateway, there
- *      is nothing to reject an unsigned request. The Lambda receives the call
- *      and responds successfully.
- *
- * EXPECTED STATUS (post-deployment of Phase 1 Terraform)
- * -------------------------------------------------------
- *   ✅ "signed request returns 200"
- *      PASSES for the right reason. API Gateway validates the SigV4 signature,
- *      confirms the IAM identity is in the resource policy, and forwards to Lambda.
- *
- *   ✅ "unsigned request returns 403"
- *      PASSES. API Gateway rejects the request before Lambda is ever invoked.
- *      The response body will be API Gateway's default "Missing Authentication Token"
- *      or "Forbidden" JSON — NOT a Lambda response.
+ * Uses GET /test for auth smoke tests — it has AWS_IAM authorization and no
+ * database or seeding dependencies, so results depend purely on authentication.
  *
  * HOW TO RUN
  * ----------
  * Requires AWS credentials in the environment (IAM role or static keys with
  * execute-api:Invoke permission on the deployed API Gateway).
  *
- *   NODE_ENV=stg BASE_URL=https://<api-id>.execute-api.us-east-1.amazonaws.com/stg \
+ *   BASE_URL=https://<api-id>.execute-api.us-east-1.amazonaws.com/<stage> \
  *   AWS_REGION=us-east-1 npx jest sigv4Smoke
  */
 describe("SigV4 enforcement smoke test", () => {
   const baseUrl = process.env.BASE_URL;
 
-  // A minimal valid /init body. We only need API Gateway to evaluate auth —
-  // the Lambda response doesn't matter for the 403 case.
-  const body = JSON.stringify({
-    transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-    feeId: "PETITION_FILING_FEE",
-    urlSuccess: "https://example.com",
-    urlCancel: "https://example.com",
-    metadata: { docketNumber: "123-26" },
-  });
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+  // Use GET /test for auth smoke tests — it has AWS_IAM authorization and no
+  // database dependencies, so the result depends purely on authentication.
+  // Using /init previously caused false failures when the fees table was unseeded.
 
   it("signed request returns 200", async () => {
-    const result = await signedFetch(`${baseUrl}/init`, {
-      method: "POST",
-      headers,
-      body,
+    const result = await signedFetch(`${baseUrl}/test`, {
+      method: "GET",
     });
 
-    const data = await result.json();
-    console.log(result);
-    console.log(data);
+    const text = await result.text();
+    console.log("Signed request response:", result.status, text.slice(0, 200));
 
-    // Pre-deployment:  passes (auth is NONE, Lambda handles it).
-    // Post-deployment: passes (SigV4 accepted, Lambda handles it).
     expect(result.status).toBe(200);
   });
 
   it("unsigned request returns 403", async () => {
-    const result = await fetch(`${baseUrl}/init`, {
-      method: "POST",
-      headers,
-      body,
+    const result = await fetch(`${baseUrl}/test`, {
+      method: "GET",
     });
 
     const data = await result.json();
-    console.log(result);
-    console.log(data);
+    console.log("Unsigned request response:", result.status, data);
 
-    // Pre-deployment:  FAILS — returns 200 because API Gateway auth is still NONE.
-    // Post-deployment: passes — API Gateway rejects unsigned request with 403.
     expect(result.status).toBe(403);
-
-    // API Gateway returns a specific error message for missing auth
     expect(data.message).toMatch(/Missing Authentication Token|Forbidden/i);
   });
 
   it("tampered signature returns 403", async () => {
-    // Get valid signed headers
-    const signedHeaders = await signRequest(`${baseUrl}/init`, {
-      method: "POST",
-      headers,
-      body,
+    const signedHeaders = await signRequest(`${baseUrl}/test`, {
+      method: "GET",
     });
 
-    // Tamper with the Authorization header by corrupting the signature portion
     const tamperedAuth = signedHeaders.authorization.replace(
       /Signature=[a-f0-9]+/,
       "Signature=0000000000000000000000000000000000000000000000000000000000000000"
     );
 
-    const result = await fetch(`${baseUrl}/init`, {
-      method: "POST",
+    const result = await fetch(`${baseUrl}/test`, {
+      method: "GET",
       headers: {
         ...signedHeaders,
         authorization: tamperedAuth,
       },
-      body,
     });
 
     const raw = await result.text();
@@ -128,7 +78,6 @@ describe("SigV4 enforcement smoke test", () => {
 
     console.log("Tampered signature response:", result.status, data);
 
-    // API Gateway validates the signature and rejects tampered requests
     expect(result.status).toBe(403);
     if (typeof data === "object" && data !== null) {
       expect(data.message).toMatch(/signature|Forbidden/i);
