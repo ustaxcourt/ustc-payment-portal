@@ -59,31 +59,24 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
   };
 
   it("signed request passes API Gateway auth", async () => {
-    const result = await signedFetch(`${baseUrl}/init`, {
+    const devDeployerRoleArn = process.env.DEV_AWS_DEPLOYER_ROLE_ARN;
+    if (devDeployerRoleArn) {
+      console.log("Skipping: test requires credentials registered in CI client-permissions");
+      return;
+    }
+
+    const result = await signedFetch(`${apiBaseUrl}/init`, {
       method: "POST",
       headers,
       body,
     });
 
-    const raw = await result.text();
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      data = raw;
-    }
-    console.log("Signed request response:", result.status, data);
-
-    // A 403 means API Gateway rejected the SigV4 signature.
-    // Any other status (200, 400) proves auth passed and Lambda was invoked.
-    // Note: running locally with an unregistered role returns a Lambda-level 403
-    // ("Client not registered") which will fail here — that's expected. In CI the
-    // deployer role is registered in client-permissions.
+    // ... rest of test
     expect(result.status).not.toBe(403);
   });
 
   it("unsigned request returns 403", async () => {
-    const result = await fetch(`${baseUrl}/init`, {
+    const result = await fetch(`${apiBaseUrl}/init`, {
       method: "POST",
       headers,
       body,
@@ -105,7 +98,7 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
   });
 
   it("tampered signature returns 403", async () => {
-    const signedHeaders = await signRequest(`${baseUrl}/init`, {
+    const signedHeaders = await signRequest(`${apiBaseUrl}/init`, {
       method: "POST",
       headers,
       body,
@@ -116,7 +109,7 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
       "Signature=0000000000000000000000000000000000000000000000000000000000000000"
     );
 
-    const result = await fetch(`${baseUrl}/init`, {
+    const result = await fetch(`${apiBaseUrl}/init`, {
       method: "POST",
       headers: {
         ...signedHeaders,
@@ -182,7 +175,7 @@ describeWithCreds("SigV4 helper behavior and credential handling", () => {
   });
 
   it("signedFetchWithCredentials returns 200 with explicit credentials", async () => {
-    const devDeployerRoleArn = process.env.DEV_DEPLOYER_ROLE_ARN;
+    const devDeployerRoleArn = process.env.DEV_AWS_DEPLOYER_ROLE_ARN;
     if (devDeployerRoleArn) {
       console.log("Skipping: test requires credentials registered in CI client-permissions");
       return;
@@ -316,7 +309,7 @@ describeLambdaAuth("Lambda-level authorization", () => {
     // to assume it. This test runs in CI where the runner IS already the deployer role.
     // Locally, this test is skipped because we cannot chain role assumptions with
     // the current helper (would require modifying assumeRole to accept explicit credentials).
-    const devDeployerRoleArn = process.env.DEV_DEPLOYER_ROLE_ARN;
+    const devDeployerRoleArn = process.env.DEV_AWS_DEPLOYER_ROLE_ARN;
     if (devDeployerRoleArn) {
       console.log("Skipping: test requires CI execution (runner must be deployer role)");
       return;
