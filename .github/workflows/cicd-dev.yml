@@ -6,6 +6,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      boolean_input:
+        description: "Deploy to DEV?"
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -426,12 +431,12 @@ jobs:
   deploy_dev:
     needs: check_actor
     if: needs.check_actor.outputs.is_dependabot != 'true' && (
-      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'workflow_dispatch' && inputs.boolean_input ||
       (github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       !contains(github.event.head_commit.message, 'changeset-release'))
       )
-    name: Deploy to Dev (on push to main)
+    name: Deploy to Dev (manual dispatch)
     permissions:
       contents: write
       id-token: write
