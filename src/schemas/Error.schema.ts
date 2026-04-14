@@ -123,7 +123,7 @@ export const ValidationErrorResponseSchema = z
       example: "Validation error",
     }),
     errors: z
-      .array(z.any())
+      .array(ErrorDetailSchema)
       .openapi({
         description:
           "Structured issue list. For Zod failures this contains ZodIssue objects with `path`, `message`, and `code`. Empty array for non-Zod errors.",
