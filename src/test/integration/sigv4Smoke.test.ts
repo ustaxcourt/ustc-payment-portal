@@ -3,13 +3,15 @@ import { signedFetch, signRequest, assumeRole, signedFetchWithCredentials } from
 /**
  * PURPOSE
  * -------
- * Validates that API Gateway enforces AWS_IAM authorization:
- *   - Signed requests   → 200  (caller is authorized)
- *   - Unsigned requests → 403  (no Authorization header = rejected by API Gateway)
+ * Validates that API Gateway enforces AWS_IAM authorization on /init:
+ *   - Signed requests   → not 403  (request passed auth, reached Lambda)
+ *   - Unsigned requests → 403  (rejected by API Gateway)
  *   - Tampered signatures → 403 (API Gateway detects signature mismatch)
  *
- * Uses GET /test for auth smoke tests — it has AWS_IAM authorization and no
- * database or seeding dependencies, so results depend purely on authentication.
+ * The signed test asserts "not 403" rather than "exactly 200" because Lambda may
+ * return 400 for validation reasons (e.g. unseeded fees table). Any non-403 proves
+ * the request passed SigV4 auth and reached the handler. Requires the caller's IAM
+ * role to be registered in client-permissions (true in CI, not necessarily locally).
  *
  * HOW TO RUN
  * ----------
@@ -22,24 +24,47 @@ import { signedFetch, signRequest, assumeRole, signedFetchWithCredentials } from
 describe("SigV4 enforcement smoke test", () => {
   const baseUrl = process.env.BASE_URL;
 
-  // Use GET /test for auth smoke tests — it has AWS_IAM authorization and no
-  // database dependencies, so the result depends purely on authentication.
-  // Using /init previously caused false failures when the fees table was unseeded.
+  const body = JSON.stringify({
+    transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+    feeId: "PETITION_FILING_FEE",
+    urlSuccess: "https://example.com",
+    urlCancel: "https://example.com",
+    metadata: { docketNumber: "123-26" },
+  });
 
-  it("signed request returns 200", async () => {
-    const result = await signedFetch(`${baseUrl}/test`, {
-      method: "GET",
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  it("signed request passes API Gateway auth", async () => {
+    const result = await signedFetch(`${baseUrl}/init`, {
+      method: "POST",
+      headers,
+      body,
     });
 
-    const text = await result.text();
-    console.log("Signed request response:", result.status, text.slice(0, 200));
+    const raw = await result.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      data = raw;
+    }
+    console.log("Signed request response:", result.status, data);
 
-    expect(result.status).toBe(200);
+    // A 403 means API Gateway rejected the SigV4 signature.
+    // Any other status (200, 400) proves auth passed and Lambda was invoked.
+    // Note: running locally with an unregistered role returns a Lambda-level 403
+    // ("Client not registered") which will fail here — that's expected. In CI the
+    // deployer role is registered in client-permissions.
+    expect(result.status).not.toBe(403);
   });
 
   it("unsigned request returns 403", async () => {
-    const result = await fetch(`${baseUrl}/test`, {
-      method: "GET",
+    const result = await fetch(`${baseUrl}/init`, {
+      method: "POST",
+      headers,
+      body,
     });
 
     const raw = await result.text();
@@ -58,8 +83,10 @@ describe("SigV4 enforcement smoke test", () => {
   });
 
   it("tampered signature returns 403", async () => {
-    const signedHeaders = await signRequest(`${baseUrl}/test`, {
-      method: "GET",
+    const signedHeaders = await signRequest(`${baseUrl}/init`, {
+      method: "POST",
+      headers,
+      body,
     });
 
     const tamperedAuth = signedHeaders.authorization.replace(
@@ -67,12 +94,13 @@ describe("SigV4 enforcement smoke test", () => {
       "Signature=0000000000000000000000000000000000000000000000000000000000000000"
     );
 
-    const result = await fetch(`${baseUrl}/test`, {
-      method: "GET",
+    const result = await fetch(`${baseUrl}/init`, {
+      method: "POST",
       headers: {
         ...signedHeaders,
         authorization: tamperedAuth,
       },
+      body,
     });
 
     const raw = await result.text();
