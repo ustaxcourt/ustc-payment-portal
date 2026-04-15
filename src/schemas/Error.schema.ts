@@ -100,6 +100,20 @@ export const GatewayErrorSchema = z
   })
   .openapi("GatewayError");
 
+export const NotFoundErrorSchema = z
+  .object(JsonErrorSchema.shape)
+  .openapi({
+    description:
+      "JSON error response for resource not found (HTTP 404).\n\n" +
+      "Returned when the supplied token cannot be found in the database.",
+    example: {
+      message:
+        "Transaction with token 'abcdefghijklmnopqrstuvwxyz123456' could not be found",
+      errors: [],
+    },
+  })
+  .openapi("NotFoundError");
+
 // Generic JSON error schema
 export const ErrorResponseSchema = z
   .object(JsonErrorSchema.shape)

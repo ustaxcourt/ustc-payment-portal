@@ -1,6 +1,17 @@
 import { processPayment } from "./processPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { ClientPermission } from "../types/ClientPermission";
+import { NotFoundError } from "../errors/notFound";
+import TransactionModel from "../db/TransactionModel";
+
+jest.mock("../db/TransactionModel", () => ({
+  __esModule: true,
+  default: {
+    findByPaygovToken: jest.fn(),
+  },
+}));
+
+const TransactionModelMock = TransactionModel as jest.Mocked<typeof TransactionModel>;
 
 const mockClient: ClientPermission = {
   clientName: "Test Client",
@@ -102,6 +113,23 @@ const mockFaultWithoutTCSServiceFault = `<?xml version="1.0" encoding="UTF-8"?>
 </S:Envelope>`;
 
 describe("processPayment", () => {
+  beforeEach(() => {
+    TransactionModelMock.findByPaygovToken.mockResolvedValue(
+      {} as TransactionModel,
+    );
+  });
+
+  it("throws NotFoundError when token is not in the database", async () => {
+    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce(undefined);
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(NotFoundError);
+  });
+
   it("throws an error if we pass in an invalid request", async () => {
     await expect(
       processPayment(appContext, {

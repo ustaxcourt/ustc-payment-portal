@@ -5,6 +5,7 @@ import {
 } from "./lambdaHandler";
 import { APIGatewayEvent } from "aws-lambda";
 import { PayGovError } from "./errors/payGovError";
+import { NotFoundError } from "./errors/notFound";
 
 // Reusable mock for appContext with dynamic use case injection
 const useCasesMock = {
@@ -333,6 +334,24 @@ describe("lambdaHandler", () => {
           }),
         ]),
       );
+    });
+
+    it("returns 404 when token is not found", async () => {
+      useCasesMock.processPayment.mockRejectedValueOnce(
+        new NotFoundError(
+          "Transaction with token 'abcdefghijklmnopqrstuvwxyz123456' could not be found",
+        ),
+      );
+
+      const event = {
+        body: JSON.stringify({ token: crypto.randomUUID().replace(/-/g, "") }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await processPaymentHandler(event);
+      expect(result.statusCode).toBe(404);
+      expect(JSON.parse(result.body).message).toContain("could not be found");
     });
 
     it("propagates PayGovError status when use case throws", async () => {
