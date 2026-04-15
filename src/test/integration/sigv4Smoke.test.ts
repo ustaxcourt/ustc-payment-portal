@@ -1,6 +1,5 @@
 import { signedFetch, signRequest, assumeRole, signedFetchWithCredentials } from "./sigv4Helper";
 
-const baseUrl = process.env.BASE_URL;
 const hasSigningCredentials =
   Boolean(process.env.AWS_ACCESS_KEY_ID) && Boolean(process.env.AWS_SECRET_ACCESS_KEY);
 const isLocalCiOnlySkipMode = Boolean(process.env.DEV_AWS_DEPLOYER_ROLE_ARN);
@@ -15,10 +14,11 @@ const skipCiOnlyTest = (reason: string): boolean => {
 };
 
 const mustGetBaseUrl = (): string => {
-  if (!baseUrl) {
+  const url = process.env.BASE_URL;
+  if (!url) {
     throw new Error("BASE_URL is required for SigV4 integration tests");
   }
-  return baseUrl;
+  return url;
 };
 
 const parseJsonOrText = async (result: Response): Promise<any> => {
@@ -28,6 +28,18 @@ const parseJsonOrText = async (result: Response): Promise<any> => {
   } catch {
     return raw;
   }
+};
+
+const body = JSON.stringify({
+  transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+  feeId: "PETITION_FILING_FEE",
+  urlSuccess: "https://example.com",
+  urlCancel: "https://example.com",
+  metadata: { docketNumber: "123-26" },
+});
+
+const headers: Record<string, string> = {
+  "Content-Type": "application/json",
 };
 
 /**
@@ -54,19 +66,11 @@ const parseJsonOrText = async (result: Response): Promise<any> => {
 const describeWithCreds = hasSigningCredentials ? describe : describe.skip;
 
 describeWithCreds("SigV4 enforcement on protected endpoints", () => {
-  const apiBaseUrl = mustGetBaseUrl();
+  let apiBaseUrl: string;
 
-  const body = JSON.stringify({
-    transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-    feeId: "PETITION_FILING_FEE",
-    urlSuccess: "https://example.com",
-    urlCancel: "https://example.com",
-    metadata: { docketNumber: "123-26" },
+  beforeAll(() => {
+    apiBaseUrl = mustGetBaseUrl();
   });
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
 
   it("signed request passes API Gateway auth", async () => {
     const result = await signedFetch(`${apiBaseUrl}/init`, {
@@ -78,11 +82,11 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
     const data = await parseJsonOrText(result);
     console.log("Signed request response:", result.status, data);
 
-    if (result.status === 403 && typeof data === "object" && data !== null) {
-      expect(data.message).toContain("Client not registered");
-      return;
-    }
-
+    // A 403 means API Gateway rejected the SigV4 signature.
+    // Any other status (200, 400) proves auth passed and Lambda was invoked.
+    // Note: running locally with an unregistered role returns a Lambda-level 403
+    // ("Client not registered") which will fail here — that's expected. In CI the
+    // deployer role is registered in client-permissions.
     expect(result.status).not.toBe(403);
   });
 
@@ -93,18 +97,13 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
       body,
     });
 
-    const raw = await result.text();
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      data = raw;
-    }
+    const data = await parseJsonOrText(result);
     console.log("Unsigned request response:", result.status, data);
 
     expect(result.status).toBe(403);
     if (typeof data === "object" && data !== null) {
-      expect(data.message).toMatch(/Missing Authentication Token|Forbidden/i);
+      expect(data).toHaveProperty("message");
+      expect((data as { message: string }).message).toMatch(/Missing Authentication Token|Forbidden/i);
     }
   });
 
@@ -130,20 +129,24 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
     });
 
     const data = await parseJsonOrText(result);
-
     console.log("Tampered signature response:", result.status, data);
 
     expect(result.status).toBe(403);
     if (typeof data === "object" && data !== null) {
-      expect(data.message).toMatch(/signature|Forbidden/i);
+      expect(data).toHaveProperty("message");
+      expect((data as { message: string }).message).toMatch(/signature|Forbidden/i);
     }
   });
 });
 
 describe("Unsigned auth rejection", () => {
-  const apiBaseUrl = mustGetBaseUrl();
+  let apiBaseUrl: string;
 
-  it("unsigned request returns 403", async () => {
+  beforeAll(() => {
+    apiBaseUrl = mustGetBaseUrl();
+  });
+
+  it("unsigned GET /test returns 403", async () => {
     const result = await fetch(`${apiBaseUrl}/test`, {
       method: "GET",
     });
@@ -157,9 +160,9 @@ describe("Unsigned auth rejection", () => {
     }
   });
 
-  it("unsigned request returns 403", async () => {
+  it("unsigned POST /init returns 403", async () => {
     const result = await fetch(`${apiBaseUrl}/init`, {
-      method: "GET",
+      method: "POST",
     });
 
     const data = await parseJsonOrText(result);
@@ -173,7 +176,11 @@ describe("Unsigned auth rejection", () => {
 });
 
 describeWithCreds("SigV4 helper behavior and credential handling", () => {
-  const apiBaseUrl = mustGetBaseUrl();
+  let apiBaseUrl: string;
+
+  beforeAll(() => {
+    apiBaseUrl = mustGetBaseUrl();
+  });
 
   it("signRequest returns SigV4 headers", async () => {
     const signedHeaders = await signRequest(`${apiBaseUrl}/test`, {
@@ -207,15 +214,19 @@ describeWithCreds("SigV4 helper behavior and credential handling", () => {
       { method: "GET" },
     );
 
-    const body = await result.text();
-    console.log("signedFetchWithCredentials response:", result.status, body.slice(0, 200));
+    const responseBody = await result.text();
+    console.log("signedFetchWithCredentials response:", result.status, responseBody.slice(0, 200));
 
     expect(result.status).toBe(200);
   });
 });
 
 describe("Credential guardrails", () => {
-  const apiBaseUrl = mustGetBaseUrl();
+  let apiBaseUrl: string;
+
+  beforeAll(() => {
+    apiBaseUrl = mustGetBaseUrl();
+  });
 
   it("throws a clear error when required AWS credentials are missing", async () => {
     const originalAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
@@ -268,19 +279,11 @@ const testUnauthorizedRoleArn = process.env.TEST_UNAUTHORIZED_ROLE_ARN;
 const describeLambdaAuth = testUnauthorizedRoleArn ? describe : describe.skip;
 
 describeLambdaAuth("Lambda-level authorization", () => {
-  const apiBaseUrl = mustGetBaseUrl();
+  let apiBaseUrl: string;
 
-  const body = JSON.stringify({
-    transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-    feeId: "PETITION_FILING_FEE",
-    urlSuccess: "https://example.com",
-    urlCancel: "https://example.com",
-    metadata: { docketNumber: "123-26" },
+  beforeAll(() => {
+    apiBaseUrl = mustGetBaseUrl();
   });
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
 
   it("unregistered client receives 403 with 'Client not registered'", async () => {
     // The test-unauthorized role's trust policy only allows the dev deployer role
@@ -291,13 +294,11 @@ describeLambdaAuth("Lambda-level authorization", () => {
       return;
     }
 
-    // In CI, assume the test-unauthorized role directly (runner is deployer role)
     const credentials = await assumeRole(
       testUnauthorizedRoleArn!,
       "unregistered-client-test"
     );
 
-    // Sign and make request using the assumed role's credentials
     const result = await signedFetchWithCredentials(
       `${apiBaseUrl}/init`,
       credentials,
@@ -308,12 +309,13 @@ describeLambdaAuth("Lambda-level authorization", () => {
       }
     );
 
-    const data = await result.json();
+    const data = await parseJsonOrText(result);
     console.log("Unregistered client response:", result.status, data);
 
-    // Lambda should reject with 403 and "Client not registered"
-    // (API Gateway already accepted the request — signature was valid)
     expect(result.status).toBe(403);
-    expect(data.message).toContain("Client not registered");
+    if (typeof data === "object" && data !== null) {
+      expect(data).toHaveProperty("message");
+      expect((data as { message: string }).message).toContain("Client not registered");
+    }
   });
 });
