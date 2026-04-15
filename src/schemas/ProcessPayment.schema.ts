@@ -8,11 +8,13 @@ extendZodWithOpenApi(z);
 
 export const ProcessPaymentRequestSchema = z
   .object({
-    token: z.string().openapi({
-      description: "The payment token received from Pay.gov after user completes payment form",
-      example: "abc123token",
+    token: z.string().length(32).openapi({
+      description:
+        "The payment token received from Pay.gov after user completes payment form. Must be exactly 32 characters long.",
+      example: "abcdefghijklmnopqrstuvwxyz123456",
     }),
   })
+  .strict()
   .openapi("ProcessPaymentRequest");
 
 export type ProcessPaymentRequest = z.infer<typeof ProcessPaymentRequestSchema>;
@@ -30,5 +32,6 @@ export const ProcessPaymentResponseSchema = z
   })
   .openapi("ProcessPaymentResponse");
 
-export type ProcessPaymentResponse = z.infer<typeof ProcessPaymentResponseSchema>;
-
+export type ProcessPaymentResponse = z.infer<
+  typeof ProcessPaymentResponseSchema
+>;

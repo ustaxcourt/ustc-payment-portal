@@ -6,12 +6,17 @@ export async function up(knex: Knex): Promise<void> {
     t.decimal('transaction_amount', 12, 2).nullable().comment('Actual amount charged for this transaction (USD)');
   });
 
-  // Backfill from the fees table — all existing transactions reference a fixed fee
+  // Backfill using known fee amounts at the time this migration was written.
+  // We cannot join fees here because that table is seeded after migrations run.
+  // These are the canonical fixed amounts for all transactions created before
+  // this column was added — correct by definition for historical rows.
   await knex.raw(`
-    UPDATE transactions t
-    SET transaction_amount = f.amount
-    FROM fees f
-    WHERE t.fee_id = f.fee_id
+    UPDATE transactions
+    SET transaction_amount = CASE fee_id
+      WHEN 'PETITION_FILING_FEE'               THEN 60.00
+      WHEN 'NONATTORNEY_EXAM_REGISTRATION_FEE' THEN 250.00
+    END
+    WHERE transaction_amount IS NULL
   `);
 
   await knex.schema.alterTable('transactions', (t) => {

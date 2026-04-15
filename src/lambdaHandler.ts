@@ -3,26 +3,31 @@ import {
   APIGatewayEvent,
   APIGatewayEventRequestContext,
 } from "aws-lambda";
+import { ZodType } from "zod";
 import { createAppContext } from "./appContext";
 import { extractCallerArn } from "./extractCallerArn";
 import { authorizeClient } from "./authorizeClient";
 import { handleError } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
 import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
-import { GetDetails } from "./useCases/getDetails";
-import { InitPayment } from "./useCases/initPayment";
-import { ProcessPayment } from "./useCases/processPayment";
+import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
+import { GetDetailsRequest } from "./useCases/getDetails";
+import { ClientPermission } from "./types/ClientPermission";
+import { AppContext } from "./types/AppContext";
 import { isValidPaymentStatus } from "./useCases/getTransactionsByStatus";
 import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
 
 const appContext = createAppContext();
 
-type LambdaHandler = ProcessPayment | InitPayment | GetDetails;
+type LambdaHandler<T> = (
+  appContext: AppContext,
+  params: { client: ClientPermission; request: T },
+) => Promise<unknown>;
 
-const lambdaHandler = async (
-  request: any,
+const lambdaHandler = async <T>(
+  request: T,
   requestContext: APIGatewayEventRequestContext,
-  callback: LambdaHandler,
+  callback: LambdaHandler<T>,
   feeId?: string,
 ): Promise<APIGatewayProxyResult> => {
   try {
@@ -38,17 +43,23 @@ const lambdaHandler = async (
   }
 };
 
+type ParseResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: APIGatewayProxyResult };
+
 const safeJsonParse = <T = any>(
   body: string | null | undefined
-): { value?: T; error?: APIGatewayProxyResult } => {
+): ParseResult<T> => {
   if (!body) {
-    return { error: handleError(new InvalidRequestError("missing body")) };
+    const error = handleError(new InvalidRequestError("missing body"));
+    return { ok: false, error };
   }
 
   try {
-    return { value: JSON.parse(body) };
+    return { ok: true, value: JSON.parse(body) };
   } catch {
     return {
+      ok: false,
       error: handleError(
         new InvalidRequestError("invalid JSON in request body")
       ),
@@ -56,33 +67,50 @@ const safeJsonParse = <T = any>(
   }
 };
 
+/**
+ * Parses a JSON body and validates it against a Zod schema.
+ * Returns either the typed, validated value or a pre-built 400 error response.
+ */
+const parseAndValidate = <T>(
+  body: string | null | undefined,
+  schema: ZodType<T>,
+): ParseResult<T> => {
+  const parsed = safeJsonParse(body);
+  if (!parsed.ok) return parsed;
+
+  const result = schema.safeParse(parsed.value);
+  if (!result.success) {
+    return { ok: false, error: handleError(result.error) };
+  }
+
+  return { ok: true, value: result.data };
+};
+
 export const initPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const { value: rawBody, error } = safeJsonParse(event.body);
-  if (error) return Promise.resolve(error);
-
-  const parsed = InitPaymentRequestSchema.safeParse(rawBody);
-  if (!parsed.success) {
-    return Promise.resolve(handleError(parsed.error));
-  }
+  const result = parseAndValidate(event.body, InitPaymentRequestSchema);
+  if (!result.ok) return Promise.resolve(result.error);
 
   return lambdaHandler(
-    parsed.data,
+    result.value,
     event.requestContext,
     appContext.getUseCases().initPayment,
-    parsed.data.feeId,
+    result.value.feeId,
   );
 };
 
 export const processPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const { value: request, error } = safeJsonParse(event.body);
-  if (error) return Promise.resolve(error);
+  const result = parseAndValidate(
+    event.body,
+    ProcessPaymentRequestSchema,
+  );
+  if (!result.ok) return Promise.resolve(result.error);
 
   return lambdaHandler(
-    request,
+    result.value,
     event.requestContext,
     appContext.getUseCases().processPayment,
   );
@@ -91,14 +119,15 @@ export const processPaymentHandler = (
 export const getDetailsHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  if (!event.pathParameters) {
+  const payGovTrackingId = event.pathParameters?.payGovTrackingId;
+  if (!payGovTrackingId) {
     return Promise.resolve(
-      handleError(new InvalidRequestError("missing required information")),
+      handleError(new InvalidRequestError("Missing Pay.gov tracking ID")),
     );
   }
   // getDetails is a read-only lookup — no feeId required, IAM registration check is sufficient.
   return lambdaHandler(
-    event.pathParameters,
+    { payGovTrackingId } satisfies GetDetailsRequest,
     event.requestContext,
     appContext.getUseCases().getDetails,
   );
