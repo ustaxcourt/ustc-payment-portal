@@ -20,6 +20,7 @@
     "test:coverage": "npm run test -- --coverage",
     "test:integration:dev": "NODE_ENV=local DOTENV_CONFIG_PATH=.env.dev npx jest ./src/test/integration/",
     "test:integration": "npx jest ./src/test/integration/ --testPathIgnorePatterns=sigv4Smoke.test.ts",
+    "test:integration:sigv4": "BASE_URL=$BASE_URL npx jest ./src/test/integration/sigv4Smoke.test.ts --coverage --verbose",
     "test:db:setup": "node -r dotenv/config ./scripts/ensure-test-db.js && NODE_ENV=test npm run knex -- migrate:latest && NODE_ENV=test npm run knex -- seed:run",
     "ci:install": "npm ci",
     "ci:publish": "npm run build && changeset publish --provenance",

@@ -374,6 +374,12 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*"
       },
       {
+        # DescribeParameters cannot be scoped to a specific resource — AWS requires "*"
+        Effect   = "Allow",
+        Action   = ["ssm:DescribeParameters"],
+        Resource = "*"
+      },
+      {
         Effect = "Allow",
         Action = [
           "ssm:PutParameter",
