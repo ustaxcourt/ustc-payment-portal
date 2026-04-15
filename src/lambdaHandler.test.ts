@@ -193,7 +193,7 @@ describe("lambdaHandler", () => {
     it("returns 200 with transaction details on successful request", async () => {
       const event = {
         body: JSON.stringify({
-          token: crypto.randomUUID(),
+          token: crypto.randomUUID().replace(/-/g, ""),
         }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
@@ -297,9 +297,26 @@ describe("lambdaHandler", () => {
       expect(JSON.parse(result.body).message).toBe("Validation error");
     });
 
+    it("returns 400 when token is too long (over 32 chars)", async () => {
+      const event = {
+        body: JSON.stringify({
+          token: `${crypto.randomUUID().replace(/-/g, "")}abcd`,
+        }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await processPaymentHandler(event);
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body).message).toBe("Validation error");
+    });
+
     it("returns 400 when request has unknown fields (strict mode)", async () => {
       const event = {
-        body: JSON.stringify({ token: crypto.randomUUID(), extra: true }),
+        body: JSON.stringify({
+          token: crypto.randomUUID().replace(/-/g, ""),
+          extra: true,
+        }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
@@ -322,7 +339,7 @@ describe("lambdaHandler", () => {
       useCasesMock.processPayment.mockRejectedValueOnce(new PayGovError());
 
       const event = {
-        body: JSON.stringify({ token: crypto.randomUUID() }),
+        body: JSON.stringify({ token: crypto.randomUUID().replace(/-/g, "") }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
@@ -332,10 +349,12 @@ describe("lambdaHandler", () => {
     });
 
     it("returns 500 when use case throws a generic error", async () => {
-      useCasesMock.processPayment.mockRejectedValueOnce(new Error("unexpected"));
+      useCasesMock.processPayment.mockRejectedValueOnce(
+        new Error("unexpected"),
+      );
 
       const event = {
-        body: JSON.stringify({ token: crypto.randomUUID() }),
+        body: JSON.stringify({ token: crypto.randomUUID().replace(/-/g, "") }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
@@ -346,7 +365,7 @@ describe("lambdaHandler", () => {
 
     it("returns 403 when IAM principal is invalid", async () => {
       const event = {
-        body: JSON.stringify({ token: crypto.randomUUID() }),
+        body: JSON.stringify({ token: crypto.randomUUID().replace(/-/g, "") }),
         headers: mockHeaders,
         requestContext: {
           ...mockRequestContext,

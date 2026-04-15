@@ -575,8 +575,8 @@
           "token": {
             "type": "string",
             "minLength": 32,
-            "maxLength": 36,
-            "description": "The payment token received from Pay.gov after user completes payment form. Must be 32 to 36 characters long.",
+            "maxLength": 32,
+            "description": "The payment token received from Pay.gov after user completes payment form. Must be exactly 32 characters long.",
             "example": "abcdefghijklmnopqrstuvwxyz123456"
           }
         },
