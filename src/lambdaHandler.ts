@@ -11,20 +11,23 @@ import { handleError } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
 import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
 import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
-import { GetDetails } from "./useCases/getDetails";
-import { InitPayment } from "./useCases/initPayment";
-import { ProcessPayment } from "./useCases/processPayment";
+import { GetDetailsRequest } from "./useCases/getDetails";
+import { ClientPermission } from "./types/ClientPermission";
+import { AppContext } from "./types/AppContext";
 import { isValidPaymentStatus } from "./useCases/getTransactionsByStatus";
 import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
 
 const appContext = createAppContext();
 
-type LambdaHandler = ProcessPayment | InitPayment | GetDetails;
+type LambdaHandler<T> = (
+  appContext: AppContext,
+  params: { client: ClientPermission; request: T },
+) => Promise<unknown>;
 
-const lambdaHandler = async (
-  request: any,
+const lambdaHandler = async <T>(
+  request: T,
   requestContext: APIGatewayEventRequestContext,
-  callback: LambdaHandler,
+  callback: LambdaHandler<T>,
   feeId?: string,
 ): Promise<APIGatewayProxyResult> => {
   try {
@@ -116,14 +119,15 @@ export const processPaymentHandler = (
 export const getDetailsHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  if (!event.pathParameters) {
+  const payGovTrackingId = event.pathParameters?.payGovTrackingId;
+  if (!payGovTrackingId) {
     return Promise.resolve(
-      handleError(new InvalidRequestError("missing required information")),
+      handleError(new InvalidRequestError("Missing Pay.gov tracking ID")),
     );
   }
   // getDetails is a read-only lookup — no feeId required, IAM registration check is sufficient.
   return lambdaHandler(
-    event.pathParameters,
+    { payGovTrackingId } satisfies GetDetailsRequest,
     event.requestContext,
     appContext.getUseCases().getDetails,
   );
