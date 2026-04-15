@@ -339,6 +339,34 @@
           "errors": []
         }
       },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable summary. 'Validation error' for Zod failures; otherwise the thrown error's message (e.g. 'missing body', 'invalid JSON in request body').",
+            "example": "Validation error"
+          },
+          "errors": {
+            "type": "array",
+            "items": {},
+            "description": "Structured issue list. For Zod failures this contains ZodIssue objects with `path`, `message`, and `code`. Empty array for non-Zod errors.",
+            "example": [
+              {
+                "code": "invalid_type",
+                "path": [
+                  "token"
+                ],
+                "message": "Required"
+              }
+            ]
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ]
+      },
       "GatewayError": {
         "type": "object",
         "properties": {
@@ -422,12 +450,12 @@
           "paymentMethod": {
             "type": "string",
             "enum": [
-              "Credit/Debit Card",
-              "ACH",
-              "PayPal"
+              "plastic_card",
+              "ach",
+              "paypal"
             ],
             "description": "Method of payment",
-            "example": "Credit/Debit Card"
+            "example": "plastic_card"
           },
           "returnDetail": {
             "type": "string",
@@ -474,12 +502,12 @@
           "paymentMethod": {
             "type": "string",
             "enum": [
-              "Credit/Debit Card",
-              "ACH",
-              "PayPal"
+              "plastic_card",
+              "ach",
+              "paypal"
             ],
             "description": "Method of payment",
-            "example": "Credit/Debit Card"
+            "example": "plastic_card"
           },
           "returnDetail": {
             "type": "string",
@@ -534,25 +562,28 @@
       "PaymentMethod": {
         "type": "string",
         "enum": [
-          "Credit/Debit Card",
-          "ACH",
-          "PayPal"
+          "plastic_card",
+          "ach",
+          "paypal"
         ],
         "description": "Method of payment",
-        "example": "Credit/Debit Card"
+        "example": "plastic_card"
       },
       "ProcessPaymentRequest": {
         "type": "object",
         "properties": {
           "token": {
             "type": "string",
-            "description": "The payment token received from Pay.gov after user completes payment form",
-            "example": "abc123token"
+            "minLength": 32,
+            "maxLength": 32,
+            "description": "The payment token received from Pay.gov after user completes payment form. Must be exactly 32 characters long.",
+            "example": "abcdefghijklmnopqrstuvwxyz123456"
           }
         },
         "required": [
           "token"
-        ]
+        ],
+        "additionalProperties": false
       },
       "ProcessPaymentResponse": {
         "type": "object",
@@ -973,11 +1004,11 @@
             }
           },
           "400": {
-            "description": "Invalid request payload (e.g., missing body)",
+            "description": "Invalid request payload. Returned when the body is missing, not valid JSON, or fails schema validation (missing `token`, wrong type, empty string, or unknown fields in strict mode).",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
                 }
               }
             }
@@ -998,6 +1029,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway timeout communicating with Pay.gov",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
                 }
               }
             }

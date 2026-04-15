@@ -111,3 +111,28 @@ export const ErrorResponseSchema = z
     },
   })
   .openapi("ErrorResponse");
+
+// JSON error envelope returned by handleError for validation failures and
+// thrown errors: `{ message, errors }`. Used for endpoints that run Zod
+// schema validation at the edge (e.g. POST /process).
+export const ValidationErrorResponseSchema = z
+  .object(JsonErrorSchema.shape)
+  .openapi({
+    description:
+      "JSON error response for request validation failures.\n\n" +
+      "'Validation error' for Zod failures; otherwise the thrown error's message " +
+      "(e.g. 'missing body', 'invalid JSON in request body'). " +
+      "For Zod failures the errors array contains ZodIssue objects with `path`, `message`, and `code`. " +
+      "Empty array for non-Zod errors.",
+    example: {
+      message: "Validation error",
+      errors: [
+        {
+          code: "invalid_type",
+          path: ["token"],
+          message: "Required",
+        },
+      ],
+    },
+  })
+  .openapi("ValidationErrorResponse");

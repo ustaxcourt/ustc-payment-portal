@@ -41,6 +41,7 @@ export const InitPaymentRequestSchema = z
     }),
     metadata: MetadataSchema,
   })
+  .strict()
   .superRefine((data, ctx) => {
     const validator = metadataValidators[data.feeId];
     const result = validator.safeParse(data.metadata);

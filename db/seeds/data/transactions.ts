@@ -33,7 +33,7 @@ export const generateTransactions = async ({
   const feesList = await FeesModel.query().select('feeId', 'amount');
   const clientNames = ['payment-portal', 'efile-portal', 'clerk-app'];
   const transactionStatuses = ['received', 'initiated', 'pending', 'processed', 'failed'];
-  const paymentMethods = ['plastic_card', 'ach', 'paypal'];
+  const paymentMethods = ["Credit/Debit Card", "ACH", "PayPal"];
 
   const agencyIds = ['USTC', 'IRS'];
   const agencyCounters: Record<string, number> = Object.fromEntries(agencyIds.map((agencyId) => [agencyId, 0]));

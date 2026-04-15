@@ -23,10 +23,15 @@ export async function up(knex: Knex): Promise<void> {
     t.string('payment_method', 50).nullable().alter();
   });
 
-  // Foreign key from transactions.fee_id to fees.fee_id
-  await knex.schema.alterTable('transactions', (t) => {
-    t.foreign('fee_id').references('fee_id').inTable('fees').onDelete('RESTRICT');
-  });
+  // Add FK as NOT VALID so Postgres skips checking existing rows. (We don't need to check them yet anyway, any transaction rows are dummy data at this point)
+  // Fees table is empty until 01_reference_data seed runs after migrations.
+  await knex.raw(`
+    ALTER TABLE transactions
+      ADD CONSTRAINT transactions_fee_id_foreign
+      FOREIGN KEY (fee_id) REFERENCES fees(fee_id)
+      ON DELETE RESTRICT
+      NOT VALID
+  `);
 
   // Remove fee_name and fee_amount from transactions
   await knex.schema.alterTable('transactions', (t) => {

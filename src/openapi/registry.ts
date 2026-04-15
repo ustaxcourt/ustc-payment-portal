@@ -9,6 +9,7 @@ import {
   BadRequestErrorSchema,
   ForbiddenErrorSchema,
   ServerErrorSchema,
+  ValidationErrorResponseSchema,
   GatewayErrorSchema,
   GetDetailsResponseSchema,
   TransactionRecordSchema,
@@ -44,6 +45,7 @@ registry.register("ErrorResponse", ErrorResponseSchema);
 registry.register("BadRequestError", BadRequestErrorSchema);
 registry.register("ForbiddenError", ForbiddenErrorSchema);
 registry.register("ServerError", ServerErrorSchema);
+registry.register("ValidationErrorResponse", ValidationErrorResponseSchema);
 registry.register("GatewayError", GatewayErrorSchema);
 registry.register("GetDetailsResponse", GetDetailsResponseSchema);
 registry.register("TransactionRecord", TransactionRecordSchema);
@@ -227,10 +229,12 @@ registry.registerPath({
       },
     },
     400: {
-      description: "Invalid request payload (e.g., missing body)",
+      description:
+        "Invalid request payload. Returned when the body is missing, not valid JSON, " +
+        "or fails schema validation (missing `token`, wrong type, empty string, or unknown fields in strict mode).",
       content: {
         "application/json": {
-          schema: BadRequestErrorSchema,
+          schema: ValidationErrorResponseSchema,
         },
       },
     },
@@ -247,6 +251,14 @@ registry.registerPath({
       content: {
         "application/json": {
           schema: ServerErrorSchema,
+        },
+      },
+    },
+    504: {
+      description: "Gateway timeout communicating with Pay.gov",
+      content: {
+        "application/json": {
+          schema: GatewayErrorSchema,
         },
       },
     },
