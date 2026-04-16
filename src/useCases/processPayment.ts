@@ -32,6 +32,9 @@ export const processPayment: ProcessPayment = async (
     client.allowedFeeIds.includes("*") ||
     client.allowedFeeIds.includes(transaction.feeId);
   if (!hasAccess) {
+    console.warn(
+      `Client '${client.clientName}' attempted to process token for feeId '${transaction.feeId}' without access`,
+    );
     throw new ForbiddenError(
       `You do not have access to the transaction for the requested token`,
     );
