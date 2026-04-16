@@ -8,7 +8,6 @@ import { NotFoundError } from "../errors/notFound";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
-import TransactionModel from "../db/TransactionModel";
 
 export type ProcessPayment = (
   appContext: AppContext,
