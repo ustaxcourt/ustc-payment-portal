@@ -22,9 +22,7 @@ export const processPayment: ProcessPayment = async (
 ) => {
   const transaction = await TransactionModel.findByPaygovToken(request.token);
   if (!transaction) {
-    throw new NotFoundError(
-      `Transaction with token '${request.token}' could not be found`,
-    );
+    throw new NotFoundError("Transaction could not be found");
   }
 
   const req = new CompleteOnlineCollectionWithDetailsRequest({
