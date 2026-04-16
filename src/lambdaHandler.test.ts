@@ -337,14 +337,15 @@ describe("lambdaHandler", () => {
     });
 
     it("returns 404 when token is not found", async () => {
+      const token = crypto.randomUUID().replace(/-/g, "");
       useCasesMock.processPayment.mockRejectedValueOnce(
         new NotFoundError(
-          "Transaction with token 'abcdefghijklmnopqrstuvwxyz123456' could not be found",
+          `Transaction with token '${token}' could not be found`,
         ),
       );
 
       const event = {
-        body: JSON.stringify({ token: crypto.randomUUID().replace(/-/g, "") }),
+        body: JSON.stringify({ token }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
