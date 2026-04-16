@@ -3,6 +3,7 @@ import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/Complete
 import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
 import { ProcessPaymentResponse } from "../types/ProcessPaymentResponse";
 import { FailedTransactionError } from "../errors/failedTransaction";
+import { ForbiddenError } from "../errors/forbidden";
 import { NotFoundError } from "../errors/notFound";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { ClientPermission } from "../types/ClientPermission";
@@ -18,12 +19,21 @@ export type ProcessPayment = (
 
 export const processPayment: ProcessPayment = async (
   appContext: AppContext,
-  { request },
+  { client, request },
 ) => {
   const transaction = await TransactionModel.findByPaygovToken(request.token);
   if (!transaction) {
     throw new NotFoundError(
       `Transaction with token '${request.token}' could not be found`,
+    );
+  }
+
+  const hasAccess =
+    client.allowedFeeIds.includes("*") ||
+    client.allowedFeeIds.includes(transaction.feeId);
+  if (!hasAccess) {
+    throw new ForbiddenError(
+      `You do not have access to the transaction for the requested token`,
     );
   }
 

@@ -4,6 +4,7 @@ import {
   getDetailsHandler,
 } from "./lambdaHandler";
 import { APIGatewayEvent } from "aws-lambda";
+import { ForbiddenError } from "./errors/forbidden";
 import { PayGovError } from "./errors/payGovError";
 import { NotFoundError } from "./errors/notFound";
 
@@ -353,6 +354,24 @@ describe("lambdaHandler", () => {
       const result = await processPaymentHandler(event);
       expect(result.statusCode).toBe(404);
       expect(JSON.parse(result.body).message).toContain("could not be found");
+    });
+
+    it("returns 403 when client does not have access to the transaction", async () => {
+      useCasesMock.processPayment.mockRejectedValueOnce(
+        new ForbiddenError(
+          `You do not have access to the transaction for the requested token`,
+        ),
+      );
+
+      const event = {
+        body: JSON.stringify({ token: crypto.randomUUID().replace(/-/g, "") }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await processPaymentHandler(event);
+      expect(result.statusCode).toBe(403);
+      expect(JSON.parse(result.body).message).toContain("do not have access");
     });
 
     it("propagates PayGovError status when use case throws", async () => {
