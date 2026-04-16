@@ -3,8 +3,10 @@ import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/Complete
 import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
 import { ProcessPaymentResponse } from "../types/ProcessPaymentResponse";
 import { FailedTransactionError } from "../errors/failedTransaction";
+import { NotFoundError } from "../errors/notFound";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { ClientPermission } from "../types/ClientPermission";
+import TransactionModel from "../db/TransactionModel";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -18,6 +20,11 @@ export const processPayment: ProcessPayment = async (
   appContext: AppContext,
   { request },
 ) => {
+  const transaction = await TransactionModel.findByPaygovToken(request.token);
+  if (!transaction) {
+    throw new NotFoundError("Transaction could not be found");
+  }
+
   const req = new CompleteOnlineCollectionWithDetailsRequest({
     tcsAppId: "", // Required by Pay.gov SOAP schema — token alone identifies the transaction on this call
     token: request.token,

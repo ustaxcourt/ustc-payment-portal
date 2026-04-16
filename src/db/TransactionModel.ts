@@ -134,6 +134,11 @@ export default class TransactionModel extends Model {
       .where('agencyTrackingId', agencyTrackingId);
   }
 
+  static async findByPaygovToken(token: string): Promise<TransactionModel | undefined> {
+    await getKnex();
+    return TransactionModel.query().findOne({ paygovToken: token });
+  }
+
   static async updateToFailed(agencyTrackingId: string): Promise<void> {
     await getKnex();
     await this.query()

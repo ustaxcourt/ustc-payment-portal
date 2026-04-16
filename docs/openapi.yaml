@@ -81,8 +81,8 @@ components:
         - accessCode
     Metadata:
       anyOf:
-        - $ref: "#/components/schemas/MetadataDawson"
-        - $ref: "#/components/schemas/MetadataNonattorneyExam"
+        - $ref: '#/components/schemas/MetadataDawson'
+        - $ref: '#/components/schemas/MetadataNonattorneyExam'
       description: >-
         Metadata fields are dynamic and determined by the feeId value. Different
         fees require different metadata properties. See individual metadata
@@ -135,8 +135,8 @@ components:
           example: https://client.app/cancel
         metadata:
           anyOf:
-            - $ref: "#/components/schemas/MetadataDawson"
-            - $ref: "#/components/schemas/MetadataNonattorneyExam"
+            - $ref: '#/components/schemas/MetadataDawson'
+            - $ref: '#/components/schemas/MetadataNonattorneyExam'
           description: >-
             Metadata fields are dynamic and determined by the feeId value.
             Different fees require different metadata properties. See individual
@@ -147,6 +147,7 @@ components:
         - urlSuccess
         - urlCancel
         - metadata
+      additionalProperties: false
     InitPaymentResponse:
       type: object
       properties:
@@ -317,31 +318,84 @@ components:
       example:
         message: An unexpected error occurred while processing the request
         errors: []
+    NotFoundError:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Human-readable error summary
+        errors:
+          type: array
+          items:
+            type: object
+            properties: {}
+            additionalProperties: {}
+            description: >-
+              A structured error detail object (for example a Zod validation
+              issue)
+            example:
+              code: invalid_type
+              expected: string
+              received: undefined
+              path:
+                - urlSuccess
+              message: Required
+          description: Additional error details
+          example: []
+      required:
+        - message
+        - errors
+      description: |-
+        JSON error response for resource not found (HTTP 404).
+
+        Returned when the supplied token cannot be found in the database.
+      example:
+        message: >-
+          Transaction with token 'abcdefghijklmnopqrstuvwxyz123456' could not be
+          found
+        errors: []
     ValidationErrorResponse:
       type: object
       properties:
         message:
           type: string
-          description: >-
-            Human-readable summary. 'Validation error' for Zod failures;
-            otherwise the thrown error's message (e.g. 'missing body', 'invalid
-            JSON in request body').
-          example: Validation error
+          description: Human-readable error summary
         errors:
           type: array
-          items: {}
-          description: >-
-            Structured issue list. For Zod failures this contains ZodIssue
-            objects with `path`, `message`, and `code`. Empty array for non-Zod
-            errors.
-          example:
-            - code: invalid_type
+          items:
+            type: object
+            properties: {}
+            additionalProperties: {}
+            description: >-
+              A structured error detail object (for example a Zod validation
+              issue)
+            example:
+              code: invalid_type
+              expected: string
+              received: undefined
               path:
-                - token
+                - urlSuccess
               message: Required
+          description: Additional error details
+          example: []
       required:
         - message
         - errors
+      description: >-
+        JSON error response for request validation failures.
+
+
+        'Validation error' for Zod failures; otherwise the thrown error's
+        message (e.g. 'missing body', 'invalid JSON in request body'). For Zod
+        failures the errors array contains ZodIssue objects with `path`,
+        `message`, and `code`. Empty array for non-Zod errors.
+      example:
+        message: Validation error
+        errors:
+          - code: invalid_type
+            path:
+              - token
+            message: Required
     GatewayError:
       type: object
       properties:
@@ -390,7 +444,7 @@ components:
         transactions:
           type: array
           items:
-            $ref: "#/components/schemas/TransactionRecordSummary"
+            $ref: '#/components/schemas/TransactionRecordSummary'
           description: >-
             Array of all transaction records associated with this payment
             reference
@@ -413,11 +467,11 @@ components:
         paymentMethod:
           type: string
           enum:
-            - plastic_card
-            - ach
-            - paypal
+            - Credit/Debit Card
+            - ACH
+            - PayPal
           description: Method of payment
-          example: plastic_card
+          example: Credit/Debit Card
         returnDetail:
           type: string
           description: Detailed return message from Pay.gov
@@ -426,12 +480,12 @@ components:
           type: string
           format: date-time
           description: Timestamp when the transaction was created
-          example: "2024-01-15T10:30:00Z"
+          example: '2024-01-15T10:30:00Z'
         updatedTimestamp:
           type: string
           format: date-time
           description: Timestamp when the transaction was last updated
-          example: "2024-01-15T10:35:00Z"
+          example: '2024-01-15T10:35:00Z'
       required:
         - transactionStatus
     TransactionRecord:
@@ -454,11 +508,11 @@ components:
         paymentMethod:
           type: string
           enum:
-            - plastic_card
-            - ach
-            - paypal
+            - Credit/Debit Card
+            - ACH
+            - PayPal
           description: Method of payment
-          example: plastic_card
+          example: Credit/Debit Card
         returnDetail:
           type: string
           description: Detailed return message from Pay.gov
@@ -466,17 +520,17 @@ components:
         returnCode:
           type: string
           description: Return code from Pay.gov
-          example: "1000"
+          example: '1000'
         createdTimestamp:
           type: string
           format: date-time
           description: Timestamp when the transaction was created
-          example: "2024-01-15T10:30:00Z"
+          example: '2024-01-15T10:30:00Z'
         updatedTimestamp:
           type: string
           format: date-time
           description: Timestamp when the transaction was last updated
-          example: "2024-01-15T10:35:00Z"
+          example: '2024-01-15T10:35:00Z'
       required:
         - payGovTrackingId
         - transactionStatus
@@ -501,11 +555,11 @@ components:
     PaymentMethod:
       type: string
       enum:
-        - plastic_card
-        - ach
-        - paypal
+        - Credit/Debit Card
+        - ACH
+        - PayPal
       description: Method of payment
-      example: plastic_card
+      example: Credit/Debit Card
     ProcessPaymentRequest:
       type: object
       properties:
@@ -534,7 +588,7 @@ components:
         transactions:
           type: array
           items:
-            $ref: "#/components/schemas/TransactionRecordSummary"
+            $ref: '#/components/schemas/TransactionRecordSummary'
           description: >-
             Array of all transaction records associated with this payment
             reference
@@ -547,7 +601,7 @@ components:
         data:
           type: array
           items:
-            $ref: "#/components/schemas/DashboardTransaction"
+            $ref: '#/components/schemas/DashboardTransaction'
           description: Up to 100 most recent transactions
         total:
           type: integer
@@ -567,7 +621,7 @@ components:
         paygovTrackingId:
           type:
             - string
-            - "null"
+            - 'null'
           description: Pay.gov tracking ID when available
           example: PG-2f006f54-13a7-4e3d-9dc6-abb53bd4f891
         feeName:
@@ -601,7 +655,7 @@ components:
         transactionStatus:
           type:
             - string
-            - "null"
+            - 'null'
           enum:
             - received
             - initiated
@@ -614,24 +668,24 @@ components:
         paymentMethod:
           type:
             - string
-            - "null"
+            - 'null'
           enum:
-            - plastic_card
-            - ach
-            - paypal
+            - Credit/Debit Card
+            - ACH
+            - PayPal
             - null
           description: Payment method used for the transaction
-          example: plastic_card
+          example: Credit/Debit Card
         paygovToken:
           type:
             - string
-            - "null"
+            - 'null'
           description: Pay.gov token associated with this transaction
           example: 7f90d8de-e67f-4f8b-a12f-f429b675f2df
         metadata:
           type:
             - object
-            - "null"
+            - 'null'
           additionalProperties:
             type: string
           description: Optional metadata associated with this transaction
@@ -639,12 +693,12 @@ components:
           type: string
           format: date-time
           description: Record creation timestamp
-          example: "2026-03-06T16:15:10.231Z"
+          example: '2026-03-06T16:15:10.231Z'
         lastUpdatedAt:
           type: string
           format: date-time
           description: Record last updated timestamp
-          example: "2026-03-09T18:42:56.341Z"
+          example: '2026-03-09T18:42:56.341Z'
       required:
         - agencyTrackingId
         - feeName
@@ -670,7 +724,7 @@ components:
         - paymentStatus
     TransactionsByStatusResponse:
       allOf:
-        - $ref: "#/components/schemas/RecentTransactionsResponse"
+        - $ref: '#/components/schemas/RecentTransactionsResponse'
         - type: object
           properties: {}
     TransactionPaymentStatusResponse:
@@ -718,38 +772,38 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/InitPaymentRequest"
+              $ref: '#/components/schemas/InitPaymentRequest'
       responses:
-        "200":
+        '200':
           description: Payment initialized successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InitPaymentResponse"
-        "400":
+                $ref: '#/components/schemas/InitPaymentResponse'
+        '400':
           description: Invalid request payload (e.g., missing body, validation error)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BadRequestError"
-        "403":
+                $ref: '#/components/schemas/BadRequestError'
+        '403':
           description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ForbiddenError"
-        "500":
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ServerError"
-        "504":
+                $ref: '#/components/schemas/ServerError'
+        '504':
           description: Gateway timeout communicating with Pay.gov
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GatewayError"
+                $ref: '#/components/schemas/GatewayError'
   /details/{transactionReferenceId}:
     get:
       summary: Get transaction details
@@ -771,39 +825,39 @@ paths:
           name: transactionReferenceId
           in: path
       responses:
-        "200":
+        '200':
           description: Transaction details retrieved successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GetDetailsResponse"
-        "400":
+                $ref: '#/components/schemas/GetDetailsResponse'
+        '400':
           description: Invalid request (e.g., missing path parameters)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BadRequestError"
-        "403":
+                $ref: '#/components/schemas/BadRequestError'
+        '403':
           description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ForbiddenError"
-        "500":
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ServerError"
+                $ref: '#/components/schemas/ServerError'
   /process:
     post:
       summary: Process a payment
       description: >-
         Completes a payment transaction after the user has submitted payment
         information on Pay.gov. This endpoint must be called regardless of
-        payment type used to finalize the transaction. Note: Both successful and
-        failed payment processing return HTTP 200. Check the transactionStatus
-        field to determine the outcome.
+        payment type used to finalize the transaction. Note: When the
+        transaction reaches Pay.gov, both approved and declined outcomes return
+        HTTP 200 — check the transactionStatus field to determine the outcome.
       tags:
         - Payments
       security:
@@ -813,15 +867,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProcessPaymentRequest"
+              $ref: '#/components/schemas/ProcessPaymentRequest'
       responses:
-        "200":
+        '200':
           description: Payment processed. Check transactionStatus for Success or Failed.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProcessPaymentResponse"
-        "400":
+                $ref: '#/components/schemas/ProcessPaymentResponse'
+        '400':
           description: >-
             Invalid request payload. Returned when the body is missing, not
             valid JSON, or fails schema validation (missing `token`, wrong type,
@@ -829,25 +883,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ValidationErrorResponse"
-        "403":
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '403':
           description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ForbiddenError"
-        "500":
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Token not found - no transaction exists for the supplied token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ServerError"
-        "504":
+                $ref: '#/components/schemas/ServerError'
+        '504':
           description: Gateway timeout communicating with Pay.gov
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GatewayError"
+                $ref: '#/components/schemas/GatewayError'
   /transactions:
     get:
       summary: Get recent transactions
@@ -857,24 +917,24 @@ paths:
       security:
         - sigv4: []
       responses:
-        "200":
+        '200':
           description: Recent transactions retrieved successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RecentTransactionsResponse"
-        "403":
+                $ref: '#/components/schemas/RecentTransactionsResponse'
+        '403':
           description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ForbiddenError"
-        "500":
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ServerError"
+                $ref: '#/components/schemas/ServerError'
   /transactions/{paymentStatus}:
     get:
       summary: Get transactions by payment status
@@ -897,30 +957,30 @@ paths:
           name: paymentStatus
           in: path
       responses:
-        "200":
+        '200':
           description: Transactions for the requested status retrieved successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransactionsByStatusResponse"
-        "400":
+                $ref: '#/components/schemas/TransactionsByStatusResponse'
+        '400':
           description: Invalid payment status path parameter
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BadRequestError"
-        "403":
+                $ref: '#/components/schemas/BadRequestError'
+        '403':
           description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ForbiddenError"
-        "500":
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ServerError"
+                $ref: '#/components/schemas/ServerError'
   /transaction-payment-status:
     get:
       summary: Get aggregate transaction payment status
@@ -930,22 +990,22 @@ paths:
       security:
         - sigv4: []
       responses:
-        "200":
+        '200':
           description: Aggregate status counts retrieved successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransactionPaymentStatusResponse"
-        "403":
+                $ref: '#/components/schemas/TransactionPaymentStatusResponse'
+        '403':
           description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ForbiddenError"
-        "500":
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ServerError"
+                $ref: '#/components/schemas/ServerError'
 webhooks: {}
