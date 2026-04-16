@@ -155,7 +155,8 @@
           "urlSuccess",
           "urlCancel",
           "metadata"
-        ]
+        ],
+        "additionalProperties": false
       },
       "InitPaymentResponse": {
         "type": "object",
@@ -339,33 +340,89 @@
           "errors": []
         }
       },
-      "ValidationErrorResponse": {
+      "NotFoundError": {
         "type": "object",
         "properties": {
           "message": {
             "type": "string",
-            "description": "Human-readable summary. 'Validation error' for Zod failures; otherwise the thrown error's message (e.g. 'missing body', 'invalid JSON in request body').",
-            "example": "Validation error"
+            "description": "Human-readable error summary"
           },
           "errors": {
             "type": "array",
-            "items": {},
-            "description": "Structured issue list. For Zod failures this contains ZodIssue objects with `path`, `message`, and `code`. Empty array for non-Zod errors.",
-            "example": [
-              {
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": {},
+              "description": "A structured error detail object (for example a Zod validation issue)",
+              "example": {
                 "code": "invalid_type",
+                "expected": "string",
+                "received": "undefined",
                 "path": [
-                  "token"
+                  "urlSuccess"
                 ],
                 "message": "Required"
               }
-            ]
+            },
+            "description": "Additional error details",
+            "example": []
           }
         },
         "required": [
           "message",
           "errors"
-        ]
+        ],
+        "description": "JSON error response for resource not found (HTTP 404).\n\nReturned when the supplied token cannot be found in the database.",
+        "example": {
+          "message": "Transaction with token 'abcdefghijklmnopqrstuvwxyz123456' could not be found",
+          "errors": []
+        }
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error summary"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": {},
+              "description": "A structured error detail object (for example a Zod validation issue)",
+              "example": {
+                "code": "invalid_type",
+                "expected": "string",
+                "received": "undefined",
+                "path": [
+                  "urlSuccess"
+                ],
+                "message": "Required"
+              }
+            },
+            "description": "Additional error details",
+            "example": []
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ],
+        "description": "JSON error response for request validation failures.\n\n'Validation error' for Zod failures; otherwise the thrown error's message (e.g. 'missing body', 'invalid JSON in request body'). For Zod failures the errors array contains ZodIssue objects with `path`, `message`, and `code`. Empty array for non-Zod errors.",
+        "example": {
+          "message": "Validation error",
+          "errors": [
+            {
+              "code": "invalid_type",
+              "path": [
+                "token"
+              ],
+              "message": "Required"
+            }
+          ]
+        }
       },
       "GatewayError": {
         "type": "object",
@@ -450,12 +507,12 @@
           "paymentMethod": {
             "type": "string",
             "enum": [
-              "plastic_card",
-              "ach",
-              "paypal"
+              "Credit/Debit Card",
+              "ACH",
+              "PayPal"
             ],
             "description": "Method of payment",
-            "example": "plastic_card"
+            "example": "Credit/Debit Card"
           },
           "returnDetail": {
             "type": "string",
@@ -502,12 +559,12 @@
           "paymentMethod": {
             "type": "string",
             "enum": [
-              "plastic_card",
-              "ach",
-              "paypal"
+              "Credit/Debit Card",
+              "ACH",
+              "PayPal"
             ],
             "description": "Method of payment",
-            "example": "plastic_card"
+            "example": "Credit/Debit Card"
           },
           "returnDetail": {
             "type": "string",
@@ -562,12 +619,12 @@
       "PaymentMethod": {
         "type": "string",
         "enum": [
-          "plastic_card",
-          "ach",
-          "paypal"
+          "Credit/Debit Card",
+          "ACH",
+          "PayPal"
         ],
         "description": "Method of payment",
-        "example": "plastic_card"
+        "example": "Credit/Debit Card"
       },
       "ProcessPaymentRequest": {
         "type": "object",
@@ -706,13 +763,13 @@
               "null"
             ],
             "enum": [
-              "plastic_card",
-              "ach",
-              "paypal",
+              "Credit/Debit Card",
+              "ACH",
+              "PayPal",
               null
             ],
             "description": "Payment method used for the transaction",
-            "example": "plastic_card"
+            "example": "Credit/Debit Card"
           },
           "paygovToken": {
             "type": [
@@ -1014,11 +1071,21 @@
             }
           },
           "403": {
-            "description": "Forbidden - invalid SigV4 signature or client not authorized",
+            "description": "Forbidden - invalid SigV4 signature, client not authorized, or client does not have access to the fee associated with the supplied token",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Token not found - no transaction exists for the supplied token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             }
