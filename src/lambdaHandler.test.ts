@@ -7,7 +7,6 @@ import { APIGatewayEvent } from "aws-lambda";
 import { ForbiddenError } from "./errors/forbidden";
 import { PayGovError } from "./errors/payGovError";
 import { NotFoundError } from "./errors/notFound";
-import { NotFoundError } from "./errors/notFound";
 
 // Reusable mock for appContext with dynamic use case injection
 const useCasesMock = {
