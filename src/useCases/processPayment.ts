@@ -8,6 +8,7 @@ import { NotFoundError } from "../errors/notFound";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
+import TransactionModel from "../db/TransactionModel";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -23,9 +24,7 @@ export const processPayment: ProcessPayment = async (
 ) => {
   const transaction = await TransactionModel.findByPaygovToken(request.token);
   if (!transaction) {
-    throw new NotFoundError(
-      `Transaction with token '${request.token}' could not be found`,
-    );
+    throw new NotFoundError("Transaction could not be found");
   }
 
   const hasAccess =

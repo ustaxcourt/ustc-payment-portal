@@ -855,9 +855,9 @@ paths:
       description: >-
         Completes a payment transaction after the user has submitted payment
         information on Pay.gov. This endpoint must be called regardless of
-        payment type used to finalize the transaction. Note: Both successful and
-        failed payment processing return HTTP 200. Check the transactionStatus
-        field to determine the outcome.
+        payment type used to finalize the transaction. Note: When the
+        transaction reaches Pay.gov, both approved and declined outcomes return
+        HTTP 200 — check the transactionStatus field to determine the outcome.
       tags:
         - Payments
       security:
@@ -885,10 +885,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ValidationErrorResponse'
         '403':
-          description: >-
-            Forbidden - invalid SigV4 signature, client not authorized, or
-            client does not have access to the fee associated with the supplied
-            token
+          description: Forbidden - invalid SigV4 signature or client not authorized
           content:
             application/json:
               schema:
