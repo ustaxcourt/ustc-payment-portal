@@ -49,6 +49,7 @@ jest.mock("./TransactionModel", () => {
       static query = jest.fn(() => ({
         findById: (id: string) => Promise.resolve(id === mockTransaction?.agencyTrackingId ? mockTransaction : undefined),
       }));
+      static findByPaygovToken = jest.fn((token: string) => Promise.resolve(token === mockTransaction?.paygovToken ? mockTransaction : undefined));
       constructor() {
         // intentionally left blank
       }
@@ -160,6 +161,31 @@ describe("TransactionModel", () => {
 
       // Restore original query after test
       (TransactionModel as any).query = originalQuery;
+    });
+  });
+
+  describe("findByPaygovToken", () => {
+    it('should return a TransactionModel when a matching token exists', async () => {
+      const paygovToken = 'PAYGOV-TOKEN-123';
+      await TransactionModel.createReceived({
+        agencyTrackingId: 'TEST-456',
+        feeId: 'PETITION_FILING_FEE',
+        clientName: 'test-client',
+        transactionReferenceId: 'TXN-REF-002',
+        paymentMethod: 'plastic_card' as PaymentMethod,
+      });
+
+      await TransactionModel.updateToInitiated('TEST-456', paygovToken);
+
+      const found = await TransactionModel.findByPaygovToken(paygovToken);
+      expect(found).toBeDefined();
+      expect(found?.paygovToken).toBe(paygovToken);
+      expect(found?.agencyTrackingId).toBe('TEST-456');
+    });
+
+    it('should return undefined when no matching token exists', async () => {
+      const found = await TransactionModel.findByPaygovToken('NON-EXISTENT-TOKEN');
+      expect(found).toBeUndefined();
     });
   });
 });

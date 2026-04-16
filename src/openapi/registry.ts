@@ -8,6 +8,7 @@ import {
   ErrorResponseSchema,
   BadRequestErrorSchema,
   ForbiddenErrorSchema,
+  NotFoundErrorSchema,
   ServerErrorSchema,
   ValidationErrorResponseSchema,
   GatewayErrorSchema,
@@ -45,6 +46,7 @@ registry.register("ErrorResponse", ErrorResponseSchema);
 registry.register("BadRequestError", BadRequestErrorSchema);
 registry.register("ForbiddenError", ForbiddenErrorSchema);
 registry.register("ServerError", ServerErrorSchema);
+registry.register("NotFoundError", NotFoundErrorSchema);
 registry.register("ValidationErrorResponse", ValidationErrorResponseSchema);
 registry.register("GatewayError", GatewayErrorSchema);
 registry.register("GetDetailsResponse", GetDetailsResponseSchema);
@@ -205,8 +207,8 @@ registry.registerPath({
   description:
     "Completes a payment transaction after the user has submitted payment information on Pay.gov. " +
     "This endpoint must be called regardless of payment type used to finalize the transaction. " +
-    "Note: Both successful and failed payment processing return HTTP 200. " +
-    "Check the transactionStatus field to determine the outcome.",
+    "Note: When the transaction reaches Pay.gov, both approved and declined outcomes return HTTP 200 — " +
+    "check the transactionStatus field to determine the outcome.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   request: {
@@ -243,6 +245,14 @@ registry.registerPath({
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,
+        },
+      },
+    },
+    404: {
+      description: "Token not found - no transaction exists for the supplied token",
+      content: {
+        "application/json": {
+          schema: NotFoundErrorSchema,
         },
       },
     },
