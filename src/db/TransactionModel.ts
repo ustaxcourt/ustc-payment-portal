@@ -139,6 +139,18 @@ export default class TransactionModel extends Model {
     return TransactionModel.query().findOne({ paygovToken: token });
   }
 
+  static async findPendingOrProcessedByReferenceId(
+    transactionReferenceId: string,
+    excludeToken: string,
+  ): Promise<TransactionModel | undefined> {
+    await getKnex();
+    return TransactionModel.query()
+      .whereIn('transactionStatus', ['pending', 'processed'])
+      .where('transactionReferenceId', transactionReferenceId)
+      .whereNot('paygovToken', excludeToken)
+      .first();
+  }
+
   static async updateToFailed(agencyTrackingId: string): Promise<void> {
     await getKnex();
     await this.query()

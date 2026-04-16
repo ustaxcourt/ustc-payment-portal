@@ -20,6 +20,7 @@ import {
   PaymentMethodSchema,
   ProcessPaymentRequestSchema,
   ProcessPaymentResponseSchema,
+  GoneErrorSchema,
   FeeIdSchema,
   RecentTransactionsResponseSchema,
   TransactionPaymentStatusResponseSchema,
@@ -57,6 +58,7 @@ registry.register("PaymentStatus", PaymentStatusSchema);
 registry.register("PaymentMethod", PaymentMethodSchema);
 registry.register("ProcessPaymentRequest", ProcessPaymentRequestSchema);
 registry.register("ProcessPaymentResponse", ProcessPaymentResponseSchema);
+registry.register("GoneError", GoneErrorSchema);
 registry.register("RecentTransactionsResponse", RecentTransactionsResponseSchema);
 registry.register("TransactionsByStatusPathParams", TransactionsByStatusPathParamsSchema);
 registry.register("TransactionsByStatusResponse", TransactionsByStatusResponseSchema);
@@ -254,6 +256,17 @@ registry.registerPath({
       content: {
         "application/json": {
           schema: NotFoundErrorSchema,
+        },
+      },
+    },
+    410: {
+      description:
+        "Gone - the token is no longer valid for processing. " +
+        "Either another transaction is already fulfilling the same obligation (check getDetails), " +
+        "or the transaction associated with this token is not in an initiatable state.",
+      content: {
+        "application/json": {
+          schema: GoneErrorSchema,
         },
       },
     },

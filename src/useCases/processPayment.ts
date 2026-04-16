@@ -4,6 +4,7 @@ import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
 import { ProcessPaymentResponse } from "../types/ProcessPaymentResponse";
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { ForbiddenError } from "../errors/forbidden";
+import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { ClientPermission } from "../types/ClientPermission";
@@ -36,6 +37,21 @@ export const processPayment: ProcessPayment = async (
     throw new ForbiddenError(
       `You do not have access to the transaction for the requested token`,
     );
+  }
+
+  const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
+    transaction.transactionReferenceId,
+    request.token,
+  );
+
+  if (sibling) {
+    throw new GoneError(
+      "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
+    );
+  }
+
+  if (transaction.transactionStatus !== "initiated") {
+    throw new GoneError("This token is no longer valid.");
   }
 
   const req = new CompleteOnlineCollectionWithDetailsRequest({
