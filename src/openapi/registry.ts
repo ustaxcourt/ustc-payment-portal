@@ -11,6 +11,7 @@ import {
   NotFoundErrorSchema,
   ServerErrorSchema,
   ValidationErrorResponseSchema,
+  ValidationErrorResponseSchema,
   GatewayErrorSchema,
   GetDetailsResponseSchema,
   TransactionRecordSchema,
