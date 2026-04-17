@@ -40,9 +40,9 @@ export const processPayment: ProcessPayment = async (
   }
 
   const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
+    transaction.clientName,
     transaction.transactionReferenceId,
     request.token,
-    transaction.clientName,
   );
 
   if (sibling) {
