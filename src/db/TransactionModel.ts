@@ -140,12 +140,14 @@ export default class TransactionModel extends Model {
   }
 
   static async findPendingOrProcessedByReferenceId(
+    clientName: string,
     transactionReferenceId: string,
     excludeToken: string,
   ): Promise<TransactionModel | undefined> {
     await getKnex();
     return TransactionModel.query()
       .whereIn('transactionStatus', ['pending', 'processed'])
+      .where('clientName', clientName)
       .where('transactionReferenceId', transactionReferenceId)
       .whereNot('paygovToken', excludeToken)
       .first();
