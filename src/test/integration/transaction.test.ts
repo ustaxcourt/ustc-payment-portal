@@ -96,6 +96,6 @@ describe("make a transaction", () => {
 
     const data = await result.json();
     expect(data.trackingId).toBe(payGovTrackingId);
-      expect(data.transactionStatus).toBe("processed");
+    expect(data.transactionStatus).toBe("processed");
   });
 });
