@@ -21,6 +21,7 @@ describeWithEnv("POST /process", () => {
     // Any non-403 means the request passed API Gateway IAM auth and reached Lambda.
     // 200 = Pay.gov accepted; 4xx/5xx from Lambda = Pay.gov rejected or validation error.
     // 403 = API Gateway rejected before Lambda ran (credentials/permissions problem).
+    // Expect result NOT TO BE 403
     expect(result.status).not.toBe(403);
   });
 
