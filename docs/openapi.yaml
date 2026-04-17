@@ -457,13 +457,13 @@ components:
         transactionStatus:
           type: string
           enum:
-            - Received
-            - Initiated
-            - Success
-            - Failed
-            - Pending
+            - received
+            - initiated
+            - processed
+            - failed
+            - pending
           description: The status of the payment transaction
-          example: Success
+          example: processed
         paymentMethod:
           type: string
           enum:
@@ -498,13 +498,13 @@ components:
         transactionStatus:
           type: string
           enum:
-            - Received
-            - Initiated
-            - Success
-            - Failed
-            - Pending
+            - received
+            - initiated
+            - processed
+            - failed
+            - pending
           description: The status of the payment transaction
-          example: Success
+          example: processed
         paymentMethod:
           type: string
           enum:
@@ -537,13 +537,13 @@ components:
     TransactionStatus:
       type: string
       enum:
-        - Received
-        - Initiated
-        - Success
-        - Failed
-        - Pending
+        - received
+        - initiated
+        - processed
+        - failed
+        - pending
       description: The status of the payment transaction
-      example: Success
+      example: processed
     PaymentStatus:
       type: string
       enum:
@@ -595,6 +595,50 @@ components:
       required:
         - paymentStatus
         - transactions
+    GoneError:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Human-readable error summary
+        errors:
+          type: array
+          items:
+            type: object
+            properties: {}
+            additionalProperties: {}
+            description: >-
+              A structured error detail object (for example a Zod validation
+              issue)
+            example:
+              code: invalid_type
+              expected: string
+              received: undefined
+              path:
+                - urlSuccess
+              message: Required
+          description: Additional error details
+          example: []
+      required:
+        - message
+        - errors
+      description: >-
+        JSON error response for gone/expired resources (HTTP 410).
+
+
+        Returned when the supplied token is no longer valid for processing:
+
+        - Another transaction for the same obligation is already pending or
+        completed
+
+        - The transaction associated with this token is not in an initiatable
+        state
+      example:
+        message: >-
+          This token is no longer valid. Another transaction is already
+          fulfilling this obligation. Use the getDetails API to check the
+          current status.
+        errors: []
     RecentTransactionsResponse:
       type: object
       properties:
@@ -659,11 +703,11 @@ components:
           enum:
             - received
             - initiated
-            - pending
             - processed
             - failed
+            - pending
             - null
-          description: The status of an individual transaction record
+          description: The status of the payment transaction
           example: processed
         paymentMethod:
           type:
@@ -870,7 +914,9 @@ paths:
               $ref: '#/components/schemas/ProcessPaymentRequest'
       responses:
         '200':
-          description: Payment processed. Check transactionStatus for Success or Failed.
+          description: >-
+            Transaction processed. Check transactionStatus for processed or
+            failed.
           content:
             application/json:
               schema:
@@ -885,7 +931,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ValidationErrorResponse'
         '403':
-          description: Forbidden - invalid SigV4 signature or client not authorized
+          description: >-
+            Forbidden - invalid SigV4 signature, client not authorized, or
+            client does not have access to the fee associated with the supplied
+            token
           content:
             application/json:
               schema:
@@ -896,6 +945,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NotFoundError'
+        '410':
+          description: >-
+            Gone - the token is no longer valid for processing. Either another
+            transaction is already fulfilling the same obligation (check
+            getDetails), or the transaction associated with this token is not in
+            an initiatable state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoneError'
         '500':
           description: Internal server error
           content:
