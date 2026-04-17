@@ -17,7 +17,7 @@ describe("parseTransactionStatus", () => {
   );
 
   it.each(["Pending", "Received", "Waiting"] as PayGovTransactionStatus[])(
-    "Returns Success for all successful transaction statuses",
+    "Returns pending for all pending transaction statuses",
     (transactionStatus: PayGovTransactionStatus) => {
       expect(parseTransactionStatus(transactionStatus)).toBe("pending");
     }
