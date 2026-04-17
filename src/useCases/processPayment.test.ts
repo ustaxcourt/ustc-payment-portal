@@ -242,7 +242,7 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toBe("Success");
+      expect(transactionStatus).toBe("processed");
     });
   });
 
