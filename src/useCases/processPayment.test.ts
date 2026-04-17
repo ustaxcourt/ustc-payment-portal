@@ -1,6 +1,7 @@
 import { processPayment } from "./processPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { ClientPermission } from "../types/ClientPermission";
+import { ForbiddenError } from "../errors/forbidden";
 import { NotFoundError } from "../errors/notFound";
 import TransactionModel from "../db/TransactionModel";
 
@@ -115,7 +116,7 @@ const mockFaultWithoutTCSServiceFault = `<?xml version="1.0" encoding="UTF-8"?>
 describe("processPayment", () => {
   beforeEach(() => {
     TransactionModelMock.findByPaygovToken.mockResolvedValue(
-      {} as TransactionModel,
+      { feeId: "fee-123" } as TransactionModel,
     );
   });
 
@@ -128,6 +129,24 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       }),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throws ForbiddenError when client does not have access to the transaction's fee", async () => {
+    await expect(
+      processPayment(appContext, {
+        client: { ...mockClient, allowedFeeIds: ["some-other-fee"] },
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(ForbiddenError);
+  });
+
+  it("proceeds when client has wildcard fee access", async () => {
+    await expect(
+      processPayment(appContext, {
+        client: { ...mockClient, allowedFeeIds: ["*"] },
+        request: { token: "mock-token" },
+      }),
+    ).rejects.not.toThrow(ForbiddenError);
   });
 
   it("throws an error if we pass in an invalid request", async () => {
@@ -164,6 +183,15 @@ describe("processPayment", () => {
       });
 
       expect(transactionStatus).toEqual("Success");
+    });
+
+    it("proceeds when client has exact fee access", async () => {
+      const { transactionStatus } = await processPayment(appContext, {
+        client: { ...mockClient, allowedFeeIds: ["fee-123"] },
+        request: { token: "mock-token" },
+      });
+
+      expect(transactionStatus).toBe("Success");
     });
   });
 
