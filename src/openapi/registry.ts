@@ -241,7 +241,8 @@ registry.registerPath({
       },
     },
     403: {
-      description: "Forbidden - invalid SigV4 signature or client not authorized",
+      description:
+        "Forbidden - invalid SigV4 signature, client not authorized, or client does not have access to the fee associated with the supplied token",
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,
