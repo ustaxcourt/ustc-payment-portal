@@ -1,8 +1,7 @@
 import { signedFetch } from "./sigv4Helper";
 
 const baseUrl = process.env.BASE_URL;
-const isDeployed = baseUrl && !baseUrl.includes("localhost");
-const describeWithEnv = isDeployed ? describe : describe.skip;
+const describeWithEnv = baseUrl ? describe : describe.skip;
 
 describeWithEnv("POST /init", () => {
   const isLocal = process.env.NODE_ENV === "local";

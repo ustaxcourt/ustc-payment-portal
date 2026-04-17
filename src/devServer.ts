@@ -7,13 +7,25 @@ import { generateOpenAPIDocument } from "./openapi/registry";
 import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
 import { migrationHandler } from "./migrationHandler";
 import { handleError } from "./handleError";
+import { InvalidRequestError } from "./errors/invalidRequest";
+import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
+import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
 import "./db/knex";
 import { ClientPermission } from "./types/ClientPermission";
 
 const appContext = createAppContext();
 
 const app = express();
-app.use(express.json());
+app.use((req, res, next) => {
+  express.json()(req, res, (err) => {
+    if (err) {
+      const { statusCode, body } = handleError(new InvalidRequestError("invalid JSON in request body"));
+      res.status(statusCode).json(JSON.parse(body));
+      return;
+    }
+    next();
+  });
+});
 const port = 8080; // default port to listen
 const devClient: ClientPermission = {
   clientName: "Dev Client App",
@@ -57,9 +69,15 @@ app.get("/openapi.json", (req, res) => {
 // define a route handler for the default home page
 app.post("/init", async (req, res) => {
   try {
+    if (!req.body || Object.keys(req.body).length === 0 && req.headers["content-type"]?.includes("application/json") === false) {
+      const { statusCode, body } = handleError(new InvalidRequestError("missing body"));
+      res.status(statusCode).json(JSON.parse(body));
+      return;
+    }
+    const parsed = InitPaymentRequestSchema.parse(req.body);
     const result = await appContext
       .getUseCases()
-      .initPayment(appContext, { client: devClient, request: req.body });
+      .initPayment(appContext, { client: devClient, request: parsed });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
@@ -69,9 +87,15 @@ app.post("/init", async (req, res) => {
 
 app.post("/process", async (req, res) => {
   try {
+    if (!req.body || Object.keys(req.body).length === 0 && req.headers["content-type"]?.includes("application/json") === false) {
+      const { statusCode, body } = handleError(new InvalidRequestError("missing body"));
+      res.status(statusCode).json(JSON.parse(body));
+      return;
+    }
+    const parsed = ProcessPaymentRequestSchema.parse(req.body);
     const result = await appContext
       .getUseCases()
-      .processPayment(appContext, { client: devClient, request: req.body });
+      .processPayment(appContext, { client: devClient, request: parsed });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
