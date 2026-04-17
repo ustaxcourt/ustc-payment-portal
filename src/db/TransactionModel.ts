@@ -139,6 +139,22 @@ export default class TransactionModel extends Model {
     return TransactionModel.query().findOne({ paygovToken: token });
   }
 
+  static async updateToProcessed(
+    agencyTrackingId: string,
+    paygovTrackingId: string,
+    transactionStatus: TransactionStatus,
+    paymentStatus: PaymentStatus,
+  ): Promise<void> {
+    await getKnex();
+    await this.query()
+      .patch({
+        paygovTrackingId,
+        transactionStatus,
+        paymentStatus,
+      })
+      .where('agencyTrackingId', agencyTrackingId);
+  }
+
   static async updateToFailed(agencyTrackingId: string): Promise<void> {
     await getKnex();
     await this.query()
@@ -148,4 +164,9 @@ export default class TransactionModel extends Model {
       })
       .where('agencyTrackingId', agencyTrackingId);
   }
+
+  // TODO: [Future Ticket] Implement findByTransactionReferenceId to retrieve
+  // all transaction attempts for a given transactionReferenceId. This is needed
+  // to populate the full transactions array in the process payment response.
+  // Until then, the response wraps the single current transaction in a one-element array.
 }

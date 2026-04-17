@@ -1,13 +1,49 @@
 import { AppContext } from "../types/AppContext";
 import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/CompleteOnlineCollectionWithDetailsRequest";
 import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
-import { ProcessPaymentResponse } from "../types/ProcessPaymentResponse";
+import { ProcessPaymentResponse } from "../schemas/ProcessPayment.schema";
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { ForbiddenError } from "../errors/forbidden";
 import { NotFoundError } from "../errors/notFound";
 import { parseTransactionStatus } from "./parseTransactionStatus";
+import { derivePaymentStatus } from "./derivePaymentStatus";
 import { ClientPermission } from "../types/ClientPermission";
-import TransactionModel from "../db/TransactionModel";
+import TransactionModel, {
+  TransactionStatus,
+  PaymentMethod as DbPaymentMethod,
+} from "../db/TransactionModel";
+import { TransactionStatus as ApiTransactionStatus } from "../schemas/TransactionStatus.schema";
+import { PaymentMethod as ApiPaymentMethod } from "../schemas/PaymentMethod.schema";
+
+const toDbTransactionStatus = (parsed: ApiTransactionStatus): TransactionStatus => {
+  switch (parsed) {
+    case "Success":
+      return "processed";
+    case "Failed":
+      return "failed";
+    case "Pending":
+      return "pending";
+    case "Received":
+      return "received";
+    case "Initiated":
+      return "initiated";
+  }
+};
+
+const toApiPaymentMethod = (
+  method: DbPaymentMethod | null | undefined,
+): ApiPaymentMethod | undefined => {
+  switch (method) {
+    case "plastic_card":
+      return "Credit/Debit Card";
+    case "ach":
+      return "ACH";
+    case "paypal":
+      return "PayPal";
+    default:
+      return undefined;
+  }
+};
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -49,16 +85,43 @@ export const processPayment: ProcessPayment = async (
 
     console.log("processPayment result", result);
 
+    const parsedStatus = parseTransactionStatus(result.transaction_status);
+    const paymentStatus = derivePaymentStatus([parsedStatus]);
+
+    await TransactionModel.updateToProcessed(
+      transaction.agencyTrackingId,
+      result.paygov_tracking_id,
+      toDbTransactionStatus(parsedStatus),
+      paymentStatus,
+    );
+
     return {
-      trackingId: result.paygov_tracking_id,
-      transactionStatus: parseTransactionStatus(result.transaction_status),
+      paymentStatus,
+      transactions: [
+        {
+          transactionStatus: parsedStatus,
+          paymentMethod: toApiPaymentMethod(transaction.paymentMethod),
+          returnDetail: undefined,
+          createdTimestamp: transaction.createdAt,
+          updatedTimestamp: transaction.lastUpdatedAt,
+        },
+      ],
     };
   } catch (err) {
     if (err instanceof FailedTransactionError) {
+      await TransactionModel.updateToFailed(transaction.agencyTrackingId);
+
       return {
-        transactionStatus: "Failed",
-        message: err.message,
-        code: err.code,
+        paymentStatus: "failed" as const,
+        transactions: [
+          {
+            transactionStatus: "Failed" as const,
+            paymentMethod: toApiPaymentMethod(transaction.paymentMethod),
+            returnDetail: err.message,
+            createdTimestamp: transaction.createdAt,
+            updatedTimestamp: transaction.lastUpdatedAt,
+          },
+        ],
       };
     } else throw err;
   }
