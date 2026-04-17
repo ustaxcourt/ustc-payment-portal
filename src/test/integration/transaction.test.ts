@@ -74,7 +74,7 @@ describe("make a transaction", () => {
 
     const data = await result.json();
     expect(data.trackingId).toBeTruthy();
-    expect(data.transactionStatus).toBe("Success");
+      expect(data.transactionStatus).toBe("processed");
     payGovTrackingId = data.trackingId;
   });
 
@@ -96,6 +96,6 @@ describe("make a transaction", () => {
 
     const data = await result.json();
     expect(data.trackingId).toBe(payGovTrackingId);
-    expect(data.transactionStatus).toBe("Success");
+      expect(data.transactionStatus).toBe("processed");
   });
 });

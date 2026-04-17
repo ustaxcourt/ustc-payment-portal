@@ -225,7 +225,7 @@ registry.registerPath({
   },
   responses: {
     200: {
-      description: "Payment processed. Check transactionStatus for Success or Failed.",
+      description: "Transaction processed. Check transactionStatus for processed or failed.",
       content: {
         "application/json": {
           schema: ProcessPaymentResponseSchema,

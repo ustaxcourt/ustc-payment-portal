@@ -1,10 +1,10 @@
 import { Model } from 'objection';
 import FeesModel from './FeesModel';
-import type { DashboardTransactionStatus } from '../schemas/TransactionDashboard.schema';
 import type { PaymentStatus } from '../schemas/PaymentStatus.schema';
+import type { TransactionStatus as SchemaTransactionStatus } from '../schemas/TransactionStatus.schema';
 import { getKnex } from './knex';
 
-export type TransactionStatus = DashboardTransactionStatus;
+export type TransactionStatus = SchemaTransactionStatus;
 export type { PaymentStatus };
 
 export type AggregatedPaymentStatus = Record<PaymentStatus, number> & { total: number };

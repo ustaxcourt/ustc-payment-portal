@@ -72,7 +72,7 @@ export const processPayment: ProcessPayment = async (
   } catch (err) {
     if (err instanceof FailedTransactionError) {
       return {
-        transactionStatus: "Failed",
+        transactionStatus: "failed",
         message: err.message,
         code: err.code,
       };

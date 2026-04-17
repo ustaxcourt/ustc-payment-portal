@@ -14,11 +14,11 @@ const useCasesMock = {
   initPayment: jest.fn().mockResolvedValue({ token: "test-token-123" }),
   processPayment: jest.fn().mockResolvedValue({
     trackingId: "track-123",
-    transactionStatus: "Success",
+    transactionStatus: "processed",
   }),
   getDetails: jest.fn().mockResolvedValue({
     trackingId: "track-123",
-    transactionStatus: "Success",
+    transactionStatus: "processed",
   }),
 };
 

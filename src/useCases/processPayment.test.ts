@@ -224,7 +224,7 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toEqual("Success");
+      expect(transactionStatus).toEqual("processed");
     });
 
     it("proceeds when client has exact fee access", async () => {
@@ -233,7 +233,7 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toBe("Success");
+      expect(transactionStatus).toBe("processed");
     });
   });
 
@@ -258,7 +258,7 @@ describe("processPayment", () => {
         client: mockClient,
         request: { token: "mock-token" },
       });
-      expect(transactionStatus).toBe("Failed");
+      expect(transactionStatus).toBe("failed");
     });
 
     it("returns a message that indicates why the transaction failed", async () => {
@@ -303,7 +303,7 @@ describe("processPayment", () => {
         client: mockClient,
         request: { token: "mock-token" },
       });
-      expect(transactionStatus).toBe("Pending");
+      expect(transactionStatus).toBe("pending");
     });
   });
 
@@ -318,7 +318,7 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toBe("Failed");
+      expect(transactionStatus).toBe("failed");
       expect(message).toBe("Transaction Error");
     });
 
@@ -332,7 +332,7 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toBe("Failed");
+      expect(transactionStatus).toBe("failed");
       expect(message).toBe("Transaction Error");
     });
   });
