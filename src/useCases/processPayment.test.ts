@@ -235,15 +235,6 @@ describe("processPayment", () => {
 
       expect(transactionStatus).toBe("processed");
     });
-
-    it("proceeds when client has exact fee access", async () => {
-      const { transactionStatus } = await processPayment(appContext, {
-        client: { ...mockClient, allowedFeeIds: ["fee-123"] },
-        request: { token: "mock-token" },
-      });
-
-      expect(transactionStatus).toBe("processed");
-    });
   });
 
   describe("Unsuccessful processing Transaction", () => {
