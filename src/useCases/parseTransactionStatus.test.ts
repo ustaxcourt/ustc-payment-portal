@@ -10,7 +10,7 @@ describe("parseTransactionStatus", () => {
   );
 
   it.each(["Failed", "Cancelled", "Retired"] as PayGovTransactionStatus[])(
-    "Returns 'failed' forFailed, Cancelled, and Retired transaction statuses",
+    "Returns 'failed' for Failed, Cancelled, and Retired transaction statuses",
     (transactionStatus: PayGovTransactionStatus) => {
       expect(parseTransactionStatus(transactionStatus)).toBe("failed");
     }
