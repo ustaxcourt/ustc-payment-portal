@@ -9,25 +9,8 @@ import { NotFoundError } from "../errors/notFound";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { derivePaymentStatus } from "./derivePaymentStatus";
 import { ClientPermission } from "../types/ClientPermission";
-import TransactionModel, {
-  PaymentMethod as DbPaymentMethod,
-} from "../db/TransactionModel";
-import { PaymentMethod as ApiPaymentMethod } from "../schemas/PaymentMethod.schema";
-
-const toApiPaymentMethod = (
-  method: DbPaymentMethod | null | undefined,
-): ApiPaymentMethod | undefined => {
-  switch (method) {
-    case "plastic_card":
-      return "Credit/Debit Card";
-    case "ach":
-      return "ACH";
-    case "paypal":
-      return "PayPal";
-    default:
-      return undefined;
-  }
-};
+import TransactionModel from "../db/TransactionModel";
+import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
 
 export type ProcessPayment = (
   appContext: AppContext,
