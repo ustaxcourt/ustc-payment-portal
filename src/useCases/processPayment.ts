@@ -9,6 +9,7 @@ import { NotFoundError } from "../errors/notFound";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
+import FeesModel from "../db/FeesModel";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -55,8 +56,13 @@ export const processPayment: ProcessPayment = async (
     throw new GoneError("This token is no longer valid.");
   }
 
+  const fee = await FeesModel.getFeeById(transaction.feeId);
+  if (!fee || !fee.tcsAppId) {
+    throw new NotFoundError(`Fee not found for feeId: ${transaction.feeId}`);
+  }
+
   const req = new CompleteOnlineCollectionWithDetailsRequest({
-    tcsAppId: "", // Required by Pay.gov SOAP schema — token alone identifies the transaction on this call
+    tcsAppId: fee.tcsAppId,
     token: request.token,
   });
   console.log("processPayment request", req);
