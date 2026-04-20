@@ -32,10 +32,9 @@ const markPaymentStatus = async (
   paymentStatus: string,
   authToken?: string,
 ): Promise<Response> => {
-  const headers: Record<string, string> = {};
-  if (authToken) {
-    headers["Authentication"] = `Bearer ${authToken}`;
-  }
+  const headers: { Authentication?: string } = authToken
+    ? { Authentication: `Bearer ${authToken}` }
+    : {};
 
   return fetch(
     `${payGovBaseUrl}/pay/${paymentMethod}/${paymentStatus}?token=${token}`,
