@@ -915,8 +915,9 @@ paths:
       responses:
         '200':
           description: >-
-            Transaction processed. Check transactionStatus for processed or
-            failed.
+            Payment processed. The paymentStatus field indicates the overall
+            outcome (success, failed, pending). The transactions array contains
+            a summary of each attempt for the same transactionReferenceId.
           content:
             application/json:
               schema:

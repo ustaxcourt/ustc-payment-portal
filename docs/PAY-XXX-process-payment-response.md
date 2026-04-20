@@ -25,11 +25,13 @@ This is a **breaking change** to the `POST /process` response contract. Every fi
 | Concept              | Scope                        | Values                         |
 |----------------------|------------------------------|--------------------------------|
 | `paymentStatus`      | Aggregate across all attempts for a `transactionReferenceId` | `"success"` · `"failed"` · `"pending"` (lowercase) |
-| `transactionStatus`  | Single attempt               | `"Success"` · `"Failed"` · `"Pending"` · `"Received"` · `"Initiated"` (PascalCase) |
+| `transactionStatus`  | Single attempt               | `"received"` · `"initiated"` · `"processed"` · `"failed"` · `"pending"` (lowercase) |
+
+> **PAY-224 note:** `TransactionStatusSchema` was consolidated to lowercase values in PAY-224, unifying the API and DB layers. The former PascalCase API values (`"Success"`, `"Failed"`, etc.) no longer exist. `"processed"` replaces `"Success"` to avoid confusion with `paymentStatus: "success"`.
 
 Derivation logic for `paymentStatus`:
-- If **any** transaction for the reference has `transactionStatus === "Success"` → `"success"`
-- If **all** transactions for the reference have `transactionStatus === "Failed"` → `"failed"`
+- If **any** transaction for the reference has `transactionStatus === "processed"` → `"success"`
+- If **all** transactions for the reference have `transactionStatus === "failed"` (non-empty) → `"failed"`
 - Otherwise → `"pending"`
 
 ---
@@ -52,16 +54,9 @@ After Pay.gov processes a payment, we persist the result to our database. If `up
 
 ## Type Mapping Reference
 
-Two naming convention mismatches exist between the DB layer and the API layer. Both are handled by mapping functions in `processPayment.ts`:
+> **PAY-224 note:** `toDbTransactionStatus` was removed — `TransactionStatusSchema` was consolidated to lowercase in PAY-224, so there is no longer any PascalCase→lowercase mapping needed. The Pay.gov SOAP response is parsed directly to lowercase via `parseTransactionStatus`.
 
-**`toDbTransactionStatus`** — API PascalCase → DB lowercase:
-| API (`TransactionStatus.schema`) | DB (`DashboardTransactionStatus`) |
-|---|---|
-| `"Success"` | `"processed"` |
-| `"Failed"` | `"failed"` |
-| `"Pending"` | `"pending"` |
-| `"Received"` | `"received"` |
-| `"Initiated"` | `"initiated"` |
+One naming convention mapping remains in `processPayment.ts`:
 
 **`toApiPaymentMethod`** — DB snake_case → API display format:
 | DB (`PaymentMethod`) | API (`PaymentMethod.schema`) |
@@ -104,12 +99,14 @@ Isolated in its own file for reuse (future `getDetails` v2, dashboard) and zero-
 
 **File:** `src/useCases/processPayment.ts`
 
-Changes made:
+Changes made (combined PAY-230 + PAY-224):
 1. Response type now sourced from Zod schema (`ProcessPayment.schema.ts`), not the old hand-written type
-2. Added `toDbTransactionStatus` and `toApiPaymentMethod` mapping functions (see Type Mapping Reference above)
+2. `toApiPaymentMethod` mapping for DB snake_case → API display format (see Type Mapping Reference above)
 3. Success/Pending path: parse status → derive `paymentStatus` → persist via `updateToProcessed` → return v2 shape
 4. Failed path: persist via `updateToFailed` → return `paymentStatus: "failed"` with `returnDetail` carrying the error message
 5. Single-element `transactions[]` array until `findByTransactionReferenceId` lands
+6. _(PAY-224)_ GoneError sibling check — `findPendingOrProcessedByReferenceId` guard before SOAP call
+7. _(PAY-224)_ GoneError status check — rejects tokens whose `transactionStatus !== "initiated"`
 
 ---
 
@@ -151,7 +148,7 @@ The schema reference (`ProcessPaymentResponseSchema`) already points to the v2 s
 
 ---
 
-### 6. Update unit tests
+### ~~6. Update unit tests~~ DONE (PAY-224)
 
 **File:** `src/useCases/processPayment.test.ts`
 
@@ -214,7 +211,7 @@ expect(result.transactions[0].returnDetail).toBe("Transaction Error");
 
 ---
 
-### 7. Update handler test
+### ~~7. Update handler test~~ DONE (PAY-224)
 
 **File:** `src/lambdaHandler.test.ts`
 
@@ -248,7 +245,7 @@ Then update any assertions in the `processPaymentHandler` describe block that de
 
 ---
 
-### 8. Update integration test
+### ~~8. Update integration test~~ DONE (PAY-224)
 
 **File:** `src/test/integration/transaction.test.ts`
 
@@ -366,9 +363,9 @@ array contains only the current attempt.
 | `src/useCases/processPayment.ts` | **Modify** — return v2 shape, persist result, type mappings | DONE |
 | `src/types/ProcessPaymentResponse.ts` | **Delete** — replaced by Zod schema | |
 | `src/openapi/registry.ts` | **Modify** — update 200 response description | |
-| `src/useCases/processPayment.test.ts` | **Modify** — rewrite all assertions to v2 shape | |
-| `src/lambdaHandler.test.ts` | **Modify** — update mock return values | |
-| `src/test/integration/transaction.test.ts` | **Modify** — v2 assertions + `payGovTrackingId` recovery | |
+| `src/useCases/processPayment.test.ts` | **Modify** — rewrite all assertions to v2 shape | DONE (PAY-224) |
+| `src/lambdaHandler.test.ts` | **Modify** — update mock return values | DONE (PAY-224) |
+| `src/test/integration/transaction.test.ts` | **Modify** — v2 assertions + `payGovTrackingId` recovery | DONE (PAY-224) |
 | `docs/openapi.json` | **Regenerate** | |
 | `docs/openapi.yaml` | **Regenerate** | |
 | `docs/architecture/decisions/0006-...md` | **Create** — ADR for v2 contract decision | |
