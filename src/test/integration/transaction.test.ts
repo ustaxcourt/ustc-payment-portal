@@ -159,6 +159,7 @@ describe("make a transaction", () => {
       "Failed",
       payGovAuthToken,
     );
+    console.log(markResult);
     expect(markResult.status).toBe(200);
 
     const processResult = await portalFetch(`${process.env.BASE_URL}/process`, {
@@ -195,6 +196,8 @@ describe("make a transaction", () => {
       "Success",
       payGovAuthToken,
     );
+
+    console.log(markResult);
     expect(markResult.status).toBe(200);
 
     const processResult = await portalFetch(`${process.env.BASE_URL}/process`, {
