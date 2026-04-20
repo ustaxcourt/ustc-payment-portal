@@ -5,7 +5,7 @@ import { getRecentTransactions } from "./getRecentTransactions";
 const createdAt = new Date("2026-03-17T12:00:00.000Z");
 const lastUpdatedAt = new Date("2026-03-17T13:00:00.000Z");
 
-const transactionRow = {
+const makeRow = (overrides: Record<string, unknown> = {}) => ({
   agencyTrackingId: "agency-1",
   paygovTrackingId: "paygov-1",
   feeName: "Filing Fee",
@@ -16,11 +16,12 @@ const transactionRow = {
   paymentStatus: "success",
   transactionStatus: "processed",
   paygovToken: "token-1",
-  paymentMethod: "Credit/Debit Card",
+  paymentMethod: "plastic_card",
   metadata: { source: "test" },
   createdAt,
   lastUpdatedAt,
-};
+  ...overrides,
+});
 
 describe("getRecentTransactions", () => {
   afterEach(() => {
@@ -28,12 +29,49 @@ describe("getRecentTransactions", () => {
   });
 
   it("normalizes Date timestamps to ISO strings", async () => {
-    jest.spyOn(TransactionModel, "getAll").mockResolvedValue([transactionRow as any]);
+    jest.spyOn(TransactionModel, "getAll").mockResolvedValue([makeRow() as any]);
 
     const result = await getRecentTransactions(appContext);
 
     expect(result.total).toBe(1);
     expect(result.data[0].createdAt).toBe(createdAt.toISOString());
     expect(result.data[0].lastUpdatedAt).toBe(lastUpdatedAt.toISOString());
+  });
+
+  it("maps a failed credit card transaction", async () => {
+    jest.spyOn(TransactionModel, "getAll").mockResolvedValue([
+      makeRow({
+        agencyTrackingId: "agency-2",
+        paymentStatus: "failed",
+        transactionStatus: "failed",
+        paymentMethod: "plastic_card",
+        paygovTrackingId: null,
+      }) as any,
+    ]);
+
+    const result = await getRecentTransactions(appContext);
+
+    expect(result.total).toBe(1);
+    expect(result.data[0].paymentStatus).toBe("failed");
+    expect(result.data[0].transactionStatus).toBe("failed");
+    expect(result.data[0].paymentMethod).toBe("Credit/Debit Card");
+  });
+
+  it("maps a pending ACH transaction", async () => {
+    jest.spyOn(TransactionModel, "getAll").mockResolvedValue([
+      makeRow({
+        agencyTrackingId: "agency-3",
+        paymentStatus: "pending",
+        transactionStatus: "pending",
+        paymentMethod: "ach",
+      }) as any,
+    ]);
+
+    const result = await getRecentTransactions(appContext);
+
+    expect(result.total).toBe(1);
+    expect(result.data[0].paymentStatus).toBe("pending");
+    expect(result.data[0].transactionStatus).toBe("pending");
+    expect(result.data[0].paymentMethod).toBe("ACH");
   });
 });
