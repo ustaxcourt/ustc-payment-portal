@@ -454,6 +454,12 @@ components:
     TransactionRecordSummary:
       type: object
       properties:
+        payGovTrackingId:
+          type: string
+          description: >-
+            Pay.gov tracking ID for the transaction, present once the
+            transaction has been processed
+          example: TRK-123456789
         transactionStatus:
           type: string
           enum:
