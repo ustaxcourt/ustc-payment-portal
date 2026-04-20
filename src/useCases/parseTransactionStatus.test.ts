@@ -3,23 +3,23 @@ import { parseTransactionStatus } from "./parseTransactionStatus";
 
 describe("parseTransactionStatus", () => {
   it.each(["Success", "Settled"] as PayGovTransactionStatus[])(
-    "Returns Success for all successful transaction statuses",
+    "Returns Processed for all successful transaction statuses",
     (transactionStatus: PayGovTransactionStatus) => {
-      expect(parseTransactionStatus(transactionStatus)).toBe("Success");
+      expect(parseTransactionStatus(transactionStatus)).toBe("processed");
     }
   );
 
   it.each(["Failed", "Cancelled", "Retired"] as PayGovTransactionStatus[])(
-    "Returns Success for all successful transaction statuses",
+    "Returns 'failed' for Failed, Cancelled, and Retired transaction statuses",
     (transactionStatus: PayGovTransactionStatus) => {
-      expect(parseTransactionStatus(transactionStatus)).toBe("Failed");
+      expect(parseTransactionStatus(transactionStatus)).toBe("failed");
     }
   );
 
   it.each(["Pending", "Received", "Waiting"] as PayGovTransactionStatus[])(
-    "Returns Success for all successful transaction statuses",
+    "Returns pending for all pending transaction statuses",
     (transactionStatus: PayGovTransactionStatus) => {
-      expect(parseTransactionStatus(transactionStatus)).toBe("Pending");
+      expect(parseTransactionStatus(transactionStatus)).toBe("pending");
     }
   );
 

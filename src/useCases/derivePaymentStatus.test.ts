@@ -1,23 +1,23 @@
 import { derivePaymentStatus } from "./derivePaymentStatus";
 
 describe("derivePaymentStatus", () => {
-  it('returns "success" when at least one status is Success', () => {
-    expect(derivePaymentStatus(["Success"])).toBe("success");
+  it('returns "success" when at least one status is processed', () => {
+    expect(derivePaymentStatus(["processed"])).toBe("success");
   });
 
-  it('returns "success" when Success appears among failures', () => {
-    expect(derivePaymentStatus(["Failed", "Success"])).toBe("success");
+  it('returns "success" when processed appears among failures', () => {
+    expect(derivePaymentStatus(["failed", "processed"])).toBe("success");
   });
 
-  it('returns "failed" when all statuses are Failed', () => {
-    expect(derivePaymentStatus(["Failed"])).toBe("failed");
-    expect(derivePaymentStatus(["Failed", "Failed"])).toBe("failed");
+  it('returns "failed" when all statuses are failed', () => {
+    expect(derivePaymentStatus(["failed"])).toBe("failed");
+    expect(derivePaymentStatus(["failed", "failed"])).toBe("failed");
   });
 
-  it('returns "pending" when statuses are a mix without Success', () => {
-    expect(derivePaymentStatus(["Pending", "Failed"])).toBe("pending");
-    expect(derivePaymentStatus(["Received", "Failed"])).toBe("pending");
-    expect(derivePaymentStatus(["Initiated"])).toBe("pending");
+  it('returns "pending" when statuses are a mix without processed', () => {
+    expect(derivePaymentStatus(["pending", "failed"])).toBe("pending");
+    expect(derivePaymentStatus(["received", "failed"])).toBe("pending");
+    expect(derivePaymentStatus(["initiated"])).toBe("pending");
   });
 
   it('returns "pending" for an empty array', () => {

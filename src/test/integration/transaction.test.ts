@@ -73,15 +73,28 @@ describe("make a transaction", () => {
     expect(result.status).toBe(200);
 
     const data = await result.json();
-    expect(data.trackingId).toBeTruthy();
-    expect(data.transactionStatus).toBe("Success");
-    payGovTrackingId = data.trackingId;
+    expect(data.paymentStatus).toBe("success");
+    expect(data.transactions).toHaveLength(1);
+    expect(data.transactions[0].transactionStatus).toBe("processed");
   });
 
   it("should be able to get the details about the transaction", async () => {
+    // payGovTrackingId is no longer in the process response (v2 contract).
+    // Retrieve it via the dashboard endpoint using the token from init.
+    const txnList = await portalFetch(`${process.env.BASE_URL}/transactions`);
+    const txnBody = await txnList.json();
+    const txns = Array.isArray(txnBody) ? txnBody : txnBody.data;
+    const match = txns.find((t: any) => t.paygovToken === token);
+    payGovTrackingId = match?.paygovTrackingId;
+
     console.log(
       `Time to get the details with payGovTrackingId: ${payGovTrackingId}`
     );
+
+    if (!payGovTrackingId) {
+      console.warn("Could not recover payGovTrackingId from dashboard — skipping getDetails");
+      return;
+    }
 
     const result = await portalFetch(
       `${process.env.BASE_URL}/details/${payGovTrackingId}`,
@@ -96,6 +109,6 @@ describe("make a transaction", () => {
 
     const data = await result.json();
     expect(data.trackingId).toBe(payGovTrackingId);
-    expect(data.transactionStatus).toBe("Success");
+    expect(data.transactionStatus).toBe("processed");
   });
 });

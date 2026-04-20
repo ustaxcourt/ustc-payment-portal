@@ -4,11 +4,13 @@ import { z } from "zod";
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);
 
+// NOTE: We use 'processed' instead of 'success' here to avoid
+// confusion between TransactionStatus and PaymentStatus.
 export const TransactionStatusSchema = z
-  .enum(["Received", "Initiated", "Success", "Failed", "Pending"])
+  .enum(["received", "initiated", "processed", "failed", "pending"])
   .openapi({
     description: "The status of the payment transaction",
-    example: "Success",
+    example: "processed",
   });
 
 export type TransactionStatus = z.infer<typeof TransactionStatusSchema>;

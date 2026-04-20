@@ -1,10 +1,10 @@
 import { Model } from 'objection';
 import FeesModel from './FeesModel';
-import type { DashboardTransactionStatus } from '../schemas/TransactionDashboard.schema';
 import type { PaymentStatus } from '../schemas/PaymentStatus.schema';
+import type { TransactionStatus as SchemaTransactionStatus } from '../schemas/TransactionStatus.schema';
 import { getKnex } from './knex';
 
-export type TransactionStatus = DashboardTransactionStatus;
+export type TransactionStatus = SchemaTransactionStatus;
 export type { PaymentStatus };
 
 export type AggregatedPaymentStatus = Record<PaymentStatus, number> & { total: number };
@@ -153,6 +153,20 @@ export default class TransactionModel extends Model {
         paymentStatus,
       })
       .where('agencyTrackingId', agencyTrackingId);
+  }
+
+  static async findPendingOrProcessedByReferenceId(
+    clientName: string,
+    transactionReferenceId: string,
+    excludeToken: string,
+  ): Promise<TransactionModel | undefined> {
+    await getKnex();
+    return TransactionModel.query()
+      .whereIn('transactionStatus', ['pending', 'processed'])
+      .where('clientName', clientName)
+      .where('transactionReferenceId', transactionReferenceId)
+      .whereNot('paygovToken', excludeToken)
+      .first();
   }
 
   static async updateToFailed(agencyTrackingId: string): Promise<void> {

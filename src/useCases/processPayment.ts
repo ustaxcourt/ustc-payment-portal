@@ -4,31 +4,15 @@ import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
 import { ProcessPaymentResponse } from "../schemas/ProcessPayment.schema";
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { ForbiddenError } from "../errors/forbidden";
+import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { derivePaymentStatus } from "./derivePaymentStatus";
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel, {
-  TransactionStatus,
   PaymentMethod as DbPaymentMethod,
 } from "../db/TransactionModel";
-import { TransactionStatus as ApiTransactionStatus } from "../schemas/TransactionStatus.schema";
 import { PaymentMethod as ApiPaymentMethod } from "../schemas/PaymentMethod.schema";
-
-const toDbTransactionStatus = (parsed: ApiTransactionStatus): TransactionStatus => {
-  switch (parsed) {
-    case "Success":
-      return "processed";
-    case "Failed":
-      return "failed";
-    case "Pending":
-      return "pending";
-    case "Received":
-      return "received";
-    case "Initiated":
-      return "initiated";
-  }
-};
 
 const toApiPaymentMethod = (
   method: DbPaymentMethod | null | undefined,
@@ -74,6 +58,22 @@ export const processPayment: ProcessPayment = async (
     );
   }
 
+  const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
+    transaction.clientName,
+    transaction.transactionReferenceId,
+    request.token,
+  );
+
+  if (sibling) {
+    throw new GoneError(
+      "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
+    );
+  }
+
+  if (transaction.transactionStatus !== "initiated") {
+    throw new GoneError("This token is no longer valid.");
+  }
+
   const req = new CompleteOnlineCollectionWithDetailsRequest({
     tcsAppId: "", // Required by Pay.gov SOAP schema — token alone identifies the transaction on this call
     token: request.token,
@@ -91,7 +91,7 @@ export const processPayment: ProcessPayment = async (
     await TransactionModel.updateToProcessed(
       transaction.agencyTrackingId,
       result.paygov_tracking_id,
-      toDbTransactionStatus(parsedStatus),
+      parsedStatus,
       paymentStatus,
     );
 
@@ -115,7 +115,7 @@ export const processPayment: ProcessPayment = async (
         paymentStatus: "failed" as const,
         transactions: [
           {
-            transactionStatus: "Failed" as const,
+            transactionStatus: "failed" as const,
             paymentMethod: toApiPaymentMethod(transaction.paymentMethod),
             returnDetail: err.message,
             createdTimestamp: transaction.createdAt,
