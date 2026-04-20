@@ -182,13 +182,11 @@ jobs:
           if terraform output api_gateway_url &>/dev/null; then
             API_URL=$(terraform output -raw api_gateway_url)
             TEST_UNAUTHORIZED_ROLE_ARN=$(terraform output -raw test_unauthorized_role_arn 2>/dev/null || echo "")
-            PAYGOV_TOKEN_SECRET_ID=$(terraform output -raw paygov_dev_server_token_secret_id 2>/dev/null || echo "")
 
             # Validate outputs are actual values (not warning text)
             if [[ "$API_URL" == https://* ]]; then
               echo "api_url=$API_URL" >> $GITHUB_OUTPUT
               echo "test_unauthorized_role_arn=$TEST_UNAUTHORIZED_ROLE_ARN" >> $GITHUB_OUTPUT
-              echo "paygov_token_secret_id=$PAYGOV_TOKEN_SECRET_ID" >> $GITHUB_OUTPUT
               echo "has_outputs=true" >> $GITHUB_OUTPUT
               echo "API Gateway URL: $API_URL"
               echo "Test Unauthorized Role ARN: $TEST_UNAUTHORIZED_ROLE_ARN"
@@ -327,7 +325,6 @@ jobs:
         env:
           TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
           BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
-          PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID: ${{ steps.tf_outputs.outputs.paygov_token_secret_id }}
         run: |
           npm ci
           echo "Running integration tests against: $BASE_URL"
