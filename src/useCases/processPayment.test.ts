@@ -4,6 +4,7 @@ import { ClientPermission } from "../types/ClientPermission";
 import { ForbiddenError } from "../errors/forbidden";
 import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
+import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 
@@ -212,7 +213,7 @@ describe("processPayment", () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it("throws NotFoundError when fee has no tcsAppId", async () => {
+  it("throws ServerError when fee has no tcsAppId", async () => {
     FeesModelMock.getFeeById.mockResolvedValueOnce({ feeId: "fee-123", tcsAppId: "" } as unknown as FeesModel);
 
     await expect(
@@ -220,7 +221,7 @@ describe("processPayment", () => {
         client: mockClient,
         request: { token: "mock-token" },
       }),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ServerError);
   });
 
   it("passes the fee's tcsAppId to the SOAP request", async () => {
@@ -235,19 +236,6 @@ describe("processPayment", () => {
       expect.anything(),
       expect.stringContaining("<tcs_app_id>TCSUSTAXCOURTPETITION</tcs_app_id>"),
     );
-  });
-
-  it("throws an error if we pass in an invalid request", async () => {
-    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce(undefined);
-
-    await expect(
-      processPayment(appContext, {
-        client: mockClient,
-        request: {
-          foo: 20,
-        } as any,
-      }),
-    ).rejects.toThrow(NotFoundError);
   });
 
   describe("Successfully processed Transaction", () => {

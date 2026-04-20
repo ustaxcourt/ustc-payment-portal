@@ -6,6 +6,7 @@ import { FailedTransactionError } from "../errors/failedTransaction";
 import { ForbiddenError } from "../errors/forbidden";
 import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
+import { ServerError } from "../errors/serverError";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
@@ -57,8 +58,11 @@ export const processPayment: ProcessPayment = async (
   }
 
   const fee = await FeesModel.getFeeById(transaction.feeId);
-  if (!fee || !fee.tcsAppId) {
+  if (!fee) {
     throw new NotFoundError(`Fee not found for feeId: ${transaction.feeId}`);
+  }
+  if (!fee.tcsAppId) {
+    throw new ServerError(`Fee ${transaction.feeId} is missing tcsAppId configuration`);
   }
 
   const req = new CompleteOnlineCollectionWithDetailsRequest({
