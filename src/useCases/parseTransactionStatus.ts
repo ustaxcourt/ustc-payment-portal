@@ -11,16 +11,16 @@ export const parseTransactionStatus = (
     case "Received":
     case "Waiting":
     case "Submitted":
-      return "Pending";
+      return "pending";
 
     case "Settled":
     case "Success":
-      return "Success";
+      return "processed";
 
     case "Cancelled":
     case "Failed":
     case "Retired":
-      return "Failed";
+      return "failed";
 
     default:
       throw new Error(`Could not parse transaction status ${status}`);

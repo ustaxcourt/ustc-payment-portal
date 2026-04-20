@@ -5,6 +5,7 @@ import {
 } from "./lambdaHandler";
 import { APIGatewayEvent } from "aws-lambda";
 import { ForbiddenError } from "./errors/forbidden";
+import { GoneError } from "./errors/gone";
 import { PayGovError } from "./errors/payGovError";
 import { NotFoundError } from "./errors/notFound";
 
@@ -13,11 +14,11 @@ const useCasesMock = {
   initPayment: jest.fn().mockResolvedValue({ token: "test-token-123" }),
   processPayment: jest.fn().mockResolvedValue({
     trackingId: "track-123",
-    transactionStatus: "Success",
+    transactionStatus: "processed",
   }),
   getDetails: jest.fn().mockResolvedValue({
     trackingId: "track-123",
-    transactionStatus: "Success",
+    transactionStatus: "processed",
   }),
 };
 
@@ -385,6 +386,22 @@ describe("lambdaHandler", () => {
 
       const result = await processPaymentHandler(event);
       expect(result.statusCode).toBe(504);
+    });
+
+    it("returns 410 when use case throws GoneError", async () => {
+      useCasesMock.processPayment.mockRejectedValueOnce(
+        new GoneError("This token is no longer valid."),
+      );
+
+      const event = {
+        body: JSON.stringify({ token: crypto.randomUUID().replace(/-/g, "") }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await processPaymentHandler(event);
+      expect(result.statusCode).toBe(410);
+      expect(JSON.parse(result.body).message).toContain("no longer valid");
     });
 
     it("returns 500 when use case throws a generic error", async () => {

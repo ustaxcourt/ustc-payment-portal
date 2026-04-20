@@ -1,20 +1,10 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 import { PaymentStatusSchema } from "./PaymentStatus.schema";
+import { TransactionStatusSchema } from "./TransactionStatus.schema";
 
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);
-
-export const DashboardTransactionStatusSchema = z
-  .enum(["received", "initiated", "pending", "processed", "failed"])
-  .openapi({
-    description: "The status of an individual transaction record",
-    example: "processed",
-  });
-
-export type DashboardTransactionStatus = z.infer<
-  typeof DashboardTransactionStatusSchema
->;
 
 export const DashboardPaymentMethodSchema = z
   .enum(["Credit/Debit Card", "ACH", "PayPal"] )
@@ -61,7 +51,7 @@ export const DashboardTransactionSchema = z
       example: "TXREF-00001",
     }),
     paymentStatus: PaymentStatusSchema,
-    transactionStatus: DashboardTransactionStatusSchema.nullable().optional(),
+    transactionStatus: TransactionStatusSchema.nullable().optional(),
     paymentMethod: DashboardPaymentMethodSchema.nullable().optional(),
     paygovToken: z.string().nullable().optional().openapi({
       description: "Pay.gov token associated with this transaction",

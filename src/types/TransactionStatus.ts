@@ -13,4 +13,4 @@ export type PendingTransactionStatus =
   | "Waiting"
   | "Submitted";
 
-export type TransactionStatus = "Success" | "Failed" | "Pending";
+export type TransactionStatus = "processed" | "failed" | "pending";

@@ -4,6 +4,7 @@ import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
 import { ProcessPaymentResponse } from "../types/ProcessPaymentResponse";
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { ForbiddenError } from "../errors/forbidden";
+import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { ClientPermission } from "../types/ClientPermission";
@@ -38,6 +39,22 @@ export const processPayment: ProcessPayment = async (
     );
   }
 
+  const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
+    transaction.clientName,
+    transaction.transactionReferenceId,
+    request.token,
+  );
+
+  if (sibling) {
+    throw new GoneError(
+      "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
+    );
+  }
+
+  if (transaction.transactionStatus !== "initiated") {
+    throw new GoneError("This token is no longer valid.");
+  }
+
   const req = new CompleteOnlineCollectionWithDetailsRequest({
     tcsAppId: "", // Required by Pay.gov SOAP schema — token alone identifies the transaction on this call
     token: request.token,
@@ -56,7 +73,7 @@ export const processPayment: ProcessPayment = async (
   } catch (err) {
     if (err instanceof FailedTransactionError) {
       return {
-        transactionStatus: "Failed",
+        transactionStatus: "failed",
         message: err.message,
         code: err.code,
       };

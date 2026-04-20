@@ -50,6 +50,17 @@ jest.mock("./TransactionModel", () => {
         findById: (id: string) => Promise.resolve(id === mockTransaction?.agencyTrackingId ? mockTransaction : undefined),
       }));
       static findByPaygovToken = jest.fn((token: string) => Promise.resolve(token === mockTransaction?.paygovToken ? mockTransaction : undefined));
+      static findPendingOrProcessedByReferenceId = jest.fn(
+        (_clientName: string, referenceId: string, excludeToken: string) =>
+          Promise.resolve(
+            mockTransaction &&
+            mockTransaction.transactionReferenceId === referenceId &&
+            mockTransaction.paygovToken !== excludeToken &&
+            ['pending', 'processed'].includes(mockTransaction.transactionStatus)
+              ? mockTransaction
+              : undefined,
+          ),
+      );
       constructor() {
         // intentionally left blank
       }
@@ -185,6 +196,60 @@ describe("TransactionModel", () => {
 
     it('should return undefined when no matching token exists', async () => {
       const found = await TransactionModel.findByPaygovToken('NON-EXISTENT-TOKEN');
+      expect(found).toBeUndefined();
+    });
+  });
+
+  describe("findPendingOrProcessedByReferenceId", () => {
+    const clientName = "test-client";
+    const referenceId = "TXN-REF-001";
+    const paygovToken = "TOKEN-PENDING-123";
+
+    beforeEach(async () => {
+      await TransactionModel.createReceived({
+        agencyTrackingId: "TEST-789",
+        feeId: "PETITION_FILING_FEE",
+        clientName,
+        transactionReferenceId: referenceId,
+        paymentMethod: "plastic_card" as PaymentMethod,
+      });
+      await TransactionModel.updateToInitiated("TEST-789", paygovToken);
+    });
+
+    it("returns a transaction when status is pending and referenceId matches", async () => {
+      mockTransaction.transactionStatus = "pending";
+
+      const found = await TransactionModel.findPendingOrProcessedByReferenceId(clientName, referenceId, "OTHER-TOKEN");
+      expect(found).toBeDefined();
+      expect(found?.transactionReferenceId).toBe(referenceId);
+    });
+
+    it("returns a transaction when status is processed and referenceId matches", async () => {
+      mockTransaction.transactionStatus = "processed";
+
+      const found = await TransactionModel.findPendingOrProcessedByReferenceId(clientName, referenceId, "OTHER-TOKEN");
+      expect(found).toBeDefined();
+      expect(found?.transactionReferenceId).toBe(referenceId);
+    });
+
+    it("returns undefined when referenceId does not match", async () => {
+      mockTransaction.transactionStatus = "pending";
+
+      const found = await TransactionModel.findPendingOrProcessedByReferenceId(clientName, "DIFFERENT-REF", "OTHER-TOKEN");
+      expect(found).toBeUndefined();
+    });
+
+    it("returns undefined when the matching transaction is the excluded token", async () => {
+      mockTransaction.transactionStatus = "pending";
+
+      const found = await TransactionModel.findPendingOrProcessedByReferenceId(clientName, referenceId, paygovToken);
+      expect(found).toBeUndefined();
+    });
+
+    it("returns undefined when transaction status is not pending or processed", async () => {
+      mockTransaction.transactionStatus = "initiated";
+
+      const found = await TransactionModel.findPendingOrProcessedByReferenceId(clientName, referenceId, "OTHER-TOKEN");
       expect(found).toBeUndefined();
     });
   });
