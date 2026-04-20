@@ -20,6 +20,10 @@ type TransactionRow = {
   transaction_status: string | null;
   paygov_token: string | null;
   payment_method: string | null;
+  transaction_date: string | null;
+  payment_date: string | null;
+  return_code: number | null;
+  return_detail: string | null;
   metadata: Record<string, string> | null;
   created_at: string;
   last_updated_at: string;
@@ -48,6 +52,13 @@ export const generateTransactions = async ({
     }
   };
 
+  const returnCodes = [3001, 3002, 5000] as const;
+  const returnDetails = [
+    "The card has been declined, the transaction will not be processed.",
+    "Invalid card number.",
+    "An internal error occurred. Please try again.",
+  ] as const;
+
   const makeRow = (payment_status: 'success' | 'failed' | 'pending') => {
     const agencyId = faker.helpers.arrayElement(agencyIds);
     const fee = faker.helpers.arrayElement(feesList);
@@ -67,6 +78,15 @@ export const generateTransactions = async ({
       userAgent: faker.internet.userAgent(),
       isHighValue: faker.number.int({ min: 100, max: 900 }) >= 200 ? 'true' : 'false',
     };
+
+    const hasPayGovResponse = payment_status === 'success' || payment_status === 'failed';
+    const transactionDate = hasPayGovResponse
+      ? dayjs(lastUpdatedAt).format('YYYY-MM-DDTHH:mm:ss')
+      : null;
+    const paymentDate = hasPayGovResponse
+      ? dayjs(lastUpdatedAt).format('YYYY-MM-DD')
+      : null;
+
     return {
       agency_tracking_id: generateAgencyTrackingId(),
       paygov_tracking_id: faker.datatype.boolean() ? faker.string.alphanumeric({ length: 20, casing: 'upper' }) : null,
@@ -78,6 +98,10 @@ export const generateTransactions = async ({
       transaction_status: getTransactionStatus(payment_status),
       payment_method: faker.helpers.arrayElement(paymentMethods),
       paygov_token: faker.datatype.boolean() ? faker.string.uuid().replace(/-/g, '') : null,
+      transaction_date: transactionDate,
+      payment_date: paymentDate,
+      return_code: payment_status === 'failed' ? faker.helpers.arrayElement(returnCodes) : null,
+      return_detail: payment_status === 'failed' ? faker.helpers.arrayElement(returnDetails) : null,
       metadata: maybeMetadata,
       created_at: createdAt,
       last_updated_at: lastUpdatedAt,

@@ -277,6 +277,9 @@ describe("processPayment", () => {
         mockPayGovTrackingId,
         "processed",
         "success",
+        "plastic_card",
+        "2023-09-18T10:54:05",
+        "2023-09-19",
       );
     });
 
@@ -337,6 +340,8 @@ describe("processPayment", () => {
 
       expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
         "agency-tracking-id-001",
+        3001,
+        "The card has been declined, the transaction will not be processed.",
       );
     });
   });
@@ -378,6 +383,9 @@ describe("processPayment", () => {
         mockPayGovTrackingId,
         "pending",
         "pending",
+        "ach",
+        "2023-09-18T10:54:05",
+        "2023-09-19",
       );
     });
   });
@@ -425,6 +433,8 @@ describe("processPayment", () => {
 
       expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
         "agency-tracking-id-001",
+        undefined,
+        "Transaction Error",
       );
     });
   });

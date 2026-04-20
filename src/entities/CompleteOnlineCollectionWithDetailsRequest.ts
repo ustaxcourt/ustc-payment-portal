@@ -9,6 +9,9 @@ type CompleteOnlineCollectionWithDetailsResponse = {
   transaction_status: PayGovTransactionStatus;
   agency_tracking_id: string;
   transaction_amount: string;
+  payment_type: string;
+  transaction_date: string;
+  payment_date: string;
 };
 
 export type CompleteOnlineCollectionWithDetailsRequestParams = {
