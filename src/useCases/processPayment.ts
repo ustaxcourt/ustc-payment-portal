@@ -82,6 +82,7 @@ export const processPayment: ProcessPayment = async (
       paymentStatus,
       transactions: [
         {
+          payGovTrackingId: result.paygov_tracking_id,
           transactionStatus: parsedStatus,
           paymentMethod: toApiPaymentMethod(transaction.paymentMethod),
           returnDetail: undefined,

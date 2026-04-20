@@ -236,7 +236,7 @@ describe("processPayment", () => {
       expect(result.paymentStatus).toBe("success");
     });
 
-    it("returns a single transaction with transactionStatus processed", async () => {
+    it("returns a single transaction with transactionStatus processed and payGovTrackingId", async () => {
       const result = await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
@@ -244,6 +244,7 @@ describe("processPayment", () => {
 
       expect(result.transactions).toHaveLength(1);
       expect(result.transactions[0].transactionStatus).toBe("processed");
+      expect(result.transactions[0].payGovTrackingId).toBe(mockPayGovTrackingId);
     });
 
     it("maps paymentMethod from DB format to API format", async () => {
@@ -306,7 +307,7 @@ describe("processPayment", () => {
       expect(result.paymentStatus).toBe("failed");
     });
 
-    it("returns a single transaction with transactionStatus failed", async () => {
+    it("returns a single transaction with transactionStatus failed and no payGovTrackingId", async () => {
       const result = await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
@@ -314,6 +315,7 @@ describe("processPayment", () => {
 
       expect(result.transactions).toHaveLength(1);
       expect(result.transactions[0].transactionStatus).toBe("failed");
+      expect(result.transactions[0].payGovTrackingId).toBeUndefined();
     });
 
     it("returns returnDetail that indicates why the transaction failed", async () => {

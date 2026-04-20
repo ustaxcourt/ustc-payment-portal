@@ -16,6 +16,7 @@ const useCasesMock = {
     paymentStatus: "success",
     transactions: [
       {
+        payGovTrackingId: "track-123",
         transactionStatus: "processed",
         paymentMethod: "Credit/Debit Card",
         returnDetail: undefined,
