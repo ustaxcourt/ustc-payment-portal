@@ -91,10 +91,7 @@ describe("make a transaction", () => {
       `Time to get the details with payGovTrackingId: ${payGovTrackingId}`
     );
 
-    if (!payGovTrackingId) {
-      console.warn("Could not recover payGovTrackingId from dashboard — skipping getDetails");
-      return;
-    }
+    expect(payGovTrackingId).toBeTruthy();
 
     const result = await portalFetch(
       `${process.env.BASE_URL}/details/${payGovTrackingId}`,
