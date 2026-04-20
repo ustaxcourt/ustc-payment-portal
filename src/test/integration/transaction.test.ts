@@ -86,7 +86,7 @@ describe("make a transaction", () => {
     );
 
     const result = await portalFetch(
-      `${process.env.BASE_URL}/details/${payGovTrackingId}`,
+      `${process.env.BASE_URL}/details/${encodeURIComponent(payGovTrackingId)}`,
       {
         headers: {
           "Content-Type": "application/json",
