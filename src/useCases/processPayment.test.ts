@@ -2,6 +2,7 @@ import { processPayment } from "./processPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { ClientPermission } from "../types/ClientPermission";
 import { ForbiddenError } from "../errors/forbidden";
+import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
 import TransactionModel from "../db/TransactionModel";
 
@@ -9,6 +10,7 @@ jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
   default: {
     findByPaygovToken: jest.fn(),
+    findPendingOrProcessedByReferenceId: jest.fn(),
   },
 }));
 
@@ -116,8 +118,9 @@ const mockFaultWithoutTCSServiceFault = `<?xml version="1.0" encoding="UTF-8"?>
 describe("processPayment", () => {
   beforeEach(() => {
     TransactionModelMock.findByPaygovToken.mockResolvedValue(
-      { feeId: "fee-123" } as TransactionModel,
+      { feeId: "fee-123", transactionReferenceId: "ref-123", transactionStatus: "initiated" } as unknown as TransactionModel,
     );
+    TransactionModelMock.findPendingOrProcessedByReferenceId.mockResolvedValue(undefined);
   });
 
   it("throws NotFoundError when token is not in the database", async () => {
@@ -147,6 +150,45 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       }),
     ).rejects.not.toThrow(ForbiddenError);
+  });
+
+  it("throws GoneError when a sibling transaction is already pending", async () => {
+    TransactionModelMock.findPendingOrProcessedByReferenceId.mockResolvedValueOnce(
+      { transactionStatus: "pending" } as unknown as TransactionModel,
+    );
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(GoneError);
+  });
+
+  it("throws GoneError when a sibling transaction is already processed", async () => {
+    TransactionModelMock.findPendingOrProcessedByReferenceId.mockResolvedValueOnce(
+      { transactionStatus: "processed" } as unknown as TransactionModel,
+    );
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(GoneError);
+  });
+
+  it("throws GoneError when transaction status is not initiated", async () => {
+    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce(
+      { feeId: "fee-123", transactionReferenceId: "ref-123", transactionStatus: "failed" } as unknown as TransactionModel,
+    );
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(GoneError);
   });
 
   it("throws an error if we pass in an invalid request", async () => {
@@ -182,7 +224,7 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toEqual("Success");
+      expect(transactionStatus).toEqual("processed");
     });
 
     it("proceeds when client has exact fee access", async () => {
@@ -191,7 +233,7 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toBe("Success");
+      expect(transactionStatus).toBe("processed");
     });
   });
 
@@ -216,7 +258,7 @@ describe("processPayment", () => {
         client: mockClient,
         request: { token: "mock-token" },
       });
-      expect(transactionStatus).toBe("Failed");
+      expect(transactionStatus).toBe("failed");
     });
 
     it("returns a message that indicates why the transaction failed", async () => {
@@ -261,7 +303,7 @@ describe("processPayment", () => {
         client: mockClient,
         request: { token: "mock-token" },
       });
-      expect(transactionStatus).toBe("Pending");
+      expect(transactionStatus).toBe("pending");
     });
   });
 
@@ -276,7 +318,7 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toBe("Failed");
+      expect(transactionStatus).toBe("failed");
       expect(message).toBe("Transaction Error");
     });
 
@@ -290,7 +332,7 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toBe("Failed");
+      expect(transactionStatus).toBe("failed");
       expect(message).toBe("Transaction Error");
     });
   });

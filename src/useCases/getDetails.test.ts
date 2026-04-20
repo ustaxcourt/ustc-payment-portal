@@ -84,7 +84,7 @@ describe("getDetails", () => {
         request: { payGovTrackingId: mockPayGovTrackingId },
       });
 
-      expect(transactionStatus).toEqual("Success");
+      expect(transactionStatus).toEqual("processed");
     });
   });
 
@@ -110,7 +110,7 @@ describe("getDetails", () => {
         request: { payGovTrackingId: mockPayGovTrackingId },
       });
 
-      expect(transactionStatus).toBe("Pending");
+      expect(transactionStatus).toBe("pending");
     });
   });
 });
