@@ -32,12 +32,12 @@ export const generateTransactions = async ({
 }: GenerateTransactionsParams): Promise<TransactionRow[]> => {
   const feesList = await FeesModel.query().select('feeId', 'amount');
   const clientNames = ['payment-portal', 'efile-portal', 'clerk-app'];
-  const paymentMethods = ["Credit/Debit Card", "ACH", "PayPal"];
+  const paymentMethods = ["plastic_card", "ach", "paypal"] as const;
 
   const agencyIds = ['USTC', 'IRS'];
   const agencyCounters: Record<string, number> = Object.fromEntries(agencyIds.map((agencyId) => [agencyId, 0]));
 
-  const getTransactionStatus = (paymentStatus: string) => {
+  const getTransactionStatus = (paymentStatus: 'success' | 'failed' | 'pending'): string => {
     switch (paymentStatus) {
       case 'success':
         return 'processed';
@@ -45,12 +45,10 @@ export const generateTransactions = async ({
         return 'failed';
       case 'pending':
         return faker.helpers.arrayElement(['initiated', 'received', 'pending']);
-      default:
-        return null;
     }
   };
 
-  const makeRow = (payment_status: string) => {
+  const makeRow = (payment_status: 'success' | 'failed' | 'pending') => {
     const agencyId = faker.helpers.arrayElement(agencyIds);
     const fee = faker.helpers.arrayElement(feesList);
     agencyCounters[agencyId] += 1;

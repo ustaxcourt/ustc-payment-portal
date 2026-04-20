@@ -139,20 +139,19 @@ export default class TransactionModel extends Model {
     return TransactionModel.query().findOne({ paygovToken: token });
   }
 
-  static async updateToProcessed(
+  static async updateAfterPayGovResponse(
     agencyTrackingId: string,
     paygovTrackingId: string,
     transactionStatus: TransactionStatus,
     paymentStatus: PaymentStatus,
-  ): Promise<void> {
+  ): Promise<TransactionModel> {
     await getKnex();
-    await this.query()
-      .patch({
+    return this.query()
+      .patchAndFetchById(agencyTrackingId, {
         paygovTrackingId,
         transactionStatus,
         paymentStatus,
-      })
-      .where('agencyTrackingId', agencyTrackingId);
+      });
   }
 
   static async findPendingOrProcessedByReferenceId(
@@ -169,14 +168,13 @@ export default class TransactionModel extends Model {
       .first();
   }
 
-  static async updateToFailed(agencyTrackingId: string): Promise<void> {
+  static async updateToFailed(agencyTrackingId: string): Promise<TransactionModel> {
     await getKnex();
-    await this.query()
-      .patch({
+    return this.query()
+      .patchAndFetchById(agencyTrackingId, {
         transactionStatus: 'failed',
         paymentStatus: 'failed',
-      })
-      .where('agencyTrackingId', agencyTrackingId);
+      });
   }
 
   // TODO: [Future Ticket] Implement findByTransactionReferenceId to retrieve

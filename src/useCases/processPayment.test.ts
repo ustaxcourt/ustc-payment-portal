@@ -11,8 +11,14 @@ jest.mock("../db/TransactionModel", () => ({
   default: {
     findByPaygovToken: jest.fn(),
     findPendingOrProcessedByReferenceId: jest.fn(),
-    updateToProcessed: jest.fn().mockResolvedValue(undefined),
-    updateToFailed: jest.fn().mockResolvedValue(undefined),
+    updateAfterPayGovResponse: jest.fn().mockResolvedValue({
+      createdAt: "2026-01-15T10:30:00Z",
+      lastUpdatedAt: "2026-01-15T10:35:01Z",
+    }),
+    updateToFailed: jest.fn().mockResolvedValue({
+      createdAt: "2026-01-15T10:30:00Z",
+      lastUpdatedAt: "2026-01-15T10:35:01Z",
+    }),
   },
 }));
 
@@ -256,16 +262,16 @@ describe("processPayment", () => {
       });
 
       expect(result.transactions[0].createdTimestamp).toBe("2026-01-15T10:30:00Z");
-      expect(result.transactions[0].updatedTimestamp).toBe("2026-01-15T10:35:00Z");
+      expect(result.transactions[0].updatedTimestamp).toBe("2026-01-15T10:35:01Z");
     });
 
-    it("persists the result to the database via updateToProcessed", async () => {
+    it("persists the result to the database via updateAfterPayGovResponse", async () => {
       await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       });
 
-      expect(TransactionModelMock.updateToProcessed).toHaveBeenCalledWith(
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
         "agency-tracking-id-001",
         mockPayGovTrackingId,
         "processed",
@@ -359,13 +365,13 @@ describe("processPayment", () => {
       expect(result.transactions[0].transactionStatus).toBe("pending");
     });
 
-    it("persists the result to the database via updateToProcessed", async () => {
+    it("persists the result to the database via updateAfterPayGovResponse", async () => {
       await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       });
 
-      expect(TransactionModelMock.updateToProcessed).toHaveBeenCalledWith(
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
         "agency-tracking-id-001",
         mockPayGovTrackingId,
         "pending",

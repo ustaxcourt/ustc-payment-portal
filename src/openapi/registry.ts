@@ -227,7 +227,8 @@ registry.registerPath({
     200: {
       description:
         "Payment processed. The paymentStatus field indicates the overall outcome (success, failed, pending). " +
-        "The transactions array contains a summary of each attempt for the same transactionReferenceId.",
+        "The transactions array currently contains only the attempt being processed; " +
+        "it will expand to include all attempts for the same transactionReferenceId in a future release.",
       content: {
         "application/json": {
           schema: ProcessPaymentResponseSchema,

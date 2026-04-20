@@ -88,7 +88,7 @@ export const processPayment: ProcessPayment = async (
     const parsedStatus = parseTransactionStatus(result.transaction_status);
     const paymentStatus = derivePaymentStatus([parsedStatus]);
 
-    await TransactionModel.updateToProcessed(
+    const updated = await TransactionModel.updateAfterPayGovResponse(
       transaction.agencyTrackingId,
       result.paygov_tracking_id,
       parsedStatus,
@@ -102,14 +102,14 @@ export const processPayment: ProcessPayment = async (
           transactionStatus: parsedStatus,
           paymentMethod: toApiPaymentMethod(transaction.paymentMethod),
           returnDetail: undefined,
-          createdTimestamp: transaction.createdAt,
-          updatedTimestamp: transaction.lastUpdatedAt,
+          createdTimestamp: updated.createdAt,
+          updatedTimestamp: updated.lastUpdatedAt,
         },
       ],
     };
   } catch (err) {
     if (err instanceof FailedTransactionError) {
-      await TransactionModel.updateToFailed(transaction.agencyTrackingId);
+      const failed = await TransactionModel.updateToFailed(transaction.agencyTrackingId);
 
       return {
         paymentStatus: "failed" as const,
@@ -118,8 +118,8 @@ export const processPayment: ProcessPayment = async (
             transactionStatus: "failed" as const,
             paymentMethod: toApiPaymentMethod(transaction.paymentMethod),
             returnDetail: err.message,
-            createdTimestamp: transaction.createdAt,
-            updatedTimestamp: transaction.lastUpdatedAt,
+            createdTimestamp: failed.createdAt,
+            updatedTimestamp: failed.lastUpdatedAt,
           },
         ],
       };
