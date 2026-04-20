@@ -139,11 +139,6 @@ export default class TransactionModel extends Model {
     return TransactionModel.query().findOne({ paygovToken: token });
   }
 
-  static async findByPaygovTrackingId(paygovTrackingId: string): Promise<TransactionModel | undefined> {
-    await getKnex();
-    return TransactionModel.query().findOne({ paygovTrackingId });
-  }
-
   static async findPendingOrProcessedByReferenceId(
     clientName: string,
     transactionReferenceId: string,

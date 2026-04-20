@@ -3,9 +3,6 @@ import { GetRequestRequest } from "../entities/GetDetailsRequest";
 import { AppContext } from "../types/AppContext";
 import { TransactionStatus } from "../types/TransactionStatus";
 import { parseTransactionStatus } from "./parseTransactionStatus";
-import TransactionModel from "../db/TransactionModel";
-import FeesModel from "../db/FeesModel";
-import { NotFoundError } from "../errors/notFound";
 
 export type GetDetailsRequest = {
   payGovTrackingId: string;
@@ -27,18 +24,8 @@ export type GetDetails = (
 export const getDetails: GetDetails = async (appContext, { request }) => {
   const { payGovTrackingId } = request;
 
-  const transaction = await TransactionModel.findByPaygovTrackingId(payGovTrackingId);
-  if (!transaction) {
-    throw new NotFoundError(`Transaction not found for payGovTrackingId: ${payGovTrackingId}`);
-  }
-
-  const fee = await FeesModel.getFeeById(transaction.feeId);
-  if (!fee || !fee.tcsAppId) {
-    throw new NotFoundError(`Fee not found for feeId: ${transaction.feeId}`);
-  }
-
   const req = new GetRequestRequest({
-    tcsAppId: fee.tcsAppId,
+    tcsAppId: "", // TODO: once "Process Payment: track in database" ticket lands and paygovTrackingId is persisted, look up the Transaction and its Fee to get the tcsAppId
     payGovTrackingId,
   });
 
