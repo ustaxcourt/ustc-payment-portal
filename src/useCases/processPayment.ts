@@ -7,7 +7,7 @@ import { ForbiddenError } from "../errors/forbidden";
 import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
 import { parseTransactionStatus } from "./parseTransactionStatus";
-import { derivePaymentStatus } from "./derivePaymentStatus";
+import { derivePaymentStatus } from "../utils/derivePaymentStatus";
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
 import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
