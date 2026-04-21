@@ -1,23 +1,26 @@
+import { PaymentMethod as DbPaymentMethod } from "../db/TransactionModel";
 import { toApiPaymentMethod } from "./toApiPaymentMethod";
 
 describe("toApiPaymentMethod", () => {
-  it("maps plastic_card to Credit/Debit Card", () => {
-    expect(toApiPaymentMethod("plastic_card")).toBe("Credit/Debit Card");
+  it.each([
+    ["plastic_card", "Credit/Debit Card"],
+    ["ach", "ACH"],
+    ["paypal", "PayPal"],
+  ] as const)("maps %s to %s", (db, api) => {
+    expect(toApiPaymentMethod(db)).toBe(api);
   });
 
-  it("maps ach to ACH", () => {
-    expect(toApiPaymentMethod("ach")).toBe("ACH");
-  });
-
-  it("maps paypal to PayPal", () => {
-    expect(toApiPaymentMethod("paypal")).toBe("PayPal");
-  });
-
-  it("returns undefined for null", () => {
+  it("returns undefined when method is null", () => {
     expect(toApiPaymentMethod(null)).toBeUndefined();
   });
 
-  it("returns undefined for undefined", () => {
+  it("returns undefined when method is undefined", () => {
     expect(toApiPaymentMethod(undefined)).toBeUndefined();
+  });
+
+  it("throws when method is an unrecognized value", () => {
+    expect(() =>
+      toApiPaymentMethod("venmo" as DbPaymentMethod),
+    ).toThrow("Unknown payment method: venmo");
   });
 });

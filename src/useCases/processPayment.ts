@@ -8,7 +8,7 @@ import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
 import { ServerError } from "../errors/serverError";
 import { parseTransactionStatus } from "./parseTransactionStatus";
-import { derivePaymentStatus } from "./derivePaymentStatus";
+import { derivePaymentStatus } from "../utils/derivePaymentStatus";
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
