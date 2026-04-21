@@ -62,7 +62,8 @@ export const processPayment: ProcessPayment = async (
 
   const fee = await FeesModel.getFeeById(transaction.feeId);
   if (!fee) {
-    throw new NotFoundError(`Fee not found for feeId: ${transaction.feeId}`);
+    console.error(`Fee not found for feeId: ${transaction.feeId}`);
+    throw new NotFoundError("Fee configuration not found for this transaction");
   }
   if (!fee.tcsAppId) {
     console.error(`Fee ${transaction.feeId} is missing tcsAppId configuration`);
