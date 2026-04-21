@@ -41,10 +41,10 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
     );
 
     if (responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]) {
-      return CompleteOnlineCollectionWithDetailsResponseSchema.parse(
-        responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]
-          .completeOnlineCollectionWithDetailsResponse
-      );
+      const raw = responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]
+        .completeOnlineCollectionWithDetailsResponse;
+      console.log("completeOnlineCollectionWithDetails raw response", JSON.stringify(raw));
+      return CompleteOnlineCollectionWithDetailsResponseSchema.parse(raw);
     } else {
       throw this.handleFault(responseBody["S:Fault"]);
     }
