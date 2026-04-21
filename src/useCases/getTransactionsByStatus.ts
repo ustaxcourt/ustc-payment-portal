@@ -9,6 +9,7 @@ import {
   TransactionsByStatusResponse,
 } from "../types/TransactionsByStatus";
 import { InvalidRequestError } from "../errors/invalidRequest";
+import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
 
 export type GetTransactionsByStatus = (
   appContext: AppContext,
@@ -35,7 +36,7 @@ export const getTransactionsByStatus: GetTransactionsByStatus = async (
   const data = await TransactionModel.getByPaymentStatus(paymentStatus);
 
   return TransactionsByStatusResponseSchema.parse({
-    data,
+    data: data.map((row) => ({ ...row, paymentMethod: toApiPaymentMethod(row.paymentMethod) })),
     total: data.length,
   });
 };

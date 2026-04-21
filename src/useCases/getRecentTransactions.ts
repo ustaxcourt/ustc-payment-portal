@@ -2,6 +2,7 @@ import TransactionModel from "../db/TransactionModel";
 import { RecentTransactionsResponseSchema } from "../schemas/RecentTransactions.schema";
 import { AppContext } from "../types/AppContext";
 import { RecentTransactionsResponse } from "../types/RecentTransactions";
+import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
 
 export type GetRecentTransactions = (
   appContext: AppContext
@@ -15,7 +16,7 @@ export const getRecentTransactions: GetRecentTransactions = async (
 ) => {
   const data = await TransactionModel.getAll();
   return RecentTransactionsResponseSchema.parse({
-    data,
+    data: data.map((row) => ({ ...row, paymentMethod: toApiPaymentMethod(row.paymentMethod) })),
     total: data.length,
   });
 };

@@ -13,8 +13,17 @@ import { NotFoundError } from "./errors/notFound";
 const useCasesMock = {
   initPayment: jest.fn().mockResolvedValue({ token: "test-token-123" }),
   processPayment: jest.fn().mockResolvedValue({
-    trackingId: "track-123",
-    transactionStatus: "processed",
+    paymentStatus: "success",
+    transactions: [
+      {
+        payGovTrackingId: "track-123",
+        transactionStatus: "processed",
+        paymentMethod: "Credit/Debit Card",
+        returnDetail: undefined,
+        createdTimestamp: "2026-01-15T10:30:00Z",
+        updatedTimestamp: "2026-01-15T10:35:00Z",
+      },
+    ],
   }),
   getDetails: jest.fn().mockResolvedValue({
     trackingId: "track-123",
@@ -193,7 +202,7 @@ describe("lambdaHandler", () => {
   });
 
   describe("processPaymentHandler", () => {
-    it("returns 200 with transaction details on successful request", async () => {
+    it("returns 200 with v2 response shape on successful request", async () => {
       const event = {
         body: JSON.stringify({
           token: crypto.randomUUID().replace(/-/g, ""),
@@ -206,8 +215,11 @@ describe("lambdaHandler", () => {
 
       expect(result.statusCode).toBe(200);
       const body = JSON.parse(result.body);
-      expect(body).toHaveProperty("trackingId");
-      expect(body).toHaveProperty("transactionStatus");
+      expect(body).toHaveProperty("paymentStatus");
+      expect(body).toHaveProperty("transactions");
+      expect(body.paymentStatus).toBe("success");
+      expect(body.transactions).toHaveLength(1);
+      expect(body.transactions[0].transactionStatus).toBe("processed");
     });
 
     it("returns 400 with JSON body when body is missing", async () => {

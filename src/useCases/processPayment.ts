@@ -1,14 +1,16 @@
 import { AppContext } from "../types/AppContext";
 import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/CompleteOnlineCollectionWithDetailsRequest";
 import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
-import { ProcessPaymentResponse } from "../types/ProcessPaymentResponse";
+import { ProcessPaymentResponse } from "../schemas/ProcessPayment.schema";
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { ForbiddenError } from "../errors/forbidden";
 import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
 import { parseTransactionStatus } from "./parseTransactionStatus";
+import { derivePaymentStatus } from "../utils/derivePaymentStatus";
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
+import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -66,16 +68,44 @@ export const processPayment: ProcessPayment = async (
 
     console.log("processPayment result", result);
 
+    const parsedStatus = parseTransactionStatus(result.transaction_status);
+    const paymentStatus = derivePaymentStatus([parsedStatus]);
+
+    const updated = await TransactionModel.updateAfterPayGovResponse(
+      transaction.agencyTrackingId,
+      result.paygov_tracking_id,
+      parsedStatus,
+      paymentStatus,
+    );
+
     return {
-      trackingId: result.paygov_tracking_id,
-      transactionStatus: parseTransactionStatus(result.transaction_status),
+      paymentStatus,
+      transactions: [
+        {
+          payGovTrackingId: result.paygov_tracking_id,
+          transactionStatus: parsedStatus,
+          paymentMethod: toApiPaymentMethod(transaction.paymentMethod),
+          returnDetail: undefined,
+          createdTimestamp: updated.createdAt,
+          updatedTimestamp: updated.lastUpdatedAt,
+        },
+      ],
     };
   } catch (err) {
     if (err instanceof FailedTransactionError) {
+      const failed = await TransactionModel.updateToFailed(transaction.agencyTrackingId);
+
       return {
-        transactionStatus: "failed",
-        message: err.message,
-        code: err.code,
+        paymentStatus: "failed" as const,
+        transactions: [
+          {
+            transactionStatus: "failed" as const,
+            paymentMethod: toApiPaymentMethod(transaction.paymentMethod),
+            returnDetail: err.message,
+            createdTimestamp: failed.createdAt,
+            updatedTimestamp: failed.lastUpdatedAt,
+          },
+        ],
       };
     } else throw err;
   }

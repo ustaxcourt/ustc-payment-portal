@@ -37,6 +37,10 @@ export type TransactionRecord = z.infer<typeof TransactionRecordSchema>;
 
 export const TransactionRecordSummarySchema = z
   .object({
+    payGovTrackingId: z.string().optional().openapi({
+      description: "Pay.gov tracking ID for the transaction, present once the transaction has been processed",
+      example: "TRK-123456789",
+    }),
     transactionStatus: TransactionStatusSchema,
     paymentMethod: PaymentMethodSchema.optional(),
     returnDetail: z.string().optional().openapi({

@@ -73,9 +73,11 @@ describe("make a transaction", () => {
     expect(result.status).toBe(200);
 
     const data = await result.json();
-    expect(data.trackingId).toBeTruthy();
-    expect(data.transactionStatus).toBe("processed");
-    payGovTrackingId = data.trackingId;
+    expect(data.paymentStatus).toBe("success");
+    expect(data.transactions).toHaveLength(1);
+    expect(data.transactions[0].transactionStatus).toBe("processed");
+    expect(data.transactions[0].payGovTrackingId).toBeTruthy();
+    payGovTrackingId = data.transactions[0].payGovTrackingId;
   });
 
   it("should be able to get the details about the transaction", async () => {
@@ -84,7 +86,7 @@ describe("make a transaction", () => {
     );
 
     const result = await portalFetch(
-      `${process.env.BASE_URL}/details/${payGovTrackingId}`,
+      `${process.env.BASE_URL}/details/${encodeURIComponent(payGovTrackingId)}`,
       {
         headers: {
           "Content-Type": "application/json",
