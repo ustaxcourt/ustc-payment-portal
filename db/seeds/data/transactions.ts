@@ -32,13 +32,23 @@ export const generateTransactions = async ({
 }: GenerateTransactionsParams): Promise<TransactionRow[]> => {
   const feesList = await FeesModel.query().select('feeId', 'amount');
   const clientNames = ['payment-portal', 'efile-portal', 'clerk-app'];
-  const transactionStatuses = ['received', 'initiated', 'pending', 'processed', 'failed'];
-  const paymentMethods = ["Credit/Debit Card", "ACH", "PayPal"];
+  const paymentMethods = ["plastic_card", "ach", "paypal"] as const;
 
   const agencyIds = ['USTC', 'IRS'];
   const agencyCounters: Record<string, number> = Object.fromEntries(agencyIds.map((agencyId) => [agencyId, 0]));
 
-  const makeRow = (payment_status: string) => {
+  const getTransactionStatus = (paymentStatus: 'success' | 'failed' | 'pending'): string => {
+    switch (paymentStatus) {
+      case 'success':
+        return 'processed';
+      case 'failed':
+        return 'failed';
+      case 'pending':
+        return faker.helpers.arrayElement(['initiated', 'received', 'pending']);
+    }
+  };
+
+  const makeRow = (payment_status: 'success' | 'failed' | 'pending') => {
     const agencyId = faker.helpers.arrayElement(agencyIds);
     const fee = faker.helpers.arrayElement(feesList);
     agencyCounters[agencyId] += 1;
@@ -65,7 +75,7 @@ export const generateTransactions = async ({
       client_name: faker.helpers.arrayElement(clientNames),
       transaction_reference_id: transactionReferenceId,
       payment_status,
-      transaction_status: faker.helpers.arrayElement(transactionStatuses),
+      transaction_status: getTransactionStatus(payment_status),
       payment_method: faker.helpers.arrayElement(paymentMethods),
       paygov_token: faker.datatype.boolean() ? faker.string.uuid().replace(/-/g, '') : null,
       metadata: maybeMetadata,

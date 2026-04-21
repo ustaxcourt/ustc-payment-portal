@@ -11,6 +11,14 @@ jest.mock("../db/TransactionModel", () => ({
   default: {
     findByPaygovToken: jest.fn(),
     findPendingOrProcessedByReferenceId: jest.fn(),
+    updateAfterPayGovResponse: jest.fn().mockResolvedValue({
+      createdAt: "2026-01-15T10:30:00Z",
+      lastUpdatedAt: "2026-01-15T10:35:01Z",
+    }),
+    updateToFailed: jest.fn().mockResolvedValue({
+      createdAt: "2026-01-15T10:30:00Z",
+      lastUpdatedAt: "2026-01-15T10:35:01Z",
+    }),
   },
 }));
 
@@ -21,6 +29,17 @@ const mockClient: ClientPermission = {
   clientRoleArn: "arn:aws:iam::123456789012:role/test-client",
   allowedFeeIds: ["*"],
 };
+
+const mockTransaction = {
+  feeId: "fee-123",
+  agencyTrackingId: "agency-tracking-id-001",
+  transactionReferenceId: "ref-123",
+  transactionStatus: "initiated",
+  clientName: "Test Client",
+  createdAt: "2026-01-15T10:30:00Z",
+  lastUpdatedAt: "2026-01-15T10:35:00Z",
+  paymentMethod: "plastic_card",
+} as unknown as TransactionModel;
 
 const mockPayGovTrackingId = "211d8c91c046404fb159b52d042a12ba";
 const mockPendingResponse = `<?xml version="1.0" encoding="UTF-8"?>
@@ -117,9 +136,8 @@ const mockFaultWithoutTCSServiceFault = `<?xml version="1.0" encoding="UTF-8"?>
 
 describe("processPayment", () => {
   beforeEach(() => {
-    TransactionModelMock.findByPaygovToken.mockResolvedValue(
-      { feeId: "fee-123", transactionReferenceId: "ref-123", transactionStatus: "initiated" } as unknown as TransactionModel,
-    );
+    jest.clearAllMocks();
+    TransactionModelMock.findByPaygovToken.mockResolvedValue(mockTransaction);
     TransactionModelMock.findPendingOrProcessedByReferenceId.mockResolvedValue(undefined);
   });
 
@@ -209,31 +227,67 @@ describe("processPayment", () => {
         .mockReturnValue(mockSuccessfulResponse);
     });
 
-    it("returns the trackingId from the XML", async () => {
-      const { trackingId } = await processPayment(appContext, {
+    it("returns paymentStatus success", async () => {
+      const result = await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       });
 
-      expect(trackingId).toEqual(mockPayGovTrackingId);
+      expect(result.paymentStatus).toBe("success");
     });
 
-    it("returns the transactionStatus from the XML", async () => {
-      const { transactionStatus } = await processPayment(appContext, {
+    it("returns a single transaction with transactionStatus processed and payGovTrackingId", async () => {
+      const result = await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toEqual("processed");
+      expect(result.transactions).toHaveLength(1);
+      expect(result.transactions[0].transactionStatus).toBe("processed");
+      expect(result.transactions[0].payGovTrackingId).toBe(mockPayGovTrackingId);
+    });
+
+    it("maps paymentMethod from DB format to API format", async () => {
+      const result = await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      });
+
+      expect(result.transactions[0].paymentMethod).toBe("Credit/Debit Card");
+    });
+
+    it("includes timestamps from the transaction record", async () => {
+      const result = await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      });
+
+      expect(result.transactions[0].createdTimestamp).toBe("2026-01-15T10:30:00Z");
+      expect(result.transactions[0].updatedTimestamp).toBe("2026-01-15T10:35:01Z");
+    });
+
+    it("persists the result to the database via updateAfterPayGovResponse", async () => {
+      await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      });
+
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+        "agency-tracking-id-001",
+        mockPayGovTrackingId,
+        "processed",
+        "success",
+      );
     });
 
     it("proceeds when client has exact fee access", async () => {
-      const { transactionStatus } = await processPayment(appContext, {
+      const result = await processPayment(appContext, {
         client: { ...mockClient, allowedFeeIds: ["fee-123"] },
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toBe("processed");
+      expect(result.paymentStatus).toBe("success");
+      expect(result.transactions[0].transactionStatus).toBe("processed");
     });
   });
 
@@ -244,41 +298,46 @@ describe("processPayment", () => {
         .mockReturnValue(mockUnsuccessfulResponse);
     });
 
-    it("does not return a trackingId", async () => {
-      const { trackingId } = await processPayment(appContext, {
+    it("returns paymentStatus failed", async () => {
+      const result = await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       });
 
-      expect(trackingId).toBeUndefined();
+      expect(result.paymentStatus).toBe("failed");
     });
 
-    it("returns transactionStatus failed", async () => {
-      const { transactionStatus } = await processPayment(appContext, {
+    it("returns a single transaction with transactionStatus failed and no payGovTrackingId", async () => {
+      const result = await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       });
-      expect(transactionStatus).toBe("failed");
+
+      expect(result.transactions).toHaveLength(1);
+      expect(result.transactions[0].transactionStatus).toBe("failed");
+      expect(result.transactions[0].payGovTrackingId).toBeUndefined();
     });
 
-    it("returns a message that indicates why the transaction failed", async () => {
-      const { message } = await processPayment(appContext, {
+    it("returns returnDetail that indicates why the transaction failed", async () => {
+      const result = await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       });
 
-      expect(message).toBe(
+      expect(result.transactions[0].returnDetail).toBe(
         "The card has been declined, the transaction will not be processed.",
       );
     });
 
-    it("returns the error code from the payment processor that indicates why the transaction failed", async () => {
-      const { code } = await processPayment(appContext, {
+    it("persists the failure to the database via updateToFailed", async () => {
+      await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       });
 
-      expect(code).toBe(3001);
+      expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
+        "agency-tracking-id-001",
+      );
     });
   });
 
@@ -289,21 +348,37 @@ describe("processPayment", () => {
         .mockReturnValue(mockPendingResponse);
     });
 
-    it("Returns a trackingId", async () => {
-      const { trackingId } = await processPayment(appContext, {
+    it("returns paymentStatus pending", async () => {
+      const result = await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       });
 
-      expect(trackingId).toBe(mockPayGovTrackingId);
+      expect(result.paymentStatus).toBe("pending");
     });
 
-    it("returns Pending transaction status", async () => {
-      const { transactionStatus } = await processPayment(appContext, {
+    it("returns a single transaction with transactionStatus pending", async () => {
+      const result = await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       });
-      expect(transactionStatus).toBe("pending");
+
+      expect(result.transactions).toHaveLength(1);
+      expect(result.transactions[0].transactionStatus).toBe("pending");
+    });
+
+    it("persists the result to the database via updateAfterPayGovResponse", async () => {
+      await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      });
+
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+        "agency-tracking-id-001",
+        mockPayGovTrackingId,
+        "pending",
+        "pending",
+      );
     });
   });
 
@@ -313,13 +388,14 @@ describe("processPayment", () => {
         .fn()
         .mockReturnValue(mockFaultWithoutDetail);
 
-      const { transactionStatus, message } = await processPayment(appContext, {
+      const result = await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toBe("failed");
-      expect(message).toBe("Transaction Error");
+      expect(result.paymentStatus).toBe("failed");
+      expect(result.transactions[0].transactionStatus).toBe("failed");
+      expect(result.transactions[0].returnDetail).toBe("Transaction Error");
     });
 
     it("handles fault with detail but no TCSServiceFault", async () => {
@@ -327,13 +403,29 @@ describe("processPayment", () => {
         .fn()
         .mockReturnValue(mockFaultWithoutTCSServiceFault);
 
-      const { transactionStatus, message } = await processPayment(appContext, {
+      const result = await processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       });
 
-      expect(transactionStatus).toBe("failed");
-      expect(message).toBe("Transaction Error");
+      expect(result.paymentStatus).toBe("failed");
+      expect(result.transactions[0].transactionStatus).toBe("failed");
+      expect(result.transactions[0].returnDetail).toBe("Transaction Error");
+    });
+
+    it("persists failure to database on fault", async () => {
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockReturnValue(mockFaultWithoutDetail);
+
+      await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      });
+
+      expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
+        "agency-tracking-id-001",
+      );
     });
   });
 });

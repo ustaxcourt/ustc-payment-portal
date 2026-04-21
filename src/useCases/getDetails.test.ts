@@ -1,6 +1,26 @@
 import { getDetails } from "./getDetails";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { ClientPermission } from "../types/ClientPermission";
+import { NotFoundError } from "../errors/notFound";
+import TransactionModel from "../db/TransactionModel";
+import FeesModel from "../db/FeesModel";
+
+jest.mock("../db/TransactionModel", () => ({
+  __esModule: true,
+  default: {
+    findByPaygovTrackingId: jest.fn(),
+  },
+}));
+
+jest.mock("../db/FeesModel", () => ({
+  __esModule: true,
+  default: {
+    getFeeById: jest.fn(),
+  },
+}));
+
+const TransactionModelMock = TransactionModel as jest.Mocked<typeof TransactionModel>;
+const FeesModelMock = FeesModel as jest.Mocked<typeof FeesModel>;
 
 const mockClient: ClientPermission = {
   clientName: "Test Client",
@@ -51,15 +71,35 @@ const mockPendingResponse = `<?xml version="1.0" encoding="UTF-8"?>
 `;
 
 describe("getDetails", () => {
-  it("throws an error if we pass in an invalid request", async () => {
+  beforeEach(() => {
+    TransactionModelMock.findByPaygovTrackingId.mockResolvedValue(
+      { feeId: "fee-123", paygovTrackingId: mockPayGovTrackingId } as unknown as TransactionModel,
+    );
+    FeesModelMock.getFeeById.mockResolvedValue(
+      { feeId: "fee-123", tcsAppId: "TCSUSTAXCOURTPETITION" } as unknown as FeesModel,
+    );
+  });
+
+  it("throws NotFoundError when transaction is not found", async () => {
+    TransactionModelMock.findByPaygovTrackingId.mockResolvedValueOnce(undefined);
+
     await expect(
       getDetails(appContext, {
         client: mockClient,
-        request: {
-          foo: "bar",
-        } as any,
+        request: { payGovTrackingId: "unknown-id" },
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throws NotFoundError when fee is not found for the transaction", async () => {
+    FeesModelMock.getFeeById.mockResolvedValueOnce(undefined);
+
+    await expect(
+      getDetails(appContext, {
+        client: mockClient,
+        request: { payGovTrackingId: mockPayGovTrackingId },
+      }),
+    ).rejects.toThrow(NotFoundError);
   });
 
   describe("Successfully retrieved transaction details", () => {

@@ -454,6 +454,12 @@ components:
     TransactionRecordSummary:
       type: object
       properties:
+        payGovTrackingId:
+          type: string
+          description: >-
+            Pay.gov tracking ID for the transaction, present once the
+            transaction has been processed
+          example: TRK-123456789
         transactionStatus:
           type: string
           enum:
@@ -915,8 +921,11 @@ paths:
       responses:
         '200':
           description: >-
-            Transaction processed. Check transactionStatus for processed or
-            failed.
+            Payment processed. The paymentStatus field indicates the overall
+            outcome (success, failed, pending). The transactions array currently
+            contains only the attempt being processed; it will expand to include
+            all attempts for the same transactionReferenceId in a future
+            release.
           content:
             application/json:
               schema:
