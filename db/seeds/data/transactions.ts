@@ -36,7 +36,7 @@ export const generateTransactions = async ({
 }: GenerateTransactionsParams): Promise<TransactionRow[]> => {
   const feesList = await FeesModel.query().select('feeId', 'amount');
   const clientNames = ['payment-portal', 'efile-portal', 'clerk-app'];
-  const paymentMethods = ["plastic_card", "ach", "paypal"] as const;
+  const paymentMethods = ["plastic_card", "ach", "paypal"];
 
   const agencyIds = ['USTC', 'IRS'];
   const agencyCounters: Record<string, number> = Object.fromEntries(agencyIds.map((agencyId) => [agencyId, 0]));
@@ -52,12 +52,12 @@ export const generateTransactions = async ({
     }
   };
 
-  const returnCodes = [3001, 3002, 5000] as const;
+  const returnCodes = [3001, 3002, 5000];
   const returnDetails = [
     "The card has been declined, the transaction will not be processed.",
     "Invalid card number.",
     "An internal error occurred. Please try again.",
-  ] as const;
+  ];
 
   const makeRow = (payment_status: 'success' | 'failed' | 'pending') => {
     const agencyId = faker.helpers.arrayElement(agencyIds);
