@@ -457,7 +457,7 @@ describe("processPayment", () => {
 
       expect(result.paymentStatus).toBe("failed");
       expect(result.transactions[0].transactionStatus).toBe("failed");
-      expect(result.transactions[0].returnDetail).toBe("Transaction Error");
+      expect(result.transactions[0].returnDetail).toBe("Pay.gov returned a fault without error details");
     });
 
     it("handles fault with detail but no TCSServiceFault", async () => {
@@ -472,7 +472,7 @@ describe("processPayment", () => {
 
       expect(result.paymentStatus).toBe("failed");
       expect(result.transactions[0].transactionStatus).toBe("failed");
-      expect(result.transactions[0].returnDetail).toBe("Transaction Error");
+      expect(result.transactions[0].returnDetail).toBe("Pay.gov returned a fault without error details");
     });
 
     it("persists failure to database on fault", async () => {
@@ -488,7 +488,7 @@ describe("processPayment", () => {
       expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
         "agency-tracking-id-001",
         undefined,
-        "Transaction Error",
+        "Pay.gov returned a fault without error details",
       );
     });
   });

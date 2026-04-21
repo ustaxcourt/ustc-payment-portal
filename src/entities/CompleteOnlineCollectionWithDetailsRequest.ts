@@ -56,11 +56,11 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
 
   handleFault = (fault: ProcessorFault) => {
     if (!fault) {
-      return new FailedTransactionError();
+      return new FailedTransactionError("Unexpected response from Pay.gov: no fault detail returned");
     }
 
     if (!fault.detail || !fault.detail["ns2:TCSServiceFault"]) {
-      return new FailedTransactionError();
+      return new FailedTransactionError("Pay.gov returned a fault without error details");
     }
 
     return new FailedTransactionError(
