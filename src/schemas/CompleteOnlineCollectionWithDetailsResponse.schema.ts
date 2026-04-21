@@ -12,25 +12,14 @@ export const PayGovTransactionStatusSchema = z.enum([
   "Submitted",
 ]);
 
-// Pay.gov returns timestamps without a trailing timezone (e.g. "2016-01-11T16:01:46"),
-// which z.iso.datetime() rejects. Match Pay.gov's documented format explicitly so we
-// fail fast at the SOAP boundary rather than persisting a malformed value to the DB.
-const PayGovLocalDateTime = z.string().regex(
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/,
-  "transaction_date must match Pay.gov's YYYY-MM-DDTHH:mm:ss format",
-);
-
-const PayGovDate = z.string().regex(
-  /^\d{4}-\d{2}-\d{2}$/,
-  "payment_date must match Pay.gov's YYYY-MM-DD format",
-);
-
+// Pay.gov's observed wire format varies (e.g. "2026-04-21T15:04:55.362Z" in dev,
+// "2016-01-11T16:01:46" in the official example). { local, offset } covers both.
 export const CompleteOnlineCollectionWithDetailsResponseSchema = z.object({
   paygov_tracking_id: z.string(),
   agency_tracking_id: z.string(),
   transaction_amount: z.number(),
-  transaction_date: PayGovLocalDateTime,
-  payment_date: PayGovDate,
+  transaction_date: z.iso.datetime({ local: true, offset: true }),
+  payment_date: z.iso.date(),
   transaction_status: PayGovTransactionStatusSchema,
   payment_type: z.string(),
 });

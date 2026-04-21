@@ -17,18 +17,26 @@ describe("CompleteOnlineCollectionWithDetailsResponseSchema", () => {
   });
 
   describe("transaction_date", () => {
+    it("accepts Pay.gov's observed dev format with milliseconds and Z suffix", () => {
+      const result = CompleteOnlineCollectionWithDetailsResponseSchema.safeParse({
+        ...validResponse,
+        transaction_date: "2026-04-21T15:04:55.362Z",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("accepts a datetime with numeric timezone offset", () => {
+      const result = CompleteOnlineCollectionWithDetailsResponseSchema.safeParse({
+        ...validResponse,
+        transaction_date: "2026-04-21T15:04:55-05:00",
+      });
+      expect(result.success).toBe(true);
+    });
+
     it("rejects a date-only string", () => {
       const result = CompleteOnlineCollectionWithDetailsResponseSchema.safeParse({
         ...validResponse,
         transaction_date: "2016-01-11",
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects a datetime with timezone suffix", () => {
-      const result = CompleteOnlineCollectionWithDetailsResponseSchema.safeParse({
-        ...validResponse,
-        transaction_date: "2016-01-11T16:01:46Z",
       });
       expect(result.success).toBe(false);
     });
