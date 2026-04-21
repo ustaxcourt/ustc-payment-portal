@@ -1,18 +1,11 @@
 import { AppContext } from "../types/AppContext";
 import { FailedTransactionError } from "../errors/failedTransaction";
-import { PayGovTransactionStatus } from "../types/TransactionStatus";
 import { RawCompleteOnlineCollectionRequest } from "../types/RawCompleteOnlineCollectionRequest";
 import { RequestType, SoapRequest } from "./SoapRequest";
-
-type CompleteOnlineCollectionWithDetailsResponse = {
-  paygov_tracking_id: string;
-  transaction_status: PayGovTransactionStatus;
-  agency_tracking_id: string;
-  transaction_amount: string;
-  payment_type: string;
-  transaction_date: string;
-  payment_date: string;
-};
+import {
+  CompleteOnlineCollectionWithDetailsResponse,
+  CompleteOnlineCollectionWithDetailsResponseSchema,
+} from "../schemas/CompleteOnlineCollectionWithDetailsResponse.schema";
 
 export type CompleteOnlineCollectionWithDetailsRequestParams = {
   tcs_app_id: string;
@@ -48,8 +41,10 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
     );
 
     if (responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]) {
-      return responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]
-        .completeOnlineCollectionWithDetailsResponse as CompleteOnlineCollectionWithDetailsResponse;
+      return CompleteOnlineCollectionWithDetailsResponseSchema.parse(
+        responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]
+          .completeOnlineCollectionWithDetailsResponse
+      );
     } else {
       throw this.handleFault(responseBody["S:Fault"]);
     }
