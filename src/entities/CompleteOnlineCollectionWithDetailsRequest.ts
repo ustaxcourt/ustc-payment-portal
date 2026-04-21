@@ -43,8 +43,12 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
     if (responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]) {
       const raw = responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]
         .completeOnlineCollectionWithDetailsResponse;
-      console.log("completeOnlineCollectionWithDetails raw response", JSON.stringify(raw));
-      return CompleteOnlineCollectionWithDetailsResponseSchema.parse(raw);
+      const parsed = CompleteOnlineCollectionWithDetailsResponseSchema.safeParse(raw);
+      if (!parsed.success) {
+        console.error("completeOnlineCollectionWithDetails schema validation failed", JSON.stringify({ raw, errors: parsed.error.issues }));
+        throw parsed.error;
+      }
+      return parsed.data;
     } else {
       throw this.handleFault(responseBody["S:Fault"]);
     }
