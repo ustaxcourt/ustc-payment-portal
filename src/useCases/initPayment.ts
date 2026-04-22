@@ -4,6 +4,7 @@ import {
   InitPaymentResponse,
 } from "../schemas/InitPayment.schema";
 import { InvalidRequestError } from "../errors/invalidRequest";
+import { ConflictError } from "../errors/conflict";
 import FeesModel from "../db/FeesModel";
 import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
@@ -56,6 +57,18 @@ export const initPayment: InitPayment = async (
   }
 
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
+  const existingInitiatedTransaction =
+    await TransactionModel.findInitiatedByReferenceId(
+      clientName,
+      transactionReferenceId,
+    );
+
+  if (existingInitiatedTransaction) {
+    throw new ConflictError(
+      "A payment session is already initiated for this transactionReferenceId",
+    );
+  }
+
   const agencyTrackingId = generateAgencyTrackingId();
 
   const req = new StartOnlineCollectionRequest({
