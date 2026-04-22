@@ -3,6 +3,7 @@ import { testAppContext as appContext } from "../test/testAppContext";
 import { ClientPermission } from "../types/ClientPermission";
 import { NotFoundError } from "../errors/notFound";
 import { ForbiddenError } from "../errors/forbidden";
+import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 
@@ -67,6 +68,7 @@ const mockPendingSoapResponse = `<?xml version="1.0" encoding="UTF-8"?>
 
 describe("getDetails", () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     TransactionModelMock.findByReferenceId.mockResolvedValue([buildRow()]);
     FeesModelMock.getFeeById.mockResolvedValue(
       { feeId: "PETITION_FILING_FEE", tcsAppId: "TCSUSTAXCOURTPETITION" } as unknown as FeesModel,
@@ -108,6 +110,47 @@ describe("getDetails", () => {
         request: { transactionReferenceId: mockTransactionReferenceId },
       }),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throws ServerError when fee has no tcsAppId", async () => {
+    FeesModelMock.getFeeById.mockResolvedValueOnce(
+      { feeId: "PETITION_FILING_FEE", tcsAppId: "" } as unknown as FeesModel,
+    );
+    TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+      buildRow({
+        transactionStatus: "pending",
+        paymentStatus: "pending",
+        paygovTrackingId: mockPayGovTrackingId,
+      }),
+    ]);
+
+    await expect(
+      getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      }),
+    ).rejects.toThrow(ServerError);
+  });
+
+  it("passes the fee's tcsAppId to the SOAP request when refreshing a pending attempt", async () => {
+    appContext.postHttpRequest = jest.fn().mockResolvedValue(mockPendingSoapResponse);
+    TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+      buildRow({
+        transactionStatus: "pending",
+        paymentStatus: "pending",
+        paygovTrackingId: mockPayGovTrackingId,
+      }),
+    ]);
+
+    await getDetails(appContext, {
+      client: mockClient,
+      request: { transactionReferenceId: mockTransactionReferenceId },
+    });
+
+    expect(appContext.postHttpRequest).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining("<tcs_app_id>TCSUSTAXCOURTPETITION</tcs_app_id>"),
+    );
   });
 
   describe("terminal status (no Pay.gov refresh)", () => {

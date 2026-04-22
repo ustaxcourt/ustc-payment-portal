@@ -264,6 +264,44 @@
           ]
         }
       },
+      "ConflictError": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error summary"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": {},
+              "description": "A structured error detail object (for example a Zod validation issue)",
+              "example": {
+                "code": "invalid_type",
+                "expected": "string",
+                "received": "undefined",
+                "path": [
+                  "urlSuccess"
+                ],
+                "message": "Required"
+              }
+            },
+            "description": "Additional error details",
+            "example": []
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ],
+        "description": "JSON error response for request conflicts (HTTP 409).\n\nReturned when a payment session has already been initiated for the same transaction reference ID.",
+        "example": {
+          "message": "A payment session is already initiated for this transactionReferenceId",
+          "errors": []
+        }
+      },
       "ForbiddenError": {
         "type": "object",
         "properties": {
@@ -989,6 +1027,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - a payment session is already initiated for this transaction reference ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictError"
                 }
               }
             }

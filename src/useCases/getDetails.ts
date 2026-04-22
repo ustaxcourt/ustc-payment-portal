@@ -11,6 +11,7 @@ import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
 import { ForbiddenError } from "../errors/forbidden";
+import { ServerError } from "../errors/serverError";
 
 export type GetDetailsRequest = {
   transactionReferenceId: string;
@@ -47,8 +48,13 @@ export const getDetails: GetDetails = async (appContext, { client, request }) =>
 
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId
   const fee = await FeesModel.getFeeById(clientRows[0].feeId);
-  if (!fee || !fee.tcsAppId) {
-    throw new NotFoundError(`Fee not found for feeId: ${clientRows[0].feeId}`);
+  if (!fee) {
+    console.error(`Fee not found for feeId: ${clientRows[0].feeId}`);
+    throw new NotFoundError("Fee configuration not found for this transaction");
+  }
+  if (!fee.tcsAppId) {
+    console.error(`Fee ${clientRows[0].feeId} is missing tcsAppId configuration`);
+    throw new ServerError();
   }
 
   const refreshedRows = await Promise.all(

@@ -15,6 +15,9 @@ const mockSuccessResponse = `<?xml version="1.0" encoding="UTF-8"?>
         <transaction_status>Success</transaction_status>
         <agency_tracking_id>agency-tracking-token</agency_tracking_id>
         <transaction_amount>150.00</transaction_amount>
+        <transaction_date>2023-09-18T10:54:05</transaction_date>
+        <payment_date>2023-09-19</payment_date>
+        <payment_type>PLASTIC_CARD</payment_type>
       </completeOnlineCollectionWithDetailsResponse>
     </ns2:completeOnlineCollectionWithDetailsResponse>
   </S:Body>
