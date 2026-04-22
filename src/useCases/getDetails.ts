@@ -1,19 +1,19 @@
 import { ClientPermission } from "../types/ClientPermission";
 import { GetRequestRequest } from "../entities/GetDetailsRequest";
 import { AppContext } from "../types/AppContext";
-import { TransactionStatus } from "../types/TransactionStatus";
+import { GetDetailsResponse } from "../schemas/GetDetails.schema";
+import { TransactionRecordSummary } from "../schemas/TransactionRecord.schema";
+import { TransactionStatus } from "../schemas/TransactionStatus.schema";
 import { parseTransactionStatus } from "./parseTransactionStatus";
+import { derivePaymentStatus } from "../utils/derivePaymentStatus";
+import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
+import { ForbiddenError } from "../errors/forbidden";
 
 export type GetDetailsRequest = {
-  payGovTrackingId: string;
-};
-
-export type TransactionDetails = {
-  trackingId: string;
-  transactionStatus: TransactionStatus;
+  transactionReferenceId: string;
 };
 
 export type GetDetails = (
@@ -22,34 +22,60 @@ export type GetDetails = (
     client: ClientPermission;
     request: GetDetailsRequest;
   },
-) => Promise<TransactionDetails>;
+) => Promise<GetDetailsResponse>;
 
-export const getDetails: GetDetails = async (appContext, { request }) => {
-  const { payGovTrackingId } = request;
+const TERMINAL_STATUSES: ReadonlyArray<TransactionStatus> = ["processed", "failed"];
 
-  const transaction = await TransactionModel.findByPaygovTrackingId(payGovTrackingId);
-  if (!transaction) {
-    throw new NotFoundError(`Transaction not found for payGovTrackingId: ${payGovTrackingId}`);
+const isTerminal = (status: TransactionStatus | null | undefined): boolean =>
+  status !== null && status !== undefined && TERMINAL_STATUSES.includes(status);
+
+export const getDetails: GetDetails = async (appContext, { client, request }) => {
+  const { transactionReferenceId } = request;
+
+  const allRows = await TransactionModel.findByReferenceId(transactionReferenceId);
+  if (allRows.length === 0) {
+    throw new NotFoundError("Transaction Reference Id was not found");
   }
 
-  const fee = await FeesModel.getFeeById(transaction.feeId);
+  const clientRows = allRows.filter((row) => row.clientName === client.clientName);
+  if (clientRows.length === 0) {
+    console.warn(
+      `Client '${client.clientName}' attempted to get details for transactionReferenceId '${transactionReferenceId}' owned by another client`,
+    );
+    throw new ForbiddenError("You are not authorized to get details for this transaction.");
+  }
+
+  // Fee-invariance: all rows for a transactionReferenceId share the same feeId
+  const fee = await FeesModel.getFeeById(clientRows[0].feeId);
   if (!fee || !fee.tcsAppId) {
-    throw new NotFoundError(`Fee not found for feeId: ${transaction.feeId}`);
+    throw new NotFoundError(`Fee not found for feeId: ${clientRows[0].feeId}`);
   }
 
-  const req = new GetRequestRequest({
-    tcsAppId: fee.tcsAppId,
-    payGovTrackingId,
-  });
+  const refreshedRows = await Promise.all(
+    clientRows.map(async (row) => {
+      if (!row.paygovTrackingId || isTerminal(row.transactionStatus)) {
+        return row;
+      }
 
-  console.log(`getDetails request:`, req);
+      const req = new GetRequestRequest({
+        tcsAppId: fee.tcsAppId!,
+        payGovTrackingId: row.paygovTrackingId,
+      });
+      const result = await req.makeSoapRequest(appContext);
+      row.transactionStatus = parseTransactionStatus(result.transaction_status);
+      return row;
+    }),
+  );
 
-  const result = await req.makeSoapRequest(appContext);
+  const transactions: TransactionRecordSummary[] = refreshedRows.map((row) => ({
+    payGovTrackingId: row.paygovTrackingId ?? undefined,
+    transactionStatus: row.transactionStatus ?? "received",
+    paymentMethod: toApiPaymentMethod(row.paymentMethod),
+    createdTimestamp: row.createdAt,
+    updatedTimestamp: row.lastUpdatedAt,
+  }));
 
-  console.log(`getDetails result:`, result);
+  const paymentStatus = derivePaymentStatus(transactions.map((t) => t.transactionStatus));
 
-  return {
-    trackingId: result.paygov_tracking_id,
-    transactionStatus: parseTransactionStatus(result.transaction_status),
-  };
+  return { paymentStatus, transactions };
 };

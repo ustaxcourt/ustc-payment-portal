@@ -26,8 +26,16 @@ const useCasesMock = {
     ],
   }),
   getDetails: jest.fn().mockResolvedValue({
-    trackingId: "track-123",
-    transactionStatus: "processed",
+    paymentStatus: "success",
+    transactions: [
+      {
+        payGovTrackingId: "track-123",
+        transactionStatus: "processed",
+        paymentMethod: "Credit/Debit Card",
+        createdTimestamp: "2026-01-15T10:30:00Z",
+        updatedTimestamp: "2026-01-15T10:35:00Z",
+      },
+    ],
   }),
 };
 
@@ -450,11 +458,11 @@ describe("lambdaHandler", () => {
   });
 
   describe("getDetailsHandler", () => {
-    it("returns 200 without feeId in path params — IAM registration check is sufficient", async () => {
+    const validUuid = "550e8400-e29b-41d4-a716-446655440000";
+
+    it("returns 200 with the new response shape on a valid UUID", async () => {
       const event = {
-        pathParameters: {
-          payGovTrackingId: "tracking-123",
-        },
+        pathParameters: { transactionReferenceId: validUuid },
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
@@ -463,11 +471,27 @@ describe("lambdaHandler", () => {
 
       expect(result.statusCode).toBe(200);
       const body = JSON.parse(result.body);
-      expect(body).toHaveProperty("trackingId");
-      expect(body).toHaveProperty("transactionStatus");
+      expect(body).toHaveProperty("paymentStatus");
+      expect(body).toHaveProperty("transactions");
+      expect(body.transactions).toHaveLength(1);
+      expect(body.transactions[0].transactionStatus).toBe("processed");
     });
 
-    it("returns 400 with JSON body when pathParameters are missing", async () => {
+    it("returns 400 when transactionReferenceId is not a valid UUID", async () => {
+      const event = {
+        pathParameters: { transactionReferenceId: "not-a-uuid" },
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await getDetailsHandler(event);
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body).message).toBe(
+        "Transaction Reference Id was invalid",
+      );
+    });
+
+    it("returns 400 when pathParameters are missing", async () => {
       const event = {
         pathParameters: null,
         headers: mockHeaders,
@@ -476,10 +500,12 @@ describe("lambdaHandler", () => {
 
       const result = await getDetailsHandler(event);
       expect(result.statusCode).toBe(400);
-      expect(JSON.parse(result.body)).toHaveProperty("message");
+      expect(JSON.parse(result.body).message).toBe(
+        "Transaction Reference Id was invalid",
+      );
     });
 
-    it("returns 400 with JSON body when pathParameters are undefined", async () => {
+    it("returns 400 when pathParameters are undefined", async () => {
       const event: APIGatewayEvent = {
         pathParameters: undefined,
         headers: mockHeaders,
@@ -488,12 +514,52 @@ describe("lambdaHandler", () => {
 
       const result = await getDetailsHandler(event);
       expect(result.statusCode).toBe(400);
-      expect(JSON.parse(result.body)).toHaveProperty("message");
+      expect(JSON.parse(result.body).message).toBe(
+        "Transaction Reference Id was invalid",
+      );
+    });
+
+    it("returns 404 when use case throws NotFoundError", async () => {
+      useCasesMock.getDetails.mockRejectedValueOnce(
+        new NotFoundError("Transaction Reference Id was not found"),
+      );
+
+      const event = {
+        pathParameters: { transactionReferenceId: validUuid },
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await getDetailsHandler(event);
+      expect(result.statusCode).toBe(404);
+      expect(JSON.parse(result.body).message).toBe(
+        "Transaction Reference Id was not found",
+      );
+    });
+
+    it("returns 403 when use case throws ForbiddenError (cross-client)", async () => {
+      useCasesMock.getDetails.mockRejectedValueOnce(
+        new ForbiddenError(
+          "You are not authorized to get details for this transaction.",
+        ),
+      );
+
+      const event = {
+        pathParameters: { transactionReferenceId: validUuid },
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await getDetailsHandler(event);
+      expect(result.statusCode).toBe(403);
+      expect(JSON.parse(result.body).message).toBe(
+        "You are not authorized to get details for this transaction.",
+      );
     });
 
     it("returns 403 when IAM principal is missing", async () => {
       const event = {
-        pathParameters: { payGovTrackingId: "123" },
+        pathParameters: { transactionReferenceId: validUuid },
         headers: mockHeaders,
         requestContext: {
           ...mockRequestContext,

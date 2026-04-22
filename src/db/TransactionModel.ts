@@ -144,6 +144,13 @@ export default class TransactionModel extends Model {
     return TransactionModel.query().findOne({ paygovTrackingId });
   }
 
+  static async findByReferenceId(transactionReferenceId: string): Promise<TransactionModel[]> {
+    await getKnex();
+    return TransactionModel.query()
+      .where({ transactionReferenceId })
+      .orderBy('createdAt', 'asc');
+  }
+
   static async updateAfterPayGovResponse(
     agencyTrackingId: string,
     paygovTrackingId: string,

@@ -12,6 +12,7 @@ import {
   ServerErrorSchema,
   ValidationErrorResponseSchema,
   GatewayErrorSchema,
+  GetDetailsPathParamsSchema,
   GetDetailsResponseSchema,
   TransactionRecordSchema,
   TransactionRecordSummarySchema,
@@ -30,7 +31,6 @@ import {
   MetadataNonattorneyExamSchema,
   MetadataSchema,
 } from "../schemas";
-import { z } from "zod";
 
 export const registry = new OpenAPIRegistry();
 
@@ -50,6 +50,7 @@ registry.register("ServerError", ServerErrorSchema);
 registry.register("NotFoundError", NotFoundErrorSchema);
 registry.register("ValidationErrorResponse", ValidationErrorResponseSchema);
 registry.register("GatewayError", GatewayErrorSchema);
+registry.register("GetDetailsPathParams", GetDetailsPathParamsSchema);
 registry.register("GetDetailsResponse", GetDetailsResponseSchema);
 registry.register("TransactionRecord", TransactionRecordSchema);
 registry.register("TransactionRecordSummary", TransactionRecordSummarySchema);
@@ -156,12 +157,7 @@ registry.registerPath({
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   request: {
-    params: z.object({
-      transactionReferenceId: z.string().openapi({
-        description: "The transaction reference ID",
-        example: "TXN-REF-123456789",
-      }),
-    }),
+    params: GetDetailsPathParamsSchema,
   },
   responses: {
     200: {
@@ -173,7 +169,8 @@ registry.registerPath({
       },
     },
     400: {
-      description: "Invalid request (e.g., missing path parameters)",
+      description:
+        "Invalid request - transactionReferenceId is missing or not a valid UUID.",
       content: {
         "application/json": {
           schema: BadRequestErrorSchema,
@@ -181,10 +178,21 @@ registry.registerPath({
       },
     },
     403: {
-      description: "Forbidden - invalid SigV4 signature or client not authorized",
+      description:
+        "Forbidden - invalid SigV4 signature, client not registered, " +
+        "or the transactionReferenceId belongs to a different client.",
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,
+        },
+      },
+    },
+    404: {
+      description:
+        "No transaction was found for the supplied transactionReferenceId.",
+      content: {
+        "application/json": {
+          schema: NotFoundErrorSchema,
         },
       },
     },

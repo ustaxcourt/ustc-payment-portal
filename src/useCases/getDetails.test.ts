@@ -2,13 +2,14 @@ import { getDetails } from "./getDetails";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { ClientPermission } from "../types/ClientPermission";
 import { NotFoundError } from "../errors/notFound";
+import { ForbiddenError } from "../errors/forbidden";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
   default: {
-    findByPaygovTrackingId: jest.fn(),
+    findByReferenceId: jest.fn(),
   },
 }));
 
@@ -28,33 +29,27 @@ const mockClient: ClientPermission = {
   allowedFeeIds: ["*"],
 };
 
+const mockTransactionReferenceId = "550e8400-e29b-41d4-a716-446655440000";
 const mockPayGovTrackingId = "test-tracking-id-12345";
 
-const mockSuccessResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
-  <S:Header>
-    <WorkContext xmlns="http://oracle.com/weblogic/soap/workarea/">blah=</WorkContext>
-  </S:Header>
-  <S:Body>
-    <ns2:getDetailsResponse xmlns:ns2="http://fms.treas.gov/services/tcsonline_3_1">
-      <getDetailsResponse>
-        <transactions>
-          <transaction>
-            <paygov_tracking_id>${mockPayGovTrackingId}</paygov_tracking_id>
-            <transaction_status>Success</transaction_status>
-          </transaction>
-        </transactions>
-      </getDetailsResponse>
-    </ns2:getDetailsResponse>
-  </S:Body>
-</S:Envelope>
-`;
+const buildRow = (overrides: Partial<TransactionModel> = {}): TransactionModel =>
+  ({
+    agencyTrackingId: "agency-tracking-1",
+    clientName: mockClient.clientName,
+    feeId: "PETITION_FILING_FEE",
+    transactionReferenceId: mockTransactionReferenceId,
+    transactionStatus: "processed",
+    paymentStatus: "success",
+    paygovTrackingId: mockPayGovTrackingId,
+    paymentMethod: "plastic_card",
+    transactionAmount: 60,
+    createdAt: "2026-01-15T10:30:00.000Z",
+    lastUpdatedAt: "2026-01-15T10:35:00.000Z",
+    ...overrides,
+  }) as unknown as TransactionModel;
 
-const mockPendingResponse = `<?xml version="1.0" encoding="UTF-8"?>
+const mockPendingSoapResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
-  <S:Header>
-    <WorkContext xmlns="http://oracle.com/weblogic/soap/workarea/">blah=</WorkContext>
-  </S:Header>
   <S:Body>
     <ns2:getDetailsResponse xmlns:ns2="http://fms.treas.gov/services/tcsonline_3_1">
       <getDetailsResponse>
@@ -72,23 +67,36 @@ const mockPendingResponse = `<?xml version="1.0" encoding="UTF-8"?>
 
 describe("getDetails", () => {
   beforeEach(() => {
-    TransactionModelMock.findByPaygovTrackingId.mockResolvedValue(
-      { feeId: "fee-123", paygovTrackingId: mockPayGovTrackingId } as unknown as TransactionModel,
-    );
+    TransactionModelMock.findByReferenceId.mockResolvedValue([buildRow()]);
     FeesModelMock.getFeeById.mockResolvedValue(
-      { feeId: "fee-123", tcsAppId: "TCSUSTAXCOURTPETITION" } as unknown as FeesModel,
+      { feeId: "PETITION_FILING_FEE", tcsAppId: "TCSUSTAXCOURTPETITION" } as unknown as FeesModel,
     );
   });
 
-  it("throws NotFoundError when transaction is not found", async () => {
-    TransactionModelMock.findByPaygovTrackingId.mockResolvedValueOnce(undefined);
+  it("throws NotFoundError when no transactions exist for the reference id", async () => {
+    TransactionModelMock.findByReferenceId.mockResolvedValueOnce([]);
 
     await expect(
       getDetails(appContext, {
         client: mockClient,
-        request: { payGovTrackingId: "unknown-id" },
+        request: { transactionReferenceId: mockTransactionReferenceId },
       }),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(new NotFoundError("Transaction Reference Id was not found"));
+  });
+
+  it("throws ForbiddenError when transactions exist but belong to a different client", async () => {
+    TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+      buildRow({ clientName: "Some Other Client" }),
+    ]);
+
+    await expect(
+      getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      }),
+    ).rejects.toThrow(
+      new ForbiddenError("You are not authorized to get details for this transaction."),
+    );
   });
 
   it("throws NotFoundError when fee is not found for the transaction", async () => {
@@ -97,60 +105,95 @@ describe("getDetails", () => {
     await expect(
       getDetails(appContext, {
         client: mockClient,
-        request: { payGovTrackingId: mockPayGovTrackingId },
+        request: { transactionReferenceId: mockTransactionReferenceId },
       }),
     ).rejects.toThrow(NotFoundError);
   });
 
-  describe("Successfully retrieved transaction details", () => {
-    beforeAll(() => {
-      appContext.postHttpRequest = jest
-        .fn()
-        .mockReturnValue(mockSuccessResponse);
-    });
+  describe("terminal status (no Pay.gov refresh)", () => {
+    it("returns paymentStatus 'success' when the only attempt is processed", async () => {
+      const postHttpRequestSpy = jest.fn();
+      appContext.postHttpRequest = postHttpRequestSpy;
 
-    it("returns the trackingId from the XML", async () => {
-      const { trackingId } = await getDetails(appContext, {
+      const result = await getDetails(appContext, {
         client: mockClient,
-        request: { payGovTrackingId: mockPayGovTrackingId },
+        request: { transactionReferenceId: mockTransactionReferenceId },
       });
 
-      expect(trackingId).toEqual(mockPayGovTrackingId);
+      expect(result.paymentStatus).toBe("success");
+      expect(result.transactions).toHaveLength(1);
+      expect(result.transactions[0].transactionStatus).toBe("processed");
+      expect(postHttpRequestSpy).not.toHaveBeenCalled();
     });
 
-    it("returns the transactionStatus from the XML", async () => {
-      const { transactionStatus } = await getDetails(appContext, {
+    it("returns paymentStatus 'failed' when all attempts are failed", async () => {
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({ transactionStatus: "failed", paymentStatus: "failed" }),
+      ]);
+
+      const result = await getDetails(appContext, {
         client: mockClient,
-        request: { payGovTrackingId: mockPayGovTrackingId },
+        request: { transactionReferenceId: mockTransactionReferenceId },
       });
 
-      expect(transactionStatus).toEqual("processed");
+      expect(result.paymentStatus).toBe("failed");
     });
   });
 
-  describe("Pending transaction details", () => {
-    beforeAll(() => {
-      appContext.postHttpRequest = jest
-        .fn()
-        .mockReturnValue(mockPendingResponse);
-    });
+  describe("non-terminal status without paygovTrackingId (no Pay.gov refresh)", () => {
+    it("returns the local DB status without calling Pay.gov", async () => {
+      const postHttpRequestSpy = jest.fn();
+      appContext.postHttpRequest = postHttpRequestSpy;
 
-    it("returns the trackingId", async () => {
-      const { trackingId } = await getDetails(appContext, {
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({
+          transactionStatus: "received",
+          paymentStatus: "pending",
+          paygovTrackingId: null,
+        }),
+      ]);
+
+      const result = await getDetails(appContext, {
         client: mockClient,
-        request: { payGovTrackingId: mockPayGovTrackingId },
+        request: { transactionReferenceId: mockTransactionReferenceId },
       });
 
-      expect(trackingId).toBe(mockPayGovTrackingId);
+      expect(result.paymentStatus).toBe("pending");
+      expect(result.transactions[0].transactionStatus).toBe("received");
+      expect(result.transactions[0].payGovTrackingId).toBeUndefined();
+      expect(postHttpRequestSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("non-terminal status with paygovTrackingId (refreshes from Pay.gov)", () => {
+    beforeEach(() => {
+      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockPendingSoapResponse);
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({
+          transactionStatus: "pending",
+          paymentStatus: "pending",
+          paygovTrackingId: mockPayGovTrackingId,
+        }),
+      ]);
     });
 
-    it("returns Pending transaction status", async () => {
-      const { transactionStatus } = await getDetails(appContext, {
+    it("calls Pay.gov for the latest status", async () => {
+      await getDetails(appContext, {
         client: mockClient,
-        request: { payGovTrackingId: mockPayGovTrackingId },
+        request: { transactionReferenceId: mockTransactionReferenceId },
       });
 
-      expect(transactionStatus).toBe("pending");
+      expect(appContext.postHttpRequest).toHaveBeenCalled();
+    });
+
+    it("returns the refreshed transaction status from Pay.gov", async () => {
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      // parseTransactionStatus maps Pay.gov "Received" → internal "pending"
+      expect(result.transactions[0].transactionStatus).toBe("pending");
     });
   });
 });
