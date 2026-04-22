@@ -81,7 +81,7 @@ All three classes already exist with the right `statusCode` field and are routed
 5. Update OpenAPI registry, regenerate spec
 6. Update seed data
 7. Add integration test
-8. Add changeset
+8. Add changeset (use `npx changeset add`)
 
 ---
 
