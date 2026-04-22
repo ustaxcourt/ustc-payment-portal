@@ -173,7 +173,7 @@ describe("initPayment", () => {
 
     expect(TransactionModel.createReceived).not.toHaveBeenCalled();
   });
-  
+
   it("updates transaction to failed if SOAP request fails", async () => {
     jest
       .spyOn(
