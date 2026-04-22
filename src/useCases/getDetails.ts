@@ -67,8 +67,15 @@ export const getDetails: GetDetails = async (appContext, { client, request }) =>
         tcsAppId: fee.tcsAppId!,
         payGovTrackingId: row.paygovTrackingId,
       });
-      const result = await req.makeSoapRequest(appContext);
-      row.transactionStatus = parseTransactionStatus(result.transaction_status);
+      try {
+        const result = await req.makeSoapRequest(appContext);
+        row.transactionStatus = parseTransactionStatus(result.transaction_status);
+      } catch (err) {
+        console.error(
+          `Failed to refresh status for paygovTrackingId '${row.paygovTrackingId}':`,
+          err,
+        );
+      }
       return row;
     }),
   );
