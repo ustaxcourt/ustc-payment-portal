@@ -2,6 +2,7 @@ import { getDetails } from "./getDetails";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { ClientPermission } from "../types/ClientPermission";
 import { NotFoundError } from "../errors/notFound";
+import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 
@@ -72,6 +73,7 @@ const mockPendingResponse = `<?xml version="1.0" encoding="UTF-8"?>
 
 describe("getDetails", () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     TransactionModelMock.findByPaygovTrackingId.mockResolvedValue(
       { feeId: "fee-123", paygovTrackingId: mockPayGovTrackingId } as unknown as TransactionModel,
     );
@@ -100,6 +102,31 @@ describe("getDetails", () => {
         request: { payGovTrackingId: mockPayGovTrackingId },
       }),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throws ServerError when fee has no tcsAppId", async () => {
+    FeesModelMock.getFeeById.mockResolvedValueOnce({ feeId: "fee-123", tcsAppId: "" } as unknown as FeesModel);
+
+    await expect(
+      getDetails(appContext, {
+        client: mockClient,
+        request: { payGovTrackingId: mockPayGovTrackingId },
+      }),
+    ).rejects.toThrow(ServerError);
+  });
+
+  it("passes the fee's tcsAppId to the SOAP request", async () => {
+    appContext.postHttpRequest = jest.fn().mockReturnValue(mockSuccessResponse);
+
+    await getDetails(appContext, {
+      client: mockClient,
+      request: { payGovTrackingId: mockPayGovTrackingId },
+    });
+
+    expect(appContext.postHttpRequest).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining("<tcs_app_id>TCSUSTAXCOURTPETITION</tcs_app_id>"),
+    );
   });
 
   describe("Successfully retrieved transaction details", () => {

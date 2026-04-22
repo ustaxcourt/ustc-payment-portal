@@ -4,25 +4,29 @@ import { ClientPermission } from "../types/ClientPermission";
 import { ForbiddenError } from "../errors/forbidden";
 import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
+import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
+import FeesModel from "../db/FeesModel";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
   default: {
     findByPaygovToken: jest.fn(),
     findPendingOrProcessedByReferenceId: jest.fn(),
-    updateAfterPayGovResponse: jest.fn().mockResolvedValue({
-      createdAt: "2026-01-15T10:30:00Z",
-      lastUpdatedAt: "2026-01-15T10:35:01Z",
-    }),
-    updateToFailed: jest.fn().mockResolvedValue({
-      createdAt: "2026-01-15T10:30:00Z",
-      lastUpdatedAt: "2026-01-15T10:35:01Z",
-    }),
+    updateAfterPayGovResponse: jest.fn(),
+    updateToFailed: jest.fn(),
+  },
+}));
+
+jest.mock("../db/FeesModel", () => ({
+  __esModule: true,
+  default: {
+    getFeeById: jest.fn(),
   },
 }));
 
 const TransactionModelMock = TransactionModel as jest.Mocked<typeof TransactionModel>;
+const FeesModelMock = FeesModel as jest.Mocked<typeof FeesModel>;
 
 const mockClient: ClientPermission = {
   clientName: "Test Client",
@@ -38,8 +42,14 @@ const mockTransaction = {
   clientName: "Test Client",
   createdAt: "2026-01-15T10:30:00Z",
   lastUpdatedAt: "2026-01-15T10:35:00Z",
-  paymentMethod: "plastic_card",
+  paymentMethod: null,
 } as unknown as TransactionModel;
+
+const mockUpdatedTransaction = (paymentMethod: string | null) => ({
+  ...mockTransaction,
+  paymentMethod,
+  lastUpdatedAt: "2026-01-15T10:35:01Z",
+} as unknown as TransactionModel);
 
 const mockPayGovTrackingId = "211d8c91c046404fb159b52d042a12ba";
 const mockPendingResponse = `<?xml version="1.0" encoding="UTF-8"?>
@@ -139,6 +149,11 @@ describe("processPayment", () => {
     jest.clearAllMocks();
     TransactionModelMock.findByPaygovToken.mockResolvedValue(mockTransaction);
     TransactionModelMock.findPendingOrProcessedByReferenceId.mockResolvedValue(undefined);
+    TransactionModelMock.updateAfterPayGovResponse.mockImplementation(
+      async (_id, _tid, _ts, _ps, paymentMethod) => mockUpdatedTransaction(paymentMethod),
+    );
+    TransactionModelMock.updateToFailed.mockResolvedValue(mockUpdatedTransaction(null));
+    FeesModelMock.getFeeById.mockResolvedValue({ feeId: "fee-123", tcsAppId: "TCSUSTAXCOURTPETITION" } as unknown as FeesModel);
   });
 
   it("throws NotFoundError when token is not in the database", async () => {
@@ -209,15 +224,40 @@ describe("processPayment", () => {
     ).rejects.toThrow(GoneError);
   });
 
-  it("throws an error if we pass in an invalid request", async () => {
+  it("throws NotFoundError when fee is not found for the transaction", async () => {
+    FeesModelMock.getFeeById.mockResolvedValueOnce(undefined);
+
     await expect(
       processPayment(appContext, {
         client: mockClient,
-        request: {
-          foo: 20,
-        } as any,
+        request: { token: "mock-token" },
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throws ServerError when fee has no tcsAppId", async () => {
+    FeesModelMock.getFeeById.mockResolvedValueOnce({ feeId: "fee-123", tcsAppId: "" } as unknown as FeesModel);
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(ServerError);
+  });
+
+  it("passes the fee's tcsAppId to the SOAP request", async () => {
+    appContext.postHttpRequest = jest.fn().mockReturnValue(mockSuccessfulResponse);
+
+    await processPayment(appContext, {
+      client: mockClient,
+      request: { token: "mock-token" },
+    });
+
+    expect(appContext.postHttpRequest).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining("<tcs_app_id>TCSUSTAXCOURTPETITION</tcs_app_id>"),
+    );
   });
 
   describe("Successfully processed Transaction", () => {
@@ -256,6 +296,20 @@ describe("processPayment", () => {
       expect(result.transactions[0].paymentMethod).toBe("Credit/Debit Card");
     });
 
+    it("returns the freshly-persisted paymentMethod (not the stale pre-update value)", async () => {
+      // Regression guard: initiated transactions always have paymentMethod=null.
+      // If the response reads from the pre-update `transaction`, the client sees
+      // undefined even though Pay.gov returned (and we stored) a real value.
+      expect(mockTransaction.paymentMethod).toBeNull();
+
+      const result = await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      });
+
+      expect(result.transactions[0].paymentMethod).toBe("Credit/Debit Card");
+    });
+
     it("includes timestamps from the transaction record", async () => {
       const result = await processPayment(appContext, {
         client: mockClient,
@@ -277,6 +331,9 @@ describe("processPayment", () => {
         mockPayGovTrackingId,
         "processed",
         "success",
+        "plastic_card",
+        "2023-09-18T10:54:05",
+        "2023-09-19",
       );
     });
 
@@ -337,6 +394,8 @@ describe("processPayment", () => {
 
       expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
         "agency-tracking-id-001",
+        3001,
+        "The card has been declined, the transaction will not be processed.",
       );
     });
   });
@@ -378,6 +437,9 @@ describe("processPayment", () => {
         mockPayGovTrackingId,
         "pending",
         "pending",
+        "ach",
+        "2023-09-18T10:54:05",
+        "2023-09-19",
       );
     });
   });
@@ -395,7 +457,7 @@ describe("processPayment", () => {
 
       expect(result.paymentStatus).toBe("failed");
       expect(result.transactions[0].transactionStatus).toBe("failed");
-      expect(result.transactions[0].returnDetail).toBe("Transaction Error");
+      expect(result.transactions[0].returnDetail).toBe("Pay.gov returned a fault without error details");
     });
 
     it("handles fault with detail but no TCSServiceFault", async () => {
@@ -410,7 +472,7 @@ describe("processPayment", () => {
 
       expect(result.paymentStatus).toBe("failed");
       expect(result.transactions[0].transactionStatus).toBe("failed");
-      expect(result.transactions[0].returnDetail).toBe("Transaction Error");
+      expect(result.transactions[0].returnDetail).toBe("Pay.gov returned a fault without error details");
     });
 
     it("persists failure to database on fault", async () => {
@@ -425,6 +487,8 @@ describe("processPayment", () => {
 
       expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
         "agency-tracking-id-001",
+        undefined,
+        "Pay.gov returned a fault without error details",
       );
     });
   });

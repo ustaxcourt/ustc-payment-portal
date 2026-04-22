@@ -6,11 +6,14 @@ import { FailedTransactionError } from "../errors/failedTransaction";
 import { ForbiddenError } from "../errors/forbidden";
 import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
+import { ServerError } from "../errors/serverError";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { derivePaymentStatus } from "../utils/derivePaymentStatus";
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
+import FeesModel from "../db/FeesModel";
 import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
+import { toPaymentMethod } from "../utils/toPaymentMethod";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -57,8 +60,18 @@ export const processPayment: ProcessPayment = async (
     throw new GoneError("This token is no longer valid.");
   }
 
+  const fee = await FeesModel.getFeeById(transaction.feeId);
+  if (!fee) {
+    console.error(`Fee not found for feeId: ${transaction.feeId}`);
+    throw new NotFoundError("Fee configuration not found for this transaction");
+  }
+  if (!fee.tcsAppId) {
+    console.error(`Fee ${transaction.feeId} is missing tcsAppId configuration`);
+    throw new ServerError();
+  }
+
   const req = new CompleteOnlineCollectionWithDetailsRequest({
-    tcsAppId: "", // Required by Pay.gov SOAP schema — token alone identifies the transaction on this call
+    tcsAppId: fee.tcsAppId,
     token: request.token,
   });
   console.log("processPayment request", req);
@@ -76,6 +89,9 @@ export const processPayment: ProcessPayment = async (
       result.paygov_tracking_id,
       parsedStatus,
       paymentStatus,
+      toPaymentMethod(result.payment_type),
+      result.transaction_date,
+      result.payment_date,
     );
 
     return {
@@ -84,7 +100,7 @@ export const processPayment: ProcessPayment = async (
         {
           payGovTrackingId: result.paygov_tracking_id,
           transactionStatus: parsedStatus,
-          paymentMethod: toApiPaymentMethod(transaction.paymentMethod),
+          paymentMethod: toApiPaymentMethod(updated.paymentMethod),
           returnDetail: undefined,
           createdTimestamp: updated.createdAt,
           updatedTimestamp: updated.lastUpdatedAt,
@@ -93,14 +109,18 @@ export const processPayment: ProcessPayment = async (
     };
   } catch (err) {
     if (err instanceof FailedTransactionError) {
-      const failed = await TransactionModel.updateToFailed(transaction.agencyTrackingId);
+      const failed = await TransactionModel.updateToFailed(
+        transaction.agencyTrackingId,
+        err.code,
+        err.message,
+      );
 
       return {
         paymentStatus: "failed" as const,
         transactions: [
           {
             transactionStatus: "failed" as const,
-            paymentMethod: toApiPaymentMethod(transaction.paymentMethod),
+            paymentMethod: undefined,
             returnDetail: err.message,
             createdTimestamp: failed.createdAt,
             updatedTimestamp: failed.lastUpdatedAt,

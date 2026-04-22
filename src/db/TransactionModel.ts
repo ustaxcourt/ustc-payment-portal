@@ -27,6 +27,10 @@ export default class TransactionModel extends Model {
   transactionStatus?: TransactionStatus | null;
   paygovToken?: string | null;
   paymentMethod?: PaymentMethod | null;
+  transactionDate?: string | null;
+  paymentDate?: string | null;
+  returnCode?: number | null;
+  returnDetail?: string | null;
   createdAt!: string;
   lastUpdatedAt!: string;
   metadata?: Record<string, string> | null;
@@ -149,6 +153,9 @@ export default class TransactionModel extends Model {
     paygovTrackingId: string,
     transactionStatus: TransactionStatus,
     paymentStatus: PaymentStatus,
+    paymentMethod: PaymentMethod | null,
+    transactionDate: string,
+    paymentDate: string,
   ): Promise<TransactionModel> {
     await getKnex();
     return this.query()
@@ -156,6 +163,9 @@ export default class TransactionModel extends Model {
         paygovTrackingId,
         transactionStatus,
         paymentStatus,
+        paymentMethod,
+        transactionDate,
+        paymentDate,
       });
   }
 
@@ -173,12 +183,18 @@ export default class TransactionModel extends Model {
       .first();
   }
 
-  static async updateToFailed(agencyTrackingId: string): Promise<TransactionModel> {
+  static async updateToFailed(
+    agencyTrackingId: string,
+    returnCode?: number,
+    returnDetail?: string,
+  ): Promise<TransactionModel> {
     await getKnex();
     return this.query()
       .patchAndFetchById(agencyTrackingId, {
         transactionStatus: 'failed',
         paymentStatus: 'failed',
+        returnCode,
+        returnDetail,
       });
   }
 

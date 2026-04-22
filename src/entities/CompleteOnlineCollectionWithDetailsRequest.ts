@@ -1,15 +1,11 @@
 import { AppContext } from "../types/AppContext";
 import { FailedTransactionError } from "../errors/failedTransaction";
-import { PayGovTransactionStatus } from "../types/TransactionStatus";
 import { RawCompleteOnlineCollectionRequest } from "../types/RawCompleteOnlineCollectionRequest";
 import { RequestType, SoapRequest } from "./SoapRequest";
-
-type CompleteOnlineCollectionWithDetailsResponse = {
-  paygov_tracking_id: string;
-  transaction_status: PayGovTransactionStatus;
-  agency_tracking_id: string;
-  transaction_amount: string;
-};
+import {
+  CompleteOnlineCollectionWithDetailsResponse,
+  CompleteOnlineCollectionWithDetailsResponseSchema,
+} from "../schemas/CompleteOnlineCollectionWithDetailsResponse.schema";
 
 export type CompleteOnlineCollectionWithDetailsRequestParams = {
   tcs_app_id: string;
@@ -45,8 +41,14 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
     );
 
     if (responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]) {
-      return responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]
-        .completeOnlineCollectionWithDetailsResponse as CompleteOnlineCollectionWithDetailsResponse;
+      const raw = responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]
+        .completeOnlineCollectionWithDetailsResponse;
+      const parsed = CompleteOnlineCollectionWithDetailsResponseSchema.safeParse(raw);
+      if (!parsed.success) {
+        console.error("completeOnlineCollectionWithDetails schema validation failed", JSON.stringify({ raw, errors: parsed.error.issues }));
+        throw parsed.error;
+      }
+      return parsed.data;
     } else {
       throw this.handleFault(responseBody["S:Fault"]);
     }
@@ -54,11 +56,11 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
 
   handleFault = (fault: ProcessorFault) => {
     if (!fault) {
-      return new FailedTransactionError();
+      return new FailedTransactionError("Unexpected response from Pay.gov: no fault detail returned");
     }
 
     if (!fault.detail || !fault.detail["ns2:TCSServiceFault"]) {
-      return new FailedTransactionError();
+      return new FailedTransactionError("Pay.gov returned a fault without error details");
     }
 
     return new FailedTransactionError(

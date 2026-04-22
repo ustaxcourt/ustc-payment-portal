@@ -6,6 +6,7 @@ import { parseTransactionStatus } from "./parseTransactionStatus";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
+import { ServerError } from "../errors/serverError";
 
 export type GetDetailsRequest = {
   payGovTrackingId: string;
@@ -33,8 +34,13 @@ export const getDetails: GetDetails = async (appContext, { request }) => {
   }
 
   const fee = await FeesModel.getFeeById(transaction.feeId);
-  if (!fee || !fee.tcsAppId) {
-    throw new NotFoundError(`Fee not found for feeId: ${transaction.feeId}`);
+  if (!fee) {
+    console.error(`Fee not found for feeId: ${transaction.feeId}`);
+    throw new NotFoundError("Fee configuration not found for this transaction");
+  }
+  if (!fee.tcsAppId) {
+    console.error(`Fee ${transaction.feeId} is missing tcsAppId configuration`);
+    throw new ServerError();
   }
 
   const req = new GetRequestRequest({
