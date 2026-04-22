@@ -266,7 +266,7 @@ resource "aws_api_gateway_resource" "test" {
   path_part   = "test"
 }
 
-#GET /details/{payGovTrackingId}
+#GET /details/{transactionReferenceId}
 resource "aws_api_gateway_resource" "details" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
   parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
@@ -276,7 +276,7 @@ resource "aws_api_gateway_resource" "details" {
 resource "aws_api_gateway_resource" "details_tracking" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
   parent_id   = aws_api_gateway_resource.details.id
-  path_part   = "{payGovTrackingId}"
+  path_part   = "{transactionReferenceId}"
 }
 
 #Methods
