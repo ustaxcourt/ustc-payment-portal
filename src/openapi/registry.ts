@@ -7,6 +7,7 @@ import {
   InitPaymentResponseSchema,
   ErrorResponseSchema,
   BadRequestErrorSchema,
+  ConflictErrorSchema,
   ForbiddenErrorSchema,
   NotFoundErrorSchema,
   ServerErrorSchema,
@@ -45,6 +46,7 @@ registry.register("InitPaymentRequest", InitPaymentRequestSchema);
 registry.register("InitPaymentResponse", InitPaymentResponseSchema);
 registry.register("ErrorResponse", ErrorResponseSchema);
 registry.register("BadRequestError", BadRequestErrorSchema);
+registry.register("ConflictError", ConflictErrorSchema);
 registry.register("ForbiddenError", ForbiddenErrorSchema);
 registry.register("ServerError", ServerErrorSchema);
 registry.register("NotFoundError", NotFoundErrorSchema);
@@ -122,6 +124,15 @@ registry.registerPath({
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,
+        },
+      },
+    },
+    409: {
+      description:
+        "Conflict - a payment session is already initiated for this transaction reference ID",
+      content: {
+        "application/json": {
+          schema: ConflictErrorSchema,
         },
       },
     },

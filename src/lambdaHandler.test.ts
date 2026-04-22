@@ -6,6 +6,7 @@ import {
 import { APIGatewayEvent } from "aws-lambda";
 import { ForbiddenError } from "./errors/forbidden";
 import { GoneError } from "./errors/gone";
+import { ConflictError } from "./errors/conflict";
 import { PayGovError } from "./errors/payGovError";
 import { NotFoundError } from "./errors/notFound";
 
@@ -208,6 +209,33 @@ describe("lambdaHandler", () => {
       );
     });
   });
+
+  it("returns 409 when init payment use case throws ConflictError", async () => {
+      useCasesMock.initPayment = jest
+        .fn()
+        .mockRejectedValueOnce(
+          new ConflictError(
+            "A payment session is already initiated for this transactionReferenceId",
+          ),
+        );
+
+      const event = {
+        body: JSON.stringify({
+          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+          feeId: "PETITION_FILING_FEE",
+          urlSuccess: "https://example.com/success",
+          urlCancel: "https://example.com/cancel",
+          metadata: { docketNumber: "123-26" },
+        }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await initPaymentHandler(event);
+
+      expect(result.statusCode).toBe(409);
+      expect(JSON.parse(result.body).message).toContain("already initiated");
+    });
 
   describe("processPaymentHandler", () => {
     it("returns 200 with v2 response shape on successful request", async () => {

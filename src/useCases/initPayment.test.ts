@@ -1,6 +1,7 @@
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
   default: {
+    findInitiatedByReferenceId: jest.fn(() => Promise.resolve(undefined)),
     createReceived: jest.fn((data) =>
       Promise.resolve({
         ...data,
@@ -41,6 +42,7 @@ import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
+import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
 import { ClientPermission } from "../types/ClientPermission";
 
@@ -68,6 +70,10 @@ const mockSoapRequest = (token: string) => {
 };
 
 describe("initPayment", () => {
+   beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
@@ -149,6 +155,25 @@ describe("initPayment", () => {
     ).rejects.toThrow("does not allow variable amounts");
   });
 
+  it("throws ConflictError when an initiated transaction already exists for the same client and reference id", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInitiatedByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "initiated",
+    });
+
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toThrow(ConflictError);
+
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+  });
+  
   it("updates transaction to failed if SOAP request fails", async () => {
     jest
       .spyOn(

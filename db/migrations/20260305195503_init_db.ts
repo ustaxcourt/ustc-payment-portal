@@ -17,7 +17,6 @@ export async function up(knex: Knex): Promise<void> {
     t.jsonb('metadata').nullable().comment('Free-form metadata bag');
     t.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
     t.timestamp('last_updated_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
-    t.unique(['client_name', 'transaction_reference_id'], 'idx_transactions_client_ref');
   });
 
   // Constraints
@@ -33,6 +32,7 @@ export async function up(knex: Knex): Promise<void> {
     t.index(['transaction_status'], 'idx_transactions_transaction_status');
     t.index(['client_name'], 'idx_transactions_client_name');
     t.index(['paygov_tracking_id'], 'idx_transactions_paygov_tracking_id');
+    t.index(['client_name', 'transaction_reference_id'], 'idx_transactions_client_ref');
     t.index(['paygov_token'], 'idx_transactions_paygov_token');
   });
 

@@ -180,12 +180,24 @@ export default class TransactionModel extends Model {
       .first();
   }
 
+    static async findInitiatedByReferenceId(
+    clientName: string,
+    transactionReferenceId: string,
+  ): Promise<TransactionModel | undefined> {
+    await getKnex();
+    return TransactionModel.query()
+      .where("clientName", clientName)
+      .where("transactionReferenceId", transactionReferenceId)
+      .where("transactionStatus", "initiated")
+      .first();
+  }
+
   static async updateToFailed(agencyTrackingId: string): Promise<TransactionModel> {
     await getKnex();
     return this.query()
       .patchAndFetchById(agencyTrackingId, {
-        transactionStatus: 'failed',
-        paymentStatus: 'failed',
+        transactionStatus: "failed",
+        paymentStatus: "failed",
       });
   }
 
