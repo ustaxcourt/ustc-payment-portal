@@ -36,7 +36,7 @@ export const generateTransactions = async ({
 }: GenerateTransactionsParams): Promise<TransactionRow[]> => {
   const feesList = await FeesModel.query().select('feeId', 'amount');
   const clientNames = ['payment-portal', 'efile-portal', 'clerk-app'];
-  const paymentMethods = ["plastic_card", "ach", "paypal"];
+  const paymentMethods = ["plastic_card", "ach", "paypal"] as const;
 
   const agencyIds = ['USTC', 'IRS'];
   const agencyCounters: Record<string, number> = Object.fromEntries(agencyIds.map((agencyId) => [agencyId, 0]));
