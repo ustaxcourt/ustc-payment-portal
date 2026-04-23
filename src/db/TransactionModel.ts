@@ -150,6 +150,9 @@ export default class TransactionModel extends Model {
 
   static async findByReferenceId(transactionReferenceId: string): Promise<TransactionModel[]> {
     await getKnex();
+    // Order ascending by createdAt: getDetails relies on rows[0] being the earliest attempt
+    // for the Fee-invariance lookup (all attempts share the same feeId, but rows[0]'s timestamp
+    // is also implicitly the obligation's first-attempt timestamp).
     return TransactionModel.query()
       .where({ transactionReferenceId })
       .orderBy('createdAt', 'asc');

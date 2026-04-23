@@ -13,7 +13,7 @@ import { NotFoundError } from "../errors/notFound";
 import { ForbiddenError } from "../errors/forbidden";
 import { ServerError } from "../errors/serverError";
 
-export type GetDetailsRequest = {
+type GetDetailsRequest = {
   transactionReferenceId: string;
 };
 
@@ -80,13 +80,20 @@ export const getDetails: GetDetails = async (appContext, { client, request }) =>
     }),
   );
 
-  const transactions: TransactionRecordSummary[] = refreshedRows.map((row) => ({
-    payGovTrackingId: row.paygovTrackingId ?? undefined,
-    transactionStatus: row.transactionStatus ?? "received",
-    paymentMethod: toApiPaymentMethod(row.paymentMethod),
-    createdTimestamp: row.createdAt,
-    updatedTimestamp: row.lastUpdatedAt,
-  }));
+  const transactions: TransactionRecordSummary[] = refreshedRows.map((row) => {
+    if (!row.transactionStatus) {
+      console.error(
+        `Transaction ${row.agencyTrackingId} has null transactionStatus — defaulting to 'received'. This indicates corrupt data.`,
+      );
+    }
+    return {
+      payGovTrackingId: row.paygovTrackingId ?? undefined,
+      transactionStatus: row.transactionStatus ?? "received",
+      paymentMethod: toApiPaymentMethod(row.paymentMethod),
+      createdTimestamp: row.createdAt,
+      updatedTimestamp: row.lastUpdatedAt,
+    };
+  });
 
   const paymentStatus = derivePaymentStatus(transactions.map((t) => t.transactionStatus));
 

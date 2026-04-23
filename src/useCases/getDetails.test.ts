@@ -31,7 +31,7 @@ const mockClient: ClientPermission = {
 };
 
 const mockTransactionReferenceId = "550e8400-e29b-41d4-a716-446655440000";
-const mockPayGovTrackingId = "test-tracking-id-12345";
+const mockPayGovTrackingId = "TRK1234567890123456AB"; // 21 chars, matches DB column constraint
 
 const buildRow = (overrides: Partial<TransactionModel> = {}): TransactionModel =>
   ({
@@ -237,6 +237,64 @@ describe("getDetails", () => {
 
       // parseTransactionStatus maps Pay.gov "Received" → internal "pending"
       expect(result.transactions[0].transactionStatus).toBe("pending");
+    });
+
+    it("logs and continues when the Pay.gov SOAP refresh fails for an attempt", async () => {
+      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+      appContext.postHttpRequest = jest.fn().mockRejectedValue(new Error("Pay.gov network failure"));
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      // Refresh failed, so the local "pending" status is returned unchanged
+      expect(result.transactions[0].transactionStatus).toBe("pending");
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`Failed to refresh status for paygovTrackingId '${mockPayGovTrackingId}'`),
+        expect.any(Error),
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe("multiple attempts under the same transactionReferenceId", () => {
+    it("derives paymentStatus 'success' when any attempt is processed", async () => {
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({
+          agencyTrackingId: "attempt-1",
+          transactionStatus: "failed",
+          paymentStatus: "failed",
+        }),
+        buildRow({
+          agencyTrackingId: "attempt-2",
+          transactionStatus: "processed",
+          paymentStatus: "success",
+        }),
+      ]);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(result.paymentStatus).toBe("success");
+      expect(result.transactions).toHaveLength(2);
+    });
+
+    it("filters out other clients' rows but keeps this client's rows", async () => {
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({ agencyTrackingId: "ours-1", clientName: mockClient.clientName }),
+        buildRow({ agencyTrackingId: "theirs", clientName: "Some Other Client" }),
+      ]);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(result.transactions).toHaveLength(1);
     });
   });
 });
