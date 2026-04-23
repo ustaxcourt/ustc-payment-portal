@@ -2,17 +2,19 @@
 "@ustaxcourt/payment-portal": patch
 ---
 
-### `GET /details/{transactionReferenceId}` — request validation, lookup, and response shape
+### `GET /details/{transactionReferenceId}` — request validation, lookup, and DB-as-cache refresh
 
-The endpoint now matches its OpenAPI contract: keyed on `transactionReferenceId` (UUIDv4) instead of `payGovTrackingId`, with the published `{paymentStatus, transactions[]}` response shape.
+The endpoint now matches its OpenAPI contract: keyed on `transactionReferenceId` (UUIDv4) instead of `payGovTrackingId`, returning the published `{paymentStatus, transactions[]}` response shape. When the obligation is already resolved (`success`/`failed`), Pay.gov is not called — the DB is authoritative.
 
 #### Behavior changes
 
 - **Path parameter is now `transactionReferenceId`** (UUIDv4). Previously the handler read `payGovTrackingId`.
-- **Lookup uses `TransactionModel.findByReferenceId`** — a new finder that returns all rows for a given `transactionReferenceId`. Today the array will always have 0 or 1 rows due to the existing `(client_name, transaction_reference_id)` unique constraint, but the use case is written to handle N rows so no API change is needed when the constraint is later relaxed for multi-attempt support.
+- **Lookup uses `TransactionModel.findByReferenceId`** — a new finder ordered by `createdAt asc`, returning all rows for a given `transactionReferenceId`.
 - **Response shape now matches `GetDetailsResponseSchema`** — `{paymentStatus, transactions: TransactionRecordSummary[]}` instead of the previous flat `{trackingId, transactionStatus}`.
-- **Pay.gov SOAP refresh is conditional** — the use case only calls Pay.gov for attempts that have a `paygovTrackingId` AND are in a non-terminal status (`processed`/`failed` are skipped). Previously the call was unconditional.
-- **Fee lookup is per-request, not per-attempt** — per Fee-invariance (all attempts under a `transactionReferenceId` share the same `feeId`), `FeesModel.getFeeById` is called once using `rows[0].feeId`.
+- **DB-as-cache short-circuit:** the obligation's `paymentStatus` is derived from the cached DB rows first. If it's `success` or `failed`, the response is built from cached data and Pay.gov is not contacted.
+- **Pay.gov SOAP refresh** is now scoped to the `pending` path only, and within that path only fires for rows with a `paygovTrackingId` AND a non-terminal `transactionStatus`. SOAP failures for a single attempt are caught and logged; the cached status for that row is returned so one bad attempt doesn't poison sibling responses.
+- **Single fee lookup per request** — per Fee-invariance (all attempts under a `transactionReferenceId` share the same `feeId`), `FeesModel.getFeeById` is called once using `rows[0].feeId`.
+- **Refresh produces new objects** rather than mutating `TransactionModel` instances — keeps DB rows immutable for any downstream reader.
 
 #### Errors / HTTP Status Codes
 
@@ -20,36 +22,64 @@ The endpoint now matches its OpenAPI contract: keyed on `transactionReferenceId`
 | --- | --- | --- | --- |
 | Path param missing or not a UUID | 400 | `InvalidRequestError` | `"Transaction Reference Id was invalid"` |
 | `transactionReferenceId` valid but no transaction exists | 404 | `NotFoundError` | `"Transaction Reference Id was not found"` |
-| `transactionReferenceId` exists but belongs to a different client | 403 | `ForbiddenError` | `"You are not authorized to get details for this transaction."` |
+| Caller is not the obligation's owner | 403 | `ForbiddenError` | `"You are not authorized to get details for this transaction."` |
+| Fee row missing OR `tcsAppId` missing on fee | 500 | `ServerError` | (server-side data corruption — diagnostic logged to CloudWatch, not leaked in response) |
 
-All three error classes already exist with the right `statusCode` and are routed by `handleError`. No `handleError` changes needed.
+All routed by the existing `handleError` `statusCode < 500` branch — no `handleError` changes needed.
 
-#### Schema additions
+### `POST /init` — TOCTOU-safe duplicate prevention
 
-- `GetDetailsPathParamsSchema` added to `src/schemas/GetDetails.schema.ts` — `z.object({ transactionReferenceId: z.uuidv4() }).strict()`.
-- Registered in `src/openapi/registry.ts`.
+Two-layer protection against concurrent `initPayment` calls for the same `(clientName, transactionReferenceId)`:
 
-#### API / Shared Schema
+- **App-level** (fast path, common case): pre-create check via new `TransactionModel.findInitiatedByReferenceId` → `ConflictError` (409).
+- **DB-level** (race path): a new partial unique index `idx_transactions_unique_active` rejects concurrent `createReceived` inserts. The new `isUniqueViolation` helper detects pg `SQLSTATE 23505` and converts it to the same `ConflictError` so callers see a consistent 409 regardless of which layer caught the duplicate.
 
-- OpenAPI `/details/{transactionReferenceId}` path now references `GetDetailsPathParamsSchema` for the path param (was an inline `z.string()`), gains a `404` response, and updates the `400`/`403` descriptions to reflect the new validation/auth semantics.
+#### New error class
+
+- `ConflictError` (`src/errors/conflict.ts`) — `statusCode: 409`. Same shape as the existing error classes, routed by `handleError` automatically.
+
+### Database (PAY-294)
+
+- **Removed** the full `(client_name, transaction_reference_id)` unique constraint. Multiple historical attempts for one obligation are now allowed (enables retries after a failure).
+- **Added** a partial unique index `idx_transactions_unique_active ON (client_name, transaction_reference_id) WHERE transaction_status IN ('received', 'initiated')`. Caps at most one in-flight attempt per obligation while leaving terminal/historical rows unbounded.
+- **Kept** a regular composite index on `(client_name, transaction_reference_id)` for query performance.
+- Both changes applied via edit to the original init migration (pre-prod — no forward migration needed; envs re-seed from the updated DDL).
+- New `TransactionModel.findByReferenceId(refId)` and `findInitiatedByReferenceId(clientName, refId)` finders.
+
+### API / Shared Schema
+
+- New `GetDetailsPathParamsSchema` (UUIDv4, strict) and `ConflictErrorSchema`, both registered in `src/openapi/registry.ts`.
+- `/details/{transactionReferenceId}` references `GetDetailsPathParamsSchema` for the path param (was an inline `z.string()`), gains a `404` response, and updates `400`/`403` descriptions for the new validation/auth semantics.
+- `/init` gains a `409` response for the new conflict path.
+- `derivePaymentStatus` made generic — accepts any array of objects with a `transactionStatus` field. New companion `derivePaymentStatusFromSingleTransaction(status)` for callers evaluating a single status (`processPayment` adopts this).
 - Regenerated `docs/openapi.json` and `docs/openapi.yaml`.
 
-#### Data
+### Infrastructure
+
+- `terraform/modules/api-gateway/main.tf`: path part renamed to `{transactionReferenceId}`. Added all path resource IDs to `aws_api_gateway_deployment.deployment.triggers` so future path-part changes force a fresh stage snapshot — without this, the stage kept serving stale routing despite the resource being updated.
+- `src/devServer.ts` local route updated to match the deployed contract.
+
+### Data
 
 - `db/seeds/data/transactions.ts` now generates `transaction_reference_id` as UUIDv4 (via `faker.string.uuid()`) instead of the legacy `TXN-REF-XXXXXXXXX` format. Required so locally seeded rows are queryable through the validated endpoint.
 
+### Docs
+
+- New design doc `docs/architecture/proposals/getDetails-paygov-concurrency.md` capturing the remaining Pay.gov fan-out concern and the three options for resolution. Sequential refresh recommended.
+
 #### Testing
 
-- `src/db/TransactionModel.test.ts` — new tests for `findByReferenceId` (empty result, single match).
-- `src/useCases/getDetails.test.ts` — rewritten for the new contract. Covers `NotFoundError` (no rows), `ForbiddenError` (cross-client), terminal-status case (no SOAP call), non-terminal without `paygovTrackingId` (no SOAP call), and non-terminal with `paygovTrackingId` (SOAP refresh).
-- `src/lambdaHandler.test.ts` — `getDetailsHandler` tests updated for the new response shape and new path param. New tests for 400 (invalid UUID, missing/undefined params), 404 (`NotFoundError` propagation), 403 (`ForbiddenError` propagation).
-- `src/test/integration/getDetails.test.ts` — new integration test covering 400 on invalid UUID and 404 on not-found, mirroring the `processPayment` integration pattern.
-
-#### Misc
-
-- `src/devServer.ts` — local dev route updated from `/details/:payGovTrackingId` to `/details/:transactionReferenceId` to match the deployed contract.
+- `src/db/TransactionModel.test.ts` — new tests for `findByReferenceId` (empty result, single match) and `findInitiatedByReferenceId`.
+- `src/useCases/getDetails.test.ts` — rewritten for the new contract. Covers `NotFoundError` (no rows), `ForbiddenError` (cross-client), `ServerError` (misconfigured fee — both fail modes), terminal-status short-circuit (no SOAP call), non-terminal without `paygovTrackingId` (no SOAP call), non-terminal refresh with Pay.gov response, SOAP-failure-per-attempt handling, multi-row aggregation, and UUID-collision auth boundary.
+- `src/useCases/initPayment.test.ts` — new tests for both layers of the conflict guard: app-level pre-check returns 409, and DB-level pg `23505` violation converts to 409.
+- `src/lambdaHandler.test.ts` — `getDetailsHandler` tests updated for the new response shape + path param. Added 400 (invalid UUID, missing/undefined params), 404 (`NotFoundError` propagation), 403 (`ForbiddenError` propagation).
+- `src/utils/derivePaymentStatus.test.ts` — added `derivePaymentStatusFromSingleTransaction` coverage.
+- `src/test/integration/getDetails.test.ts` — new integration test covering 400 on invalid UUID, 404 on not-found UUID, and reaching-Lambda smoke check.
+- `src/test/integration/transaction.test.ts` — end-to-end test now drives `/details` via `transactionReferenceId` and asserts the new response shape.
+- **257 unit tests passing**; integration tests verified against PR-197.
 
 ## Out of Scope / Follow-up
 
-- Multi-attempt enablement: relaxing the `(client_name, transaction_reference_id)` unique constraint and updating `initPayment` to accept retries with the same reference ID.
-- Fee-invariance enforcement: today this is a convention (clients pass `feeId` per `initPayment` call). Either an `initPayment` guard or a DB constraint would make it load-bearing.
+- **Bound Pay.gov SOAP concurrency in `refreshPendingAttempts`** — `Promise.all` fan-out remains for `pending` obligations with N > 1 attempts. Sequential processing recommended in the new design doc. **PAY-###**
+- **Enforce Fee-invariance** at the `initPayment` or DB layer (currently convention, not enforced).
+- **Retry queue / async status reconciliation** — would replace the synchronous Pay.gov refresh entirely. Not planned in this work; mentioned for context.
