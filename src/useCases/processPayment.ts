@@ -8,7 +8,7 @@ import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
 import { ServerError } from "../errors/serverError";
 import { parseTransactionStatus } from "./parseTransactionStatus";
-import { derivePaymentStatus } from "../utils/derivePaymentStatus";
+import { derivePaymentStatusFromSingleTransaction } from "../utils/derivePaymentStatus";
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
@@ -82,7 +82,7 @@ export const processPayment: ProcessPayment = async (
     console.log("processPayment result", result);
 
     const parsedStatus = parseTransactionStatus(result.transaction_status);
-    const paymentStatus = derivePaymentStatus([parsedStatus]);
+    const paymentStatus = derivePaymentStatusFromSingleTransaction(parsedStatus);
 
     const updated = await TransactionModel.updateAfterPayGovResponse(
       transaction.agencyTrackingId,
