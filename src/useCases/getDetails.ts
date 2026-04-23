@@ -25,51 +25,88 @@ export type GetDetails = (
   },
 ) => Promise<GetDetailsResponse>;
 
-const TERMINAL_STATUSES: ReadonlyArray<TransactionStatus> = ["processed", "failed"];
+const TERMINAL_STATUSES: ReadonlyArray<TransactionStatus> = [
+  "processed",
+  "failed",
+];
 
 const isTerminal = (status: TransactionStatus | null | undefined): boolean =>
   status !== null && status !== undefined && TERMINAL_STATUSES.includes(status);
 
-export const getDetails: GetDetails = async (appContext, { client, request }) => {
+export const getDetails: GetDetails = async (
+  appContext,
+  { client, request },
+) => {
   const { transactionReferenceId } = request;
 
-  const allRows = await TransactionModel.findByReferenceId(transactionReferenceId);
+  const allRows = await TransactionModel.findByReferenceId(
+    transactionReferenceId,
+  );
+
   if (allRows.length === 0) {
     throw new NotFoundError("Transaction Reference Id was not found");
   }
 
-  const clientRows = allRows.filter((row) => row.clientName === client.clientName);
-  if (clientRows.length === 0) {
+  if (allRows[0].clientName !== client.clientName) {
     console.warn(
       `Client '${client.clientName}' attempted to get details for transactionReferenceId '${transactionReferenceId}' owned by another client`,
     );
-    throw new ForbiddenError("You are not authorized to get details for this transaction.");
+    throw new ForbiddenError(
+      "You are not authorized to get details for this transaction.",
+    );
   }
 
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId
-  const fee = await FeesModel.getFeeById(clientRows[0].feeId);
+  const fee = await FeesModel.getFeeById(allRows[0].feeId);
   if (!fee) {
-    console.error(`Fee not found for feeId: ${clientRows[0].feeId}`);
+    console.error(`Fee not found for feeId: ${allRows[0].feeId}`);
     throw new NotFoundError("Fee configuration not found for this transaction");
   }
+
   if (!fee.tcsAppId) {
-    console.error(`Fee ${clientRows[0].feeId} is missing tcsAppId configuration`);
+    console.error(
+      `Fee ${allRows[0].feeId} is missing tcsAppId configuration`,
+    );
     throw new ServerError();
   }
 
+  const paymentStatus = derivePaymentStatus(allRows);
+
+  if (paymentStatus === "pending") {
+    return getPendingTransactions(appContext, allRows, fee.tcsAppId!);
+  }
+
+  const transactions: TransactionRecordSummary[] = allRows.map((row) => ({
+    payGovTrackingId: row.paygovTrackingId ?? undefined,
+    transactionStatus: row.transactionStatus ?? "received",
+    paymentMethod: toApiPaymentMethod(row.paymentMethod),
+    createdTimestamp: row.createdAt,
+    updatedTimestamp: row.lastUpdatedAt,
+  }));
+
+  return { paymentStatus, transactions };
+};
+
+const getPendingTransactions = async (
+  appContext: AppContext,
+  allRows: TransactionModel[],
+  tcsAppId: string,
+): Promise<GetDetailsResponse> => {
   const refreshedRows = await Promise.all(
-    clientRows.map(async (row) => {
+    allRows.map(async (row) => {
       if (!row.paygovTrackingId || isTerminal(row.transactionStatus)) {
         return row;
       }
 
       const req = new GetRequestRequest({
-        tcsAppId: fee.tcsAppId!,
+        tcsAppId,
         payGovTrackingId: row.paygovTrackingId,
       });
       try {
         const result = await req.makeSoapRequest(appContext);
-        row.transactionStatus = parseTransactionStatus(result.transaction_status);
+        row.transactionStatus = parseTransactionStatus(
+          result.transaction_status,
+        );
       } catch (err) {
         console.error(
           `Failed to refresh status for paygovTrackingId '${row.paygovTrackingId}':`,
@@ -80,22 +117,24 @@ export const getDetails: GetDetails = async (appContext, { client, request }) =>
     }),
   );
 
-  const transactions: TransactionRecordSummary[] = refreshedRows.map((row) => {
-    if (!row.transactionStatus) {
-      console.error(
-        `Transaction ${row.agencyTrackingId} has null transactionStatus — defaulting to 'received'. This indicates corrupt data.`,
-      );
-    }
-    return {
-      payGovTrackingId: row.paygovTrackingId ?? undefined,
-      transactionStatus: row.transactionStatus ?? "received",
-      paymentMethod: toApiPaymentMethod(row.paymentMethod),
-      createdTimestamp: row.createdAt,
-      updatedTimestamp: row.lastUpdatedAt,
-    };
-  });
+  const transactions: TransactionRecordSummary[] = refreshedRows.map(
+    (row) => {
+      if (!row.transactionStatus) {
+        console.error(
+          `Transaction ${row.agencyTrackingId} has null transactionStatus — defaulting to 'received'. This indicates corrupt data.`,
+        );
+      }
+      return {
+        payGovTrackingId: row.paygovTrackingId ?? undefined,
+        transactionStatus: row.transactionStatus ?? "received",
+        paymentMethod: toApiPaymentMethod(row.paymentMethod),
+        createdTimestamp: row.createdAt,
+        updatedTimestamp: row.lastUpdatedAt,
+      };
+    },
+  );
 
-  const paymentStatus = derivePaymentStatus(transactions.map((t) => t.transactionStatus));
+  const paymentStatus = derivePaymentStatus(refreshedRows);
 
   return { paymentStatus, transactions };
 };

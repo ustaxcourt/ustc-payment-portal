@@ -1,11 +1,15 @@
-import { TransactionStatus } from "../schemas/TransactionStatus.schema";
 import { PaymentStatus } from "../schemas/PaymentStatus.schema";
+import TransactionModel from "../db/TransactionModel";
 
 export const derivePaymentStatus = (
-  statuses: TransactionStatus[],
+  transactions: TransactionModel[],
 ): PaymentStatus => {
-  if (statuses.some((s) => s === "processed")) return "success";
-  if (statuses.length > 0 && statuses.every((s) => s === "failed"))
+  if (transactions.some((t) => t.transactionStatus === "processed"))
+    return "success";
+  if (
+    transactions.length > 0 &&
+    transactions.every((t) => t.transactionStatus === "failed")
+  )
     return "failed";
   return "pending";
 };
