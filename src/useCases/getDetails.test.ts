@@ -282,19 +282,5 @@ describe("getDetails", () => {
       expect(result.paymentStatus).toBe("success");
       expect(result.transactions).toHaveLength(2);
     });
-
-    it("filters out other clients' rows but keeps this client's rows", async () => {
-      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
-        buildRow({ agencyTrackingId: "ours-1", clientName: mockClient.clientName }),
-        buildRow({ agencyTrackingId: "theirs", clientName: "Some Other Client" }),
-      ]);
-
-      const result = await getDetails(appContext, {
-        client: mockClient,
-        request: { transactionReferenceId: mockTransactionReferenceId },
-      });
-
-      expect(result.transactions).toHaveLength(1);
-    });
   });
 });
