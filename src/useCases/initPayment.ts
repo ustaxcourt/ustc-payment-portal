@@ -73,6 +73,9 @@ export const initPayment: InitPayment = async (
     );
 
   if (existingInitiatedTransaction) {
+    // TODO: PAY-298, is the token less than 3 hours old? If so, just return it.
+    // If not, call Pay.gov and get a new token.
+    // We might be able to reuse agencyTracking Id and just get a new token.
     throw new ConflictError(
       "A payment session is already initiated for this transactionReferenceId",
     );
