@@ -1,9 +1,15 @@
-import { PaymentStatus } from "../schemas/PaymentStatus.schema";
-import TransactionModel from "../db/TransactionModel";
 import { TransactionStatus } from "../schemas/TransactionStatus.schema";
+import { PaymentStatus } from "../schemas/PaymentStatus.schema";
 
-export const derivePaymentStatus = (
-  transactions: TransactionModel[],
+// Accepts any object that exposes a transactionStatus field — TransactionModel
+// rows from the DB and TransactionRecordSummary objects from a refreshed response
+// both qualify, which lets callers derive obligation status without converting shapes.
+type HasTransactionStatus = {
+  transactionStatus?: TransactionStatus | null;
+};
+
+export const derivePaymentStatus = <T extends HasTransactionStatus>(
+  transactions: T[],
 ): PaymentStatus => {
   if (transactions.some((t) => t.transactionStatus === "processed"))
     return "success";
@@ -27,4 +33,3 @@ export const derivePaymentStatusFromSingleTransaction = (
       return "pending";
   }
 };
-

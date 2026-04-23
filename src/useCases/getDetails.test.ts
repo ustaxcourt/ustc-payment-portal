@@ -101,7 +101,7 @@ describe("getDetails", () => {
     );
   });
 
-  it("throws NotFoundError when fee is not found for the transaction", async () => {
+  it("throws ServerError when fee is not found for the transaction (data corruption)", async () => {
     FeesModelMock.getFeeById.mockResolvedValueOnce(undefined);
 
     await expect(
@@ -109,7 +109,7 @@ describe("getDetails", () => {
         client: mockClient,
         request: { transactionReferenceId: mockTransactionReferenceId },
       }),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ServerError);
   });
 
   it("throws ServerError when fee has no tcsAppId", async () => {
@@ -280,6 +280,25 @@ describe("getDetails", () => {
       });
 
       expect(result.paymentStatus).toBe("success");
+      expect(result.transactions).toHaveLength(2);
+    });
+
+    it("authorizes by the oldest row's clientName (UUID collision across clients is negligibly unlikely)", async () => {
+      // Cross-client collision: row[0] (ours) allows the request through the auth check,
+      // and because findByReferenceId.orderBy('createdAt', 'asc') puts the earliest attempt
+      // first, the auth boundary is "whoever created the obligation first owns it".
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({ agencyTrackingId: "ours-1", clientName: mockClient.clientName }),
+        buildRow({ agencyTrackingId: "theirs", clientName: "Some Other Client" }),
+      ]);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      // All rows are returned — UUIDv4 collision across clients is ~1 in 5×10³⁶,
+      // so the team chose the simpler row[0] check over a per-row filter.
       expect(result.transactions).toHaveLength(2);
     });
   });

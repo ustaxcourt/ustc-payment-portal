@@ -174,6 +174,38 @@ describe("initPayment", () => {
     expect(TransactionModel.createReceived).not.toHaveBeenCalled();
   });
 
+  it("throws ConflictError when createReceived fails with a pg unique_violation (partial unique index race)", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    // App-level check passes (no existing initiated row visible), but the concurrent
+    // peer wins the createReceived race and our insert violates the partial unique index.
+    TransactionModel.findInitiatedByReferenceId.mockResolvedValueOnce(undefined);
+    const uniqueViolation = Object.assign(
+      new Error('duplicate key value violates unique constraint "idx_transactions_unique_active"'),
+      { code: "23505" },
+    );
+    TransactionModel.createReceived.mockRejectedValueOnce(uniqueViolation);
+
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toThrow(ConflictError);
+  });
+
+  it("wraps non-unique-violation createReceived errors as a generic failure", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInitiatedByReferenceId.mockResolvedValueOnce(undefined);
+    TransactionModel.createReceived.mockRejectedValueOnce(new Error("connection refused"));
+
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toThrow(/Failed to record received transaction/);
+  });
+
   it("updates transaction to failed if SOAP request fails", async () => {
     jest
       .spyOn(

@@ -33,6 +33,24 @@ const TERMINAL_STATUSES: ReadonlyArray<TransactionStatus> = [
 const isTerminal = (status: TransactionStatus | null | undefined): boolean =>
   status !== null && status !== undefined && TERMINAL_STATUSES.includes(status);
 
+const toTransactionRecordSummary = (
+  row: TransactionModel,
+  transactionStatus: TransactionStatus | null | undefined,
+): TransactionRecordSummary => {
+  if (!transactionStatus) {
+    console.error(
+      `Transaction ${row.agencyTrackingId} has null transactionStatus — defaulting to 'received'. This indicates corrupt data.`,
+    );
+  }
+  return {
+    payGovTrackingId: row.paygovTrackingId ?? undefined,
+    transactionStatus: transactionStatus ?? "received",
+    paymentMethod: toApiPaymentMethod(row.paymentMethod),
+    createdTimestamp: row.createdAt,
+    updatedTimestamp: row.lastUpdatedAt,
+  };
+};
+
 export const getDetails: GetDetails = async (
   appContext,
   { client, request },
@@ -56,46 +74,45 @@ export const getDetails: GetDetails = async (
     );
   }
 
-  // Fee-invariance: all rows for a transactionReferenceId share the same feeId
+  // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
   const fee = await FeesModel.getFeeById(allRows[0].feeId);
-  if (!fee) {
-    console.error(`Fee not found for feeId: ${allRows[0].feeId}`);
-    throw new NotFoundError("Fee configuration not found for this transaction");
-  }
-
-  if (!fee.tcsAppId) {
+  if (!fee || !fee.tcsAppId) {
+    // Both branches indicate server-side data corruption: the FK prevents the first,
+    // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
     console.error(
-      `Fee ${allRows[0].feeId} is missing tcsAppId configuration`,
+      `Fee misconfigured for feeId '${allRows[0].feeId}' on transactionReferenceId '${transactionReferenceId}': ${
+        !fee ? "fee row missing" : "tcsAppId missing"
+      }`,
     );
     throw new ServerError();
   }
 
   const paymentStatus = derivePaymentStatus(allRows);
 
-  if (paymentStatus === "pending") {
-    return getPendingTransactions(appContext, allRows, fee.tcsAppId!);
+  // If the obligation is already resolved (success or failed), the DB is authoritative —
+  // no need to hit Pay.gov. Only the pending path fans out to refresh attempts.
+  if (paymentStatus !== "pending") {
+    const transactions = allRows.map((row) =>
+      toTransactionRecordSummary(row, row.transactionStatus),
+    );
+    return { paymentStatus, transactions };
   }
 
-  const transactions: TransactionRecordSummary[] = allRows.map((row) => ({
-    payGovTrackingId: row.paygovTrackingId ?? undefined,
-    transactionStatus: row.transactionStatus ?? "received",
-    paymentMethod: toApiPaymentMethod(row.paymentMethod),
-    createdTimestamp: row.createdAt,
-    updatedTimestamp: row.lastUpdatedAt,
-  }));
-
-  return { paymentStatus, transactions };
+  return refreshPendingAttempts(appContext, allRows, fee.tcsAppId);
 };
 
-const getPendingTransactions = async (
+const refreshPendingAttempts = async (
   appContext: AppContext,
   allRows: TransactionModel[],
   tcsAppId: string,
 ): Promise<GetDetailsResponse> => {
-  const refreshedRows = await Promise.all(
+  // TODO(PAY-###): Bound Pay.gov concurrency. Promise.all is fine while N ≤ 1
+  // but becomes unbounded fan-out once multi-attempt traffic exists. Discussion
+  // pending with the team — options are p-limit (cap 2–3) or sequential await.
+  const transactions: TransactionRecordSummary[] = await Promise.all(
     allRows.map(async (row) => {
       if (!row.paygovTrackingId || isTerminal(row.transactionStatus)) {
-        return row;
+        return toTransactionRecordSummary(row, row.transactionStatus);
       }
 
       const req = new GetRequestRequest({
@@ -104,37 +121,23 @@ const getPendingTransactions = async (
       });
       try {
         const result = await req.makeSoapRequest(appContext);
-        row.transactionStatus = parseTransactionStatus(
-          result.transaction_status,
+        // Return a new summary rather than mutating row.transactionStatus —
+        // keeps the input model array immutable for any downstream reader.
+        return toTransactionRecordSummary(
+          row,
+          parseTransactionStatus(result.transaction_status),
         );
       } catch (err) {
         console.error(
           `Failed to refresh status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
+        return toTransactionRecordSummary(row, row.transactionStatus);
       }
-      return row;
     }),
   );
 
-  const transactions: TransactionRecordSummary[] = refreshedRows.map(
-    (row) => {
-      if (!row.transactionStatus) {
-        console.error(
-          `Transaction ${row.agencyTrackingId} has null transactionStatus — defaulting to 'received'. This indicates corrupt data.`,
-        );
-      }
-      return {
-        payGovTrackingId: row.paygovTrackingId ?? undefined,
-        transactionStatus: row.transactionStatus ?? "received",
-        paymentMethod: toApiPaymentMethod(row.paymentMethod),
-        createdTimestamp: row.createdAt,
-        updatedTimestamp: row.lastUpdatedAt,
-      };
-    },
-  );
-
-  const paymentStatus = derivePaymentStatus(refreshedRows);
+  const paymentStatus = derivePaymentStatus(transactions);
 
   return { paymentStatus, transactions };
 };

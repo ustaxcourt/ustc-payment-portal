@@ -25,6 +25,16 @@ const isNetworkError = (err: unknown): boolean =>
   err instanceof Error &&
   NETWORK_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
 
+const PG_UNIQUE_VIOLATION = "23505";
+
+const isUniqueViolation = (err: unknown): boolean => {
+  if (!err || typeof err !== "object") return false;
+  const code = (err as { code?: unknown }).code;
+  const nativeCode = (err as { nativeError?: { code?: unknown } }).nativeError
+    ?.code;
+  return code === PG_UNIQUE_VIOLATION || nativeCode === PG_UNIQUE_VIOLATION;
+};
+
 export type InitPayment = (
   appContext: AppContext,
   params: {
@@ -92,6 +102,14 @@ export const initPayment: InitPayment = async (
       metadata: request.metadata,
     });
   } catch (err) {
+    if (isUniqueViolation(err)) {
+      // Concurrent initPayment lost the createReceived race — the partial unique index
+      // `idx_transactions_unique_active` ensures at most one in-flight attempt per
+      // (clientName, transactionReferenceId). Report the same 409 as the app-level check.
+      throw new ConflictError(
+        "A payment session is already initiated for this transactionReferenceId",
+      );
+    }
     throw new Error(
       `Failed to record received transaction: ${
         err instanceof Error ? err.message : String(err)

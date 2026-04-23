@@ -36,6 +36,17 @@ export async function up(knex: Knex): Promise<void> {
     t.index(['paygov_token'], 'idx_transactions_paygov_token');
   });
 
+  // Partial unique index: at most one in-flight attempt per (client_name, transaction_reference_id).
+  // 'received' catches a TOCTOU race at initPayment.createReceived time (before Pay.gov is called);
+  // 'initiated' covers the window after Pay.gov returns a token but before the user completes payment.
+  // Terminal statuses ('processed', 'failed') are intentionally excluded so failed attempts can be
+  // retried and successful attempts can be recorded alongside prior failures.
+  await knex.schema.raw(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_unique_active
+    ON transactions (client_name, transaction_reference_id)
+    WHERE transaction_status IN ('received', 'initiated')
+  `);
+
   // DESC indexes for time-based queries
   await knex.schema.raw(`
     CREATE INDEX IF NOT EXISTS idx_transactions_created_at
