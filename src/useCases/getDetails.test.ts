@@ -240,7 +240,7 @@ describe("getDetails", () => {
     });
 
     it("logs and continues when the Pay.gov SOAP refresh fails for an attempt", async () => {
-      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(jest.fn());
       appContext.postHttpRequest = jest.fn().mockRejectedValue(new Error("Pay.gov network failure"));
 
       const result = await getDetails(appContext, {
