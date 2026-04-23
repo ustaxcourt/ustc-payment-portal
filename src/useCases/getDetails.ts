@@ -74,20 +74,6 @@ export const getDetails: GetDetails = async (
     );
   }
 
-  // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
-  // Helps to prevent two simultaneous attempts at the same obligation (transactionReferenceID).
-  const fee = await FeesModel.getFeeById(allRows[0].feeId);
-  if (!fee || !fee.tcsAppId) {
-    // Both branches indicate server-side data corruption: the FK prevents the first,
-    // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
-    console.error(
-      `Fee misconfigured for feeId '${allRows[0].feeId}' on transactionReferenceId '${transactionReferenceId}': ${
-        !fee ? "fee row missing" : "tcsAppId missing"
-      }`,
-    );
-    throw new ServerError();
-  }
-
   const paymentStatus = derivePaymentStatus(allRows);
 
   // If the obligation is already resolved (success or failed), the DB is authoritative —
