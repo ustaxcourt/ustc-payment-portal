@@ -75,6 +75,7 @@ export const getDetails: GetDetails = async (
   }
 
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
+  // Helps to prevent two simultaneous attempts at the same obligation (transactionReferenceID).
   const fee = await FeesModel.getFeeById(allRows[0].feeId);
   if (!fee || !fee.tcsAppId) {
     // Both branches indicate server-side data corruption: the FK prevents the first,
@@ -106,9 +107,6 @@ const refreshPendingAttempts = async (
   allRows: TransactionModel[],
   tcsAppId: string,
 ): Promise<GetDetailsResponse> => {
-  // TODO(PAY-###): Bound Pay.gov concurrency. Promise.all is fine while N ≤ 1
-  // but becomes unbounded fan-out once multi-attempt traffic exists. Discussion
-  // pending with the team — options are p-limit (cap 2–3) or sequential await.
   const transactions: TransactionRecordSummary[] = await Promise.all(
     allRows.map(async (row) => {
       if (!row.paygovTrackingId || isTerminal(row.transactionStatus)) {
