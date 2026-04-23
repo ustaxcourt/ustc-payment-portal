@@ -193,7 +193,11 @@ export default class TransactionModel extends Model {
       .first();
   }
 
-  static async findInitiatedByReferenceId(
+  // Returns any non-terminal attempt for the given (clientName, transactionReferenceId).
+  // Used by initPayment as the app-level pre-check; the status set here MUST stay aligned
+  // with the partial unique index `idx_transactions_unique_active` so the app-level check
+  // and the DB-level guarantee cover the same scope.
+  static async findInFlightByReferenceId(
     clientName: string,
     transactionReferenceId: string,
   ): Promise<TransactionModel | undefined> {
@@ -201,7 +205,7 @@ export default class TransactionModel extends Model {
     return TransactionModel.query()
       .where('clientName', clientName)
       .where('transactionReferenceId', transactionReferenceId)
-      .where('transactionStatus', 'initiated')
+      .whereIn('transactionStatus', ['received', 'initiated', 'pending'])
       .first();
   }
 

@@ -283,10 +283,10 @@ describe("getDetails", () => {
       expect(result.transactions).toHaveLength(2);
     });
 
-    it("authorizes by the oldest row's clientName (UUID collision across clients is negligibly unlikely)", async () => {
-      // Cross-client collision: row[0] (ours) allows the request through the auth check,
-      // and because findByReferenceId.orderBy('createdAt', 'asc') puts the earliest attempt
-      // first, the auth boundary is "whoever created the obligation first owns it".
+    it("authorizes by oldest row but filters response to only the caller's rows (no cross-client data leak)", async () => {
+      // transactionReferenceId is client-supplied, so a UUID could in theory collide across
+      // clients. If row[0] is ours we pass auth, but the response must NOT include the other
+      // client's rows even when they share the same reference id.
       TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
         buildRow({ agencyTrackingId: "ours-1", clientName: mockClient.clientName }),
         buildRow({ agencyTrackingId: "theirs", clientName: "Some Other Client" }),
@@ -297,9 +297,8 @@ describe("getDetails", () => {
         request: { transactionReferenceId: mockTransactionReferenceId },
       });
 
-      // All rows are returned — UUIDv4 collision across clients is ~1 in 5×10³⁶,
-      // so the team chose the simpler row[0] check over a per-row filter.
-      expect(result.transactions).toHaveLength(2);
+      expect(result.transactions).toHaveLength(1);
+      expect(result.transactions[0].payGovTrackingId).toBe(mockPayGovTrackingId);
     });
   });
 });

@@ -66,18 +66,18 @@ export const initPayment: InitPayment = async (
     throw new InvalidRequestError(`Fee ${feeId} requires an amount`);
   }
 
-  const existingInitiatedTransaction =
-    await TransactionModel.findInitiatedByReferenceId(
+  const existingInFlightTransaction =
+    await TransactionModel.findInFlightByReferenceId(
       clientName,
       transactionReferenceId,
     );
 
-  if (existingInitiatedTransaction) {
+  if (existingInFlightTransaction) {
     // TODO: PAY-298, is the token less than 3 hours old? If so, just return it.
     // If not, call Pay.gov and get a new token.
     // We might be able to reuse agencyTracking Id and just get a new token.
     throw new ConflictError(
-      "A payment session is already initiated for this transactionReferenceId",
+      "A payment session is already in-flight for this transactionReferenceId",
     );
   }
 
@@ -110,7 +110,7 @@ export const initPayment: InitPayment = async (
       // `idx_transactions_unique_active` ensures at most one in-flight attempt per
       // (clientName, transactionReferenceId). Report the same 409 as the app-level check.
       throw new ConflictError(
-        "A payment session is already initiated for this transactionReferenceId",
+        "A payment session is already in-flight for this transactionReferenceId",
       );
     }
     throw new Error(
