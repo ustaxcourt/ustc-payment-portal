@@ -32,7 +32,7 @@ export async function up(knex: Knex): Promise<void> {
     t.index(['transaction_status'], 'idx_transactions_transaction_status');
     t.index(['client_name'], 'idx_transactions_client_name');
     t.index(['paygov_tracking_id'], 'idx_transactions_paygov_tracking_id');
-    t.unique(['client_name', 'transaction_reference_id'], { indexName: 'idx_transactions_client_ref' });
+    t.unique(['client_name', 'transaction_reference_id'], 'idx_transactions_client_ref');
     t.index(['paygov_token'], 'idx_transactions_paygov_token');
   });
 
