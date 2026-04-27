@@ -375,6 +375,33 @@ describe("getDetails", () => {
       expect(result.transactions[0].updatedTimestamp).toBe("2026-01-15T11:00:00.000Z");
     });
 
+    it("writes paymentMethod=null when neither Pay.gov nor the row has a recognized value", async () => {
+      TransactionModelMock.findByReferenceId.mockReset();
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({
+          transactionStatus: "pending",
+          paymentStatus: "pending",
+          paygovTrackingId: mockPayGovTrackingId,
+          paymentMethod: null,
+        }),
+      ]);
+
+      await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+        "agency-tracking-1",
+        mockPayGovTrackingId,
+        "pending",
+        "pending",
+        null,
+        undefined,
+        undefined,
+      );
+    });
+
     it("preserves the row's existing paymentMethod when Pay.gov returns an unrecognized payment_type", async () => {
       const unknownPaymentTypeResponse = mockSuccessSoapResponse.replace(
         "<payment_type>ACH</payment_type>",
@@ -396,6 +423,18 @@ describe("getDetails", () => {
         "2026-01-15T10:30:00",
         "2026-01-16",
       );
+    });
+
+    it("re-derives the group paymentStatus from refreshed rows after a Pay.gov upgrade", async () => {
+      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockSuccessSoapResponse);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(result.paymentStatus).toBe("success");
+      expect(result.transactions[0].transactionStatus).toBe("processed");
     });
 
     it("returns the fresh Pay.gov status and logs a persist failure when the DB writeback throws", async () => {
