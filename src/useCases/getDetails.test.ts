@@ -248,6 +248,30 @@ describe("getDetails", () => {
       expect(result.transactions[0].payGovTrackingId).toBeUndefined();
       expect(postHttpRequestSpy).not.toHaveBeenCalled();
     });
+
+    it("logs and defaults to 'received' when a row has a null transactionStatus (corrupt data)", async () => {
+      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(jest.fn());
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({
+          agencyTrackingId: "corrupt-row",
+          transactionStatus: null,
+          paymentStatus: "pending",
+          paygovTrackingId: null,
+        }),
+      ]);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(result.transactions[0].transactionStatus).toBe("received");
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Transaction corrupt-row has null transactionStatus"),
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
   });
 
   describe("non-terminal status with paygovTrackingId (refreshes from Pay.gov)", () => {
