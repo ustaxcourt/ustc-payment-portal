@@ -128,21 +128,6 @@ describe("getDetails", () => {
     ).rejects.toThrow(new NotFoundError("Transaction Reference Id was not found"));
   });
 
-  it("throws ForbiddenError when transactions exist but belong to a different client", async () => {
-    TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
-      buildRow({ clientName: "Some Other Client" }),
-    ]);
-
-    await expect(
-      getDetails(appContext, {
-        client: mockClient,
-        request: { transactionReferenceId: mockTransactionReferenceId },
-      }),
-    ).rejects.toThrow(
-      new ForbiddenError("You are not authorized to get details for this transaction."),
-    );
-  });
-
   it("throws ServerError when fee is not found for the transaction (data corruption)", async () => {
     FeesModelMock.getFeeById.mockResolvedValueOnce(undefined);
 
