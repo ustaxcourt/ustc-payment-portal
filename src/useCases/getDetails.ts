@@ -69,15 +69,6 @@ export const getDetails: GetDetails = async (
     throw new NotFoundError("Transaction Reference Id was not found");
   }
 
-  if (allRows[0].clientName !== client.clientName) {
-    console.warn(
-      `Client '${client.clientName}' attempted to get details for transactionReferenceId '${transactionReferenceId}' owned by another client`,
-    );
-    throw new ForbiddenError(
-      "You are not authorized to get details for this transaction.",
-    );
-  }
-
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
   const fee = await FeesModel.getFeeById(allRows[0].feeId);
   if (!fee || !fee.tcsAppId) {
