@@ -194,8 +194,7 @@ describe("make a transaction", () => {
     markUrl.pathname = `${payPath}/${encodeURIComponent(
       paymentMethod,
     )}/${encodeURIComponent(paymentStatus)}`;
-    markUrl.search = new URLSearchParams({ token }).toString();
-
+     markUrl.searchParams.set("token", token);
     const result = await fetch(markUrl, { method: "POST" });
     const data = await expectJsonOk<{ redirectUrl: string }>(
       result,
