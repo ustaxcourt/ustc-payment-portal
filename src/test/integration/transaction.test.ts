@@ -1,38 +1,22 @@
 import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
 import { InitPaymentRequest } from "../../schemas/InitPayment.schema";
+import { GetDetailsResponse } from "../../schemas/GetDetails.schema";
+import { ProcessPaymentResponse } from "../../schemas/ProcessPayment.schema";
+import { PaymentStatus } from "../../schemas/PaymentStatus.schema";
+import { TransactionStatus } from "../../schemas/TransactionStatus.schema";
 import { signedFetch } from "./sigv4Helper";
 
 type PayGovPaymentMethod = "PLASTIC_CARD" | "ACH" | "PAYPAL";
 type PayGovPaymentStatus = "Success" | "Failed";
-type PortalPaymentStatus = "success" | "failed" | "pending";
-type PortalTransactionStatus = "processed" | "failed" | "pending";
 type ApiPaymentMethod = "Credit/Debit Card" | "ACH" | "PayPal";
-
-type ProcessResponse = {
-  paymentStatus: PortalPaymentStatus;
-  transactions: {
-    payGovTrackingId?: string;
-    transactionStatus: PortalTransactionStatus;
-    paymentMethod?: ApiPaymentMethod;
-  }[];
-};
-
-type DetailsResponse = {
-  paymentStatus: PortalPaymentStatus;
-  transactions: {
-    payGovTrackingId?: string;
-    transactionStatus: PortalTransactionStatus;
-    paymentMethod?: ApiPaymentMethod;
-  }[];
-};
 
 type Scenario = {
   name: string;
   paymentMethod: PayGovPaymentMethod;
   paymentStatus: PayGovPaymentStatus;
-  expectedProcessPaymentStatus: PortalPaymentStatus;
-  expectedFinalPaymentStatus: Exclude<PortalPaymentStatus, "pending">;
-  expectedFinalTransactionStatus: Exclude<PortalTransactionStatus, "pending">;
+  expectedProcessPaymentStatus: PaymentStatus;
+  expectedFinalPaymentStatus: Exclude<PaymentStatus, "pending">;
+  expectedFinalTransactionStatus: Exclude<TransactionStatus, "pending">;
   expectedApiPaymentMethod: ApiPaymentMethod;
   expectPendingDuringResolution?: boolean;
 };
@@ -223,7 +207,7 @@ describe("make a transaction", () => {
 
   const processTransaction = async (
     token: string,
-  ): Promise<ProcessResponse> => {
+  ): Promise<ProcessPaymentResponse> => {
     const request: ProcessPaymentRequest = { token };
     const result = await portalFetch(`${baseUrl}/process`, {
       method: "POST",
@@ -233,13 +217,15 @@ describe("make a transaction", () => {
       body: JSON.stringify(request),
     });
 
-    return expectJsonOk<ProcessResponse>(
+    return expectJsonOk<ProcessPaymentResponse>(
       result,
       `POST /process for token ${token}`,
     );
   };
 
-  const getDetails = async (referenceId: string): Promise<DetailsResponse> => {
+  const getDetails = async (
+    referenceId: string,
+  ): Promise<GetDetailsResponse> => {
     const result = await portalFetch(
       `${baseUrl}/details/${encodeURIComponent(referenceId)}`,
       {
@@ -249,14 +235,17 @@ describe("make a transaction", () => {
       },
     );
 
-    return expectJsonOk<DetailsResponse>(result, `GET /details/${referenceId}`);
+    return expectJsonOk<GetDetailsResponse>(
+      result,
+      `GET /details/${referenceId}`,
+    );
   };
 
   const assertSingleTransaction = (
-    response: ProcessResponse | DetailsResponse,
+    response: ProcessPaymentResponse | GetDetailsResponse,
     scenario: Scenario,
-    expectedPaymentStatus: PortalPaymentStatus,
-    expectedTransactionStatus: PortalTransactionStatus,
+    expectedPaymentStatus: PaymentStatus,
+    expectedTransactionStatus: TransactionStatus,
   ) => {
     expect(response.paymentStatus).toBe(expectedPaymentStatus);
     expect(response.transactions).toHaveLength(1);
@@ -271,8 +260,8 @@ describe("make a transaction", () => {
   const waitForResolvedDetails = async (
     referenceId: string,
     scenario: Scenario,
-    initialDetails: DetailsResponse,
-  ): Promise<DetailsResponse> => {
+    initialDetails: GetDetailsResponse,
+  ): Promise<GetDetailsResponse> => {
     const deadline = Date.now() + ACH_RESOLUTION_TIMEOUT_MS;
     const seenStates = [
       `${initialDetails.paymentStatus}/${initialDetails.transactions[0]?.transactionStatus}`,
