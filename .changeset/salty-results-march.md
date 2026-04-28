@@ -22,8 +22,9 @@ The endpoint now matches its OpenAPI contract: keyed on `transactionReferenceId`
 | --- | --- | --- | --- |
 | Path param missing or not a UUID | 400 | `InvalidRequestError` | `"Transaction Reference Id was invalid"` |
 | `transactionReferenceId` valid but no transaction exists | 404 | `NotFoundError` | `"Transaction Reference Id was not found"` |
-| Caller is not the obligation's owner | 403 | `ForbiddenError` | `"You are not authorized to get details for this transaction."` |
 | Fee row missing OR `tcsAppId` missing on fee | 500 | `ServerError` | (server-side data corruption — diagnostic logged to CloudWatch, not leaked in response) |
+
+`getDetails` does not authorize by `clientName`: UUIDv4 collision across clients is infeasible (~1 in 5×10³⁶), so the lookup keyed on `transactionReferenceId` alone is sufficient.
 
 All routed by the existing `handleError` `statusCode < 500` branch — no `handleError` changes needed.
 
@@ -76,9 +77,9 @@ New finders on `TransactionModel`:
 #### Testing
 
 - `src/db/TransactionModel.test.ts` — new tests for `findByReferenceId` (empty result, single match) and `findInitiatedByReferenceId`.
-- `src/useCases/getDetails.test.ts` — rewritten for the new contract. Covers `NotFoundError` (no rows), `ForbiddenError` (cross-client), `ServerError` (misconfigured fee — both fail modes), terminal-status short-circuit (no SOAP call), non-terminal without `paygovTrackingId` (no SOAP call), non-terminal refresh with Pay.gov response, SOAP-failure-per-attempt handling, and multi-row aggregation.
+- `src/useCases/getDetails.test.ts` — rewritten for the new contract. Covers `NotFoundError` (no rows), `ServerError` (misconfigured fee — both fail modes), terminal-status short-circuit (no SOAP call), non-terminal without `paygovTrackingId` (no SOAP call), non-terminal refresh with Pay.gov response, SOAP-failure-per-attempt handling, and multi-row aggregation.
 - `src/useCases/initPayment.test.ts` — new tests for both layers of the conflict guard: app-level pre-check returns 409, and DB-level pg `23505` violation converts to 409.
-- `src/lambdaHandler.test.ts` — `getDetailsHandler` tests updated for the new response shape + path param. Added 400 (invalid UUID, missing/undefined params), 404 (`NotFoundError` propagation), 403 (`ForbiddenError` propagation).
+- `src/lambdaHandler.test.ts` — `getDetailsHandler` tests updated for the new response shape + path param. Added 400 (invalid UUID, missing/undefined params) and 404 (`NotFoundError` propagation). Existing 403/`ForbiddenError`-propagation routing test is retained at the handler level even though `getDetails` no longer raises it.
 - `src/utils/derivePaymentStatus.test.ts` — added `derivePaymentStatusFromSingleTransaction` coverage.
 - `src/test/integration/getDetails.test.ts` — new integration test covering 400 on invalid UUID, 404 on not-found UUID, and reaching-Lambda smoke check.
 - `src/test/integration/transaction.test.ts` — end-to-end test now drives `/details` via `transactionReferenceId` and asserts the new response shape.

@@ -2,7 +2,6 @@ import { getDetails } from "./getDetails";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { ClientPermission } from "../types/ClientPermission";
 import { NotFoundError } from "../errors/notFound";
-import { ForbiddenError } from "../errors/forbidden";
 import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
@@ -469,13 +468,11 @@ describe("getDetails", () => {
       expect(result.transactions).toHaveLength(2);
     });
 
-    it("authorizes by the oldest row's clientName and returns all rows without filtering", async () => {
-      // Auth model: only allRows[0].clientName is checked. We do NOT filter the response by
-      // clientName — UUIDv4 makes cross-client collision functionally impossible (~1 in 5×10³⁶),
-      // so in practice every row for a transactionReferenceId belongs to the same client.
-      // This test documents that decision: if the oldest row passes auth, every row is returned
-      // as-is. If a future requirement (e.g., multiple clients sharing a Fee) makes per-row
-      // ownership matter, this test should fail and force a deliberate update.
+    it("returns all rows for a transactionReferenceId without filtering by clientName", async () => {
+      // getDetails does not authorize by clientName — UUIDv4 makes cross-client collision
+      // functionally impossible (~1 in 5×10³⁶), so every row for a transactionReferenceId
+      // is returned as-is. If a future requirement (e.g., multiple clients sharing a Fee)
+      // makes per-row ownership matter, this test should fail and force a deliberate update.
       TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
         buildRow({ agencyTrackingId: "ours-1", clientName: mockClient.clientName }),
         buildRow({ agencyTrackingId: "theirs", clientName: "Some Other Client" }),
