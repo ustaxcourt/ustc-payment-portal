@@ -11,6 +11,7 @@ jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
   default: {
     findByReferenceId: jest.fn(),
+    updateAfterPayGovResponse: jest.fn(),
   },
 }));
 
@@ -66,10 +67,51 @@ const mockPendingSoapResponse = `<?xml version="1.0" encoding="UTF-8"?>
 </S:Envelope>
 `;
 
+const mockSuccessSoapResponse = `<?xml version="1.0" encoding="UTF-8"?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Body>
+    <ns2:getDetailsResponse xmlns:ns2="http://fms.treas.gov/services/tcsonline_3_1">
+      <getDetailsResponse>
+        <transactions>
+          <transaction>
+            <paygov_tracking_id>${mockPayGovTrackingId}</paygov_tracking_id>
+            <transaction_status>Success</transaction_status>
+            <payment_type>ACH</payment_type>
+            <transaction_date>2026-01-15T10:30:00</transaction_date>
+            <payment_date>2026-01-16</payment_date>
+          </transaction>
+        </transactions>
+      </getDetailsResponse>
+    </ns2:getDetailsResponse>
+  </S:Body>
+</S:Envelope>
+`;
+
 describe("getDetails", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     TransactionModelMock.findByReferenceId.mockResolvedValue([buildRow()]);
+    TransactionModelMock.updateAfterPayGovResponse.mockImplementation(
+      async (
+        agencyTrackingId,
+        paygovTrackingId,
+        transactionStatus,
+        paymentStatus,
+        paymentMethod,
+        transactionDate,
+        paymentDate,
+      ) =>
+        buildRow({
+          agencyTrackingId,
+          paygovTrackingId,
+          transactionStatus,
+          paymentStatus,
+          paymentMethod,
+          transactionDate,
+          paymentDate,
+          lastUpdatedAt: "2026-01-15T11:00:00.000Z",
+        }),
+    );
     FeesModelMock.getFeeById.mockResolvedValue(
       { feeId: "PETITION_FILING_FEE", tcsAppId: "TCSUSTAXCOURTPETITION" } as unknown as FeesModel,
     );
@@ -206,6 +248,30 @@ describe("getDetails", () => {
       expect(result.transactions[0].payGovTrackingId).toBeUndefined();
       expect(postHttpRequestSpy).not.toHaveBeenCalled();
     });
+
+    it("logs and defaults to 'received' when a row has a null transactionStatus (corrupt data)", async () => {
+      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(jest.fn());
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({
+          agencyTrackingId: "corrupt-row",
+          transactionStatus: null,
+          paymentStatus: "pending",
+          paygovTrackingId: null,
+        }),
+      ]);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(result.transactions[0].transactionStatus).toBe("received");
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Transaction corrupt-row has null transactionStatus"),
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
   });
 
   describe("non-terminal status with paygovTrackingId (refreshes from Pay.gov)", () => {
@@ -254,6 +320,141 @@ describe("getDetails", () => {
         expect.stringContaining(`Failed to refresh status for paygovTrackingId '${mockPayGovTrackingId}'`),
         expect.any(Error),
       );
+      expect(TransactionModelMock.updateAfterPayGovResponse).not.toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("persists the refreshed status to the database via updateAfterPayGovResponse", async () => {
+      await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledTimes(1);
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+        "agency-tracking-1",
+        mockPayGovTrackingId,
+        "pending",
+        "pending",
+        "plastic_card",
+        undefined,
+        undefined,
+      );
+    });
+
+    it("persists payment_type and dates when Pay.gov returns them", async () => {
+      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockSuccessSoapResponse);
+
+      await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+        "agency-tracking-1",
+        mockPayGovTrackingId,
+        "processed",
+        "success",
+        "ach",
+        "2026-01-15T10:30:00",
+        "2026-01-16",
+      );
+    });
+
+    it("returns the persisted row's values, not the stale in-memory row", async () => {
+      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockSuccessSoapResponse);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(result.paymentStatus).toBe("success");
+      expect(result.transactions[0].transactionStatus).toBe("processed");
+      expect(result.transactions[0].updatedTimestamp).toBe("2026-01-15T11:00:00.000Z");
+    });
+
+    it("writes paymentMethod=null when neither Pay.gov nor the row has a recognized value", async () => {
+      TransactionModelMock.findByReferenceId.mockReset();
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({
+          transactionStatus: "pending",
+          paymentStatus: "pending",
+          paygovTrackingId: mockPayGovTrackingId,
+          paymentMethod: null,
+        }),
+      ]);
+
+      await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+        "agency-tracking-1",
+        mockPayGovTrackingId,
+        "pending",
+        "pending",
+        null,
+        undefined,
+        undefined,
+      );
+    });
+
+    it("preserves the row's existing paymentMethod when Pay.gov returns an unrecognized payment_type", async () => {
+      const unknownPaymentTypeResponse = mockSuccessSoapResponse.replace(
+        "<payment_type>ACH</payment_type>",
+        "<payment_type>GIFT_CARD</payment_type>",
+      );
+      appContext.postHttpRequest = jest.fn().mockResolvedValue(unknownPaymentTypeResponse);
+
+      await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+        "agency-tracking-1",
+        mockPayGovTrackingId,
+        "processed",
+        "success",
+        "plastic_card",
+        "2026-01-15T10:30:00",
+        "2026-01-16",
+      );
+    });
+
+    it("re-derives the group paymentStatus from refreshed rows after a Pay.gov upgrade", async () => {
+      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockSuccessSoapResponse);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(result.paymentStatus).toBe("success");
+      expect(result.transactions[0].transactionStatus).toBe("processed");
+    });
+
+    it("returns the fresh Pay.gov status and logs a persist failure when the DB writeback throws", async () => {
+      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(jest.fn());
+      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockSuccessSoapResponse);
+      TransactionModelMock.updateAfterPayGovResponse.mockRejectedValueOnce(
+        new Error("DB connection lost"),
+      );
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(result.transactions[0].transactionStatus).toBe("processed");
+      expect(result.paymentStatus).toBe("success");
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`Failed to persist refreshed status for paygovTrackingId '${mockPayGovTrackingId}'`),
+        expect.any(Error),
+      );
 
       consoleErrorSpy.mockRestore();
     });
@@ -299,6 +500,36 @@ describe("getDetails", () => {
 
       expect(result.transactions).toHaveLength(1);
       expect(result.transactions[0].payGovTrackingId).toBe(mockPayGovTrackingId);
+    });
+
+    it("writes back every pending attempt in a multi-row group", async () => {
+      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockPendingSoapResponse);
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({
+          agencyTrackingId: "attempt-1",
+          paygovTrackingId: "TRK0000000000000001AB",
+          transactionStatus: "pending",
+          paymentStatus: "pending",
+        }),
+        buildRow({
+          agencyTrackingId: "attempt-2",
+          paygovTrackingId: "TRK0000000000000002AB",
+          transactionStatus: "received",
+          paymentStatus: "pending",
+        }),
+      ]);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledTimes(2);
+      const agencyIdsWritten = TransactionModelMock.updateAfterPayGovResponse.mock.calls
+        .map((call) => call[0])
+        .sort();
+      expect(agencyIdsWritten).toEqual(["attempt-1", "attempt-2"]);
+      expect(result.transactions).toHaveLength(2);
     });
   });
 });

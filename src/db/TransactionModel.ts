@@ -164,18 +164,19 @@ export default class TransactionModel extends Model {
     transactionStatus: TransactionStatus,
     paymentStatus: PaymentStatus,
     paymentMethod: PaymentMethod | null,
-    transactionDate: string,
-    paymentDate: string,
+    transactionDate: string | undefined,
+    paymentDate: string | undefined,
   ): Promise<TransactionModel> {
     await getKnex();
+    // Skip empty dates: patching "" into a TIMESTAMP corrupts it; undefined would null an existing value.
     return this.query()
       .patchAndFetchById(agencyTrackingId, {
         paygovTrackingId,
         transactionStatus,
         paymentStatus,
         paymentMethod,
-        transactionDate,
-        paymentDate,
+        ...(transactionDate && { transactionDate }),
+        ...(paymentDate && { paymentDate }),
       });
   }
 

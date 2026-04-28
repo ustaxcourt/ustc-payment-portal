@@ -5,8 +5,12 @@ import { GetDetailsResponse } from "../schemas/GetDetails.schema";
 import { TransactionRecordSummary } from "../schemas/TransactionRecord.schema";
 import { TransactionStatus } from "../schemas/TransactionStatus.schema";
 import { parseTransactionStatus } from "./parseTransactionStatus";
-import { derivePaymentStatus } from "../utils/derivePaymentStatus";
+import {
+  derivePaymentStatus,
+  derivePaymentStatusFromSingleTransaction,
+} from "../utils/derivePaymentStatus";
 import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
+import { toPaymentMethod } from "../utils/toPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
@@ -126,20 +130,41 @@ const refreshPendingAttempts = async (
         tcsAppId,
         payGovTrackingId: row.paygovTrackingId,
       });
+      let refreshedStatus;
+      let result;
       try {
-        const result = await req.makeSoapRequest(appContext);
-        // Return a new summary rather than mutating row.transactionStatus —
-        // keeps the input model array immutable for any downstream reader.
-        return toTransactionRecordSummary(
-          row,
-          parseTransactionStatus(result.transaction_status),
-        );
+        result = await req.makeSoapRequest(appContext);
+        refreshedStatus = parseTransactionStatus(result.transaction_status);
       } catch (err) {
         console.error(
           `Failed to refresh status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
         return toTransactionRecordSummary(row, row.transactionStatus);
+      }
+
+      try {
+        const updated = await TransactionModel.updateAfterPayGovResponse(
+          row.agencyTrackingId,
+          result.paygov_tracking_id,
+          refreshedStatus,
+          derivePaymentStatusFromSingleTransaction(refreshedStatus),
+          // Fall back to row.paymentMethod when toPaymentMethod returns null — don't overwrite a valid method on an unrecognized payment_type.
+          (result.payment_type ? toPaymentMethod(result.payment_type) : null) ??
+            row.paymentMethod ??
+            null,
+          result.transaction_date,
+          result.payment_date,
+        );
+        return toTransactionRecordSummary(updated, updated.transactionStatus);
+      } catch (err) {
+        // Pay.gov told us the truth; we just couldn't persist it. Return the fresh status anyway —
+        // next call will re-poll and retry the write.
+        console.error(
+          `Failed to persist refreshed status for paygovTrackingId '${row.paygovTrackingId}':`,
+          err,
+        );
+        return toTransactionRecordSummary(row, refreshedStatus);
       }
     }),
   );
