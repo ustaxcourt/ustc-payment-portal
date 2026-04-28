@@ -14,7 +14,6 @@ import { toPaymentMethod } from "../utils/toPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
-import { ForbiddenError } from "../errors/forbidden";
 import { ServerError } from "../errors/serverError";
 
 type GetDetailsRequest = {
@@ -59,6 +58,7 @@ export const getDetails: GetDetails = async (
   appContext,
   { client, request },
 ) => {
+  // TODO: Remove client param here as unused, update tests.
   const { transactionReferenceId } = request;
 
   const allRows = await TransactionModel.findByReferenceId(
@@ -93,10 +93,10 @@ export const getDetails: GetDetails = async (
     return { paymentStatus, transactions };
   }
 
-  return refreshPendingAttempts(appContext, allRows, fee.tcsAppId);
+  return updatePendingAttemptFromPayGov(appContext, allRows, fee.tcsAppId);
 };
 
-const refreshPendingAttempts = async (
+const updatePendingAttemptFromPayGov = async (
   appContext: AppContext,
   allRows: TransactionModel[],
   tcsAppId: string,
