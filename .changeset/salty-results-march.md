@@ -50,7 +50,7 @@ New forward migration `db/migrations/20260424164039_remove_idx_transactions_clie
 New finders on `TransactionModel`:
 
 - `findByReferenceId(refId)` — used by `getDetails` to fetch all attempts for an obligation.
-- `findInFlightByReferenceId(clientName, refId)` — used by `initPayment` as the app-level pre-check; matches the same `('received', 'initiated', 'pending')` set as the partial unique index.
+- `findInFlightByReferenceId(refId)` — used by `initPayment` as the app-level pre-check; matches the same `('received', 'initiated', 'pending')` set as the partial unique index.
 
 ### API / Shared Schema
 

@@ -59,7 +59,6 @@ export const initPayment: InitPayment = async (
 
   const existingInFlightTransaction =
     await TransactionModel.findInFlightByReferenceId(
-      clientName,
       transactionReferenceId,
     );
 
