@@ -69,8 +69,6 @@ export const getDetails: GetDetails = async (
     throw new NotFoundError("Transaction Reference Id was not found");
   }
 
-  // Authorize via the oldest row (findByReferenceId orders by createdAt asc),
-  // i.e. "whoever created the obligation first owns it".
   if (allRows[0].clientName !== client.clientName) {
     console.warn(
       `Client '${client.clientName}' attempted to get details for transactionReferenceId '${transactionReferenceId}' owned by another client`,
@@ -80,48 +78,40 @@ export const getDetails: GetDetails = async (
     );
   }
 
-  // transactionReferenceId is client-supplied and not globally unique across clients,
-  // so a UUID could in theory be reused by a different client. Filter to only the caller's
-  // rows after the auth check so a cross-client collision can never expose another client's
-  // transaction data in the response.
-  const clientRows = allRows.filter(
-    (row) => row.clientName === client.clientName,
-  );
-
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
-  const fee = await FeesModel.getFeeById(clientRows[0].feeId);
+  const fee = await FeesModel.getFeeById(allRows[0].feeId);
   if (!fee || !fee.tcsAppId) {
     // Both branches indicate server-side data corruption: the FK prevents the first,
     // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
     console.error(
-      `Fee misconfigured for feeId '${clientRows[0].feeId}' on transactionReferenceId '${transactionReferenceId}': ${
+      `Fee misconfigured for feeId '${allRows[0].feeId}' on transactionReferenceId '${transactionReferenceId}': ${
         !fee ? "fee row missing" : "tcsAppId missing"
       }`,
     );
     throw new ServerError();
   }
 
-  const paymentStatus = derivePaymentStatus(clientRows);
+  const paymentStatus = derivePaymentStatus(allRows);
 
   // If the obligation is already resolved (success or failed), the DB is authoritative —
   // no need to hit Pay.gov. Only the pending path fans out to refresh attempts.
   if (paymentStatus !== "pending") {
-    const transactions = clientRows.map((row) =>
+    const transactions = allRows.map((row) =>
       toTransactionRecordSummary(row, row.transactionStatus),
     );
     return { paymentStatus, transactions };
   }
 
-  return refreshPendingAttempts(appContext, clientRows, fee.tcsAppId);
+  return refreshPendingAttempts(appContext, allRows, fee.tcsAppId);
 };
 
 const refreshPendingAttempts = async (
   appContext: AppContext,
-  clientRows: TransactionModel[],
+  allRows: TransactionModel[],
   tcsAppId: string,
 ): Promise<GetDetailsResponse> => {
   const transactions: TransactionRecordSummary[] = await Promise.all(
-    clientRows.map(async (row) => {
+    allRows.map(async (row) => {
       if (!row.paygovTrackingId || isTerminal(row.transactionStatus)) {
         return toTransactionRecordSummary(row, row.transactionStatus);
       }

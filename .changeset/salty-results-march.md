@@ -32,7 +32,7 @@ All routed by the existing `handleError` `statusCode < 500` branch — no `handl
 Two-layer protection against concurrent `initPayment` calls for the same `(clientName, transactionReferenceId)`:
 
 - **App-level** (fast path, common case): pre-create check via new `TransactionModel.findInitiatedByReferenceId` → `ConflictError` (409).
-- **DB-level** (race path): a new partial unique index `idx_transactions_unique_active` rejects concurrent `createReceived` inserts. The new `isUniqueViolation` helper detects pg `SQLSTATE 23505` and converts it to the same `ConflictError` so callers see a consistent 409 regardless of which layer caught the duplicate.
+- **DB-level** (race path): a new partial unique index `idx_transactions_unique_active` rejects concurrent `createReceived` inserts. A new `isUniqueViolation` helper in `src/db/pgErrors.ts` detects pg `SQLSTATE 23505` and `initPayment` converts it to the same `ConflictError` so callers see a consistent 409 regardless of which layer caught the duplicate.
 
 #### New error class
 
@@ -40,11 +40,17 @@ Two-layer protection against concurrent `initPayment` calls for the same `(clien
 
 ### Database (PAY-294)
 
-- **Removed** the full `(client_name, transaction_reference_id)` unique constraint. Multiple historical attempts for one obligation are now allowed (enables retries after a failure).
-- **Added** a partial unique index `idx_transactions_unique_active ON (client_name, transaction_reference_id) WHERE transaction_status IN ('received', 'initiated')`. Caps at most one in-flight attempt per obligation while leaving terminal/historical rows unbounded.
-- **Kept** a regular composite index on `(client_name, transaction_reference_id)` for query performance.
-- Both changes applied via edit to the original init migration (pre-prod — no forward migration needed; envs re-seed from the updated DDL).
-- New `TransactionModel.findByReferenceId(refId)` and `findInitiatedByReferenceId(clientName, refId)` finders.
+New forward migration `db/migrations/20260424164039_remove_idx_transactions_client_ref.ts`:
+
+- **Removes** the full `(client_name, transaction_reference_id)` unique constraint. Multiple historical attempts for one obligation are now allowed (enables retries after a failure).
+- **Adds** a partial unique index `idx_transactions_unique_active ON (client_name, transaction_reference_id) WHERE transaction_status IN ('received', 'initiated', 'pending')`. Caps at most one in-flight attempt per obligation while leaving terminal/historical rows unbounded — covers every non-terminal status so the partial index and the app-level pre-check stay aligned.
+- **Keeps** a regular composite index on `(client_name, transaction_reference_id)` for query performance.
+- Idempotent (`DROP CONSTRAINT IF EXISTS` + `CREATE INDEX IF NOT EXISTS`) so it runs cleanly against any environment.
+
+New finders on `TransactionModel`:
+
+- `findByReferenceId(refId)` — used by `getDetails` to fetch all attempts for an obligation.
+- `findInFlightByReferenceId(clientName, refId)` — used by `initPayment` as the app-level pre-check; matches the same `('received', 'initiated', 'pending')` set as the partial unique index.
 
 ### API / Shared Schema
 
@@ -70,7 +76,7 @@ Two-layer protection against concurrent `initPayment` calls for the same `(clien
 #### Testing
 
 - `src/db/TransactionModel.test.ts` — new tests for `findByReferenceId` (empty result, single match) and `findInitiatedByReferenceId`.
-- `src/useCases/getDetails.test.ts` — rewritten for the new contract. Covers `NotFoundError` (no rows), `ForbiddenError` (cross-client), `ServerError` (misconfigured fee — both fail modes), terminal-status short-circuit (no SOAP call), non-terminal without `paygovTrackingId` (no SOAP call), non-terminal refresh with Pay.gov response, SOAP-failure-per-attempt handling, multi-row aggregation, and UUID-collision auth boundary.
+- `src/useCases/getDetails.test.ts` — rewritten for the new contract. Covers `NotFoundError` (no rows), `ForbiddenError` (cross-client), `ServerError` (misconfigured fee — both fail modes), terminal-status short-circuit (no SOAP call), non-terminal without `paygovTrackingId` (no SOAP call), non-terminal refresh with Pay.gov response, SOAP-failure-per-attempt handling, and multi-row aggregation.
 - `src/useCases/initPayment.test.ts` — new tests for both layers of the conflict guard: app-level pre-check returns 409, and DB-level pg `23505` violation converts to 409.
 - `src/lambdaHandler.test.ts` — `getDetailsHandler` tests updated for the new response shape + path param. Added 400 (invalid UUID, missing/undefined params), 404 (`NotFoundError` propagation), 403 (`ForbiddenError` propagation).
 - `src/utils/derivePaymentStatus.test.ts` — added `derivePaymentStatusFromSingleTransaction` coverage.

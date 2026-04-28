@@ -8,6 +8,7 @@ import { ConflictError } from "../errors/conflict";
 import FeesModel from "../db/FeesModel";
 import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
+import { isUniqueViolation } from "../db/pgErrors";
 import { PayGovError } from "../errors/payGovError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
@@ -24,16 +25,6 @@ const NETWORK_ERROR_CODES = new Set([
 const isNetworkError = (err: unknown): boolean =>
   err instanceof Error &&
   NETWORK_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
-
-const PG_UNIQUE_VIOLATION = "23505";
-
-const isUniqueViolation = (err: unknown): boolean => {
-  if (!err || typeof err !== "object") return false;
-  const code = (err as { code?: unknown }).code;
-  const nativeCode = (err as { nativeError?: { code?: unknown } }).nativeError
-    ?.code;
-  return code === PG_UNIQUE_VIOLATION || nativeCode === PG_UNIQUE_VIOLATION;
-};
 
 export type InitPayment = (
   appContext: AppContext,

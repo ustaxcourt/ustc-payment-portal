@@ -484,10 +484,13 @@ describe("getDetails", () => {
       expect(result.transactions).toHaveLength(2);
     });
 
-    it("authorizes by oldest row but filters response to only the caller's rows (no cross-client data leak)", async () => {
-      // transactionReferenceId is client-supplied, so a UUID could in theory collide across
-      // clients. If row[0] is ours we pass auth, but the response must NOT include the other
-      // client's rows even when they share the same reference id.
+    it("authorizes by the oldest row's clientName and returns all rows without filtering", async () => {
+      // Auth model: only allRows[0].clientName is checked. We do NOT filter the response by
+      // clientName — UUIDv4 makes cross-client collision functionally impossible (~1 in 5×10³⁶),
+      // so in practice every row for a transactionReferenceId belongs to the same client.
+      // This test documents that decision: if the oldest row passes auth, every row is returned
+      // as-is. If a future requirement (e.g., multiple clients sharing a Fee) makes per-row
+      // ownership matter, this test should fail and force a deliberate update.
       TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
         buildRow({ agencyTrackingId: "ours-1", clientName: mockClient.clientName }),
         buildRow({ agencyTrackingId: "theirs", clientName: "Some Other Client" }),
@@ -498,8 +501,7 @@ describe("getDetails", () => {
         request: { transactionReferenceId: mockTransactionReferenceId },
       });
 
-      expect(result.transactions).toHaveLength(1);
-      expect(result.transactions[0].payGovTrackingId).toBe(mockPayGovTrackingId);
+      expect(result.transactions).toHaveLength(2);
     });
 
     it("writes back every pending attempt in a multi-row group", async () => {
