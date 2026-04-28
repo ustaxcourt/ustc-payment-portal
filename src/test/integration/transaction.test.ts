@@ -10,20 +10,20 @@ type ApiPaymentMethod = "Credit/Debit Card" | "ACH" | "PayPal";
 
 type ProcessResponse = {
   paymentStatus: PortalPaymentStatus;
-  transactions: Array<{
+  transactions: {
     payGovTrackingId?: string;
     transactionStatus: PortalTransactionStatus;
     paymentMethod?: ApiPaymentMethod;
-  }>;
+  }[];
 };
 
 type DetailsResponse = {
   paymentStatus: PortalPaymentStatus;
-  transactions: Array<{
+  transactions: {
     payGovTrackingId?: string;
     transactionStatus: PortalTransactionStatus;
     paymentMethod?: ApiPaymentMethod;
-  }>;
+  }[];
 };
 
 type Scenario = {
@@ -305,8 +305,7 @@ describe("make a transaction", () => {
     }
 
     isLocal =
-      process.env.NODE_ENV === "local" ||
-      process.env.LOCAL_DEV === "true"
+      process.env.NODE_ENV === "local" || process.env.LOCAL_DEV === "true";
     jest.setTimeout(60_000);
   });
 
