@@ -1,8 +1,8 @@
 import { APP_ENVS, getAppEnv, isDeployed, isLocal } from "./appEnv";
 
-// Tests intentionally exercise unset and invalid env values, which the narrowed
-// ProcessEnv types disallow. This getter casts the *current* process.env each
-// time it's read — important because beforeEach reassigns process.env.
+// Cast the current process.env so tests can write invalid values that the
+// narrowed ProcessEnv types disallow. Re-reads each call because beforeEach
+// reassigns process.env to a new object.
 const mutableEnv = (): Record<string, string | undefined> =>
   process.env as Record<string, string | undefined>;
 

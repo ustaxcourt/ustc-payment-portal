@@ -1,14 +1,9 @@
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
-      /**
-       * Node runtime mode. Restricted to Node's three legal values.
-       * For deployment topology (local/dev/stg/prod) read APP_ENV instead.
-       */
+      /** Node runtime mode. For deployment topology, use APP_ENV. */
       NODE_ENV: "development" | "production" | "test";
-      /**
-       * Deployment topology of this service. Read via getAppEnv() in src/config/appEnv.ts.
-       */
+      /** Deployment topology. Read via getAppEnv() — do not access directly. */
       APP_ENV: "local" | "dev" | "stg" | "prod" | "test";
       SOAP_URL: string;
       PAYMENT_URL: string;

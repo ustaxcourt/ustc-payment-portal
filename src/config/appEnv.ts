@@ -1,15 +1,7 @@
 /**
- * Single source of truth for the deployment environment of this service.
- *
- * `APP_ENV` answers "where is this code running" (laptop, dev, stg, prod).
- * `NODE_ENV` is left to its conventional purpose — Node's runtime mode
- * (`development | production | test`) consumed by Node, Express, knex,
- * and Jest. The two are deliberately decoupled.
- *
- * Read `APP_ENV` only through these helpers so that:
- *   - validation happens in one place (unknown values fail fast),
- *   - tests have one seam to mock,
- *   - downstream code never carries string literals like "stg" inline.
+ * Single source of truth for APP_ENV (deployment topology). Read APP_ENV
+ * only through these helpers — validation lives here so unknown values
+ * fail fast at cold start.
  */
 
 export const APP_ENVS = ["local", "dev", "stg", "prod", "test"] as const;
@@ -19,13 +11,9 @@ const isAppEnv = (value: string): value is AppEnv =>
   (APP_ENVS as readonly string[]).includes(value);
 
 /**
- * Returns the validated `APP_ENV` for the current process.
- *
- * Throws if `APP_ENV` is unset or unrecognized — a misconfigured Lambda
- * should fail at cold start rather than silently treat itself as prod.
- *
- * Falls back to `"test"` when Jest's auto-set `NODE_ENV=test` is the only
- * signal available, so unit tests don't have to set both variables.
+ * Throws on unset or unrecognized APP_ENV — fail fast beats silent
+ * miscategorization. Falls back to "test" when only Jest's auto-set
+ * NODE_ENV=test is present, so unit tests don't have to set both.
  */
 export const getAppEnv = (): AppEnv => {
   const raw = process.env.APP_ENV;
