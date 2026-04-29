@@ -83,9 +83,6 @@ const scenarios: Scenario[] = [
   },
 ];
 
-const wait = async (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
 describe("make a transaction", () => {
   let transactionReferenceId: string;
   let isLocal: boolean;
@@ -93,12 +90,11 @@ describe("make a transaction", () => {
 
   beforeAll(() => {
     baseUrl = process.env.BASE_URL ?? "";
+    isLocal = process.env.NODE_ENV === "local" || process.env.LOCAL_DEV === "true";
     if (!baseUrl) {
       throw new Error("BASE_URL is required for transaction integration tests");
     }
 
-    isLocal =
-      process.env.NODE_ENV === "local" || process.env.LOCAL_DEV === "true";
     jest.setTimeout(60_000);
   });
 
@@ -337,7 +333,7 @@ describe("make a transaction", () => {
         return current;
       }
 
-      await wait(POLL_INTERVAL_MS);
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
       current = await getDetails(referenceId);
       seenStates.push(
         `${current.paymentStatus}/${current.transactions[0]?.transactionStatus}`,
