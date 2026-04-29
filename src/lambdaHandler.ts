@@ -11,7 +11,7 @@ import { handleError } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
 import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
 import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
-import { GetDetailsRequest } from "./useCases/getDetails";
+import { GetDetailsPathParamsSchema } from "./schemas/GetDetails.schema";
 import { ClientPermission } from "./types/ClientPermission";
 import { AppContext } from "./types/AppContext";
 import { isValidPaymentStatus } from "./useCases/getTransactionsByStatus";
@@ -119,15 +119,16 @@ export const processPaymentHandler = (
 export const getDetailsHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const payGovTrackingId = event.pathParameters?.payGovTrackingId;
-  if (!payGovTrackingId) {
+  const result = GetDetailsPathParamsSchema.safeParse(event.pathParameters ?? {});
+  if (!result.success) {
     return Promise.resolve(
-      handleError(new InvalidRequestError("Missing Pay.gov tracking ID")),
+      handleError(new InvalidRequestError("Transaction Reference Id was invalid")),
     );
   }
   // getDetails is a read-only lookup — no feeId required, IAM registration check is sufficient.
+  // Per-transaction client ownership is enforced inside the use case.
   return lambdaHandler(
-    { payGovTrackingId } satisfies GetDetailsRequest,
+    { transactionReferenceId: result.data.transactionReferenceId },
     event.requestContext,
     appContext.getUseCases().getDetails,
   );

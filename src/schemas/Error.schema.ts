@@ -67,6 +67,20 @@ export const ForbiddenErrorSchema = z
   })
   .openapi("ForbiddenError");
 
+export const ConflictErrorSchema = z
+  .object(JsonErrorSchema.shape)
+  .openapi({
+    description:
+      "JSON error response for request conflicts (HTTP 409).\n\n" +
+      "Returned when a payment session has already been initiated for the same transaction reference ID.",
+    example: {
+      message:
+        "A payment session is already initiated for this transactionReferenceId",
+      errors: [],
+    },
+  })
+  .openapi("ConflictError");
+
 export const ServerErrorSchema = z
   .object(JsonErrorSchema.shape)
   .openapi({

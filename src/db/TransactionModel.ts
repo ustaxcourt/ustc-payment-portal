@@ -148,24 +148,35 @@ export default class TransactionModel extends Model {
     return TransactionModel.query().findOne({ paygovTrackingId });
   }
 
+  static async findByReferenceId(transactionReferenceId: string): Promise<TransactionModel[]> {
+    await getKnex();
+    // Order ascending by createdAt: getDetails relies on rows[0] being the earliest attempt
+    // for the Fee-invariance lookup (all attempts share the same feeId, but rows[0]'s timestamp
+    // is also implicitly the obligation's first-attempt timestamp).
+    return TransactionModel.query()
+      .where({ transactionReferenceId })
+      .orderBy('createdAt', 'asc');
+  }
+
   static async updateAfterPayGovResponse(
     agencyTrackingId: string,
     paygovTrackingId: string,
     transactionStatus: TransactionStatus,
     paymentStatus: PaymentStatus,
     paymentMethod: PaymentMethod | null,
-    transactionDate: string,
-    paymentDate: string,
+    transactionDate: string | undefined,
+    paymentDate: string | undefined,
   ): Promise<TransactionModel> {
     await getKnex();
+    // Skip empty dates: patching "" into a TIMESTAMP corrupts it; undefined would null an existing value.
     return this.query()
       .patchAndFetchById(agencyTrackingId, {
         paygovTrackingId,
         transactionStatus,
         paymentStatus,
         paymentMethod,
-        transactionDate,
-        paymentDate,
+        ...(transactionDate && { transactionDate }),
+        ...(paymentDate && { paymentDate }),
       });
   }
 
@@ -180,6 +191,20 @@ export default class TransactionModel extends Model {
       .where('clientName', clientName)
       .where('transactionReferenceId', transactionReferenceId)
       .whereNot('paygovToken', excludeToken)
+      .first();
+  }
+
+  // Returns any non-terminal attempt for the given (clientName, transactionReferenceId).
+  // Used by initPayment as the app-level pre-check; the status set here MUST stay aligned
+  // with the partial unique index `idx_transactions_unique_active` so the app-level check
+  // and the DB-level guarantee cover the same scope.
+  static async findInFlightByReferenceId(
+    transactionReferenceId: string,
+  ): Promise<TransactionModel | undefined> {
+    await getKnex();
+    return TransactionModel.query()
+      .where('transactionReferenceId', transactionReferenceId)
+      .whereIn('transactionStatus', ['received', 'initiated', 'pending'])
       .first();
   }
 

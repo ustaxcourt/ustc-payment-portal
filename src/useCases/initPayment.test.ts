@@ -1,6 +1,7 @@
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
   default: {
+    findInFlightByReferenceId: jest.fn(() => Promise.resolve(undefined)),
     createReceived: jest.fn((data) =>
       Promise.resolve({
         ...data,
@@ -41,6 +42,7 @@ import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
+import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
 import { ClientPermission } from "../types/ClientPermission";
 
@@ -68,6 +70,10 @@ const mockSoapRequest = (token: string) => {
 };
 
 describe("initPayment", () => {
+   beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
@@ -147,6 +153,60 @@ describe("initPayment", () => {
         request: { ...validPetitionRequest, amount: 60 },
       }),
     ).rejects.toThrow("does not allow variable amounts");
+  });
+
+  it.each(["received", "initiated", "pending"] as const)(
+    "throws ConflictError when an in-flight transaction (%s) already exists for the same client and reference id",
+    async (status) => {
+      const TransactionModel = require("../db/TransactionModel").default;
+      TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+        agencyTrackingId: "existing-id",
+        clientName: mockClient.clientName,
+        transactionReferenceId: validPetitionRequest.transactionReferenceId,
+        transactionStatus: status,
+      });
+
+      await expect(
+        initPayment(appContext, {
+          client: mockClient,
+          request: validPetitionRequest,
+        }),
+      ).rejects.toThrow(ConflictError);
+
+      expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+    },
+  );
+
+  it("throws ConflictError when createReceived fails with a pg unique_violation (partial unique index race)", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    // App-level check passes (no existing initiated row visible), but the concurrent
+    // peer wins the createReceived race and our insert violates the partial unique index.
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
+    const uniqueViolation = Object.assign(
+      new Error('duplicate key value violates unique constraint "idx_transactions_unique_active"'),
+      { code: "23505" },
+    );
+    TransactionModel.createReceived.mockRejectedValueOnce(uniqueViolation);
+
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toThrow(ConflictError);
+  });
+
+  it("wraps non-unique-violation createReceived errors as a generic failure", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
+    TransactionModel.createReceived.mockRejectedValueOnce(new Error("connection refused"));
+
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toThrow(/Failed to record received transaction/);
   });
 
   it("updates transaction to failed if SOAP request fails", async () => {

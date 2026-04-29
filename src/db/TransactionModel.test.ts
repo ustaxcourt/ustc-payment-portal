@@ -72,6 +72,14 @@ jest.mock("./TransactionModel", () => {
       }));
       static findByPaygovToken = jest.fn((token: string) => Promise.resolve(token === mockTransaction?.paygovToken ? mockTransaction : undefined));
       static findByPaygovTrackingId = jest.fn((paygovTrackingId: string) => Promise.resolve(paygovTrackingId === mockTransaction?.paygovTrackingId ? mockTransaction : undefined));
+      static findByReferenceId = jest.fn(
+        (transactionReferenceId: string) =>
+          Promise.resolve(
+            mockTransaction && mockTransaction.transactionReferenceId === transactionReferenceId
+              ? [mockTransaction]
+              : [],
+          ),
+      );
       static findPendingOrProcessedByReferenceId = jest.fn(
         (_clientName: string, referenceId: string, excludeToken: string) =>
           Promise.resolve(
@@ -296,6 +304,31 @@ describe("TransactionModel", () => {
     it('should return undefined when no matching token exists', async () => {
       const found = await TransactionModel.findByPaygovToken('NON-EXISTENT-TOKEN');
       expect(found).toBeUndefined();
+    });
+  });
+
+  describe("findByReferenceId", () => {
+    const referenceId = "550e8400-e29b-41d4-a716-446655440000";
+
+    beforeEach(async () => {
+      await TransactionModel.createReceived({
+        agencyTrackingId: "TEST-REF-1",
+        feeId: "PETITION_FILING_FEE",
+        clientName: "test-client",
+        transactionReferenceId: referenceId,
+        paymentMethod: "plastic_card" as PaymentMethod,
+      });
+    });
+
+    it("returns the matching transaction(s) when the reference id exists", async () => {
+      const found = await TransactionModel.findByReferenceId(referenceId);
+      expect(found).toHaveLength(1);
+      expect(found[0].transactionReferenceId).toBe(referenceId);
+    });
+
+    it("returns an empty array when the reference id is not found", async () => {
+      const found = await TransactionModel.findByReferenceId("00000000-0000-0000-0000-000000000000");
+      expect(found).toEqual([]);
     });
   });
 

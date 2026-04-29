@@ -7,11 +7,13 @@ import {
   InitPaymentResponseSchema,
   ErrorResponseSchema,
   BadRequestErrorSchema,
+  ConflictErrorSchema,
   ForbiddenErrorSchema,
   NotFoundErrorSchema,
   ServerErrorSchema,
   ValidationErrorResponseSchema,
   GatewayErrorSchema,
+  GetDetailsPathParamsSchema,
   GetDetailsResponseSchema,
   TransactionRecordSchema,
   TransactionRecordSummarySchema,
@@ -30,7 +32,6 @@ import {
   MetadataNonattorneyExamSchema,
   MetadataSchema,
 } from "../schemas";
-import { z } from "zod";
 
 export const registry = new OpenAPIRegistry();
 
@@ -45,11 +46,13 @@ registry.register("InitPaymentRequest", InitPaymentRequestSchema);
 registry.register("InitPaymentResponse", InitPaymentResponseSchema);
 registry.register("ErrorResponse", ErrorResponseSchema);
 registry.register("BadRequestError", BadRequestErrorSchema);
+registry.register("ConflictError", ConflictErrorSchema);
 registry.register("ForbiddenError", ForbiddenErrorSchema);
 registry.register("ServerError", ServerErrorSchema);
 registry.register("NotFoundError", NotFoundErrorSchema);
 registry.register("ValidationErrorResponse", ValidationErrorResponseSchema);
 registry.register("GatewayError", GatewayErrorSchema);
+registry.register("GetDetailsPathParams", GetDetailsPathParamsSchema);
 registry.register("GetDetailsResponse", GetDetailsResponseSchema);
 registry.register("TransactionRecord", TransactionRecordSchema);
 registry.register("TransactionRecordSummary", TransactionRecordSummarySchema);
@@ -124,6 +127,15 @@ registry.registerPath({
         },
       },
     },
+    409: {
+      description:
+        "Conflict - a payment session is already initiated for this transaction reference ID",
+      content: {
+        "application/json": {
+          schema: ConflictErrorSchema,
+        },
+      },
+    },
     500: {
       description: "Internal server error",
       content: {
@@ -156,12 +168,7 @@ registry.registerPath({
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   request: {
-    params: z.object({
-      transactionReferenceId: z.string().openapi({
-        description: "The transaction reference ID",
-        example: "TXN-REF-123456789",
-      }),
-    }),
+    params: GetDetailsPathParamsSchema,
   },
   responses: {
     200: {
@@ -173,7 +180,8 @@ registry.registerPath({
       },
     },
     400: {
-      description: "Invalid request (e.g., missing path parameters)",
+      description:
+        "Invalid request - transactionReferenceId is missing or not a valid UUID.",
       content: {
         "application/json": {
           schema: BadRequestErrorSchema,
@@ -181,10 +189,21 @@ registry.registerPath({
       },
     },
     403: {
-      description: "Forbidden - invalid SigV4 signature or client not authorized",
+      description:
+        "Forbidden - invalid SigV4 signature, client not registered, " +
+        "or the transactionReferenceId belongs to a different client.",
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,
+        },
+      },
+    },
+    404: {
+      description:
+        "No transaction was found for the supplied transactionReferenceId.",
+      content: {
+        "application/json": {
+          schema: NotFoundErrorSchema,
         },
       },
     },
