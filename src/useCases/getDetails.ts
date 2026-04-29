@@ -14,7 +14,6 @@ import { toPaymentMethod } from "../utils/toPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
-import { ForbiddenError } from "../errors/forbidden";
 import { ServerError } from "../errors/serverError";
 
 type GetDetailsRequest = {

@@ -23,6 +23,7 @@ The endpoint now matches its OpenAPI contract: keyed on `transactionReferenceId`
 | Path param missing or not a UUID | 400 | `InvalidRequestError` | `"Transaction Reference Id was invalid"` |
 | `transactionReferenceId` valid but no transaction exists | 404 | `NotFoundError` | `"Transaction Reference Id was not found"` |
 | Fee row missing OR `tcsAppId` missing on fee | 500 | `ServerError` | (server-side data corruption — diagnostic logged to CloudWatch, not leaked in response) |
+
 `getDetails` does not authorize by `clientName`: UUIDv4 collision across clients is infeasible (~1 in 5×10³⁶), so the lookup keyed on `transactionReferenceId` alone is sufficient.
 
 All routed by the existing `handleError` `statusCode < 500` branch — no `handleError` changes needed.
