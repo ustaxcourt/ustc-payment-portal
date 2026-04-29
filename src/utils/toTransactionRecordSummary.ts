@@ -16,6 +16,7 @@ export const toTransactionRecordSummary = (
     payGovTrackingId: row.paygovTrackingId ?? undefined,
     transactionStatus: transactionStatus ?? "received",
     paymentMethod: toApiPaymentMethod(row.paymentMethod),
+    returnDetail: row.returnDetail ?? undefined,
     createdTimestamp: row.createdAt,
     updatedTimestamp: row.lastUpdatedAt,
   };
