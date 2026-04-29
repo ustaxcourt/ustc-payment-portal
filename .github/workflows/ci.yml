@@ -41,6 +41,7 @@ jobs:
       DB_PASSWORD: password
       DB_NAME: mydb
       NODE_ENV: development
+      APP_ENV: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
