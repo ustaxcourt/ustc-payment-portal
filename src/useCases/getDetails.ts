@@ -9,12 +9,12 @@ import {
   derivePaymentStatus,
   derivePaymentStatusFromSingleTransaction,
 } from "../utils/derivePaymentStatus";
-import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
 import { toPaymentMethod } from "../utils/toPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
 import { ServerError } from "../errors/serverError";
+import { toTransactionRecordSummary } from "../../src/utils/toTransactionRecordSummary";
 
 type GetDetailsRequest = {
   transactionReferenceId: string;
@@ -35,24 +35,6 @@ const TERMINAL_STATUSES: ReadonlyArray<TransactionStatus> = [
 
 const isTerminal = (status: TransactionStatus | null | undefined): boolean =>
   status !== null && status !== undefined && TERMINAL_STATUSES.includes(status);
-
-const toTransactionRecordSummary = (
-  row: TransactionModel,
-  transactionStatus: TransactionStatus | null | undefined,
-): TransactionRecordSummary => {
-  if (!transactionStatus) {
-    console.error(
-      `Transaction ${row.agencyTrackingId} has null transactionStatus — defaulting to 'received'. This indicates corrupt data.`,
-    );
-  }
-  return {
-    payGovTrackingId: row.paygovTrackingId ?? undefined,
-    transactionStatus: transactionStatus ?? "received",
-    paymentMethod: toApiPaymentMethod(row.paymentMethod),
-    createdTimestamp: row.createdAt,
-    updatedTimestamp: row.lastUpdatedAt,
-  };
-};
 
 export const getDetails: GetDetails = async (
   appContext,
