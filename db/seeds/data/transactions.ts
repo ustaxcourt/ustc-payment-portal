@@ -63,7 +63,7 @@ export const generateTransactions = async ({
     const agencyId = faker.helpers.arrayElement(agencyIds);
     const fee = faker.helpers.arrayElement(feesList);
     agencyCounters[agencyId] += 1;
-    const transactionReferenceId = `TXN-REF-${faker.number.int({ min: 0, max: 999999999 }).toString().padStart(9, '0')}`;
+    const transactionReferenceId = faker.string.uuid();
     const createdAt = dayjs()
       .subtract(faker.number.int({ min: 1, max: 40 }), 'day')
       .add(faker.number.int({ min: 0, max: 86400 }), 'second')

@@ -7,6 +7,7 @@ describe("make a transaction", () => {
   let token: string;
   let paymentRedirect: string;
   let payGovTrackingId: string;
+  let transactionReferenceId: string;
 
   // Helper so every portal call uses SigV4 in deployed envs, plain fetch locally.
   // Pre-deployment:  SigV4 headers are ignored (auth is still NONE), so all calls return 200.
@@ -16,9 +17,10 @@ describe("make a transaction", () => {
 
   it("should make a request to start a transaction", async () => {
     const randomNumber = Math.floor(Math.random() * 100000);
+    transactionReferenceId = crypto.randomUUID();
 
     const request: InitPaymentRequest = {
-      transactionReferenceId: crypto.randomUUID(),
+      transactionReferenceId,
       feeId: "PETITION_FILING_FEE",
       urlSuccess: "http://example.com/success",
       urlCancel: "http://example.com/cancel",
@@ -78,11 +80,11 @@ describe("make a transaction", () => {
 
   it("should be able to get the details about the transaction", async () => {
     console.log(
-      `Time to get the details with payGovTrackingId: ${payGovTrackingId}`
+      `Time to get the details with transactionReferenceId: ${transactionReferenceId}`
     );
 
     const result = await portalFetch(
-      `${process.env.BASE_URL}/details/${encodeURIComponent(payGovTrackingId)}`,
+      `${process.env.BASE_URL}/details/${encodeURIComponent(transactionReferenceId)}`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -93,7 +95,9 @@ describe("make a transaction", () => {
     expect(result.status).toBe(200);
 
     const data = await result.json();
-    expect(data.trackingId).toBe(payGovTrackingId);
-    expect(data.transactionStatus).toBe("processed");
+    expect(data.paymentStatus).toBe("success");
+    expect(data.transactions).toHaveLength(1);
+    expect(data.transactions[0].transactionStatus).toBe("processed");
+    expect(data.transactions[0].payGovTrackingId).toBe(payGovTrackingId);
   });
 });

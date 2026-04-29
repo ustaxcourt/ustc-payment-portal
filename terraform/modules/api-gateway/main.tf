@@ -266,7 +266,7 @@ resource "aws_api_gateway_resource" "test" {
   path_part   = "test"
 }
 
-#GET /details/{payGovTrackingId}
+#GET /details/{transactionReferenceId}
 resource "aws_api_gateway_resource" "details" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
   parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
@@ -276,7 +276,7 @@ resource "aws_api_gateway_resource" "details" {
 resource "aws_api_gateway_resource" "details_tracking" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
   parent_id   = aws_api_gateway_resource.details.id
-  path_part   = "{payGovTrackingId}"
+  path_part   = "{transactionReferenceId}"
 }
 
 #Methods
@@ -402,6 +402,17 @@ resource "aws_api_gateway_deployment" "deployment" {
 
   triggers = {
     redeployment = sha1(jsonencode([
+      # Path resources — included so path_part changes force a fresh deployment snapshot.
+      aws_api_gateway_resource.init.id,
+      aws_api_gateway_resource.process.id,
+      aws_api_gateway_resource.test.id,
+      aws_api_gateway_resource.details.id,
+      aws_api_gateway_resource.details_tracking.id,
+
+      try(aws_api_gateway_resource.transactions[0].id, ""),
+      try(aws_api_gateway_resource.transactions_by_status[0].id, ""),
+      try(aws_api_gateway_resource.transaction_payment_status[0].id, ""),
+
       aws_api_gateway_method.init_post.id,
       aws_api_gateway_method.process_post.id,
       aws_api_gateway_method.test_get.id,

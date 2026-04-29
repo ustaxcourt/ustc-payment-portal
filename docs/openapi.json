@@ -264,6 +264,44 @@
           ]
         }
       },
+      "ConflictError": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error summary"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": {},
+              "description": "A structured error detail object (for example a Zod validation issue)",
+              "example": {
+                "code": "invalid_type",
+                "expected": "string",
+                "received": "undefined",
+                "path": [
+                  "urlSuccess"
+                ],
+                "message": "Required"
+              }
+            },
+            "description": "Additional error details",
+            "example": []
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ],
+        "description": "JSON error response for request conflicts (HTTP 409).\n\nReturned when a payment session has already been initiated for the same transaction reference ID.",
+        "example": {
+          "message": "A payment session is already initiated for this transactionReferenceId",
+          "errors": []
+        }
+      },
       "ForbiddenError": {
         "type": "object",
         "properties": {
@@ -462,6 +500,21 @@
           "message": "Error communicating with Pay.gov",
           "errors": []
         }
+      },
+      "GetDetailsPathParams": {
+        "type": "object",
+        "properties": {
+          "transactionReferenceId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Client-generated UUIDv4 uniquely identifying the transaction. Must match the value supplied to /init.",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        },
+        "required": [
+          "transactionReferenceId"
+        ],
+        "additionalProperties": false
       },
       "GetDetailsResponse": {
         "type": "object",
@@ -978,6 +1031,16 @@
               }
             }
           },
+          "409": {
+            "description": "Conflict - a payment session is already initiated for this transaction reference ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictError"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error",
             "content": {
@@ -1017,11 +1080,12 @@
           {
             "schema": {
               "type": "string",
-              "description": "The transaction reference ID",
-              "example": "TXN-REF-123456789"
+              "format": "uuid",
+              "description": "Client-generated UUIDv4 uniquely identifying the transaction. Must match the value supplied to /init.",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
             },
             "required": true,
-            "description": "The transaction reference ID",
+            "description": "Client-generated UUIDv4 uniquely identifying the transaction. Must match the value supplied to /init.",
             "name": "transactionReferenceId",
             "in": "path"
           }
@@ -1038,7 +1102,7 @@
             }
           },
           "400": {
-            "description": "Invalid request (e.g., missing path parameters)",
+            "description": "Invalid request - transactionReferenceId is missing or not a valid UUID.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1048,11 +1112,21 @@
             }
           },
           "403": {
-            "description": "Forbidden - invalid SigV4 signature or client not authorized",
+            "description": "Forbidden - invalid SigV4 signature, client not registered, or the transactionReferenceId belongs to a different client.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No transaction was found for the supplied transactionReferenceId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             }
