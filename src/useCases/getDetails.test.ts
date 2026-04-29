@@ -128,21 +128,6 @@ describe("getDetails", () => {
     ).rejects.toThrow(new NotFoundError("Transaction Reference Id was not found"));
   });
 
-  it("throws ForbiddenError when transactions exist but belong to a different client", async () => {
-    TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
-      buildRow({ clientName: "Some Other Client" }),
-    ]);
-
-    await expect(
-      getDetails(appContext, {
-        client: mockClient,
-        request: { transactionReferenceId: mockTransactionReferenceId },
-      }),
-    ).rejects.toThrow(
-      new ForbiddenError("You are not authorized to get details for this transaction."),
-    );
-  });
-
   it("throws ServerError when fee is not found for the transaction (data corruption)", async () => {
     FeesModelMock.getFeeById.mockResolvedValueOnce(undefined);
 
@@ -484,13 +469,11 @@ describe("getDetails", () => {
       expect(result.transactions).toHaveLength(2);
     });
 
-    it("authorizes by the oldest row's clientName and returns all rows without filtering", async () => {
-      // Auth model: only allRows[0].clientName is checked. We do NOT filter the response by
-      // clientName — UUIDv4 makes cross-client collision functionally impossible (~1 in 5×10³⁶),
-      // so in practice every row for a transactionReferenceId belongs to the same client.
-      // This test documents that decision: if the oldest row passes auth, every row is returned
-      // as-is. If a future requirement (e.g., multiple clients sharing a Fee) makes per-row
-      // ownership matter, this test should fail and force a deliberate update.
+    it("returns all rows for a transactionReferenceId without filtering by clientName", async () => {
+      // getDetails does not authorize by clientName — UUIDv4 makes cross-client collision
+      // functionally impossible (~1 in 5×10³⁶), so every row for a transactionReferenceId
+      // is returned as-is. If a future requirement (e.g., multiple clients sharing a Fee)
+      // makes per-row ownership matter, this test should fail and force a deliberate update.
       TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
         buildRow({ agencyTrackingId: "ours-1", clientName: mockClient.clientName }),
         buildRow({ agencyTrackingId: "theirs", clientName: "Some Other Client" }),

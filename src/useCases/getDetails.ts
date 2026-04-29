@@ -59,6 +59,7 @@ export const getDetails: GetDetails = async (
   appContext,
   { client, request },
 ) => {
+  // TODO: Remove client param here as unused, update tests.
   const { transactionReferenceId } = request;
 
   const allRows = await TransactionModel.findByReferenceId(
@@ -67,15 +68,6 @@ export const getDetails: GetDetails = async (
 
   if (allRows.length === 0) {
     throw new NotFoundError("Transaction Reference Id was not found");
-  }
-
-  if (allRows[0].clientName !== client.clientName) {
-    console.warn(
-      `Client '${client.clientName}' attempted to get details for transactionReferenceId '${transactionReferenceId}' owned by another client`,
-    );
-    throw new ForbiddenError(
-      "You are not authorized to get details for this transaction.",
-    );
   }
 
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
@@ -102,10 +94,10 @@ export const getDetails: GetDetails = async (
     return { paymentStatus, transactions };
   }
 
-  return refreshPendingAttempts(appContext, allRows, fee.tcsAppId);
+  return updatePendingAttemptFromPayGov(appContext, allRows, fee.tcsAppId);
 };
 
-const refreshPendingAttempts = async (
+const updatePendingAttemptFromPayGov = async (
   appContext: AppContext,
   allRows: TransactionModel[],
   tcsAppId: string,

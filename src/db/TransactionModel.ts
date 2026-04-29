@@ -199,12 +199,10 @@ export default class TransactionModel extends Model {
   // with the partial unique index `idx_transactions_unique_active` so the app-level check
   // and the DB-level guarantee cover the same scope.
   static async findInFlightByReferenceId(
-    clientName: string,
     transactionReferenceId: string,
   ): Promise<TransactionModel | undefined> {
     await getKnex();
     return TransactionModel.query()
-      .where('clientName', clientName)
       .where('transactionReferenceId', transactionReferenceId)
       .whereIn('transactionStatus', ['received', 'initiated', 'pending'])
       .first();
