@@ -1,5 +1,6 @@
 import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
 import { InitPaymentRequest } from "../../schemas/InitPayment.schema";
+import { isLocal } from "../../config/appEnv";
 import { signedFetch } from "./sigv4Helper";
 
 describe("make a transaction", () => {
@@ -7,17 +8,12 @@ describe("make a transaction", () => {
   let paymentRedirect: string;
   let payGovTrackingId: string;
   let transactionReferenceId: string;
-  let isLocal: boolean;
 
   // Helper so every portal call uses SigV4 in deployed envs, plain fetch locally.
   // Pre-deployment:  SigV4 headers are ignored (auth is still NONE), so all calls return 200.
   // Post-deployment: API Gateway enforces AWS_IAM — only signed calls succeed.
   const portalFetch = (url: string, options: RequestInit = {}): Promise<Response> =>
-    isLocal ? fetch(url, options) : signedFetch(url, options);
-
-  beforeAll(() => {
-    isLocal = process.env.NODE_ENV === "local";
-  });
+    isLocal() ? fetch(url, options) : signedFetch(url, options);
 
   it("should make a request to start a transaction", async () => {
     const randomNumber = Math.floor(Math.random() * 100000);
