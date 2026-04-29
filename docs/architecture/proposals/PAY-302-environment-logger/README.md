@@ -1,28 +1,30 @@
-# PAY-302: Logging Library Comparison — Pino vs Winston vs Bunyan
+# PAY-302: Logging Library Comparison — Pino vs Winston vs Bunyan vs AWS Lambda Power Tools
 
 ## Purpose
 
-This document compares the three logging solutions researched for PAY-302 to support the team's selection decision. Each option has a dedicated implementation plan in this folder. This document focuses on trade-offs relevant to the Payment Portal's context: AWS Lambda, CloudWatch, TypeScript, structured JSON, and developer experience.
+This document compares four logging solutions researched for PAY-302 to support the team's selection decision. Each option has a dedicated implementation plan in this folder. This document focuses on trade-offs relevant to the Payment Portal's context: AWS Lambda, CloudWatch, TypeScript, structured JSON, and developer experience.
 
 ---
 
 ## At a Glance
 
-|                                 | Pino                                           | Winston                                         | Bunyan                                                                            |
-| ------------------------------- | ---------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------- |
-| **GitHub stars**                | ~18k                                           | ~23k                                            | ~7k                                                                               |
-| **Last active**                 | Active                                         | Active                                          | Low activity (last release 2021)                                                  |
-| **JSON output by default**      | Yes                                            | Requires config                                 | Yes                                                                               |
-| **Log levels**                  | trace/debug/info/warn/error/fatal/silent       | error/warn/info/http/verbose/debug/silly        | trace/debug/info/warn/error/fatal                                                 |
-| **Level values in JSON**        | Numbers (configurable to strings)              | Strings (configurable)                          | Numbers only                                                                      |
-| **Message key**                 | `msg`                                          | `message`                                       | `msg`                                                                             |
-| **Timestamp key**               | `time`                                         | `timestamp`                                     | `time`                                                                            |
-| **Child logger**                | `logger.child()`                               | `logger.child()`                                | `logger.child()`                                                                  |
-| **Built-in redaction**          | Yes (`redact` option, path-based)              | No (manual)                                     | No (manual via serializers)                                                       |
-| **Pretty local output**         | `pino-pretty` (transport, dev dependency)      | Built-in colorize/printf formatters             | `bunyan` CLI (global install)                                                     |
-| **TypeScript support**          | First-class (`pino` ships types)               | Good (`@types/winston` not needed; ships types) | Types available via `@types/bunyan`                                               |
-| **Performance**                 | Fastest (offloads formatting to worker thread) | Moderate                                        | Moderate                                                                          |
-| **Extra fields always present** | `pid`, `hostname` (suppressible)               | None beyond what you configure                  | `name`, `hostname`, `pid`, `time`, `v` (not suppressible without post-processing) |
+|                                 | Pino                                           | Winston                                         | Bunyan                                                    | AWS Lambda Power Tools                           |
+| ------------------------------- | ---------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------ |
+| **GitHub stars**                | ~18k                                           | ~23k                                            | ~7k                                                       | ~4k                                              |
+| **Maintained by**               | Community                                      | Community                                       | Community (low activity)                                  | AWS                                              |
+| **Last active**                 | Active                                         | Active                                          | Low activity (last release 2021)                          | Active                                           |
+| **JSON output by default**      | Yes                                            | Requires config                                 | Yes                                                       | Yes                                              |
+| **Log levels**                  | trace/debug/info/warn/error/fatal/silent       | error/warn/info/http/verbose/debug/silly        | trace/debug/info/warn/error/fatal                         | debug/info/warn/error/fatal/silent               |
+| **Level values in JSON**        | Numbers (configurable to strings)              | Strings (configurable)                          | Numbers only                                              | Numbers only                                     |
+| **Message key**                 | `msg`                                          | `message`                                       | `msg`                                                     | `message`                                        |
+| **Timestamp key**               | `time`                                         | `timestamp`                                     | `time`                                                    | `timestamp`                                      |
+| **Child logger**                | `logger.child()`                               | `logger.child()`                                | `logger.child()`                                          | `logger.createChild()`                           |
+| **Built-in redaction**          | Yes (`redact` option, path-based)              | No (manual)                                     | No (manual via serializers)                               | Yes (`maskJsonValues()`)                         |
+| **Pretty local output**         | `pino-pretty` (transport, dev dependency)      | Built-in colorize/printf formatters             | `bunyan` CLI (global install)                             | None (always JSON)                               |
+| **TypeScript support**          | First-class (`pino` ships types)               | Good (`@types/winston` not needed; ships types) | Types available via `@types/bunyan`                       | First-class (TypeScript-first library)           |
+| **Performance**                 | Fastest (offloads formatting to worker thread) | Moderate                                        | Moderate                                                  | Very fast (stderr-only, Lambda-optimized)        |
+| **Lambda context auto-inject**  | Manual                                         | Manual                                          | Manual                                                    | Automatic                                        |
+| **Extra fields always present** | `pid`, `hostname` (suppressible)               | None beyond what you configure                  | `name`, `hostname`, `pid`, `time`, `v` (not suppressible) | Lambda context fields only (function name, etc.) |
 
 ---
 
@@ -94,50 +96,75 @@ This document compares the three logging solutions researched for PAY-302 to sup
 
 ---
 
+### AWS Lambda Power Tools
+
+#### Pros
+
+- **Purpose-built for AWS Lambda** — This is the AWS-maintained official logging library for Lambda. It is designed specifically for the Lambda execution environment with automatic context injection for request IDs, function names, cold starts, and memory allocation.
+- **Automatic Lambda context injection** — No manual wiring needed. Power Tools automatically captures `awsRequestId`, `functionName`, `functionVersion`, `memorySize`, and `coldStart` from the Lambda runtime context. This is a major advantage over generic loggers that require explicit context passing.
+- **Structured JSON by default** — No configuration needed; JSON output is always enabled. CloudWatch integration is seamless and native.
+- **First-class TypeScript support** — The library is TypeScript-first with excellent type definitions and IDE support.
+- **Built-in sensitive data redaction** — The `maskJsonValues()` method provides path-based redaction of sensitive fields before serialization.
+- **Very fast and Lambda-optimized** — Logs go directly to stderr; no transport layer, no formatters, no worker threads. Minimal overhead on the main thread and optimized for Lambda's execution model.
+- **AWS support and maintenance** — Unlike community-maintained libraries, Power Tools is supported and maintained by AWS. Critical security patches are prioritized and deployed rapidly.
+- **Zero external dependencies for logging** — The logger works out of the box without requiring `pino-pretty`, `bunyan` CLI, or other external tools.
+
+#### Cons
+
+- **Lock-in to Lambda ecosystem** — This logger is designed specifically for AWS Lambda. If the application ever moves to other runtimes (traditional servers, Kubernetes, etc.), a migration would be required.
+- **No alternative output formats** — All output is JSON to stderr. There is no built-in pretty-printing for local development. You must pipe through `jq` or similar CLI tools, or accept raw JSON output locally (less polished than Winston or Pino-with-pino-pretty).
+- **Numeric log levels only** — Like Bunyan, Power Tools uses numeric level values in JSON output (`20` for `INFO`). CloudWatch filter expressions must use `level >= 20` rather than string matches.
+- **Smaller ecosystem** — While AWS-maintained, the ecosystem and third-party integrations are smaller than Pino or Winston. Custom extensions are less common.
+- **Limited to stderr transport** — All logs go to stderr, which is forwarded by Lambda to CloudWatch. There is no mechanism to route logs to multiple destinations (e.g., some logs to a third-party service, others to CloudWatch) without post-processing in CloudWatch itself.
+- **Less community documentation** — Although AWS-maintained, community-generated blog posts, examples, and Stack Overflow answers are less abundant than for Pino or Winston.
+
+---
+
 ## Side-by-Side Feature Comparison
 
 ### Log Level Defaults for This Project
 
-| Environment | Pino default | Winston default | Bunyan default |
-| ----------- | ------------ | --------------- | -------------- |
-| local       | info         | info            | info           |
-| test        | error        | error           | error          |
-| development | debug        | debug           | debug          |
-| staging     | info         | info            | info           |
-| production  | info         | info            | info           |
+| Environment | Pino default | Winston default | Bunyan default | AWS Lambda Power Tools default |
+| ----------- | ------------ | --------------- | -------------- | ------------------------------ |
+| local       | info         | info            | info           | info                           |
+| test        | error        | error           | error          | error                          |
+| development | debug        | debug           | debug          | debug                          |
+| staging     | info         | info            | info           | info                           |
+| production  | info         | info            | info           | info                           |
 
 All three support `LOG_LEVEL` override in any environment using the same resolution logic.
 
 ### Local Developer Experience
 
-|                         | Pino                                 | Winston                        | Bunyan                                    |
-| ----------------------- | ------------------------------------ | ------------------------------ | ----------------------------------------- |
-| Pretty output mechanism | `pino-pretty` transport (dev dep)    | Built-in `colorize` + `printf` | `bunyan` CLI (global install)             |
-| Setup required          | `npm install --save-dev pino-pretty` | None                           | `npm install -g bunyan`                   |
-| Output on by default    | No (must configure transport)        | Yes                            | Yes (JSON piped to CLI)                   |
-| Color support           | Yes (via pino-pretty)                | Yes (via colorize format)      | Yes (via CLI)                             |
-| Field filtering         | No built-in (CLI tooling external)   | No built-in                    | Yes (`bunyan -c 'this.field == "value"'`) |
+|                         | Pino                                 | Winston                        | Bunyan                                    | AWS Lambda Power Tools                   |
+| ----------------------- | ------------------------------------ | ------------------------------ | ----------------------------------------- | ---------------------------------------- |
+| Pretty output mechanism | `pino-pretty` transport (dev dep)    | Built-in `colorize` + `printf` | `bunyan` CLI (global install)             | Pipe through `jq` or `bunyan` CLI        |
+| Setup required          | `npm install --save-dev pino-pretty` | None                           | `npm install -g bunyan`                   | None (but `jq` is recommended)           |
+| Output on by default    | No (must configure transport)        | Yes                            | Yes (JSON piped to CLI)                   | Yes (raw JSON to stderr)                 |
+| Color support           | Yes (via pino-pretty)                | Yes (via colorize format)      | Yes (via CLI)                             | No (pipe to jq/bunyan for color)         |
+| Field filtering         | No built-in (CLI tooling external)   | No built-in                    | Yes (`bunyan -c 'this.field == "value"'`) | Yes (`jq 'select(.feeId == "FEE-001")'`) |
 
 ### CloudWatch Queryability (Staging/Production)
 
-|                             | Pino                             | Winston              | Bunyan                                                    |
-| --------------------------- | -------------------------------- | -------------------- | --------------------------------------------------------- |
-| JSON by default             | Yes                              | No (requires config) | Yes                                                       |
-| Message key                 | `msg`                            | `message`            | `msg`                                                     |
-| Level in JSON               | Number or string (configurable)  | String               | Number only                                               |
-| Timestamp key               | `time`                           | `timestamp`          | `time`                                                    |
-| Extra always-present fields | `pid`, `hostname` (suppressible) | None                 | `name`, `hostname`, `pid`, `time`, `v` (not suppressible) |
-| Built-in redaction          | Yes                              | No                   | No                                                        |
+|                             | Pino                             | Winston              | Bunyan                                                    | AWS Lambda Power Tools                                    |
+| --------------------------- | -------------------------------- | -------------------- | --------------------------------------------------------- | --------------------------------------------------------- |
+| JSON by default             | Yes                              | No (requires config) | Yes                                                       | Yes                                                       |
+| Message key                 | `msg`                            | `message`            | `msg`                                                     | `message`                                                 |
+| Level in JSON               | Number or string (configurable)  | String               | Number only                                               | Number only                                               |
+| Timestamp key               | `time`                           | `timestamp`          | `time`                                                    | `timestamp`                                               |
+| Extra always-present fields | `pid`, `hostname` (suppressible) | None                 | `name`, `hostname`, `pid`, `time`, `v` (not suppressible) | Lambda context only (`function_name`, `request_id`, etc.) |
+| Built-in redaction          | Yes                              | No                   | No                                                        | Yes                                                       |
+| Automatic Lambda context    | No (manual)                      | No (manual)          | No (manual)                                               | Yes (automatic from Lambda runtime)                       |
 
 ### Performance Characteristics (relative)
 
-|                     | Pino                  | Winston            | Bunyan             |
-| ------------------- | --------------------- | ------------------ | ------------------ |
-| Serialization model | Worker thread (async) | Main thread (sync) | Main thread (sync) |
-| Relative throughput | Fastest               | Moderate           | Moderate           |
-| Cold start impact   | Minimal               | Low-moderate       | Low-moderate       |
+|                     | Pino                  | Winston            | Bunyan             | AWS Lambda Power Tools |
+| ------------------- | --------------------- | ------------------ | ------------------ | ---------------------- |
+| Serialization model | Worker thread (async) | Main thread (sync) | Main thread (sync) | Main thread (sync)     |
+| Relative throughput | Fastest               | Moderate           | Moderate           | Very fast              |
+| Cold start impact   | Minimal               | Low-moderate       | Low-moderate       | Minimal                |
 
-Performance matters most under high log volume. For Lambda functions handling payment transactions at low-to-moderate volume, the difference between Pino and the others is unlikely to be a blocking concern — but Pino's model is inherently safer under burst load.
+Performance matters most under high log volume. For Lambda functions handling payment transactions at low-to-moderate volume, the difference between Pino and the others is unlikely to be a blocking concern — but Pino's and AWS Lambda Power Tools' models are inherently safer under burst load. AWS Lambda Power Tools has zero transport overhead by design.
 
 ---
 
@@ -150,6 +177,15 @@ Performance matters most under high log volume. For Lambda functions handling pa
 - Best performance under burst load, important for Lambda cold starts.
 - Actively maintained with a large ecosystem.
 - `pino-pretty` provides excellent local developer experience with minimal setup.
+
+**AWS Lambda Power Tools is the most Lambda-optimized choice if ecosystem lock-in is acceptable:**
+
+- Purpose-built for AWS Lambda with automatic context injection (no manual wiring needed).
+- AWS-maintained with priority security patches and long-term support guarantees.
+- Zero transport overhead; very fast serialization.
+- Seamless CloudWatch integration without custom configuration.
+- Built-in redaction for sensitive fields.
+- The trade-off is lock-in to Lambda (less portable to other runtimes) and no alternative output formats for local development.
 
 **Winston is the lowest-friction choice if team familiarity is the top priority:**
 
