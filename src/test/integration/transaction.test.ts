@@ -91,6 +91,71 @@ describe("make a transaction", () => {
   let isLocal: boolean;
   let baseUrl: string;
 
+  beforeAll(() => {
+    baseUrl = process.env.BASE_URL ?? "";
+    if (!baseUrl) {
+      throw new Error("BASE_URL is required for transaction integration tests");
+    }
+
+    isLocal =
+      process.env.NODE_ENV === "local" || process.env.LOCAL_DEV === "true";
+    jest.setTimeout(60_000);
+  });
+
+  // Run through the full transaction flow for each of the defined payment scenarios defined above.
+  it.each(scenarios)("handles $name end-to-end", async (scenario) => {
+    const initialized = await initTransaction();
+
+    await verifyPaymentRedirect(initialized.paymentRedirect);
+    await markPayment(
+      initialized.paymentRedirect,
+      initialized.token,
+      scenario.paymentMethod,
+      scenario.paymentStatus,
+    );
+
+    const processResponse = await processTransaction(initialized.token);
+    assertSingleTransaction(
+      processResponse,
+      scenario,
+      scenario.expectedProcessPaymentStatus,
+      scenario.expectPendingDuringResolution
+        ? "pending"
+        : scenario.expectedFinalTransactionStatus,
+    );
+
+    const detailsResponse = await getDetails(
+      initialized.transactionReferenceId,
+    );
+
+    if (scenario.expectPendingDuringResolution) {
+      assertSingleTransaction(detailsResponse, scenario, "pending", "pending");
+
+      const resolvedDetails = await waitForResolvedDetails(
+        initialized.transactionReferenceId,
+        scenario,
+        detailsResponse,
+      );
+
+      assertSingleTransaction(
+        resolvedDetails,
+        scenario,
+        scenario.expectedFinalPaymentStatus,
+        scenario.expectedFinalTransactionStatus,
+      );
+      expect(resolvedDetails.transactions[0].payGovTrackingId).toBeTruthy();
+      return;
+    }
+
+    assertSingleTransaction(
+      detailsResponse,
+      scenario,
+      scenario.expectedFinalPaymentStatus,
+      scenario.expectedFinalTransactionStatus,
+    );
+    expect(detailsResponse.transactions[0].payGovTrackingId).toBeTruthy();
+  });
+
   // Helper so every portal call uses SigV4 in deployed envs, plain fetch locally.
   // Pre-deployment:  SigV4 headers are ignored (auth is still NONE), so all calls return 200.
   // Post-deployment: API Gateway enforces AWS_IAM — only signed calls succeed.
@@ -285,68 +350,4 @@ describe("make a transaction", () => {
       )}`,
     );
   };
-
-  beforeAll(() => {
-    baseUrl = process.env.BASE_URL ?? "";
-    if (!baseUrl) {
-      throw new Error("BASE_URL is required for transaction integration tests");
-    }
-
-    isLocal =
-      process.env.NODE_ENV === "local" || process.env.LOCAL_DEV === "true";
-    jest.setTimeout(60_000);
-  });
-
-  it.each(scenarios)("handles $name end-to-end", async (scenario) => {
-    const initialized = await initTransaction();
-
-    await verifyPaymentRedirect(initialized.paymentRedirect);
-    await markPayment(
-      initialized.paymentRedirect,
-      initialized.token,
-      scenario.paymentMethod,
-      scenario.paymentStatus,
-    );
-
-    const processResponse = await processTransaction(initialized.token);
-    assertSingleTransaction(
-      processResponse,
-      scenario,
-      scenario.expectedProcessPaymentStatus,
-      scenario.expectPendingDuringResolution
-        ? "pending"
-        : scenario.expectedFinalTransactionStatus,
-    );
-
-    const detailsResponse = await getDetails(
-      initialized.transactionReferenceId,
-    );
-
-    if (scenario.expectPendingDuringResolution) {
-      assertSingleTransaction(detailsResponse, scenario, "pending", "pending");
-
-      const resolvedDetails = await waitForResolvedDetails(
-        initialized.transactionReferenceId,
-        scenario,
-        detailsResponse,
-      );
-
-      assertSingleTransaction(
-        resolvedDetails,
-        scenario,
-        scenario.expectedFinalPaymentStatus,
-        scenario.expectedFinalTransactionStatus,
-      );
-      expect(resolvedDetails.transactions[0].payGovTrackingId).toBeTruthy();
-      return;
-    }
-
-    assertSingleTransaction(
-      detailsResponse,
-      scenario,
-      scenario.expectedFinalPaymentStatus,
-      scenario.expectedFinalTransactionStatus,
-    );
-    expect(detailsResponse.transactions[0].payGovTrackingId).toBeTruthy();
-  });
 });
