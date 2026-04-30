@@ -12,6 +12,8 @@ locals {
 
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
+    STAGE                              = local.environment
+    LOG_LEVEL                          = "debug"
     PAYMENT_URL                        = local.payment_url
     SOAP_URL                           = local.soap_url
     CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
@@ -20,7 +22,7 @@ locals {
     RDS_ENDPOINT                       = local.rds_endpoint
     RDS_SECRET_ARN                     = local.rds_secret_arn
     RDS_DB_NAME                        = local.rds_db_name
-  }, local.mtls_enabled ? {
+    }, local.mtls_enabled ? {
     PRIVATE_KEY_SECRET_ID = module.secrets.private_key_secret_id
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
   } : {})
@@ -29,6 +31,8 @@ locals {
   # authorization=NONE — must not receive payment secrets.
   lambda_env_dashboard = {
     NODE_ENV                 = local.node_env
+    STAGE                    = local.environment
+    LOG_LEVEL                = "debug"
     RDS_ENDPOINT             = local.rds_endpoint
     RDS_SECRET_ARN           = local.rds_secret_arn
     RDS_DB_NAME              = local.rds_db_name
@@ -40,6 +44,8 @@ locals {
   # RDS_MASTER_SECRET_ARN uses the same admin credentials — required for CREATE/DROP DATABASE.
   lambda_env_migration = {
     NODE_ENV              = local.node_env
+    STAGE                 = local.environment
+    LOG_LEVEL             = "debug"
     RDS_ENDPOINT          = local.rds_endpoint
     RDS_SECRET_ARN        = local.rds_secret_arn
     RDS_MASTER_SECRET_ARN = local.rds_secret_arn
@@ -51,7 +57,7 @@ locals {
     processPayment              = local.lambda_env_payment
     getDetails                  = local.lambda_env_payment
     testCert                    = local.lambda_env_payment
-    getAllTransactions           = local.lambda_env_dashboard
+    getAllTransactions          = local.lambda_env_dashboard
     getTransactionsByStatus     = local.lambda_env_dashboard
     getTransactionPaymentStatus = local.lambda_env_dashboard
     migrationRunner             = local.lambda_env_migration
