@@ -72,16 +72,33 @@ Environment variables are located in `.env.<NODE_ENV>`.
 
 Stages should be one of `dev`, `stg`, and `prod`. The dev server should be configured to point to the USTC Pay.gov test server, which is managed in a [separate repository](https://github.com/ustaxcourt/ustc-pay-gov-test-server).
 
-| Environment Variable | Description                                                                                                      |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `BASE_URL`           | The URL of this payment portal (for running integration tests)                                                   |
-| `CERT_PASSPHRASE`    | The secret password for using the certificate as an httpsAgent                                                   |
-| `CLIENT_PERMISSIONS_SECRET_ID` | AWS Secrets Manager secret ID for the client permissions JSON array. Not needed locally — auth is bypassed when `LOCAL_DEV=true` |
-| `LOCAL_DEV`          | Set to `true` to bypass SigV4 auth for local development. Do not set in deployed environments.                   |
-| `NODE_ENV`           | The environment or stage for this application (`staging`, `development`, or `production`)                        |
-| `PAYMENT_URL`        | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated |
-| `SOAP_URL`           | The URL of the SOAP Server that handles payment requests made by this portal                                     |
-| `SUBDOMAIN`          | The subdomain that the deployed application should assume                                                        |
+| Environment Variable           | Description                                                                                                                                                           |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BASE_URL`                     | The URL of this payment portal (for running integration tests)                                                                                                        |
+| `CERT_PASSPHRASE`              | The secret password for using the certificate as an httpsAgent                                                                                                        |
+| `CLIENT_PERMISSIONS_SECRET_ID` | AWS Secrets Manager secret ID for the client permissions JSON array. Not needed locally — auth is bypassed when `LOCAL_DEV=true`                                      |
+| `LOCAL_DEV`                    | Set to `true` to bypass SigV4 auth for local development. Do not set in deployed environments.                                                                        |
+| `LOG_LEVEL`                    | (Optional) Override the default log level for the environment. Valid values: `DEBUG`, `INFO`, `WARN`, `ERROR`, `FATAL`. See [Logging](./docs/logging.md) for details. |
+| `NODE_ENV`                     | The environment or stage for this application (`staging`, `development`, or `production`)                                                                             |
+| `PAYMENT_URL`                  | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated                                                      |
+| `SOAP_URL`                     | The URL of the SOAP Server that handles payment requests made by this portal                                                                                          |
+| `SUBDOMAIN`                    | The subdomain that the deployed application should assume                                                                                                             |
+
+## Logging
+
+This application uses [Pino](https://getpino.io) for structured JSON logging. Logs are designed to be queryable in CloudWatch Logs Insights for production environments and readable during local development.
+
+**Default log levels by environment:**
+
+- `local` → `INFO` (pipe through `pino-pretty` for colorized output)
+- `test` → `ERROR` (minimal output during test runs)
+- `development` → `DEBUG`
+- `staging` → `INFO`
+- `production` → `INFO`
+
+To override the log level in any environment, set the `LOG_LEVEL` environment variable.
+
+For detailed logging guidelines and examples, see [docs/logging.md](./docs/logging.md).
 
 ## Deployment
 
