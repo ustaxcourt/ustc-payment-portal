@@ -37,7 +37,6 @@ Pino was selected after evaluating four logging libraries against project requir
 ### Alternative Evaluation
 
 - **Winston**: More widely adopted but requires explicit JSON configuration and manual redaction. Slower performance due to synchronous formatting on the main thread
-- **Bunyan**: Older library with low maintenance activity (no releases since 2021) and 230+ open issues. Numeric-only log levels and non-suppressible extra fields add friction
 - **AWS Lambda Power Tools**: Purpose-built for Lambda with automatic context injection, but locks the application to AWS Lambda runtime. Accepted as a viable alternative if portability constraints change
 
 Full comparison: [docs/architecture/proposals/PAY-302-environment-logger/README.md](../proposals/PAY-302-environment-logger/README.md)
@@ -84,11 +83,6 @@ Full comparison: [docs/architecture/proposals/PAY-302-environment-logger/README.
 - Message key is `msg` (not `message`), which differs from some team members' expectations
 - Requires migration of existing `console.*` calls to `logger.*` calls across the codebase (planned for PAY-249)
 - Third-party tools consuming logs must be aware of Pino's field names and JSON structure
-
-## Related Decisions
-
-- PAY-302: Logging strategy research and comparison
-- PAY-249: Implementation of logger migration across codebase
 
 ## Reference Documentation
 
