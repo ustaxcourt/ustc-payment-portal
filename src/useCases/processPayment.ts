@@ -13,7 +13,7 @@ import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { toPaymentMethod } from "../utils/toPaymentMethod";
-import { toTransactionRecordSummary } from "../../src/utils/toTransactionRecordSummary";
+import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
 
 export type ProcessPayment = (
   appContext: AppContext,
