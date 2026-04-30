@@ -70,6 +70,7 @@ const mockFailedRow = {
   paygovTrackingId: null,
   paymentMethod: null,
   returnDetail: "The card has been declined, the transaction will not be processed.",
+  returnCode: 3001,
   lastUpdatedAt: "2026-01-15T10:35:01Z",
 } as unknown as TransactionModel;
 
