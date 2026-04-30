@@ -10,10 +10,10 @@ The Payment Portal uses [Pino](https://getpino.io) for structured JSON logging. 
 import { logger } from "./utils/logger";
 
 // Log at different levels
-logger.debug("This is a debug message");
-logger.info("This is an info message");
-logger.warn("This is a warning");
-logger.error("This is an error");
+logger.debug({}, "This is a debug message");
+logger.info({}, "This is an info message");
+logger.warn({}, "This is a warning");
+logger.error({}, "This is an error");
 ```
 
 ### Logging with structured fields
@@ -22,14 +22,17 @@ Always include relevant context as structured fields rather than string interpol
 
 ```typescript
 // Good ✓
-logger.info("Payment initiated", {
-  feeId: "FEE-001",
-  transactionReferenceId: "8d537be3-80e8-41a3-8acd-8d44cc2a7183",
-  amount: 150.0,
-});
+logger.info(
+  {
+    feeId: "FEE-001",
+    transactionReferenceId: "8d537be3-80e8-41a3-8acd-8d44cc2a7183",
+    amount: 150.0,
+  },
+  "Payment initiated",
+);
 
 // Avoid ✗
-logger.info(`Payment initiated for fee ${feeId} with amount ${amount}`);
+logger.info({}, `Payment initiated for fee ${feeId} with amount ${amount}`);
 ```
 
 Structured fields make logs queryable in CloudWatch Logs Insights.
@@ -48,14 +51,14 @@ export async function lambdaHandler(event: any, context: any) {
     httpMethod: event?.httpMethod,
   });
 
-  requestLogger.info("Request received");
+  requestLogger.info({}, "Request received");
 
   try {
     // Your handler logic here
-    requestLogger.info("Processing payment", { feeId: "FEE-001" });
+    requestLogger.info({ feeId: "FEE-001" }, "Processing payment");
     return { statusCode: 200, body: "ok" };
   } catch (err) {
-    requestLogger.error("Request failed", { err });
+    requestLogger.error({ err }, "Request failed");
     throw err;
   }
 }
@@ -83,7 +86,7 @@ If you need to log an object containing sensitive fields, they will be masked au
 ```typescript
 // Sensitive fields are redacted automatically
 const credentials = { password: "secret123", apiKey: "xyz789" };
-logger.info("Login attempt", { credentials }); // password and apiKey will be masked
+logger.info({ credentials }, "Login attempt"); // password and apiKey will be masked
 ```
 
 ## Log Output
