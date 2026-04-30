@@ -72,13 +72,14 @@ export const logger = pino({
     : {
         service: "ustc-payment-portal",
         nodeEnv,
-        stage: process.env.STAGE || "unknown",
+        stage: process.env.STAGE || "prod",
       },
   // Redact sensitive keys before serialization.
   redact: {
     paths: [
       "authorization",
       "*.token",
+      "**.token",
       "*.password",
       "*.secret",
       "*.certPassphrase",
