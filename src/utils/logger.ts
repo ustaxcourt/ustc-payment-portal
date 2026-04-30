@@ -69,7 +69,11 @@ export const logger = pino({
   // Suppress pid/hostname in deployed environments to reduce noise.
   base: usePretty
     ? { pid: process.pid }
-    : { service: "ustc-payment-portal", nodeEnv, stage: process.env.STAGE },
+    : {
+        service: "ustc-payment-portal",
+        nodeEnv,
+        stage: process.env.STAGE || "unknown",
+      },
   // Redact sensitive keys before serialization.
   redact: {
     paths: [

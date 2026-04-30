@@ -11,25 +11,23 @@
 
 #### Pretty-printing logs locally
 
-When running the development server, logs are output as JSON. To make them more readable, pipe the output through `pino-pretty`:
+When running the development server, logs are automatically pretty-printed with colors and timestamps:
 
 ```bash
-npx ts-node src/devServer.ts | npx pino-pretty
+npm run start:server
 ```
 
-This provides colorized, human-readable log output. `pino-pretty` is installed as a dev dependency, so `npx` will find it automatically.
+This is enabled automatically because `NODE_ENV=local` triggers the `pino-pretty` transport in the logger.
 
 #### Running with custom log levels
 
 To see more verbose output during troubleshooting:
 
 ```bash
-LOG_LEVEL=debug npx ts-node src/devServer.ts | npx pino-pretty
+LOG_LEVEL=debug npm run start:server
 ```
 
 #### What if I need to stop my DB?
 
 - Use `docker compose down` to gracefully stop the DB container. (Removes the container, but keeps the volume with the DB data)
 - Use `docker compose down -v` to gracefully stop the container and **wipe the container's volume**. Note that this will delete any data in your local DB.
-
-4. Open a new terminal window and run `npx ts-node src/devServer.ts`
