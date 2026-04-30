@@ -1,4 +1,4 @@
-import TransactionModel from "../../src/db/TransactionModel";
+import TransactionModel from "../db/TransactionModel";
 import { TransactionRecordSummary } from "../schemas/TransactionRecord.schema";
 import { TransactionStatus } from "../schemas/TransactionStatus.schema";
 import { toApiPaymentMethod } from "./toApiPaymentMethod";
