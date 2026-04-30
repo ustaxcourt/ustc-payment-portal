@@ -7,6 +7,7 @@ type GenerateTransactionsParams = {
   successTransactions: number;
   failedTransactions: number;
   pendingTransactions: number;
+  multiAttemptGroups?: number;
 };
 
 type TransactionRow = {
@@ -33,6 +34,7 @@ export const generateTransactions = async ({
   successTransactions,
   failedTransactions,
   pendingTransactions,
+  multiAttemptGroups = 0,
 }: GenerateTransactionsParams): Promise<TransactionRow[]> => {
   const feesList = await FeesModel.query().select('feeId', 'amount');
   const clientNames = ['payment-portal', 'efile-portal', 'clerk-app'];
@@ -59,12 +61,19 @@ export const generateTransactions = async ({
     "An internal error occurred. Please try again.",
   ];
 
-  const makeRow = (payment_status: 'success' | 'failed' | 'pending') => {
+  type RowOverrides = {
+    transactionReferenceId?: string;
+    fee?: typeof feesList[number];
+    clientName?: string;
+    createdAt?: string;
+  };
+
+  const makeRow = (payment_status: 'success' | 'failed' | 'pending', overrides: RowOverrides = {}) => {
     const agencyId = faker.helpers.arrayElement(agencyIds);
-    const fee = faker.helpers.arrayElement(feesList);
+    const fee = overrides.fee ?? faker.helpers.arrayElement(feesList);
     agencyCounters[agencyId] += 1;
-    const transactionReferenceId = faker.string.uuid();
-    const createdAt = dayjs()
+    const transactionReferenceId = overrides.transactionReferenceId ?? faker.string.uuid();
+    const createdAt = overrides.createdAt ?? dayjs()
       .subtract(faker.number.int({ min: 1, max: 40 }), 'day')
       .add(faker.number.int({ min: 0, max: 86400 }), 'second')
       .toISOString();
@@ -92,7 +101,7 @@ export const generateTransactions = async ({
       paygov_tracking_id: faker.datatype.boolean() ? faker.string.alphanumeric({ length: 20, casing: 'upper' }) : null,
       fee_id: fee.feeId,
       transaction_amount: fee.amount!,
-      client_name: faker.helpers.arrayElement(clientNames),
+      client_name: overrides.clientName ?? faker.helpers.arrayElement(clientNames),
       transaction_reference_id: transactionReferenceId,
       payment_status,
       transaction_status: getTransactionStatus(payment_status),
@@ -108,9 +117,27 @@ export const generateTransactions = async ({
     };
   };
 
+  const makeMultiAttemptGroup = (outcomes: Array<'success' | 'failed' | 'pending'>): TransactionRow[] => {
+    const transactionReferenceId = faker.string.uuid();
+    const fee = faker.helpers.arrayElement(feesList);
+    const clientName = faker.helpers.arrayElement(clientNames);
+    const baseDate = dayjs().subtract(faker.number.int({ min: 3, max: 20 }), 'day');
+    let elapsed = 0;
+    return outcomes.map((outcome) => {
+      const createdAt = baseDate.add(elapsed, 'minute').toISOString();
+      elapsed += faker.number.int({ min: 20, max: 60 });
+      return makeRow(outcome, { transactionReferenceId, fee, clientName, createdAt });
+    });
+  };
+
+  const multiAttemptRows = Array.from({ length: multiAttemptGroups }, () =>
+    makeMultiAttemptGroup(['failed', 'success']),
+  ).flat();
+
   return [
     ...Array.from({ length: successTransactions }, () => makeRow('success')),
     ...Array.from({ length: failedTransactions }, () => makeRow('failed')),
     ...Array.from({ length: pendingTransactions }, () => makeRow('pending')),
+    ...multiAttemptRows,
   ];
 };

@@ -15,6 +15,7 @@ export async function seed(knex: Knex): Promise<void> {
       successTransactions: 200,
       failedTransactions: 50,
       pendingTransactions: 20,
+      multiAttemptGroups: 10,
     }),
   );
 }
