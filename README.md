@@ -68,17 +68,20 @@ This workflow is currently a work-in-progress and not operational yet. We'll pos
 
 ## Environment Variables
 
-Environment variables are located in `.env.<NODE_ENV>`.
+Environment variables are located in `.env.<APP_ENV>` (e.g., `.env.dev`).
 
-Stages should be one of `dev`, `stg`, and `prod`. The dev server should be configured to point to the USTC Pay.gov test server, which is managed in a [separate repository](https://github.com/ustaxcourt/ustc-pay-gov-test-server).
+`APP_ENV` is one of `local`, `dev`, `stg`, `prod`, or `test` and identifies the deployment topology. `NODE_ENV` is a separate, Node-runtime-only flag (`development`, `production`, or `test`). See [ADR 0006](docs/architecture/decisions/0006-app-env-vs-node-env.md) for the rationale and rules.
+
+The dev server should be configured to point to the USTC Pay.gov test server, which is managed in a [separate repository](https://github.com/ustaxcourt/ustc-pay-gov-test-server).
 
 | Environment Variable | Description                                                                                                      |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `APP_ENV`            | Deployment topology for this service. One of `local`, `dev`, `stg`, `prod`, `test`.                              |
 | `BASE_URL`           | The URL of this payment portal (for running integration tests)                                                   |
 | `CERT_PASSPHRASE`    | The secret password for using the certificate as an httpsAgent                                                   |
 | `CLIENT_PERMISSIONS_SECRET_ID` | AWS Secrets Manager secret ID for the client permissions JSON array. Not needed locally — auth is bypassed when `LOCAL_DEV=true` |
 | `LOCAL_DEV`          | Set to `true` to bypass SigV4 auth for local development. Do not set in deployed environments.                   |
-| `NODE_ENV`           | The environment or stage for this application (`staging`, `development`, or `production`)                        |
+| `NODE_ENV`           | Node runtime mode. One of `development`, `production`, `test`. Set automatically by Jest.                        |
 | `PAYMENT_URL`        | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated |
 | `SOAP_URL`           | The URL of the SOAP Server that handles payment requests made by this portal                                     |
 | `SUBDOMAIN`          | The subdomain that the deployed application should assume                                                        |
