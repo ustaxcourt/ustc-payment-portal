@@ -14,7 +14,7 @@ import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
 import { ServerError } from "../errors/serverError";
-import { toTransactionRecordSummary } from "../../src/utils/toTransactionRecordSummary";
+import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
 
 type GetDetailsRequest = {
   transactionReferenceId: string;
