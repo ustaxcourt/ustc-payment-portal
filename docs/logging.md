@@ -111,7 +111,8 @@ Logs are output as JSON, automatically forwarded to CloudWatch Logs by Lambda:
   "msg": "Payment initiated",
   "time": "2026-04-30T14:35:22.125Z",
   "service": "ustc-payment-portal",
-  "nodeEnv": "staging",
+  "nodeEnv": "production",
+  "appEnv": "stg",
   "path": "/payments/init",
   "httpMethod": "POST",
   "feeId": "FEE-001",
@@ -119,16 +120,16 @@ Logs are output as JSON, automatically forwarded to CloudWatch Logs by Lambda:
 }
 ```
 
+In this repo, deployment topology comes from `APP_ENV` (`local|dev|stg|prod|test`) while Node runtime mode uses `NODE_ENV` (`development|production|test`).
+
 ## Controlling Log Levels
 
-**Default log levels by environment:**
+**Default log levels by NODE_ENV:**
 
-| Environment | Default Level |
+| NODE_ENV    | Default Level |
 | ----------- | ------------- |
-| local       | INFO          |
 | test        | ERROR         |
 | development | DEBUG         |
-| staging     | INFO          |
 | production  | INFO          |
 
 **Override at runtime:**

@@ -56,7 +56,7 @@ describe("src/utils/logger.ts", () => {
     jest.resetModules();
     process.env = { ...ORIGINAL_ENV };
     delete process.env.LOG_LEVEL;
-    delete mutableEnv().APP_ENV;
+    mutableEnv().APP_ENV = "test";
     delete mutableEnv().STAGE;
     loadedModule = undefined;
   });
@@ -97,8 +97,9 @@ describe("src/utils/logger.ts", () => {
   // ===========================================================================
 
   describe("pino-pretty transport", () => {
-    it("configures pino-pretty transport in development", async () => {
+    it("configures pino-pretty transport for local APP_ENV", async () => {
       process.env.NODE_ENV = "development";
+      mutableEnv().APP_ENV = "local";
 
       const fakeLogger = {
         trace: jest.fn(),
@@ -139,8 +140,9 @@ describe("src/utils/logger.ts", () => {
       }
     });
 
-    it("does not configure pino-pretty transport in production", async () => {
-      process.env.NODE_ENV = "production";
+    it("does not configure pino-pretty transport for deployed APP_ENV", async () => {
+      process.env.NODE_ENV = "development";
+      mutableEnv().APP_ENV = "dev";
 
       const fakeLogger = {
         trace: jest.fn(),
@@ -176,53 +178,36 @@ describe("src/utils/logger.ts", () => {
       }
     });
 
-    describe.each(["test", "development"] as const)(
+    describe.each(["test", "development", "production"] as const)(
       "NODE_ENV=%s",
       (nodeEnv) => {
-        APP_ENVS.forEach((stage) => {
-          it(`does not write directly to process.stdout (APP_ENV=${stage})`, async () => {
+        APP_ENVS.forEach((appEnv) => {
+          it(`routes output correctly for APP_ENV=${appEnv}`, async () => {
             process.env.NODE_ENV = nodeEnv;
-            mutableEnv().APP_ENV = stage;
+            mutableEnv().APP_ENV = appEnv;
 
             const stdoutSpy = jest
               .spyOn(process.stdout, "write")
               .mockReturnValue(true as never);
 
             const { logger } = await loadLoggerModule();
-            logger.info("pretty test");
+            logger.error("routing test");
 
             const output = stdoutSpy.mock.calls
               .map(([chunk]) => String(chunk))
               .join("\n");
 
-            expect(output).toBe("");
-            expect(stdoutSpy).not.toHaveBeenCalled();
+            if (appEnv === "local") {
+              expect(output).toBe("");
+              expect(stdoutSpy).not.toHaveBeenCalled();
+            } else {
+              expect(output).toContain("routing test");
+              expect(stdoutSpy).toHaveBeenCalled();
+            }
           });
         });
       },
     );
-    describe("NODE_ENV=production", () => {
-      APP_ENVS.forEach((stage) => {
-        it(`writes directly to process.stdout (APP_ENV=${stage})`, async () => {
-          process.env.NODE_ENV = "production";
-          mutableEnv().APP_ENV = stage;
-
-          const stdoutSpy = jest
-            .spyOn(process.stdout, "write")
-            .mockReturnValue(true as never);
-
-          const { logger } = await loadLoggerModule();
-          logger.info("pretty test");
-
-          const output = stdoutSpy.mock.calls
-            .map(([chunk]) => String(chunk))
-            .join("\n");
-
-          expect(output).toContain("production");
-          expect(stdoutSpy).toHaveBeenCalled();
-        });
-      });
-    });
   });
 
   // ===========================================================================
@@ -234,6 +219,7 @@ describe("src/utils/logger.ts", () => {
       PINO_LEVELS.forEach((logLevel) => {
         it(`emits logs ≥ ${logLevel}`, async () => {
           process.env.NODE_ENV = nodeEnv;
+          mutableEnv().APP_ENV = nodeEnv === "test" ? "test" : "dev";
           process.env.LOG_LEVEL = logLevel;
 
           const stdoutSpy = jest
@@ -263,6 +249,7 @@ describe("src/utils/logger.ts", () => {
     describe("NODE_ENV=development", () => {
       it("does not emit to stdout due to pino-pretty", async () => {
         process.env.NODE_ENV = "development";
+        mutableEnv().APP_ENV = "local";
 
         const stdoutSpy = jest
           .spyOn(process.stdout, "write")
@@ -302,12 +289,13 @@ describe("src/utils/logger.ts", () => {
             // LOG_LEVEL intentionally unset
             delete process.env.LOG_LEVEL;
 
-            const stdoutSpy =
-              nodeEnv === "development"
-                ? null
-                : jest
-                    .spyOn(process.stdout, "write")
-                    .mockReturnValue(true as never);
+            const shouldPretty = mutableEnv().APP_ENV === "local";
+
+            const stdoutSpy = shouldPretty
+              ? null
+              : jest
+                  .spyOn(process.stdout, "write")
+                  .mockReturnValue(true as never);
 
             const { logger } = await loadLoggerModule();
 
@@ -319,7 +307,7 @@ describe("src/utils/logger.ts", () => {
             // Call the log method
             (logger as any)[level](`unset ${level}`);
 
-            if (nodeEnv === "development") {
+            if (shouldPretty) {
               // pino-pretty: we can't reliably inspect stdout
               // but calling should never throw
               expect(true).toBe(true);
@@ -355,7 +343,7 @@ describe("src/utils/logger.ts", () => {
               .map(([c]) => String(c))
               .join("\n");
 
-            if (nodeEnv === "development") {
+            if (appEnv === "local") {
               expect(output).toBe("");
               expect(stdoutSpy).not.toHaveBeenCalled();
             } else {
@@ -481,41 +469,12 @@ describe("src/utils/logger.ts", () => {
       expect(output).not.toContain("array-token");
     });
 
-    it("ignores legacy STAGE when APP_ENV is unset", async () => {
+    it("throws when APP_ENV is unset even if legacy STAGE is present", async () => {
       process.env.NODE_ENV = "production";
       delete mutableEnv().APP_ENV;
-
-      const stdoutSpy = jest
-        .spyOn(process.stdout, "write")
-        .mockReturnValue(true as never);
-
       mutableEnv().STAGE = "stg";
-      const { logger: loggerWithLegacyStage } = await loadLoggerModule();
-      loggerWithLegacyStage.info("legacy stage ignored");
 
-      const outputWithStage = stdoutSpy.mock.calls
-        .map(([c]) => String(c))
-        .join("\n");
-      const matchWithStage = outputWithStage.match(/"appEnv":"([^"]+)"/);
-
-      stdoutSpy.mockClear();
-
-      jest.resetModules();
-      loadedModule = undefined;
-      delete mutableEnv().STAGE;
-
-      const { logger: loggerWithoutLegacyStage } = await loadLoggerModule();
-      loggerWithoutLegacyStage.info("legacy stage ignored");
-
-      const outputWithoutStage = stdoutSpy.mock.calls
-        .map(([c]) => String(c))
-        .join("\n");
-      const matchWithoutStage = outputWithoutStage.match(/"appEnv":"([^"]+)"/);
-
-      expect(matchWithStage?.[1]).toBeDefined();
-      expect(matchWithoutStage?.[1]).toBeDefined();
-      expect(matchWithStage?.[1]).toBe(matchWithoutStage?.[1]);
-      expect(matchWithStage?.[1]).not.toBe("stg");
+      await expect(loadLoggerModule()).rejects.toThrow("APP_ENV is not set");
     });
   });
 

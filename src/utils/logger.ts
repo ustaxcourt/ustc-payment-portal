@@ -1,6 +1,7 @@
 import pino from "pino";
+import { getAppEnv, isLocal } from "../config/appEnv";
 
-type RuntimeEnv = "local" | "test" | "development" | "staging" | "production";
+type RuntimeEnv = "test" | "development" | "production";
 
 const VALID_LEVELS = new Set([
   "trace",
@@ -13,10 +14,8 @@ const VALID_LEVELS = new Set([
 ]);
 
 const DEFAULT_LEVEL_BY_ENV: Record<RuntimeEnv, string> = {
-  local: "info",
   test: "error",
   development: "debug",
-  staging: "info",
   production: "info",
 };
 
@@ -56,10 +55,8 @@ function resolveNodeEnv(raw?: string): RuntimeEnv {
   const normalizedEnv = raw?.toLowerCase();
 
   if (
-    normalizedEnv === "local" ||
     normalizedEnv === "test" ||
     normalizedEnv === "development" ||
-    normalizedEnv === "staging" ||
     normalizedEnv === "production"
   ) {
     return normalizedEnv;
@@ -98,9 +95,10 @@ function resolveLogLevel(
 }
 
 const nodeEnv = resolveNodeEnv(process.env.NODE_ENV);
+const appEnv = getAppEnv();
 const level = resolveLogLevel(nodeEnv, process.env.LOG_LEVEL);
 
-const usePretty = nodeEnv === "local" || nodeEnv === "development";
+const usePretty = isLocal();
 
 export const logger = pino({
   level,
@@ -128,7 +126,7 @@ export const logger = pino({
     : {
         service: "ustc-payment-portal",
         nodeEnv,
-        appEnv: process.env.APP_ENV || "unknown",
+        appEnv,
       },
   // Redact sensitive keys before serialization.
   redact: {

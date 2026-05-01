@@ -43,25 +43,28 @@ Full comparison: [docs/architecture/proposals/PAY-302-environment-logger/solutio
 
 ## Implementation Details
 
-**Environment-based log levels:**
+**Environment-based log levels (by `NODE_ENV`):**
 
-- `local` → `INFO`
 - `test` → `ERROR` (reduce noise during test runs)
 - `development` → `DEBUG`
-- `staging` → `INFO`
 - `production` → `INFO`
+
+**Deployment topology (by `APP_ENV`):**
+
+- `APP_ENV=local` enables local-only pretty output
+- `APP_ENV=dev|stg|prod|test` emits structured JSON
 
 **Log level override:** Set `LOG_LEVEL` environment variable in any environment for temporary troubleshooting
 
 **Structured context injection:**
 
-- Automatic: service name, Node.js environment, deployment stage
+- Automatic: service name, Node.js environment, deployment topology (`appEnv`)
 - Per-request: Lambda request ID, API path, HTTP method, client ARN, transaction reference ID
 - Domain-specific: fee ID, payment status, PayGov tracking ID
 
 **Sensitive field redaction:** Configured globally via `redact` option to censor `authorization`, `token`, `password`, `secret`, `certPassphrase`
 
-**Local output:** `npm run start:server` automatically enables the `pino-pretty` transport for colorized, human-readable formatting in `local` and `development`
+**Local output:** `npm run start:server` automatically enables the `pino-pretty` transport when `APP_ENV=local`
 
 **Production output:** Structured JSON to stdout, automatically forwarded by Lambda to CloudWatch Logs
 

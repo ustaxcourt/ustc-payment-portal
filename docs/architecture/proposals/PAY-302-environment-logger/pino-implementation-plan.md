@@ -15,23 +15,20 @@ Goals covered by this plan:
 ## Current State Snapshot (from this repo)
 
 - The codebase currently uses direct `console.log`, `console.warn`, and `console.error` in many runtime paths.
-- `NODE_ENV` values already used in code include: `local`, `test`, `development`, `staging`, `production`.
-- CI and deployment workflows also use stage-style naming (`dev`, `stg`, `prod`) and PR ephemeral environments.
+- `NODE_ENV` is reserved for Node runtime modes: `development`, `production`, `test`.
+- Deployment topology is represented separately by `APP_ENV`: `local`, `dev`, `stg`, `prod`, `test`.
 
 ## Environment Model to Use for Logging
 
-For implementation, treat runtime environments as:
+For implementation, treat environment as two dimensions:
 
-- `local`: local integration and local app execution.
-- `test`: unit/integration test runs.
-- `development`: default development runtime.
-- `staging`: pre-production runtime.
-- `production`: production runtime.
+- Runtime mode (`NODE_ENV`): `development`, `production`, `test`
+- Deployment topology (`APP_ENV`): `local`, `dev`, `stg`, `prod`, `test`
 
 Additional deployment context:
 
 - PR ephemeral environments should behave like non-production by default, unless explicitly overridden with `LOG_LEVEL`.
-- If a stage variable exists (`APP_ENV=dev|stg|prod`), include it in log context, but keep `NODE_ENV` as the primary runtime switch for logger defaults.
+- Use `APP_ENV` (via `getAppEnv()`) for topology-sensitive logger behavior such as local pretty printing.
 
 ## Proposed Pino Design
 
@@ -60,14 +57,12 @@ Optional package (required for local readability):
 Use this precedence:
 
 1. `LOG_LEVEL` (explicit override in any environment)
-2. Environment default by `NODE_ENV`
+2. Runtime default by `NODE_ENV`
 
 Recommended defaults:
 
-- `local` -> `info`
 - `test` -> `error` (reduce noise in test output)
 - `development` -> `debug`
-- `staging` -> `info`
 - `production` -> `info`
 
 Validation behavior:
@@ -82,7 +77,7 @@ Note: Pino uses numeric level values in JSON output by default (`"level":30` for
 
 ### 3) Output Formats by Environment
 
-`local` and `development`:
+`APP_ENV=local`:
 
 - Use `pino-pretty` as a transport for human-readable, colorized, single-line output.
 - Include timestamp, level label, message, and context fields.
@@ -92,7 +87,7 @@ Note: Pino uses numeric level values in JSON output by default (`"level":30` for
 - Minimal output. Keep level at `error` by default.
 - Skip `pino-pretty` to avoid unnecessary overhead in tests.
 
-`staging` and `production`:
+Deployed environments (`APP_ENV=dev|stg|prod`) and `APP_ENV=test`:
 
 - Write structured JSON directly to stdout (no `pino-pretty`).
 - Pino writes JSON natively — no extra format step needed.
@@ -104,7 +99,7 @@ Automatic context (added globally via `base` option at logger creation):
 
 - `service`: `ustc-payment-portal`
 - `nodeEnv`: from `NODE_ENV`
-- `stage`: from `APP_ENV` when present
+- `appEnv`: from `APP_ENV`
 
 Note: Pino automatically includes `pid` and `hostname` in each log line via the `base` option. These can be suppressed by setting `base: undefined` if not desired in production.
 
@@ -152,8 +147,9 @@ Use this as a reference implementation for `src/utils/logger.ts`.
 
 ```ts
 import pino from "pino";
+import { getAppEnv, isLocal } from "../config/appEnv";
 
-type RuntimeEnv = "local" | "test" | "development" | "staging" | "production";
+type RuntimeEnv = "test" | "development" | "production";
 
 const VALID_LEVELS = new Set([
   "trace",
@@ -166,21 +162,13 @@ const VALID_LEVELS = new Set([
 ]);
 
 const DEFAULT_LEVEL_BY_ENV: Record<RuntimeEnv, string> = {
-  local: "info",
   test: "error",
   development: "debug",
-  staging: "info",
   production: "info",
 };
 
 function resolveNodeEnv(raw?: string): RuntimeEnv {
-  if (
-    raw === "local" ||
-    raw === "test" ||
-    raw === "development" ||
-    raw === "staging" ||
-    raw === "production"
-  ) {
+  if (raw === "test" || raw === "development" || raw === "production") {
     return raw;
   }
   return "development";
@@ -205,9 +193,10 @@ function resolveLogLevel(
 }
 
 const nodeEnv = resolveNodeEnv(process.env.NODE_ENV);
+const appEnv = getAppEnv();
 const level = resolveLogLevel(nodeEnv, process.env.LOG_LEVEL);
 
-const usePretty = nodeEnv === "local" || nodeEnv === "development";
+const usePretty = isLocal();
 
 export const logger = pino({
   level,
@@ -222,7 +211,7 @@ export const logger = pino({
   // Suppress pid/hostname in deployed environments to reduce noise.
   base: usePretty
     ? { pid: process.pid }
-    : { service: "ustc-payment-portal", nodeEnv, stage: process.env.APP_ENV },
+    : { service: "ustc-payment-portal", nodeEnv, appEnv },
   // Redact sensitive keys before serialization.
   redact: {
     paths: [

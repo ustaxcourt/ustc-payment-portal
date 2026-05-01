@@ -17,7 +17,7 @@ When running the development server, logs are automatically pretty-printed with 
 npm run start:server
 ```
 
-This is enabled automatically because `NODE_ENV=local` triggers the `pino-pretty` transport in the logger.
+This is enabled automatically because `APP_ENV=local` triggers the `pino-pretty` transport in the logger.
 
 #### Running with custom log levels
 
