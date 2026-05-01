@@ -10,16 +10,32 @@ const baseUrl = process.env.BASE_URL;
 describe("POST /process", () => {
   const isLocal = process.env.NODE_ENV === "local" || process.env.LOCAL_DEV === "true";
 
+  beforeAll(() => {
+    if (!baseUrl) {
+      throw new Error("BASE_URL is required for process integration tests");
+    }
+  });
+
   it("returns success after a failed first attempt", async () => {
     const first = await initPayment();
-    await markPayment(first.paymentRedirect, first.token, "PLASTIC_CARD", "Failed");
+    await markPayment(
+      first.paymentRedirect,
+      first.token,
+      "PLASTIC_CARD",
+      "Failed",
+    );
     const firstFailed = await processPayment(first.token);
     expect(firstFailed.paymentStatus).toBe("failed");
     expect(firstFailed.transactions).toHaveLength(1);
     expect(firstFailed.transactions[0].transactionStatus).toBe("failed");
 
     const second = await initPayment(first.transactionReferenceId);
-    await markPayment(second.paymentRedirect, second.token, "PLASTIC_CARD", "Success");
+    await markPayment(
+      second.paymentRedirect,
+      second.token,
+      "PLASTIC_CARD",
+      "Success",
+    );
     const secondProcessed = await processPayment(second.token);
 
     expect(secondProcessed.paymentStatus).toBe("success");
@@ -29,15 +45,24 @@ describe("POST /process", () => {
 
   it("returns failed after a failed first attempt", async () => {
     const first = await initPayment();
-    await markPayment(first.paymentRedirect, first.token, "PLASTIC_CARD", "Failed");
+    await markPayment(
+      first.paymentRedirect,
+      first.token,
+      "PLASTIC_CARD",
+      "Failed",
+    );
     const firstFailed = await processPayment(first.token);
     expect(firstFailed.paymentStatus).toBe("failed");
     expect(firstFailed.transactions).toHaveLength(1);
     expect(firstFailed.transactions[0].transactionStatus).toBe("failed");
 
-
     const second = await initPayment(first.transactionReferenceId);
-    await markPayment(second.paymentRedirect, second.token, "PLASTIC_CARD", "Failed");
+    await markPayment(
+      second.paymentRedirect,
+      second.token,
+      "PLASTIC_CARD",
+      "Failed",
+    );
     const secondFailed = await processPayment(second.token);
 
     expect(secondFailed.paymentStatus).toBe("failed");
@@ -46,13 +71,19 @@ describe("POST /process", () => {
   });
 
   // UTIL Functions
-  const portalFetch = (path: string, options: RequestInit = {}): Promise<Response> => {
+  const portalFetch = (
+    path: string,
+    options: RequestInit = {},
+  ): Promise<Response> => {
     const url = `${baseUrl}${path}`;
     return isLocal ? fetch(url, options) : signedFetch(url, options);
   };
 
-  const expectJsonOk = async <T>(response: Response, context: string): Promise<T> => {
-    const raw = await response.text();;
+  const expectJsonOk = async <T>(
+    response: Response,
+    context: string,
+  ): Promise<T> => {
+    const raw = await response.text();
     if (!response.ok) {
       throw new Error(`${context} failed: ${response.status} ${raw}`);
     }
@@ -63,7 +94,9 @@ describe("POST /process", () => {
     }
   };
 
-  const initPayment = async (existingReferenceId?: string): Promise<{
+  const initPayment = async (
+    existingReferenceId?: string,
+  ): Promise<{
     token: string;
     paymentRedirect: string;
     transactionReferenceId: string;
@@ -81,7 +114,10 @@ describe("POST /process", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
-    const data = await expectJsonOk<{ token: string; paymentRedirect: string }>(result, "POST /init");
+    const data = await expectJsonOk<{ token: string; paymentRedirect: string }>(
+      result,
+      "POST /init",
+    );
     return { ...data, transactionReferenceId };
   };
 
@@ -96,7 +132,9 @@ describe("POST /process", () => {
       ? markUrl.pathname
       : `${markUrl.pathname.replace(/\/$/, "")}/pay`;
 
-    markUrl.pathname = `${payPath}/${encodeURIComponent(paymentMethod)}/${encodeURIComponent(paymentStatus)}`;
+    markUrl.pathname = `${payPath}/${encodeURIComponent(
+      paymentMethod,
+    )}/${encodeURIComponent(paymentStatus)}`;
     markUrl.searchParams.set("token", token);
 
     await expectJsonOk<{ redirectUrl: string }>(
@@ -105,7 +143,9 @@ describe("POST /process", () => {
     );
   };
 
-  const processPayment = async (token: string): Promise<ProcessPaymentResponse> =>
+  const processPayment = async (
+    token: string,
+  ): Promise<ProcessPaymentResponse> =>
     expectJsonOk<ProcessPaymentResponse>(
       await portalFetch("/process", {
         method: "POST",
