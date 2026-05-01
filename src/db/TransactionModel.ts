@@ -204,7 +204,7 @@ export default class TransactionModel extends Model {
     await getKnex();
     return TransactionModel.query()
       .where('transactionReferenceId', transactionReferenceId)
-      .whereIn('transactionStatus', ['received', 'initiated', 'pending'])
+      .whereIn('transactionStatus', 'initiated')
       .first();
   }
 
