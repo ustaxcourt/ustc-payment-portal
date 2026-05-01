@@ -1,7 +1,7 @@
 import type { Knex } from 'knex';
 import { knexSnakeCaseMappers } from 'objection';
 
-type SupportedEnv = 'local' | 'development' | 'test' | 'production';
+type SupportedEnv = 'development' | 'test' | 'production';
 
 const {
 	DB_HOST = 'localhost',
@@ -42,10 +42,6 @@ const buildConnection = (environment: SupportedEnv): NonNullable<Knex.Config['co
 };
 
 export const knexConfigs: Record<SupportedEnv, Knex.Config> = {
-	local: {
-		...baseConfig,
-		connection: buildConnection('local'),
-	},
 	development: {
 		...baseConfig,
 		connection: buildConnection('development'),
