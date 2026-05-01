@@ -2,6 +2,7 @@ locals {
   aws_region    = "us-east-1"
   environment   = var.namespace
   node_env      = "development"
+  app_env       = "dev"
   mtls_enabled  = false
   custom_domain = "dev-payments.ustaxcourt.gov"
   # Payment Lambdas: initPayment, processPayment, getDetails, testCert
@@ -12,7 +13,7 @@ locals {
 
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
-    APP_ENV                            = local.environment
+    APP_ENV                            = local.app_env
     PAYMENT_URL                        = local.payment_url
     SOAP_URL                           = local.soap_url
     CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
@@ -30,7 +31,7 @@ locals {
   # authorization=NONE — must not receive payment secrets.
   lambda_env_dashboard = {
     NODE_ENV                 = local.node_env
-    APP_ENV                  = local.environment
+    APP_ENV                  = local.app_env
     RDS_ENDPOINT             = local.rds_endpoint
     RDS_SECRET_ARN           = local.rds_secret_arn
     RDS_DB_NAME              = local.rds_db_name
@@ -42,7 +43,7 @@ locals {
   # RDS_MASTER_SECRET_ARN uses the same admin credentials — required for CREATE/DROP DATABASE.
   lambda_env_migration = {
     NODE_ENV              = local.node_env
-    APP_ENV               = local.environment
+    APP_ENV               = local.app_env
     RDS_ENDPOINT          = local.rds_endpoint
     RDS_SECRET_ARN        = local.rds_secret_arn
     RDS_MASTER_SECRET_ARN = local.rds_secret_arn
