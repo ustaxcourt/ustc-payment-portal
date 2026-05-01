@@ -4,7 +4,7 @@ const baseUrl = process.env.BASE_URL;
 const describeWithEnv = baseUrl ? describe : describe.skip;
 
 describeWithEnv("POST /init", () => {
-  const isLocal = process.env.NODE_ENV === "local";
+  const isLocal = baseUrl?.includes("localhost") ?? false;
 
   const portalFetch = (options: RequestInit) =>
     isLocal ? fetch(`${baseUrl}/init`, options) : signedFetch(`${baseUrl}/init`, options);

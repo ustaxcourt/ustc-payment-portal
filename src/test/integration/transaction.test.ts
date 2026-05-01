@@ -16,7 +16,7 @@ describe("make a transaction", () => {
     isLocal ? fetch(url, options) : signedFetch(url, options);
 
   beforeAll(() => {
-    isLocal = process.env.NODE_ENV === "local";
+    isLocal = process.env.BASE_URL?.includes("localhost") ?? false;
   });
 
   it("should make a request to start a transaction", async () => {
