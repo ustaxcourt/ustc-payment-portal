@@ -135,10 +135,35 @@ describe("src/utils/logger.ts", () => {
       }
     });
 
-    describe("NODE_ENV=development", () => {
+    describe.each(["test", "development"] as const)(
+      "NODE_ENV=%s",
+      (nodeEnv) => {
+        APP_ENVS.forEach((stage) => {
+          it(`does not write directly to process.stdout (APP_ENV=${stage})`, async () => {
+            process.env.NODE_ENV = nodeEnv;
+            process.env.APP_ENV = stage;
+
+            const stdoutSpy = jest
+              .spyOn(process.stdout, "write")
+              .mockReturnValue(true as never);
+
+            const { logger } = await loadLoggerModule();
+            logger.info("pretty test");
+
+            const output = stdoutSpy.mock.calls
+              .map(([chunk]) => String(chunk))
+              .join("\n");
+
+            expect(output).toBe("");
+            expect(stdoutSpy).not.toHaveBeenCalled();
+          });
+        });
+      },
+    );
+    describe("NODE_ENV=production", () => {
       APP_ENVS.forEach((stage) => {
-        it(`does not write directly to process.stdout (APP_ENV=${stage})`, async () => {
-          process.env.NODE_ENV = "development";
+        it(`writes directly to process.stdout (APP_ENV=${stage})`, async () => {
+          process.env.NODE_ENV = "production";
           process.env.APP_ENV = stage;
 
           const stdoutSpy = jest
@@ -152,8 +177,8 @@ describe("src/utils/logger.ts", () => {
             .map(([chunk]) => String(chunk))
             .join("\n");
 
-          expect(output).toBe("");
-          expect(stdoutSpy).not.toHaveBeenCalled();
+          expect(output).toContain("production");
+          expect(stdoutSpy).toHaveBeenCalled();
         });
       });
     });
