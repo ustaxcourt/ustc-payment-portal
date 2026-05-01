@@ -65,11 +65,12 @@ export const generateTransactions = async ({
     transactionReferenceId?: string;
     fee?: typeof feesList[number];
     clientName?: string;
+    agencyId?: string;
     createdAt?: string;
   };
 
   const makeRow = (payment_status: 'success' | 'failed' | 'pending', overrides: RowOverrides = {}) => {
-    const agencyId = faker.helpers.arrayElement(agencyIds);
+    const agencyId = overrides.agencyId ?? faker.helpers.arrayElement(agencyIds);
     const fee = overrides.fee ?? faker.helpers.arrayElement(feesList);
     agencyCounters[agencyId] += 1;
     const transactionReferenceId = overrides.transactionReferenceId ?? faker.string.uuid();
@@ -121,12 +122,13 @@ export const generateTransactions = async ({
     const transactionReferenceId = faker.string.uuid();
     const fee = faker.helpers.arrayElement(feesList);
     const clientName = faker.helpers.arrayElement(clientNames);
+    const agencyId = faker.helpers.arrayElement(agencyIds);
     const baseDate = dayjs().subtract(faker.number.int({ min: 3, max: 20 }), 'day');
     let elapsed = 0;
     return outcomes.map((outcome) => {
       const createdAt = baseDate.add(elapsed, 'minute').toISOString();
       elapsed += faker.number.int({ min: 20, max: 60 });
-      return makeRow(outcome, { transactionReferenceId, fee, clientName, createdAt });
+      return makeRow(outcome, { transactionReferenceId, fee, clientName, agencyId, createdAt });
     });
   };
 
