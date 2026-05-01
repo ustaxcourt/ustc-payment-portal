@@ -28,6 +28,7 @@ services:
       DB_PASSWORD: password
       DB_NAME: mydb
       NODE_ENV: development
+      APP_ENV: local
       # Pass MIGRATION_MODE=1 to skip migrations and seeds (useful for testing/debugging)
       MIGRATION_MODE: "0"
     volumes:
