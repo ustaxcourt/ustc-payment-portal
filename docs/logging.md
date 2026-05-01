@@ -108,9 +108,9 @@ Logs are output as JSON, automatically forwarded to CloudWatch Logs by Lambda:
 
 ```json
 {
-  "level": 20,
-  "message": "Payment initiated",
-  "timestamp": "2026-04-30T14:35:22.125Z",
+  "level": "info",
+  "msg": "Payment initiated",
+  "time": "2026-04-30T14:35:22.125Z",
   "service": "ustc-payment-portal",
   "nodeEnv": "staging",
   "path": "/payments/init",
@@ -148,19 +148,19 @@ In CloudWatch Logs Insights, use these fields to query logs:
 
 ```sql
 # Find all errors
-fields @timestamp, message, err
-| filter level >= 40
+fields @timestamp, msg, err
+| filter level in ["error", "fatal"]
 
 # Find logs for a specific transaction
-fields @timestamp, message, @message
+fields @timestamp, msg
 | filter transactionReferenceId = "8d537be3-80e8-41a3-8acd-8d44cc2a7183"
 
 # Find slow operations (errors and warnings)
-fields @timestamp, message, duration
-| filter level >= 30
+fields @timestamp, msg, duration
+| filter level in ["warn", "error", "fatal"]
 
 # Search by client
-fields @timestamp, message, clientArn
+fields @timestamp, msg, clientArn
 | filter clientArn like /DAWSON/
 ```
 
