@@ -37,6 +37,12 @@ describe("src/utils/logger.ts", () => {
   let loadedModule: LoggerModule | undefined;
   const ORIGINAL_ENV = process.env;
 
+  beforeAll(() => {
+    // pino-pretty transport setup adds process listeners per import in test mode.
+    // Raise the ceiling for this suite to avoid noisy false-positive warnings.
+    process.setMaxListeners(Math.max(process.getMaxListeners(), 64));
+  });
+
   async function loadLoggerModule(): Promise<LoggerModule> {
     loadedModule = await import("./logger");
     return loadedModule;
@@ -60,7 +66,18 @@ describe("src/utils/logger.ts", () => {
 
       const transport = (loadedModule.logger as any).transport;
       if (transport?.end) {
-        transport.end();
+        await new Promise<void>((resolve) => {
+          let settled = false;
+          const finish = () => {
+            if (settled) return;
+            settled = true;
+            resolve();
+          };
+
+          transport.on?.("close", finish);
+          transport.end();
+          setImmediate(finish);
+        });
       }
     } finally {
       jest.restoreAllMocks();
@@ -120,7 +137,7 @@ describe("src/utils/logger.ts", () => {
 
     describe("NODE_ENV=development", () => {
       APP_ENVS.forEach((stage) => {
-        it(`does not emit JSON stage field (APP_ENV=${stage})`, async () => {
+        it(`does not write directly to process.stdout (APP_ENV=${stage})`, async () => {
           process.env.NODE_ENV = "development";
           process.env.APP_ENV = stage;
 
@@ -304,7 +321,7 @@ describe("src/utils/logger.ts", () => {
       process.env.NODE_ENV = "production";
       delete process.env.APP_ENV;
 
-      const stdoutSpyWithStage = jest
+      const stdoutSpy = jest
         .spyOn(process.stdout, "write")
         .mockReturnValue(true as never);
 
@@ -312,23 +329,21 @@ describe("src/utils/logger.ts", () => {
       const { logger: loggerWithLegacyStage } = await loadLoggerModule();
       loggerWithLegacyStage.info("legacy stage ignored");
 
-      const outputWithStage = stdoutSpyWithStage.mock.calls
+      const outputWithStage = stdoutSpy.mock.calls
         .map(([c]) => String(c))
         .join("\n");
       const matchWithStage = outputWithStage.match(/"stage":"([^"]+)"/);
+
+      stdoutSpy.mockClear();
 
       jest.resetModules();
       loadedModule = undefined;
       delete (process.env as Record<string, string | undefined>).STAGE;
 
-      const stdoutSpyWithoutStage = jest
-        .spyOn(process.stdout, "write")
-        .mockReturnValue(true as never);
-
       const { logger: loggerWithoutLegacyStage } = await loadLoggerModule();
       loggerWithoutLegacyStage.info("legacy stage ignored");
 
-      const outputWithoutStage = stdoutSpyWithoutStage.mock.calls
+      const outputWithoutStage = stdoutSpy.mock.calls
         .map(([c]) => String(c))
         .join("\n");
       const matchWithoutStage = outputWithoutStage.match(/"stage":"([^"]+)"/);
