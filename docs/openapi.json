@@ -264,6 +264,44 @@
           ]
         }
       },
+      "ConflictError": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error summary"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": {},
+              "description": "A structured error detail object (for example a Zod validation issue)",
+              "example": {
+                "code": "invalid_type",
+                "expected": "string",
+                "received": "undefined",
+                "path": [
+                  "urlSuccess"
+                ],
+                "message": "Required"
+              }
+            },
+            "description": "Additional error details",
+            "example": []
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ],
+        "description": "JSON error response for request conflicts (HTTP 409).\n\nReturned when a payment session has already been initiated for the same transaction reference ID.",
+        "example": {
+          "message": "A payment session is already initiated for this transactionReferenceId",
+          "errors": []
+        }
+      },
       "ForbiddenError": {
         "type": "object",
         "properties": {
@@ -463,6 +501,21 @@
           "errors": []
         }
       },
+      "GetDetailsPathParams": {
+        "type": "object",
+        "properties": {
+          "transactionReferenceId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Client-generated UUIDv4 uniquely identifying the transaction. Must match the value supplied to /init.",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        },
+        "required": [
+          "transactionReferenceId"
+        ],
+        "additionalProperties": false
+      },
       "GetDetailsResponse": {
         "type": "object",
         "properties": {
@@ -492,17 +545,22 @@
       "TransactionRecordSummary": {
         "type": "object",
         "properties": {
+          "payGovTrackingId": {
+            "type": "string",
+            "description": "Pay.gov tracking ID for the transaction, present once the transaction has been processed",
+            "example": "TRK-123456789"
+          },
           "transactionStatus": {
             "type": "string",
             "enum": [
-              "Received",
-              "Initiated",
-              "Success",
-              "Failed",
-              "Pending"
+              "received",
+              "initiated",
+              "processed",
+              "failed",
+              "pending"
             ],
             "description": "The status of the payment transaction",
-            "example": "Success"
+            "example": "processed"
           },
           "paymentMethod": {
             "type": "string",
@@ -547,14 +605,14 @@
           "transactionStatus": {
             "type": "string",
             "enum": [
-              "Received",
-              "Initiated",
-              "Success",
-              "Failed",
-              "Pending"
+              "received",
+              "initiated",
+              "processed",
+              "failed",
+              "pending"
             ],
             "description": "The status of the payment transaction",
-            "example": "Success"
+            "example": "processed"
           },
           "paymentMethod": {
             "type": "string",
@@ -597,14 +655,14 @@
       "TransactionStatus": {
         "type": "string",
         "enum": [
-          "Received",
-          "Initiated",
-          "Success",
-          "Failed",
-          "Pending"
+          "received",
+          "initiated",
+          "processed",
+          "failed",
+          "pending"
         ],
         "description": "The status of the payment transaction",
-        "example": "Success"
+        "example": "processed"
       },
       "PaymentStatus": {
         "type": "string",
@@ -667,6 +725,44 @@
           "paymentStatus",
           "transactions"
         ]
+      },
+      "GoneError": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error summary"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": {},
+              "description": "A structured error detail object (for example a Zod validation issue)",
+              "example": {
+                "code": "invalid_type",
+                "expected": "string",
+                "received": "undefined",
+                "path": [
+                  "urlSuccess"
+                ],
+                "message": "Required"
+              }
+            },
+            "description": "Additional error details",
+            "example": []
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ],
+        "description": "JSON error response for gone/expired resources (HTTP 410).\n\nReturned when the supplied token is no longer valid for processing:\n- Another transaction for the same obligation is already pending or completed\n- The transaction associated with this token is not in an initiatable state",
+        "example": {
+          "message": "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
+          "errors": []
+        }
       },
       "RecentTransactionsResponse": {
         "type": "object",
@@ -749,12 +845,12 @@
             "enum": [
               "received",
               "initiated",
-              "pending",
               "processed",
               "failed",
+              "pending",
               null
             ],
-            "description": "The status of an individual transaction record",
+            "description": "The status of the payment transaction",
             "example": "processed"
           },
           "paymentMethod": {
@@ -935,6 +1031,16 @@
               }
             }
           },
+          "409": {
+            "description": "Conflict - a payment session is already initiated for this transaction reference ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictError"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error",
             "content": {
@@ -974,11 +1080,12 @@
           {
             "schema": {
               "type": "string",
-              "description": "The transaction reference ID",
-              "example": "TXN-REF-123456789"
+              "format": "uuid",
+              "description": "Client-generated UUIDv4 uniquely identifying the transaction. Must match the value supplied to /init.",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
             },
             "required": true,
-            "description": "The transaction reference ID",
+            "description": "Client-generated UUIDv4 uniquely identifying the transaction. Must match the value supplied to /init.",
             "name": "transactionReferenceId",
             "in": "path"
           }
@@ -995,7 +1102,7 @@
             }
           },
           "400": {
-            "description": "Invalid request (e.g., missing path parameters)",
+            "description": "Invalid request - transactionReferenceId is missing or not a valid UUID.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1005,11 +1112,21 @@
             }
           },
           "403": {
-            "description": "Forbidden - invalid SigV4 signature or client not authorized",
+            "description": "Forbidden - invalid SigV4 signature, client not registered, or the transactionReferenceId belongs to a different client.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No transaction was found for the supplied transactionReferenceId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             }
@@ -1051,7 +1168,7 @@
         },
         "responses": {
           "200": {
-            "description": "Payment processed. Check transactionStatus for Success or Failed.",
+            "description": "Payment processed. The paymentStatus field indicates the overall outcome (success, failed, pending). The transactions array currently contains only the attempt being processed; it will expand to include all attempts for the same transactionReferenceId in a future release.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1086,6 +1203,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone - the token is no longer valid for processing. Either another transaction is already fulfilling the same obligation (check getDetails), or the transaction associated with this token is not in an initiatable state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             }

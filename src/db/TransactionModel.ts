@@ -1,10 +1,10 @@
 import { Model } from 'objection';
 import FeesModel from './FeesModel';
-import type { DashboardTransactionStatus } from '../schemas/TransactionDashboard.schema';
 import type { PaymentStatus } from '../schemas/PaymentStatus.schema';
+import type { TransactionStatus as SchemaTransactionStatus } from '../schemas/TransactionStatus.schema';
 import { getKnex } from './knex';
 
-export type TransactionStatus = DashboardTransactionStatus;
+export type TransactionStatus = SchemaTransactionStatus;
 export type { PaymentStatus };
 
 export type AggregatedPaymentStatus = Record<PaymentStatus, number> & { total: number };
@@ -27,6 +27,10 @@ export default class TransactionModel extends Model {
   transactionStatus?: TransactionStatus | null;
   paygovToken?: string | null;
   paymentMethod?: PaymentMethod | null;
+  transactionDate?: string | null;
+  paymentDate?: string | null;
+  returnCode?: number | null;
+  returnDetail?: string | null;
   createdAt!: string;
   lastUpdatedAt!: string;
   metadata?: Record<string, string> | null;
@@ -139,13 +143,88 @@ export default class TransactionModel extends Model {
     return TransactionModel.query().findOne({ paygovToken: token });
   }
 
-  static async updateToFailed(agencyTrackingId: string): Promise<void> {
+  static async findByPaygovTrackingId(paygovTrackingId: string): Promise<TransactionModel | undefined> {
     await getKnex();
-    await this.query()
-      .patch({
+    return TransactionModel.query().findOne({ paygovTrackingId });
+  }
+
+  static async findByReferenceId(transactionReferenceId: string): Promise<TransactionModel[]> {
+    await getKnex();
+    // Order ascending by createdAt: getDetails relies on rows[0] being the earliest attempt
+    // for the Fee-invariance lookup (all attempts share the same feeId, but rows[0]'s timestamp
+    // is also implicitly the obligation's first-attempt timestamp).
+    return TransactionModel.query()
+      .where({ transactionReferenceId })
+      .orderBy('createdAt', 'asc');
+  }
+
+  static async updateAfterPayGovResponse(
+    agencyTrackingId: string,
+    paygovTrackingId: string,
+    transactionStatus: TransactionStatus,
+    paymentStatus: PaymentStatus,
+    paymentMethod: PaymentMethod | null,
+    transactionDate: string | undefined,
+    paymentDate: string | undefined,
+  ): Promise<TransactionModel> {
+    await getKnex();
+    // Skip empty dates: patching "" into a TIMESTAMP corrupts it; undefined would null an existing value.
+    return this.query()
+      .patchAndFetchById(agencyTrackingId, {
+        paygovTrackingId,
+        transactionStatus,
+        paymentStatus,
+        paymentMethod,
+        ...(transactionDate && { transactionDate }),
+        ...(paymentDate && { paymentDate }),
+      });
+  }
+
+  static async findPendingOrProcessedByReferenceId(
+    clientName: string,
+    transactionReferenceId: string,
+    excludeToken: string,
+  ): Promise<TransactionModel | undefined> {
+    await getKnex();
+    return TransactionModel.query()
+      .whereIn('transactionStatus', ['pending', 'processed'])
+      .where('clientName', clientName)
+      .where('transactionReferenceId', transactionReferenceId)
+      .whereNot('paygovToken', excludeToken)
+      .first();
+  }
+
+  // Returns any non-terminal attempt for the given (clientName, transactionReferenceId).
+  // Used by initPayment as the app-level pre-check; the status set here MUST stay aligned
+  // with the partial unique index `idx_transactions_unique_active` so the app-level check
+  // and the DB-level guarantee cover the same scope.
+  static async findInFlightByReferenceId(
+    transactionReferenceId: string,
+  ): Promise<TransactionModel | undefined> {
+    await getKnex();
+    return TransactionModel.query()
+      .where('transactionReferenceId', transactionReferenceId)
+      .whereIn('transactionStatus', ['received', 'initiated', 'pending'])
+      .first();
+  }
+
+  static async updateToFailed(
+    agencyTrackingId: string,
+    returnCode?: number,
+    returnDetail?: string,
+  ): Promise<TransactionModel> {
+    await getKnex();
+    return this.query()
+      .patchAndFetchById(agencyTrackingId, {
         transactionStatus: 'failed',
         paymentStatus: 'failed',
-      })
-      .where('agencyTrackingId', agencyTrackingId);
+        returnCode,
+        returnDetail,
+      });
   }
+
+  // TODO: [Future Ticket] Implement findByTransactionReferenceId to retrieve
+  // all transaction attempts for a given transactionReferenceId. This is needed
+  // to populate the full transactions array in the process payment response.
+  // Until then, the response wraps the single current transaction in a one-element array.
 }

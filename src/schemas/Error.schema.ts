@@ -67,6 +67,20 @@ export const ForbiddenErrorSchema = z
   })
   .openapi("ForbiddenError");
 
+export const ConflictErrorSchema = z
+  .object(JsonErrorSchema.shape)
+  .openapi({
+    description:
+      "JSON error response for request conflicts (HTTP 409).\n\n" +
+      "Returned when a payment session has already been initiated for the same transaction reference ID.",
+    example: {
+      message:
+        "A payment session is already initiated for this transactionReferenceId",
+      errors: [],
+    },
+  })
+  .openapi("ConflictError");
+
 export const ServerErrorSchema = z
   .object(JsonErrorSchema.shape)
   .openapi({
@@ -113,6 +127,22 @@ export const NotFoundErrorSchema = z
     },
   })
   .openapi("NotFoundError");
+
+export const GoneErrorSchema = z
+  .object(JsonErrorSchema.shape)
+  .openapi({
+    description:
+      "JSON error response for gone/expired resources (HTTP 410).\n\n" +
+      "Returned when the supplied token is no longer valid for processing:\n" +
+      "- Another transaction for the same obligation is already pending or completed\n" +
+      "- The transaction associated with this token is not in an initiatable state",
+    example: {
+      message:
+        "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
+      errors: [],
+    },
+  })
+  .openapi("GoneError");
 
 // Generic JSON error schema
 export const ErrorResponseSchema = z

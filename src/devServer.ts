@@ -103,11 +103,14 @@ app.post("/process", async (req, res) => {
   }
 });
 
-app.get("/details/:payGovTrackingId", async (req, res) => {
+app.get("/details/:transactionReferenceId", async (req, res) => {
   try {
     const result = await appContext
       .getUseCases()
-      .getDetails(appContext, { client: devClient, request: req.params });
+      .getDetails(appContext, {
+        client: devClient,
+        request: { transactionReferenceId: req.params.transactionReferenceId },
+      });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);

@@ -1,13 +1,19 @@
 import { AppContext } from "../types/AppContext";
 import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/CompleteOnlineCollectionWithDetailsRequest";
 import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
-import { ProcessPaymentResponse } from "../types/ProcessPaymentResponse";
+import { ProcessPaymentResponse } from "../schemas/ProcessPayment.schema";
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { ForbiddenError } from "../errors/forbidden";
+import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
+import { ServerError } from "../errors/serverError";
 import { parseTransactionStatus } from "./parseTransactionStatus";
+import { derivePaymentStatusFromSingleTransaction } from "../utils/derivePaymentStatus";
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
+import FeesModel from "../db/FeesModel";
+import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
+import { toPaymentMethod } from "../utils/toPaymentMethod";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -38,8 +44,34 @@ export const processPayment: ProcessPayment = async (
     );
   }
 
+  const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
+    transaction.clientName,
+    transaction.transactionReferenceId,
+    request.token,
+  );
+
+  if (sibling) {
+    throw new GoneError(
+      "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
+    );
+  }
+
+  if (transaction.transactionStatus !== "initiated") {
+    throw new GoneError("This token is no longer valid.");
+  }
+
+  const fee = await FeesModel.getFeeById(transaction.feeId);
+  if (!fee) {
+    console.error(`Fee not found for feeId: ${transaction.feeId}`);
+    throw new NotFoundError("Fee configuration not found for this transaction");
+  }
+  if (!fee.tcsAppId) {
+    console.error(`Fee ${transaction.feeId} is missing tcsAppId configuration`);
+    throw new ServerError();
+  }
+
   const req = new CompleteOnlineCollectionWithDetailsRequest({
-    tcsAppId: "", // Required by Pay.gov SOAP schema — token alone identifies the transaction on this call
+    tcsAppId: fee.tcsAppId,
     token: request.token,
   });
   console.log("processPayment request", req);
@@ -49,16 +81,51 @@ export const processPayment: ProcessPayment = async (
 
     console.log("processPayment result", result);
 
+    const parsedStatus = parseTransactionStatus(result.transaction_status);
+    const paymentStatus = derivePaymentStatusFromSingleTransaction(parsedStatus);
+
+    const updated = await TransactionModel.updateAfterPayGovResponse(
+      transaction.agencyTrackingId,
+      result.paygov_tracking_id,
+      parsedStatus,
+      paymentStatus,
+      toPaymentMethod(result.payment_type),
+      result.transaction_date,
+      result.payment_date,
+    );
+
     return {
-      trackingId: result.paygov_tracking_id,
-      transactionStatus: parseTransactionStatus(result.transaction_status),
+      paymentStatus,
+      transactions: [
+        {
+          payGovTrackingId: result.paygov_tracking_id,
+          transactionStatus: parsedStatus,
+          paymentMethod: toApiPaymentMethod(updated.paymentMethod),
+          returnDetail: undefined,
+          createdTimestamp: updated.createdAt,
+          updatedTimestamp: updated.lastUpdatedAt,
+        },
+      ],
     };
   } catch (err) {
     if (err instanceof FailedTransactionError) {
+      const failed = await TransactionModel.updateToFailed(
+        transaction.agencyTrackingId,
+        err.code,
+        err.message,
+      );
+
       return {
-        transactionStatus: "Failed",
-        message: err.message,
-        code: err.code,
+        paymentStatus: "failed" as const,
+        transactions: [
+          {
+            transactionStatus: "failed" as const,
+            paymentMethod: undefined,
+            returnDetail: err.message,
+            createdTimestamp: failed.createdAt,
+            updatedTimestamp: failed.lastUpdatedAt,
+          },
+        ],
       };
     } else throw err;
   }
