@@ -64,16 +64,3 @@ export const knexConfigs: Record<KnexEnv, Knex.Config> = {
   local: coreKnexConfigs.development,
   staging: coreKnexConfigs.production,
 };
-
-export const getKnexConfigForEnv = (
-  env = process.env.NODE_ENV || "development",
-): Knex.Config => {
-  if (!(env in knexConfigs)) {
-    throw new Error(
-      `Unknown NODE_ENV "${env}". Expected one of: ${Object.keys(
-        knexConfigs,
-      ).join(", ")}`,
-    );
-  }
-  return knexConfigs[env as KnexEnv];
-};
