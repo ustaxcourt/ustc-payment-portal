@@ -156,7 +156,7 @@ That sentence still treats `.env` as a generic env-var mechanism. AC #4 wants it
 +the variables a developer needs to run the service against the local mock
 +Pay.gov server. Deployed environments (dev, stg, prod) get their configuration
 +from Terraform and AWS Secrets Manager — see [terraform/environments/](terraform/environments/)
-+and [ADR 0006](docs/architecture/decisions/0006-app-env-vs-node-env.md).
++and [ADR 0007](docs/architecture/decisions/0007-app-env-vs-node-env.md).
 +
 +Copy `.env.example` to `.env` to start. Only variables required for local
 +development are listed there.
@@ -168,7 +168,7 @@ That sentence still treats `.env` as a generic env-var mechanism. AC #4 wants it
 -Environment variables are located in `.env.<APP_ENV>` (e.g., `.env.dev`).
 +`.env` is for local development only. Copy `.env.example` to `.env` to start.
 +Deployed environments get their configuration from Terraform — see
-+[ADR 0006](docs/architecture/decisions/0006-app-env-vs-node-env.md).
++[ADR 0007](docs/architecture/decisions/0007-app-env-vs-node-env.md).
 ```
 
 **Option C — table-only (if the tech lead wants minimal prose):**
