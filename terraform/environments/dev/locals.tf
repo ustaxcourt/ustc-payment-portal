@@ -12,7 +12,7 @@ locals {
 
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
-    STAGE                              = local.environment
+    APP_ENV                            = local.environment
     LOG_LEVEL                          = "debug"
     PAYMENT_URL                        = local.payment_url
     SOAP_URL                           = local.soap_url
@@ -31,7 +31,7 @@ locals {
   # authorization=NONE — must not receive payment secrets.
   lambda_env_dashboard = {
     NODE_ENV                 = local.node_env
-    STAGE                    = local.environment
+    APP_ENV                  = local.environment
     LOG_LEVEL                = "debug"
     RDS_ENDPOINT             = local.rds_endpoint
     RDS_SECRET_ARN           = local.rds_secret_arn
@@ -44,7 +44,7 @@ locals {
   # RDS_MASTER_SECRET_ARN uses the same admin credentials — required for CREATE/DROP DATABASE.
   lambda_env_migration = {
     NODE_ENV              = local.node_env
-    STAGE                 = local.environment
+    APP_ENV               = local.environment
     LOG_LEVEL             = "debug"
     RDS_ENDPOINT          = local.rds_endpoint
     RDS_SECRET_ARN        = local.rds_secret_arn
