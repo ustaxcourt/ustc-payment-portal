@@ -6,6 +6,20 @@ import { TransactionRecordSummarySchema } from "./TransactionRecord.schema";
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);
 
+export const GetDetailsPathParamsSchema = z
+  .object({
+    transactionReferenceId: z.uuidv4().openapi({
+      description:
+        "Client-generated UUIDv4 uniquely identifying the transaction. " +
+        "Must match the value supplied to /init.",
+      example: "550e8400-e29b-41d4-a716-446655440000",
+    }),
+  })
+  .strict()
+  .openapi("GetDetailsPathParams");
+
+export type GetDetailsPathParams = z.infer<typeof GetDetailsPathParamsSchema>;
+
 export const GetDetailsResponseSchema = z
   .object({
     paymentStatus: PaymentStatusSchema.openapi({
