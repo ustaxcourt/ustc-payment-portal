@@ -51,16 +51,8 @@ describe("POST /process", () => {
     return isLocal ? fetch(url, options) : signedFetch(url, options);
   };
 
-  const readBody = async (response: Response): Promise<string> => {
-    try {
-      return await response.text();
-    } catch (err) {
-      return `Unable to read response body: ${String(err)}`;
-    }
-  };
-
   const expectJsonOk = async <T>(response: Response, context: string): Promise<T> => {
-    const raw = await readBody(response);
+    const raw = await response.text();;
     if (!response.ok) {
       throw new Error(`${context} failed: ${response.status} ${raw}`);
     }
