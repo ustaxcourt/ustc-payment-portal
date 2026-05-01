@@ -70,7 +70,7 @@ This workflow is currently a work-in-progress and not operational yet. We'll pos
 
 Environment variables are located in `.env.<APP_ENV>` (e.g., `.env.dev`).
 
-`APP_ENV` is one of `local`, `dev`, `stg`, `prod`, or `test` and identifies the deployment topology. `NODE_ENV` is a separate, Node-runtime-only flag (`development`, `production`, or `test`). See [ADR 0006](docs/architecture/decisions/0006-app-env-vs-node-env.md) for the rationale and rules.
+`APP_ENV` is one of `local`, `dev`, `stg`, `prod`, or `test` and identifies the deployment topology. `NODE_ENV` is a separate, Node-runtime-only flag (`development`, `production`, or `test`). See [ADR 0007](docs/architecture/decisions/0007-app-env-vs-node-env.md) for the rationale and rules.
 
 The dev server should be configured to point to the USTC Pay.gov test server, which is managed in a [separate repository](https://github.com/ustaxcourt/ustc-pay-gov-test-server).
 

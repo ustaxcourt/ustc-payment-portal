@@ -10,4 +10,4 @@ Notable behavior change: stg Lambdas now run with `NODE_ENV=production` (previou
 
 Deployment: all deployed Lambdas now require `APP_ENV` in their environment block — Terraform updates in this PR provide it for dev/stg/prod. Local developers must update their `.env` files: `NODE_ENV="local"` is no longer valid; use `NODE_ENV="development"` + `APP_ENV="local"`.
 
-See [ADR 0006](docs/architecture/decisions/0006-app-env-vs-node-env.md) for full rationale.
+See [ADR 0007](docs/architecture/decisions/0007-app-env-vs-node-env.md) for full rationale.

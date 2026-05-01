@@ -1,4 +1,4 @@
-# 6. Separate `APP_ENV` (deployment topology) from `NODE_ENV` (Node runtime)
+# 7. Separate `APP_ENV` (deployment topology) from `NODE_ENV` (Node runtime)
 
 Date: 2026-04-29
 
