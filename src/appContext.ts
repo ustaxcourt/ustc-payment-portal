@@ -1,4 +1,5 @@
 import { getSecretString } from "./clients/secretsClient";
+import { isLocal } from "./config/appEnv";
 import { AppContext } from "./types/AppContext";
 import { getDetails } from "./useCases/getDetails";
 import { initPayment } from "./useCases/initPayment";
@@ -62,8 +63,7 @@ export const createAppContext = (): AppContext => {
       const tokenSecretId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
 
       if (tokenSecretId) {
-        const isLocal = process.env.NODE_ENV === "local";
-        if (isLocal) {
+        if (isLocal()) {
           headers.Authorization = `Bearer ${tokenSecretId}`;
           headers.Authentication = headers.Authorization;
         } else {

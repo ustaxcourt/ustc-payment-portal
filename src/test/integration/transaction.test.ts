@@ -1,5 +1,6 @@
 import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
 import { InitPaymentRequest } from "../../schemas/InitPayment.schema";
+import { isLocal } from "../../config/appEnv";
 import { GetDetailsResponse } from "../../schemas/GetDetails.schema";
 import { ProcessPaymentResponse } from "../../schemas/ProcessPayment.schema";
 import { PaymentStatus } from "../../schemas/PaymentStatus.schema";
@@ -85,12 +86,10 @@ const scenarios: Scenario[] = [
 
 describe("make a transaction", () => {
   let transactionReferenceId: string;
-  let isLocal: boolean;
   let baseUrl: string;
 
   beforeAll(() => {
     baseUrl = process.env.BASE_URL ?? "";
-    isLocal = process.env.NODE_ENV === "local" || process.env.LOCAL_DEV === "true";
     if (!baseUrl) {
       throw new Error("BASE_URL is required for transaction integration tests");
     }
@@ -159,7 +158,7 @@ describe("make a transaction", () => {
     url: string,
     options: RequestInit = {},
   ): Promise<Response> =>
-    isLocal ? fetch(url, options) : signedFetch(url, options);
+    isLocal() ? fetch(url, options) : signedFetch(url, options);
 
   const readErrorBody = async (response: Response): Promise<string> => {
     try {

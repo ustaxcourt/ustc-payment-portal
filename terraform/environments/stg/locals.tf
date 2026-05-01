@@ -1,11 +1,13 @@
 locals {
   aws_region    = "us-east-1"
   environment   = "stg"
-  node_env      = "staging"
+  node_env      = "production"
+  app_env       = "stg"
   mtls_enabled  = true
   custom_domain = "stg-payments.ustaxcourt.gov"
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
+    APP_ENV                            = local.app_env
     PAYMENT_URL                        = local.payment_url
     SOAP_URL                           = local.soap_url
     CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
@@ -13,7 +15,7 @@ locals {
     CLIENT_PERMISSIONS_SECRET_ID       = module.secrets.client_permissions_secret_id
     RDS_ENDPOINT                       = module.rds.endpoint
     RDS_SECRET_ARN                     = module.rds.master_user_secret_arn
-  }, local.mtls_enabled ? {
+    }, local.mtls_enabled ? {
     PRIVATE_KEY_SECRET_ID = module.secrets.private_key_secret_id
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
   } : {})
