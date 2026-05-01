@@ -135,6 +135,43 @@ describe("src/utils/logger.ts", () => {
       }
     });
 
+    it("does not configure pino-pretty transport in production", async () => {
+      process.env.NODE_ENV = "production";
+
+      const fakeLogger = {
+        trace: jest.fn(),
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        fatal: jest.fn(),
+        child: jest.fn().mockReturnThis(),
+        bindings: jest.fn(() => ({})),
+        flush: jest.fn(),
+      };
+
+      const pinoFactory = Object.assign(
+        jest.fn(() => fakeLogger),
+        {
+          stdTimeFunctions: { isoTime: jest.fn() },
+        },
+      );
+
+      jest.resetModules();
+      jest.doMock("pino", () => ({ __esModule: true, default: pinoFactory }));
+
+      try {
+        await import("./logger");
+
+        expect(pinoFactory).toHaveBeenCalledWith(
+          expect.objectContaining({ transport: undefined }),
+        );
+      } finally {
+        jest.dontMock("pino");
+        jest.resetModules();
+      }
+    });
+
     describe.each(["test", "development"] as const)(
       "NODE_ENV=%s",
       (nodeEnv) => {
@@ -270,6 +307,11 @@ describe("src/utils/logger.ts", () => {
 
             const { logger } = await loadLoggerModule();
 
+            if (level === "silent") {
+              expect(logger.level).toBe(defaultLevel);
+              return;
+            }
+
             // Call the log method
             (logger as any)[level](`unset ${level}`);
 
@@ -328,6 +370,13 @@ describe("src/utils/logger.ts", () => {
           });
         });
 
+        it("normalizes uppercase LOG_LEVEL values", async () => {
+          process.env.LOG_LEVEL = "WARN";
+
+          const { logger } = await loadLoggerModule();
+          expect(logger.level).toBe("warn");
+        });
+
         it("falls back on invalid LOG_LEVEL", async () => {
           process.env.LOG_LEVEL = "bad";
 
@@ -340,6 +389,65 @@ describe("src/utils/logger.ts", () => {
           expect(stderrSpy).toHaveBeenCalled();
         });
       });
+    });
+
+    it("warns and falls back when NODE_ENV is invalid", async () => {
+      (process.env as Record<string, string | undefined>).NODE_ENV = "qa";
+
+      const stderrSpy = jest
+        .spyOn(process.stderr, "write")
+        .mockReturnValue(true as never);
+
+      const { logger } = await loadLoggerModule();
+
+      expect(logger.level).toBe("debug");
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid NODE_ENV="qa"'),
+      );
+    });
+
+    it("redacts nested sensitive fields", async () => {
+      process.env.NODE_ENV = "production";
+      process.env.APP_ENV = "dev";
+
+      const stdoutSpy = jest
+        .spyOn(process.stdout, "write")
+        .mockReturnValue(true as never);
+
+      const { logger } = await loadLoggerModule();
+      logger.info(
+        {
+          authorization: "Bearer top-level",
+          token: "top-level-token",
+          request: {
+            headers: {
+              authorization: "Bearer nested",
+            },
+          },
+          payload: {
+            nested: {
+              token: "token-value",
+              password: "password-value",
+              secret: "secret-value",
+              certPassphrase: "cert-passphrase-value",
+            },
+          },
+        },
+        "redaction check",
+      );
+
+      const output = stdoutSpy.mock.calls
+        .map(([chunk]) => String(chunk))
+        .join("\n");
+
+      expect(output).toContain("[Redacted]");
+      expect(output).not.toContain("Bearer top-level");
+      expect(output).not.toContain("top-level-token");
+      expect(output).not.toContain("Bearer nested");
+      expect(output).not.toContain("token-value");
+      expect(output).not.toContain("password-value");
+      expect(output).not.toContain("secret-value");
+      expect(output).not.toContain("cert-passphrase-value");
     });
 
     it("ignores legacy STAGE when APP_ENV is unset", async () => {

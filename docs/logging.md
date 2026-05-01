@@ -68,8 +68,7 @@ The request logger automatically includes:
 
 - Lambda request ID
 - API path and HTTP method
-- Service name and environment
-- All fields from the parent logger
+- Any fields configured on the parent logger, such as service and environment metadata when present
 
 ## Sensitive Data
 
@@ -85,15 +84,15 @@ If you need to log an object containing sensitive fields, they will be masked au
 
 ```typescript
 // Sensitive fields are redacted automatically
-const credentials = { password: "secret123", apiKey: "xyz789" };
-logger.info({ credentials }, "Login attempt"); // password and apiKey will be masked
+const credentials = { password: "secret123", token: "xyz789" };
+logger.info({ credentials }, "Login attempt"); // password and token will be masked
 ```
 
 ## Log Output
 
 ### Local Development
 
-When running `npx ts-node src/devServer.ts | npx pino-pretty`, logs appear as colorized, human-readable text:
+When running `npm run start:server`, logs appear as colorized, human-readable text:
 
 ```
 [14:35:22.125] INFO: Request started
@@ -136,10 +135,10 @@ Logs are output as JSON, automatically forwarded to CloudWatch Logs by Lambda:
 
 ```bash
 # See all DEBUG messages
-LOG_LEVEL=debug npm run start
+LOG_LEVEL=debug npm run start:server
 
 # Only show errors and above
-LOG_LEVEL=error npm run start
+LOG_LEVEL=error npm run start:server
 ```
 
 ## CloudWatch Log Queries

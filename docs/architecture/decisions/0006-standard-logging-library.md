@@ -39,7 +39,7 @@ Pino was selected after evaluating four logging libraries against project requir
 - **Winston**: More widely adopted but requires explicit JSON configuration and manual redaction. Slower performance due to synchronous formatting on the main thread
 - **AWS Lambda Power Tools**: Purpose-built for Lambda with automatic context injection, but locks the application to AWS Lambda runtime. Accepted as a viable alternative if portability constraints change
 
-Full comparison: [docs/architecture/proposals/PAY-302-environment-logger/README.md](../proposals/PAY-302-environment-logger/README.md)
+Full comparison: [docs/architecture/proposals/PAY-302-environment-logger/solutions-comparison.md](../proposals/PAY-302-environment-logger/solutions-comparison.md)
 
 ## Implementation Details
 
@@ -61,7 +61,7 @@ Full comparison: [docs/architecture/proposals/PAY-302-environment-logger/README.
 
 **Sensitive field redaction:** Configured globally via `redact` option to censor `authorization`, `token`, `password`, `secret`, `certPassphrase`
 
-**Local output:** Pipe through `pino-pretty` for colorized, human-readable formatting: `npm run start | pino-pretty`
+**Local output:** `npm run start:server` automatically enables the `pino-pretty` transport for colorized, human-readable formatting in `local` and `development`
 
 **Production output:** Structured JSON to stdout, automatically forwarded by Lambda to CloudWatch Logs
 
@@ -79,7 +79,7 @@ Full comparison: [docs/architecture/proposals/PAY-302-environment-logger/README.
 ### Negative
 
 - New dependency added to `package.json` (`pino` and `pino-pretty` for dev)
-- `pino-pretty` requires separate npm install and configuration
+- `pino-pretty` adds a local-only formatter dependency
 - Message key is `msg` (not `message`), which differs from some team members' expectations
 - Requires migration of existing `console.*` calls to `logger.*` calls across the codebase (planned for PAY-249)
 - Third-party tools consuming logs must be aware of Pino's field names and JSON structure
@@ -87,5 +87,5 @@ Full comparison: [docs/architecture/proposals/PAY-302-environment-logger/README.
 ## Reference Documentation
 
 - Implementation Plan: [docs/architecture/proposals/PAY-302-environment-logger/pino-implementation-plan.md](../proposals/PAY-302-environment-logger/pino-implementation-plan.md)
-- Comparison Document: [docs/architecture/proposals/PAY-302-environment-logger/README.md](../proposals/PAY-302-environment-logger/README.md)
+- Comparison Document: [docs/architecture/proposals/PAY-302-environment-logger/solutions-comparison.md](../proposals/PAY-302-environment-logger/solutions-comparison.md)
 - Pino Official Docs: https://getpino.io

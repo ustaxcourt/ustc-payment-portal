@@ -6,11 +6,11 @@ This plan supports PAY-302 and prepares implementation details needed for PAY-24
 
 Goals covered by this plan:
 
-- Use Winston as the team-selected logging solution.
+- Document Winston as an alternative logging solution considered during evaluation.
 - Support environment-based log levels via environment variables.
 - Automatically and optionally inject searchable context fields.
 - Keep local developer logging useful without flooding output.
-- Produce an ADR draft and route it for team review.
+- Record implementation findings for comparison with the accepted ADR direction.
 
 ## Current State Snapshot (from this repo)
 

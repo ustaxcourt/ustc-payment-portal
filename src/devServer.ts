@@ -61,7 +61,13 @@ app.get("/openapi.json", (req, res) => {
 
 // define a route handler for the default home page
 app.post("/init", async (req, res) => {
-  logger.info({ body: req.body }, "Received /init request");
+  logger.info(
+    {
+      feeId: req.body?.feeId,
+      transactionReferenceId: req.body?.transactionReferenceId,
+    },
+    "Received /init request",
+  );
   try {
     const result = await appContext
       .getUseCases()

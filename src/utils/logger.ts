@@ -20,16 +20,57 @@ const DEFAULT_LEVEL_BY_ENV: Record<RuntimeEnv, string> = {
   production: "info",
 };
 
-function resolveNodeEnv(raw?: string): RuntimeEnv {
-  if (
-    raw === "local" ||
-    raw === "test" ||
-    raw === "development" ||
-    raw === "staging" ||
-    raw === "production"
-  ) {
-    return raw;
+const SENSITIVE_KEYS = new Set([
+  "authorization",
+  "token",
+  "password",
+  "secret",
+  "certpassphrase",
+]);
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function redactSensitiveFields(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(redactSensitiveFields);
   }
+
+  if (!isPlainObject(value)) {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nestedValue]) => {
+      if (SENSITIVE_KEYS.has(key.toLowerCase())) {
+        return [key, "[Redacted]"];
+      }
+
+      return [key, redactSensitiveFields(nestedValue)];
+    }),
+  );
+}
+
+function resolveNodeEnv(raw?: string): RuntimeEnv {
+  const normalizedEnv = raw?.toLowerCase();
+
+  if (
+    normalizedEnv === "local" ||
+    normalizedEnv === "test" ||
+    normalizedEnv === "development" ||
+    normalizedEnv === "staging" ||
+    normalizedEnv === "production"
+  ) {
+    return normalizedEnv;
+  }
+
+  if (raw) {
+    process.stderr.write(
+      `[logger] Invalid NODE_ENV="${raw}"; falling back to development\n`,
+    );
+  }
+
   return "development";
 }
 
@@ -37,11 +78,16 @@ function resolveLogLevel(
   runtimeEnv: RuntimeEnv,
   configuredLevel?: string,
 ): string {
-  if (configuredLevel && VALID_LEVELS.has(configuredLevel)) {
-    return configuredLevel;
+  const normalizedLevel = configuredLevel?.toLowerCase();
+
+  if (normalizedLevel && VALID_LEVELS.has(normalizedLevel)) {
+    return normalizedLevel;
   }
 
-  if (configuredLevel && !VALID_LEVELS.has(configuredLevel)) {
+  if (
+    configuredLevel &&
+    (!normalizedLevel || !VALID_LEVELS.has(normalizedLevel))
+  ) {
     // One startup warning if LOG_LEVEL is invalid.
     process.stderr.write(
       `[logger] Invalid LOG_LEVEL="${configuredLevel}"; falling back to ${DEFAULT_LEVEL_BY_ENV[runtimeEnv]}\n`,
@@ -58,6 +104,16 @@ const usePretty = nodeEnv === "local" || nodeEnv === "development";
 
 export const logger = pino({
   level,
+  hooks: {
+    logMethod(inputArgs, method) {
+      method.apply(
+        this,
+        inputArgs.map((arg) => redactSensitiveFields(arg)) as Parameters<
+          typeof method
+        >,
+      );
+    },
+  },
   // Emit string level labels ("info") instead of numbers (30) in JSON output.
   formatters: {
     level(label) {
@@ -78,10 +134,14 @@ export const logger = pino({
   redact: {
     paths: [
       "authorization",
+      "*.authorization",
+      "token",
       "*.token",
-      "**.token",
+      "password",
       "*.password",
+      "secret",
       "*.secret",
+      "certPassphrase",
       "*.certPassphrase",
     ],
     censor: "[Redacted]",

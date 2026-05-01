@@ -72,17 +72,18 @@ Environment variables are located in `.env.<NODE_ENV>`.
 
 Stages should be one of `dev`, `stg`, and `prod`. The dev server should be configured to point to the USTC Pay.gov test server, which is managed in a [separate repository](https://github.com/ustaxcourt/ustc-pay-gov-test-server).
 
-| Environment Variable           | Description                                                                                                                                                                           |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BASE_URL`                     | The URL of this payment portal (for running integration tests)                                                                                                                        |
-| `CERT_PASSPHRASE`              | The secret password for using the certificate as an httpsAgent                                                                                                                        |
-| `CLIENT_PERMISSIONS_SECRET_ID` | AWS Secrets Manager secret ID for the client permissions JSON array. Not needed locally — auth is bypassed when `LOCAL_DEV=true`                                                      |
-| `LOCAL_DEV`                    | Set to `true` to bypass SigV4 auth for local development. Do not set in deployed environments.                                                                                        |
-| `LOG_LEVEL`                    | (Optional) Override the default log level for the environment. Valid values: `debug`, `info`, `warn`, `error`, `fatal` (all lowercase). See [Logging](./docs/logging.md) for details. |
-| `NODE_ENV`                     | The environment or stage for this application (`staging`, `development`, or `production`)                                                                                             |
-| `PAYMENT_URL`                  | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated                                                                      |
-| `SOAP_URL`                     | The URL of the SOAP Server that handles payment requests made by this portal                                                                                                          |
-| `SUBDOMAIN`                    | The subdomain that the deployed application should assume                                                                                                                             |
+| Environment Variable           | Description                                                                                                                                                                                                 |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BASE_URL`                     | The URL of this payment portal (for running integration tests)                                                                                                                                              |
+| `APP_ENV`                      | Deployment stage metadata added to logs. Use `local` for local runs and stage-style values such as `dev`, `stg`, or `prod` in deployed environments.                                                        |
+| `CERT_PASSPHRASE`              | The secret password for using the certificate as an httpsAgent                                                                                                                                              |
+| `CLIENT_PERMISSIONS_SECRET_ID` | AWS Secrets Manager secret ID for the client permissions JSON array. Not needed locally — auth is bypassed when `LOCAL_DEV=true`                                                                            |
+| `LOCAL_DEV`                    | Set to `true` to bypass SigV4 auth for local development. Do not set in deployed environments.                                                                                                              |
+| `LOG_LEVEL`                    | (Optional) Override the default log level for the environment. Valid values: `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent` (case-insensitive). See [Logging](./docs/logging.md) for details. |
+| `NODE_ENV`                     | Runtime environment for logger defaults and local formatting. Supported values: `local`, `test`, `development`, `staging`, `production`.                                                                    |
+| `PAYMENT_URL`                  | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated                                                                                            |
+| `SOAP_URL`                     | The URL of the SOAP Server that handles payment requests made by this portal                                                                                                                                |
+| `SUBDOMAIN`                    | The subdomain that the deployed application should assume                                                                                                                                                   |
 
 ## Logging
 
@@ -90,7 +91,7 @@ This application uses [Pino](https://getpino.io) for structured JSON logging. Lo
 
 **Default log levels by environment:**
 
-- `local` → `INFO` (pipe through `pino-pretty` for colorized output)
+- `local` → `INFO` (pretty-printed automatically for local output)
 - `test` → `ERROR` (minimal output during test runs)
 - `development` → `DEBUG`
 - `staging` → `INFO`

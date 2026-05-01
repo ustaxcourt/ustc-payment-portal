@@ -13,7 +13,6 @@ locals {
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
     APP_ENV                            = local.environment
-    LOG_LEVEL                          = "debug"
     PAYMENT_URL                        = local.payment_url
     SOAP_URL                           = local.soap_url
     CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
@@ -32,7 +31,6 @@ locals {
   lambda_env_dashboard = {
     NODE_ENV                 = local.node_env
     APP_ENV                  = local.environment
-    LOG_LEVEL                = "debug"
     RDS_ENDPOINT             = local.rds_endpoint
     RDS_SECRET_ARN           = local.rds_secret_arn
     RDS_DB_NAME              = local.rds_db_name
@@ -45,7 +43,6 @@ locals {
   lambda_env_migration = {
     NODE_ENV              = local.node_env
     APP_ENV               = local.environment
-    LOG_LEVEL             = "debug"
     RDS_ENDPOINT          = local.rds_endpoint
     RDS_SECRET_ARN        = local.rds_secret_arn
     RDS_MASTER_SECRET_ARN = local.rds_secret_arn
