@@ -47,21 +47,24 @@ describe("src/utils/logger.ts", () => {
     process.env = { ...ORIGINAL_ENV };
     delete process.env.LOG_LEVEL;
     delete process.env.APP_ENV;
+    delete (process.env as Record<string, string | undefined>).STAGE;
     loadedModule = undefined;
   });
 
   afterEach(async () => {
-    if (!loadedModule) return;
+    try {
+      if (!loadedModule) return;
 
-    loadedModule.logger.flush();
-    await new Promise((r) => setImmediate(r));
+      loadedModule.logger.flush();
+      await new Promise((r) => setImmediate(r));
 
-    const transport = (loadedModule.logger as any).transport;
-    if (transport?.end) {
-      transport.end();
+      const transport = (loadedModule.logger as any).transport;
+      if (transport?.end) {
+        transport.end();
+      }
+    } finally {
+      jest.restoreAllMocks();
     }
-
-    jest.restoreAllMocks();
   });
 
   afterAll(() => {
@@ -73,6 +76,48 @@ describe("src/utils/logger.ts", () => {
   // ===========================================================================
 
   describe("pino-pretty transport", () => {
+    it("configures pino-pretty transport in development", async () => {
+      process.env.NODE_ENV = "development";
+
+      const fakeLogger = {
+        trace: jest.fn(),
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        fatal: jest.fn(),
+        child: jest.fn().mockReturnThis(),
+        bindings: jest.fn(() => ({})),
+        flush: jest.fn(),
+      };
+
+      const pinoFactory = Object.assign(
+        jest.fn(() => fakeLogger),
+        {
+          stdTimeFunctions: { isoTime: jest.fn() },
+        },
+      );
+
+      jest.resetModules();
+      jest.doMock("pino", () => ({ __esModule: true, default: pinoFactory }));
+
+      try {
+        const loggerModule = await import("./logger");
+
+        expect(pinoFactory).toHaveBeenCalledWith(
+          expect.objectContaining({
+            transport: expect.objectContaining({ target: "pino-pretty" }),
+          }),
+        );
+
+        loggerModule.logger.info("pretty test");
+        expect(fakeLogger.info).toHaveBeenCalledWith("pretty test");
+      } finally {
+        jest.dontMock("pino");
+        jest.resetModules();
+      }
+    });
+
     describe("NODE_ENV=development", () => {
       APP_ENVS.forEach((stage) => {
         it(`does not emit JSON stage field (APP_ENV=${stage})`, async () => {
@@ -90,7 +135,8 @@ describe("src/utils/logger.ts", () => {
             .map(([chunk]) => String(chunk))
             .join("\n");
 
-          expect(output).not.toContain(`"stage":"${stage}"`);
+          expect(output).toBe("");
+          expect(stdoutSpy).not.toHaveBeenCalled();
         });
       });
     });
@@ -101,10 +147,7 @@ describe("src/utils/logger.ts", () => {
   // ===========================================================================
 
   describe("log emission by level", () => {
-    describe.each([
-      ["test", "error"],
-      ["production", "info"],
-    ] as const)("NODE_ENV=%s", (nodeEnv, defaultLevel) => {
+    describe.each(["test", "production"] as const)("NODE_ENV=%s", (nodeEnv) => {
       PINO_LEVELS.forEach((logLevel) => {
         it(`emits logs ≥ ${logLevel}`, async () => {
           process.env.NODE_ENV = nodeEnv;
@@ -225,7 +268,8 @@ describe("src/utils/logger.ts", () => {
               .join("\n");
 
             if (nodeEnv === "development") {
-              expect(output).not.toContain('"stage":"');
+              expect(output).toBe("");
+              expect(stdoutSpy).not.toHaveBeenCalled();
             } else {
               expect(output).toContain(`"stage":"${appEnv}"`);
             }
@@ -255,6 +299,45 @@ describe("src/utils/logger.ts", () => {
         });
       });
     });
+
+    it("ignores legacy STAGE when APP_ENV is unset", async () => {
+      process.env.NODE_ENV = "production";
+      delete process.env.APP_ENV;
+
+      const stdoutSpyWithStage = jest
+        .spyOn(process.stdout, "write")
+        .mockReturnValue(true as never);
+
+      (process.env as Record<string, string | undefined>).STAGE = "stg";
+      const { logger: loggerWithLegacyStage } = await loadLoggerModule();
+      loggerWithLegacyStage.info("legacy stage ignored");
+
+      const outputWithStage = stdoutSpyWithStage.mock.calls
+        .map(([c]) => String(c))
+        .join("\n");
+      const matchWithStage = outputWithStage.match(/"stage":"([^"]+)"/);
+
+      jest.resetModules();
+      loadedModule = undefined;
+      delete (process.env as Record<string, string | undefined>).STAGE;
+
+      const stdoutSpyWithoutStage = jest
+        .spyOn(process.stdout, "write")
+        .mockReturnValue(true as never);
+
+      const { logger: loggerWithoutLegacyStage } = await loadLoggerModule();
+      loggerWithoutLegacyStage.info("legacy stage ignored");
+
+      const outputWithoutStage = stdoutSpyWithoutStage.mock.calls
+        .map(([c]) => String(c))
+        .join("\n");
+      const matchWithoutStage = outputWithoutStage.match(/"stage":"([^"]+)"/);
+
+      expect(matchWithStage?.[1]).toBeDefined();
+      expect(matchWithoutStage?.[1]).toBeDefined();
+      expect(matchWithStage?.[1]).toBe(matchWithoutStage?.[1]);
+      expect(matchWithStage?.[1]).not.toBe("stg");
+    });
   });
 
   // ===========================================================================
@@ -262,27 +345,30 @@ describe("src/utils/logger.ts", () => {
   // ===========================================================================
 
   describe("createRequestLogger", () => {
-    describe("APP_ENV=production", () => {
-      it("binds request context fields", async () => {
-        process.env.NODE_ENV = "production";
-        process.env.APP_ENV = "dev";
+    describe.each(["test", "development", "production"] as const)(
+      "NODE_ENV=%s",
+      (nodeEnv) => {
+        it("binds request context fields", async () => {
+          process.env.NODE_ENV = nodeEnv;
+          process.env.APP_ENV = "dev";
 
-        const { createRequestLogger } = await loadLoggerModule();
+          const { createRequestLogger } = await loadLoggerModule();
 
-        const child = createRequestLogger({
-          awsRequestId: "req-123",
-          path: "/payments/init",
-          httpMethod: "POST",
-        });
-
-        expect(child.bindings()).toEqual(
-          expect.objectContaining({
+          const child = createRequestLogger({
             awsRequestId: "req-123",
             path: "/payments/init",
             httpMethod: "POST",
-          }),
-        );
-      });
-    });
+          });
+
+          expect(child.bindings()).toEqual(
+            expect.objectContaining({
+              awsRequestId: "req-123",
+              path: "/payments/init",
+              httpMethod: "POST",
+            }),
+          );
+        });
+      },
+    );
   });
 });

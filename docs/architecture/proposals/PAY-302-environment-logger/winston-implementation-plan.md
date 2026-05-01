@@ -31,7 +31,7 @@ For implementation, treat runtime environments as:
 Additional deployment context:
 
 - PR ephemeral environments should behave like non-production by default, unless explicitly overridden with `LOG_LEVEL`.
-- If a stage variable exists (`STAGE=dev|stg|prod`), include it in log context, but keep `NODE_ENV` as the primary runtime switch for logger defaults.
+- If a stage variable exists (`APP_ENV=dev|stg|prod`), include it in log context, but keep `NODE_ENV` as the primary runtime switch for logger defaults.
 
 ## Proposed Winston Design
 
@@ -101,7 +101,7 @@ Automatic context (added globally by logger setup):
 
 - `service`: `ustc-payment-portal`
 - `nodeEnv`: from `NODE_ENV`
-- `stage`: from `STAGE` when present
+- `stage`: from `APP_ENV` when present
 - `version`: from package version (optional, but useful)
 
 Request context (attached per request/handler):
@@ -220,7 +220,7 @@ export const logger = createLogger({
   defaultMeta: {
     service: "ustc-payment-portal",
     nodeEnv,
-    stage: process.env.STAGE,
+    stage: process.env.APP_ENV,
   },
   format:
     nodeEnv === "staging" || nodeEnv === "production"

@@ -33,7 +33,7 @@ Additional deployment context:
 
 - PR ephemeral environments should behave like non-production by default, unless explicitly overridden with `LOG_LEVEL`.
 - AWS Lambda Power Tools automatically detects Lambda runtime context (request ID, function name, version). This is built-in.
-- If a stage variable exists (`STAGE=dev|stg|prod`), include it in log context, but keep `NODE_ENV` as the primary runtime switch for logger defaults.
+- If a stage variable exists (`APP_ENV=dev|stg|prod`), include it in log context, but keep `NODE_ENV` as the primary runtime switch for logger defaults.
 
 ## Proposed AWS Lambda Power Tools Design
 
@@ -117,7 +117,7 @@ Static context (configured at logger creation):
 
 - `service` — `ustc-payment-portal`
 - `nodeEnv` — from `NODE_ENV`
-- `stage` — from `STAGE` when present
+- `stage` — from `APP_ENV` when present
 
 Request context (attached per request/handler):
 
@@ -226,7 +226,7 @@ export const logger = new Logger({
   // Power Tools adds Lambda context automatically; these are static fields.
   persistentLogAttributes: {
     nodeEnv,
-    stage: process.env.STAGE,
+    stage: process.env.APP_ENV,
   },
 });
 

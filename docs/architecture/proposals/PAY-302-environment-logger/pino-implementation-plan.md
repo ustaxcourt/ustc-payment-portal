@@ -31,7 +31,7 @@ For implementation, treat runtime environments as:
 Additional deployment context:
 
 - PR ephemeral environments should behave like non-production by default, unless explicitly overridden with `LOG_LEVEL`.
-- If a stage variable exists (`STAGE=dev|stg|prod`), include it in log context, but keep `NODE_ENV` as the primary runtime switch for logger defaults.
+- If a stage variable exists (`APP_ENV=dev|stg|prod`), include it in log context, but keep `NODE_ENV` as the primary runtime switch for logger defaults.
 
 ## Proposed Pino Design
 
@@ -104,7 +104,7 @@ Automatic context (added globally via `base` option at logger creation):
 
 - `service`: `ustc-payment-portal`
 - `nodeEnv`: from `NODE_ENV`
-- `stage`: from `STAGE` when present
+- `stage`: from `APP_ENV` when present
 
 Note: Pino automatically includes `pid` and `hostname` in each log line via the `base` option. These can be suppressed by setting `base: undefined` if not desired in production.
 
@@ -222,7 +222,7 @@ export const logger = pino({
   // Suppress pid/hostname in deployed environments to reduce noise.
   base: usePretty
     ? { pid: process.pid }
-    : { service: "ustc-payment-portal", nodeEnv, stage: process.env.STAGE },
+    : { service: "ustc-payment-portal", nodeEnv, stage: process.env.APP_ENV },
   // Redact sensitive keys before serialization.
   redact: {
     paths: [
