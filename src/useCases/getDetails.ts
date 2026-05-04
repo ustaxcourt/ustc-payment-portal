@@ -70,7 +70,7 @@ export const getDetails: GetDetails = async (
   // no need to hit Pay.gov. Only the pending path fans out to refresh attempts.
   if (paymentStatus !== "pending") {
     const transactions = allRows.map((row) =>
-      toTransactionRecordSummary(row, row.transactionStatus),
+      toTransactionRecordSummary(row),
     );
     return { paymentStatus, transactions };
   }
@@ -86,7 +86,7 @@ const updatePendingAttemptFromPayGov = async (
   const transactions: TransactionRecordSummary[] = await Promise.all(
     allRows.map(async (row) => {
       if (!row.paygovTrackingId || isTerminal(row.transactionStatus)) {
-        return toTransactionRecordSummary(row, row.transactionStatus);
+        return toTransactionRecordSummary(row);
       }
 
       const req = new GetRequestRequest({
@@ -103,7 +103,7 @@ const updatePendingAttemptFromPayGov = async (
           `Failed to refresh status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
-        return toTransactionRecordSummary(row, row.transactionStatus);
+        return toTransactionRecordSummary(row);
       }
 
       try {
@@ -119,7 +119,7 @@ const updatePendingAttemptFromPayGov = async (
           result.transaction_date,
           result.payment_date,
         );
-        return toTransactionRecordSummary(updated, updated.transactionStatus);
+        return toTransactionRecordSummary(updated);
       } catch (err) {
         // Pay.gov told us the truth; we just couldn't persist it. Return the fresh status anyway —
         // next call will re-poll and retry the write.
@@ -127,7 +127,7 @@ const updatePendingAttemptFromPayGov = async (
           `Failed to persist refreshed status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
-        return toTransactionRecordSummary(row, refreshedStatus);
+        return toTransactionRecordSummary(row);
       }
     }),
   );

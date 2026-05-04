@@ -100,7 +100,7 @@ export const processPayment: ProcessPayment = async (
     );
 
     const transactionSummaries = transactions.map((row) =>
-      toTransactionRecordSummary(row, row.transactionStatus),
+      toTransactionRecordSummary(row),
     );
 
     return {
@@ -120,7 +120,7 @@ export const processPayment: ProcessPayment = async (
       );
 
       const transactionSummaries = transactions.map((row) =>
-        toTransactionRecordSummary(row, row.transactionStatus),
+        toTransactionRecordSummary(row),
       );
 
       return {
