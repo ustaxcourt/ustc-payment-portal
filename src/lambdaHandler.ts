@@ -39,15 +39,16 @@ const lambdaHandler = async <T>(
   try {
     const roleArn = extractCallerArn(requestContext);
     const client = await authorizeClient(roleArn, feeId);
-    const scopedLogger = requestLogger?.child({
-      clientName: client.clientName,
-      clientArn: client.clientRoleArn,
-    });
+    const scopedLogger =
+      requestLogger?.child({
+        clientName: client.clientName,
+        clientArn: client.clientRoleArn,
+      }) ?? requestLogger;
     scopedLogger?.info("Authorized client for request");
     const result = await callback(appContext, {
       client,
       request,
-      requestLogger,
+      requestLogger: scopedLogger,
     });
     scopedLogger?.info("Completed request");
     return {

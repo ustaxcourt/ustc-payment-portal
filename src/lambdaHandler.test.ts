@@ -211,13 +211,23 @@ describe("lambdaHandler", () => {
     });
 
     it("includes and uses requestLogger for /init", async () => {
+      const childLogger = {
+        info: jest.fn(),
+        error: jest.fn(),
+      };
       const childInfo = jest.fn();
+      childLogger.info = childInfo;
       const requestLogger = {
         debug: jest.fn(),
         info: jest.fn(),
         error: jest.fn(),
-        child: jest.fn().mockReturnValue({ info: childInfo }),
+        child: jest.fn().mockReturnValue(childLogger),
       };
+
+      const mockInitPayment = jest
+        .fn()
+        .mockResolvedValue({ token: "test-token-123" });
+      useCasesMock.initPayment = mockInitPayment;
 
       const createRequestLoggerSpy = jest
         .spyOn(loggerModule, "createRequestLogger")
@@ -264,6 +274,7 @@ describe("lambdaHandler", () => {
           clientArn: "arn:aws:iam::123456789012:role/dawson-client",
         }),
       );
+      expect(mockInitPayment.mock.calls[0][1].requestLogger).toBe(childLogger);
       expect(childInfo).toHaveBeenCalledWith("Authorized client for request");
       expect(childInfo).toHaveBeenCalledWith("Completed request");
     });
