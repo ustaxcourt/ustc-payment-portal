@@ -17,13 +17,13 @@ Remove three unused/misleading variables from `.env.example` (`SUBDOMAIN`, `TCS_
 2. **Match the cleanup at every layer that mentions it.** If a var leaves `.env.example`, it should also leave the README table, the type declaration, and any documentation that references it. Half-done cleanup creates the next anti-pattern.
 3. **Reframe, don't just delete.** AC #4 is the real intellectual work — a small README framing change, not just three row deletions.
 4. **Stay in scope.** Don't restructure the cert handling, don't refactor Terraform, don't rewrite related tests beyond what the cleanup directly surfaces.
-5. **Coordinate with PAY-257.** PAY-257 also edits `.env.example` and the README env-var table. See the coordination note at the bottom — start this ticket only after PAY-257 has merged to `main`.
+5. ~~**Coordinate with PAY-257.**~~ **No longer needed** — PAY-257 was merged to `main` on 2026-05-04. Branch is now rebased onto post-PAY-257 `main`; the coordination window has closed and the verifications below are against the actual post-merge state.
 
 ---
 
-## Phase 1 — Verify scope (already done in audit)
+## Phase 1 — Verify scope (re-verified post-PAY-257-merge)
 
-Three broad greps were run during the audit:
+Three broad greps:
 
 ```bash
 grep -rni "subdomain"              src/ db/ scripts/ terraform/ .github/
@@ -33,9 +33,9 @@ grep -rni "cert_passphrase\b"      src/ db/ scripts/ terraform/ .github/
 
 ### Verified findings
 
-- **`SUBDOMAIN`** — zero hits in code/infra. Only in `.env.example` and one README row. Trivial removal.
-- **`TCS_APP_ID` (env var)** — zero `process.env.TCS_APP_ID` reads anywhere. Safe to remove. **Important distinction**: `tcsAppId` (camelCase) is used in ~20 files as a per-fee value stored in the `fees` DB table — that's a *different* concept and stays untouched.
-- **`CERT_PASSPHRASE` (env var)** — zero application-code reads. Only `process.env.CERT_PASSPHRASE_SECRET_ID` is read (that's a different variable — the AWS Secrets Manager ID, which stays). The actual passphrase is fetched from Secrets Manager at runtime in stg/prod.
+- **`SUBDOMAIN`** — zero hits in code/infra. Only in [`.env.example:13`](../.env.example) and the [`README.md:87`](../README.md) env-var table row. Trivial removal.
+- **`TCS_APP_ID` (env var)** — zero `process.env.TCS_APP_ID` reads anywhere. Only in [`.env.example:14`](../.env.example) and a *historical* mention in [`docs/PAY-049-database-provisioning.md:105`](../docs/PAY-049-database-provisioning.md) (which we leave as-is — it's a change-log entry from when PAY-049 was active). **Note**: TCS_APP_ID was *never* in the README env-var table, so there's no row to remove there. **Important distinction**: `tcsAppId` (camelCase) is used in ~20 files as a per-fee value stored in the `fees` DB table — that's a *different* concept and stays untouched.
+- **`CERT_PASSPHRASE` (env var)** — zero application-code reads. Lives in [`.env.example:2`](../.env.example), the [`README.md:81`](../README.md) env-var table row, the [`src/types/environment.d.ts:12`](../src/types/environment.d.ts) declaration (`CERT_PASSPHRASE: string`), and the misleading test fixture in [`src/appContext.test.ts:134-135`](../src/appContext.test.ts) (the line surfaced by the audit gotcha). Only `process.env.CERT_PASSPHRASE_SECRET_ID` is read in production code (different variable — AWS Secrets Manager ID — stays).
 
 ### Bonus finding (out of scope, file as follow-up)
 
@@ -45,7 +45,7 @@ The audit surfaced an **unused AWS Secrets Manager secret** called `tcs_app_id`,
 
 ## Phase 2 — `.env.example` (1 min)
 
-Delete three lines:
+Delete three lines (lines 2, 13, 14 in the current file):
 
 ```diff
  BASE_URL="http://localhost:8080"
@@ -62,9 +62,9 @@ Delete three lines:
  PAYMENT_URL="http://localhost:3366/pay"
 -SUBDOMAIN=""
 -TCS_APP_ID=asdf-123
-```
 
-(Diff shown against the post-PAY-257 state of `.env.example`.)
+ # Database Configuration
+```
 
 ---
 
@@ -74,13 +74,15 @@ This is the principal-dev part. The audit surfaced two related cleanups that the
 
 ### 3.1 Remove `CERT_PASSPHRASE` from [src/types/environment.d.ts](../src/types/environment.d.ts)
 
-After PAY-257 merges, the relevant declaration block will look like:
+The declaration block on `main` after PAY-257 looks like this (line 12 is the dead one):
 
 ```ts
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
+      /** Node runtime mode. For deployment topology, use APP_ENV. */
       NODE_ENV: "development" | "production" | "test";
+      /** Deployment topology. Read via getAppEnv() — do not access directly. */
       APP_ENV: "local" | "dev" | "stg" | "prod" | "test";
       SOAP_URL: string;
       PAYMENT_URL: string;
@@ -92,7 +94,7 @@ declare global {
 }
 ```
 
-Remove the last line:
+Remove the dead line:
 
 ```diff
        PAY_GOV_DEV_SERVER_TOKEN: string;
@@ -104,12 +106,22 @@ Remove the last line:
 
 ### 3.2 The hidden gotcha — misleading test in `appContext.test.ts`
 
-The grep surfaces this in [src/appContext.test.ts](../src/appContext.test.ts):
+[src/appContext.test.ts:134-135](../src/appContext.test.ts#L134) on `main`:
 
 ```ts
 it("should not use HTTPS agent when CERT_PASSPHRASE is not set, when running locally/dev", async () => {
   process.env.CERT_PASSPHRASE = "";
-  // ... rest of test
+  const appContext = createAppContext();
+  const body = "<soap>request</soap>";
+
+  await appContext.postHttpRequest(appContext, body);
+
+  expect(mockFetch).toHaveBeenCalledWith(
+    "https://test-soap-url.com",
+    expect.objectContaining({
+      agent: undefined,
+    })
+  );
 });
 ```
 
@@ -138,11 +150,16 @@ Two changes:
 
 ### 4.1 [README.md](../README.md) — env-var table
 
-Remove three rows: `SUBDOMAIN`, `TCS_APP_ID`, `CERT_PASSPHRASE`.
+Remove **two** rows from the table:
+
+- Line 81: `CERT_PASSPHRASE`
+- Line 87: `SUBDOMAIN`
+
+> Heads up: `TCS_APP_ID` was **never in the README env-var table**. The grep showed it only in `.env.example` and the PAY-049 historical doc. So this phase removes two rows, not three.
 
 ### 4.2 [README.md](../README.md) — reframing for AC #4
 
-After PAY-257 merges, the env-var section will open with text similar to:
+The env-var section currently opens with (line 71):
 
 > *"Environment variables are located in `.env.<APP_ENV>` (e.g., `.env.dev`)."*
 
@@ -177,23 +194,22 @@ Keep the existing one-liner but replace it with a single sentence and rely on th
 
 I'd lead with Option A in the PR — it answers AC #4 most directly and closes the "where does deployed config live" question without forcing the reader to click into the ADR.
 
-### 4.3 Other docs — broader sweep
-
-The doc-level grep should cover *all* markdown in the repo, not just `docs/`:
+### 4.3 Other docs — broader sweep (already verified)
 
 ```bash
 grep -rn "SUBDOMAIN\|TCS_APP_ID\|CERT_PASSPHRASE" --include="*.md" .
 ```
 
-Expected hits (and their handling):
-- `docs/PAY-049-database-provisioning.md:105` mentions `TCS_APP_ID` in a historical change log. **Leave as-is** — historical record of what was true at PAY-049's time.
-- `README.md` — handled in 4.1 / 4.2.
-- `running-locally.md`, `MAINTAINERS.md`, `db/README.md` — skim each for stale references; update if found.
-- Anything in `docs/architecture/` — skim; update if found.
+Actual hits on `main` (post-PAY-257):
+
+- [`README.md:81`](../README.md) (`CERT_PASSPHRASE` row) and [`README.md:87`](../README.md) (`SUBDOMAIN` row) — handled in 4.1.
+- [`docs/PAY-049-database-provisioning.md:105`](../docs/PAY-049-database-provisioning.md) — `TCS_APP_ID` in a historical change log. **Leave as-is** (historical record of what was true at PAY-049's time).
+
+That's it. **No hits in `running-locally.md`, `MAINTAINERS.md`, `db/README.md`, or `docs/architecture/`.** The broader sweep is empty beyond what 4.1 already covers.
 
 ### 4.4 [docs/certificate.md](../docs/certificate.md)
 
-After PAY-257, this doc references `APP_ENV` and the cert filename pattern. It does not directly reference `CERT_PASSPHRASE`. Skim to confirm — likely no change needed.
+PAY-257 already updated this doc to reference `APP_ENV` and the renamed cert filenames. No mention of `CERT_PASSPHRASE` (the env var). **No changes needed.**
 
 ---
 
@@ -206,9 +222,9 @@ Run the same gates as PAY-257 to confirm no regressions:
 ```bash
 npm run tsc -- --noEmit              # expect: clean
 npm run lint                         # expect: clean
-npm test                             # expect: same pass count
-grep -rn "SUBDOMAIN\|TCS_APP_ID" src/ docs/ --include="*.md" --include="*.ts"  # expect: only PAY-049 historical mention
-grep -rn "process.env.CERT_PASSPHRASE\b" src/   # expect: empty (no readers)
+npm test                             # expect: 291/291 pass (current main baseline)
+grep -rn "SUBDOMAIN\|TCS_APP_ID" --include="*.md" --include="*.ts" .   # expect: only docs/PAY-049-database-provisioning.md:105
+grep -rn "process\.env\.CERT_PASSPHRASE\b" src/   # expect: empty (no readers)
 ```
 
 The TypeScript compile is the most informative — if anything was reading `CERT_PASSPHRASE` that I missed, the type-removal will surface it as `string | undefined` and break the call site.
@@ -276,17 +292,11 @@ Two things worth calling out explicitly so reviewers don't get confused:
 
 ---
 
-## Coordination with PAY-257
+## Coordination with PAY-257 — resolved
 
-**This ticket and PAY-257 both edit `.env.example` and the README env-var table.** Three options:
+PAY-257 was merged to `main` on 2026-05-04. The PAY-270 branch was rebased onto post-PAY-257 `main` cleanly (no conflicts — the plan doc doesn't overlap with PAY-257's diff).
 
-| Order | Pros | Cons |
-|---|---|---|
-| **PAY-270 first** | Independent timeline | Conflicts with PAY-257 on both files; PAY-257 has to merge-resolve when it lands. |
-| **Branch PAY-270 off PAY-257's branch** | No conflicts, can start now | Coupled to PAY-257's review cycle; can't merge until PAY-257 merges. |
-| **Wait for PAY-257 to merge to `main`, then branch PAY-270 off `main`** ⭐ | Clean merge base, no coupling, AC #4 can link to the merged ADR with confidence | Costs ~1-2 days of waiting. |
-
-**Recommended: option 3.** PAY-257 reshapes both files this ticket touches, and the AC #4 reframing builds naturally on PAY-257's "local vs deployed" framing in the ADR. Waiting is the cleanest path.
+All "after PAY-257 merges" hypotheticals in earlier drafts of this plan are now concrete file states verified against `main`. The Option-A README rewrite already references the merged [ADR 0007](../docs/architecture/decisions/0007-app-env-vs-node-env.md) with confidence.
 
 ---
 
@@ -300,6 +310,18 @@ Two things worth calling out explicitly so reviewers don't get confused:
 
 ## Verdict
 
-- **Story points:** 2 (~30-45 minutes of focused work + coordination wait for PAY-257).
-- **Real risk:** verifying `TCS_APP_ID` is genuinely unused (already done in audit phase).
-- **Net effect:** smaller `.env.example`, honest type declaration, accurate test name, README that tells the truth about what `.env` is for.
+- **Story points:** 2 (~30-45 minutes of focused work — coordination with PAY-257 already cleared).
+- **Real risk:** none remaining. All three vars verified unused on post-PAY-257 `main`. Broader doc grep returned only the expected PAY-049 historical mention.
+- **Net effect:** smaller `.env.example` (3 lines removed), honest type declaration (1 dead field removed), accurate test name (1 fixture cleaned + renamed), 2 dead README rows removed, README opening prose reframed to make `.env`'s local-only purpose explicit.
+
+## Concrete file-touch list (final)
+
+| File | Change |
+| --- | --- |
+| [`.env.example`](../.env.example) | Delete lines 2 (`CERT_PASSPHRASE`), 13 (`SUBDOMAIN`), 14 (`TCS_APP_ID`) |
+| [`README.md`](../README.md) | Delete env-var table rows for `CERT_PASSPHRASE` (line 81) and `SUBDOMAIN` (line 87); rewrite the line-71 opening paragraph per Phase 4.2 Option A |
+| [`src/types/environment.d.ts`](../src/types/environment.d.ts) | Delete the `CERT_PASSPHRASE: string;` line (line 12) |
+| [`src/appContext.test.ts`](../src/appContext.test.ts) | Rename the test at line 134 + delete the `process.env.CERT_PASSPHRASE = ""` fixture line at 135 |
+| [`.changeset/<auto-generated>.md`](../.changeset/) | New, content per Phase 6 |
+
+That's **4 source files + 1 new changeset** — net diff likely under 30 lines.
