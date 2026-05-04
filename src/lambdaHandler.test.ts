@@ -264,10 +264,8 @@ describe("lambdaHandler", () => {
           clientArn: "arn:aws:iam::123456789012:role/dawson-client",
         }),
       );
-      expect(childInfo).toHaveBeenCalledWith(
-        "Authorized client for /init request",
-      );
-      expect(childInfo).toHaveBeenCalledWith("Completed /init request");
+      expect(childInfo).toHaveBeenCalledWith("Authorized client for request");
+      expect(childInfo).toHaveBeenCalledWith("Completed request");
     });
   });
 

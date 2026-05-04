@@ -37,26 +37,25 @@ const lambdaHandler = async <T>(
   requestLogger?: ReturnType<typeof createRequestLogger>,
 ): Promise<APIGatewayProxyResult> => {
   try {
-    requestLogger?.debug("Received /init request");
     const roleArn = extractCallerArn(requestContext);
     const client = await authorizeClient(roleArn, feeId);
     const scopedLogger = requestLogger?.child({
       clientName: client.clientName,
       clientArn: client.clientRoleArn,
     });
-    scopedLogger?.info("Authorized client for /init request");
+    scopedLogger?.info("Authorized client for request");
     const result = await callback(appContext, {
       client,
       request,
       requestLogger,
     });
-    scopedLogger?.info("Completed /init request");
+    scopedLogger?.info("Completed request");
     return {
       statusCode: 200,
       body: JSON.stringify(result),
     };
   } catch (err) {
-    requestLogger?.error({ err }, "Failed /init request");
+    requestLogger?.error({ err }, "Failed request");
     return handleError(err);
   }
 };
@@ -126,6 +125,7 @@ export const initPaymentHandler = (
     metadata,
     ...(metadata ?? {}),
   });
+  requestLogger?.debug("Received /init request");
 
   return lambdaHandler(
     result.value,
