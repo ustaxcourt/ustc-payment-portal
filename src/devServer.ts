@@ -9,6 +9,7 @@ import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
 import { migrationHandler } from "./migrationHandler";
 import { handleError } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
+import { parseRequestBody } from "./parseRequestBody";
 import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
 import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
 import "./db/knex";
@@ -70,15 +71,10 @@ app.get("/openapi.json", (req, res) => {
 // define a route handler for the default home page
 app.post("/init", async (req, res) => {
   try {
-    if (!req.body || Object.keys(req.body).length === 0 && req.headers["content-type"]?.includes("application/json") === false) {
-      const { statusCode, body } = handleError(new InvalidRequestError("missing body"));
-      res.status(statusCode).json(JSON.parse(body));
-      return;
-    }
-    const parsed = InitPaymentRequestSchema.parse(req.body);
+    const request = parseRequestBody(req, InitPaymentRequestSchema);
     const result = await appContext
       .getUseCases()
-      .initPayment(appContext, { client: devClient, request: parsed });
+      .initPayment(appContext, { client: devClient, request });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
@@ -88,15 +84,10 @@ app.post("/init", async (req, res) => {
 
 app.post("/process", async (req, res) => {
   try {
-    if (!req.body || Object.keys(req.body).length === 0 && req.headers["content-type"]?.includes("application/json") === false) {
-      const { statusCode, body } = handleError(new InvalidRequestError("missing body"));
-      res.status(statusCode).json(JSON.parse(body));
-      return;
-    }
-    const parsed = ProcessPaymentRequestSchema.parse(req.body);
+    const request = parseRequestBody(req, ProcessPaymentRequestSchema);
     const result = await appContext
       .getUseCases()
-      .processPayment(appContext, { client: devClient, request: parsed });
+      .processPayment(appContext, { client: devClient, request });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
