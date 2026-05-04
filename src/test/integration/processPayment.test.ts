@@ -9,8 +9,6 @@ type PayGovPaymentStatus = "Success" | "Failed";
 const baseUrl = process.env.BASE_URL;
 
 describe("POST /process", () => {
-  const isLocal = process.env.NODE_ENV === "local" || process.env.LOCAL_DEV === "true";
-
   beforeAll(() => {
     if (!baseUrl) {
       throw new Error("BASE_URL is required for process integration tests");
@@ -77,7 +75,7 @@ describe("POST /process", () => {
     options: RequestInit = {},
   ): Promise<Response> => {
     const url = `${baseUrl}${path}`;
-    return isLocal ? fetch(url, options) : signedFetch(url, options);
+    return isLocal() ? fetch(url, options) : signedFetch(url, options);
   };
 
   const expectJsonOk = async <T>(
