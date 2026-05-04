@@ -7,7 +7,7 @@ export const toTransactionRecordSummary = (
 ): TransactionRecordSummary => {
   if (!row.transactionStatus) {
     console.error(
-      `Transaction ${row.agencyTrackingId} has null transactionStatus — defaulting to 'received'. This indicates corrupt data.`,
+      `For ${row.transactionReferenceId}: Transaction Attempt ${row.agencyTrackingId} has null transactionStatus — defaulting to 'received'. This indicates corrupt data.`,
     );
   }
   return {
