@@ -51,7 +51,7 @@ export async function lambdaHandler(event: any, context: any) {
     httpMethod: event?.httpMethod,
   });
 
-  requestLogger.info({}, "Request received");
+  requestLogger.debug({}, "Request received");
 
   try {
     // Your handler logic here
@@ -68,7 +68,20 @@ The request logger automatically includes:
 
 - Lambda request ID
 - API path and HTTP method
+- Any endpoint-specific request fields you bind, such as `clientName`, `feeId`, `transactionReferenceId`, `agencyTrackingId`, and metadata keys
 - Any fields configured on the parent logger, such as service and environment metadata when present
+
+## Current `/init` Flow
+
+The `/init` path currently uses request-scoped logging in both the Express development server and the Lambda handler.
+
+- Receipt of the request is logged at `debug`
+- Request parameters are logged at `info`
+- The generated `agencyTrackingId` is added to a child logger after the received transaction is written to the database
+- The Pay.gov initialization response is logged at `info`
+- Database, Pay.gov, and processing failures are logged at `error`
+
+This makes `/init` logs searchable in CloudWatch Logs Insights by request-level fields such as Lambda request ID, client name, fee ID, transaction reference ID, agency tracking ID, metadata keys, and log level.
 
 ## Sensitive Data
 
