@@ -113,7 +113,7 @@ describe("postHttpRequest", () => {
     );
   });
 
-  it("should use HTTPS agent when CERT_PASSPHRASE is set", async () => {
+  it("should use HTTPS agent when key/cert secret IDs are set", async () => {
     process.env.PRIVATE_KEY_SECRET_ID = "key-id";
     process.env.CERTIFICATE_SECRET_ID = "secret-id";
     (getSecretString as jest.Mock).mockResolvedValue("mock-secret-value");
@@ -131,8 +131,7 @@ describe("postHttpRequest", () => {
     );
   });
 
-  it("should not use HTTPS agent when CERT_PASSPHRASE is not set, when running locally/dev", async () => {
-    process.env.CERT_PASSPHRASE = "";
+  it("should not use HTTPS agent when key/cert secret IDs are not set", async () => {
     const appContext = createAppContext();
     const body = "<soap>request</soap>";
 
