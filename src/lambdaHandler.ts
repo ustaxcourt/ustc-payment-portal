@@ -22,7 +22,11 @@ const appContext = createAppContext();
 
 type LambdaHandler<T> = (
   appContext: AppContext,
-  params: { client: ClientPermission; request: T },
+  params: {
+    client: ClientPermission;
+    request: T;
+    requestLogger?: ReturnType<typeof createRequestLogger>;
+  },
 ) => Promise<unknown>;
 
 const lambdaHandler = async <T>(
@@ -33,7 +37,7 @@ const lambdaHandler = async <T>(
   requestLogger?: ReturnType<typeof createRequestLogger>,
 ): Promise<APIGatewayProxyResult> => {
   try {
-    requestLogger?.info("Received /init request");
+    requestLogger?.debug("Received /init request");
     const roleArn = extractCallerArn(requestContext);
     const client = await authorizeClient(roleArn, feeId);
     const scopedLogger = requestLogger?.child({
@@ -41,7 +45,11 @@ const lambdaHandler = async <T>(
       clientArn: client.clientRoleArn,
     });
     scopedLogger?.info("Authorized client for /init request");
-    const result = await callback(appContext, { client, request });
+    const result = await callback(appContext, {
+      client,
+      request,
+      requestLogger,
+    });
     scopedLogger?.info("Completed /init request");
     return {
       statusCode: 200,

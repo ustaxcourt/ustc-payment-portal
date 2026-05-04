@@ -83,11 +83,13 @@ app.post("/init", async (req, res) => {
     ...(metadata ?? {}),
   });
 
-  requestLogger.info("Received /init request");
+  requestLogger.debug("Received /init request");
   try {
-    const result = await appContext
-      .getUseCases()
-      .initPayment(appContext, { client: devClient, request: req.body });
+    const result = await appContext.getUseCases().initPayment(appContext, {
+      client: devClient,
+      request: req.body,
+      requestLogger,
+    });
     requestLogger.info("Completed /init request");
     res.json(result);
   } catch (err) {

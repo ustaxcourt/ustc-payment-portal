@@ -45,6 +45,7 @@ import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
 import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
 import { ClientPermission } from "../types/ClientPermission";
+import { createRequestLogger } from "../utils/logger";
 
 const mockClient: ClientPermission = {
   clientName: "Test Client App",
@@ -70,7 +71,7 @@ const mockSoapRequest = (token: string) => {
 };
 
 describe("initPayment", () => {
-   beforeEach(() => {
+  beforeEach(() => {
     jest.clearAllMocks();
   });
 
@@ -107,6 +108,61 @@ describe("initPayment", () => {
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTPETITION");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToInitiated).toHaveBeenCalled();
+  });
+
+  it("calls requestLogger when provided", async () => {
+    mockSoapRequest("test-token-logger");
+
+    const childInfo = jest.fn();
+    const childError = jest.fn();
+    const mockRequestLogger = {
+      info: jest.fn(),
+      error: jest.fn(),
+      child: jest.fn().mockReturnValue({
+        info: childInfo,
+        error: childError,
+      }),
+    };
+
+    await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+      requestLogger: mockRequestLogger as unknown as ReturnType<
+        typeof createRequestLogger
+      >,
+    });
+
+    expect(mockRequestLogger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestParams: expect.objectContaining({
+          feeId: "PETITION_FILING_FEE",
+          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+          metadata: { docketNumber: "123-26" },
+        }),
+      }),
+      "initPayment use case started",
+    );
+    expect(mockRequestLogger.child).toHaveBeenCalledWith(
+      expect.objectContaining({ agencyTrackingId: expect.any(String) }),
+    );
+    expect(childInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestParams: expect.objectContaining({
+          feeId: "PETITION_FILING_FEE",
+          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+        }),
+      }),
+      "Persisted received transaction with generated agency tracking id",
+    );
+    expect(childInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payGovResponse: expect.objectContaining({ token: "test-token-logger" }),
+      }),
+      "Pay.gov startOnlineCollection completed",
+    );
+    expect(childInfo).toHaveBeenCalledWith("Persisted initiated transaction");
+    expect(childInfo).toHaveBeenCalledWith("initPayment use case completed");
+    expect(childError).not.toHaveBeenCalled();
   });
 
   it("returns a token and paymentRedirect for a valid NONATTORNEY_EXAM_REGISTRATION_FEE request", async () => {
@@ -183,7 +239,9 @@ describe("initPayment", () => {
     // peer wins the createReceived race and our insert violates the partial unique index.
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
     const uniqueViolation = Object.assign(
-      new Error('duplicate key value violates unique constraint "idx_transactions_unique_active"'),
+      new Error(
+        'duplicate key value violates unique constraint "idx_transactions_unique_active"',
+      ),
       { code: "23505" },
     );
     TransactionModel.createReceived.mockRejectedValueOnce(uniqueViolation);
@@ -199,7 +257,9 @@ describe("initPayment", () => {
   it("wraps non-unique-violation createReceived errors as a generic failure", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
-    TransactionModel.createReceived.mockRejectedValueOnce(new Error("connection refused"));
+    TransactionModel.createReceived.mockRejectedValueOnce(
+      new Error("connection refused"),
+    );
 
     await expect(
       initPayment(appContext, {

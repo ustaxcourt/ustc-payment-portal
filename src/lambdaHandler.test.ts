@@ -213,6 +213,7 @@ describe("lambdaHandler", () => {
     it("includes and uses requestLogger for /init", async () => {
       const childInfo = jest.fn();
       const requestLogger = {
+        debug: jest.fn(),
         info: jest.fn(),
         error: jest.fn(),
         child: jest.fn().mockReturnValue({ info: childInfo }),
@@ -254,7 +255,9 @@ describe("lambdaHandler", () => {
         }),
       );
 
-      expect(requestLogger.info).toHaveBeenCalledWith("Received /init request");
+      expect(requestLogger.debug).toHaveBeenCalledWith(
+        "Received /init request",
+      );
       expect(requestLogger.child).toHaveBeenCalledWith(
         expect.objectContaining({
           clientName: "Test Client",
