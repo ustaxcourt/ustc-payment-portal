@@ -3,6 +3,7 @@ import express from "express";
 import path from "path";
 import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
+import { isLocal } from "./config/appEnv";
 import { generateOpenAPIDocument } from "./openapi/registry";
 import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
 import { migrationHandler } from "./migrationHandler";
@@ -95,7 +96,7 @@ app.get("/details/:transactionReferenceId", async (req, res) => {
 });
 
 // ONLY FOR LOCAL TESTING - DO NOT CONNECT TO API GATEWAY
-if (process.env.NODE_ENV !== "production") {
+if (isLocal()) {
   app.get("/migrations", async (req, res, next) => {
     try {
       const result = await migrationHandler();

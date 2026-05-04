@@ -1,3 +1,4 @@
+import { isLocal } from "../../config/appEnv";
 import { signedFetch } from "./sigv4Helper";
 
 const baseUrl = process.env.BASE_URL;
@@ -5,10 +6,8 @@ const isDeployed = baseUrl && !baseUrl.includes("localhost");
 const describeWithEnv = isDeployed ? describe : describe.skip;
 
 describeWithEnv("GET /details/{transactionReferenceId}", () => {
-  const isLocal = process.env.NODE_ENV === "local";
-
   const portalFetch = (path: string) =>
-    isLocal
+    isLocal()
       ? fetch(`${baseUrl}${path}`)
       : signedFetch(`${baseUrl}${path}`, { method: "GET" });
 
