@@ -8,7 +8,7 @@
 - Calls `findByReferenceId` after updating the DB (both on success and on `FailedTransactionError`) and returns the full `transactions` array alongside `paymentStatus`
 
 #### toTransactionSummary
-- Parameters were updated to pull transactionStatus from row, instead of a separater parameter.
+- Parameters were updated to pull transactionStatus from row, instead of a separate parameter.
 
 ### Seeding
 
