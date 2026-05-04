@@ -107,6 +107,13 @@ const parseAndValidate = <T>(
 export const initPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
+  const requestLogger = createRequestLogger({
+    awsRequestId: event.requestContext.requestId,
+    path: event.path,
+    httpMethod: event.httpMethod,
+  });
+  requestLogger.debug("Received /init request");
+
   const result = parseAndValidate(event.body, InitPaymentRequestSchema);
   if (!result.ok) return Promise.resolve(result.error);
 
@@ -117,23 +124,19 @@ export const initPaymentHandler = (
       ? result.value.metadata
       : undefined;
 
-  const requestLogger = createRequestLogger({
-    awsRequestId: event.requestContext.requestId,
-    path: event.path,
-    httpMethod: event.httpMethod,
+  const scopedRequestLogger = requestLogger.child({
     feeId: result.value.feeId,
     transactionReferenceId: result.value.transactionReferenceId,
     metadata,
     ...(metadata ?? {}),
   });
-  requestLogger?.debug("Received /init request");
 
   return lambdaHandler(
     result.value,
     event.requestContext,
     appContext.getUseCases().initPayment,
     result.value.feeId,
-    requestLogger,
+    scopedRequestLogger,
   );
 };
 

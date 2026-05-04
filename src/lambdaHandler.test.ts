@@ -211,17 +211,24 @@ describe("lambdaHandler", () => {
     });
 
     it("includes and uses requestLogger for /init", async () => {
-      const childLogger = {
+      const enrichedLogger = {
+        info: jest.fn(),
+        error: jest.fn(),
+        child: jest.fn(),
+      };
+      const clientScopedLogger = {
         info: jest.fn(),
         error: jest.fn(),
       };
       const childInfo = jest.fn();
-      childLogger.info = childInfo;
+      clientScopedLogger.info = childInfo;
+      enrichedLogger.child = jest.fn().mockReturnValue(clientScopedLogger);
+
       const requestLogger = {
         debug: jest.fn(),
         info: jest.fn(),
         error: jest.fn(),
-        child: jest.fn().mockReturnValue(childLogger),
+        child: jest.fn().mockReturnValue(enrichedLogger),
       };
 
       const mockInitPayment = jest
@@ -258,10 +265,6 @@ describe("lambdaHandler", () => {
           awsRequestId: mockRequestContext.requestId,
           path: "/init",
           httpMethod: "POST",
-          feeId: "PETITION_FILING_FEE",
-          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-          metadata: { docketNumber: "123-26" },
-          docketNumber: "123-26",
         }),
       );
 
@@ -270,13 +273,54 @@ describe("lambdaHandler", () => {
       );
       expect(requestLogger.child).toHaveBeenCalledWith(
         expect.objectContaining({
+          feeId: "PETITION_FILING_FEE",
+          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+          metadata: { docketNumber: "123-26" },
+          docketNumber: "123-26",
+        }),
+      );
+      expect(enrichedLogger.child).toHaveBeenCalledWith(
+        expect.objectContaining({
           clientName: "Test Client",
           clientArn: "arn:aws:iam::123456789012:role/dawson-client",
         }),
       );
-      expect(mockInitPayment.mock.calls[0][1].requestLogger).toBe(childLogger);
+      expect(mockInitPayment.mock.calls[0][1].requestLogger).toBe(
+        clientScopedLogger,
+      );
       expect(childInfo).toHaveBeenCalledWith("Authorized client for request");
       expect(childInfo).toHaveBeenCalledWith("Completed request");
+    });
+
+    it("logs receipt for malformed /init requests", async () => {
+      const requestLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        error: jest.fn(),
+        child: jest.fn(),
+      };
+
+      jest
+        .spyOn(loggerModule, "createRequestLogger")
+        .mockReturnValue(
+          requestLogger as unknown as ReturnType<
+            typeof loggerModule.createRequestLogger
+          >,
+        );
+
+      const event = {
+        body: null,
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+        path: "/init",
+        httpMethod: "POST",
+      } as unknown as APIGatewayEvent;
+
+      const result = await initPaymentHandler(event);
+
+      expect(result.statusCode).toBe(400);
+      expect(requestLogger.debug).toHaveBeenCalledWith("Received /init request");
+      expect(requestLogger.child).not.toHaveBeenCalled();
     });
   });
 
