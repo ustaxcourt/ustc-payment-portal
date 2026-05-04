@@ -127,7 +127,7 @@ const updatePendingAttemptFromPayGov = async (
           `Failed to persist refreshed status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
-        return toTransactionRecordSummary(row);
+        return { ...toTransactionRecordSummary(row), transactionStatus: refreshedStatus };
       }
     }),
   );
