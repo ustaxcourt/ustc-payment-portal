@@ -21,13 +21,15 @@
  * migrationHandler verify command directly.
  */
 
+import { isLocal } from "../../config/appEnv";
+
 const TOTAL_SEEDED_ROWS = 270; // 200 success + 50 failed + 20 pending from 02_dummy_data.ts
 
 const baseUrl = process.env.BASE_URL;
 const isDeployed =
   !!baseUrl &&
   baseUrl.startsWith("https://") &&
-  process.env.NODE_ENV !== "local";
+  !isLocal();
 
 // Skip the entire suite when not running against a deployed environment.
 const describeIfDeployed = isDeployed ? describe : describe.skip;

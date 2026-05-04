@@ -28,4 +28,4 @@ Then, in a fourth terminal:
 npm run test:integration:dev
 ```
 
-This runs `./src/test/integration/` with `sigv4Smoke.test.ts` excluded. The tests detect "local" by `BASE_URL` containing `localhost`, so the same files run signed against the deployed API in CI and unsigned against `devServer.ts` locally with no test-side branching beyond the fetch helper.
+This runs `./src/test/integration/` with `sigv4Smoke.test.ts` excluded. The script sets `APP_ENV=local`, which `isLocal()` (from [src/config/appEnv.ts](./src/config/appEnv.ts), introduced in PAY-257) reads to decide whether the test should use plain `fetch` or `signedFetch`. CI runs the same files with `APP_ENV=dev`, so `isLocal()` returns `false` and requests are SigV4-signed against the deployed API.

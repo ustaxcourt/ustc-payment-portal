@@ -59,12 +59,12 @@ Depending on which environments the certificates are to be used, you will need t
 
 - Staging (QA):
 
-  - certs/staging-certificate.pem
-  - certs/staging-privatekey.pem
+  - certs/stg-certificate.pem
+  - certs/stg-privatekey.pem
 
 - Production:
 
-  - certs/production-certificate.pem
-  - certs/production-privatekey.pem
+  - certs/prod-certificate.pem
+  - certs/prod-privatekey.pem
 
-Then in your `.env.<env>` file you, you will need to specify the environment of `NODE_ENV` to match the name of the certificate that you wish to use (`production` or `staging`).
+Then in your `.env.<env>` file, you will need to specify `APP_ENV` to match the name of the certificate that you wish to use (`prod` or `stg`).
