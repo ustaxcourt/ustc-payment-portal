@@ -7,8 +7,9 @@ type PayGovPaymentMethod = "PLASTIC_CARD" | "ACH" | "PAYPAL";
 type PayGovPaymentStatus = "Success" | "Failed";
 
 const baseUrl = process.env.BASE_URL;
+const describeWithEnv = baseUrl ? describe : describe.skip;
 
-describe("POST /process", () => {
+describeWithEnv("POST /process", () => {
   beforeAll(() => {
     if (!baseUrl) {
       throw new Error("BASE_URL is required for process integration tests");
