@@ -322,6 +322,67 @@ describe("lambdaHandler", () => {
       expect(requestLogger.debug).toHaveBeenCalledWith("Received /init request");
       expect(requestLogger.child).not.toHaveBeenCalled();
     });
+
+    it("logs /init failures once with request-scoped logger", async () => {
+      const clientScopedLogger = {
+        info: jest.fn(),
+        error: jest.fn(),
+      };
+      const enrichedLogger = {
+        info: jest.fn(),
+        error: jest.fn(),
+        child: jest.fn().mockReturnValue(clientScopedLogger),
+      };
+      const requestLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        error: jest.fn(),
+        child: jest.fn().mockReturnValue(enrichedLogger),
+      };
+
+      useCasesMock.initPayment = jest
+        .fn()
+        .mockRejectedValueOnce(new ConflictError("already initiated"));
+
+      jest
+        .spyOn(loggerModule, "createRequestLogger")
+        .mockReturnValue(
+          requestLogger as unknown as ReturnType<
+            typeof loggerModule.createRequestLogger
+          >,
+        );
+
+      const globalErrorSpy = jest
+        .spyOn(loggerModule.logger, "error")
+        .mockImplementation(() => loggerModule.logger as any);
+
+      try {
+        const event = {
+          body: JSON.stringify({
+            transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+            feeId: "PETITION_FILING_FEE",
+            urlSuccess: "https://example.com/success",
+            urlCancel: "https://example.com/cancel",
+            metadata: { docketNumber: "123-26" },
+          }),
+          headers: mockHeaders,
+          requestContext: mockRequestContext,
+          path: "/init",
+          httpMethod: "POST",
+        } as unknown as APIGatewayEvent;
+
+        const result = await initPaymentHandler(event);
+
+        expect(result.statusCode).toBe(409);
+        expect(clientScopedLogger.error).toHaveBeenCalledWith(
+          { err: expect.any(ConflictError) },
+          "responding with an error",
+        );
+        expect(globalErrorSpy).not.toHaveBeenCalled();
+      } finally {
+        globalErrorSpy.mockRestore();
+      }
+    });
   });
 
   it("returns 409 when init payment use case throws ConflictError", async () => {

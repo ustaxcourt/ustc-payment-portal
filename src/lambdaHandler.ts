@@ -36,6 +36,7 @@ const lambdaHandler = async <T>(
   feeId?: string,
   requestLogger?: ReturnType<typeof createRequestLogger>,
 ): Promise<APIGatewayProxyResult> => {
+  let effectiveLogger = requestLogger;
   try {
     const roleArn = extractCallerArn(requestContext);
     const client = await authorizeClient(roleArn, feeId);
@@ -44,6 +45,7 @@ const lambdaHandler = async <T>(
         clientName: client.clientName,
         clientArn: client.clientRoleArn,
       }) ?? requestLogger;
+    effectiveLogger = scopedLogger;
     scopedLogger?.info("Authorized client for request");
     const result = await callback(appContext, {
       client,
@@ -56,8 +58,7 @@ const lambdaHandler = async <T>(
       body: JSON.stringify(result),
     };
   } catch (err) {
-    requestLogger?.error({ err }, "Failed request");
-    return handleError(err);
+    return handleError(err, effectiveLogger);
   }
 };
 
@@ -67,9 +68,13 @@ type ParseResult<T> =
 
 const safeJsonParse = <T = any>(
   body: string | null | undefined,
+  errorLogger?: ReturnType<typeof createRequestLogger>,
 ): ParseResult<T> => {
   if (!body) {
-    const error = handleError(new InvalidRequestError("missing body"));
+    const error = handleError(
+      new InvalidRequestError("missing body"),
+      errorLogger,
+    );
     return { ok: false, error };
   }
 
@@ -80,6 +85,7 @@ const safeJsonParse = <T = any>(
       ok: false,
       error: handleError(
         new InvalidRequestError("invalid JSON in request body"),
+        errorLogger,
       ),
     };
   }
@@ -92,13 +98,14 @@ const safeJsonParse = <T = any>(
 const parseAndValidate = <T>(
   body: string | null | undefined,
   schema: ZodType<T>,
+  errorLogger?: ReturnType<typeof createRequestLogger>,
 ): ParseResult<T> => {
-  const parsed = safeJsonParse(body);
+  const parsed = safeJsonParse(body, errorLogger);
   if (!parsed.ok) return parsed;
 
   const result = schema.safeParse(parsed.value);
   if (!result.success) {
-    return { ok: false, error: handleError(result.error) };
+    return { ok: false, error: handleError(result.error, errorLogger) };
   }
 
   return { ok: true, value: result.data };
@@ -114,7 +121,11 @@ export const initPaymentHandler = (
   });
   requestLogger.debug("Received /init request");
 
-  const result = parseAndValidate(event.body, InitPaymentRequestSchema);
+  const result = parseAndValidate(
+    event.body,
+    InitPaymentRequestSchema,
+    requestLogger,
+  );
   if (!result.ok) return Promise.resolve(result.error);
 
   const metadata =

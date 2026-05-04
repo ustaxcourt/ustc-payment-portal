@@ -93,8 +93,7 @@ app.post("/init", async (req, res) => {
     requestLogger.info("Completed /init request");
     res.json(result);
   } catch (err) {
-    requestLogger.error({ err }, "Failed /init request");
-    const { statusCode, body } = handleError(err);
+    const { statusCode, body } = handleError(err, requestLogger);
     res.status(statusCode).json(JSON.parse(body));
   }
 });

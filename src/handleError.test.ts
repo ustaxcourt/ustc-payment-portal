@@ -64,4 +64,26 @@ describe("handleError", () => {
       errorSpy.mockRestore();
     }
   });
+
+  it("uses provided logger instead of global logger", () => {
+    const providedLogger = {
+      error: jest.fn(),
+    };
+    const globalErrorSpy = jest
+      .spyOn(logger, "error")
+      .mockImplementation(() => logger as any);
+
+    try {
+      const err = new Error("request scoped");
+      handleError(err, providedLogger as any);
+
+      expect(providedLogger.error).toHaveBeenCalledWith(
+        { err },
+        "responding with an error",
+      );
+      expect(globalErrorSpy).not.toHaveBeenCalled();
+    } finally {
+      globalErrorSpy.mockRestore();
+    }
+  });
 });
