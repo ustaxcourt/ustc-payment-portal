@@ -16,6 +16,7 @@ import { ClientPermission } from "./types/ClientPermission";
 import { AppContext } from "./types/AppContext";
 import { isValidPaymentStatus } from "./useCases/getTransactionsByStatus";
 import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
+import { createRequestLogger } from "./utils/logger";
 
 const appContext = createAppContext();
 
@@ -29,16 +30,25 @@ const lambdaHandler = async <T>(
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler<T>,
   feeId?: string,
+  requestLogger?: ReturnType<typeof createRequestLogger>,
 ): Promise<APIGatewayProxyResult> => {
   try {
+    requestLogger?.info("Received /init request");
     const roleArn = extractCallerArn(requestContext);
     const client = await authorizeClient(roleArn, feeId);
+    const scopedLogger = requestLogger?.child({
+      clientName: client.clientName,
+      clientArn: client.clientRoleArn,
+    });
+    scopedLogger?.info("Authorized client for /init request");
     const result = await callback(appContext, { client, request });
+    scopedLogger?.info("Completed /init request");
     return {
       statusCode: 200,
       body: JSON.stringify(result),
     };
   } catch (err) {
+    requestLogger?.error({ err }, "Failed /init request");
     return handleError(err);
   }
 };
@@ -48,7 +58,7 @@ type ParseResult<T> =
   | { ok: false; error: APIGatewayProxyResult };
 
 const safeJsonParse = <T = any>(
-  body: string | null | undefined
+  body: string | null | undefined,
 ): ParseResult<T> => {
   if (!body) {
     const error = handleError(new InvalidRequestError("missing body"));
@@ -61,7 +71,7 @@ const safeJsonParse = <T = any>(
     return {
       ok: false,
       error: handleError(
-        new InvalidRequestError("invalid JSON in request body")
+        new InvalidRequestError("invalid JSON in request body"),
       ),
     };
   }
@@ -92,21 +102,36 @@ export const initPaymentHandler = (
   const result = parseAndValidate(event.body, InitPaymentRequestSchema);
   if (!result.ok) return Promise.resolve(result.error);
 
+  const metadata =
+    result.value.metadata &&
+    typeof result.value.metadata === "object" &&
+    !Array.isArray(result.value.metadata)
+      ? result.value.metadata
+      : undefined;
+
+  const requestLogger = createRequestLogger({
+    awsRequestId: event.requestContext.requestId,
+    path: event.path,
+    httpMethod: event.httpMethod,
+    feeId: result.value.feeId,
+    transactionReferenceId: result.value.transactionReferenceId,
+    metadata,
+    ...(metadata ?? {}),
+  });
+
   return lambdaHandler(
     result.value,
     event.requestContext,
     appContext.getUseCases().initPayment,
     result.value.feeId,
+    requestLogger,
   );
 };
 
 export const processPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const result = parseAndValidate(
-    event.body,
-    ProcessPaymentRequestSchema,
-  );
+  const result = parseAndValidate(event.body, ProcessPaymentRequestSchema);
   if (!result.ok) return Promise.resolve(result.error);
 
   return lambdaHandler(
@@ -119,10 +144,14 @@ export const processPaymentHandler = (
 export const getDetailsHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const result = GetDetailsPathParamsSchema.safeParse(event.pathParameters ?? {});
+  const result = GetDetailsPathParamsSchema.safeParse(
+    event.pathParameters ?? {},
+  );
   if (!result.success) {
     return Promise.resolve(
-      handleError(new InvalidRequestError("Transaction Reference Id was invalid")),
+      handleError(
+        new InvalidRequestError("Transaction Reference Id was invalid"),
+      ),
     );
   }
   // getDetails is a read-only lookup — no feeId required, IAM registration check is sufficient.

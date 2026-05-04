@@ -165,7 +165,12 @@ export function createRequestLogger(context: {
   path?: string;
   httpMethod?: string;
   clientArn?: string;
+  clientName?: string;
+  feeId?: string;
+  agencyTrackingId?: string;
   transactionReferenceId?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
 }) {
   return logger.child(context);
 }

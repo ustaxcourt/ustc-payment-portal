@@ -10,7 +10,7 @@ import { migrationHandler } from "./migrationHandler";
 import { handleError } from "./handleError";
 import "./db/knex";
 import { ClientPermission } from "./types/ClientPermission";
-import { logger } from "./utils/logger";
+import { createRequestLogger } from "./utils/logger";
 
 const appContext = createAppContext();
 
@@ -62,19 +62,36 @@ app.get("/openapi.json", (req, res) => {
 
 // define a route handler for the default home page
 app.post("/init", async (req, res) => {
-  logger.info(
-    {
-      feeId: req.body?.feeId,
-      transactionReferenceId: req.body?.transactionReferenceId,
-    },
-    "Received /init request",
-  );
+  const metadata =
+    req.body?.metadata &&
+    typeof req.body.metadata === "object" &&
+    !Array.isArray(req.body.metadata)
+      ? req.body.metadata
+      : undefined;
+
+  const requestLogger = createRequestLogger({
+    requestId:
+      typeof req.header("x-request-id") === "string"
+        ? req.header("x-request-id")
+        : undefined,
+    path: req.path,
+    httpMethod: req.method,
+    clientName: devClient.clientName,
+    feeId: req.body?.feeId,
+    transactionReferenceId: req.body?.transactionReferenceId,
+    metadata,
+    ...(metadata ?? {}),
+  });
+
+  requestLogger.info("Received /init request");
   try {
     const result = await appContext
       .getUseCases()
       .initPayment(appContext, { client: devClient, request: req.body });
+    requestLogger.info("Completed /init request");
     res.json(result);
   } catch (err) {
+    requestLogger.error({ err }, "Failed /init request");
     const { statusCode, body } = handleError(err);
     res.status(statusCode).json(JSON.parse(body));
   }
