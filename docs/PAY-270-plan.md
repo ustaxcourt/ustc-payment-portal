@@ -104,32 +104,49 @@ Remove the dead line:
 
 **Why this matters**: `CERT_PASSPHRASE` is declared as **required** (`: string`, not `?: string`), but no code ever reads it. The declaration is a lie — it tells future developers "this variable must be set" when in fact it's dead. Removing it keeps the type definition honest.
 
-### 3.2 The hidden gotcha — misleading test in `appContext.test.ts`
+### 3.2 The hidden gotcha — **two** misleading tests in `appContext.test.ts`
 
-[src/appContext.test.ts:134-135](../src/appContext.test.ts#L134) on `main`:
+The Phase 1 grep surfaced both halves of a misleading test pair. Both reference `CERT_PASSPHRASE` in their names; the actual code gate in [src/appContext.ts:30](../src/appContext.ts#L30) is `if (keyId && certId)` — i.e., `PRIVATE_KEY_SECRET_ID` and `CERTIFICATE_SECRET_ID`. Both names are wrong and need fixing for consistency.
+
+#### Test A — positive case at [src/appContext.test.ts:116-132](../src/appContext.test.ts#L116)
+
+```ts
+it("should use HTTPS agent when CERT_PASSPHRASE is set", async () => {
+  process.env.PRIVATE_KEY_SECRET_ID = "key-id";
+  process.env.CERTIFICATE_SECRET_ID = "secret-id";
+  // ... body uses keyId+certId, asserts agent is built
+});
+```
+
+The body sets `PRIVATE_KEY_SECRET_ID` and `CERTIFICATE_SECRET_ID` and asserts the agent is built. The test name claims `CERT_PASSPHRASE` is the gate — it isn't. The body never even references `CERT_PASSPHRASE`.
+
+**Fix:**
+
+```diff
+- it("should use HTTPS agent when CERT_PASSPHRASE is set", async () => {
++ it("should use HTTPS agent when key/cert secret IDs are set", async () => {
+    process.env.PRIVATE_KEY_SECRET_ID = "key-id";
+    process.env.CERTIFICATE_SECRET_ID = "secret-id";
+    // ... body unchanged
+```
+
+One-line rename. Body unchanged.
+
+#### Test B — negative case at [src/appContext.test.ts:134-147](../src/appContext.test.ts#L134)
 
 ```ts
 it("should not use HTTPS agent when CERT_PASSPHRASE is not set, when running locally/dev", async () => {
   process.env.CERT_PASSPHRASE = "";
   const appContext = createAppContext();
-  const body = "<soap>request</soap>";
-
-  await appContext.postHttpRequest(appContext, body);
-
-  expect(mockFetch).toHaveBeenCalledWith(
-    "https://test-soap-url.com",
-    expect.objectContaining({
-      agent: undefined,
-    })
-  );
+  // ... asserts agent is undefined
 });
 ```
 
-The test **name** says the gate is `CERT_PASSPHRASE`. The **fixture** sets `CERT_PASSPHRASE = ""`. But the **code** in [src/appContext.ts:30](../src/appContext.ts#L30) actually branches on `if (keyId && certId)` — i.e., `PRIVATE_KEY_SECRET_ID` and `CERTIFICATE_SECRET_ID`. The test passes because *neither* of those secret IDs is set, not because `CERT_PASSPHRASE` is empty. The fixture line is a lie — it's setting a variable that nothing reads.
+This one is worse — the **fixture** sets `process.env.CERT_PASSPHRASE = ""` *and* the test name claims `CERT_PASSPHRASE` is the gate. Neither reflects reality. The test passes because neither `PRIVATE_KEY_SECRET_ID` nor `CERTIFICATE_SECRET_ID` is set, not because `CERT_PASSPHRASE` is empty. The fixture line is purely misleading — it's setting a variable that nothing reads.
 
-The gotcha: someone removes `CERT_PASSPHRASE` from the type declaration, the test still passes, and they conclude "great, no impact" — when the test was meaningless from the start.
+The gotcha: someone removes `CERT_PASSPHRASE` from the type declaration (Phase 3.1), this test still passes, and they conclude "great, no impact" — when the test was meaningless from the start.
 
-**Fix** (in scope, two-line cleanup):
+**Fix:**
 
 ```diff
 - it("should not use HTTPS agent when CERT_PASSPHRASE is not set, when running locally/dev", async () => {
@@ -137,12 +154,14 @@ The gotcha: someone removes `CERT_PASSPHRASE` from the type declaration, the tes
 + it("should not use HTTPS agent when key/cert secret IDs are not set", async () => {
     const appContext = createAppContext();
     const body = "<soap>request</soap>";
-    // ...
+    // ... body unchanged
 ```
 
-Two changes:
-1. Test name describes what's actually being tested.
-2. Misleading `process.env.CERT_PASSPHRASE = ""` line deleted — never affected the assertion.
+Two changes: test name + delete the misleading fixture line.
+
+#### Why fix both
+
+Renaming only B leaves the codebase with one accurately-named test (B) and one still-misleading sibling (A). The next reader has to wonder why one was kept. Doing both is the consistency win and keeps the diff trivially small (one line + two lines).
 
 ---
 
@@ -288,7 +307,7 @@ Two things worth calling out explicitly so reviewers don't get confused:
 
 1. **`tcsAppId` (camelCase) is *not* removed.** It's a per-fee value stored in the `fees` DB table and used in ~20 files. Only the dead `TCS_APP_ID` *env var* (with a similar name) is removed. The naming similarity is the trap.
 
-2. **Out-of-scope finding filed as follow-up:** an unused AWS Secrets Manager secret (`tcs_app_id`) provisioned in dev/stg/prod but not wired to any Lambda — superseded by the `fees.tcs_app_id` DB column. Filed as: *<follow-up ticket TBD>*.
+2. **Out-of-scope finding filed as follow-up:** an unused AWS Secrets Manager secret (`tcs_app_id`) provisioned in dev/stg/prod but not wired to any Lambda — superseded by the `fees.tcs_app_id` DB column. Filed as: *(follow-up ticket TBD)*.
 
 ---
 
