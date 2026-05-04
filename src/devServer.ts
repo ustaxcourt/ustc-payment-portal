@@ -18,10 +18,19 @@ import { ClientPermission } from "./types/ClientPermission";
 const appContext = createAppContext();
 
 const app = express();
+// strict: false to match the Lambda's JSON.parse, which accepts primitive top-level
+// values (strings, null, booleans, numbers). With strict: true (the express default),
+// those would be rejected as parse errors before reaching schema validation, so a
+// payload like "foo" would return "invalid JSON in request body" locally but a
+// Zod "Validation error" through the Lambda. Instantiate once — the parser is
+// stateless across requests.
+const jsonBodyParser = express.json({ strict: false });
 app.use((req, res, next) => {
-  express.json()(req, res, (err) => {
+  jsonBodyParser(req, res, (err) => {
     if (err) {
-      const { statusCode, body } = handleError(new InvalidRequestError("invalid JSON in request body"));
+      const { statusCode, body } = handleError(
+        new InvalidRequestError("invalid JSON in request body"),
+      );
       res.status(statusCode).json(JSON.parse(body));
       return;
     }
