@@ -15,6 +15,7 @@ jest.mock("../db/TransactionModel", () => ({
     findPendingOrProcessedByReferenceId: jest.fn(),
     updateAfterPayGovResponse: jest.fn(),
     updateToFailed: jest.fn(),
+    findByReferenceId: jest.fn(),
   },
 }));
 
@@ -52,6 +53,44 @@ const mockUpdatedTransaction = (paymentMethod: string | null) => ({
 } as unknown as TransactionModel);
 
 const mockPayGovTrackingId = "211d8c91c046404fb159b52d042a12ba";
+
+// DB rows returned by findByReferenceId after each outcome
+const mockProcessedRow = {
+  ...mockTransaction,
+  transactionStatus: "processed",
+  paygovTrackingId: mockPayGovTrackingId,
+  paymentMethod: "plastic_card",
+  returnDetail: null,
+  lastUpdatedAt: "2026-01-15T10:35:01Z",
+} as unknown as TransactionModel;
+
+const mockFailedRow = {
+  ...mockTransaction,
+  transactionStatus: "failed",
+  paygovTrackingId: null,
+  paymentMethod: null,
+  returnDetail: "The card has been declined, the transaction will not be processed.",
+  returnCode: 3001,
+  lastUpdatedAt: "2026-01-15T10:35:01Z",
+} as unknown as TransactionModel;
+
+const mockPendingRow = {
+  ...mockTransaction,
+  transactionStatus: "pending",
+  paygovTrackingId: mockPayGovTrackingId,
+  paymentMethod: "ach",
+  returnDetail: null,
+  lastUpdatedAt: "2026-01-15T10:35:01Z",
+} as unknown as TransactionModel;
+
+const mockGenericFaultRow = {
+  ...mockTransaction,
+  transactionStatus: "failed",
+  paygovTrackingId: null,
+  paymentMethod: null,
+  returnDetail: "Pay.gov returned a fault without error details",
+  lastUpdatedAt: "2026-01-15T10:35:01Z",
+} as unknown as TransactionModel;
 const mockPendingResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
   <S:Header>
@@ -153,6 +192,7 @@ describe("processPayment", () => {
       async (_id, _tid, _ts, _ps, paymentMethod) => mockUpdatedTransaction(paymentMethod),
     );
     TransactionModelMock.updateToFailed.mockResolvedValue(mockUpdatedTransaction(null));
+    TransactionModelMock.findByReferenceId.mockResolvedValue([]);
     FeesModelMock.getFeeById.mockResolvedValue({ feeId: "fee-123", tcsAppId: "TCSUSTAXCOURTPETITION" } as unknown as FeesModel);
   });
 
@@ -267,6 +307,10 @@ describe("processPayment", () => {
         .mockReturnValue(mockSuccessfulResponse);
     });
 
+    beforeEach(() => {
+      TransactionModelMock.findByReferenceId.mockResolvedValue([mockProcessedRow]);
+    });
+
     it("returns paymentStatus success", async () => {
       const result = await processPayment(appContext, {
         client: mockClient,
@@ -346,6 +390,48 @@ describe("processPayment", () => {
       expect(result.paymentStatus).toBe("success");
       expect(result.transactions[0].transactionStatus).toBe("processed");
     });
+
+    it("includes all transactions for the transactionReferenceId, not just the current one", async () => {
+      const earlierFailedRow = {
+        ...mockTransaction,
+        agencyTrackingId: "earlier-attempt-id",
+        transactionStatus: "failed",
+        paygovTrackingId: null,
+        paymentMethod: null,
+        returnDetail: "Card declined",
+        createdAt: "2026-01-14T09:00:00Z",
+        lastUpdatedAt: "2026-01-14T09:01:00Z",
+      } as unknown as TransactionModel;
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([earlierFailedRow, mockProcessedRow]);
+
+      const result = await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      });
+
+      expect(result.transactions).toHaveLength(2);
+      expect(result.transactions[0].transactionStatus).toBe("failed");
+      expect(result.transactions[1].transactionStatus).toBe("processed");
+    });
+
+    it("preserves ascending createdAt order returned by the database", async () => {
+      const rows = [
+        { ...mockProcessedRow, agencyTrackingId: "id-1", transactionStatus: "failed", createdAt: "2026-01-13T08:00:00Z" },
+        { ...mockProcessedRow, agencyTrackingId: "id-2", transactionStatus: "failed", createdAt: "2026-01-14T09:00:00Z" },
+        { ...mockProcessedRow, agencyTrackingId: "id-3", createdAt: "2026-01-15T10:30:00Z" },
+      ] as unknown as TransactionModel[];
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce(rows);
+
+      const result = await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      });
+
+      expect(result.transactions).toHaveLength(3);
+      expect(result.transactions[0].createdTimestamp).toBe("2026-01-13T08:00:00Z");
+      expect(result.transactions[1].createdTimestamp).toBe("2026-01-14T09:00:00Z");
+      expect(result.transactions[2].createdTimestamp).toBe("2026-01-15T10:30:00Z");
+    });
   });
 
   describe("Unsuccessful processing Transaction", () => {
@@ -353,6 +439,10 @@ describe("processPayment", () => {
       appContext.postHttpRequest = jest
         .fn()
         .mockReturnValue(mockUnsuccessfulResponse);
+    });
+
+    beforeEach(() => {
+      TransactionModelMock.findByReferenceId.mockResolvedValue([mockFailedRow]);
     });
 
     it("returns paymentStatus failed", async () => {
@@ -407,6 +497,10 @@ describe("processPayment", () => {
         .mockReturnValue(mockPendingResponse);
     });
 
+    beforeEach(() => {
+      TransactionModelMock.findByReferenceId.mockResolvedValue([mockPendingRow]);
+    });
+
     it("returns paymentStatus pending", async () => {
       const result = await processPayment(appContext, {
         client: mockClient,
@@ -444,7 +538,11 @@ describe("processPayment", () => {
     });
   });
 
-  describe("Fault handling edge cases", () => {
+  describe("Fault handling edge cases (Pay.gov throws us an error)", () => {
+    beforeEach(() => {
+      TransactionModelMock.findByReferenceId.mockResolvedValue([mockGenericFaultRow]);
+    });
+
     it("handles fault without detail object", async () => {
       appContext.postHttpRequest = jest
         .fn()

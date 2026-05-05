@@ -14,6 +14,7 @@ import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
 import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
 import "./db/knex";
 import { ClientPermission } from "./types/ClientPermission";
+import { logger } from "./utils/logger";
 
 const appContext = createAppContext();
 
@@ -65,12 +66,16 @@ app.set("view engine", "ejs");
 
 // Swagger UI - serve API documentation at /docs
 const openApiDocument = generateOpenAPIDocument();
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiDocument, {
-  swaggerOptions: {
-    defaultModelsExpandDepth: 5,
-    defaultModelExpandDepth: 5,
-  },
-}));
+app.use(
+  "/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(openApiDocument, {
+    swaggerOptions: {
+      defaultModelsExpandDepth: 5,
+      defaultModelExpandDepth: 5,
+    },
+  }),
+);
 
 // Serve raw OpenAPI spec as JSON
 app.get("/openapi.json", (req, res) => {
@@ -79,6 +84,13 @@ app.get("/openapi.json", (req, res) => {
 
 // define a route handler for the default home page
 app.post("/init", async (req, res) => {
+  logger.info(
+    {
+      feeId: req.body?.feeId,
+      transactionReferenceId: req.body?.transactionReferenceId,
+    },
+    "Received /init request",
+  );
   try {
     const request = parseRequestBody(req, InitPaymentRequestSchema);
     const result = await appContext
@@ -106,12 +118,10 @@ app.post("/process", async (req, res) => {
 
 app.get("/details/:transactionReferenceId", async (req, res) => {
   try {
-    const result = await appContext
-      .getUseCases()
-      .getDetails(appContext, {
-        client: devClient,
-        request: { transactionReferenceId: req.params.transactionReferenceId },
-      });
+    const result = await appContext.getUseCases().getDetails(appContext, {
+      client: devClient,
+      request: { transactionReferenceId: req.params.transactionReferenceId },
+    });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
@@ -150,7 +160,10 @@ app.get("/transactions/:paymentStatus", async (req, res, next) => {
   try {
     const result = await appContext
       .getUseCases()
-      .getTransactionsByStatus(appContext, req.params as unknown as TransactionsByStatusPathParams);
+      .getTransactionsByStatus(
+        appContext,
+        req.params as unknown as TransactionsByStatusPathParams,
+      );
     res.json(result);
   } catch (err) {
     next(err);
