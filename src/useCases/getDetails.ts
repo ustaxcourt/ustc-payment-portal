@@ -9,12 +9,12 @@ import {
   derivePaymentStatus,
   derivePaymentStatusFromSingleTransaction,
 } from "../utils/derivePaymentStatus";
-import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
 import { toPaymentMethod } from "../utils/toPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
 import { ServerError } from "../errors/serverError";
+import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
 
 type GetDetailsRequest = {
   transactionReferenceId: string;
@@ -35,24 +35,6 @@ const TERMINAL_STATUSES: ReadonlyArray<TransactionStatus> = [
 
 const isTerminal = (status: TransactionStatus | null | undefined): boolean =>
   status !== null && status !== undefined && TERMINAL_STATUSES.includes(status);
-
-const toTransactionRecordSummary = (
-  row: TransactionModel,
-  transactionStatus: TransactionStatus | null | undefined,
-): TransactionRecordSummary => {
-  if (!transactionStatus) {
-    console.error(
-      `Transaction ${row.agencyTrackingId} has null transactionStatus — defaulting to 'received'. This indicates corrupt data.`,
-    );
-  }
-  return {
-    payGovTrackingId: row.paygovTrackingId ?? undefined,
-    transactionStatus: transactionStatus ?? "received",
-    paymentMethod: toApiPaymentMethod(row.paymentMethod),
-    createdTimestamp: row.createdAt,
-    updatedTimestamp: row.lastUpdatedAt,
-  };
-};
 
 export const getDetails: GetDetails = async (
   appContext,
@@ -88,7 +70,7 @@ export const getDetails: GetDetails = async (
   // no need to hit Pay.gov. Only the pending path fans out to refresh attempts.
   if (paymentStatus !== "pending") {
     const transactions = allRows.map((row) =>
-      toTransactionRecordSummary(row, row.transactionStatus),
+      toTransactionRecordSummary(row),
     );
     return { paymentStatus, transactions };
   }
@@ -104,7 +86,7 @@ const updatePendingAttemptFromPayGov = async (
   const transactions: TransactionRecordSummary[] = await Promise.all(
     allRows.map(async (row) => {
       if (!row.paygovTrackingId || isTerminal(row.transactionStatus)) {
-        return toTransactionRecordSummary(row, row.transactionStatus);
+        return toTransactionRecordSummary(row);
       }
 
       const req = new GetRequestRequest({
@@ -121,7 +103,7 @@ const updatePendingAttemptFromPayGov = async (
           `Failed to refresh status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
-        return toTransactionRecordSummary(row, row.transactionStatus);
+        return toTransactionRecordSummary(row);
       }
 
       try {
@@ -137,7 +119,7 @@ const updatePendingAttemptFromPayGov = async (
           result.transaction_date,
           result.payment_date,
         );
-        return toTransactionRecordSummary(updated, updated.transactionStatus);
+        return toTransactionRecordSummary(updated);
       } catch (err) {
         // Pay.gov told us the truth; we just couldn't persist it. Return the fresh status anyway —
         // next call will re-poll and retry the write.
@@ -145,7 +127,7 @@ const updatePendingAttemptFromPayGov = async (
           `Failed to persist refreshed status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
-        return toTransactionRecordSummary(row, refreshedStatus);
+        return { ...toTransactionRecordSummary(row), transactionStatus: refreshedStatus };
       }
     }),
   );
