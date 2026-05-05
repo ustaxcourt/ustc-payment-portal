@@ -76,15 +76,16 @@ Copy `.env.example` to `.env` to start. Only variables required for local develo
 
 The dev server should be configured to point to the USTC Pay.gov test server, which is managed in a [separate repository](https://github.com/ustaxcourt/ustc-pay-gov-test-server).
 
-| Environment Variable | Description                                                                                                      |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `APP_ENV`            | Deployment topology for this service. One of `local`, `dev`, `stg`, `prod`, `test`.                              |
-| `BASE_URL`           | The URL of this payment portal (for running integration tests)                                                   |
-| `CLIENT_PERMISSIONS_SECRET_ID` | AWS Secrets Manager secret ID for the client permissions JSON array. Not needed locally — auth is bypassed when `LOCAL_DEV=true` |
-| `LOCAL_DEV`          | Set to `true` to bypass SigV4 auth for local development. Do not set in deployed environments.                   |
-| `NODE_ENV`           | Node runtime mode. One of `development`, `production`, `test`. Set automatically by Jest.                        |
-| `PAYMENT_URL`        | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated |
-| `SOAP_URL`           | The URL of the SOAP Server that handles payment requests made by this portal                                     |
+| Environment Variable           | Description                                                                                                                                                                                                 |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `APP_ENV`                      | Deployment topology for this service. One of `local`, `dev`, `stg`, `prod`, `test`.                                                                                                                         |
+| `BASE_URL`                     | The URL of this payment portal (for running integration tests).                                                                                                                                             |
+| `CLIENT_PERMISSIONS_SECRET_ID` | AWS Secrets Manager secret ID for the client permissions JSON array. Not needed locally — auth is bypassed when `LOCAL_DEV=true`.                                                                           |
+| `LOCAL_DEV`                    | Set to `true` to bypass SigV4 auth for local development. Do not set in deployed environments.                                                                                                              |
+| `LOG_LEVEL`                    | (Optional) Override the default log level for the environment. Valid values: `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent` (case-insensitive). See [Logging](./docs/logging.md) for details. |
+| `NODE_ENV`                     | Node runtime mode. One of `development`, `production`, `test`. Set automatically by Jest.                                                                                                                   |
+| `PAYMENT_URL`                  | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated.                                                                                           |
+| `SOAP_URL`                     | The URL of the SOAP Server that handles payment requests made by this portal.                                                                                                                               |
 
 ## Deployment
 
