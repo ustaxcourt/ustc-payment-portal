@@ -177,6 +177,23 @@ describe("initPayment", () => {
     expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
   });
 
+  it("throws when an in-flight initiated transaction is missing its Pay.gov token", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "initiated",
+      paygovToken: null,
+      lastUpdatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+    });
+
+    await expect(
+      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
+    ).rejects.toThrow(`In-flight transaction ${validPetitionRequest.transactionReferenceId} is missing a Pay.gov token`);
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+  });
+
   it("marks expired in-flight transaction as failed and creates a new one when token age >= 3 hours", async () => {
     mockSoapRequest("new-token-xyz");
     const TransactionModel = require("../db/TransactionModel").default;
