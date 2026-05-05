@@ -169,6 +169,32 @@ export const logger = pino({
 // Add global context when not using pretty (base already included above for pretty).
 // For staging/production, default meta is embedded in the base option above.
 
+/**
+ * Returns the origin (scheme + host + port) of a URL string, or undefined if
+ * the URL is absent or unparseable. Use this to log redirect destinations
+ * without exposing path or query parameters.
+ */
+export const getUrlOrigin = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Returns a sorted list of keys present in a metadata object, or undefined if
+ * the value is not a plain object. Use this to log which metadata fields were
+ * provided without exposing their values.
+ */
+export const getMetadataKeys = (metadata: unknown): string[] | undefined => {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return undefined;
+  }
+  return Object.keys(metadata as Record<string, unknown>).sort();
+};
+
 export function createRequestLogger(context: {
   awsRequestId?: string;
   path?: string;

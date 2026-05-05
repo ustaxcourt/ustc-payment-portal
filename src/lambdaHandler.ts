@@ -34,31 +34,31 @@ const lambdaHandler = async <T>(
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler<T>,
   feeId?: string,
-  requestLogger?: ReturnType<typeof createRequestLogger>,
+  requestLogger: ReturnType<typeof createRequestLogger> = createRequestLogger(
+    {},
+  ),
 ): Promise<APIGatewayProxyResult> => {
-  let effectiveLogger = requestLogger;
+  let scopedLogger = requestLogger;
   try {
     const roleArn = extractCallerArn(requestContext);
     const client = await authorizeClient(roleArn, feeId);
-    const scopedLogger =
-      requestLogger?.child({
-        clientName: client.clientName,
-        clientArn: client.clientRoleArn,
-      }) ?? requestLogger;
-    effectiveLogger = scopedLogger;
-    scopedLogger?.info("Authorized client for request");
+    scopedLogger = requestLogger.child({
+      clientName: client.clientName,
+      clientArn: client.clientRoleArn,
+    });
+    scopedLogger.info("Authorized client for request");
     const result = await callback(appContext, {
       client,
       request,
       requestLogger: scopedLogger,
     });
-    scopedLogger?.info("Completed request");
+    scopedLogger.info("Completed request");
     return {
       statusCode: 200,
       body: JSON.stringify(result),
     };
   } catch (err) {
-    return handleError(err, effectiveLogger);
+    return handleError(err, scopedLogger);
   }
 };
 
@@ -154,19 +154,39 @@ export const initPaymentHandler = (
 export const processPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const result = parseAndValidate(event.body, ProcessPaymentRequestSchema);
+  const requestLogger = createRequestLogger({
+    requestId: event.requestContext.requestId,
+    path: event.path,
+    httpMethod: event.httpMethod,
+    logLevel: process.env.LOG_LEVEL,
+  });
+
+  const result = parseAndValidate(
+    event.body,
+    ProcessPaymentRequestSchema,
+    requestLogger,
+  );
   if (!result.ok) return Promise.resolve(result.error);
 
   return lambdaHandler(
     result.value,
     event.requestContext,
     appContext.getUseCases().processPayment,
+    undefined,
+    requestLogger,
   );
 };
 
 export const getDetailsHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
+  const requestLogger = createRequestLogger({
+    requestId: event.requestContext.requestId,
+    path: event.path,
+    httpMethod: event.httpMethod,
+    logLevel: process.env.LOG_LEVEL,
+  });
+
   const result = GetDetailsPathParamsSchema.safeParse(
     event.pathParameters ?? {},
   );
@@ -174,6 +194,7 @@ export const getDetailsHandler = (
     return Promise.resolve(
       handleError(
         new InvalidRequestError("Transaction Reference Id was invalid"),
+        requestLogger,
       ),
     );
   }
@@ -183,6 +204,8 @@ export const getDetailsHandler = (
     { transactionReferenceId: result.data.transactionReferenceId },
     event.requestContext,
     appContext.getUseCases().getDetails,
+    undefined,
+    requestLogger,
   );
 };
 

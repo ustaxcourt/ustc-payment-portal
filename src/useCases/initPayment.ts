@@ -12,7 +12,11 @@ import { isUniqueViolation } from "../db/pgErrors";
 import { PayGovError } from "../errors/payGovError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
-import { createRequestLogger } from "../utils/logger";
+import {
+  createRequestLogger,
+  getMetadataKeys,
+  getUrlOrigin,
+} from "../utils/logger";
 
 const NETWORK_ERROR_CODES = new Set([
   "ECONNREFUSED",
@@ -26,23 +30,6 @@ const NETWORK_ERROR_CODES = new Set([
 const isNetworkError = (err: unknown): boolean =>
   err instanceof Error &&
   NETWORK_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
-
-const getUrlOrigin = (url?: string): string | undefined => {
-  if (!url) return undefined;
-  try {
-    return new URL(url).origin;
-  } catch {
-    return undefined;
-  }
-};
-
-const getMetadataKeys = (metadata: unknown): string[] | undefined => {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return undefined;
-  }
-
-  return Object.keys(metadata as Record<string, unknown>).sort();
-};
 
 export type InitPayment = (
   appContext: AppContext,
