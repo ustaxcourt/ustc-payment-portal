@@ -308,33 +308,39 @@ resource "aws_iam_role_policy" "test_unauthorized_api_invoke" {
   })
 }
 
-# Consolidated policy for the shared dev deployer role per PR workspace.
-# Kept as one policy (3 statements) to stay well under AWS's 10 inline-policy limit
-# when multiple PR workspaces are active concurrently.
-resource "aws_iam_role_policy" "deployer_pr_workspace" {
-  name = "pr-workspace-${local.name_prefix}"
-  role = local.dev_deployer_role_name
+# Single shared policy on the dev deployer role covering all PR workspaces via
+# wildcarded ARNs. Created once in the default (dev) workspace; PR workspaces
+# don't touch the role at all.
+#
+# Why one shared policy instead of one per PR: AWS caps the sum of inline
+# policy size on a role at 10,240 bytes (hard limit). Per-PR policies of
+# ~500–600 bytes each capped the role at ~17 concurrent PRs and accumulated
+# orphans whenever pr_cleanup didn't complete.
+resource "aws_iam_role_policy" "deployer_pr_workspaces" {
+  count = local.environment == "dev" ? 1 : 0
+  name  = "pr-workspaces"
+  role  = local.dev_deployer_role_name
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "AssumeTestUnauthorizedRole"
+        Sid      = "AssumeTestUnauthorizedRoles"
         Effect   = "Allow"
         Action   = "sts:AssumeRole"
-        Resource = aws_iam_role.test_unauthorized.arn
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/ustc-payment-processor-pr-*-test-unauthorized-role"
       },
       {
-        Sid      = "InvokeMigrationRunner"
+        Sid      = "InvokeMigrationRunners"
         Effect   = "Allow"
         Action   = "lambda:InvokeFunction"
-        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:${local.name_prefix}-migrationRunner"
+        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor-pr-*-migrationRunner"
       },
       {
-        Sid      = "InvokeApiGateway"
+        Sid      = "InvokeApiGateways"
         Effect   = "Allow"
         Action   = "execute-api:Invoke"
-        Resource = "${module.api.api_gateway_execution_arn}/*"
+        Resource = "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*/*/*/*"
       }
     ]
   })
