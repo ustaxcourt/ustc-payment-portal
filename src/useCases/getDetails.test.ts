@@ -251,7 +251,7 @@ describe("getDetails", () => {
 
       expect(result.transactions[0].transactionStatus).toBe("received");
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Transaction corrupt-row has null transactionStatus"),
+        expect.stringContaining("Transaction Attempt corrupt-row has null transactionStatus"),
       );
 
       consoleErrorSpy.mockRestore();

@@ -12,8 +12,8 @@ import { derivePaymentStatusFromSingleTransaction } from "../utils/derivePayment
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
-import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
 import { toPaymentMethod } from "../utils/toPaymentMethod";
+import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -82,9 +82,10 @@ export const processPayment: ProcessPayment = async (
     console.log("processPayment result", result);
 
     const parsedStatus = parseTransactionStatus(result.transaction_status);
-    const paymentStatus = derivePaymentStatusFromSingleTransaction(parsedStatus);
+    const paymentStatus =
+      derivePaymentStatusFromSingleTransaction(parsedStatus);
 
-    const updated = await TransactionModel.updateAfterPayGovResponse(
+    await TransactionModel.updateAfterPayGovResponse(
       transaction.agencyTrackingId,
       result.paygov_tracking_id,
       parsedStatus,
@@ -94,38 +95,37 @@ export const processPayment: ProcessPayment = async (
       result.payment_date,
     );
 
+    const transactions = await TransactionModel.findByReferenceId(
+      transaction.transactionReferenceId,
+    );
+
+    const transactionSummaries = transactions.map((row) =>
+      toTransactionRecordSummary(row),
+    );
+
     return {
       paymentStatus,
-      transactions: [
-        {
-          payGovTrackingId: result.paygov_tracking_id,
-          transactionStatus: parsedStatus,
-          paymentMethod: toApiPaymentMethod(updated.paymentMethod),
-          returnDetail: undefined,
-          createdTimestamp: updated.createdAt,
-          updatedTimestamp: updated.lastUpdatedAt,
-        },
-      ],
+      transactions: transactionSummaries,
     };
   } catch (err) {
     if (err instanceof FailedTransactionError) {
-      const failed = await TransactionModel.updateToFailed(
+      await TransactionModel.updateToFailed(
         transaction.agencyTrackingId,
         err.code,
         err.message,
       );
 
+      const transactions = await TransactionModel.findByReferenceId(
+        transaction.transactionReferenceId,
+      );
+
+      const transactionSummaries = transactions.map((row) =>
+        toTransactionRecordSummary(row),
+      );
+
       return {
         paymentStatus: "failed" as const,
-        transactions: [
-          {
-            transactionStatus: "failed" as const,
-            paymentMethod: undefined,
-            returnDetail: err.message,
-            createdTimestamp: failed.createdAt,
-            updatedTimestamp: failed.lastUpdatedAt,
-          },
-        ],
+        transactions: transactionSummaries,
       };
     } else throw err;
   }

@@ -23,7 +23,7 @@ type Scenario = {
 };
 
 const ACH_RESOLUTION_TIMEOUT_MS = 30_000;
-const POLL_INTERVAL_MS = 2_000;
+const POLL_INTERVAL_MS = 500;
 
 const scenarios: Scenario[] = [
   {
@@ -85,6 +85,7 @@ const scenarios: Scenario[] = [
 ];
 
 describe("make a transaction", () => {
+  jest.setTimeout(60_000);
   let transactionReferenceId: string;
   let baseUrl: string;
 
@@ -93,8 +94,6 @@ describe("make a transaction", () => {
     if (!baseUrl) {
       throw new Error("BASE_URL is required for transaction integration tests");
     }
-
-    jest.setTimeout(60_000);
   });
 
   // Run through the full transaction flow for each of the defined payment scenarios defined above.

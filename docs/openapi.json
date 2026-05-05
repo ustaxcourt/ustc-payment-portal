@@ -1168,7 +1168,7 @@
         },
         "responses": {
           "200": {
-            "description": "Payment processed. The paymentStatus field indicates the overall outcome (success, failed, pending). The transactions array currently contains only the attempt being processed; it will expand to include all attempts for the same transactionReferenceId in a future release.",
+            "description": "Payment processed. The paymentStatus field indicates the overall outcome (success, failed, pending). It includes all attempts for the same transactionReferenceId.",
             "content": {
               "application/json": {
                 "schema": {
