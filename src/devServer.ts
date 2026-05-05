@@ -62,6 +62,8 @@ app.get("/openapi.json", (req, res) => {
 
 // define a route handler for the default home page
 app.post("/init", async (req, res) => {
+  const { LOG_LEVEL: logLevel } = process.env;
+
   const metadata =
     req.body?.metadata &&
     typeof req.body.metadata === "object" &&
@@ -80,6 +82,7 @@ app.post("/init", async (req, res) => {
     feeId: req.body?.feeId,
     transactionReferenceId: req.body?.transactionReferenceId,
     metadata,
+    logLevel,
   });
 
   requestLogger.debug("Received /init request");
