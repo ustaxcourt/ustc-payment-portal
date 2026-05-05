@@ -194,7 +194,7 @@ export default class TransactionModel extends Model {
       .first();
   }
 
- // Returns the in-flight 'initiated' attempt for the given transactionReferenceId, if one exists.
+// Returns the in-flight 'initiated' attempt for the given transactionReferenceId, if one exists.
 // NOTE: the partial unique index `idx_transactions_unique_active` also covers 'received' and
 // 'pending' — those statuses are intentionally not checked here; the index is the sole guard
 // for those windows.
