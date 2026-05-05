@@ -17,6 +17,7 @@ import {
   getMetadataKeys,
   getUrlOrigin,
 } from "../utils/logger";
+import { Logger } from "pino/pino";
 
 const NETWORK_ERROR_CODES = new Set([
   "ECONNREFUSED",
@@ -36,7 +37,7 @@ export type InitPayment = (
   params: {
     client: ClientPermission;
     request: InitPaymentRequest;
-    requestLogger?: ReturnType<typeof createRequestLogger>;
+    requestLogger?: Logger;
   },
 ) => Promise<InitPaymentResponse>;
 

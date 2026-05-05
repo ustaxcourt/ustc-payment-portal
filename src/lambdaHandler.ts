@@ -17,6 +17,8 @@ import { AppContext } from "./types/AppContext";
 import { isValidPaymentStatus } from "./useCases/getTransactionsByStatus";
 import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
 import { createRequestLogger } from "./utils/logger";
+import { Metadata, InitPaymentRequest } from "./schemas";
+import { Logger } from "pino/pino";
 
 const appContext = createAppContext();
 
@@ -25,7 +27,7 @@ type LambdaHandler<T> = (
   params: {
     client: ClientPermission;
     request: T;
-    requestLogger?: ReturnType<typeof createRequestLogger>;
+    requestLogger?: Logger;
   },
 ) => Promise<unknown>;
 
@@ -34,9 +36,7 @@ const lambdaHandler = async <T>(
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler<T>,
   feeId?: string,
-  requestLogger: ReturnType<typeof createRequestLogger> = createRequestLogger(
-    {},
-  ),
+  requestLogger: Logger = createRequestLogger({}),
 ): Promise<APIGatewayProxyResult> => {
   let scopedLogger = requestLogger;
   try {
@@ -122,21 +122,22 @@ export const initPaymentHandler = (
   });
   requestLogger.debug("Received /init request");
 
-  const result = parseAndValidate(
+  const result: ParseResult<InitPaymentRequest> = parseAndValidate(
     event.body,
     InitPaymentRequestSchema,
     requestLogger,
   );
   if (!result.ok) return Promise.resolve(result.error);
 
-  const metadata =
+  // Extract metadata from the validated request, normalizing it to Record<string, unknown> or undefined
+  const metadata: Metadata | undefined =
     result.value.metadata &&
     typeof result.value.metadata === "object" &&
     !Array.isArray(result.value.metadata)
       ? result.value.metadata
       : undefined;
 
-  const scopedRequestLogger = requestLogger.child({
+  const scopedRequestLogger: Logger = requestLogger.child({
     feeId: result.value.feeId,
     transactionReferenceId: result.value.transactionReferenceId,
     metadata,

@@ -23,7 +23,7 @@ type Scenario = {
 };
 
 const ACH_RESOLUTION_TIMEOUT_MS = 30_000;
-const POLL_INTERVAL_MS = 500;
+const POLL_INTERVAL_MS = 1_000;
 
 const scenarios: Scenario[] = [
   {

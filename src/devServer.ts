@@ -11,6 +11,7 @@ import { handleError } from "./handleError";
 import "./db/knex";
 import { ClientPermission } from "./types/ClientPermission";
 import { createRequestLogger } from "./utils/logger";
+import { Logger } from "pino/pino";
 
 const appContext = createAppContext();
 
@@ -71,7 +72,7 @@ app.post("/init", async (req, res) => {
       ? req.body.metadata
       : undefined;
 
-  const requestLogger = createRequestLogger({
+  const requestLogger: Logger = createRequestLogger({
     requestId:
       typeof req.header("x-request-id") === "string"
         ? req.header("x-request-id")
