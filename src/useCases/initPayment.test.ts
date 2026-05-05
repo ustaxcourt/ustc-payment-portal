@@ -137,7 +137,9 @@ describe("initPayment", () => {
         requestParams: expect.objectContaining({
           feeId: "PETITION_FILING_FEE",
           transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-          metadata: { docketNumber: "123-26" },
+          urlSuccessOrigin: "https://example.com",
+          urlCancelOrigin: "https://example.com",
+          metadataKeys: ["docketNumber"],
         }),
       }),
       "initPayment use case started",
@@ -150,14 +152,12 @@ describe("initPayment", () => {
         requestParams: expect.objectContaining({
           feeId: "PETITION_FILING_FEE",
           transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+          metadataKeys: ["docketNumber"],
         }),
       }),
       "Persisted received transaction with generated agency tracking id",
     );
     expect(childInfo).toHaveBeenCalledWith(
-      expect.objectContaining({
-        payGovResponse: expect.objectContaining({ token: "test-token-logger" }),
-      }),
       "Pay.gov startOnlineCollection completed",
     );
     expect(childInfo).toHaveBeenCalledWith("Persisted initiated transaction");

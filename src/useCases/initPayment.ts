@@ -27,6 +27,23 @@ const isNetworkError = (err: unknown): boolean =>
   err instanceof Error &&
   NETWORK_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
 
+const getUrlOrigin = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return undefined;
+  }
+};
+
+const getMetadataKeys = (metadata: unknown): string[] | undefined => {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return undefined;
+  }
+
+  return Object.keys(metadata as Record<string, unknown>).sort();
+};
+
 export type InitPayment = (
   appContext: AppContext,
   params: {
@@ -43,6 +60,7 @@ export const initPayment: InitPayment = async (
   const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel } =
     request;
   const { clientName } = client;
+  const metadataKeys = getMetadataKeys(request.metadata);
 
   requestLogger?.info(
     {
@@ -50,9 +68,9 @@ export const initPayment: InitPayment = async (
         feeId,
         amount,
         transactionReferenceId,
-        urlSuccess,
-        urlCancel,
-        metadata: request.metadata,
+        urlSuccessOrigin: getUrlOrigin(urlSuccess),
+        urlCancelOrigin: getUrlOrigin(urlCancel),
+        metadataKeys,
       },
     },
     "initPayment use case started",
@@ -114,7 +132,7 @@ export const initPayment: InitPayment = async (
         requestParams: {
           feeId,
           transactionReferenceId,
-          metadata: request.metadata,
+          metadataKeys,
         },
       },
       "Persisted received transaction with generated agency tracking id",
@@ -142,10 +160,7 @@ export const initPayment: InitPayment = async (
 
   try {
     result = await req.makeSoapRequest(appContext);
-    useCaseLogger?.info(
-      { payGovResponse: result },
-      "Pay.gov startOnlineCollection completed",
-    );
+    useCaseLogger?.info("Pay.gov startOnlineCollection completed");
   } catch (err) {
     await TransactionModel.updateToFailed(agencyTrackingId);
     useCaseLogger?.error({ err }, "Pay.gov request failed");

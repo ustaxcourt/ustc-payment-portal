@@ -262,7 +262,7 @@ describe("lambdaHandler", () => {
 
       expect(createRequestLoggerSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          awsRequestId: mockRequestContext.requestId,
+          requestId: mockRequestContext.requestId,
           path: "/init",
           httpMethod: "POST",
         }),
@@ -276,7 +276,6 @@ describe("lambdaHandler", () => {
           feeId: "PETITION_FILING_FEE",
           transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
           metadata: { docketNumber: "123-26" },
-          docketNumber: "123-26",
         }),
       );
       expect(enrichedLogger.child).toHaveBeenCalledWith(
@@ -319,7 +318,9 @@ describe("lambdaHandler", () => {
       const result = await initPaymentHandler(event);
 
       expect(result.statusCode).toBe(400);
-      expect(requestLogger.debug).toHaveBeenCalledWith("Received /init request");
+      expect(requestLogger.debug).toHaveBeenCalledWith(
+        "Received /init request",
+      );
       expect(requestLogger.child).not.toHaveBeenCalled();
     });
 

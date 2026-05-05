@@ -25,6 +25,9 @@ const SENSITIVE_KEYS = new Set([
   "password",
   "secret",
   "certpassphrase",
+  "email",
+  "fullname",
+  "accesscode",
 ]);
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -141,6 +144,12 @@ export const logger = pino({
       "*.secret",
       "certPassphrase",
       "*.certPassphrase",
+      "email",
+      "*.email",
+      "fullName",
+      "*.fullName",
+      "accessCode",
+      "*.accessCode",
     ],
     censor: "[Redacted]",
   },

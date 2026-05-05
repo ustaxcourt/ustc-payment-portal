@@ -115,7 +115,7 @@ export const initPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
   const requestLogger = createRequestLogger({
-    awsRequestId: event.requestContext.requestId,
+    requestId: event.requestContext.requestId,
     path: event.path,
     httpMethod: event.httpMethod,
   });
@@ -139,7 +139,6 @@ export const initPaymentHandler = (
     feeId: result.value.feeId,
     transactionReferenceId: result.value.transactionReferenceId,
     metadata,
-    ...(metadata ?? {}),
   });
 
   return lambdaHandler(

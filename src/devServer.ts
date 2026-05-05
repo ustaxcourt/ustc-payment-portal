@@ -80,7 +80,6 @@ app.post("/init", async (req, res) => {
     feeId: req.body?.feeId,
     transactionReferenceId: req.body?.transactionReferenceId,
     metadata,
-    ...(metadata ?? {}),
   });
 
   requestLogger.debug("Received /init request");
