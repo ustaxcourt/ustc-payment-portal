@@ -35,9 +35,6 @@ export async function down(knex: Knex): Promise<void> {
 
   await knex.schema.raw(`DROP INDEX IF EXISTS idx_transactions_client_ref`);
 
-  await knex.schema.raw(`
-    ALTER TABLE transactions
-    ADD CONSTRAINT idx_transactions_client_ref
-    UNIQUE (client_name, transaction_reference_id)
-  `);
+  // The original full UNIQUE constraint on (client_name, transaction_reference_id) is not
+  // restored here — once multi-attempt rows exist in the DB it can never be safely re-added.
 }
