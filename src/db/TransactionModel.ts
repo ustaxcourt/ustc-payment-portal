@@ -194,10 +194,10 @@ export default class TransactionModel extends Model {
       .first();
   }
 
-  // Returns any non-terminal attempt for the given (clientName, transactionReferenceId).
-  // Used by initPayment as the app-level pre-check; the status set here MUST stay aligned
-  // with the partial unique index `idx_transactions_unique_active` so the app-level check
-  // and the DB-level guarantee cover the same scope.
+ // Returns the in-flight 'initiated' attempt for the given transactionReferenceId, if one exists.
+// NOTE: the partial unique index `idx_transactions_unique_active` also covers 'received' and
+// 'pending' — those statuses are intentionally not checked here; the index is the sole guard
+// for those windows.
   static async findInFlightByReferenceId(
     transactionReferenceId: string,
   ): Promise<TransactionModel | undefined> {
