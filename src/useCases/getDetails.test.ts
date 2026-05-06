@@ -486,6 +486,37 @@ describe("getDetails", () => {
       expect(result.transactions).toHaveLength(2);
     });
 
+    it("throws ServerError when more than one pending row exists for the same transactionReferenceId", async () => {
+      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(jest.fn());
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({
+          agencyTrackingId: "attempt-1",
+          transactionStatus: "pending",
+          paymentStatus: "pending",
+          paygovTrackingId: "TRK0000000000000001AB",
+        }),
+        buildRow({
+          agencyTrackingId: "attempt-2",
+          transactionStatus: "pending",
+          paymentStatus: "pending",
+          paygovTrackingId: "TRK0000000000000002AB",
+        }),
+      ]);
+
+      await expect(
+        getDetails(appContext, {
+          client: mockClient,
+          request: { transactionReferenceId: mockTransactionReferenceId },
+        }),
+      ).rejects.toThrow(ServerError);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`Expected at most 1 pending row for transactionReferenceId '${mockTransactionReferenceId}', found 2`),
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
     it("writes back every pending attempt in a multi-row group", async () => {
       appContext.postHttpRequest = jest.fn().mockResolvedValue(mockPendingSoapResponse);
       TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
