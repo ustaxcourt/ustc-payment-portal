@@ -21,7 +21,7 @@ function normalizePem(pem: string): string {
 export const createAppContext = (): AppContext => {
   const { LOG_LEVEL: logLevel } = process.env;
   const baseLogger: Logger = createRequestLogger({
-    logLevel,
+    logLevel: logLevel ?? "info",
   });
 
   return {

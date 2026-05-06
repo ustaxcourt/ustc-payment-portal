@@ -12,5 +12,9 @@ export const testAppContext: AppContext = {
     getTransactionPaymentStatus: jest.fn(),
     getTransactionsByStatus: jest.fn(),
   }),
-  logger: (context = {}) => createRequestLogger(context),
+  logger: (context = {}) =>
+    createRequestLogger({
+      logLevel: String(process.env.LOG_LEVEL ?? "info"),
+      ...(context as Record<string, unknown>),
+    }),
 };

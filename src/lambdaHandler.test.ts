@@ -62,7 +62,10 @@ jest.mock("./appContext", () => ({
       </S:Envelope>`),
       getUseCases: () => useCasesMock,
       logger: jest.fn((context?: Record<string, unknown>) =>
-        loggerModuleLocal.createRequestLogger(context ?? {}),
+        loggerModuleLocal.createRequestLogger({
+          logLevel: String(process.env.LOG_LEVEL ?? "info"),
+          ...(context ?? {}),
+        }),
       ),
     };
   }),

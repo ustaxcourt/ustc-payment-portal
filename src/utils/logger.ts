@@ -196,7 +196,7 @@ export function createRequestLogger(context: {
   agencyTrackingId?: string;
   transactionReferenceId?: string;
   metadata?: Record<string, unknown>;
-  logLevel?: string;
+  logLevel: string;
   [key: string]: unknown;
 }) {
   return logger.child(context);
