@@ -83,6 +83,14 @@ const updatePendingAttemptFromPayGov = async (
   allRows: TransactionModel[],
   tcsAppId: string,
 ): Promise<GetDetailsResponse> => {
+  const pendingRows = allRows.filter((row) => row.transactionStatus === "pending");
+  if (pendingRows.length > 1) {
+    console.error(
+      `Expected at most 1 pending row for transactionReferenceId '${allRows[0].transactionReferenceId}', found ${pendingRows.length}`,
+    );
+    throw new ServerError(`More than one pending transaction attempt found for reference ID ${allRows[0].transactionReferenceId}`);
+  }
+
   const transactions: TransactionRecordSummary[] = await Promise.all(
     allRows.map(async (row) => {
       if (!row.paygovTrackingId || isTerminal(row.transactionStatus)) {
