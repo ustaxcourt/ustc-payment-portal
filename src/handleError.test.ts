@@ -47,12 +47,21 @@ describe("handleError", () => {
     );
   });
 
-  it("calls logger.error when handling an error", () => {
-    const errorSpy = jest
-      .spyOn(logger, "error")
-      .mockImplementation(() => logger as any);
+  describe("logging behavior", () => {
+    let errorSpy: jest.SpyInstance;
+    beforeEach(() => {
+      errorSpy = jest
+        .spyOn(logger, "error")
+        .mockImplementation(() => logger as any);
+      jest.clearAllMocks();
+    });
 
-    try {
+    afterEach(() => {
+      jest.restoreAllMocks();
+      errorSpy.mockRestore();
+    });
+
+    it("calls logger.error when handling an error", () => {
       const err = new Error("log me");
       handleError(err);
 
@@ -60,20 +69,13 @@ describe("handleError", () => {
         { err },
         "responding with an error",
       );
-    } finally {
-      errorSpy.mockRestore();
-    }
-  });
+    });
 
-  it("uses provided logger instead of global logger", () => {
-    const providedLogger = {
-      error: jest.fn(),
-    };
-    const globalErrorSpy = jest
-      .spyOn(logger, "error")
-      .mockImplementation(() => logger as any);
+    it("uses provided logger instead of global logger", () => {
+      const providedLogger = {
+        error: jest.fn(),
+      };
 
-    try {
       const err = new Error("request scoped");
       handleError(err, providedLogger as any);
 
@@ -81,9 +83,7 @@ describe("handleError", () => {
         { err },
         "responding with an error",
       );
-      expect(globalErrorSpy).not.toHaveBeenCalled();
-    } finally {
-      globalErrorSpy.mockRestore();
-    }
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
   });
 });
