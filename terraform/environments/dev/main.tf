@@ -321,7 +321,7 @@ resource "aws_iam_role_policy" "test_unauthorized_api_invoke" {
 # Stage names are deterministic ("dev" or "pr-<num>") — see stage_name above.
 resource "aws_iam_role_policy" "deployer_runtime_invoke" {
   count = local.environment == "dev" ? 1 : 0
-  name  = "deployer-runtime-invoke"
+  name  = "pr-workspaces"
   role  = local.dev_deployer_role_name
 
   policy = jsonencode({
