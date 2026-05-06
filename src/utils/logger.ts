@@ -187,7 +187,7 @@ export const getMetadataKeys = (metadata: unknown): string[] | undefined => {
 };
 
 export function createRequestLogger(context: {
-  awsRequestId?: string;
+  requestId?: string;
   path?: string;
   httpMethod?: string;
   clientArn?: string;
