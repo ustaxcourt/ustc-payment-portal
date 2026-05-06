@@ -153,18 +153,7 @@ export const initPaymentHandler = (
 export const processPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const requestLogger = appContext.logger({
-    requestId: event.requestContext.requestId,
-    path: event.path,
-    httpMethod: event.httpMethod,
-    logLevel: process.env.LOG_LEVEL,
-  });
-
-  const result = parseAndValidate(
-    event.body,
-    ProcessPaymentRequestSchema,
-    requestLogger,
-  );
+  const result = parseAndValidate(event.body, ProcessPaymentRequestSchema);
   if (!result.ok) return Promise.resolve(result.error);
 
   return lambdaHandler(
@@ -172,20 +161,12 @@ export const processPaymentHandler = (
     event.requestContext,
     appContext.getUseCases().processPayment,
     undefined,
-    requestLogger,
   );
 };
 
 export const getDetailsHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const requestLogger = appContext.logger({
-    requestId: event.requestContext.requestId,
-    path: event.path,
-    httpMethod: event.httpMethod,
-    logLevel: process.env.LOG_LEVEL,
-  });
-
   const result = GetDetailsPathParamsSchema.safeParse(
     event.pathParameters ?? {},
   );
@@ -193,7 +174,6 @@ export const getDetailsHandler = (
     return Promise.resolve(
       handleError(
         new InvalidRequestError("Transaction Reference Id was invalid"),
-        requestLogger,
       ),
     );
   }
@@ -204,7 +184,6 @@ export const getDetailsHandler = (
     event.requestContext,
     appContext.getUseCases().getDetails,
     undefined,
-    requestLogger,
   );
 };
 
