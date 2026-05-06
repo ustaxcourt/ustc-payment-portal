@@ -308,33 +308,51 @@ resource "aws_iam_role_policy" "test_unauthorized_api_invoke" {
   })
 }
 
-# Consolidated policy for the shared dev deployer role per PR workspace.
-# Kept as one policy (3 statements) to stay well under AWS's 10 inline-policy limit
-# when multiple PR workspaces are active concurrently.
-resource "aws_iam_role_policy" "deployer_pr_workspace" {
-  name = "pr-workspace-${local.name_prefix}"
-  role = local.dev_deployer_role_name
+# Runtime-invoke permissions for the dev deployer role (assume test roles,
+# invoke migration runners, call API Gateway stages). The dev deployer is
+# shared between PR work and post-merge dev deploys, so both dev and pr-*
+# ARNs are listed.
+#
+# One shared policy instead of per-PR: AWS caps the sum of inline policy size
+# on a role at 10,240 bytes — per-PR policies hit the cap at ~17 concurrent
+# PRs. Created once in the default (dev) workspace; PR workspaces don't touch
+# the role.
+#
+# Stage names are deterministic ("dev" or "pr-<num>") — see stage_name above.
+resource "aws_iam_role_policy" "deployer_pr_workspaces" {
+  count = local.environment == "dev" ? 1 : 0
+  name  = "pr-workspaces"
+  role  = local.dev_deployer_role_name
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "AssumeTestUnauthorizedRole"
-        Effect   = "Allow"
-        Action   = "sts:AssumeRole"
-        Resource = aws_iam_role.test_unauthorized.arn
+        Sid    = "AssumeTestUnauthorizedRoles"
+        Effect = "Allow"
+        Action = "sts:AssumeRole"
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/ustc-payment-processor-test-unauthorized-role",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/ustc-payment-processor-pr-*-test-unauthorized-role",
+        ]
       },
       {
-        Sid      = "InvokeMigrationRunner"
-        Effect   = "Allow"
-        Action   = "lambda:InvokeFunction"
-        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:${local.name_prefix}-migrationRunner"
+        Sid    = "InvokeMigrationRunners"
+        Effect = "Allow"
+        Action = "lambda:InvokeFunction"
+        Resource = [
+          "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor-migrationRunner",
+          "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor-pr-*-migrationRunner",
+        ]
       },
       {
-        Sid      = "InvokeApiGateway"
-        Effect   = "Allow"
-        Action   = "execute-api:Invoke"
-        Resource = "${module.api.api_gateway_execution_arn}/*"
+        Sid    = "InvokeApiGateways"
+        Effect = "Allow"
+        Action = "execute-api:Invoke"
+        Resource = [
+          "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*/dev/*/*",
+          "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*/pr-*/*/*",
+        ]
       }
     ]
   })
