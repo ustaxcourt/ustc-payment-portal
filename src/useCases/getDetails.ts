@@ -15,6 +15,7 @@ import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
 import { ServerError } from "../errors/serverError";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
+import { logger } from "../utils/logger";
 
 type GetDetailsRequest = {
   transactionReferenceId: string;
@@ -83,6 +84,17 @@ const updatePendingAttemptFromPayGov = async (
   allRows: TransactionModel[],
   tcsAppId: string,
 ): Promise<GetDetailsResponse> => {
+  const pendingRows = allRows.filter((row) => row.transactionStatus === "pending");
+  if (pendingRows.length > 1) {
+    logger.error({
+      transactionReferenceId: allRows[0].transactionReferenceId,
+      pendingCount: pendingRows.length,
+      },
+      `Expected at most 1 pending row for transactionReferenceId, found ${pendingRows.length}`,
+    );
+    throw new ServerError(`More than one pending transaction attempt found for reference ID ${allRows[0].transactionReferenceId}`);
+  }
+
   const transactions: TransactionRecordSummary[] = await Promise.all(
     allRows.map(async (row) => {
       if (!row.paygovTrackingId || isTerminal(row.transactionStatus)) {

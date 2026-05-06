@@ -5,6 +5,11 @@ import { NotFoundError } from "../errors/notFound";
 import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
+import { logger } from "../utils/logger";
+
+jest.mock("../utils/logger", () => ({
+  logger: { error: jest.fn() },
+}));
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -484,6 +489,38 @@ describe("getDetails", () => {
       });
 
       expect(result.transactions).toHaveLength(2);
+    });
+
+    it("throws ServerError when more than one pending row exists for the same transactionReferenceId", async () => {
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({
+          agencyTrackingId: "attempt-1",
+          transactionStatus: "pending",
+          paymentStatus: "pending",
+          paygovTrackingId: "TRK0000000000000001AB",
+        }),
+        buildRow({
+          agencyTrackingId: "attempt-2",
+          transactionStatus: "pending",
+          paymentStatus: "pending",
+          paygovTrackingId: "TRK0000000000000002AB",
+        }),
+      ]);
+
+      await expect(
+        getDetails(appContext, {
+          client: mockClient,
+          request: { transactionReferenceId: mockTransactionReferenceId },
+        }),
+      ).rejects.toThrow(ServerError);
+
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transactionReferenceId: mockTransactionReferenceId,
+          pendingCount: 2,
+        }),
+        expect.stringContaining("Expected at most 1 pending row"),
+      );
     });
 
     it("writes back every pending attempt in a multi-row group", async () => {
