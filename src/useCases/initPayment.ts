@@ -12,12 +12,7 @@ import { isUniqueViolation } from "../db/pgErrors";
 import { PayGovError } from "../errors/payGovError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
-import {
-  createRequestLogger,
-  getMetadataKeys,
-  getUrlOrigin,
-} from "../utils/logger";
-import { Logger } from "pino/pino";
+import { getMetadataKeys, getUrlOrigin } from "../utils/logger";
 
 const NETWORK_ERROR_CODES = new Set([
   "ECONNREFUSED",
@@ -37,20 +32,25 @@ export type InitPayment = (
   params: {
     client: ClientPermission;
     request: InitPaymentRequest;
-    requestLogger?: Logger;
   },
 ) => Promise<InitPaymentResponse>;
 
 export const initPayment: InitPayment = async (
   appContext,
-  { client, request, requestLogger },
+  { client, request },
 ) => {
   const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel } =
     request;
   const { clientName } = client;
   const metadataKeys = getMetadataKeys(request.metadata);
 
-  requestLogger?.info(
+  const requestLogger = appContext.logger({
+    clientName,
+    feeId,
+    transactionReferenceId,
+  });
+
+  requestLogger.info(
     {
       requestParams: {
         feeId,
@@ -93,7 +93,7 @@ export const initPayment: InitPayment = async (
 
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
   const agencyTrackingId = generateAgencyTrackingId();
-  const useCaseLogger = requestLogger?.child({ agencyTrackingId });
+  const useCaseLogger = requestLogger.child({ agencyTrackingId });
 
   const req = new StartOnlineCollectionRequest({
     tcsAppId: fee.tcsAppId,
@@ -115,7 +115,7 @@ export const initPayment: InitPayment = async (
       transactionStatus: "received",
       metadata: request.metadata,
     });
-    useCaseLogger?.info(
+    useCaseLogger.info(
       {
         requestParams: {
           feeId,
@@ -127,7 +127,7 @@ export const initPayment: InitPayment = async (
     );
   } catch (err) {
     if (isUniqueViolation(err)) {
-      useCaseLogger?.error(
+      useCaseLogger.error(
         { err },
         "Failed to persist received transaction due to unique constraint",
       );
@@ -138,7 +138,7 @@ export const initPayment: InitPayment = async (
         "A payment session is already in-flight for this transactionReferenceId",
       );
     }
-    useCaseLogger?.error({ err }, "Failed to persist received transaction");
+    useCaseLogger.error({ err }, "Failed to persist received transaction");
     throw new Error(
       `Failed to record received transaction: ${
         err instanceof Error ? err.message : String(err)
@@ -148,10 +148,10 @@ export const initPayment: InitPayment = async (
 
   try {
     result = await req.makeSoapRequest(appContext);
-    useCaseLogger?.info("Pay.gov startOnlineCollection completed");
+    useCaseLogger.info("Pay.gov startOnlineCollection completed");
   } catch (err) {
     await TransactionModel.updateToFailed(agencyTrackingId);
-    useCaseLogger?.error({ err }, "Pay.gov request failed");
+    useCaseLogger.error({ err }, "Pay.gov request failed");
     if (isNetworkError(err)) {
       throw new PayGovError();
     }
@@ -160,9 +160,9 @@ export const initPayment: InitPayment = async (
 
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
-    useCaseLogger?.info("Persisted initiated transaction");
+    useCaseLogger.info("Persisted initiated transaction");
   } catch (err) {
-    useCaseLogger?.error(
+    useCaseLogger.error(
       { err },
       "Failed to persist initiated transaction after Pay.gov response",
     );
@@ -173,7 +173,7 @@ export const initPayment: InitPayment = async (
     );
   }
 
-  useCaseLogger?.info("initPayment use case completed");
+  useCaseLogger.info("initPayment use case completed");
 
   return {
     token: result.token,

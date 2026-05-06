@@ -1,4 +1,5 @@
 import { AppContext } from "../types/AppContext";
+import { createRequestLogger } from "../utils/logger";
 
 export const testAppContext: AppContext = {
   getHttpsAgent: jest.fn(),
@@ -11,4 +12,5 @@ export const testAppContext: AppContext = {
     getTransactionPaymentStatus: jest.fn(),
     getTransactionsByStatus: jest.fn(),
   }),
+  logger: (context = {}) => createRequestLogger(context),
 };

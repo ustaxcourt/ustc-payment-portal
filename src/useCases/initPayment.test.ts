@@ -45,7 +45,6 @@ import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
 import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
 import { ClientPermission } from "../types/ClientPermission";
-import { createRequestLogger } from "../utils/logger";
 
 const mockClient: ClientPermission = {
   clientName: "Test Client App",
@@ -110,7 +109,7 @@ describe("initPayment", () => {
     expect(TransactionModel.updateToInitiated).toHaveBeenCalled();
   });
 
-  it("calls requestLogger when provided", async () => {
+  it("logs lifecycle events via appContext.logger", async () => {
     mockSoapRequest("test-token-logger");
 
     const childInfo = jest.fn();
@@ -124,13 +123,22 @@ describe("initPayment", () => {
       }),
     };
 
+    const loggerSpy = jest
+      .spyOn(appContext, "logger")
+      .mockReturnValue(mockRequestLogger as any);
+
     await initPayment(appContext, {
       client: mockClient,
       request: validPetitionRequest,
-      requestLogger: mockRequestLogger as unknown as ReturnType<
-        typeof createRequestLogger
-      >,
     });
+
+    expect(loggerSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientName: mockClient.clientName,
+        feeId: "PETITION_FILING_FEE",
+        transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+      }),
+    );
 
     expect(mockRequestLogger.info).toHaveBeenCalledWith(
       expect.objectContaining({

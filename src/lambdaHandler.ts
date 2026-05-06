@@ -4,6 +4,7 @@ import {
   APIGatewayEventRequestContext,
 } from "aws-lambda";
 import { ZodType } from "zod";
+import { Logger } from "pino/pino";
 import { createAppContext } from "./appContext";
 import { extractCallerArn } from "./extractCallerArn";
 import { authorizeClient } from "./authorizeClient";
@@ -16,18 +17,15 @@ import { ClientPermission } from "./types/ClientPermission";
 import { AppContext } from "./types/AppContext";
 import { isValidPaymentStatus } from "./useCases/getTransactionsByStatus";
 import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
-import { createRequestLogger } from "./utils/logger";
 import { Metadata, InitPaymentRequest } from "./schemas";
-import { Logger } from "pino/pino";
 
-const appContext = createAppContext();
+export const appContext = createAppContext();
 
 type LambdaHandler<T> = (
   appContext: AppContext,
   params: {
     client: ClientPermission;
     request: T;
-    requestLogger?: Logger;
   },
 ) => Promise<unknown>;
 
@@ -36,29 +34,33 @@ const lambdaHandler = async <T>(
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler<T>,
   feeId?: string,
-  requestLogger: Logger = createRequestLogger({}),
+  requestLogger?: Logger,
 ): Promise<APIGatewayProxyResult> => {
-  let scopedLogger = requestLogger;
+  let clientScopedLogger: Logger | undefined;
   try {
     const roleArn = extractCallerArn(requestContext);
     const client = await authorizeClient(roleArn, feeId);
-    scopedLogger = requestLogger.child({
-      clientName: client.clientName,
-      clientArn: client.clientRoleArn,
-    });
-    scopedLogger.info("Authorized client for request");
+    clientScopedLogger =
+      requestLogger?.child({
+        clientName: client.clientName,
+        clientArn: client.clientRoleArn,
+      }) ??
+      appContext.logger({
+        clientName: client.clientName,
+        clientArn: client.clientRoleArn,
+      });
+    clientScopedLogger.info("Authorized client for request");
     const result = await callback(appContext, {
       client,
       request,
-      requestLogger: scopedLogger,
     });
-    scopedLogger.info("Completed request");
+    clientScopedLogger.info("Completed request");
     return {
       statusCode: 200,
       body: JSON.stringify(result),
     };
   } catch (err) {
-    return handleError(err, scopedLogger);
+    return handleError(err, clientScopedLogger);
   }
 };
 
@@ -68,13 +70,10 @@ type ParseResult<T> =
 
 const safeJsonParse = <T = any>(
   body: string | null | undefined,
-  errorLogger?: ReturnType<typeof createRequestLogger>,
+  errorLogger?: Logger,
 ): ParseResult<T> => {
   if (!body) {
-    const error = handleError(
-      new InvalidRequestError("missing body"),
-      errorLogger,
-    );
+    const error = handleError(new InvalidRequestError("missing body"));
     return { ok: false, error };
   }
 
@@ -85,7 +84,6 @@ const safeJsonParse = <T = any>(
       ok: false,
       error: handleError(
         new InvalidRequestError("invalid JSON in request body"),
-        errorLogger,
       ),
     };
   }
@@ -98,7 +96,7 @@ const safeJsonParse = <T = any>(
 const parseAndValidate = <T>(
   body: string | null | undefined,
   schema: ZodType<T>,
-  errorLogger?: ReturnType<typeof createRequestLogger>,
+  errorLogger?: Logger,
 ): ParseResult<T> => {
   const parsed = safeJsonParse(body, errorLogger);
   if (!parsed.ok) return parsed;
@@ -114,7 +112,7 @@ const parseAndValidate = <T>(
 export const initPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const requestLogger = createRequestLogger({
+  const requestLogger = appContext.logger({
     requestId: event.requestContext.requestId,
     path: event.path,
     httpMethod: event.httpMethod,
@@ -137,7 +135,7 @@ export const initPaymentHandler = (
       ? result.value.metadata
       : undefined;
 
-  const scopedRequestLogger: Logger = requestLogger.child({
+  const enrichedLogger = requestLogger.child({
     feeId: result.value.feeId,
     transactionReferenceId: result.value.transactionReferenceId,
     metadata,
@@ -148,14 +146,14 @@ export const initPaymentHandler = (
     event.requestContext,
     appContext.getUseCases().initPayment,
     result.value.feeId,
-    scopedRequestLogger,
+    enrichedLogger,
   );
 };
 
 export const processPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const requestLogger = createRequestLogger({
+  const requestLogger = appContext.logger({
     requestId: event.requestContext.requestId,
     path: event.path,
     httpMethod: event.httpMethod,
@@ -181,7 +179,7 @@ export const processPaymentHandler = (
 export const getDetailsHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const requestLogger = createRequestLogger({
+  const requestLogger = appContext.logger({
     requestId: event.requestContext.requestId,
     path: event.path,
     httpMethod: event.httpMethod,
@@ -199,7 +197,7 @@ export const getDetailsHandler = (
       ),
     );
   }
-  // getDetails is a read-only lookup — no feeId required, IAM registration check is sufficient.
+  // getDetails is a read-only lookup - no feeId required, IAM registration check is sufficient.
   // Per-transaction client ownership is enforced inside the use case.
   return lambdaHandler(
     { transactionReferenceId: result.data.transactionReferenceId },
@@ -210,10 +208,10 @@ export const getDetailsHandler = (
   );
 };
 
-// ──────────────────────────────
+// ------------------------------
 // Dashboard Lambda Handlers
 // NOTE: If we write integration tests for these handlers, we will need to setup PR ephemeral environments to spin up a RDS instance, otherwise the tests will always fail.
-// ──────────────────────────────
+// ------------------------------
 const getDashboardCorsHeaders = () => {
   const origin = process.env.DASHBOARD_ALLOWED_ORIGIN;
   if (!origin) {

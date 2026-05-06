@@ -5,12 +5,12 @@ import { getDetails } from "./useCases/getDetails";
 import { initPayment } from "./useCases/initPayment";
 import { processPayment } from "./useCases/processPayment";
 import { getRecentTransactions } from "./useCases/getRecentTransactions";
-import {
-  getTransactionsByStatus,
-} from "./useCases/getTransactionsByStatus";
+import { getTransactionsByStatus } from "./useCases/getTransactionsByStatus";
 import { getTransactionPaymentStatus } from "./useCases/getTransactionPaymentStatus";
+import { createRequestLogger } from "./utils/logger";
 import * as https from "https";
 import fetch from "node-fetch";
+import { Logger } from "pino/pino";
 
 let httpsAgentCache: https.Agent | undefined;
 
@@ -19,6 +19,11 @@ function normalizePem(pem: string): string {
 }
 
 export const createAppContext = (): AppContext => {
+  const { LOG_LEVEL: logLevel } = process.env;
+  const baseLogger: Logger = createRequestLogger({
+    logLevel,
+  });
+
   return {
     getHttpsAgent: async () => {
       if (!httpsAgentCache) {
@@ -48,7 +53,7 @@ export const createAppContext = (): AppContext => {
     },
     postHttpRequest: async (
       appContext: AppContext,
-      body: string
+      body: string,
     ): Promise<string> => {
       const httpsAgent = await appContext.getHttpsAgent();
 
@@ -78,7 +83,7 @@ export const createAppContext = (): AppContext => {
                 secretId: tokenSecretId,
                 errorName: err?.name,
                 errorMessage: err?.message,
-              }
+              },
             );
             // Proceed without Authorization header if token fetch fails
           }
@@ -103,5 +108,30 @@ export const createAppContext = (): AppContext => {
       getTransactionPaymentStatus,
       getTransactionsByStatus,
     }),
+    /**
+     * Creates a request-scoped logger with optional context enrichment.
+     *
+     * Each call to logger() returns a new child logger of the base logger,
+     * allowing context to be progressively added through a request lifecycle.
+     *
+     * **IMPORTANT**: Always store the result and reuse it within a single request scope:
+     * ```typescript
+     * // ✅ CORRECT: Store the logger and reuse it
+     * const requestLogger = appContext.logger({ requestId, path });
+     * requestLogger.debug("message 1");
+     * const enrichedLogger = requestLogger.child({ feeId });
+     * enrichedLogger.info("message 2");
+     *
+     * // ❌ WRONG: Calling without storing loses context
+     * appContext.logger({ requestId, path });
+     * appContext.logger().debug("message"); // This logger lacks the requestId/path context
+     * ```
+     *
+     * Use this pattern in Lambda handlers to set up request context once,
+     * then chain .child() calls to add operation-specific context.
+     */
+    logger: (context = {}): Logger => {
+      return baseLogger.child(context);
+    },
   };
 };

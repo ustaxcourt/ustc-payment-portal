@@ -1,10 +1,9 @@
 import { ZodError } from "zod";
 import { PayGovError } from "./errors/payGovError";
 import { logger } from "./utils/logger";
+import { Logger } from "pino/pino";
 
-type ErrorLogger = Pick<typeof logger, "error">;
-
-export const handleError = (err: any, errorLogger: ErrorLogger = logger) => {
+export const handleError = (err: any, errorLogger: Logger = logger) => {
   errorLogger.error({ err }, "responding with an error");
   if (err.statusCode && err.statusCode < 500) {
     return {

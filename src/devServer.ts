@@ -10,10 +10,8 @@ import { migrationHandler } from "./migrationHandler";
 import { handleError } from "./handleError";
 import "./db/knex";
 import { ClientPermission } from "./types/ClientPermission";
-import { createRequestLogger } from "./utils/logger";
-import { Logger } from "pino/pino";
 
-const appContext = createAppContext();
+export const appContext = createAppContext();
 
 const app = express();
 app.use(express.json());
@@ -72,7 +70,7 @@ app.post("/init", async (req, res) => {
       ? req.body.metadata
       : undefined;
 
-  const requestLogger: Logger = createRequestLogger({
+  const requestLogger = appContext.logger({
     requestId:
       typeof req.header("x-request-id") === "string"
         ? req.header("x-request-id")
@@ -91,12 +89,11 @@ app.post("/init", async (req, res) => {
     const result = await appContext.getUseCases().initPayment(appContext, {
       client: devClient,
       request: req.body,
-      requestLogger,
     });
     requestLogger.info("Completed /init request");
     res.json(result);
   } catch (err) {
-    const { statusCode, body } = handleError(err, requestLogger);
+    const { statusCode, body } = handleError(err);
     res.status(statusCode).json(JSON.parse(body));
   }
 });

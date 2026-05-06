@@ -42,10 +42,12 @@ const useCasesMock = {
 };
 
 jest.mock("./appContext", () => ({
-  createAppContext: jest.fn(() => ({
-    getHttpsAgent: jest.fn(),
-    postHttpRequest: jest.fn()
-      .mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
+  createAppContext: jest.fn(() => {
+    const loggerModuleLocal = require("./utils/logger");
+    return {
+      getHttpsAgent: jest.fn(),
+      postHttpRequest: jest.fn()
+        .mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
       <S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
         <S:Header>
           <WorkContext xmlns="http://oracle.com/weblogic/soap/workarea/">blah=</WorkContext>
@@ -58,8 +60,12 @@ jest.mock("./appContext", () => ({
           </ns2:startOnlineCollectionResponse>
         </S:Body>
       </S:Envelope>`),
-    getUseCases: () => useCasesMock,
-  })),
+      getUseCases: () => useCasesMock,
+      logger: jest.fn((context?: Record<string, unknown>) =>
+        loggerModuleLocal.createRequestLogger(context ?? {}),
+      ),
+    };
+  }),
 }));
 
 // Mock permissionsClient to return valid permissions for test role
@@ -284,8 +290,11 @@ describe("lambdaHandler", () => {
           clientArn: "arn:aws:iam::123456789012:role/dawson-client",
         }),
       );
-      expect(mockInitPayment.mock.calls[0][1].requestLogger).toBe(
-        clientScopedLogger,
+      expect(mockInitPayment.mock.calls[0][1]).toEqual(
+        expect.objectContaining({
+          client: expect.any(Object),
+          request: expect.any(Object),
+        }),
       );
       expect(childInfo).toHaveBeenCalledWith("Authorized client for request");
       expect(childInfo).toHaveBeenCalledWith("Completed request");
