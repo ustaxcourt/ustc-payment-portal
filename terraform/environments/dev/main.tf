@@ -308,39 +308,51 @@ resource "aws_iam_role_policy" "test_unauthorized_api_invoke" {
   })
 }
 
-# Single shared policy on the dev deployer role covering all PR workspaces via
-# wildcarded ARNs. Created once in the default (dev) workspace; PR workspaces
-# don't touch the role at all.
+# Runtime-invoke permissions for the dev deployer role (assume test roles,
+# invoke migration runners, call API Gateway stages). The dev deployer is
+# shared between PR work and post-merge dev deploys, so both dev and pr-*
+# ARNs are listed.
 #
-# Why one shared policy instead of one per PR: AWS caps the sum of inline
-# policy size on a role at 10,240 bytes (hard limit). Per-PR policies of
-# ~500–600 bytes each capped the role at ~17 concurrent PRs and accumulated
-# orphans whenever pr_cleanup didn't complete.
-resource "aws_iam_role_policy" "deployer_pr_workspaces" {
+# One shared policy instead of per-PR: AWS caps the sum of inline policy size
+# on a role at 10,240 bytes — per-PR policies hit the cap at ~17 concurrent
+# PRs. Created once in the default (dev) workspace; PR workspaces don't touch
+# the role.
+#
+# Stage names are deterministic ("dev" or "pr-<num>") — see stage_name above.
+resource "aws_iam_role_policy" "deployer_runtime_invoke" {
   count = local.environment == "dev" ? 1 : 0
-  name  = "pr-workspaces"
+  name  = "deployer-runtime-invoke"
   role  = local.dev_deployer_role_name
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "AssumeTestUnauthorizedRoles"
-        Effect   = "Allow"
-        Action   = "sts:AssumeRole"
-        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/ustc-payment-processor-pr-*-test-unauthorized-role"
+        Sid    = "AssumeTestUnauthorizedRoles"
+        Effect = "Allow"
+        Action = "sts:AssumeRole"
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/ustc-payment-processor-test-unauthorized-role",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/ustc-payment-processor-pr-*-test-unauthorized-role",
+        ]
       },
       {
-        Sid      = "InvokeMigrationRunners"
-        Effect   = "Allow"
-        Action   = "lambda:InvokeFunction"
-        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor-pr-*-migrationRunner"
+        Sid    = "InvokeMigrationRunners"
+        Effect = "Allow"
+        Action = "lambda:InvokeFunction"
+        Resource = [
+          "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor-migrationRunner",
+          "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor-pr-*-migrationRunner",
+        ]
       },
       {
-        Sid      = "InvokeApiGateways"
-        Effect   = "Allow"
-        Action   = "execute-api:Invoke"
-        Resource = "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*/*/*/*"
+        Sid    = "InvokeApiGateways"
+        Effect = "Allow"
+        Action = "execute-api:Invoke"
+        Resource = [
+          "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*/dev/*/*",
+          "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*/pr-*/*/*",
+        ]
       }
     ]
   })
