@@ -8,6 +8,10 @@ import { generateOpenAPIDocument } from "./openapi/registry";
 import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
 import { migrationHandler } from "./migrationHandler";
 import { handleError } from "./handleError";
+import { InvalidRequestError } from "./errors/invalidRequest";
+import { parseRequestBody } from "./parseRequestBody";
+import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
+import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
 import "./db/knex";
 import { ClientPermission } from "./types/ClientPermission";
 import { logger } from "./utils/logger";
@@ -15,7 +19,25 @@ import { logger } from "./utils/logger";
 const appContext = createAppContext();
 
 const app = express();
-app.use(express.json());
+// strict: false to match the Lambda's JSON.parse, which accepts primitive top-level
+// values (strings, null, booleans, numbers). With strict: true (the express default),
+// those would be rejected as parse errors before reaching schema validation, so a
+// payload like "foo" would return "invalid JSON in request body" locally but a
+// Zod "Validation error" through the Lambda. Instantiate once — the parser is
+// stateless across requests.
+const jsonBodyParser = express.json({ strict: false });
+app.use((req, res, next) => {
+  jsonBodyParser(req, res, (err) => {
+    if (err) {
+      const { statusCode, body } = handleError(
+        new InvalidRequestError("invalid JSON in request body"),
+      );
+      res.status(statusCode).json(JSON.parse(body));
+      return;
+    }
+    next();
+  });
+});
 const port = 8080; // default port to listen
 const devClient: ClientPermission = {
   clientName: "Dev Client App",
@@ -70,9 +92,10 @@ app.post("/init", async (req, res) => {
     "Received /init request",
   );
   try {
+    const request = parseRequestBody(req, InitPaymentRequestSchema);
     const result = await appContext
       .getUseCases()
-      .initPayment(appContext, { client: devClient, request: req.body });
+      .initPayment(appContext, { client: devClient, request });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
@@ -82,9 +105,10 @@ app.post("/init", async (req, res) => {
 
 app.post("/process", async (req, res) => {
   try {
+    const request = parseRequestBody(req, ProcessPaymentRequestSchema);
     const result = await appContext
       .getUseCases()
-      .processPayment(appContext, { client: devClient, request: req.body });
+      .processPayment(appContext, { client: devClient, request });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);

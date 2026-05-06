@@ -139,7 +139,7 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
   });
 });
 
-describe("Unsigned auth rejection", () => {
+describeWithCreds("Unsigned auth rejection", () => {
   let apiBaseUrl: string;
 
   beforeAll(() => {
@@ -221,7 +221,7 @@ describeWithCreds("SigV4 helper behavior and credential handling", () => {
   });
 });
 
-describe("Credential guardrails", () => {
+describeWithCreds("Credential guardrails", () => {
   let apiBaseUrl: string;
 
   beforeAll(() => {
