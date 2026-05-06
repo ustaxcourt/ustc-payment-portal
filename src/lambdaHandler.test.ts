@@ -9,6 +9,7 @@ import { GoneError } from "./errors/gone";
 import { ConflictError } from "./errors/conflict";
 import { PayGovError } from "./errors/payGovError";
 import { NotFoundError } from "./errors/notFound";
+import * as loggerModule from "./utils/logger";
 
 // Reusable mock for appContext with dynamic use case injection
 const useCasesMock = {
@@ -41,10 +42,12 @@ const useCasesMock = {
 };
 
 jest.mock("./appContext", () => ({
-  createAppContext: jest.fn(() => ({
-    getHttpsAgent: jest.fn(),
-    postHttpRequest: jest.fn()
-      .mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
+  createAppContext: jest.fn(() => {
+    const loggerModuleLocal = require("./utils/logger");
+    return {
+      getHttpsAgent: jest.fn(),
+      postHttpRequest: jest.fn()
+        .mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
       <S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
         <S:Header>
           <WorkContext xmlns="http://oracle.com/weblogic/soap/workarea/">blah=</WorkContext>
@@ -57,8 +60,15 @@ jest.mock("./appContext", () => ({
           </ns2:startOnlineCollectionResponse>
         </S:Body>
       </S:Envelope>`),
-    getUseCases: () => useCasesMock,
-  })),
+      getUseCases: () => useCasesMock,
+      logger: jest.fn((context?: Record<string, unknown>) =>
+        loggerModuleLocal.createRequestLogger({
+          logLevel: String(process.env.LOG_LEVEL ?? "info"),
+          ...(context ?? {}),
+        }),
+      ),
+    };
+  }),
 }));
 
 // Mock permissionsClient to return valid permissions for test role
@@ -208,15 +218,39 @@ describe("lambdaHandler", () => {
         "Client not authorized for feeId",
       );
     });
-  });
 
-  it("returns 409 when init payment use case throws ConflictError", async () => {
-      useCasesMock.initPayment = jest
+    it("includes and uses requestLogger for /init", async () => {
+      const enrichedLogger = {
+        info: jest.fn(),
+        error: jest.fn(),
+        child: jest.fn(),
+      };
+      const clientScopedLogger = {
+        info: jest.fn(),
+        error: jest.fn(),
+      };
+      const childInfo = jest.fn();
+      clientScopedLogger.info = childInfo;
+      enrichedLogger.child = jest.fn().mockReturnValue(clientScopedLogger);
+
+      const requestLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        error: jest.fn(),
+        child: jest.fn().mockReturnValue(enrichedLogger),
+      };
+
+      const mockInitPayment = jest
         .fn()
-        .mockRejectedValueOnce(
-          new ConflictError(
-            "A payment session is already initiated for this transactionReferenceId",
-          ),
+        .mockResolvedValue({ token: "test-token-123" });
+      useCasesMock.initPayment = mockInitPayment;
+
+      const createRequestLoggerSpy = jest
+        .spyOn(loggerModule, "createRequestLogger")
+        .mockReturnValue(
+          requestLogger as unknown as ReturnType<
+            typeof loggerModule.createRequestLogger
+          >,
         );
 
       const event = {
@@ -229,13 +263,167 @@ describe("lambdaHandler", () => {
         }),
         headers: mockHeaders,
         requestContext: mockRequestContext,
+        path: "/init",
+        httpMethod: "POST",
+      } as unknown as APIGatewayEvent;
+
+      await initPaymentHandler(event);
+
+      expect(createRequestLoggerSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestId: mockRequestContext.requestId,
+          path: "/init",
+          httpMethod: "POST",
+        }),
+      );
+
+      expect(requestLogger.debug).toHaveBeenCalledWith(
+        "Received /init request",
+      );
+      expect(requestLogger.child).toHaveBeenCalledWith(
+        expect.objectContaining({
+          feeId: "PETITION_FILING_FEE",
+          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+          metadata: { docketNumber: "123-26" },
+        }),
+      );
+      expect(enrichedLogger.child).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientName: "Test Client",
+          clientArn: "arn:aws:iam::123456789012:role/dawson-client",
+        }),
+      );
+      expect(mockInitPayment.mock.calls[0][1]).toEqual(
+        expect.objectContaining({
+          client: expect.any(Object),
+          request: expect.any(Object),
+        }),
+      );
+      expect(childInfo).toHaveBeenCalledWith("Authorized client for request");
+      expect(childInfo).toHaveBeenCalledWith("Completed request");
+    });
+
+    it("logs receipt for malformed /init requests", async () => {
+      const requestLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        error: jest.fn(),
+        child: jest.fn(),
+      };
+
+      jest
+        .spyOn(loggerModule, "createRequestLogger")
+        .mockReturnValue(
+          requestLogger as unknown as ReturnType<
+            typeof loggerModule.createRequestLogger
+          >,
+        );
+
+      const event = {
+        body: null,
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+        path: "/init",
+        httpMethod: "POST",
       } as unknown as APIGatewayEvent;
 
       const result = await initPaymentHandler(event);
 
-      expect(result.statusCode).toBe(409);
-      expect(JSON.parse(result.body).message).toContain("already initiated");
+      expect(result.statusCode).toBe(400);
+      expect(requestLogger.debug).toHaveBeenCalledWith(
+        "Received /init request",
+      );
+      expect(requestLogger.child).not.toHaveBeenCalled();
     });
+
+    it("logs /init failures once with request-scoped logger", async () => {
+      const clientScopedLogger = {
+        info: jest.fn(),
+        error: jest.fn(),
+      };
+      const enrichedLogger = {
+        info: jest.fn(),
+        error: jest.fn(),
+        child: jest.fn().mockReturnValue(clientScopedLogger),
+      };
+      const requestLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        error: jest.fn(),
+        child: jest.fn().mockReturnValue(enrichedLogger),
+      };
+
+      useCasesMock.initPayment = jest
+        .fn()
+        .mockRejectedValueOnce(new ConflictError("already initiated"));
+
+      jest
+        .spyOn(loggerModule, "createRequestLogger")
+        .mockReturnValue(
+          requestLogger as unknown as ReturnType<
+            typeof loggerModule.createRequestLogger
+          >,
+        );
+
+      const globalErrorSpy = jest
+        .spyOn(loggerModule.logger, "error")
+        .mockImplementation(() => loggerModule.logger as any);
+
+      try {
+        const event = {
+          body: JSON.stringify({
+            transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+            feeId: "PETITION_FILING_FEE",
+            urlSuccess: "https://example.com/success",
+            urlCancel: "https://example.com/cancel",
+            metadata: { docketNumber: "123-26" },
+          }),
+          headers: mockHeaders,
+          requestContext: mockRequestContext,
+          path: "/init",
+          httpMethod: "POST",
+        } as unknown as APIGatewayEvent;
+
+        const result = await initPaymentHandler(event);
+
+        expect(result.statusCode).toBe(409);
+        expect(clientScopedLogger.error).toHaveBeenCalledWith(
+          { err: expect.any(ConflictError) },
+          "responding with an error",
+        );
+        expect(globalErrorSpy).not.toHaveBeenCalled();
+      } finally {
+        globalErrorSpy.mockRestore();
+      }
+    });
+  });
+
+  it("returns 409 when init payment use case throws ConflictError", async () => {
+    useCasesMock.initPayment = jest
+      .fn()
+      .mockRejectedValueOnce(
+        new ConflictError(
+          "A payment session is already initiated for this transactionReferenceId",
+        ),
+      );
+
+    const event = {
+      body: JSON.stringify({
+        transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+        feeId: "PETITION_FILING_FEE",
+        urlSuccess: "https://example.com/success",
+        urlCancel: "https://example.com/cancel",
+        metadata: { docketNumber: "123-26" },
+      }),
+      headers: mockHeaders,
+      requestContext: mockRequestContext,
+    } as unknown as APIGatewayEvent;
+
+    const result = await initPaymentHandler(event);
+
+    expect(result.statusCode).toBe(409);
+    expect(JSON.parse(result.body).message).toContain("already initiated");
+  });
 
   describe("processPaymentHandler", () => {
     it("returns 200 with v2 response shape on successful request", async () => {

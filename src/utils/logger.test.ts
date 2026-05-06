@@ -496,6 +496,7 @@ describe("src/utils/logger.ts", () => {
             awsRequestId: "req-123",
             path: "/payments/init",
             httpMethod: "POST",
+            logLevel: "info",
           });
 
           expect(child.bindings()).toEqual(

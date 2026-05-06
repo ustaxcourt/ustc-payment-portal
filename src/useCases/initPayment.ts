@@ -12,6 +12,7 @@ import { isUniqueViolation } from "../db/pgErrors";
 import { PayGovError } from "../errors/payGovError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
+import { getMetadataKeys, getUrlOrigin } from "../utils/logger";
 
 const NETWORK_ERROR_CODES = new Set([
   "ECONNREFUSED",
@@ -41,6 +42,27 @@ export const initPayment: InitPayment = async (
   const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel } =
     request;
   const { clientName } = client;
+  const metadataKeys = getMetadataKeys(request.metadata);
+
+  const requestLogger = appContext.logger({
+    clientName,
+    feeId,
+    transactionReferenceId,
+  });
+
+  requestLogger.info(
+    {
+      requestParams: {
+        feeId,
+        amount,
+        transactionReferenceId,
+        urlSuccessOrigin: getUrlOrigin(urlSuccess),
+        urlCancelOrigin: getUrlOrigin(urlCancel),
+        metadataKeys,
+      },
+    },
+    "initPayment use case started",
+  );
 
   const fee = await FeesModel.getFeeById(feeId);
   if (!fee || !fee.tcsAppId) {
@@ -58,9 +80,7 @@ export const initPayment: InitPayment = async (
   }
 
   const existingInFlightTransaction =
-    await TransactionModel.findInFlightByReferenceId(
-      transactionReferenceId,
-    );
+    await TransactionModel.findInFlightByReferenceId(transactionReferenceId);
 
   if (existingInFlightTransaction) {
     // TODO: PAY-298, is the token less than 3 hours old? If so, just return it.
@@ -73,6 +93,7 @@ export const initPayment: InitPayment = async (
 
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
   const agencyTrackingId = generateAgencyTrackingId();
+  const useCaseLogger = requestLogger.child({ agencyTrackingId });
 
   const req = new StartOnlineCollectionRequest({
     tcsAppId: fee.tcsAppId,
@@ -94,8 +115,22 @@ export const initPayment: InitPayment = async (
       transactionStatus: "received",
       metadata: request.metadata,
     });
+    useCaseLogger.info(
+      {
+        requestParams: {
+          feeId,
+          transactionReferenceId,
+          metadataKeys,
+        },
+      },
+      "Persisted received transaction with generated agency tracking id",
+    );
   } catch (err) {
     if (isUniqueViolation(err)) {
+      useCaseLogger.error(
+        { err },
+        "Failed to persist received transaction due to unique constraint",
+      );
       // Concurrent initPayment lost the createReceived race — the partial unique index
       // `idx_transactions_unique_active` ensures at most one in-flight attempt per
       // (clientName, transactionReferenceId). Report the same 409 as the app-level check.
@@ -103,6 +138,7 @@ export const initPayment: InitPayment = async (
         "A payment session is already in-flight for this transactionReferenceId",
       );
     }
+    useCaseLogger.error({ err }, "Failed to persist received transaction");
     throw new Error(
       `Failed to record received transaction: ${
         err instanceof Error ? err.message : String(err)
@@ -112,8 +148,10 @@ export const initPayment: InitPayment = async (
 
   try {
     result = await req.makeSoapRequest(appContext);
+    useCaseLogger.info("Pay.gov startOnlineCollection completed");
   } catch (err) {
     await TransactionModel.updateToFailed(agencyTrackingId);
+    useCaseLogger.error({ err }, "Pay.gov request failed");
     if (isNetworkError(err)) {
       throw new PayGovError();
     }
@@ -122,13 +160,20 @@ export const initPayment: InitPayment = async (
 
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
+    useCaseLogger.info("Persisted initiated transaction");
   } catch (err) {
+    useCaseLogger.error(
+      { err },
+      "Failed to persist initiated transaction after Pay.gov response",
+    );
     throw new Error(
       `Payment was initiated but failed to persist initiated status: ${
         err instanceof Error ? err.message : String(err)
       }`,
     );
   }
+
+  useCaseLogger.info("initPayment use case completed");
 
   return {
     token: result.token,

@@ -46,12 +46,12 @@ import { createRequestLogger } from "./utils/logger";
 
 export async function lambdaHandler(event: any, context: any) {
   const requestLogger = createRequestLogger({
-    awsRequestId: context.awsRequestId,
+    requestId: event?.requestContext?.requestId,
     path: event?.path,
     httpMethod: event?.httpMethod,
   });
 
-  requestLogger.info({}, "Request received");
+  requestLogger.debug({}, "Request received");
 
   try {
     // Your handler logic here
@@ -66,9 +66,22 @@ export async function lambdaHandler(event: any, context: any) {
 
 The request logger automatically includes:
 
-- Lambda request ID
+- API request ID (`requestId` from API Gateway)
 - API path and HTTP method
+- Any endpoint-specific request fields you bind, such as `clientName`, `feeId`, `transactionReferenceId`, `agencyTrackingId`, and `metadata`
 - Any fields configured on the parent logger, such as service and environment metadata when present
+
+## Current `/init` Flow
+
+The `/init` path currently uses request-scoped logging in both the Express development server and the Lambda handler.
+
+- Receipt of the request is logged at `debug`
+- Request parameters are logged at `info` using safe summaries (for example URL origins and metadata keys, not full metadata values)
+- The generated `agencyTrackingId` is added to a child logger after the received transaction is written to the database
+- Pay.gov initialization completion is logged at `info`
+- Database, Pay.gov, and processing failures are logged at `error`
+
+This makes `/init` logs searchable in CloudWatch Logs Insights by request-level fields such as request ID, client name, fee ID, transaction reference ID, agency tracking ID, metadata keys, and log level.
 
 ## Sensitive Data
 
@@ -79,6 +92,9 @@ The request logger automatically includes:
 - `password`
 - `secret`
 - `certPassphrase`
+- `email`
+- `fullName`
+- `accessCode`
 
 If you need to log an object containing sensitive fields, they will be masked automatically:
 
@@ -98,7 +114,7 @@ When running `npm run start:server`, logs appear as colorized, human-readable te
 [14:35:22.125] INFO: Request started
     path: /transactions
     httpMethod: POST
-    awsRequestId: 1f9f1b73-4326-48c2-8cfc-c5e39d7f42ad
+    requestId: 1f9f1b73-4326-48c2-8cfc-c5e39d7f42ad
 ```
 
 ### Staging/Production

@@ -4,9 +4,16 @@ import { ProcessPayment } from "../useCases/processPayment";
 import { GetDetails } from "../useCases/getDetails";
 import { GetRecentTransactions } from "../useCases/getRecentTransactions";
 import { GetTransactionPaymentStatus } from "../useCases/getTransactionPaymentStatus";
-import {
-  GetTransactionsByStatus,
-} from "../useCases/getTransactionsByStatus";
+import { GetTransactionsByStatus } from "../useCases/getTransactionsByStatus";
+import { Logger } from "pino/pino";
+
+type LoggerContext = {
+  requestId?: string;
+  path?: string;
+  httpMethod?: string;
+  logLevel?: string;
+  [key: string]: unknown;
+};
 
 export type AppContext = {
   getHttpsAgent: () => Promise<https.Agent | undefined>;
@@ -19,4 +26,5 @@ export type AppContext = {
     getTransactionPaymentStatus: GetTransactionPaymentStatus;
     getTransactionsByStatus: GetTransactionsByStatus;
   };
+  logger: (context?: LoggerContext) => Logger;
 };
