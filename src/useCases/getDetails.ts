@@ -13,8 +13,10 @@ import { toPaymentMethod } from "../utils/toPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
-import { ServerError } from "../errors/serverError";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
+import { logger } from "../utils/logger";
+import { ForbiddenError } from "../errors/forbidden";
+import { ServerError } from "../errors/serverError";
 
 type GetDetailsRequest = {
   transactionReferenceId: string;
@@ -40,7 +42,6 @@ export const getDetails: GetDetails = async (
   appContext,
   { client, request },
 ) => {
-  // TODO: Remove client param here as unused, update tests.
   const { transactionReferenceId } = request;
 
   const allRows = await TransactionModel.findByReferenceId(
@@ -51,15 +52,36 @@ export const getDetails: GetDetails = async (
     throw new NotFoundError("Transaction Reference Id was not found");
   }
 
+  const feeId = allRows[0].feeId;
+  const hasAccess =
+    client.allowedFeeIds.includes("*") || client.allowedFeeIds.includes(feeId);
+  if (!hasAccess) {
+    logger.error(
+      {
+        feeId,
+        transactionReferenceId,
+        clientAllowedFeeIds: client.allowedFeeIds,
+      },
+      "Client does not have permission to access transactions for feeId",
+    );
+    throw new ForbiddenError(
+      `You do not have access to transactions for feeId '${feeId}'`,
+    );
+  }
+
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
-  const fee = await FeesModel.getFeeById(allRows[0].feeId);
+  const fee = await FeesModel.getFeeById(feeId);
   if (!fee || !fee.tcsAppId) {
     // Both branches indicate server-side data corruption: the FK prevents the first,
     // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
-    console.error(
-      `Fee misconfigured for feeId '${allRows[0].feeId}' on transactionReferenceId '${transactionReferenceId}': ${
-        !fee ? "fee row missing" : "tcsAppId missing"
-      }`,
+    logger.error(
+      {
+        feeId,
+        transactionReferenceId,
+        feeRowExists: !!fee,
+        tcsAppIdExists: !!fee?.tcsAppId,
+      },
+      "Fee misconfigured for feeId",
     );
     throw new ServerError();
   }
@@ -69,9 +91,7 @@ export const getDetails: GetDetails = async (
   // If the obligation is already resolved (success or failed), the DB is authoritative —
   // no need to hit Pay.gov. Only the pending path fans out to refresh attempts.
   if (paymentStatus !== "pending") {
-    const transactions = allRows.map((row) =>
-      toTransactionRecordSummary(row),
-    );
+    const transactions = allRows.map((row) => toTransactionRecordSummary(row));
     return { paymentStatus, transactions };
   }
 
@@ -127,7 +147,10 @@ const updatePendingAttemptFromPayGov = async (
           `Failed to persist refreshed status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
-        return { ...toTransactionRecordSummary(row), transactionStatus: refreshedStatus };
+        return {
+          ...toTransactionRecordSummary(row),
+          transactionStatus: refreshedStatus,
+        };
       }
     }),
   );
