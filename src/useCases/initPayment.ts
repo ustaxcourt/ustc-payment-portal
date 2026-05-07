@@ -47,11 +47,7 @@ export const initPayment: InitPayment = async (
   const metadataKeys = getMetadataKeys(request.metadata);
 
   const useCaseRootLogger =
-    requestLogger?.child({
-      clientName,
-      feeId,
-      transactionReferenceId,
-    }) ??
+    requestLogger ??
     appContext.logger({
       clientName,
       feeId,
@@ -135,10 +131,6 @@ export const initPayment: InitPayment = async (
     );
   } catch (err) {
     if (isUniqueViolation(err)) {
-      useCaseLogger.error(
-        { err },
-        "Failed to persist received transaction due to unique constraint",
-      );
       // Concurrent initPayment lost the createReceived race — the partial unique index
       // `idx_transactions_unique_active` ensures at most one in-flight attempt per
       // (clientName, transactionReferenceId). Report the same 409 as the app-level check.
@@ -156,7 +148,10 @@ export const initPayment: InitPayment = async (
 
   try {
     result = await req.makeSoapRequest(appContext);
-    useCaseLogger.info("Pay.gov startOnlineCollection completed");
+    useCaseLogger.info(
+      { agencyTrackingId, payGovResponse: result },
+      "Pay.gov startOnlineCollection completed",
+    );
   } catch (err) {
     await TransactionModel.updateToFailed(agencyTrackingId);
     useCaseLogger.error({ err }, "Pay.gov request failed");
@@ -168,7 +163,7 @@ export const initPayment: InitPayment = async (
 
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
-    useCaseLogger.info("Persisted initiated transaction");
+    useCaseLogger.info({ agencyTrackingId }, "Persisted initiated transaction");
   } catch (err) {
     useCaseLogger.error(
       { err },
@@ -181,7 +176,7 @@ export const initPayment: InitPayment = async (
     );
   }
 
-  useCaseLogger.info("initPayment use case completed");
+  useCaseLogger.info({ agencyTrackingId }, "initPayment use case completed");
 
   return {
     token: result.token,

@@ -123,7 +123,6 @@ export const initPaymentHandler = (
     requestId: event.requestContext.requestId,
     path: event.path,
     httpMethod: event.httpMethod,
-    logLevel: process.env.LOG_LEVEL,
   });
   requestLogger.debug("Received /init request");
 

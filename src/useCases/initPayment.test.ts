@@ -166,10 +166,17 @@ describe("initPayment", () => {
       "Persisted received transaction with generated agency tracking id",
     );
     expect(childInfo).toHaveBeenCalledWith(
+      expect.objectContaining({ agencyTrackingId: expect.any(String) }),
       "Pay.gov startOnlineCollection completed",
     );
-    expect(childInfo).toHaveBeenCalledWith("Persisted initiated transaction");
-    expect(childInfo).toHaveBeenCalledWith("initPayment use case completed");
+    expect(childInfo).toHaveBeenCalledWith(
+      expect.objectContaining({ agencyTrackingId: expect.any(String) }),
+      "Persisted initiated transaction",
+    );
+    expect(childInfo).toHaveBeenCalledWith(
+      expect.objectContaining({ agencyTrackingId: expect.any(String) }),
+      "initPayment use case completed",
+    );
     expect(childError).not.toHaveBeenCalled();
   });
 
