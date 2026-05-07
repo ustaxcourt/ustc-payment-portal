@@ -143,12 +143,8 @@ export const logger = pino({
       "*.secret",
       "certPassphrase",
       "*.certPassphrase",
-      "email",
-      "*.email",
-      "fullName",
-      "*.fullName",
-      "accessCode",
-      "*.accessCode",
+      // TODO(PAY-249): Keep this list scoped to this ticket.
+      // Do not add email/fullName/accessCode here; handle that in the dedicated follow-up story.
     ],
     censor: "[Redacted]",
   },

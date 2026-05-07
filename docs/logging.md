@@ -93,9 +93,6 @@ This makes `/init` logs searchable in CloudWatch Logs Insights by request-level 
 - `password`
 - `secret`
 - `certPassphrase`
-- `email`
-- `fullName`
-- `accessCode`
 
 If you need to log an object containing sensitive fields, they will be masked automatically:
 
