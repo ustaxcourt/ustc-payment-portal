@@ -9,7 +9,6 @@ declare global {
       PAYMENT_URL: string;
       API_ACCESS_TOKEN: string;
       PAY_GOV_DEV_SERVER_TOKEN: string;
-      CERT_PASSPHRASE: string;
     }
   }
 }
