@@ -10,21 +10,11 @@ import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
 import { isUniqueViolation } from "../db/pgErrors";
 import { PayGovError } from "../errors/payGovError";
+import { ServerError } from "../errors/serverError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
-
-const NETWORK_ERROR_CODES = new Set([
-  "ECONNREFUSED",
-  "ECONNRESET",
-  "ETIMEDOUT",
-  "ENOTFOUND",
-  "EHOSTUNREACH",
-  "ENETUNREACH",
-]);
-
-const isNetworkError = (err: unknown): boolean =>
-  err instanceof Error &&
-  NETWORK_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
+import { ZodError } from "zod";
+import { logger } from "../utils/logger";
 
 export type InitPayment = (
   appContext: AppContext,
@@ -113,21 +103,22 @@ export const initPayment: InitPayment = async (
   try {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
-    await TransactionModel.updateToFailed(agencyTrackingId);
-    if (isNetworkError(err)) {
-      throw new PayGovError();
+    await TransactionModel.updateToFailed(agencyTrackingId).catch((dbErr) =>
+      logger.error({ err: dbErr }, "Failed to mark transaction as failed"),
+    );
+    if (err instanceof ZodError) {
+      throw new PayGovError("Pay.gov returned an unexpected response. Please retry your transaction.");
     }
-    throw err;
+    throw new PayGovError(err instanceof Error ? err.message : undefined);
   }
 
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
-    throw new Error(
-      `Payment was initiated but failed to persist initiated status: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
+    await TransactionModel.updateToFailed(agencyTrackingId).catch((dbErr) =>
+      logger.error({ err: dbErr }, "Failed to mark transaction as failed"),
     );
+    throw new ServerError("Failed to record payment session. Please retry your transaction.");
   }
 
   return {

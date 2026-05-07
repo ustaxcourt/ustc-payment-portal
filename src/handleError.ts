@@ -31,7 +31,7 @@ export const handleError = (err: any) => {
   return {
     statusCode: 500,
     body: JSON.stringify({
-      message: "An unexpected error occurred while processing the request",
+      message: err.message ?? "An unexpected error occurred while processing the request",
       errors: [],
     }),
   };
