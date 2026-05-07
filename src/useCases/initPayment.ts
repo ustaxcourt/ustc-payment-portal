@@ -80,8 +80,6 @@ export const initPayment: InitPayment = async (
       transactionAmount,
       clientName,
       transactionReferenceId,
-      paymentStatus: "pending",
-      transactionStatus: "received",
       metadata: request.metadata,
     });
   } catch (err) {
