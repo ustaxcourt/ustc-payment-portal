@@ -109,7 +109,7 @@ export const initPayment: InitPayment = async (
     if (err instanceof ZodError) {
       throw new PayGovError("Pay.gov returned an unexpected response. Please retry your transaction.");
     }
-    throw new PayGovError(err instanceof Error ? err.message : undefined);
+    throw new PayGovError("There was an error communicating with Pay.gov. Please retry your transaction.");
   }
 
   try {
