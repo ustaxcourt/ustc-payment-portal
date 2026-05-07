@@ -13,6 +13,7 @@ import { PayGovError } from "../errors/payGovError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
 import { getMetadataKeys, getUrlOrigin } from "../utils/logger";
+import { Logger } from "pino/pino";
 
 const NETWORK_ERROR_CODES = new Set([
   "ECONNREFUSED",
@@ -32,25 +33,32 @@ export type InitPayment = (
   params: {
     client: ClientPermission;
     request: InitPaymentRequest;
+    requestLogger?: Logger;
   },
 ) => Promise<InitPaymentResponse>;
 
 export const initPayment: InitPayment = async (
   appContext,
-  { client, request },
+  { client, request, requestLogger },
 ) => {
   const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel } =
     request;
   const { clientName } = client;
   const metadataKeys = getMetadataKeys(request.metadata);
 
-  const requestLogger = appContext.logger({
-    clientName,
-    feeId,
-    transactionReferenceId,
-  });
+  const useCaseRootLogger =
+    requestLogger?.child({
+      clientName,
+      feeId,
+      transactionReferenceId,
+    }) ??
+    appContext.logger({
+      clientName,
+      feeId,
+      transactionReferenceId,
+    });
 
-  requestLogger.info(
+  useCaseRootLogger.info(
     {
       requestParams: {
         feeId,
@@ -93,7 +101,7 @@ export const initPayment: InitPayment = async (
 
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
   const agencyTrackingId = generateAgencyTrackingId();
-  const useCaseLogger = requestLogger.child({ agencyTrackingId });
+  const useCaseLogger = useCaseRootLogger.child({ agencyTrackingId });
 
   const req = new StartOnlineCollectionRequest({
     tcsAppId: fee.tcsAppId,

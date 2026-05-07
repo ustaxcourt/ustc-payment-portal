@@ -49,6 +49,7 @@ export async function lambdaHandler(event: any, context: any) {
     requestId: event?.requestContext?.requestId,
     path: event?.path,
     httpMethod: event?.httpMethod,
+    logLevel: process.env.LOG_LEVEL ?? "info",
   });
 
   requestLogger.debug({}, "Request received");

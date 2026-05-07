@@ -20,6 +20,8 @@ const DEFAULT_LEVEL_BY_ENV: Record<RuntimeEnv, string> = {
 };
 
 const SENSITIVE_KEYS = new Set([
+  // TODO(PAY-249): Keep this list scoped to this ticket.
+  // Do not add email/fullName/accessCode here; handle that in the dedicated follow-up story.
   "authorization",
   "token",
   "password",
@@ -141,6 +143,12 @@ export const logger = pino({
       "*.secret",
       "certPassphrase",
       "*.certPassphrase",
+      "email",
+      "*.email",
+      "fullName",
+      "*.fullName",
+      "accessCode",
+      "*.accessCode",
     ],
     censor: "[Redacted]",
   },
@@ -180,10 +188,10 @@ export const getUrlOrigin = (url?: string): string | undefined => {
  * provided without exposing their values.
  */
 export const getMetadataKeys = (metadata: unknown): string[] | undefined => {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+  if (!isPlainObject(metadata)) {
     return undefined;
   }
-  return Object.keys(metadata as Record<string, unknown>).sort();
+  return Object.keys(metadata).sort();
 };
 
 export function createRequestLogger(context: {

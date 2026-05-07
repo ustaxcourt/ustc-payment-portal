@@ -493,7 +493,7 @@ describe("src/utils/logger.ts", () => {
           const { createRequestLogger } = await loadLoggerModule();
 
           const child = createRequestLogger({
-            awsRequestId: "req-123",
+            requestId: "req-123",
             path: "/payments/init",
             httpMethod: "POST",
             logLevel: "info",
@@ -501,7 +501,7 @@ describe("src/utils/logger.ts", () => {
 
           expect(child.bindings()).toEqual(
             expect.objectContaining({
-              awsRequestId: "req-123",
+              requestId: "req-123",
               path: "/payments/init",
               httpMethod: "POST",
             }),

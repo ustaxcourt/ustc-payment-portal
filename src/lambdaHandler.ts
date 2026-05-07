@@ -18,6 +18,7 @@ import { AppContext } from "./types/AppContext";
 import { isValidPaymentStatus } from "./useCases/getTransactionsByStatus";
 import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
 import { Metadata, InitPaymentRequest } from "./schemas";
+import { getMetadataKeys } from "./utils/logger";
 
 export const appContext = createAppContext();
 
@@ -26,6 +27,7 @@ type LambdaHandler<T> = (
   params: {
     client: ClientPermission;
     request: T;
+    requestLogger?: Logger;
   },
 ) => Promise<unknown>;
 
@@ -53,6 +55,7 @@ const lambdaHandler = async <T>(
     const result = await callback(appContext, {
       client,
       request,
+      requestLogger: clientScopedLogger,
     });
     clientScopedLogger.info("Completed request");
     return {
@@ -73,7 +76,10 @@ const safeJsonParse = <T = any>(
   errorLogger?: Logger,
 ): ParseResult<T> => {
   if (!body) {
-    const error = handleError(new InvalidRequestError("missing body"));
+    const error = handleError(
+      new InvalidRequestError("missing body"),
+      errorLogger,
+    );
     return { ok: false, error };
   }
 
@@ -84,6 +90,7 @@ const safeJsonParse = <T = any>(
       ok: false,
       error: handleError(
         new InvalidRequestError("invalid JSON in request body"),
+        errorLogger,
       ),
     };
   }
@@ -134,11 +141,12 @@ export const initPaymentHandler = (
     !Array.isArray(result.value.metadata)
       ? result.value.metadata
       : undefined;
+  const metadataKeys = getMetadataKeys(metadata);
 
   const enrichedLogger = requestLogger.child({
     feeId: result.value.feeId,
     transactionReferenceId: result.value.transactionReferenceId,
-    metadata,
+    metadataKeys,
   });
 
   return lambdaHandler(

@@ -10,6 +10,7 @@ import { migrationHandler } from "./migrationHandler";
 import { handleError } from "./handleError";
 import "./db/knex";
 import { ClientPermission } from "./types/ClientPermission";
+import { getMetadataKeys } from "./utils/logger";
 
 export const appContext = createAppContext();
 
@@ -67,6 +68,7 @@ app.post("/init", async (req, res) => {
     !Array.isArray(req.body.metadata)
       ? req.body.metadata
       : undefined;
+  const metadataKeys = getMetadataKeys(metadata);
 
   const requestLogger = appContext.logger({
     requestId:
@@ -78,7 +80,7 @@ app.post("/init", async (req, res) => {
     clientName: devClient.clientName,
     feeId: req.body?.feeId,
     transactionReferenceId: req.body?.transactionReferenceId,
-    metadata,
+    metadataKeys,
   });
 
   requestLogger.debug("Received /init request");
@@ -86,11 +88,12 @@ app.post("/init", async (req, res) => {
     const result = await appContext.getUseCases().initPayment(appContext, {
       client: devClient,
       request: req.body,
+      requestLogger,
     });
     requestLogger.info("Completed /init request");
     res.json(result);
   } catch (err) {
-    const { statusCode, body } = handleError(err);
+    const { statusCode, body } = handleError(err, requestLogger);
     res.status(statusCode).json(JSON.parse(body));
   }
 });
