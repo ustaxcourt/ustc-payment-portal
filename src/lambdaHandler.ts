@@ -2,6 +2,7 @@ import {
   APIGatewayProxyResult,
   APIGatewayEvent,
   APIGatewayEventRequestContext,
+  Context,
 } from "aws-lambda";
 import { ZodType } from "zod";
 import { Logger } from "pino/pino";
@@ -118,9 +119,11 @@ const parseAndValidate = <T>(
 
 export const initPaymentHandler = (
   event: APIGatewayEvent,
+  context?: Context,
 ): Promise<APIGatewayProxyResult> => {
   const requestLogger = appContext.logger({
-    requestId: event.requestContext.requestId,
+    apiGatewayRequestId: event.requestContext.requestId,
+    lambdaRequestId: context?.awsRequestId,
     path: event.path,
     httpMethod: event.httpMethod,
   });
@@ -159,6 +162,7 @@ export const initPaymentHandler = (
 
 export const processPaymentHandler = (
   event: APIGatewayEvent,
+  _context?: Context,
 ): Promise<APIGatewayProxyResult> => {
   const result = parseAndValidate(event.body, ProcessPaymentRequestSchema);
   if (!result.ok) return Promise.resolve(result.error);
@@ -173,6 +177,7 @@ export const processPaymentHandler = (
 
 export const getDetailsHandler = (
   event: APIGatewayEvent,
+  _context?: Context,
 ): Promise<APIGatewayProxyResult> => {
   const result = GetDetailsPathParamsSchema.safeParse(
     event.pathParameters ?? {},

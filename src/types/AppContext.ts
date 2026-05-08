@@ -9,6 +9,8 @@ import { Logger } from "pino/pino";
 
 type LoggerContext = {
   requestId?: string;
+  apiGatewayRequestId?: string;
+  lambdaRequestId?: string;
   path?: string;
   httpMethod?: string;
   logLevel?: string;

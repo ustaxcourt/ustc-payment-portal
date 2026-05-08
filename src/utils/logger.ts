@@ -192,6 +192,8 @@ export const getMetadataKeys = (metadata: unknown): string[] | undefined => {
 
 export function createRequestLogger(context: {
   requestId?: string;
+  apiGatewayRequestId?: string;
+  lambdaRequestId?: string;
   path?: string;
   httpMethod?: string;
   clientArn?: string;

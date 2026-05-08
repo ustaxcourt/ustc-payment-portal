@@ -3,7 +3,7 @@ import {
   processPaymentHandler,
   getDetailsHandler,
 } from "./lambdaHandler";
-import { APIGatewayEvent } from "aws-lambda";
+import { APIGatewayEvent, Context } from "aws-lambda";
 import { ForbiddenError } from "./errors/forbidden";
 import { GoneError } from "./errors/gone";
 import { ConflictError } from "./errors/conflict";
@@ -266,12 +266,16 @@ describe("lambdaHandler", () => {
         path: "/init",
         httpMethod: "POST",
       } as unknown as APIGatewayEvent;
+      const lambdaContext = {
+        awsRequestId: "lambda-request-id-123",
+      } as unknown as Context;
 
-      await initPaymentHandler(event);
+      await initPaymentHandler(event, lambdaContext);
 
       expect(createRequestLoggerSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          requestId: mockRequestContext.requestId,
+          apiGatewayRequestId: mockRequestContext.requestId,
+          lambdaRequestId: "lambda-request-id-123",
           path: "/init",
           httpMethod: "POST",
         }),

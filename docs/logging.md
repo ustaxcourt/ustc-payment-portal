@@ -47,7 +47,7 @@ import { createRequestLogger } from "./utils/logger";
 export async function lambdaHandler(event: any, context: any) {
   const requestLogger = createRequestLogger({
     // API Gateway request id for HTTP request correlation.
-    requestId: event?.requestContext?.requestId,
+    apiGatewayRequestId: event?.requestContext?.requestId,
     // Lambda invocation id if you also need runtime-level correlation.
     lambdaRequestId: context?.awsRequestId,
     path: event?.path,
@@ -70,7 +70,7 @@ export async function lambdaHandler(event: any, context: any) {
 
 The request logger automatically includes:
 
-- API request ID (`requestId` from API Gateway `event.requestContext.requestId`)
+- API request ID (`apiGatewayRequestId` from API Gateway `event.requestContext.requestId`)
 - Lambda invocation ID when needed (`lambdaRequestId` from `context.awsRequestId`)
 - API path and HTTP method
 - Any endpoint-specific request fields you bind, such as `clientName`, `feeId`, `transactionReferenceId`, `agencyTrackingId`, and `metadata`
