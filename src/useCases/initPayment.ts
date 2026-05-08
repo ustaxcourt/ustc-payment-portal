@@ -66,7 +66,7 @@ export const initPayment: InitPayment = async (
 
   if (existingInFlightTransaction) {
     const tokenAgeMs = Date.now() - new Date(existingInFlightTransaction.lastUpdatedAt).getTime();
-    if (tokenAgeMs < MAX_TOKEN_AGE_MS) {
+    if (existingInFlightTransaction.paygovToken && tokenAgeMs < MAX_TOKEN_AGE_MS) {
       return {
         token: existingInFlightTransaction.paygovToken,
         paymentRedirect: `${process.env.PAYMENT_URL}?token=${existingInFlightTransaction.paygovToken}&tcsAppID=${fee.tcsAppId}`,
