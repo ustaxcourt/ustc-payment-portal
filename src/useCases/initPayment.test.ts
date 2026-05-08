@@ -202,6 +202,28 @@ describe("initPayment", () => {
     expect(result.token).toBe(freshPaygovToken);
   });
 
+  it("falls through to create a new transaction when the in-flight record has no Pay.gov token", async () => {
+    const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
+    mockSoapRequest(freshPaygovToken);
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "initiated",
+      paygovToken: null,
+      lastUpdatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+    });
+
+    const result = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
+
+    expect(TransactionModel.createReceived).toHaveBeenCalled();
+    expect(result.token).toBe(freshPaygovToken);
+  });
+
   it("throws ConflictError when createReceived fails with a pg unique_violation (partial unique index race)", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
     // App-level check passes (no existing initiated row visible), but the concurrent
