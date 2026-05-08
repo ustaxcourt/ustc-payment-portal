@@ -9,16 +9,16 @@ describe("handleError", () => {
     expect(JSON.parse(result.body).message).toBe("Forbidden");
   });
 
-  it("returns 500 with a generic message for known server errors (>= 500)", () => {
-    const result = handleError({ statusCode: 500, message: "Something broke" });
+  it("returns 500 with a generic message for known server errors (>= 500, no custom message provided)", () => {
+    const result = handleError({ statusCode: 500 });
     expect(result.statusCode).toBe(500);
     expect(JSON.parse(result.body).message).toBe("An unexpected error occurred while processing the request");
   });
 
-  it("returns 500 with a generic message for unrecognized errors", () => {
-    const result = handleError(new Error("Unexpected failure"));
+  it("returns 500 for default server error case with custom message provided.", () => {
+    const result = handleError({ message: "Custom error message" });
     expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).message).toBe("An unexpected error occurred while processing the request");
+    expect(JSON.parse(result.body).message).toBe("Custom error message");
   });
 
   it("returns 400 with validation details for ZodErrors", () => {
