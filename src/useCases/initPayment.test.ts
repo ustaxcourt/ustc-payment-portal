@@ -223,7 +223,7 @@ describe("initPayment", () => {
         client: mockClient,
         request: validPetitionRequest,
       }),
-    ).rejects.toThrow("SOAP error");
+    ).rejects.toThrow(PayGovError);
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
   });
@@ -246,19 +246,20 @@ describe("initPayment", () => {
     ).rejects.toThrow(PayGovError);
   });
 
-  it("rethrows non-network errors from makeSoapRequest", async () => {
-    const parseError = new TypeError("Unexpected token in XML");
+  it("throws PayGovError with a bad-response message when Pay.gov returns an unparseable response (ZodError)", async () => {
+    const { ZodError, ZodIssueCode } = require("zod");
+    const zodError = new ZodError([{ code: ZodIssueCode.invalid_type, path: [], message: "Required", expected: "string", received: "undefined" }]);
     jest
       .spyOn(
         SoapRequestModule.StartOnlineCollectionRequest.prototype,
         "makeSoapRequest",
       )
-      .mockRejectedValueOnce(parseError);
+      .mockRejectedValueOnce(zodError);
     await expect(
       initPayment(appContext, {
         client: mockClient,
         request: validPetitionRequest,
       }),
-    ).rejects.toThrow(parseError);
+    ).rejects.toThrow("Pay.gov returned an unexpected response. Please retry your transaction.");
   });
 });
