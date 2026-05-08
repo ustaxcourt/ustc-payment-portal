@@ -195,14 +195,17 @@ describe("initPayment", () => {
   });
 
   it("marks expired in-flight transaction as failed and creates a new one when token age >= 3 hours", async () => {
-    mockSoapRequest("new-token-xyz");
+    const expiredPaygovToken = crypto.randomUUID().replace(/-/g, ""); // 32 chars with the dashes removed.
+    const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
+
+    mockSoapRequest(freshPaygovToken);
     const TransactionModel = require("../db/TransactionModel").default;
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
       agencyTrackingId: "existing-id",
       clientName: mockClient.clientName,
       transactionReferenceId: validPetitionRequest.transactionReferenceId,
       transactionStatus: "initiated",
-      paygovToken: "existing-token-abc",
+      paygovToken: expiredPaygovToken,
       lastUpdatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
     });
 
@@ -213,7 +216,7 @@ describe("initPayment", () => {
 
     expect(TransactionModel.updateToFailed).toHaveBeenCalledWith("existing-id", 5009, "Existing token expired");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
-    expect(result.token).toBe("new-token-xyz");
+    expect(result.token).toBe(freshPaygovToken);
   });
 
   it("throws ConflictError when createReceived fails with a pg unique_violation (partial unique index race)", async () => {
