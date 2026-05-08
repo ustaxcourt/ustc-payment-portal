@@ -6,16 +6,7 @@ import { GetRecentTransactions } from "../useCases/getRecentTransactions";
 import { GetTransactionPaymentStatus } from "../useCases/getTransactionPaymentStatus";
 import { GetTransactionsByStatus } from "../useCases/getTransactionsByStatus";
 import { Logger } from "pino/pino";
-
-type LoggerContext = {
-  requestId?: string;
-  apiGatewayRequestId?: string;
-  lambdaRequestId?: string;
-  path?: string;
-  httpMethod?: string;
-  logLevel?: string;
-  [key: string]: unknown;
-};
+import { LoggerContext } from "./LoggerContext";
 
 export type AppContext = {
   getHttpsAgent: () => Promise<https.Agent | undefined>;

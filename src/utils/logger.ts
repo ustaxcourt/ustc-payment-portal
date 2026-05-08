@@ -1,5 +1,6 @@
 import pino from "pino";
 import { getAppEnv, isLocal } from "../config/appEnv";
+import { LoggerContext } from "../types/LoggerContext";
 
 type RuntimeEnv = "test" | "development" | "production";
 
@@ -190,20 +191,6 @@ export const getMetadataKeys = (metadata: unknown): string[] | undefined => {
   return Object.keys(metadata).sort();
 };
 
-export function createRequestLogger(context: {
-  requestId?: string;
-  apiGatewayRequestId?: string;
-  lambdaRequestId?: string;
-  path?: string;
-  httpMethod?: string;
-  clientArn?: string;
-  clientName?: string;
-  feeId?: string;
-  agencyTrackingId?: string;
-  transactionReferenceId?: string;
-  metadata?: Record<string, unknown>;
-  logLevel: string;
-  [key: string]: unknown;
-}) {
+export function createRequestLogger(context: LoggerContext) {
   return logger.child(context);
 }

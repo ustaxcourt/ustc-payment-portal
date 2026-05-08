@@ -13,7 +13,6 @@ import { PayGovError } from "../errors/payGovError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
 import { getMetadataKeys, getUrlOrigin } from "../utils/logger";
-import { Logger } from "pino/pino";
 
 const NETWORK_ERROR_CODES = new Set([
   "ECONNREFUSED",
@@ -33,26 +32,23 @@ export type InitPayment = (
   params: {
     client: ClientPermission;
     request: InitPaymentRequest;
-    requestLogger?: Logger;
   },
 ) => Promise<InitPaymentResponse>;
 
 export const initPayment: InitPayment = async (
   appContext,
-  { client, request, requestLogger },
+  { client, request },
 ) => {
   const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel } =
     request;
   const { clientName } = client;
   const metadataKeys = getMetadataKeys(request.metadata);
 
-  const useCaseRootLogger =
-    requestLogger ??
-    appContext.logger({
-      clientName,
-      feeId,
-      transactionReferenceId,
-    });
+  const useCaseRootLogger = appContext.logger({
+    clientName,
+    feeId,
+    transactionReferenceId,
+  });
 
   useCaseRootLogger.info(
     {

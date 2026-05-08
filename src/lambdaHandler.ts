@@ -28,7 +28,6 @@ type LambdaHandler<T> = (
   params: {
     client: ClientPermission;
     request: T;
-    requestLogger?: Logger;
   },
 ) => Promise<unknown>;
 
@@ -56,7 +55,6 @@ const lambdaHandler = async <T>(
     const result = await callback(appContext, {
       client,
       request,
-      requestLogger: clientScopedLogger,
     });
     clientScopedLogger.info("Completed request");
     return {

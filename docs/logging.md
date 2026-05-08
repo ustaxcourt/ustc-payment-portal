@@ -73,7 +73,7 @@ The request logger automatically includes:
 - API request ID (`apiGatewayRequestId` from API Gateway `event.requestContext.requestId`)
 - Lambda invocation ID when needed (`lambdaRequestId` from `context.awsRequestId`)
 - API path and HTTP method
-- Any endpoint-specific request fields you bind, such as `clientName`, `feeId`, `transactionReferenceId`, `agencyTrackingId`, and `metadata`
+- Any endpoint-specific request fields you bind, such as `clientName`, `feeId`, `transactionReferenceId`, `agencyTrackingId`, and `metadataKeys`
 - Any fields configured on the parent logger, such as service and environment metadata when present
 
 We intentionally keep these as separate fields because the API Gateway request ID and the Lambda invocation ID are different correlation identifiers.

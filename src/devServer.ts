@@ -111,7 +111,6 @@ app.post("/init", async (req, res) => {
     const result = await appContext.getUseCases().initPayment(appContext, {
       client: devClient,
       request,
-      requestLogger,
     });
     requestLogger.info("Completed /init request");
     res.json(result);
