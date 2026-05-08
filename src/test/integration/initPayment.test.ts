@@ -1,4 +1,4 @@
-import { getKnex } from "../../db/knex";
+import Knex from "knex";
 import { isLocal } from "../../config/appEnv";
 import { signedFetch } from "./sigv4Helper";
 
@@ -94,9 +94,20 @@ describeWithEnv("POST /init", () => {
     const transactionReferenceId = crypto.randomUUID();
     const expiredPaygovToken = crypto.randomUUID().replace(/-/g, ""); // 32 chars with the dashes removed.
 
-    // Seed an expired initiated record directly
-    const knex = await getKnex();
-    await knex("transactions").insert({
+    // Seed an expired initiated record directly.
+    // We can't use getKnex() here — Jest forces NODE_ENV=test which makes knex.ts
+    // append _test to DB_NAME, pointing at the wrong database.
+    const seedKnex = Knex({
+      client: "pg",
+      connection: {
+        host: process.env.DB_HOST ?? "localhost",
+        port: Number(process.env.DB_PORT ?? "5433"),
+        user: process.env.DB_USER ?? "user",
+        password: process.env.DB_PASSWORD ?? "password",
+        database: process.env.DB_NAME ?? "mydb",
+      },
+    });
+    await seedKnex("transactions").insert({
       agency_tracking_id: crypto.randomUUID().replace(/-/g, "").slice(0, 21),
       transaction_reference_id: transactionReferenceId,
       fee_name: "Petition Filing Fee",
@@ -109,6 +120,7 @@ describeWithEnv("POST /init", () => {
       paygov_token: expiredPaygovToken,
       last_updated_at: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
     });
+    await seedKnex.destroy();
 
     const result = await portalFetch({
       method: "POST",
