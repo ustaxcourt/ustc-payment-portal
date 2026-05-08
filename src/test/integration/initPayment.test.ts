@@ -2,8 +2,7 @@ import { isLocal } from "../../config/appEnv";
 import { signedFetch } from "./sigv4Helper";
 
 const baseUrl = process.env.BASE_URL;
-const isDeployed = baseUrl && !baseUrl.includes("localhost");
-const describeWithEnv = isDeployed ? describe : describe.skip;
+const describeWithEnv = baseUrl ? describe : describe.skip;
 
 describeWithEnv("POST /init", () => {
   const portalFetch = (options: RequestInit) =>
