@@ -106,6 +106,7 @@ describeWithEnv("POST /init", () => {
         password: process.env.DB_PASSWORD ?? "password",
         database: process.env.DB_NAME ?? "mydb",
       },
+      pool: { min: 0, max: 1 },
     });
     await seedKnex("transactions").insert({
       agency_tracking_id: crypto.randomUUID().replace(/-/g, "").slice(0, 21),
