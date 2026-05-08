@@ -1,4 +1,4 @@
-import knexInstance from "src/db/knex";
+import { getKnex } from "../../db/knex";
 import { isLocal } from "../../config/appEnv";
 import { signedFetch } from "./sigv4Helper";
 
@@ -95,7 +95,8 @@ describeWithEnv("POST /init", () => {
     const expiredPaygovToken = crypto.randomUUID().replace(/-/g, ""); // 32 chars with the dashes removed.
 
     // Seed an expired initiated record directly
-    await knexInstance("transactions").insert({
+    const knex = await getKnex();
+    await knex("transactions").insert({
       agency_tracking_id: crypto.randomUUID().replace(/-/g, "").slice(0, 21),
       transaction_reference_id: transactionReferenceId,
       fee_name: "Petition Filing Fee",
