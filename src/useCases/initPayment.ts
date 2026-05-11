@@ -14,19 +14,6 @@ import { ServerError } from "../errors/serverError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
 
-const NETWORK_ERROR_CODES = new Set([
-  "ECONNREFUSED",
-  "ECONNRESET",
-  "ETIMEDOUT",
-  "ENOTFOUND",
-  "EHOSTUNREACH",
-  "ENETUNREACH",
-]);
-
-const isNetworkError = (err: unknown): boolean =>
-  err instanceof Error &&
-  NETWORK_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
-
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
 
