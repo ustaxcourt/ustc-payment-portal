@@ -47,6 +47,7 @@ import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
 import { logger } from "../utils/logger";
+import { ZodError } from "zod";
 import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
 import { ClientPermission } from "../types/ClientPermission";
@@ -280,8 +281,7 @@ describe("initPayment", () => {
   });
 
   it("throws PayGovError with the generic retry message when Pay.gov returns an unparseable response (ZodError)", async () => {
-    const { ZodError, ZodIssueCode } = require("zod");
-    const zodError = new ZodError([{ code: ZodIssueCode.invalid_type, path: [], message: "Required", expected: "string", received: "undefined" }]);
+    const zodError = new ZodError([{ code: "custom", path: [], message: "Required" }]);
     jest
       .spyOn(
         SoapRequestModule.StartOnlineCollectionRequest.prototype,
