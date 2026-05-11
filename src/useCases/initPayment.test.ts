@@ -231,6 +231,7 @@ describe("initPayment", () => {
     ).rejects.toThrow("There was an error communicating with Pay.gov. Please retry your transaction.");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalled();
   });
 
   it("still throws PayGovError if updateToFailed itself rejects when SOAP request fails", async () => {
@@ -274,9 +275,10 @@ describe("initPayment", () => {
         request: validPetitionRequest,
       }),
     ).rejects.toThrow("There was an error communicating with Pay.gov. Please retry your transaction.");
+    expect(logger.error).toHaveBeenCalled();
   });
 
-  it("throws PayGovError with a bad-response message when Pay.gov returns an unparseable response (ZodError)", async () => {
+  it("throws PayGovError with the generic retry message when Pay.gov returns an unparseable response (ZodError)", async () => {
     const { ZodError, ZodIssueCode } = require("zod");
     const zodError = new ZodError([{ code: ZodIssueCode.invalid_type, path: [], message: "Required", expected: "string", received: "undefined" }]);
     jest
@@ -291,7 +293,8 @@ describe("initPayment", () => {
         client: mockClient,
         request: validPetitionRequest,
       }),
-    ).rejects.toThrow("Pay.gov returned an unexpected response. Please retry your transaction.");
+    ).rejects.toThrow("There was an error communicating with Pay.gov. Please retry your transaction.");
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalled();
   });
 });
