@@ -13,7 +13,6 @@ import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
-import { logger } from "../utils/logger";
 
 export type InitPayment = (
   appContext: AppContext,
@@ -101,9 +100,9 @@ export const initPayment: InitPayment = async (
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
     await TransactionModel.updateToFailed(agencyTrackingId).catch((dbErr) =>
-      logger.error({ err: dbErr }, "Failed to mark transaction as failed"),
+      console.error("Failed to mark transaction as failed", dbErr),
     );
-    logger.error({ err }, "Error making SOAP request to Pay.gov");
+    console.error("Error making SOAP request to Pay.gov", err);
     throw new PayGovError("There was an error communicating with Pay.gov. Please retry your transaction.");
   }
 
@@ -111,9 +110,9 @@ export const initPayment: InitPayment = async (
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
     await TransactionModel.updateToFailed(agencyTrackingId).catch((dbErr) =>
-      logger.error({ err: dbErr }, "Failed to mark transaction as failed"),
+      console.error("Failed to mark transaction as failed", dbErr),
     );
-    logger.error({ err }, "Failed to mark transaction as initiated");
+    console.error("Failed to mark transaction as initiated", err);
     throw new ServerError("Failed to record payment session. Please retry your transaction.");
   }
 

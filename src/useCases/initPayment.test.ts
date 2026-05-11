@@ -1,7 +1,3 @@
-jest.mock("../utils/logger", () => ({
-  logger: { error: jest.fn(), info: jest.fn(), warn: jest.fn(), debug: jest.fn() },
-}));
-
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
   default: {
@@ -46,7 +42,6 @@ import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
-import { logger } from "../utils/logger";
 import { ZodError } from "zod";
 import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
@@ -78,6 +73,7 @@ const mockSoapRequest = (token: string) => {
 describe("initPayment", () => {
    beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -232,7 +228,7 @@ describe("initPayment", () => {
     expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
-    expect(logger.error).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
   });
 
   it("still throws PayGovError if updateToFailed itself rejects when SOAP request fails", async () => {
@@ -245,7 +241,7 @@ describe("initPayment", () => {
     await expect(
       initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
     ).rejects.toThrow(PayGovError);
-    expect(logger.error).toHaveBeenCalledTimes(2);
+    expect(console.error).toHaveBeenCalledTimes(2);
   });
 
   it("calls updateToFailed and throws ServerError when updateToInitiated fails", async () => {
@@ -258,7 +254,7 @@ describe("initPayment", () => {
       initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
     ).rejects.toThrow("Failed to record payment session. Please retry your transaction.");
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
-    expect(logger.error).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
   });
 
   it("throws PayGovError when Pay.gov SOAP request fails with a network error", async () => {
@@ -277,7 +273,7 @@ describe("initPayment", () => {
     }).catch((e) => e);
     expect(err).toBeInstanceOf(PayGovError);
     expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
-    expect(logger.error).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
   });
 
   it("throws PayGovError with the generic retry message when Pay.gov returns an unparseable response (ZodError)", async () => {
@@ -296,6 +292,6 @@ describe("initPayment", () => {
     expect(err).toBeInstanceOf(PayGovError);
     expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
-    expect(logger.error).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
   });
 });
