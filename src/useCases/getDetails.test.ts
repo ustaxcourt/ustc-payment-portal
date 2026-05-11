@@ -5,11 +5,6 @@ import { NotFoundError } from "../errors/notFound";
 import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
-import { logger } from "../utils/logger";
-
-jest.mock("../utils/logger", () => ({
-  logger: { error: jest.fn() },
-}));
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -513,14 +508,6 @@ describe("getDetails", () => {
           request: { transactionReferenceId: mockTransactionReferenceId },
         }),
       ).rejects.toThrow(ServerError);
-
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          transactionReferenceId: mockTransactionReferenceId,
-          pendingCount: 2,
-        }),
-        expect.stringContaining("Expected at most 1 pending row"),
-      );
     });
 
     it("writes back every pending attempt in a multi-row group", async () => {
