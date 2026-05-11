@@ -13,7 +13,6 @@ import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
-import { ZodError } from "zod";
 import { logger } from "../utils/logger";
 
 export type InitPayment = (
