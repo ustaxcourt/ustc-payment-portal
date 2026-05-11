@@ -223,12 +223,12 @@ describe("initPayment", () => {
       .mockRejectedValueOnce(new Error("SOAP error"));
     const TransactionModel = require("../db/TransactionModel").default;
 
-    await expect(
-      initPayment(appContext, {
-        client: mockClient,
-        request: validPetitionRequest,
-      }),
-    ).rejects.toThrow("There was an error communicating with Pay.gov. Please retry your transaction.");
+    const err = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(PayGovError);
+    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
@@ -244,6 +244,7 @@ describe("initPayment", () => {
     await expect(
       initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
     ).rejects.toThrow(PayGovError);
+    expect(logger.error).toHaveBeenCalledTimes(2);
   });
 
   it("calls updateToFailed and throws ServerError when updateToInitiated fails", async () => {
@@ -269,12 +270,12 @@ describe("initPayment", () => {
         "makeSoapRequest",
       )
       .mockRejectedValueOnce(networkError);
-    await expect(
-      initPayment(appContext, {
-        client: mockClient,
-        request: validPetitionRequest,
-      }),
-    ).rejects.toThrow("There was an error communicating with Pay.gov. Please retry your transaction.");
+    const err = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(PayGovError);
+    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
     expect(logger.error).toHaveBeenCalled();
   });
 
@@ -288,12 +289,12 @@ describe("initPayment", () => {
       )
       .mockRejectedValueOnce(zodError);
     const TransactionModel = require("../db/TransactionModel").default;
-    await expect(
-      initPayment(appContext, {
-        client: mockClient,
-        request: validPetitionRequest,
-      }),
-    ).rejects.toThrow("There was an error communicating with Pay.gov. Please retry your transaction.");
+    const err = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(PayGovError);
+    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });
