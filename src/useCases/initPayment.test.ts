@@ -49,7 +49,6 @@ import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
 import { logger } from "../utils/logger";
 import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
-import { ServerError } from "../errors/serverError";
 import { ClientPermission } from "../types/ClientPermission";
 
 const mockClient: ClientPermission = {
@@ -229,7 +228,7 @@ describe("initPayment", () => {
         client: mockClient,
         request: validPetitionRequest,
       }),
-    ).rejects.toThrow(PayGovError);
+    ).rejects.toThrow("There was an error communicating with Pay.gov. Please retry your transaction.");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
   });
@@ -254,7 +253,7 @@ describe("initPayment", () => {
 
     await expect(
       initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
-    ).rejects.toThrow(ServerError);
+    ).rejects.toThrow("Failed to record payment session. Please retry your transaction.");
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });
@@ -274,7 +273,7 @@ describe("initPayment", () => {
         client: mockClient,
         request: validPetitionRequest,
       }),
-    ).rejects.toThrow(PayGovError);
+    ).rejects.toThrow("There was an error communicating with Pay.gov. Please retry your transaction.");
   });
 
   it("throws PayGovError with a bad-response message when Pay.gov returns an unparseable response (ZodError)", async () => {
@@ -286,11 +285,13 @@ describe("initPayment", () => {
         "makeSoapRequest",
       )
       .mockRejectedValueOnce(zodError);
+    const TransactionModel = require("../db/TransactionModel").default;
     await expect(
       initPayment(appContext, {
         client: mockClient,
         request: validPetitionRequest,
       }),
     ).rejects.toThrow("Pay.gov returned an unexpected response. Please retry your transaction.");
+    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
   });
 });
