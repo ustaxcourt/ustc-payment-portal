@@ -5,19 +5,24 @@
 ## What Changed?
 
 ### initPayment Use Case
-- Catches a `ZodError` and rethrows it as a PayGovError if the SOAP response is malformed.
-- Pino logs an error if `updateToFailed` fails in the catch for the SOAP call.
-- Throws a default PayGovError `There was an error communicating with Pay.gov. Please retry your transaction.` if the ZodError isn't caught.
-- For the call to update the transaction in DB to initated, we now throw a ServerError if the DB call fails.
+**SOAP Call Try-Catch**
+- Log a Pino error with details if marking the row as failed in the DB fails.
+- If the SOAP call fails, handle it in the `catch` statement by logging the details in a Pino error, and throw a `PayGovError` back to the user, encouraging a retry.
+
+**Mark as Initiated in DB Try-Catch**
+- Mark as failed in DB if marking as Initiated fails, and if marking it as `failed` fails, log a Pino error with details.
+- Log a Pino error with details if `updateToInitiated` fails, and throw a ServerError back to the user. (This is where the custom messaging in handleError for ServerErrors get used.)
 
 ### handleError
 - Default message uses `err.message || "An unexpected error occurred..."` to safely handle both `undefined` and empty string messages. (Default 500 case)
 
 ### Testing
 **InitPayment Unit Test Cases:**
+- `updates transaction to failed if SOAP request fails`
 - `still throws PayGovError if updateToFailed itself rejects when SOAP request fails`
 - `calls updateToFailed and throws ServerError when updateToInitiated fails`
-- `throws PayGovError with a bad-response message when Pay.gov returns an unparseable response (ZodError)`
+- `throws PayGovError when Pay.gov SOAP request fails with a network error`
+- `throws PayGovError with the generic retry message when Pay.gov returns an unparseable response (ZodError, handled by base case of catch)`
 
 **HandleError Unit Test Cases**
-- Default error cases updated to include testing the default case with the hardcoded error message and with a custom message.
+- Default error cases updated to included testing the default case with the hardcoded error message and with a custom message.
