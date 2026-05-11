@@ -73,7 +73,7 @@ const mockSoapRequest = (token: string) => {
 describe("initPayment", () => {
    beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(console, "error").mockImplementation(() => {});
+    jest.spyOn(console, "error").mockImplementation(jest.fn());
   });
 
   afterEach(() => {
