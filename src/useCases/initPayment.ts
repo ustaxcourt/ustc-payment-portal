@@ -104,9 +104,7 @@ export const initPayment: InitPayment = async (
     await TransactionModel.updateToFailed(agencyTrackingId).catch((dbErr) =>
       logger.error({ err: dbErr }, "Failed to mark transaction as failed"),
     );
-    if (err instanceof ZodError) {
-      throw new PayGovError("Pay.gov returned an unexpected response. Please retry your transaction.");
-    }
+    logger.error({ err }, "Error making SOAP request to Pay.gov");
     throw new PayGovError("There was an error communicating with Pay.gov. Please retry your transaction.");
   }
 
@@ -116,6 +114,7 @@ export const initPayment: InitPayment = async (
     await TransactionModel.updateToFailed(agencyTrackingId).catch((dbErr) =>
       logger.error({ err: dbErr }, "Failed to mark transaction as failed"),
     );
+    logger.error({ err }, "Failed to mark transaction as initiated");
     throw new ServerError("Failed to record payment session. Please retry your transaction.");
   }
 
