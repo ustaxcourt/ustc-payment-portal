@@ -1,3 +1,7 @@
+jest.mock("../utils/logger", () => ({
+  logger: { error: jest.fn(), info: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+}));
+
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
   default: {
@@ -42,8 +46,10 @@ import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
+import { logger } from "../utils/logger";
 import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
+import { ServerError } from "../errors/serverError";
 import { ClientPermission } from "../types/ClientPermission";
 
 const mockClient: ClientPermission = {
@@ -226,6 +232,31 @@ describe("initPayment", () => {
     ).rejects.toThrow(PayGovError);
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+  });
+
+  it("still throws PayGovError if updateToFailed itself rejects when SOAP request fails", async () => {
+    jest
+      .spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+      .mockRejectedValueOnce(new Error("SOAP error"));
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.updateToFailed.mockRejectedValueOnce(new Error("DB down"));
+
+    await expect(
+      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
+    ).rejects.toThrow(PayGovError);
+  });
+
+  it("calls updateToFailed and throws ServerError when updateToInitiated fails", async () => {
+    mockSoapRequest("new-token-abc");
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.updateToInitiated.mockRejectedValueOnce(new Error("DB write failed"));
+    TransactionModel.updateToFailed.mockRejectedValueOnce(new Error("DB also down"));
+
+    await expect(
+      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
+    ).rejects.toThrow(ServerError);
+    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalled();
   });
 
   it("throws PayGovError when Pay.gov SOAP request fails with a network error", async () => {
