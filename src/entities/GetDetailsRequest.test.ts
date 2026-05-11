@@ -92,6 +92,46 @@ describe("GetRequestRequest", () => {
       SoapRequest.prototype.makeRequest = originalMakeRequest;
     });
 
+    it.each([
+      " c8 1p RxKioqGSXbS7fb",
+      "HSNCQebgivrFhaTiSUTG ",
+      "abc def ghi jkl mnop ",
+    ])(
+      "preserves whitespace in paygov_tracking_id when parsing the SOAP response (%s)",
+      async (idWithWhitespace) => {
+        const responseWithWhitespaceId = `<?xml version="1.0" encoding="UTF-8"?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Body>
+    <ns2:getDetailsResponse xmlns:ns2="http://fms.treas.gov/services/tcsonline_3_1">
+      <getDetailsResponse>
+        <transactions>
+          <transaction>
+            <paygov_tracking_id>${idWithWhitespace}</paygov_tracking_id>
+            <agency_tracking_id>agency-tracking-token</agency_tracking_id>
+            <transaction_amount>150.00</transaction_amount>
+            <transaction_status>Success</transaction_status>
+          </transaction>
+        </transactions>
+      </getDetailsResponse>
+    </ns2:getDetailsResponse>
+  </S:Body>
+</S:Envelope>
+`;
+        appContext.postHttpRequest = jest
+          .fn()
+          .mockResolvedValue(responseWithWhitespaceId);
+
+        const request = new GetRequestRequest({
+          tcsAppId: "test-app-id",
+          payGovTrackingId: idWithWhitespace,
+        });
+
+        const result = await request.makeSoapRequest(appContext);
+
+        expect(result.paygov_tracking_id).toBe(idWithWhitespace);
+      },
+    );
+
     it("throws error when no transaction details found", async () => {
       appContext.postHttpRequest = jest.fn().mockResolvedValue("");
 
