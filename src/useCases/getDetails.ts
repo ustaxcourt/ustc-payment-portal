@@ -14,7 +14,6 @@ import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
-import { logger } from "../utils/logger";
 import { ForbiddenError } from "../errors/forbidden";
 import { ServerError } from "../errors/serverError";
 
@@ -56,14 +55,6 @@ export const getDetails: GetDetails = async (
   const hasAccess =
     client.allowedFeeIds.includes("*") || client.allowedFeeIds.includes(feeId);
   if (!hasAccess) {
-    logger.error(
-      {
-        feeId,
-        transactionReferenceId,
-        clientAllowedFeeIds: client.allowedFeeIds,
-      },
-      "Client does not have permission to access transactions for feeId",
-    );
     throw new ForbiddenError(
       `You do not have access to transactions for feeId '${feeId}'`,
     );
@@ -74,15 +65,6 @@ export const getDetails: GetDetails = async (
   if (!fee || !fee.tcsAppId) {
     // Both branches indicate server-side data corruption: the FK prevents the first,
     // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
-    logger.error(
-      {
-        feeId,
-        transactionReferenceId,
-        feeRowExists: !!fee,
-        tcsAppIdExists: !!fee?.tcsAppId,
-      },
-      "Fee misconfigured for feeId",
-    );
     throw new ServerError();
   }
 
