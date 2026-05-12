@@ -14,7 +14,7 @@
 - Log a Pino error with details if `updateToInitiated` fails, and throw a ServerError back to the user. (This is where the custom messaging in handleError for ServerErrors get used.)
 
 ### handleError
-- Default message uses `err.message || "An unexpected error occurred..."` to safely handle both `undefined` and empty string messages. (Default 500 case)
+- Added a specific error case for `ServerError` that allows us to give the client. a custom message for it in the response.
 
 ### Testing
 **InitPayment Unit Test Cases:**
@@ -25,4 +25,4 @@
 - `throws PayGovError with the generic retry message when Pay.gov returns an unparseable response (ZodError, handled by base case of catch)`
 
 **HandleError Unit Test Cases**
-- Default error cases updated to included testing the default case with the hardcoded error message and with a custom message.
+- Unit tests updated to account for new `ServerError` case of `handleError.ts`
