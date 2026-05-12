@@ -65,6 +65,13 @@ export const getDetails: GetDetails = async (
   if (!fee || !fee.tcsAppId) {
     // Both branches indicate server-side data corruption: the FK prevents the first,
     // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
+    console.error(
+      `Fee misconfigured for feeId '${
+        allRows[0].feeId
+      }' on transactionReferenceId '${transactionReferenceId}': ${
+        !fee ? "fee row missing" : "tcsAppId missing"
+      }`,
+    );
     throw new ServerError();
   }
 
@@ -85,9 +92,13 @@ const updatePendingAttemptFromPayGov = async (
   allRows: TransactionModel[],
   tcsAppId: string,
 ): Promise<GetDetailsResponse> => {
-  const pendingRows = allRows.filter((row) => row.transactionStatus === "pending");
+  const pendingRows = allRows.filter(
+    (row) => row.transactionStatus === "pending",
+  );
   if (pendingRows.length > 1) {
-    throw new ServerError(`More than one pending transaction attempt found for reference ID ${allRows[0].transactionReferenceId}`);
+    throw new ServerError(
+      `More than one pending transaction attempt found for reference ID ${allRows[0].transactionReferenceId}`,
+    );
   }
 
   const transactions: TransactionRecordSummary[] = await Promise.all(
