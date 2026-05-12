@@ -1,6 +1,7 @@
 import { ForbiddenError } from "./errors/forbidden";
 import { getClientByRoleArn } from "./clients/permissionsClient";
 import { ClientPermission } from "./types/ClientPermission";
+import { canClientAccessFee } from "./utils/canClientAccessFee";
 
 /**
  * Validates that the client (identified by IAM role ARN) is registered and,
@@ -12,7 +13,7 @@ import { ClientPermission } from "./types/ClientPermission";
  */
 export const authorizeClient = async (
   roleArn: string,
-  feeId?: string
+  feeId?: string,
 ): Promise<ClientPermission> => {
   const client = await getClientByRoleArn(roleArn);
 
@@ -26,11 +27,7 @@ export const authorizeClient = async (
   }
 
   // Check for wildcard permission (used in local dev)
-  if (client.allowedFeeIds.includes("*")) {
-    return client;
-  }
-
-  if (!client.allowedFeeIds.includes(feeId)) {
+  if (!canClientAccessFee(client, feeId)) {
     throw new ForbiddenError("Client not authorized for feeId");
   }
 
