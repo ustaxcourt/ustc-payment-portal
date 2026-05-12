@@ -55,8 +55,11 @@ export const getDetails: GetDetails = async (
   const hasAccess =
     client.allowedFeeIds.includes("*") || client.allowedFeeIds.includes(feeId);
   if (!hasAccess) {
+    console.warn(
+      `Client '${client.clientName}' attempted to get details for feeId '${feeId}' without access`,
+    );
     throw new ForbiddenError(
-      `You do not have access to transactions for feeId '${feeId}'`,
+      "You do not have access to the requested transaction",
     );
   }
 

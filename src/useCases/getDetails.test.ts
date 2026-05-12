@@ -138,12 +138,20 @@ describe("getDetails", () => {
   });
 
   it("throws ForbiddenError when client is not authorized for the transaction's feeId", async () => {
+    const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation();
+
     await expect(
       getDetails(appContext, {
         client: { ...mockClient, allowedFeeIds: ["SOME_OTHER_FEE"] },
         request: { transactionReferenceId: mockTransactionReferenceId },
       }),
-    ).rejects.toThrow(ForbiddenError);
+    ).rejects.toThrow(
+      new ForbiddenError("You do not have access to the requested transaction"),
+    );
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      "Client 'Test Client' attempted to get details for feeId 'PETITION_FILING_FEE' without access",
+    );
   });
 
   it("throws ServerError when fee is not found for the transaction (data corruption)", async () => {
