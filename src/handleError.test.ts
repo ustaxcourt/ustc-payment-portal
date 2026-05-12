@@ -1,6 +1,7 @@
 import { handleError } from "./handleError";
 import { z } from "zod";
 import { PayGovError } from "./errors/payGovError";
+import { ServerError } from "./errors/serverError";
 
 describe("handleError", () => {
   it("returns the statusCode and message for known client errors (< 500)", () => {
@@ -15,10 +16,16 @@ describe("handleError", () => {
     expect(JSON.parse(result.body).message).toBe("An unexpected error occurred while processing the request");
   });
 
-  it("returns 500 for default server error case with custom message provided.", () => {
-    const result = handleError({ message: "Custom error message" });
+  it("returns 500 with the ServerError message when a ServerError is thrown", () => {
+    const result = handleError(new ServerError("Failed to record payment session. Please retry your transaction."));
     expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).message).toBe("Custom error message");
+    expect(JSON.parse(result.body).message).toBe("Failed to record payment session. Please retry your transaction.");
+  });
+
+  it("returns 500 with the generic fallback message for unrecognized errors, not leaking internal details", () => {
+    const result = handleError(new Error("internal knex detail"));
+    expect(result.statusCode).toBe(500);
+    expect(JSON.parse(result.body).message).toBe("An unexpected error occurred while processing the request");
   });
 
   it("returns 400 with validation details for ZodErrors", () => {
