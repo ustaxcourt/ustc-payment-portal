@@ -1,6 +1,7 @@
 import { ZodError } from "zod";
 import { PayGovError } from "./errors/payGovError";
 import { ForbiddenError } from "./errors/forbidden";
+import { ServerError } from "./errors/serverError";
 
 export const handleError = (err: any) => {
   console.error(`responding with an error`, err);
@@ -36,7 +37,16 @@ export const handleError = (err: any) => {
         errors: [],
       }),
     };
+  } else if (err instanceof ServerError) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        message: err.message,
+        errors: [],
+      }),
+    };
   }
+  // DEFAULT: Handles the generic Error type.
   return {
     statusCode: 500,
     body: JSON.stringify({
