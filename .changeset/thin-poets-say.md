@@ -6,12 +6,12 @@
 
 ### initPayment Use Case
 **SOAP Call Try-Catch**
-- Log a Pino error with details if marking the row as failed in the DB fails.
-- If the SOAP call fails, handle it in the `catch` statement by logging the details in a Pino error, and throw a `PayGovError` back to the user, encouraging a retry.
+- Log a console error with details if marking the row as failed in the DB fails.
+- If the SOAP call fails, handle it in the `catch` statement by logging the details in a console error, and throw a `PayGovError` back to the user, encouraging a retry.
 
 **Mark as Initiated in DB Try-Catch**
-- Mark as failed in DB if marking as Initiated fails, and if marking it as `failed` fails, log a Pino error with details.
-- Log a Pino error with details if `updateToInitiated` fails, and throw a ServerError back to the user. (This is where the custom messaging in handleError for ServerErrors get used.)
+- Mark as failed in DB if marking as Initiated fails, and if marking it as `failed` fails, log a console error with details.
+- Log a console error with details if `updateToInitiated` fails, and throw a ServerError back to the user. (This is where the custom messaging in handleError for ServerErrors get used.)
 
 ### handleError
 - Added a specific error case for `ServerError` that allows us to give the client. a custom message for it in the response.
