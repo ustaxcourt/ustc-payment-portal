@@ -21,13 +21,15 @@
  * migrationHandler verify command directly.
  */
 
+import { isLocal } from "../../config/appEnv";
+
 const TOTAL_SEEDED_ROWS = 270; // 200 success + 50 failed + 20 pending from 02_dummy_data.ts
 
 const baseUrl = process.env.BASE_URL;
 const isDeployed =
   !!baseUrl &&
   baseUrl.startsWith("https://") &&
-  process.env.NODE_ENV !== "local";
+  !isLocal();
 
 // Skip the entire suite when not running against a deployed environment.
 const describeIfDeployed = isDeployed ? describe : describe.skip;
@@ -63,9 +65,16 @@ describeIfDeployed("database migration and seed verification", () => {
       expect(row).toHaveProperty("clientName");
       expect(row).toHaveProperty("paymentStatus");
       expect(row).toHaveProperty("transactionStatus");
-      expect(row).toHaveProperty("paymentMethod");
       expect(row).toHaveProperty("createdAt");
       expect(row).toHaveProperty("lastUpdatedAt");
+
+      // paymentMethod is .optional() in TransactionDashboard.schema.ts — only
+      // populated once Pay.gov reports a method, so pending rows omit it. Assert
+      // on a completed row so the column is reachable.
+      const completedRow = body.data.find((r) => r.paymentStatus !== "pending");
+      if (completedRow) {
+        expect(completedRow).toHaveProperty("paymentMethod");
+      }
     });
 
     it("should contain only valid payment statuses", () => {

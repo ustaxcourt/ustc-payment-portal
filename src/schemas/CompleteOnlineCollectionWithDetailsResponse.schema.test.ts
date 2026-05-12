@@ -87,4 +87,19 @@ describe("CompleteOnlineCollectionWithDetailsResponseSchema", () => {
       expect(result.success).toBe(true);
     });
   });
+
+  describe("paygov_tracking_id", () => {
+    it.each([
+      [" c8 1p RxKioqGSXbS7fb", "leading + internal spaces"],
+      ["HSNCQebgivrFhaTiSUTG ", "trailing space"],
+      ["abc def ghi jkl mnop ", "mixed"],
+    ])("preserves whitespace verbatim (%s)", (id) => {
+      const result = CompleteOnlineCollectionWithDetailsResponseSchema.safeParse({
+        ...validResponse,
+        paygov_tracking_id: id,
+      });
+      expect(result.success).toBe(true);
+      expect(result.data?.paygov_tracking_id).toBe(id);
+    });
+  });
 });

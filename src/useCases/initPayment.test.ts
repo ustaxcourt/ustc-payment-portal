@@ -42,6 +42,7 @@ import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
+import { ZodError } from "zod";
 import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
 import { ClientPermission } from "../types/ClientPermission";
@@ -72,6 +73,7 @@ const mockSoapRequest = (token: string) => {
 describe("initPayment", () => {
    beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, "error").mockImplementation(jest.fn());
   });
 
   afterEach(() => {
@@ -155,27 +157,74 @@ describe("initPayment", () => {
     ).rejects.toThrow("does not allow variable amounts");
   });
 
-  it.each(["received", "initiated", "pending"] as const)(
-    "throws ConflictError when an in-flight transaction (%s) already exists for the same client and reference id",
-    async (status) => {
-      const TransactionModel = require("../db/TransactionModel").default;
-      TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
-        agencyTrackingId: "existing-id",
-        clientName: mockClient.clientName,
-        transactionReferenceId: validPetitionRequest.transactionReferenceId,
-        transactionStatus: status,
-      });
+  it("returns the existing token when an in-flight transaction has a fresh token (age < 3 hours)", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "initiated",
+      paygovToken: "existing-token-abc",
+      lastUpdatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+    });
 
-      await expect(
-        initPayment(appContext, {
-          client: mockClient,
-          request: validPetitionRequest,
-        }),
-      ).rejects.toThrow(ConflictError);
+    const result = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
 
-      expect(TransactionModel.createReceived).not.toHaveBeenCalled();
-    },
-  );
+    expect(result.token).toBe("existing-token-abc");
+    expect(result.paymentRedirect).toContain("existing-token-abc");
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+    expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
+  });
+
+  it("marks expired in-flight transaction as failed and creates a new one when token age >= 3 hours", async () => {
+    const expiredPaygovToken = crypto.randomUUID().replace(/-/g, ""); // 32 chars with the dashes removed.
+    const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
+
+    mockSoapRequest(freshPaygovToken);
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "initiated",
+      paygovToken: expiredPaygovToken,
+      lastUpdatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+    });
+
+    const result = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
+
+    expect(TransactionModel.updateToFailed).toHaveBeenCalledWith("existing-id", 5009, "Existing token expired");
+    expect(TransactionModel.createReceived).toHaveBeenCalled();
+    expect(result.token).toBe(freshPaygovToken);
+  });
+
+  it("falls through to create a new transaction when the in-flight record has no Pay.gov token", async () => {
+    const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
+    mockSoapRequest(freshPaygovToken);
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "initiated",
+      paygovToken: null,
+      lastUpdatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+    });
+
+    const result = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
+
+    expect(TransactionModel.createReceived).toHaveBeenCalled();
+    expect(result.token).toBe(freshPaygovToken);
+  });
 
   it("throws ConflictError when createReceived fails with a pg unique_violation (partial unique index race)", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
@@ -218,14 +267,41 @@ describe("initPayment", () => {
       .mockRejectedValueOnce(new Error("SOAP error"));
     const TransactionModel = require("../db/TransactionModel").default;
 
-    await expect(
-      initPayment(appContext, {
-        client: mockClient,
-        request: validPetitionRequest,
-      }),
-    ).rejects.toThrow("SOAP error");
+    const err = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(PayGovError);
+    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
+  });
+
+  it("still throws PayGovError if updateToFailed itself rejects when SOAP request fails", async () => {
+    jest
+      .spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+      .mockRejectedValueOnce(new Error("SOAP error"));
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.updateToFailed.mockRejectedValueOnce(new Error("DB down"));
+
+    await expect(
+      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
+    ).rejects.toThrow(PayGovError);
+    expect(console.error).toHaveBeenCalledTimes(2);
+  });
+
+  it("calls updateToFailed and throws ServerError when updateToInitiated fails", async () => {
+    mockSoapRequest("new-token-abc");
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.updateToInitiated.mockRejectedValueOnce(new Error("DB write failed"));
+    TransactionModel.updateToFailed.mockRejectedValueOnce(new Error("DB also down"));
+
+    await expect(
+      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
+    ).rejects.toThrow("Failed to record payment session. Please retry your transaction.");
+    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
   });
 
   it("throws PayGovError when Pay.gov SOAP request fails with a network error", async () => {
@@ -238,27 +314,31 @@ describe("initPayment", () => {
         "makeSoapRequest",
       )
       .mockRejectedValueOnce(networkError);
-    await expect(
-      initPayment(appContext, {
-        client: mockClient,
-        request: validPetitionRequest,
-      }),
-    ).rejects.toThrow(PayGovError);
+    const err = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(PayGovError);
+    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
+    expect(console.error).toHaveBeenCalled();
   });
 
-  it("rethrows non-network errors from makeSoapRequest", async () => {
-    const parseError = new TypeError("Unexpected token in XML");
+  it("throws PayGovError with the generic retry message when Pay.gov returns an unparseable response (ZodError)", async () => {
+    const zodError = new ZodError([{ code: "custom", path: [], message: "Required" }]);
     jest
       .spyOn(
         SoapRequestModule.StartOnlineCollectionRequest.prototype,
         "makeSoapRequest",
       )
-      .mockRejectedValueOnce(parseError);
-    await expect(
-      initPayment(appContext, {
-        client: mockClient,
-        request: validPetitionRequest,
-      }),
-    ).rejects.toThrow(parseError);
+      .mockRejectedValueOnce(zodError);
+    const TransactionModel = require("../db/TransactionModel").default;
+    const err = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(PayGovError);
+    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
+    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
   });
 });

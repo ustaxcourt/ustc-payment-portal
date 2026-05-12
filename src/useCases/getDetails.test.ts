@@ -251,7 +251,7 @@ describe("getDetails", () => {
 
       expect(result.transactions[0].transactionStatus).toBe("received");
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Transaction corrupt-row has null transactionStatus"),
+        expect.stringContaining("Transaction Attempt corrupt-row has null transactionStatus"),
       );
 
       consoleErrorSpy.mockRestore();
@@ -484,6 +484,30 @@ describe("getDetails", () => {
       });
 
       expect(result.transactions).toHaveLength(2);
+    });
+
+    it("throws ServerError when more than one pending row exists for the same transactionReferenceId", async () => {
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({
+          agencyTrackingId: "attempt-1",
+          transactionStatus: "pending",
+          paymentStatus: "pending",
+          paygovTrackingId: "TRK0000000000000001AB",
+        }),
+        buildRow({
+          agencyTrackingId: "attempt-2",
+          transactionStatus: "pending",
+          paymentStatus: "pending",
+          paygovTrackingId: "TRK0000000000000002AB",
+        }),
+      ]);
+
+      await expect(
+        getDetails(appContext, {
+          client: mockClient,
+          request: { transactionReferenceId: mockTransactionReferenceId },
+        }),
+      ).rejects.toThrow(ServerError);
     });
 
     it("writes back every pending attempt in a multi-row group", async () => {

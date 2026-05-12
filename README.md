@@ -68,20 +68,20 @@ This workflow is currently a work-in-progress and not operational yet. We'll pos
 
 ## Environment Variables
 
-Environment variables are located in `.env.<NODE_ENV>`.
+The `.env` file in this repo is for **local development only** — it provides the variables a developer needs to run the service against the local mock Pay.gov server. Deployed environments (dev, stg, prod) get their configuration from Terraform and AWS Secrets Manager — see [terraform/environments/](terraform/environments/) and [ADR 0007](docs/architecture/decisions/0007-app-env-vs-node-env.md).
 
-Stages should be one of `dev`, `stg`, and `prod`. The dev server should be configured to point to the USTC Pay.gov test server, which is managed in a [separate repository](https://github.com/ustaxcourt/ustc-pay-gov-test-server).
+For local setup instructions, see [running-locally.md](running-locally.md). The full list of variables a developer needs is in [`.env.example`](.env.example), with inline comments where the purpose isn't obvious from the name.
 
-| Environment Variable | Description                                                                                                      |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `BASE_URL`           | The URL of this payment portal (for running integration tests)                                                   |
-| `CERT_PASSPHRASE`    | The secret password for using the certificate as an httpsAgent                                                   |
-| `CLIENT_PERMISSIONS_SECRET_ID` | AWS Secrets Manager secret ID for the client permissions JSON array. Not needed locally — auth is bypassed when `LOCAL_DEV=true` |
-| `LOCAL_DEV`          | Set to `true` to bypass SigV4 auth for local development. Do not set in deployed environments.                   |
-| `NODE_ENV`           | The environment or stage for this application (`staging`, `development`, or `production`)                        |
-| `PAYMENT_URL`        | The URL of the Payment UI where the user is forwarded once a transaction request has been successfully initiated |
-| `SOAP_URL`           | The URL of the SOAP Server that handles payment requests made by this portal                                     |
-| `SUBDOMAIN`          | The subdomain that the deployed application should assume                                                        |
+### How the environment layer is structured
+
+A few variables have semantic meaning beyond just "set this value":
+
+- **`APP_ENV`** identifies the deployment topology — one of `local`, `dev`, `stg`, `prod`, or `test`. Read it via `getAppEnv()` / `isLocal()` / `isDeployed()` from [`src/config/appEnv.ts`](src/config/appEnv.ts), not directly from `process.env`.
+- **`NODE_ENV`** is the Node runtime mode — `development`, `production`, or `test`. Set automatically by Jest in test runs. Reserved for Node, Express, knex, and other libraries that consume it.
+- **`LOCAL_DEV=true`** bypasses SigV4 auth for local development. Do not set in deployed environments.
+- **`LOG_LEVEL`** (optional) overrides the default log level. Valid values: `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent`. See [Logging](./docs/logging.md) for details.
+
+The dev server should be configured to point to the USTC Pay.gov test server, which is managed in a [separate repository](https://github.com/ustaxcourt/ustc-pay-gov-test-server).
 
 ## Deployment
 

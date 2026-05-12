@@ -10,21 +10,12 @@ import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
 import { isUniqueViolation } from "../db/pgErrors";
 import { PayGovError } from "../errors/payGovError";
+import { ServerError } from "../errors/serverError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
 
-const NETWORK_ERROR_CODES = new Set([
-  "ECONNREFUSED",
-  "ECONNRESET",
-  "ETIMEDOUT",
-  "ENOTFOUND",
-  "EHOSTUNREACH",
-  "ENETUNREACH",
-]);
-
-const isNetworkError = (err: unknown): boolean =>
-  err instanceof Error &&
-  NETWORK_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
+const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
+const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
 
 export type InitPayment = (
   appContext: AppContext,
@@ -63,12 +54,15 @@ export const initPayment: InitPayment = async (
     );
 
   if (existingInFlightTransaction) {
-    // TODO: PAY-298, is the token less than 3 hours old? If so, just return it.
-    // If not, call Pay.gov and get a new token.
-    // We might be able to reuse agencyTracking Id and just get a new token.
-    throw new ConflictError(
-      "A payment session is already in-flight for this transactionReferenceId",
-    );
+    const tokenAgeMs = Date.now() - new Date(existingInFlightTransaction.lastUpdatedAt).getTime();
+    if (existingInFlightTransaction.paygovToken && tokenAgeMs < MAX_TOKEN_AGE_MS) {
+      return {
+        token: existingInFlightTransaction.paygovToken,
+        paymentRedirect: `${process.env.PAYMENT_URL}?token=${existingInFlightTransaction.paygovToken}&tcsAppID=${fee.tcsAppId}`,
+      };
+    } else {
+        await TransactionModel.updateToFailed(existingInFlightTransaction.agencyTrackingId, EXISTING_TOKEN_ERROR_CODE, "Existing token expired");
+    }
   }
 
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
@@ -90,8 +84,6 @@ export const initPayment: InitPayment = async (
       transactionAmount,
       clientName,
       transactionReferenceId,
-      paymentStatus: "pending",
-      transactionStatus: "received",
       metadata: request.metadata,
     });
   } catch (err) {
@@ -113,21 +105,21 @@ export const initPayment: InitPayment = async (
   try {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
-    await TransactionModel.updateToFailed(agencyTrackingId);
-    if (isNetworkError(err)) {
-      throw new PayGovError();
-    }
-    throw err;
+    console.error("Error making SOAP request to Pay.gov", err);
+    await TransactionModel.updateToFailed(agencyTrackingId, EXISTING_TOKEN_ERROR_CODE, "Existing token expired").catch((dbErr) =>
+      console.error("Failed to mark transaction as failed", dbErr),
+    );
+    throw new PayGovError("There was an error communicating with Pay.gov. Please retry your transaction.");
   }
 
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
-    throw new Error(
-      `Payment was initiated but failed to persist initiated status: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
+    console.error("Failed to mark transaction as initiated", err);
+    await TransactionModel.updateToFailed(agencyTrackingId).catch((dbErr) =>
+      console.error("Failed to mark transaction as failed", dbErr),
     );
+    throw new ServerError("Failed to record payment session. Please retry your transaction.");
   }
 
   return {

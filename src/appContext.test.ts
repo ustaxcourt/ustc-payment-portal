@@ -71,7 +71,7 @@ describe("postHttpRequest", () => {
 
   it("should include authentication header when PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID is set and secret is retrieved successfully", async () => {
     process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "token-secret-id";
-    process.env.NODE_ENV = "test";
+    process.env.APP_ENV = "test";
     mockGetSecretString.mockResolvedValueOnce("secret-token-from-aws");
 
     const appContext = createAppContext();
@@ -94,7 +94,7 @@ describe("postHttpRequest", () => {
 
   it("should include authentication and authorization headers when PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID is set and retrieved locally", async () => {
     process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "local-token-secret-id";
-    process.env.NODE_ENV = "local";
+    process.env.APP_ENV = "local";
 
     const appContext = createAppContext();
     const body = "<soap>request</soap>";
@@ -113,7 +113,7 @@ describe("postHttpRequest", () => {
     );
   });
 
-  it("should use HTTPS agent when CERT_PASSPHRASE is set", async () => {
+  it("should use HTTPS agent when key/cert secret IDs are set", async () => {
     process.env.PRIVATE_KEY_SECRET_ID = "key-id";
     process.env.CERTIFICATE_SECRET_ID = "secret-id";
     (getSecretString as jest.Mock).mockResolvedValue("mock-secret-value");
@@ -131,8 +131,7 @@ describe("postHttpRequest", () => {
     );
   });
 
-  it("should not use HTTPS agent when CERT_PASSPHRASE is not set, when running locally/dev", async () => {
-    process.env.CERT_PASSPHRASE = "";
+  it("should not use HTTPS agent when key/cert secret IDs are not set", async () => {
     const appContext = createAppContext();
     const body = "<soap>request</soap>";
 
@@ -154,6 +153,36 @@ describe("postHttpRequest", () => {
 
     expect(result).toBe("mock-response-body");
     expect(mockResponseText).toHaveBeenCalled();
+  });
+
+  it("should proceed without auth headers and log a warning when Secrets Manager fetch fails", async () => {
+    process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "token-secret-id";
+    process.env.APP_ENV = "test";
+    const fetchError = Object.assign(new Error("AccessDenied"), {
+      name: "AccessDeniedException",
+    });
+    mockGetSecretString.mockRejectedValueOnce(fetchError);
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const appContext = createAppContext();
+    const body = "<soap>request</soap>";
+
+    await appContext.postHttpRequest(appContext, body);
+
+    const lastFetchCall = mockFetch.mock.calls[mockFetch.mock.calls.length - 1];
+    const lastFetchOptions = lastFetchCall[1] as { headers: Record<string, string> };
+    expect(lastFetchOptions.headers).not.toHaveProperty("Authorization");
+    expect(lastFetchOptions.headers).not.toHaveProperty("Authentication");
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[postHttpRequest] Failed to read token from Secrets Manager",
+      {
+        secretId: "token-secret-id",
+        errorName: "AccessDeniedException",
+        errorMessage: "AccessDenied",
+      }
+    );
+
+    warnSpy.mockRestore();
   });
 });
 
