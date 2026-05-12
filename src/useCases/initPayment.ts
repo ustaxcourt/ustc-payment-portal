@@ -105,20 +105,20 @@ export const initPayment: InitPayment = async (
   try {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
+    console.error("Error making SOAP request to Pay.gov", err);
     await TransactionModel.updateToFailed(agencyTrackingId, EXISTING_TOKEN_ERROR_CODE, "Existing token expired").catch((dbErr) =>
       console.error("Failed to mark transaction as failed", dbErr),
     );
-    console.error("Error making SOAP request to Pay.gov", err);
     throw new PayGovError("There was an error communicating with Pay.gov. Please retry your transaction.");
   }
 
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
+    console.error("Failed to mark transaction as initiated", err);
     await TransactionModel.updateToFailed(agencyTrackingId).catch((dbErr) =>
       console.error("Failed to mark transaction as failed", dbErr),
     );
-    console.error("Failed to mark transaction as initiated", err);
     throw new ServerError("Failed to record payment session. Please retry your transaction.");
   }
 
