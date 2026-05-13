@@ -1,3 +1,4 @@
+import { ZodError } from "zod";
 import { AppContext } from "../types/AppContext";
 import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/CompleteOnlineCollectionWithDetailsRequest";
 import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
@@ -6,6 +7,7 @@ import { FailedTransactionError } from "../errors/failedTransaction";
 import { ForbiddenError } from "../errors/forbidden";
 import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
+import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { derivePaymentStatusFromSingleTransaction } from "../utils/derivePaymentStatus";
@@ -14,6 +16,7 @@ import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { toPaymentMethod } from "../utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
+import { safeUpdateToFailed } from "../utils/safeUpdateToFailed";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -76,37 +79,9 @@ export const processPayment: ProcessPayment = async (
   });
   console.log("processPayment request", req);
 
+  let result: Awaited<ReturnType<typeof req.makeSoapRequest>>;
   try {
-    const result = await req.makeSoapRequest(appContext);
-
-    console.log("processPayment result", result);
-
-    const parsedStatus = parseTransactionStatus(result.transaction_status);
-    const paymentStatus =
-      derivePaymentStatusFromSingleTransaction(parsedStatus);
-
-    await TransactionModel.updateAfterPayGovResponse(
-      transaction.agencyTrackingId,
-      result.paygov_tracking_id,
-      parsedStatus,
-      paymentStatus,
-      toPaymentMethod(result.payment_type),
-      result.transaction_date,
-      result.payment_date,
-    );
-
-    const transactions = await TransactionModel.findByReferenceId(
-      transaction.transactionReferenceId,
-    );
-
-    const transactionSummaries = transactions.map((row) =>
-      toTransactionRecordSummary(row),
-    );
-
-    return {
-      paymentStatus,
-      transactions: transactionSummaries,
-    };
+    result = await req.makeSoapRequest(appContext);
   } catch (err) {
     if (err instanceof FailedTransactionError) {
       await TransactionModel.updateToFailed(
@@ -127,6 +102,77 @@ export const processPayment: ProcessPayment = async (
         paymentStatus: "failed" as const,
         transactions: transactionSummaries,
       };
-    } else throw err;
+    }
+
+    if (err instanceof ZodError) {
+      console.error(
+        `Pay.gov response failed schema validation for agencyTrackingId '${transaction.agencyTrackingId}'`,
+        err,
+      );
+      await safeUpdateToFailed(
+        transaction.agencyTrackingId,
+        undefined,
+        "Pay.gov returned a response that failed schema validation",
+      );
+      throw new PayGovError(
+        "We could not complete this transaction with Pay.gov. Please retry the request.",
+      );
+    }
+
+    console.error(
+      `Error communicating with Pay.gov for agencyTrackingId '${transaction.agencyTrackingId}'`,
+      err,
+    );
+    await safeUpdateToFailed(
+      transaction.agencyTrackingId,
+      undefined,
+      "Error communicating with Pay.gov",
+    );
+    throw new PayGovError(
+      "We could not complete this transaction with Pay.gov. Please retry the request.",
+    );
   }
+
+  console.log("processPayment result", result);
+
+  const parsedStatus = parseTransactionStatus(result.transaction_status);
+  const paymentStatus = derivePaymentStatusFromSingleTransaction(parsedStatus);
+
+  try {
+    await TransactionModel.updateAfterPayGovResponse(
+      transaction.agencyTrackingId,
+      result.paygov_tracking_id,
+      parsedStatus,
+      paymentStatus,
+      toPaymentMethod(result.payment_type),
+      result.transaction_date,
+      result.payment_date,
+    );
+  } catch (err) {
+    console.error(
+      `Failed to persist Pay.gov response for agencyTrackingId '${transaction.agencyTrackingId}'`,
+      err,
+    );
+    await safeUpdateToFailed(
+      transaction.agencyTrackingId,
+      undefined,
+      "Failed to persist Pay.gov response",
+    );
+    throw new ServerError(
+      "Failed to record the payment result. Please retry the request.",
+    );
+  }
+
+  const transactions = await TransactionModel.findByReferenceId(
+    transaction.transactionReferenceId,
+  );
+
+  const transactionSummaries = transactions.map((row) =>
+    toTransactionRecordSummary(row),
+  );
+
+  return {
+    paymentStatus,
+    transactions: transactionSummaries,
+  };
 };

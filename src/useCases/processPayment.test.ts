@@ -4,6 +4,7 @@ import { ClientPermission } from "../types/ClientPermission";
 import { ForbiddenError } from "../errors/forbidden";
 import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
+import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
@@ -166,6 +167,21 @@ const mockFaultWithoutDetail = `<?xml version="1.0" encoding="UTF-8"?>
     </S:Fault>
   </S:Body>
 </S:Envelope>`;
+
+const mockMalformedResponse = `<?xml version="1.0" encoding="UTF-8"?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Header>
+    <WorkContext xmlns="http://oracle.com/weblogic/soap/workarea/">blah=</WorkContext>
+  </S:Header>
+  <S:Body>
+    <ns2:completeOnlineCollectionWithDetailsResponse xmlns:ns2="http://fms.treas.gov/services/tcsonline_3_1">
+      <completeOnlineCollectionWithDetailsResponse>
+        <agency_tracking_id>agency-tracking-token</agency_tracking_id>
+      </completeOnlineCollectionWithDetailsResponse>
+    </ns2:completeOnlineCollectionWithDetailsResponse>
+  </S:Body>
+</S:Envelope>
+`;
 
 const mockFaultWithoutTCSServiceFault = `<?xml version="1.0" encoding="UTF-8"?>
   <S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
@@ -588,6 +604,101 @@ describe("processPayment", () => {
         undefined,
         "Pay.gov returned a fault without error details",
       );
+    });
+  });
+
+  describe("Infrastructure errors", () => {
+    it("throws PayGovError (504) and marks the transaction failed when Pay.gov response fails schema validation", async () => {
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockReturnValue(mockMalformedResponse);
+
+      await expect(
+        processPayment(appContext, {
+          client: mockClient,
+          request: { token: "mock-token" },
+        }),
+      ).rejects.toMatchObject({
+        constructor: PayGovError,
+        statusCode: 504,
+      });
+
+      expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
+        "agency-tracking-id-001",
+        undefined,
+        "Pay.gov returned a response that failed schema validation",
+      );
+      expect(TransactionModelMock.updateAfterPayGovResponse).not.toHaveBeenCalled();
+    });
+
+    it("throws PayGovError (504) and marks the transaction failed when makeSoapRequest fails with a network error", async () => {
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockRejectedValue(new Error("ECONNRESET"));
+
+      await expect(
+        processPayment(appContext, {
+          client: mockClient,
+          request: { token: "mock-token" },
+        }),
+      ).rejects.toMatchObject({
+        constructor: PayGovError,
+        statusCode: 504,
+      });
+
+      expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
+        "agency-tracking-id-001",
+        undefined,
+        "Error communicating with Pay.gov",
+      );
+      expect(TransactionModelMock.updateAfterPayGovResponse).not.toHaveBeenCalled();
+    });
+
+    it("throws ServerError (500) and marks the transaction failed when updateAfterPayGovResponse rejects", async () => {
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockReturnValue(mockSuccessfulResponse);
+      TransactionModelMock.updateAfterPayGovResponse.mockRejectedValueOnce(
+        new Error("db down"),
+      );
+
+      await expect(
+        processPayment(appContext, {
+          client: mockClient,
+          request: { token: "mock-token" },
+        }),
+      ).rejects.toMatchObject({
+        constructor: ServerError,
+        statusCode: 500,
+      });
+
+      expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
+        "agency-tracking-id-001",
+        undefined,
+        "Failed to persist Pay.gov response",
+      );
+    });
+
+    it("still throws ServerError when the recovery updateToFailed itself fails", async () => {
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockReturnValue(mockSuccessfulResponse);
+      TransactionModelMock.updateAfterPayGovResponse.mockRejectedValueOnce(
+        new Error("db down"),
+      );
+      TransactionModelMock.updateToFailed.mockRejectedValueOnce(
+        new Error("db still down"),
+      );
+
+      await expect(
+        processPayment(appContext, {
+          client: mockClient,
+          request: { token: "mock-token" },
+        }),
+      ).rejects.toMatchObject({
+        constructor: ServerError,
+        statusCode: 500,
+      });
     });
   });
 });
