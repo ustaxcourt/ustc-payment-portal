@@ -30,7 +30,7 @@ describeWithEnv("POST /init", () => {
     expect(data.paymentRedirect).toBeTruthy();
   });
 
-  it("returns 409 on a second call with the same transactionReferenceId while in-flight", async () => {
+  it("returns the same token on a second call with the same transactionReferenceId (fresh token reuse)", async () => {
     const body = JSON.stringify({
       transactionReferenceId: crypto.randomUUID(),
       feeId: "PETITION_FILING_FEE",
@@ -47,12 +47,13 @@ describeWithEnv("POST /init", () => {
     const first = await portalFetch(options);
     const firstData = await first.json();
     expect(first.status).toBe(200);
-    expect(firstData.token).toBeTruthy();
 
     const second = await portalFetch(options);
     const secondData = await second.json();
-    expect(second.status).toBe(409);
-    expect(secondData.message).toContain("already in-flight");
+    expect(second.status).toBe(200);
+
+    expect(secondData.token).toBe(firstData.token);
+    expect(secondData.paymentRedirect).toBe(firstData.paymentRedirect);
   });
 
   it("returns different tokens for different transactionReferenceIds", async () => {
