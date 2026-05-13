@@ -90,17 +90,13 @@ export const processPayment: ProcessPayment = async (
         err.message,
       );
 
-      const transactions = await TransactionModel.findByReferenceId(
+      const failedRows = await TransactionModel.findByReferenceId(
         transaction.transactionReferenceId,
-      );
-
-      const transactionSummaries = transactions.map((row) =>
-        toTransactionRecordSummary(row),
       );
 
       return {
         paymentStatus: "failed" as const,
-        transactions: transactionSummaries,
+        transactions: failedRows.map((row) => toTransactionRecordSummary(row)),
       };
     }
 
