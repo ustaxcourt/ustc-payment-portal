@@ -15,6 +15,7 @@ import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
 import "./db/knex";
 import { ClientPermission } from "./types/ClientPermission";
 import { getMetadataKeys } from "./utils/logger";
+import { expressLogger } from "./utils/expressLogger";
 
 export const appContext = createAppContext();
 
@@ -59,6 +60,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+app.use(expressLogger);
 
 // Configure Express to use EJS
 app.set("views", path.join(__dirname, "views"));
