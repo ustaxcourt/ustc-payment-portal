@@ -13,6 +13,7 @@ import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
+import { authorizeClient } from "../authorizeClient";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
@@ -33,6 +34,8 @@ export const initPayment: InitPayment = async (
     request;
   const { clientName } = client;
 
+  authorizeClient(client, feeId);
+
   const fee = await FeesModel.getFeeById(feeId);
   if (!fee || !fee.tcsAppId) {
     throw new InvalidRequestError(`Unknown feeId: ${feeId}`);
@@ -49,19 +52,26 @@ export const initPayment: InitPayment = async (
   }
 
   const existingInFlightTransaction =
-    await TransactionModel.findInFlightByReferenceId(
-      transactionReferenceId,
-    );
+    await TransactionModel.findInFlightByReferenceId(transactionReferenceId);
 
   if (existingInFlightTransaction) {
-    const tokenAgeMs = Date.now() - new Date(existingInFlightTransaction.lastUpdatedAt).getTime();
-    if (existingInFlightTransaction.paygovToken && tokenAgeMs < MAX_TOKEN_AGE_MS) {
+    const tokenAgeMs =
+      Date.now() -
+      new Date(existingInFlightTransaction.lastUpdatedAt).getTime();
+    if (
+      existingInFlightTransaction.paygovToken &&
+      tokenAgeMs < MAX_TOKEN_AGE_MS
+    ) {
       return {
         token: existingInFlightTransaction.paygovToken,
         paymentRedirect: `${process.env.PAYMENT_URL}?token=${existingInFlightTransaction.paygovToken}&tcsAppID=${fee.tcsAppId}`,
       };
     } else {
-        await TransactionModel.updateToFailed(existingInFlightTransaction.agencyTrackingId, EXISTING_TOKEN_ERROR_CODE, "Existing token expired");
+      await TransactionModel.updateToFailed(
+        existingInFlightTransaction.agencyTrackingId,
+        EXISTING_TOKEN_ERROR_CODE,
+        "Existing token expired",
+      );
     }
   }
 
@@ -106,10 +116,16 @@ export const initPayment: InitPayment = async (
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
     console.error("Error making SOAP request to Pay.gov", err);
-    await TransactionModel.updateToFailed(agencyTrackingId, EXISTING_TOKEN_ERROR_CODE, "Existing token expired").catch((dbErr) =>
+    await TransactionModel.updateToFailed(
+      agencyTrackingId,
+      EXISTING_TOKEN_ERROR_CODE,
+      "Existing token expired",
+    ).catch((dbErr) =>
       console.error("Failed to mark transaction as failed", dbErr),
     );
-    throw new PayGovError("There was an error communicating with Pay.gov. Please retry your transaction.");
+    throw new PayGovError(
+      "There was an error communicating with Pay.gov. Please retry your transaction.",
+    );
   }
 
   try {
@@ -119,7 +135,9 @@ export const initPayment: InitPayment = async (
     await TransactionModel.updateToFailed(agencyTrackingId).catch((dbErr) =>
       console.error("Failed to mark transaction as failed", dbErr),
     );
-    throw new ServerError("Failed to record payment session. Please retry your transaction.");
+    throw new ServerError(
+      "Failed to record payment session. Please retry your transaction.",
+    );
   }
 
   return {
