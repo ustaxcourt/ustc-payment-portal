@@ -14,7 +14,7 @@ import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { toPaymentMethod } from "../utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
-import { canClientAccessFee } from "../utils/canClientAccessFee";
+import { authorizedClientAccessToFee } from "../utils/authorizedClientAccessToFee";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -33,7 +33,7 @@ export const processPayment: ProcessPayment = async (
     throw new NotFoundError("Transaction could not be found");
   }
 
-  if (!canClientAccessFee(client, transaction.feeId)) {
+  if (!authorizedClientAccessToFee(client, transaction.feeId)) {
     console.warn(
       `Client '${client.clientName}' attempted to process token for feeId '${transaction.feeId}' without access`,
     );

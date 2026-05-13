@@ -1,4 +1,4 @@
-import { canClientAccessFee } from "./canClientAccessFee";
+import { authorizedClientAccessToFee } from "./authorizedClientAccessToFee";
 import { ClientPermission } from "../types/ClientPermission";
 
 const makeClient = (allowedFeeIds: string[]): ClientPermission => ({
@@ -7,22 +7,22 @@ const makeClient = (allowedFeeIds: string[]): ClientPermission => ({
   allowedFeeIds,
 });
 
-describe("canClientAccessFee", () => {
+describe("authorizedClientAccessToFee", () => {
   it("returns true when client has explicit access to feeId", () => {
     const client = makeClient(["fee-1", "fee-2"]);
 
-    expect(canClientAccessFee(client, "fee-2")).toBe(true);
+    expect(authorizedClientAccessToFee(client, "fee-2")).toBe(true);
   });
 
   it('returns true when client has wildcard "*" access', () => {
     const client = makeClient(["*"]);
 
-    expect(canClientAccessFee(client, "any-fee-id")).toBe(true);
+    expect(authorizedClientAccessToFee(client, "any-fee-id")).toBe(true);
   });
 
   it("returns false when client does not have access to feeId", () => {
     const client = makeClient(["fee-1", "fee-3"]);
 
-    expect(canClientAccessFee(client, "fee-2")).toBe(false);
+    expect(authorizedClientAccessToFee(client, "fee-2")).toBe(false);
   });
 });

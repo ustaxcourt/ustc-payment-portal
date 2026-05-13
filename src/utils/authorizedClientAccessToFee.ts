@@ -1,6 +1,6 @@
 import { ClientPermission } from "../types/ClientPermission";
 
-export const canClientAccessFee = (
+export const authorizedClientAccessToFee = (
   client: ClientPermission,
   feeId: string,
 ): boolean => {
