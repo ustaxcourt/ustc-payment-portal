@@ -7,7 +7,6 @@ import {
 import { ZodType } from "zod";
 import { createAppContext } from "./appContext";
 import { extractCallerArn } from "./extractCallerArn";
-import { authorizeClient } from "./authorizeClient";
 import { handleError } from "./handleError";
 import { InvalidRequestError } from "./errors/invalidRequest";
 import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
@@ -19,6 +18,7 @@ import { isValidPaymentStatus } from "./useCases/getTransactionsByStatus";
 import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
 import { Metadata, InitPaymentRequest } from "./schemas";
 import { getMetadataKeys } from "./utils/logger";
+import { getClientByRoleArn } from "./clients/permissionsClient";
 
 export const appContext = createAppContext();
 
@@ -38,19 +38,8 @@ const lambdaHandler = async <T>(
 ): Promise<APIGatewayProxyResult> => {
   try {
     const roleArn = extractCallerArn(requestContext);
-    const client = await authorizeClient(roleArn, feeId);
-    appContext.logger.addUser({
-      user: {
-        roleArn,
-        clientName: client.clientName,
-      },
-    });
-    appContext.logger.info("Authorized client for request");
-    const result = await callback(appContext, {
-      client,
-      request,
-    });
-    appContext.logger.info("Completed request");
+    const client = await getClientByRoleArn(roleArn);
+    const result = await callback(appContext, { client, request });
     return {
       statusCode: 200,
       body: JSON.stringify(result),

@@ -10,10 +10,10 @@ import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
 import { isUniqueViolation } from "../db/pgErrors";
 import { PayGovError } from "../errors/payGovError";
-import { ServerError } from "../errors/serverError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
 import { getMetadataKeys, getUrlOrigin } from "../utils/logger";
+import { authorizeClient } from "../authorizeClient";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
@@ -64,6 +64,8 @@ export const initPayment: InitPayment = async (
       metadataKeys,
     },
   });
+
+  authorizeClient(client, feeId);
 
   const fee = await FeesModel.getFeeById(feeId);
   if (!fee || !fee.tcsAppId) {
@@ -160,11 +162,23 @@ export const initPayment: InitPayment = async (
       payGovResponse: result,
     });
   } catch (err) {
-    await TransactionModel.updateToFailed(agencyTrackingId);
-    appContext.logger.error("Pay.gov request failed", { err });
+    appContext.logger.error("Error making SOAP request to Pay.gov", {
+      err,
+      agencyTrackingId,
+    });
+
+    await TransactionModel.updateToFailed(
+      agencyTrackingId,
+      EXISTING_TOKEN_ERROR_CODE,
+      "Existing token expired",
+    );
+
     if (isNetworkError(err)) {
-      throw new PayGovError();
+      throw new PayGovError(
+        "There was an error communicating with Pay.gov. Please retry your transaction.",
+      );
     }
+
     throw err;
   }
 
@@ -182,9 +196,6 @@ export const initPayment: InitPayment = async (
       `Payment was initiated but failed to persist initiated status: ${
         err instanceof Error ? err.message : String(err)
       }`,
-    );
-    throw new ServerError(
-      "Failed to record payment session. Please retry your transaction.",
     );
   }
 

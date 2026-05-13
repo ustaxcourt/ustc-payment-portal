@@ -1,7 +1,7 @@
-import { AuthContext } from "./AuthContext";
+import { ClientPermission } from "./ClientPermission";
 
 export type LoggerType = {
-  addUser: (user: { user: AuthContext }) => void;
+  addUser: (user: { user: ClientPermission }) => void;
   debug: (message: any, context?: any) => void;
   error: (message: any, context?: any) => void;
   info: (message: any, context?: any) => void;

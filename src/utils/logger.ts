@@ -1,5 +1,4 @@
 import pino, { LoggerOptions, Logger } from "pino";
-import util from "util";
 
 type RuntimeEnv = "test" | "development" | "production";
 
@@ -99,23 +98,26 @@ function removeDuplicateLogInformation(obj: any) {
   return copy;
 }
 
-function getMetadataLines(info: any): string[] {
-  const metadata = { ...info };
-  delete metadata.level;
-  delete metadata.msg;
-  delete metadata.time;
+// TODO: Replace with a more robust solution if we find ourselves
+// needing to log more complex metadata structures,
+// or if performance of deepClone/deepEqual becomes an issue.
+// function getMetadataLines(info: any): string[] {
+//   const metadata = { ...info };
+//   delete metadata.level;
+//   delete metadata.msg;
+//   delete metadata.time;
 
-  const stringified = util.inspect(metadata, {
-    compact: false,
-    maxStringLength: null,
-  });
+//   const stringified = util.inspect(metadata, {
+//     compact: false,
+//     maxStringLength: null,
+//   });
 
-  const stripped = stringified.replace(/.+: undefined,*/gm, "").trim();
+//   const stripped = stringified.replace(/.+: undefined,*/gm, "").trim();
 
-  if (stripped === "{}") return [];
+//   if (stripped === "{}") return [];
 
-  return stripped.split("\n");
-}
+//   return stripped.split("\n");
+// }
 
 // --- ENV helpers ---
 

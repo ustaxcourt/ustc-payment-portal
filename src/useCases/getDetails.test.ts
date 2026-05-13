@@ -5,6 +5,9 @@ import { NotFoundError } from "../errors/notFound";
 import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
+import { randomUUID } from "crypto";
+import { mockTrackingId } from "../test/utils/mocks";
+import { ForbiddenError } from "../errors/forbidden";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -32,8 +35,8 @@ const mockClient: ClientPermission = {
   allowedFeeIds: ["*"],
 };
 
-const mockTransactionReferenceId = "550e8400-e29b-41d4-a716-446655440000";
-const mockPayGovTrackingId = "TRK1234567890123456AB"; // 21 chars, matches DB column constraint
+const mockTransactionReferenceId = randomUUID();
+const mockPayGovTrackingId = mockTrackingId(); // 21 chars, matches DB column constraint
 
 const buildRow = (
   overrides: Partial<TransactionModel> = {},
@@ -126,11 +129,10 @@ describe("getDetails", () => {
           lastUpdatedAt: "2026-01-15T11:00:00.000Z",
         }),
     );
-
     FeesModelMock.getFeeById.mockResolvedValue({
       feeId: "PETITION_FILING_FEE",
       tcsAppId: "TCSUSTAXCOURTPETITION",
-    } as any);
+    } as unknown as FeesModel);
   });
 
   it("throws NotFoundError when no transactions exist for the reference id", async () => {
@@ -144,6 +146,17 @@ describe("getDetails", () => {
     ).rejects.toThrow(
       new NotFoundError("Transaction Reference Id was not found"),
     );
+  });
+
+  it("throws ForbiddenError when client is not authorized for the transaction's feeId", async () => {
+    // TODO: Add loggerSpy to testAppContext and assert that the authorization failure
+    // is logged at info level before throwing. See authorizeClient.test.ts for reference.
+    await expect(
+      getDetails(appContext, {
+        client: { ...mockClient, allowedFeeIds: ["SOME_OTHER_FEE"] },
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      }),
+    ).rejects.toThrow(new ForbiddenError("Client not authorized for fee"));
   });
 
   it("throws ServerError when fee is not found for the transaction (data corruption)", async () => {

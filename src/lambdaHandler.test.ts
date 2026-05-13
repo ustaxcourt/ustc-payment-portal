@@ -203,6 +203,12 @@ describe("lambdaHandler", () => {
     });
 
     it("returns 403 when feeId is not in client allowedFeeIds", async () => {
+      useCasesMock.initPayment = jest
+        .fn()
+        .mockRejectedValueOnce(
+          new ForbiddenError("Client not authorized for fee"),
+        );
+
       const event = {
         body: JSON.stringify({
           transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
@@ -223,7 +229,7 @@ describe("lambdaHandler", () => {
 
       expect(result.statusCode).toBe(403);
       expect(JSON.parse(result.body).message).toBe(
-        "Client not authorized for feeId",
+        "Client not authorized for fee",
       );
     });
   });

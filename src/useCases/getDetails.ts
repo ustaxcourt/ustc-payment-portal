@@ -13,8 +13,9 @@ import { toPaymentMethod } from "../utils/toPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
-import { ServerError } from "../errors/serverError";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
+import { ServerError } from "../errors/serverError";
+import { authorizeClient } from "../authorizeClient";
 
 type GetDetailsRequest = {
   transactionReferenceId: string;
@@ -40,7 +41,6 @@ export const getDetails: GetDetails = async (
   appContext,
   { client, request },
 ) => {
-  // TODO: Remove client param here as unused, update tests.
   const { transactionReferenceId } = request;
 
   const allRows = await TransactionModel.findByReferenceId(
@@ -51,8 +51,11 @@ export const getDetails: GetDetails = async (
     throw new NotFoundError("Transaction Reference Id was not found");
   }
 
+  const feeId = allRows[0].feeId;
+  authorizeClient(client, feeId);
+
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
-  const fee = await FeesModel.getFeeById(allRows[0].feeId);
+  const fee = await FeesModel.getFeeById(feeId);
   if (!fee || !fee.tcsAppId) {
     // Both branches indicate server-side data corruption: the FK prevents the first,
     // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
@@ -83,9 +86,13 @@ const updatePendingAttemptFromPayGov = async (
   allRows: TransactionModel[],
   tcsAppId: string,
 ): Promise<GetDetailsResponse> => {
-  const pendingRows = allRows.filter((row) => row.transactionStatus === "pending");
+  const pendingRows = allRows.filter(
+    (row) => row.transactionStatus === "pending",
+  );
   if (pendingRows.length > 1) {
-    throw new ServerError(`More than one pending transaction attempt found for reference ID ${allRows[0].transactionReferenceId}`);
+    throw new ServerError(
+      `More than one pending transaction attempt found for reference ID ${allRows[0].transactionReferenceId}`,
+    );
   }
 
   const transactions: TransactionRecordSummary[] = await Promise.all(

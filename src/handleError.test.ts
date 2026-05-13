@@ -1,7 +1,6 @@
 import { handleError } from "./handleError";
 import { z } from "zod";
 import { PayGovError } from "./errors/payGovError";
-import { ServerError } from "./errors/serverError";
 
 const getMockLogger = () => ({
   error: jest.fn(),

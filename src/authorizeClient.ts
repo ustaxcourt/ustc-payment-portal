@@ -1,5 +1,4 @@
 import { ForbiddenError } from "./errors/forbidden";
-import { getClientByRoleArn } from "./clients/permissionsClient";
 import { ClientPermission } from "./types/ClientPermission";
 
 /**
@@ -10,29 +9,17 @@ import { ClientPermission } from "./types/ClientPermission";
  * @param feeId - The feeId being requested. Only required for initPayment.
  * @throws ForbiddenError if client is not registered or not authorized for the feeId
  */
-export const authorizeClient = async (
-  roleArn: string,
-  feeId?: string,
-): Promise<ClientPermission> => {
-  const client = await getClientByRoleArn(roleArn);
-
-  if (!client) {
-    throw new ForbiddenError("Client not registered");
-  }
-
-  // Exit case if there's no feeId provided - only initPayment requires feeId authorization
-  if (feeId === undefined) {
-    return client;
-  }
-
+export const authorizeClient = (
+  client: ClientPermission,
+  feeId: string,
+): boolean => {
   // Check for wildcard permission (used in local dev)
-  if (client.allowedFeeIds.includes("*")) {
-    return client;
+  const isAuthorized =
+    client.allowedFeeIds.includes("*") || client.allowedFeeIds.includes(feeId);
+  if (isAuthorized) {
+    return true;
   }
-
-  if (!client.allowedFeeIds.includes(feeId)) {
-    throw new ForbiddenError("Client not authorized for feeId");
-  }
-
-  return client;
+  // TODO: Use pino logger here once we have a logger instance in this module
+  console.info(`Client not authorized for fee`);
+  throw new ForbiddenError("Client not authorized for fee");
 };

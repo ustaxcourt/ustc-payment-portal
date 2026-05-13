@@ -1,6 +1,6 @@
 import { createLogger } from "../utils/logger";
-import { AuthContext } from "../types/AuthContext";
 import { LoggerType } from "../types/LoggerType";
+import { ClientPermission } from "../types/ClientPermission";
 
 let loggerCache: LoggerType;
 
@@ -26,7 +26,7 @@ export const getPortalLogger = (): LoggerType => {
         };
       },
 
-      addUser: ({ user }: { user: AuthContext }) => {
+      addUser: ({ user }: { user: ClientPermission }) => {
         currentContext = {
           ...currentContext,
           user,
