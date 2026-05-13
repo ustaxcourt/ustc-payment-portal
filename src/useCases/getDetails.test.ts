@@ -8,6 +8,7 @@ import FeesModel from "../db/FeesModel";
 import { randomUUID } from "crypto";
 import { mockTrackingId } from "../test/utils/mocks";
 import { ForbiddenError } from "../errors/forbidden";
+import { logger } from "../utils/getPortalLogger";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -149,14 +150,22 @@ describe("getDetails", () => {
   });
 
   it("throws ForbiddenError when client is not authorized for the transaction's feeId", async () => {
-    // TODO: Add loggerSpy to testAppContext and assert that the authorization failure
-    // is logged at info level before throwing. See authorizeClient.test.ts for reference.
+    const loggerInfoSpy = jest.spyOn(logger, "info").mockImplementation();
+
     await expect(
       getDetails(appContext, {
         client: { ...mockClient, allowedFeeIds: ["SOME_OTHER_FEE"] },
         request: { transactionReferenceId: mockTransactionReferenceId },
       }),
     ).rejects.toThrow(new ForbiddenError("Client not authorized for fee"));
+    expect(loggerInfoSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Client not authorized for fee"),
+      expect.objectContaining({
+        feeId: "PETITION_FILING_FEE",
+        clientName: "Test Client",
+      }),
+    );
+    loggerInfoSpy.mockRestore();
   });
 
   it("throws ServerError when fee is not found for the transaction (data corruption)", async () => {
