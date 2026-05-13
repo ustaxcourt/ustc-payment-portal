@@ -28,9 +28,11 @@ The ticket's user story is: **as a developer, I need malformed/down Pay.gov resp
 
 ### Acceptance Criteria (from PAY-294)
 
-- [ ] Throw `500` for Zod validation error with appropriate message — via `payGovError.ts`
-- [ ] Throw `500` for DB error from `updateAfterPayGovResponse` with appropriate message
-- [ ] Throw `500` for error from `makeSoapRequest` with appropriate message — via `payGovError.ts`
+The ticket's "500" wording is shorthand for **5xx** — i.e. "this is a server-side / upstream problem, not a client problem." We don't need (and shouldn't) force every failure to literal `500`; the existing error classes already encode the right semantics. Mapping:
+
+- [ ] Throw `5xx` for Zod validation error on a Pay.gov response — `PayGovError` (504, upstream returned malformed data)
+- [ ] Throw `5xx` for DB error from `updateAfterPayGovResponse` — `ServerError` (500, *our* DB, not Pay.gov)
+- [ ] Throw `5xx` for error from `makeSoapRequest` — `PayGovError` (504, upstream unreachable/unparseable)
 - [ ] Message to client should encourage retrying the call
 - [ ] Mark the failure on the transaction record in the DB
 
@@ -41,8 +43,9 @@ The ticket's user story is: **as a developer, I need malformed/down Pay.gov resp
 | Area | File | Notes |
 |---|---|---|
 | Use case | [src/useCases/processPayment.ts](src/useCases/processPayment.ts) | Single `catch` that only handles `FailedTransactionError`. Everything else re-thrown. |
-| Pay.gov error class | [src/errors/payGovError.ts](src/errors/payGovError.ts) | Currently `statusCode = 504`. The ticket asks for `500`. |
-| Pay.gov error tests | [src/errors/payGovError.test.ts](src/errors/payGovError.test.ts) | Asserts `statusCode === 504`. Will need to be updated. |
+| Pay.gov error class | [src/errors/payGovError.ts](src/errors/payGovError.ts) | `statusCode = 504`. Semantically correct for upstream failures — keep as-is. |
+| Pay.gov error tests | [src/errors/payGovError.test.ts](src/errors/payGovError.test.ts) | Asserts `statusCode === 504`. No change needed. |
+| Generic server error class | [src/errors/serverError.ts](src/errors/serverError.ts) | `statusCode = 500`. Used for our-side failures (e.g. DB write). |
 | Top-level handler | [src/handleError.ts](src/handleError.ts) | Maps `ZodError → 400`, has a `PayGovError` branch using `err.statusCode`. |
 | SOAP entry point | [src/entities/CompleteOnlineCollectionWithDetailsRequest.ts](src/entities/CompleteOnlineCollectionWithDetailsRequest.ts) | Throws raw `parsed.error` (ZodError) on schema mismatch. |
 | DB layer | [src/db/TransactionModel.ts:161](src/db/TransactionModel.ts#L161) | `updateAfterPayGovResponse` and `updateToFailed` both throw on knex errors. |
@@ -50,28 +53,33 @@ The ticket's user story is: **as a developer, I need malformed/down Pay.gov resp
 
 ### Important nuance: ZodError mapping
 
-`handleError` currently checks `err instanceof ZodError` *before* `err instanceof PayGovError`. That branch returns `400`, which is correct for client-input validation (e.g. request body parsing) but **wrong** for Pay.gov response validation. Two ways to fix:
+`handleError` currently checks `err instanceof ZodError` *before* the other branches. That branch returns `400`, which is correct for client-input validation (e.g. request body parsing) but **wrong** for Pay.gov response validation. Two ways to fix:
 
 1. **Translate at the source** — convert the `ZodError` into a `PayGovError` inside the SOAP entity (or inside `processPayment`'s catch) so it never reaches the `ZodError` branch in `handleError`. *Preferred*: keeps `handleError` semantics intact and matches the ticket's note ("via `payGovError.ts`").
 2. **Reorder branches** — let `ZodError` continue propagating and add a branch in `handleError` that distinguishes Pay.gov-origin ZodErrors. Fragile and couples the global handler to upstream call sites.
 
-We will go with (1).
+We will go with (1). The translated error is a `PayGovError` (504) — Pay.gov is the source of the malformed payload, so the gateway-class status is the honest signal.
 
 ---
 
 ## Design
 
-### 1. Repurpose `PayGovError` as the 500-class wrapper
+### 1. Use existing error classes — do not mutate status codes
 
-Change [src/errors/payGovError.ts](src/errors/payGovError.ts) `statusCode` from `504` → `500`. The ticket explicitly says "throw 500 … `payGovError.ts`", so this class becomes the single carrier for "we couldn't talk to Pay.gov or couldn't make sense of what it said."
+We deliberately **do not** change `PayGovError.statusCode` to `500`. The HTTP status is a property of the error *class*, not of the call site. The right pattern is to pick the class whose status semantically matches each failure:
 
-Default message becomes retry-encouraging, e.g.:
+| Failure mode | Error class | Status | Why |
+|---|---|---|---|
+| Pay.gov returns malformed SOAP body (ZodError) | `PayGovError` | `504` | Upstream sent us garbage. |
+| `makeSoapRequest` network / parse failure | `PayGovError` | `504` | Upstream unreachable / unparseable. |
+| `updateAfterPayGovResponse` DB write fails | `ServerError` | `500` | Our infrastructure, not Pay.gov. |
 
-```
-"We could not complete this transaction with Pay.gov. Please retry the request."
-```
+Both classes already exist and `handleError` already maps each one correctly. The only thing this ticket needs to add is **retry-encouraging messaging** at the call site (passed via the constructor's optional `message` arg), and the **DB-marking side effect** before re-throwing.
 
-Keep the optional `message` constructor arg so call sites can pass more specific copy when useful (without leaking internal details).
+Example messages (final wording subject to UX review):
+
+- `PayGovError("We could not complete this transaction with Pay.gov. Please retry the request.")`
+- `ServerError("Failed to record the payment result. Please retry the request.")`
 
 ### 2. Catch three explicit categories in `processPayment`
 
@@ -79,9 +87,9 @@ Replace the current single `if (err instanceof FailedTransactionError) … else 
 
 1. Keeps the existing `FailedTransactionError` branch intact (Pay.gov *successfully* told us the transaction failed → `updateToFailed` → return `paymentStatus: "failed"`).
 2. Adds branches for each of the three failure modes the ticket calls out:
-   - `ZodError` → DB row marked failed → throw `PayGovError`.
-   - DB error from `updateAfterPayGovResponse` → DB row already in `initiated`; best-effort `updateToFailed` → throw `PayGovError`.
-   - Any other error originating from `makeSoapRequest` → DB row marked failed → throw `PayGovError`.
+   - `ZodError` → DB row marked failed → throw `PayGovError` (504).
+   - DB error from `updateAfterPayGovResponse` → DB row already in `initiated`; best-effort `updateToFailed` → throw `ServerError` (500).
+   - Any other error originating from `makeSoapRequest` → DB row marked failed → throw `PayGovError` (504).
 
 The simplest way to keep the DB-write-failure branch distinguishable is to split the inner work: do the `makeSoapRequest` + schema parsing inside one `try`, and do the `updateAfterPayGovResponse` call inside a second `try`. Otherwise we can't tell from inside `catch` whether the failure happened *before* or *after* we got a valid response from Pay.gov.
 
@@ -99,11 +107,11 @@ try {
   }
   if (err instanceof ZodError) {
     await safeUpdateToFailed(transaction.agencyTrackingId, undefined, "Pay.gov returned a response that failed schema validation");
-    throw new PayGovError(); // default retry message
+    throw new PayGovError("We could not complete this transaction with Pay.gov. Please retry the request.");
   }
   // Network/parse/other failures from makeSoapRequest
   await safeUpdateToFailed(transaction.agencyTrackingId, undefined, "Error communicating with Pay.gov");
-  throw new PayGovError();
+  throw new PayGovError("We could not complete this transaction with Pay.gov. Please retry the request.");
 }
 
 const parsedStatus = parseTransactionStatus(result.transaction_status);
@@ -122,17 +130,19 @@ try {
 } catch (err) {
   // Pay.gov accepted the payment; our DB write failed. Best-effort mark failed so the row isn't stuck.
   await safeUpdateToFailed(transaction.agencyTrackingId, undefined, "Failed to persist Pay.gov response");
-  throw new PayGovError();
+  throw new ServerError("Failed to record the payment result. Please retry the request.");
 }
 ```
 
-`safeUpdateToFailed` is a tiny inline helper that swallows DB errors and logs — if marking failed *also* fails, we still need to throw the original `PayGovError` to the client rather than crashing on the recovery step.
+`safeUpdateToFailed` is a tiny inline helper that swallows DB errors and logs — if marking failed *also* fails, we still need to throw the original 5xx to the client rather than crashing on the recovery step.
 
 ### 3. `handleError` mapping
 
-With `PayGovError.statusCode = 500` the existing branch in [src/handleError.ts](src/handleError.ts) already does the right thing — it returns `{ statusCode: 500, body: { message: err.message, errors: [] } }`. No changes needed there.
+No changes needed in [src/handleError.ts](src/handleError.ts):
 
-The `ZodError → 400` branch stays as-is so request-body validation continues to return 400. We've ensured Pay.gov-origin ZodErrors are translated before they reach `handleError`.
+- `PayGovError` → handled by its existing branch, returns `{ statusCode: 504, body: { message, errors: [] } }`.
+- `ServerError` → handled by its existing branch, returns `{ statusCode: 500, body: { message, errors: [] } }`.
+- `ZodError → 400` branch stays as-is so request-body validation continues to return 400; Pay.gov-origin ZodErrors are translated before they reach `handleError`.
 
 ### 4. Logging
 
@@ -144,19 +154,20 @@ Each catch branch should `console.error` with a tag that identifies the failure 
 
 ### `src/errors/payGovError.ts`
 
-- Change `public statusCode: number = 504` → `500`.
-- Update default message to: `"We could not complete this transaction with Pay.gov. Please retry the request."`
+- **No change required.** Keep `statusCode = 504` and the existing default message. Call sites that want retry-encouraging copy can pass it via the constructor argument.
 
 ### `src/errors/payGovError.test.ts`
 
-- Update `statusCode` assertion from `504` → `500`.
-- Update default-message assertion to match the new copy.
-- Custom-message and `instanceof Error` cases unchanged.
+- **No change required.**
+
+### `src/errors/serverError.ts`
+
+- **No change required.** `statusCode = 500` already, default message exists, accepts a custom message via the constructor.
 
 ### `src/useCases/processPayment.ts`
 
 - Split the existing single `try/catch` into the two-`try` structure described above.
-- Import `PayGovError` from `../errors/payGovError` and `ZodError` from `zod`.
+- Import `PayGovError` from `../errors/payGovError`, `ServerError` from `../errors/serverError`, and `ZodError` from `zod`.
 - Add `safeUpdateToFailed` helper (inline in this file unless it's needed elsewhere — YAGNI).
 - Preserve the existing `FailedTransactionError` path verbatim, including the `findByReferenceId` + `toTransactionRecordSummary` shape.
 
@@ -166,47 +177,46 @@ Add a new `describe` block — *Infrastructure errors* — with cases:
 
 1. **Zod validation failure**
    - Mock `appContext.postHttpRequest` to return a SOAP response with an invalid body (e.g. missing required `paygov_tracking_id`).
-   - Assert: `processPayment` rejects with `PayGovError`.
+   - Assert: `processPayment` rejects with `PayGovError` (statusCode 504).
    - Assert: `TransactionModel.updateToFailed` was called with `agencyTrackingId` and a Zod-related detail string.
    - Assert: `TransactionModel.updateAfterPayGovResponse` was *not* called.
 
 2. **`makeSoapRequest` network failure**
    - Mock `appContext.postHttpRequest` to throw a generic `Error('ECONNRESET')`.
-   - Assert: rejects with `PayGovError`.
+   - Assert: rejects with `PayGovError` (statusCode 504).
    - Assert: `updateToFailed` called with a network-related detail string.
 
 3. **`updateAfterPayGovResponse` DB failure**
    - Mock `appContext.postHttpRequest` to return `mockSuccessfulResponse`.
    - Mock `TransactionModelMock.updateAfterPayGovResponse.mockRejectedValueOnce(new Error('db down'))`.
-   - Assert: rejects with `PayGovError`.
+   - Assert: rejects with `ServerError` (statusCode 500) — *not* `PayGovError`, because the failure is on our side.
    - Assert: `updateToFailed` was called as the recovery step.
 
 4. **Recovery `updateToFailed` itself fails** (edge case — don't crash on the recovery)
    - Both `updateAfterPayGovResponse` and `updateToFailed` mocked to reject.
-   - Assert: still rejects with `PayGovError` (not the DB error), so the client gets a useful 500.
+   - Assert: still rejects with `ServerError` (not the raw DB error), so the client gets a useful 5xx.
 
 ### Optional: `handleError.test.ts`
 
-If one doesn't exist already, add a small regression test asserting `PayGovError` → 500 with the message body. (Confirm before adding — file may already cover this.)
+`PayGovError → 504` and `ServerError → 500` mappings are already covered by the existing class tests and the default `handleError` branches. Skip unless coverage is genuinely missing.
 
 ---
 
 ## Implementation Steps
 
-1. **Update `PayGovError` + its unit test** — smallest change, lets the rest of the work compile.
-2. **Refactor `processPayment.ts`** into the two-`try` structure.
-3. **Add the four new test cases** in `processPayment.test.ts`.
-4. **Run `npm test`** for the package; fix any cascade failures (other tests that imported `PayGovError` may need updating if they referenced `504`).
-5. **Manually verify the response shape** via an integration test or local invocation if available — a malformed mock should yield a 500 with the retry message rather than a 400 ZodError dump.
-6. **Open PR titled** `PAY-294 feat: handle Pay.gov fault errors in processPayment` with a brief description that links each acceptance-criteria checkbox to the test that covers it.
+1. **Refactor `processPayment.ts`** into the two-`try` structure, importing `PayGovError`, `ServerError`, and `ZodError`.
+2. **Add the four new test cases** in `processPayment.test.ts`.
+3. **Run `npm test`** for the package; verify no cascade failures.
+4. **Manually verify the response shape** via an integration test or local invocation if available — a malformed Pay.gov mock should yield a 504 with the retry message; a forced DB failure should yield a 500.
+5. **Open PR titled** `PAY-294 feat: handle Pay.gov fault errors in processPayment` with a brief description that links each acceptance-criteria checkbox to the test that covers it.
 
 ---
 
 ## Open Questions / Risks
 
-- **`PayGovError` statusCode change** — `504` was originally chosen to signal *upstream unavailable*. The ticket explicitly overrides this to `500`. Confirm with reviewer that no external consumer is already relying on `504`. (Grep across the repo before merging.)
 - **Recovery write race** — If we mark the row failed in the `updateAfterPayGovResponse` catch, but Pay.gov *did* successfully settle the payment, we now show the user a failed transaction for what is actually a processed one. The remediation is operational (reconciliation), not in scope here, but worth noting in the PR description.
 - **Generic error message** — The acceptance criteria say "encourage retrying," but some failures (e.g. invariant-violating Zod errors that will recur on retry) are not retry-safe. We're matching the ticket's stated UX; revisit if support starts seeing retry loops.
+- **Ticket wording vs. status codes** — PAY-294 says "throw 500" in three places. That should be read as "throw a 5xx" — the existing class system already encodes the right precise status for each case (504 for upstream, 500 for internal). No code change needed to `payGovError.ts` despite the ticket naming it; the *call sites* are where the work happens.
 
 ---
 
