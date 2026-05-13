@@ -105,4 +105,46 @@ describe("createLogger (pino)", () => {
 
     expect(output).toContain("test-service");
   });
+
+  test("falls back when pino-pretty transport is unavailable", () => {
+    process.env.NODE_ENV = "development";
+
+    const pinoMock = jest
+      .fn()
+      .mockImplementationOnce((options: any) => {
+        expect(options.transport?.target).toBe("pino-pretty");
+        throw new Error(
+          'unable to determine transport target for "pino-pretty"',
+        );
+      })
+      .mockImplementation((options: any) => {
+        expect(options.transport).toBeUndefined();
+        return {
+          warn: jest.fn(),
+        } as any;
+      });
+
+    (pinoMock as any).stdTimeFunctions = {
+      isoTime: jest.fn(),
+    };
+
+    jest.resetModules();
+    jest.doMock("pino", () => ({
+      __esModule: true,
+      default: pinoMock,
+    }));
+
+    let isolatedCreateLogger: any;
+    jest.isolateModules(() => {
+      ({ createLogger: isolatedCreateLogger } = require("../utils/logger"));
+    });
+
+    const logger = isolatedCreateLogger();
+
+    expect(pinoMock).toHaveBeenCalledTimes(2);
+    expect((logger as any).warning).toBe((logger as any).warn);
+
+    jest.dontMock("pino");
+    jest.resetModules();
+  });
 });

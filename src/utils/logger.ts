@@ -145,7 +145,7 @@ export function createLogger(opts: LoggerOptions = {}): Logger {
 
   const usePretty = nodeEnv !== "production";
 
-  const logger = pino({
+  const baseOptions: LoggerOptions = {
     level,
     timestamp: pino.stdTimeFunctions.isoTime,
 
@@ -191,7 +191,30 @@ export function createLogger(opts: LoggerOptions = {}): Logger {
           },
         }
       : undefined,
-  });
+  };
+
+  let logger: Logger;
+
+  try {
+    logger = pino(baseOptions);
+  } catch (error: any) {
+    const message = String(error?.message || "");
+    const isPrettyTransportError =
+      usePretty &&
+      (message.includes("pino-pretty") ||
+        message.includes("transport target") ||
+        message.includes("unable to determine transport target"));
+
+    if (!isPrettyTransportError) {
+      throw error;
+    }
+
+    // Fallback for serverless/runtime bundles where pino-pretty is unavailable.
+    logger = pino({
+      ...baseOptions,
+      transport: undefined,
+    });
+  }
 
   (logger as any).warning = logger.warn;
 
