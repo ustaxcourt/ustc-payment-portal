@@ -87,7 +87,7 @@ const mockSoapRequest = (token: string) => {
 };
 
 describe("initPayment", () => {
-   beforeEach(() => {
+  beforeEach(() => {
     jest.clearAllMocks();
   });
 
@@ -200,7 +200,9 @@ describe("initPayment", () => {
     // peer wins the createReceived race and our insert violates the partial unique index.
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
     const uniqueViolation = Object.assign(
-      new Error('duplicate key value violates unique constraint "idx_transactions_unique_active"'),
+      new Error(
+        'duplicate key value violates unique constraint "idx_transactions_unique_active"',
+      ),
       { code: "23505" },
     );
     TransactionModel.createReceived.mockRejectedValueOnce(uniqueViolation);
@@ -216,7 +218,9 @@ describe("initPayment", () => {
   it("wraps non-unique-violation createReceived errors as a generic failure", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
-    TransactionModel.createReceived.mockRejectedValueOnce(new Error("connection refused"));
+    TransactionModel.createReceived.mockRejectedValueOnce(
+      new Error("connection refused"),
+    );
 
     await expect(
       initPayment(appContext, {
@@ -248,24 +252,37 @@ describe("initPayment", () => {
 
   it("bubbles updateToFailed error if marking failed transaction also fails", async () => {
     jest
-      .spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+      .spyOn(
+        SoapRequestModule.StartOnlineCollectionRequest.prototype,
+        "makeSoapRequest",
+      )
       .mockRejectedValueOnce(new Error("SOAP error"));
     const TransactionModel = require("../db/TransactionModel").default;
     TransactionModel.updateToFailed.mockRejectedValueOnce(new Error("DB down"));
 
     await expect(
-      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
     ).rejects.toThrow("DB down");
   });
 
   it("throws detailed persistence error when updateToInitiated fails", async () => {
     mockSoapRequest("new-token-abc");
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.updateToInitiated.mockRejectedValueOnce(new Error("DB write failed"));
-    TransactionModel.updateToFailed.mockRejectedValueOnce(new Error("DB also down"));
+    TransactionModel.updateToInitiated.mockRejectedValueOnce(
+      new Error("DB write failed"),
+    );
+    TransactionModel.updateToFailed.mockRejectedValueOnce(
+      new Error("DB also down"),
+    );
 
     await expect(
-      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
     ).rejects.toThrow(
       "Payment was initiated but failed to persist initiated status: DB write failed",
     );
@@ -297,7 +314,15 @@ describe("initPayment", () => {
 
   it("rethrows non-network SOAP errors (for example ZodError)", async () => {
     const { ZodError, ZodIssueCode } = require("zod");
-    const zodError = new ZodError([{ code: ZodIssueCode.invalid_type, path: [], message: "Required", expected: "string", received: "undefined" }]);
+    const zodError = new ZodError([
+      {
+        code: ZodIssueCode.invalid_type,
+        path: [],
+        message: "Required",
+        expected: "string",
+        received: "undefined",
+      },
+    ]);
     jest
       .spyOn(
         SoapRequestModule.StartOnlineCollectionRequest.prototype,

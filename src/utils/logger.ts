@@ -188,11 +188,6 @@ export function createLogger(opts: LoggerOptions = {}): Logger {
           options: {
             colorize: true,
             translateTime: "SYS:standard",
-            messageFormat: (log: any) => {
-              const base = `${log.level}:\t${log.msg}`;
-              const lines = getMetadataLines(log);
-              return [base, ...lines].join("\n  ");
-            },
           },
         }
       : undefined,
