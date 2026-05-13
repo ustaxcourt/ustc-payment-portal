@@ -243,7 +243,7 @@ Add a new `describe` block — *Infrastructure errors* — with cases:
 
 - **Recovery write race** — If we mark the row failed in the `updateAfterPayGovResponse` catch, but Pay.gov *did* successfully settle the payment, we now show the user a failed transaction for what is actually a processed one. The remediation is operational (reconciliation), not in scope here, but worth noting in the PR description.
 - **Generic error message** — The acceptance criteria say "encourage retrying," but some failures (e.g. invariant-violating Zod errors that will recur on retry) are not retry-safe. We're matching the ticket's stated UX; revisit if support starts seeing retry loops.
-- **Ticket wording vs. status codes** — PAY-294 says "throw 500" in three places. That should be read as "throw a 5xx" — the existing class system already encodes the right precise status for each case (504 for upstream, 500 for internal). No code change needed to `payGovError.ts` despite the ticket naming it; the *call sites* are where the work happens.
+- **Ticket wording vs. status codes** — PAY-294 says "throw 500" in three places. That should be read as "throw a 5xx" — the existing class system already encodes the right precise status for each case (504 for upstream, 500 for internal). No code change needed to `payGovError.ts` despite the ticket naming it; the *call sites* are where the work happens. (CORRECT)
 
 ---
 
@@ -251,4 +251,4 @@ Add a new `describe` block — *Infrastructure errors* — with cases:
 
 - Retries inside `makeSoapRequest` (would belong in a separate ticket about transport-layer resilience).
 - Reconciliation tooling for transactions where Pay.gov settled but our DB failed.
-- Renaming `PayGovError` to something more accurate (`PayGovUnavailableError` etc.) — keep the rename out of this change to limit blast radius.
+- Renaming `PayGovError` to something more accurate (`PayGovUnavailableError` etc.) — keep the rename out of this change to limit blast radius. (`PayGovError` acts as a catch all for now for any errors coming out of the SOAP call, lets leave the name be.)
