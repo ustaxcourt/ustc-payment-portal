@@ -138,19 +138,20 @@ describe("getDetails", () => {
   });
 
   it("throws ForbiddenError when client is not authorized for the transaction's feeId", async () => {
-    const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation();
+    const loggerModule = await import("../utils/logger");
+    const consoleInfoSpy = jest
+      .spyOn(loggerModule.logger, "info")
+      .mockImplementation();
 
     await expect(
       getDetails(appContext, {
         client: { ...mockClient, allowedFeeIds: ["SOME_OTHER_FEE"] },
         request: { transactionReferenceId: mockTransactionReferenceId },
       }),
-    ).rejects.toThrow(
-      new ForbiddenError("You do not have access to the requested transaction"),
-    );
+    ).rejects.toThrow(new ForbiddenError("Client not authorized for fee"));
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      "Client 'Test Client' attempted to get details for feeId 'PETITION_FILING_FEE' without access",
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      "Client not authorized for fee",
     );
   });
 

@@ -5,15 +5,7 @@ import { ServerError } from "./errors/serverError";
 
 export const handleError = (err: any) => {
   console.error(`responding with an error`, err);
-  if (err instanceof ForbiddenError) {
-    return {
-      statusCode: 403,
-      body: JSON.stringify({
-        message: err.message,
-        errors: [],
-      }),
-    };
-  } else if (err.statusCode && err.statusCode < 500) {
+  if (err.statusCode && err.statusCode < 500) {
     return {
       statusCode: err.statusCode,
       body: JSON.stringify({

@@ -14,9 +14,8 @@ import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
-import { ForbiddenError } from "../errors/forbidden";
 import { ServerError } from "../errors/serverError";
-import { authorizedClientAccessToFee } from "../utils/authorizedClientAccessToFee";
+import { authorizeClient } from "../authorizeClient";
 
 type GetDetailsRequest = {
   transactionReferenceId: string;
@@ -53,14 +52,7 @@ export const getDetails: GetDetails = async (
   }
 
   const feeId = allRows[0].feeId;
-  if (!authorizedClientAccessToFee(client, feeId)) {
-    console.warn(
-      `Client '${client.clientName}' attempted to get details for feeId '${feeId}' without access`,
-    );
-    throw new ForbiddenError(
-      "You do not have access to the requested transaction",
-    );
-  }
+  authorizeClient(client, feeId);
 
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
   const fee = await FeesModel.getFeeById(feeId);

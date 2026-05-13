@@ -15,6 +15,7 @@ import FeesModel from "../db/FeesModel";
 import { toPaymentMethod } from "../utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
 import { authorizedClientAccessToFee } from "../utils/authorizedClientAccessToFee";
+import { authorizeClient } from "../authorizeClient";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -33,14 +34,7 @@ export const processPayment: ProcessPayment = async (
     throw new NotFoundError("Transaction could not be found");
   }
 
-  if (!authorizedClientAccessToFee(client, transaction.feeId)) {
-    console.warn(
-      `Client '${client.clientName}' attempted to process token for feeId '${transaction.feeId}' without access`,
-    );
-    throw new ForbiddenError(
-      `You do not have access to the transaction for the requested token`,
-    );
-  }
+  authorizeClient(client, transaction.feeId);
 
   const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
     transaction.clientName,
