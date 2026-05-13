@@ -45,14 +45,27 @@ export const getDetails: GetDetails = async (
 
   const allRows = await TransactionModel.findByReferenceId(
     transactionReferenceId,
-  );
+  ).catch((err) => {
+    console.error(
+      `Database error while fetching transaction details for reference ID '${transactionReferenceId}':`,
+      err,
+    );
+    throw new ServerError("Failed to fetch transaction details, please try again later.");
+  });
 
   if (allRows.length === 0) {
     throw new NotFoundError("Transaction Reference Id was not found");
   }
 
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
-  const fee = await FeesModel.getFeeById(allRows[0].feeId);
+  const fee = await FeesModel.getFeeById(allRows[0].feeId).catch((err) => {
+    console.error(
+      `Database error while fetching fee details for feeId '${allRows[0].feeId}' on transactionReferenceId '${transactionReferenceId}':`,
+      err,
+    );
+    throw new ServerError("Failed to fetch transaction details, please try again later.");
+  });
+
   if (!fee || !fee.tcsAppId) {
     // Both branches indicate server-side data corruption: the FK prevents the first,
     // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
@@ -61,7 +74,7 @@ export const getDetails: GetDetails = async (
         !fee ? "fee row missing" : "tcsAppId missing"
       }`,
     );
-    throw new ServerError();
+    throw new ServerError("Fee misconfigured, please contact your Payment Portal Admin.");
   }
 
   const paymentStatus = derivePaymentStatus(allRows);
