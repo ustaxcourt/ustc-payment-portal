@@ -34,7 +34,6 @@ const lambdaHandler = async <T>(
   request: T,
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler<T>,
-  feeId?: string,
 ): Promise<APIGatewayProxyResult> => {
   try {
     const roleArn = extractCallerArn(requestContext);
@@ -96,6 +95,7 @@ export const initPaymentHandler = (
   event: APIGatewayEvent,
   context?: Context,
 ): Promise<APIGatewayProxyResult> => {
+  appContext.logger.clearContext();
   appContext.logger.addContext({
     apiGatewayRequestId: event.requestContext.requestId,
     lambdaRequestId: context?.awsRequestId,
@@ -130,7 +130,6 @@ export const initPaymentHandler = (
     result.value,
     event.requestContext,
     appContext.getUseCases().initPayment,
-    result.value.feeId,
   );
 };
 
@@ -138,6 +137,7 @@ export const processPaymentHandler = (
   event: APIGatewayEvent,
   _context?: Context,
 ): Promise<APIGatewayProxyResult> => {
+  appContext.logger.clearContext();
   const result = parseAndValidate(event.body, ProcessPaymentRequestSchema);
   if (!result.ok) return Promise.resolve(result.error);
 
@@ -145,7 +145,6 @@ export const processPaymentHandler = (
     result.value,
     event.requestContext,
     appContext.getUseCases().processPayment,
-    undefined,
   );
 };
 
@@ -153,6 +152,7 @@ export const getDetailsHandler = (
   event: APIGatewayEvent,
   _context?: Context,
 ): Promise<APIGatewayProxyResult> => {
+  appContext.logger.clearContext();
   const result = GetDetailsPathParamsSchema.safeParse(
     event.pathParameters ?? {},
   );
@@ -169,7 +169,6 @@ export const getDetailsHandler = (
     { transactionReferenceId: result.data.transactionReferenceId },
     event.requestContext,
     appContext.getUseCases().getDetails,
-    undefined,
   );
 };
 
@@ -210,6 +209,7 @@ const dashboardError = (
  */
 export const getAllTransactionsHandler =
   async (): Promise<APIGatewayProxyResult> => {
+    appContext.logger.clearContext();
     try {
       const result = await appContext
         .getUseCases()
@@ -228,6 +228,7 @@ export const getAllTransactionsHandler =
 export const getTransactionsByStatusHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
+  appContext.logger.clearContext();
   const paymentStatus = event.pathParameters?.paymentStatus;
   if (!paymentStatus) {
     return dashboardError(
@@ -262,6 +263,7 @@ export const getTransactionsByStatusHandler = async (
  */
 export const getTransactionPaymentStatusHandler =
   async (): Promise<APIGatewayProxyResult> => {
+    appContext.logger.clearContext();
     try {
       const result = await appContext
         .getUseCases()

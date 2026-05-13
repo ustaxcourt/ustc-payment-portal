@@ -55,3 +55,5 @@ export const getPortalLogger = (): LoggerType => {
 
   return loggerCache;
 };
+
+export const logger = getPortalLogger();

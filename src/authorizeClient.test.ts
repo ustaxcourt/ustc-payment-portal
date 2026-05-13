@@ -1,6 +1,7 @@
 import { authorizeClient } from "./authorizeClient";
 import { ForbiddenError } from "./errors/forbidden";
 import { ClientPermission } from "./types/ClientPermission";
+import { logger } from "./utils/getPortalLogger";
 
 const dawsonClient: ClientPermission = {
   clientName: "DAWSON",
@@ -21,6 +22,17 @@ const localDevClient: ClientPermission = {
 };
 
 describe("authorizeClient", () => {
+  let loggerInfoSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    loggerInfoSpy = jest.spyOn(logger, "info").mockImplementation();
+  });
+
+  afterEach(() => {
+    loggerInfoSpy.mockRestore();
+  });
+
   describe("with valid client and feeId", () => {
     it("returns true when client is authorized for the feeId", () => {
       expect(authorizeClient(dawsonClient, "PETITION_FILING_FEE")).toBe(true);
@@ -65,6 +77,15 @@ describe("authorizeClient", () => {
 
       expect(() => authorizeClient(dawsonClient, "UNAUTHORIZED_FEE")).toThrow(
         "Client not authorized for fee",
+      );
+
+      expect(loggerInfoSpy).toHaveBeenCalledWith(
+        "Client not authorized for fee",
+        {
+          feeId: "UNAUTHORIZED_FEE",
+          clientName: "DAWSON",
+          allowedFeeIds: ["PETITION_FILING_FEE"],
+        },
       );
     });
 

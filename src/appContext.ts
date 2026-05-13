@@ -9,7 +9,7 @@ import { getTransactionsByStatus } from "./useCases/getTransactionsByStatus";
 import { getTransactionPaymentStatus } from "./useCases/getTransactionPaymentStatus";
 import * as https from "https";
 import fetch from "node-fetch";
-import { getPortalLogger } from "./utils/getPortalLogger";
+import { logger } from "./utils/getPortalLogger";
 
 let httpsAgentCache: https.Agent | undefined;
 
@@ -102,6 +102,6 @@ export const createAppContext = (): AppContext => {
       getTransactionPaymentStatus,
       getTransactionsByStatus,
     }),
-    logger: getPortalLogger(),
+    logger,
   };
 };

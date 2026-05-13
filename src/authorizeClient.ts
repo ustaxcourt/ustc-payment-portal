@@ -1,5 +1,6 @@
 import { ForbiddenError } from "./errors/forbidden";
 import { ClientPermission } from "./types/ClientPermission";
+import { logger } from "./utils/getPortalLogger";
 
 /**
  * Validates that the client (identified by IAM role ARN) is registered and,
@@ -19,7 +20,12 @@ export const authorizeClient = (
   if (isAuthorized) {
     return true;
   }
-  // TODO: Use pino logger here once we have a logger instance in this module
-  console.info(`Client not authorized for fee`);
+
+  logger.info("Client not authorized for fee", {
+    feeId,
+    clientName: client.clientName,
+    allowedFeeIds: client.allowedFeeIds,
+  });
+
   throw new ForbiddenError("Client not authorized for fee");
 };

@@ -1,19 +1,27 @@
-jest.mock("../utils/logger", () => ({
-  getMetadataKeys: jest.fn((metadata: unknown) => {
-    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-      return undefined;
-    }
-    return Object.keys(metadata as Record<string, unknown>).sort();
-  }),
-  getUrlOrigin: jest.fn((url?: string) => {
-    if (!url) return undefined;
-    try {
-      return new URL(url).origin;
-    } catch {
-      return undefined;
-    }
-  }),
-}));
+jest.mock("../utils/logger", () => {
+  const actual = jest.requireActual("../utils/logger");
+  return {
+    ...actual,
+    getMetadataKeys: jest.fn((metadata: unknown) => {
+      if (
+        !metadata ||
+        typeof metadata !== "object" ||
+        Array.isArray(metadata)
+      ) {
+        return undefined;
+      }
+      return Object.keys(metadata as Record<string, unknown>).sort();
+    }),
+    getUrlOrigin: jest.fn((url?: string) => {
+      if (!url) return undefined;
+      try {
+        return new URL(url).origin;
+      } catch {
+        return undefined;
+      }
+    }),
+  };
+});
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
