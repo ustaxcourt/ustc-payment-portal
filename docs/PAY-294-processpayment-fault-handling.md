@@ -134,7 +134,7 @@ try {
 }
 ```
 
-`safeUpdateToFailed` is a tiny inline helper that swallows DB errors and logs — if marking failed *also* fails, we still need to throw the original 5xx to the client rather than crashing on the recovery step.
+`safeUpdateToFailed` lives in `src/utils/safeUpdateToFailed.ts` and is shared across use cases. It wraps `TransactionModel.updateToFailed`, swallows any DB error, and logs it — if marking failed *also* fails, we still need to throw the original 5xx to the client rather than crashing on the recovery step. The swallowing policy belongs here rather than on `TransactionModel` itself: the model should throw on failure and let callers decide; `safeUpdateToFailed` is that caller-level decision.
 
 ### 3. `handleError` mapping
 
@@ -164,12 +164,37 @@ Each catch branch should `console.error` with a tag that identifies the failure 
 
 - **No change required.** `statusCode = 500` already, default message exists, accepts a custom message via the constructor.
 
+### `src/utils/safeUpdateToFailed.ts` *(new file)*
+
+- Create the shared helper:
+
+```ts
+export const safeUpdateToFailed = async (
+  agencyTrackingId: string,
+  code?: number,
+  detail?: string,
+): Promise<void> => {
+  try {
+    await TransactionModel.updateToFailed(agencyTrackingId, code, detail);
+  } catch (err) {
+    console.error(
+      `Failed to mark transaction '${agencyTrackingId}' as failed during error recovery:`,
+      err,
+    );
+  }
+};
+```
+
 ### `src/useCases/processPayment.ts`
 
 - Split the existing single `try/catch` into the two-`try` structure described above.
-- Import `PayGovError` from `../errors/payGovError`, `ServerError` from `../errors/serverError`, and `ZodError` from `zod`.
-- Add `safeUpdateToFailed` helper (inline in this file unless it's needed elsewhere — YAGNI).
+- Import `PayGovError` from `../errors/payGovError`, `ServerError` from `../errors/serverError`, `ZodError` from `zod`, and `safeUpdateToFailed` from `../utils/safeUpdateToFailed`.
 - Preserve the existing `FailedTransactionError` path verbatim, including the `findByReferenceId` + `toTransactionRecordSummary` shape.
+
+### `src/useCases/initPayment.ts`
+
+- Replace the two inline `.catch((dbErr) => console.error(...))` recovery patterns (after `makeSoapRequest` failure and after `updateToInitiated` failure) with `await safeUpdateToFailed(...)`.
+- Import `safeUpdateToFailed` from `../utils/safeUpdateToFailed`.
 
 ### `src/useCases/processPayment.test.ts`
 
@@ -204,9 +229,11 @@ Add a new `describe` block — *Infrastructure errors* — with cases:
 
 ## Implementation Steps
 
-1. **Refactor `processPayment.ts`** into the two-`try` structure, importing `PayGovError`, `ServerError`, and `ZodError`.
-2. **Add the four new test cases** in `processPayment.test.ts`.
-3. **Run `npm test`** for the package; verify no cascade failures.
+1. **Create `src/utils/safeUpdateToFailed.ts`** with the shared helper.
+2. **Update `initPayment.ts`** to import and use `safeUpdateToFailed` in place of the two inline `.catch()` recovery calls.
+3. **Refactor `processPayment.ts`** into the two-`try` structure, importing `PayGovError`, `ServerError`, `ZodError`, and `safeUpdateToFailed`.
+4. **Add the four new test cases** in `processPayment.test.ts`.
+5. **Run `npm test`** for the package; verify no cascade failures.
 4. **Manually verify the response shape** via an integration test or local invocation if available — a malformed Pay.gov mock should yield a 504 with the retry message; a forced DB failure should yield a 500.
 5. **Open PR titled** `PAY-294 feat: handle Pay.gov fault errors in processPayment` with a brief description that links each acceptance-criteria checkbox to the test that covers it.
 
