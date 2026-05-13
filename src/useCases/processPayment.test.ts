@@ -613,15 +613,13 @@ describe("processPayment", () => {
         .fn()
         .mockReturnValue(mockMalformedResponse);
 
-      await expect(
-        processPayment(appContext, {
-          client: mockClient,
-          request: { token: "mock-token" },
-        }),
-      ).rejects.toMatchObject({
-        constructor: PayGovError,
-        statusCode: 504,
-      });
+      const zodErr = await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }).catch((e) => e);
+
+      expect(zodErr).toBeInstanceOf(PayGovError);
+      expect(zodErr.statusCode).toBe(504);
 
       expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
         "agency-tracking-id-001",
@@ -636,15 +634,13 @@ describe("processPayment", () => {
         .fn()
         .mockRejectedValue(new Error("ECONNRESET"));
 
-      await expect(
-        processPayment(appContext, {
-          client: mockClient,
-          request: { token: "mock-token" },
-        }),
-      ).rejects.toMatchObject({
-        constructor: PayGovError,
-        statusCode: 504,
-      });
+      const networkErr = await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }).catch((e) => e);
+
+      expect(networkErr).toBeInstanceOf(PayGovError);
+      expect(networkErr.statusCode).toBe(504);
 
       expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
         "agency-tracking-id-001",
@@ -662,15 +658,13 @@ describe("processPayment", () => {
         new Error("db down"),
       );
 
-      await expect(
-        processPayment(appContext, {
-          client: mockClient,
-          request: { token: "mock-token" },
-        }),
-      ).rejects.toMatchObject({
-        constructor: ServerError,
-        statusCode: 500,
-      });
+      const dbErr = await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }).catch((e) => e);
+
+      expect(dbErr).toBeInstanceOf(ServerError);
+      expect(dbErr.statusCode).toBe(500);
 
       expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
         "agency-tracking-id-001",
@@ -690,15 +684,13 @@ describe("processPayment", () => {
         new Error("db still down"),
       );
 
-      await expect(
-        processPayment(appContext, {
-          client: mockClient,
-          request: { token: "mock-token" },
-        }),
-      ).rejects.toMatchObject({
-        constructor: ServerError,
-        statusCode: 500,
-      });
+      const doubleFailErr = await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }).catch((e) => e);
+
+      expect(doubleFailErr).toBeInstanceOf(ServerError);
+      expect(doubleFailErr.statusCode).toBe(500);
     });
   });
 });

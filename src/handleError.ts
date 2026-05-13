@@ -20,8 +20,7 @@ export const handleError = (err: any) => {
         errors: [],
       }),
     };
-  }
-  else if (err instanceof ZodError) {
+  } else if (err instanceof ZodError) {
     return {
       statusCode: 400,
       body: JSON.stringify({
@@ -29,8 +28,7 @@ export const handleError = (err: any) => {
         errors: err.issues,
       }),
     };
-  }
-  else if (err instanceof ServerError) {
+  } else if (err instanceof ServerError) {
     return {
       statusCode: 500,
       body: JSON.stringify({
