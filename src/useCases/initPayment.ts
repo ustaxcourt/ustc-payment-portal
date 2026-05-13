@@ -10,9 +10,13 @@ import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
 import { isUniqueViolation } from "../db/pgErrors";
 import { PayGovError } from "../errors/payGovError";
+import { ServerError } from "../errors/serverError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
 import { getMetadataKeys, getUrlOrigin } from "../utils/logger";
+
+const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
+const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
 
 const NETWORK_ERROR_CODES = new Set([
   "ECONNREFUSED",
@@ -80,12 +84,24 @@ export const initPayment: InitPayment = async (
     await TransactionModel.findInFlightByReferenceId(transactionReferenceId);
 
   if (existingInFlightTransaction) {
-    // TODO: PAY-298, is the token less than 3 hours old? If so, just return it.
-    // If not, call Pay.gov and get a new token.
-    // We might be able to reuse agencyTracking Id and just get a new token.
-    throw new ConflictError(
-      "A payment session is already in-flight for this transactionReferenceId",
-    );
+    const tokenAgeMs =
+      Date.now() -
+      new Date(existingInFlightTransaction.lastUpdatedAt).getTime();
+    if (
+      existingInFlightTransaction.paygovToken &&
+      tokenAgeMs < MAX_TOKEN_AGE_MS
+    ) {
+      return {
+        token: existingInFlightTransaction.paygovToken,
+        paymentRedirect: `${process.env.PAYMENT_URL}?token=${existingInFlightTransaction.paygovToken}&tcsAppID=${fee.tcsAppId}`,
+      };
+    } else {
+      await TransactionModel.updateToFailed(
+        existingInFlightTransaction.agencyTrackingId,
+        EXISTING_TOKEN_ERROR_CODE,
+        "Existing token expired",
+      );
+    }
   }
 
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
@@ -108,8 +124,6 @@ export const initPayment: InitPayment = async (
       transactionAmount,
       clientName,
       transactionReferenceId,
-      paymentStatus: "pending",
-      transactionStatus: "received",
       metadata: request.metadata,
     });
     appContext.logger.info(
@@ -168,6 +182,9 @@ export const initPayment: InitPayment = async (
       `Payment was initiated but failed to persist initiated status: ${
         err instanceof Error ? err.message : String(err)
       }`,
+    );
+    throw new ServerError(
+      "Failed to record payment session. Please retry your transaction.",
     );
   }
 
