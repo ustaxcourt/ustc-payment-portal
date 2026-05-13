@@ -202,7 +202,6 @@ app.get("/transaction-payment-status", async (_req, res, next) => {
 
 // start the express server
 app.listen(port, () => {
-  // tslint:disable-next-line:no-console
-  console.log(`server started at http://localhost:${port}`);
-  console.log(`API docs available at http://localhost:${port}/docs`);
+  appContext.logger.info(`server started at http://localhost:${port}`);
+  appContext.logger.info(`API docs available at http://localhost:${port}/docs`);
 });

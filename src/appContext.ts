@@ -71,7 +71,7 @@ export const createAppContext = (): AppContext => {
             headers.Authorization = `Bearer ${token}`;
             headers.Authentication = headers.Authorization;
           } catch (err: any) {
-            console.warn(
+            logger.warn(
               "[postHttpRequest] Failed to read token from Secrets Manager",
               {
                 secretId: tokenSecretId,

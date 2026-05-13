@@ -13,11 +13,16 @@ import { NotFoundError } from "./errors/notFound";
 
 jest.mock("./utils/logger", () => {
   const actual = jest.requireActual("./utils/logger");
+  const mockLogger: any = {
+    child: jest.fn(() => mockLogger),
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  };
   return {
     ...actual,
-    createLogger: jest.fn(() => ({
-      error: jest.fn(),
-    })),
+    createLogger: jest.fn(() => mockLogger),
   };
 });
 

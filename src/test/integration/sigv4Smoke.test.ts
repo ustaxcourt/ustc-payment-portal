@@ -1,7 +1,14 @@
-import { signedFetch, signRequest, assumeRole, signedFetchWithCredentials } from "./sigv4Helper";
+import {
+  signedFetch,
+  signRequest,
+  assumeRole,
+  signedFetchWithCredentials,
+} from "./sigv4Helper";
+import { logger } from "../../utils/getPortalLogger";
 
 const hasSigningCredentials =
-  Boolean(process.env.AWS_ACCESS_KEY_ID) && Boolean(process.env.AWS_SECRET_ACCESS_KEY);
+  Boolean(process.env.AWS_ACCESS_KEY_ID) &&
+  Boolean(process.env.AWS_SECRET_ACCESS_KEY);
 const isLocalCiOnlySkipMode = Boolean(process.env.DEV_AWS_DEPLOYER_ROLE_ARN);
 
 const skipCiOnlyTest = (reason: string): boolean => {
@@ -9,7 +16,7 @@ const skipCiOnlyTest = (reason: string): boolean => {
     return false;
   }
 
-  console.log(`Skipping: ${reason}`);
+  logger.info(`Skipping: ${reason}`);
   return true;
 };
 
@@ -80,7 +87,7 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
     });
 
     const data = await parseJsonOrText(result);
-    console.log("Signed request response:", result.status, data);
+    logger.info("Signed request response", { status: result.status, data });
 
     // A 403 means API Gateway rejected the SigV4 signature.
     // Any other status (200, 400) proves auth passed and Lambda was invoked.
@@ -98,12 +105,14 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
     });
 
     const data = await parseJsonOrText(result);
-    console.log("Unsigned request response:", result.status, data);
+    logger.info("Unsigned request response", { status: result.status, data });
 
     expect(result.status).toBe(403);
     if (typeof data === "object" && data !== null) {
       expect(data).toHaveProperty("message");
-      expect((data as { message: string }).message).toMatch(/Missing Authentication Token|Forbidden/i);
+      expect((data as { message: string }).message).toMatch(
+        /Missing Authentication Token|Forbidden/i,
+      );
     }
   });
 
@@ -116,7 +125,7 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
 
     const tamperedAuth = signedHeaders.authorization.replace(
       /Signature=[a-f0-9]+/,
-      "Signature=0000000000000000000000000000000000000000000000000000000000000000"
+      "Signature=0000000000000000000000000000000000000000000000000000000000000000",
     );
 
     const result = await fetch(`${apiBaseUrl}/init`, {
@@ -129,12 +138,14 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
     });
 
     const data = await parseJsonOrText(result);
-    console.log("Tampered signature response:", result.status, data);
+    logger.info("Tampered signature response", { status: result.status, data });
 
     expect(result.status).toBe(403);
     if (typeof data === "object" && data !== null) {
       expect(data).toHaveProperty("message");
-      expect((data as { message: string }).message).toMatch(/signature|Forbidden/i);
+      expect((data as { message: string }).message).toMatch(
+        /signature|Forbidden/i,
+      );
     }
   });
 });
@@ -152,7 +163,7 @@ describeWithCreds("Unsigned auth rejection", () => {
     });
 
     const data = await parseJsonOrText(result);
-    console.log("Unsigned request response:", result.status, data);
+    logger.info("Unsigned request response", { status: result.status, data });
 
     expect(result.status).toBe(403);
     if (typeof data === "object" && data !== null) {
@@ -166,7 +177,7 @@ describeWithCreds("Unsigned auth rejection", () => {
     });
 
     const data = await parseJsonOrText(result);
-    console.log("Unsigned request response:", result.status, data);
+    logger.info("Unsigned request response", { status: result.status, data });
 
     expect(result.status).toBe(403);
     if (typeof data === "object" && data !== null) {
@@ -193,7 +204,11 @@ describeWithCreds("SigV4 helper behavior and credential handling", () => {
   });
 
   it("signedFetchWithCredentials returns 200 with explicit credentials", async () => {
-    if (skipCiOnlyTest("test requires credentials registered in CI client-permissions")) {
+    if (
+      skipCiOnlyTest(
+        "test requires credentials registered in CI client-permissions",
+      )
+    ) {
       return;
     }
 
@@ -201,7 +216,9 @@ describeWithCreds("SigV4 helper behavior and credential handling", () => {
     const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
     if (!accessKeyId || !secretAccessKey) {
-      throw new Error("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are required");
+      throw new Error(
+        "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are required",
+      );
     }
 
     const result = await signedFetchWithCredentials(
@@ -215,7 +232,10 @@ describeWithCreds("SigV4 helper behavior and credential handling", () => {
     );
 
     const responseBody = await result.text();
-    console.log("signedFetchWithCredentials response:", result.status, responseBody.slice(0, 200));
+    logger.info("signedFetchWithCredentials response", {
+      status: result.status,
+      responseBody: responseBody.slice(0, 200),
+    });
 
     expect(result.status).toBe(200);
   });
@@ -290,13 +310,17 @@ describeLambdaAuth("Lambda-level authorization", () => {
     // to assume it. This test runs in CI where the runner IS already the deployer role.
     // Locally, this test is skipped because we cannot chain role assumptions with
     // the current helper (would require modifying assumeRole to accept explicit credentials).
-    if (skipCiOnlyTest("test requires CI execution (runner must be deployer role)")) {
+    if (
+      skipCiOnlyTest(
+        "test requires CI execution (runner must be deployer role)",
+      )
+    ) {
       return;
     }
 
     const credentials = await assumeRole(
       testUnauthorizedRoleArn!,
-      "unregistered-client-test"
+      "unregistered-client-test",
     );
 
     const result = await signedFetchWithCredentials(
@@ -306,16 +330,21 @@ describeLambdaAuth("Lambda-level authorization", () => {
         method: "POST",
         headers,
         body,
-      }
+      },
     );
 
     const data = await parseJsonOrText(result);
-    console.log("Unregistered client response:", result.status, data);
+    logger.info("Unregistered client response", {
+      status: result.status,
+      data,
+    });
 
     expect(result.status).toBe(403);
     if (typeof data === "object" && data !== null) {
       expect(data).toHaveProperty("message");
-      expect((data as { message: string }).message).toContain("Client not registered");
+      expect((data as { message: string }).message).toContain(
+        "Client not registered",
+      );
     }
   });
 });

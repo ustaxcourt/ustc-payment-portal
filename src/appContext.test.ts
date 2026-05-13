@@ -1,11 +1,22 @@
 import { createAppContext } from "./appContext";
 import * as https from "https";
 import { getSecretString } from "./clients/secretsClient";
+import { logger } from "./utils/getPortalLogger";
 
 jest.mock("node-fetch", () => jest.fn());
 jest.mock("https");
 jest.mock("./clients/secretsClient");
 jest.mock("./utils/getPortalLogger", () => ({
+  logger: {
+    addUser: jest.fn(),
+    addContext: jest.fn(),
+    getContext: jest.fn(() => ({})),
+    clearContext: jest.fn(),
+    debug: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+  },
   getPortalLogger: jest.fn(() => ({
     addUser: jest.fn(),
     addContext: jest.fn(),
@@ -178,7 +189,7 @@ describe("postHttpRequest", () => {
     });
     mockGetSecretString.mockRejectedValueOnce(fetchError);
     const warnSpy = jest
-      .spyOn(console, "warn")
+      .spyOn(logger, "warn")
       .mockImplementation(() => undefined);
 
     const appContext = createAppContext();

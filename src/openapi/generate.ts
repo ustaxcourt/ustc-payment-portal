@@ -8,10 +8,12 @@ import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "js-yaml";
 import { generateOpenAPIDocument } from "./registry";
+import { createLogger } from "../utils/logger";
 
 const outputDir = path.resolve(__dirname, "../../docs");
 const outputPath = path.join(outputDir, "openapi.json");
 const outputPathYaml = path.join(outputDir, "openapi.yaml");
+const logger = createLogger();
 
 // Ensure docs directory exists
 if (!fs.existsSync(outputDir)) {
@@ -22,8 +24,8 @@ const document = generateOpenAPIDocument();
 
 // Write JSON
 fs.writeFileSync(outputPath, JSON.stringify(document, null, 2));
-console.log(`✅ OpenAPI JSON spec generated: ${outputPath}`);
+logger.info({ outputPath }, "OpenAPI JSON spec generated");
 
 // Write YAML
 fs.writeFileSync(outputPathYaml, yaml.dump(document, { noRefs: true }));
-console.log(`✅ OpenAPI YAML spec generated: ${outputPathYaml}`);
+logger.info({ outputPathYaml }, "OpenAPI YAML spec generated");

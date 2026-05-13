@@ -59,13 +59,11 @@ export const getDetails: GetDetails = async (
   if (!fee || !fee.tcsAppId) {
     // Both branches indicate server-side data corruption: the FK prevents the first,
     // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
-    console.error(
-      `Fee misconfigured for feeId '${
-        allRows[0].feeId
-      }' on transactionReferenceId '${transactionReferenceId}': ${
-        !fee ? "fee row missing" : "tcsAppId missing"
-      }`,
-    );
+    appContext.logger.error("Fee misconfigured for getDetails", {
+      feeId: allRows[0].feeId,
+      transactionReferenceId,
+      reason: !fee ? "fee row missing" : "tcsAppId missing",
+    });
     throw new ServerError();
   }
 
@@ -111,10 +109,10 @@ const updatePendingAttemptFromPayGov = async (
         result = await req.makeSoapRequest(appContext);
         refreshedStatus = parseTransactionStatus(result.transaction_status);
       } catch (err) {
-        console.error(
-          `Failed to refresh status for paygovTrackingId '${row.paygovTrackingId}':`,
+        appContext.logger.error("Failed to refresh status from Pay.gov", {
+          paygovTrackingId: row.paygovTrackingId,
           err,
-        );
+        });
         return toTransactionRecordSummary(row);
       }
 
@@ -135,10 +133,10 @@ const updatePendingAttemptFromPayGov = async (
       } catch (err) {
         // Pay.gov told us the truth; we just couldn't persist it. Return the fresh status anyway —
         // next call will re-poll and retry the write.
-        console.error(
-          `Failed to persist refreshed status for paygovTrackingId '${row.paygovTrackingId}':`,
+        appContext.logger.error("Failed to persist refreshed status", {
+          paygovTrackingId: row.paygovTrackingId,
           err,
-        );
+        });
         return {
           ...toTransactionRecordSummary(row),
           transactionStatus: refreshedStatus,

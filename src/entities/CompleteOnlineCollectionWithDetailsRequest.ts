@@ -6,6 +6,7 @@ import {
   CompleteOnlineCollectionWithDetailsResponse,
   CompleteOnlineCollectionWithDetailsResponseSchema,
 } from "../schemas/CompleteOnlineCollectionWithDetailsResponse.schema";
+import { logger } from "../utils/getPortalLogger";
 
 export type CompleteOnlineCollectionWithDetailsRequestParams = {
   tcs_app_id: string;
@@ -22,13 +23,13 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
   }
 
   makeSoapRequest = async (
-    appContext: AppContext
+    appContext: AppContext,
   ): Promise<CompleteOnlineCollectionWithDetailsResponse> => {
     return this.useHttp(appContext);
   };
 
   useHttp = async (
-    appContext: AppContext
+    appContext: AppContext,
   ): Promise<CompleteOnlineCollectionWithDetailsResponse> => {
     const params: CompleteOnlineCollectionWithDetailsRequestParams = {
       tcs_app_id: this.tcsAppId,
@@ -37,15 +38,20 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
     const responseBody = await SoapRequest.prototype.makeRequest(
       appContext,
       params,
-      this.requestType
+      this.requestType,
     );
 
     if (responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]) {
-      const raw = responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]
-        .completeOnlineCollectionWithDetailsResponse;
-      const parsed = CompleteOnlineCollectionWithDetailsResponseSchema.safeParse(raw);
+      const raw =
+        responseBody["ns2:completeOnlineCollectionWithDetailsResponse"]
+          .completeOnlineCollectionWithDetailsResponse;
+      const parsed =
+        CompleteOnlineCollectionWithDetailsResponseSchema.safeParse(raw);
       if (!parsed.success) {
-        console.error("completeOnlineCollectionWithDetails schema validation failed", JSON.stringify({ raw, errors: parsed.error.issues }));
+        logger.error(
+          "completeOnlineCollectionWithDetails schema validation failed",
+          { raw, errors: parsed.error.issues },
+        );
         throw parsed.error;
       }
       return parsed.data;
@@ -56,31 +62,33 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
 
   handleFault = (fault: ProcessorFault) => {
     if (!fault) {
-      return new FailedTransactionError("Unexpected response from Pay.gov: no fault detail returned");
+      return new FailedTransactionError(
+        "Unexpected response from Pay.gov: no fault detail returned",
+      );
     }
 
     if (!fault.detail || !fault.detail["ns2:TCSServiceFault"]) {
-      return new FailedTransactionError("Pay.gov returned a fault without error details");
+      return new FailedTransactionError(
+        "Pay.gov returned a fault without error details",
+      );
     }
 
     return new FailedTransactionError(
       fault.detail["ns2:TCSServiceFault"].return_detail,
-      Number(fault.detail["ns2:TCSServiceFault"].return_code)
+      Number(fault.detail["ns2:TCSServiceFault"].return_code),
     );
   };
 }
 
 type ProcessorFault =
   | {
-    faultcode: string;
-    faultstring: string;
-    detail: {
-      "ns2:TCSServiceFault": {
-        return_code: string;
-        return_detail: string;
+      faultcode: string;
+      faultstring: string;
+      detail: {
+        "ns2:TCSServiceFault": {
+          return_code: string;
+          return_detail: string;
+        };
       };
-    };
-  }
+    }
   | undefined;
-
-

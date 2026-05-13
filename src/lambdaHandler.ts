@@ -216,7 +216,9 @@ export const getAllTransactionsHandler =
         .getRecentTransactions(appContext);
       return dashboardOk(result);
     } catch (err) {
-      console.error("[Dashboard] getAllTransactions error:", err);
+      appContext.logger.error("[Dashboard] getAllTransactions error", {
+        err,
+      });
       return dashboardError(500, "Internal server error");
     }
   };
@@ -252,7 +254,9 @@ export const getTransactionsByStatusHandler = async (
       });
     return dashboardOk(result);
   } catch (err) {
-    console.error("[Dashboard] getTransactionsByStatus error:", err);
+    appContext.logger.error("[Dashboard] getTransactionsByStatus error", {
+      err,
+    });
     return dashboardError(500, "Internal server error");
   }
 };
@@ -270,7 +274,9 @@ export const getTransactionPaymentStatusHandler =
         .getTransactionPaymentStatus(appContext);
       return dashboardOk(result);
     } catch (err) {
-      console.error("[Dashboard] getTransactionPaymentStatus error:", err);
+      appContext.logger.error("[Dashboard] getTransactionPaymentStatus error", {
+        err,
+      });
       return dashboardError(500, "Internal server error");
     }
   };
