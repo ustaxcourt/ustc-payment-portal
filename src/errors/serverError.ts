@@ -3,5 +3,7 @@ export class ServerError extends Error {
 
   constructor(message: string = "Internal Server Error") {
     super(message);
+    Object.setPrototypeOf(this, new.target.prototype);
+    this.name = new.target.name;
   }
 }

@@ -68,12 +68,21 @@ export const processPayment: ProcessPayment = async (
     tcsAppId: fee.tcsAppId,
     token: request.token,
   });
-  appContext.logger.debug("processPayment request", { req });
+  appContext.logger.debug("processPayment request", {
+    tcsAppId: fee.tcsAppId,
+    tokenLength: request.token.length,
+  });
 
   try {
     const result = await req.makeSoapRequest(appContext);
 
-    appContext.logger.debug("processPayment result", { result });
+    appContext.logger.debug("processPayment result", {
+      transactionStatus: result.transaction_status,
+      paymentType: result.payment_type,
+      paygovTrackingId: result.paygov_tracking_id,
+      transactionDate: result.transaction_date,
+      paymentDate: result.payment_date,
+    });
 
     const parsedStatus = parseTransactionStatus(result.transaction_status);
     const paymentStatus =
