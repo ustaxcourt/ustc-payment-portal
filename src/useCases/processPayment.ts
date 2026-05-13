@@ -3,7 +3,6 @@ import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/Complete
 import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
 import { ProcessPaymentResponse } from "../schemas/ProcessPayment.schema";
 import { FailedTransactionError } from "../errors/failedTransaction";
-import { ForbiddenError } from "../errors/forbidden";
 import { GoneError } from "../errors/gone";
 import { NotFoundError } from "../errors/notFound";
 import { ServerError } from "../errors/serverError";
@@ -14,7 +13,6 @@ import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { toPaymentMethod } from "../utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
-import { authorizedClientAccessToFee } from "../utils/authorizedClientAccessToFee";
 import { authorizeClient } from "../authorizeClient";
 
 export type ProcessPayment = (

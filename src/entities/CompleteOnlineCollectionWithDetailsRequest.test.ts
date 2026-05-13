@@ -1,5 +1,4 @@
 import { CompleteOnlineCollectionWithDetailsRequest } from "./CompleteOnlineCollectionWithDetailsRequest";
-import { SoapRequest } from "./SoapRequest";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { FailedTransactionError } from "../errors/failedTransaction";
 
@@ -64,7 +63,6 @@ describe("CompleteOnlineCollectionWithDetailsRequest", () => {
         const result = request.handleFault(undefined);
         expect(result).toBeInstanceOf(FailedTransactionError);
       });
-
     });
   });
 });

@@ -1,6 +1,5 @@
 import { ZodError } from "zod";
 import { PayGovError } from "./errors/payGovError";
-import { ForbiddenError } from "./errors/forbidden";
 import { ServerError } from "./errors/serverError";
 
 export const handleError = (err: any) => {

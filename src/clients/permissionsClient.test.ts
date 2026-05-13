@@ -1,6 +1,5 @@
 import {
   getClientPermissions,
-  getClientByRoleArn,
   clearPermissionsCache,
 } from "./permissionsClient";
 import { getSecretString } from "./secretsClient";

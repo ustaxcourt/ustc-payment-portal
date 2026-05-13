@@ -1,7 +1,5 @@
 import { ForbiddenError } from "./errors/forbidden";
-import { getClientByRoleArn } from "./clients/permissionsClient";
 import { ClientPermission } from "./types/ClientPermission";
-import { authorizedClientAccessToFee } from "./utils/authorizedClientAccessToFee";
 import { logger } from "./utils/logger";
 
 /**
