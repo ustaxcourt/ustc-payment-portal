@@ -5,7 +5,7 @@ const config: Config = {
   testEnvironment: "node",
   setupFiles: ["dotenv/config"],
   bail: true,
-  testPathIgnorePatterns: ["/node_modules/", "/test/integration/", "/dist/"],
+  testPathIgnorePatterns: ["/node_modules/", "/dist/"],
   coveragePathIgnorePatterns: [
     "/node_modules/",
     "/dist/",
