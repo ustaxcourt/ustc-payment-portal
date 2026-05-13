@@ -12,7 +12,7 @@ import { ClientPermission } from "./types/ClientPermission";
  */
 export const authorizeClient = async (
   roleArn: string,
-  feeId?: string
+  feeId?: string,
 ): Promise<ClientPermission> => {
   const client = await getClientByRoleArn(roleArn);
 

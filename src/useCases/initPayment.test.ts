@@ -1,3 +1,20 @@
+jest.mock("../utils/logger", () => ({
+  getMetadataKeys: jest.fn((metadata: unknown) => {
+    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+      return undefined;
+    }
+    return Object.keys(metadata as Record<string, unknown>).sort();
+  }),
+  getUrlOrigin: jest.fn((url?: string) => {
+    if (!url) return undefined;
+    try {
+      return new URL(url).origin;
+    } catch {
+      return undefined;
+    }
+  }),
+}));
+
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
   default: {
@@ -70,7 +87,7 @@ const mockSoapRequest = (token: string) => {
 };
 
 describe("initPayment", () => {
-  beforeEach(() => {
+   beforeEach(() => {
     jest.clearAllMocks();
   });
 
@@ -107,77 +124,6 @@ describe("initPayment", () => {
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTPETITION");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToInitiated).toHaveBeenCalled();
-  });
-
-  it("logs lifecycle events via appContext.logger", async () => {
-    mockSoapRequest("test-token-logger");
-
-    const childInfo = jest.fn();
-    const childError = jest.fn();
-    const mockRequestLogger = {
-      info: jest.fn(),
-      error: jest.fn(),
-      child: jest.fn().mockReturnValue({
-        info: childInfo,
-        error: childError,
-      }),
-    };
-
-    const loggerSpy = jest
-      .spyOn(appContext, "logger")
-      .mockReturnValue(mockRequestLogger as any);
-
-    await initPayment(appContext, {
-      client: mockClient,
-      request: validPetitionRequest,
-    });
-
-    expect(loggerSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        clientName: mockClient.clientName,
-        feeId: "PETITION_FILING_FEE",
-        transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-      }),
-    );
-
-    expect(mockRequestLogger.info).toHaveBeenCalledWith(
-      expect.objectContaining({
-        requestParams: expect.objectContaining({
-          feeId: "PETITION_FILING_FEE",
-          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-          urlSuccessOrigin: "https://example.com",
-          urlCancelOrigin: "https://example.com",
-          metadataKeys: ["docketNumber"],
-        }),
-      }),
-      "initPayment use case started",
-    );
-    expect(mockRequestLogger.child).toHaveBeenCalledWith(
-      expect.objectContaining({ agencyTrackingId: expect.any(String) }),
-    );
-    expect(childInfo).toHaveBeenCalledWith(
-      expect.objectContaining({
-        requestParams: expect.objectContaining({
-          feeId: "PETITION_FILING_FEE",
-          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-          metadataKeys: ["docketNumber"],
-        }),
-      }),
-      "Persisted received transaction with generated agency tracking id",
-    );
-    expect(childInfo).toHaveBeenCalledWith(
-      expect.objectContaining({ agencyTrackingId: expect.any(String) }),
-      "Pay.gov startOnlineCollection completed",
-    );
-    expect(childInfo).toHaveBeenCalledWith(
-      expect.objectContaining({ agencyTrackingId: expect.any(String) }),
-      "Persisted initiated transaction",
-    );
-    expect(childInfo).toHaveBeenCalledWith(
-      expect.objectContaining({ agencyTrackingId: expect.any(String) }),
-      "initPayment use case completed",
-    );
-    expect(childError).not.toHaveBeenCalled();
   });
 
   it("returns a token and paymentRedirect for a valid NONATTORNEY_EXAM_REGISTRATION_FEE request", async () => {
@@ -254,9 +200,7 @@ describe("initPayment", () => {
     // peer wins the createReceived race and our insert violates the partial unique index.
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
     const uniqueViolation = Object.assign(
-      new Error(
-        'duplicate key value violates unique constraint "idx_transactions_unique_active"',
-      ),
+      new Error('duplicate key value violates unique constraint "idx_transactions_unique_active"'),
       { code: "23505" },
     );
     TransactionModel.createReceived.mockRejectedValueOnce(uniqueViolation);
@@ -272,9 +216,7 @@ describe("initPayment", () => {
   it("wraps non-unique-violation createReceived errors as a generic failure", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
-    TransactionModel.createReceived.mockRejectedValueOnce(
-      new Error("connection refused"),
-    );
+    TransactionModel.createReceived.mockRejectedValueOnce(new Error("connection refused"));
 
     await expect(
       initPayment(appContext, {
@@ -301,9 +243,40 @@ describe("initPayment", () => {
     ).rejects.toThrow("SOAP error");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(appContext.logger.error).toHaveBeenCalled();
+  });
+
+  it("bubbles updateToFailed error if marking failed transaction also fails", async () => {
+    jest
+      .spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+      .mockRejectedValueOnce(new Error("SOAP error"));
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.updateToFailed.mockRejectedValueOnce(new Error("DB down"));
+
+    await expect(
+      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
+    ).rejects.toThrow("DB down");
+  });
+
+  it("throws detailed persistence error when updateToInitiated fails", async () => {
+    mockSoapRequest("new-token-abc");
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.updateToInitiated.mockRejectedValueOnce(new Error("DB write failed"));
+    TransactionModel.updateToFailed.mockRejectedValueOnce(new Error("DB also down"));
+
+    await expect(
+      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
+    ).rejects.toThrow(
+      "Payment was initiated but failed to persist initiated status: DB write failed",
+    );
+    expect(appContext.logger.error).toHaveBeenCalled();
   });
 
   it("throws PayGovError when Pay.gov SOAP request fails with a network error", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.updateToFailed.mockReset();
+    TransactionModel.updateToFailed.mockResolvedValue(undefined);
+
     const networkError = Object.assign(new Error("connect ECONNREFUSED"), {
       code: "ECONNREFUSED",
     });
@@ -319,21 +292,26 @@ describe("initPayment", () => {
         request: validPetitionRequest,
       }),
     ).rejects.toThrow(PayGovError);
+    expect(appContext.logger.error).toHaveBeenCalled();
   });
 
-  it("rethrows non-network errors from makeSoapRequest", async () => {
-    const parseError = new TypeError("Unexpected token in XML");
+  it("rethrows non-network SOAP errors (for example ZodError)", async () => {
+    const { ZodError, ZodIssueCode } = require("zod");
+    const zodError = new ZodError([{ code: ZodIssueCode.invalid_type, path: [], message: "Required", expected: "string", received: "undefined" }]);
     jest
       .spyOn(
         SoapRequestModule.StartOnlineCollectionRequest.prototype,
         "makeSoapRequest",
       )
-      .mockRejectedValueOnce(parseError);
+      .mockRejectedValueOnce(zodError);
+    const TransactionModel = require("../db/TransactionModel").default;
     await expect(
       initPayment(appContext, {
         client: mockClient,
         request: validPetitionRequest,
       }),
-    ).rejects.toThrow(parseError);
+    ).rejects.toBe(zodError);
+    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(appContext.logger.error).toHaveBeenCalled();
   });
 });

@@ -44,25 +44,22 @@ export const initPayment: InitPayment = async (
   const { clientName } = client;
   const metadataKeys = getMetadataKeys(request.metadata);
 
-  const useCaseRootLogger = appContext.logger({
+  appContext.logger.addContext({
     clientName,
     feeId,
     transactionReferenceId,
   });
 
-  useCaseRootLogger.info(
-    {
-      requestParams: {
-        feeId,
-        amount,
-        transactionReferenceId,
-        urlSuccessOrigin: getUrlOrigin(urlSuccess),
-        urlCancelOrigin: getUrlOrigin(urlCancel),
-        metadataKeys,
-      },
+  appContext.logger.info("initPayment use case started", {
+    requestParams: {
+      feeId,
+      amount,
+      transactionReferenceId,
+      urlSuccessOrigin: getUrlOrigin(urlSuccess),
+      urlCancelOrigin: getUrlOrigin(urlCancel),
+      metadataKeys,
     },
-    "initPayment use case started",
-  );
+  });
 
   const fee = await FeesModel.getFeeById(feeId);
   if (!fee || !fee.tcsAppId) {
@@ -93,7 +90,7 @@ export const initPayment: InitPayment = async (
 
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
   const agencyTrackingId = generateAgencyTrackingId();
-  const useCaseLogger = useCaseRootLogger.child({ agencyTrackingId });
+  appContext.logger.addContext({ agencyTrackingId });
 
   const req = new StartOnlineCollectionRequest({
     tcsAppId: fee.tcsAppId,
@@ -115,7 +112,8 @@ export const initPayment: InitPayment = async (
       transactionStatus: "received",
       metadata: request.metadata,
     });
-    useCaseLogger.info(
+    appContext.logger.info(
+      "Persisted received transaction with generated agency tracking id",
       {
         requestParams: {
           feeId,
@@ -123,7 +121,6 @@ export const initPayment: InitPayment = async (
           metadataKeys,
         },
       },
-      "Persisted received transaction with generated agency tracking id",
     );
   } catch (err) {
     if (isUniqueViolation(err)) {
@@ -134,7 +131,7 @@ export const initPayment: InitPayment = async (
         "A payment session is already in-flight for this transactionReferenceId",
       );
     }
-    useCaseLogger.error({ err }, "Failed to persist received transaction");
+    appContext.logger.error("Failed to persist received transaction", { err });
     throw new Error(
       `Failed to record received transaction: ${
         err instanceof Error ? err.message : String(err)
@@ -144,13 +141,13 @@ export const initPayment: InitPayment = async (
 
   try {
     result = await req.makeSoapRequest(appContext);
-    useCaseLogger.info(
-      { agencyTrackingId, payGovResponse: result },
-      "Pay.gov startOnlineCollection completed",
-    );
+    appContext.logger.info("Pay.gov startOnlineCollection completed", {
+      agencyTrackingId,
+      payGovResponse: result,
+    });
   } catch (err) {
     await TransactionModel.updateToFailed(agencyTrackingId);
-    useCaseLogger.error({ err }, "Pay.gov request failed");
+    appContext.logger.error("Pay.gov request failed", { err });
     if (isNetworkError(err)) {
       throw new PayGovError();
     }
@@ -159,11 +156,13 @@ export const initPayment: InitPayment = async (
 
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
-    useCaseLogger.info({ agencyTrackingId }, "Persisted initiated transaction");
+    appContext.logger.info("Persisted initiated transaction", {
+      agencyTrackingId,
+    });
   } catch (err) {
-    useCaseLogger.error(
-      { err },
+    appContext.logger.error(
       "Failed to persist initiated transaction after Pay.gov response",
+      { err },
     );
     throw new Error(
       `Payment was initiated but failed to persist initiated status: ${
@@ -172,7 +171,9 @@ export const initPayment: InitPayment = async (
     );
   }
 
-  useCaseLogger.info({ agencyTrackingId }, "initPayment use case completed");
+  appContext.logger.info("initPayment use case completed", {
+    agencyTrackingId,
+  });
 
   return {
     token: result.token,

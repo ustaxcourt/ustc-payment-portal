@@ -5,7 +5,6 @@ import {
   Context,
 } from "aws-lambda";
 import { ZodType } from "zod";
-import { Logger } from "pino/pino";
 import { createAppContext } from "./appContext";
 import { extractCallerArn } from "./extractCallerArn";
 import { authorizeClient } from "./authorizeClient";
@@ -36,33 +35,28 @@ const lambdaHandler = async <T>(
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler<T>,
   feeId?: string,
-  requestLogger?: Logger,
 ): Promise<APIGatewayProxyResult> => {
-  let clientScopedLogger: Logger | undefined;
   try {
     const roleArn = extractCallerArn(requestContext);
     const client = await authorizeClient(roleArn, feeId);
-    clientScopedLogger =
-      requestLogger?.child({
+    appContext.logger.addUser({
+      user: {
+        roleArn,
         clientName: client.clientName,
-        clientArn: client.clientRoleArn,
-      }) ??
-      appContext.logger({
-        clientName: client.clientName,
-        clientArn: client.clientRoleArn,
-      });
-    clientScopedLogger.info("Authorized client for request");
+      },
+    });
+    appContext.logger.info("Authorized client for request");
     const result = await callback(appContext, {
       client,
       request,
     });
-    clientScopedLogger.info("Completed request");
+    appContext.logger.info("Completed request");
     return {
       statusCode: 200,
       body: JSON.stringify(result),
     };
   } catch (err) {
-    return handleError(err, clientScopedLogger);
+    return handleError(err);
   }
 };
 
@@ -72,13 +66,9 @@ type ParseResult<T> =
 
 const safeJsonParse = <T = any>(
   body: string | null | undefined,
-  errorLogger?: Logger,
 ): ParseResult<T> => {
   if (!body) {
-    const error = handleError(
-      new InvalidRequestError("missing body"),
-      errorLogger,
-    );
+    const error = handleError(new InvalidRequestError("missing body"));
     return { ok: false, error };
   }
 
@@ -89,7 +79,6 @@ const safeJsonParse = <T = any>(
       ok: false,
       error: handleError(
         new InvalidRequestError("invalid JSON in request body"),
-        errorLogger,
       ),
     };
   }
@@ -102,14 +91,13 @@ const safeJsonParse = <T = any>(
 const parseAndValidate = <T>(
   body: string | null | undefined,
   schema: ZodType<T>,
-  errorLogger?: Logger,
 ): ParseResult<T> => {
-  const parsed = safeJsonParse(body, errorLogger);
+  const parsed = safeJsonParse(body);
   if (!parsed.ok) return parsed;
 
   const result = schema.safeParse(parsed.value);
   if (!result.success) {
-    return { ok: false, error: handleError(result.error, errorLogger) };
+    return { ok: false, error: handleError(result.error) };
   }
 
   return { ok: true, value: result.data };
@@ -119,18 +107,17 @@ export const initPaymentHandler = (
   event: APIGatewayEvent,
   context?: Context,
 ): Promise<APIGatewayProxyResult> => {
-  const requestLogger = appContext.logger({
+  appContext.logger.addContext({
     apiGatewayRequestId: event.requestContext.requestId,
     lambdaRequestId: context?.awsRequestId,
     path: event.path,
     httpMethod: event.httpMethod,
   });
-  requestLogger.debug("Received /init request");
+  appContext.logger.debug("Received /init request");
 
   const result: ParseResult<InitPaymentRequest> = parseAndValidate(
     event.body,
     InitPaymentRequestSchema,
-    requestLogger,
   );
   if (!result.ok) return Promise.resolve(result.error);
 
@@ -143,18 +130,18 @@ export const initPaymentHandler = (
       : undefined;
   const metadataKeys = getMetadataKeys(metadata);
 
-  const enrichedLogger = requestLogger.child({
+  appContext.logger.addContext({
     feeId: result.value.feeId,
     transactionReferenceId: result.value.transactionReferenceId,
     metadataKeys,
   });
+  appContext.logger.debug("Validated /init request");
 
   return lambdaHandler(
     result.value,
     event.requestContext,
     appContext.getUseCases().initPayment,
     result.value.feeId,
-    enrichedLogger,
   );
 };
 

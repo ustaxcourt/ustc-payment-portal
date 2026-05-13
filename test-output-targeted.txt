@@ -1,0 +1,24 @@
+PASS src/useCases/initPayment.test.ts
+PASS src/appContext.test.ts
+  ● Console
+
+    console.log
+      [Knex] env=test db=mydb_test
+
+      at createKnexFromEnv (src/db/knex.ts:30:13)
+
+PASS src/lambdaHandler.test.ts
+  ● Console
+
+    console.log
+      [Knex] env=test db=mydb_test
+
+      at createKnexFromEnv (src/db/knex.ts:30:13)
+
+PASS src/handleError.test.ts
+
+Test Suites: 4 passed, 4 total
+Tests:       63 passed, 63 total
+Snapshots:   0 total
+Time:        0.913 s, estimated 1 s
+Ran all test suites matching src/useCases/initPayment.test.ts|src/lambdaHandler.test.ts|src/appContext.test.ts|src/handleError.test.ts.

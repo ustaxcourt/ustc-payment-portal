@@ -57,7 +57,9 @@ export const getDetails: GetDetails = async (
     // Both branches indicate server-side data corruption: the FK prevents the first,
     // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
     console.error(
-      `Fee misconfigured for feeId '${allRows[0].feeId}' on transactionReferenceId '${transactionReferenceId}': ${
+      `Fee misconfigured for feeId '${
+        allRows[0].feeId
+      }' on transactionReferenceId '${transactionReferenceId}': ${
         !fee ? "fee row missing" : "tcsAppId missing"
       }`,
     );
@@ -69,9 +71,7 @@ export const getDetails: GetDetails = async (
   // If the obligation is already resolved (success or failed), the DB is authoritative —
   // no need to hit Pay.gov. Only the pending path fans out to refresh attempts.
   if (paymentStatus !== "pending") {
-    const transactions = allRows.map((row) =>
-      toTransactionRecordSummary(row),
-    );
+    const transactions = allRows.map((row) => toTransactionRecordSummary(row));
     return { paymentStatus, transactions };
   }
 
@@ -127,7 +127,10 @@ const updatePendingAttemptFromPayGov = async (
           `Failed to persist refreshed status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
-        return { ...toTransactionRecordSummary(row), transactionStatus: refreshedStatus };
+        return {
+          ...toTransactionRecordSummary(row),
+          transactionStatus: refreshedStatus,
+        };
       }
     }),
   );

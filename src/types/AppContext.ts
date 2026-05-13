@@ -5,8 +5,7 @@ import { GetDetails } from "../useCases/getDetails";
 import { GetRecentTransactions } from "../useCases/getRecentTransactions";
 import { GetTransactionPaymentStatus } from "../useCases/getTransactionPaymentStatus";
 import { GetTransactionsByStatus } from "../useCases/getTransactionsByStatus";
-import { Logger } from "pino/pino";
-import { LoggerContext } from "./LoggerContext";
+import { getPortalLogger } from "../utils/getPortalLogger";
 
 export type AppContext = {
   getHttpsAgent: () => Promise<https.Agent | undefined>;
@@ -19,5 +18,5 @@ export type AppContext = {
     getTransactionPaymentStatus: GetTransactionPaymentStatus;
     getTransactionsByStatus: GetTransactionsByStatus;
   };
-  logger: (context?: LoggerContext) => Logger;
+  logger: ReturnType<typeof getPortalLogger>;
 };

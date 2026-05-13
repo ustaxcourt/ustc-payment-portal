@@ -92,7 +92,7 @@ app.post("/init", async (req, res) => {
       : undefined;
   const metadataKeys = getMetadataKeys(metadata);
 
-  const requestLogger = appContext.logger({
+  appContext.logger.addContext({
     requestId:
       typeof req.header("x-request-id") === "string"
         ? req.header("x-request-id")
@@ -105,17 +105,17 @@ app.post("/init", async (req, res) => {
     metadataKeys,
   });
 
-  requestLogger.debug("Received /init request");
+  appContext.logger.debug("Received /init request");
   try {
     const request = parseRequestBody(req, InitPaymentRequestSchema);
     const result = await appContext.getUseCases().initPayment(appContext, {
       client: devClient,
       request,
     });
-    requestLogger.info("Completed /init request");
+    appContext.logger.info("Completed /init request");
     res.json(result);
   } catch (err) {
-    const { statusCode, body } = handleError(err, requestLogger);
+    const { statusCode, body } = handleError(err);
     res.status(statusCode).json(JSON.parse(body));
   }
 });

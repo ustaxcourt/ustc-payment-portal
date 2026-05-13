@@ -5,6 +5,18 @@ import { getSecretString } from "./clients/secretsClient";
 jest.mock("node-fetch", () => jest.fn());
 jest.mock("https");
 jest.mock("./clients/secretsClient");
+jest.mock("./utils/getPortalLogger", () => ({
+  getPortalLogger: jest.fn(() => ({
+    addUser: jest.fn(),
+    addContext: jest.fn(),
+    getContext: jest.fn(() => ({})),
+    clearContext: jest.fn(),
+    debug: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+  })),
+}));
 
 // Import after mocking
 let mockFetch: jest.Mock;

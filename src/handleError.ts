@@ -1,9 +1,9 @@
 import { ZodError } from "zod";
 import { PayGovError } from "./errors/payGovError";
-import { logger } from "./utils/logger";
 import { Logger } from "pino/pino";
+import { createLogger } from "./utils/logger";
 
-export const handleError = (err: any, errorLogger: Logger = logger) => {
+export const handleError = (err: any, errorLogger: Logger = createLogger()) => {
   errorLogger.error({ err }, "responding with an error");
   if (err.statusCode && err.statusCode < 500) {
     return {
