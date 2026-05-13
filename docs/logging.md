@@ -4,16 +4,45 @@ The Payment Portal uses [Pino](https://getpino.io) for structured JSON logging. 
 
 ## Quick Start
 
-### Importing the logger
+### Choosing the right logger API
+
+Use one of these patterns based on where the code runs.
+
+#### Pattern A: request and use-case code (preferred)
+
+In handlers and use cases, use `appContext.logger` (or `logger` from `getPortalLogger`) so request context can be added and reused.
 
 ```typescript
-import { logger } from "./utils/logger";
+import { createAppContext } from "./appContext";
 
-// Log at different levels
-logger.debug({}, "This is a debug message");
-logger.info({}, "This is an info message");
-logger.warn({}, "This is a warning");
-logger.error({}, "This is an error");
+const appContext = createAppContext();
+
+appContext.logger.clearContext();
+appContext.logger.addContext({
+  path: "/init",
+  requestId: "abc-123",
+});
+
+// Message-first API for appContext.logger
+appContext.logger.debug("Received request");
+appContext.logger.info("Payment initiated", { feeId: "FEE-001" });
+appContext.logger.error("Failed to persist transaction", { err });
+```
+
+#### Pattern B: standalone scripts and isolated modules
+
+For scripts (for example OpenAPI generation or migration tasks), create a raw Pino logger directly.
+
+```typescript
+import { createLogger } from "./utils/logger";
+
+const logger = createLogger();
+
+// Object-first API for raw Pino logger
+logger.debug({ operation: "openapi:generate" }, "Starting generation");
+logger.info({ outputPath: "docs/openapi.json" }, "OpenAPI JSON generated");
+logger.warn({ retries: 1 }, "Retrying operation");
+logger.error({ err }, "Script failed");
 ```
 
 ### Logging with structured fields
@@ -21,7 +50,14 @@ logger.error({}, "This is an error");
 Always include relevant context as structured fields rather than string interpolation:
 
 ```typescript
-// Good ✓
+// Good with appContext.logger ✓
+appContext.logger.info("Payment initiated", {
+  feeId: "FEE-001",
+  transactionReferenceId: "8d537be3-80e8-41a3-8acd-8d44cc2a7183",
+  amount: 150.0,
+});
+
+// Good with createLogger() / raw Pino ✓
 logger.info(
   {
     feeId: "FEE-001",
@@ -31,42 +67,46 @@ logger.info(
   "Payment initiated",
 );
 
-// Avoid ✗
-logger.info({}, `Payment initiated for fee ${feeId} with amount ${amount}`);
+// Avoid ✗ string interpolation
+appContext.logger.info(
+  `Payment initiated for fee ${feeId} with amount ${amount}`,
+);
 ```
 
 Structured fields make logs queryable in CloudWatch Logs Insights.
 
 ## Request-Scoped Logging
 
-For Lambda handlers and request-level processing, create a child logger with request context:
+For Lambda handlers and request-level processing, attach context on `appContext.logger` and clear it at the start of each request:
 
 ```typescript
-import { createRequestLogger } from "./utils/logger";
+import { createAppContext } from "./appContext";
 
 export async function lambdaHandler(event: any, context: any) {
-  const requestLogger = createRequestLogger({
-    // API Gateway request id for HTTP request correlation.
+  const appContext = createAppContext();
+
+  appContext.logger.clearContext();
+  appContext.logger.addContext({
     apiGatewayRequestId: event?.requestContext?.requestId,
-    // Lambda invocation id if you also need runtime-level correlation.
     lambdaRequestId: context?.awsRequestId,
     path: event?.path,
     httpMethod: event?.httpMethod,
-    logLevel: process.env.LOG_LEVEL ?? "info",
   });
 
-  requestLogger.debug({}, "Request received");
+  appContext.logger.debug("Request received");
 
   try {
-    // Your handler logic here
-    requestLogger.info({ feeId: "FEE-001" }, "Processing payment");
+    appContext.logger.addContext({ feeId: "FEE-001" });
+    appContext.logger.info("Processing payment");
     return { statusCode: 200, body: "ok" };
   } catch (err) {
-    requestLogger.error({ err }, "Request failed");
+    appContext.logger.error("Request failed", { err });
     throw err;
   }
 }
 ```
+
+Note: `createRequestLogger` is not part of the current implementation in this repo.
 
 The request logger automatically includes:
 
@@ -107,6 +147,8 @@ If you need to log an object containing sensitive fields, they will be masked au
 const credentials = { password: "secret123", token: "xyz789" };
 logger.info({ credentials }, "Login attempt"); // password and token will be masked
 ```
+
+Avoid logging full runtime objects (for example raw `fetch` response objects) because they can include complex internal structures. Prefer a safe summary such as `status`, `ok`, IDs, or key names.
 
 ## Log Output
 
