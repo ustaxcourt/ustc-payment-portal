@@ -24,6 +24,7 @@ We deliberately do **not** call `updateToFailed` here: marking a `pending` row a
 
 ### Schemas
 - New `PayGovGetDetailsResponse.schema.ts` (Pay.gov inbound SOAP response — distinct from the existing outbound `GetDetails.schema.ts`).
+- The schema validates only the two fields the use case actually consumes (`paygov_tracking_id`, `transaction_status`); `agency_tracking_id`, `transaction_amount`, and the date/payment_type fields are optional. The dev Pay.gov fake omits some of the strict-required fields the original schema specified, and we don't read those fields downstream anyway — the DB row already has them.
 
 ### Testing
 - `getDetails.test.ts` failure-path tests rewritten — they previously asserted the bug ("logs and continues"); they now assert the correct fail-fast contract, including the multi-row partial-write-then-throw case.

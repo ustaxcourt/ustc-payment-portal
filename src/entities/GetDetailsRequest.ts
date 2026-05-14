@@ -11,8 +11,8 @@ export type RawGetDetailsRequest = {
 export type TransactionDetails = {
   paygov_tracking_id: string;
   transaction_status: PayGovTransactionStatus;
-  agency_tracking_id: string;
-  transaction_amount: number;
+  agency_tracking_id?: string;
+  transaction_amount?: number;
   payment_type?: string;
   transaction_date?: string;
   payment_date?: string;
