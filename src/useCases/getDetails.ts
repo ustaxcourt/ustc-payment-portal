@@ -115,18 +115,12 @@ const updatePendingAttemptFromPayGov = async (
         result = await req.makeSoapRequest(appContext);
         refreshedStatus = parseTransactionStatus(result.transaction_status);
       } catch (err) {
+        // getDetails is a read — a refresh failure means the source of truth is
+        // temporarily unreachable, not that the underlying transaction failed.
+        // We surface a retryable error and leave the row's pending state alone.
         console.error(
           `Failed to refresh status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
-        );
-        // returnCode is intentionally undefined — that column holds Pay.gov return codes;
-        // this failure is internal (network, schema, parse), not a Pay.gov-issued code.
-        await TransactionModel.updateToFailed(
-          row.agencyTrackingId,
-          undefined,
-          "Pay.gov refresh failed",
-        ).catch((dbErr) =>
-          console.error("Failed to mark transaction as failed", dbErr),
         );
         throw new PayGovError(PAYGOV_RETRY_MESSAGE, 500);
       }
@@ -146,16 +140,11 @@ const updatePendingAttemptFromPayGov = async (
         );
         return toTransactionRecordSummary(updated);
       } catch (err) {
+        // We had a fresh status from Pay.gov but couldn't persist it. The row's
+        // recorded state is stale, not wrong — a retry will re-fetch and re-persist.
         console.error(
           `Failed to persist refreshed status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
-        );
-        await TransactionModel.updateToFailed(
-          row.agencyTrackingId,
-          undefined,
-          "Failed to persist Pay.gov refresh",
-        ).catch((dbErr) =>
-          console.error("Failed to mark transaction as failed", dbErr),
         );
         throw new PayGovError(PAYGOV_RETRY_MESSAGE, 500);
       }

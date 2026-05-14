@@ -5,13 +5,13 @@
 ## What Changed?
 
 ### GetDetails Use Case
-Previously, when the Pay.gov refresh inside `getDetails` failed for any of three reasons — schema validation (ZodError), SOAP/network error, or a DB write rejection — the failure was logged and stale data was returned. The transaction stayed stuck in its non-terminal state indefinitely.
+Previously, when the Pay.gov refresh inside `getDetails` failed for any of three reasons — schema validation (ZodError), SOAP/network error, or a DB write rejection — the failure was silently logged and stale data was returned to the client.
 
-The use case now mirrors the `initPayment` pattern from PAY-305:
-- **SOAP/Zod/parse failure on the refresh:** mark the row as `failed` via `updateToFailed`, then throw `PayGovError(500)` encouraging a retry.
-- **DB failure on `updateAfterPayGovResponse`:** mark the row as `failed`, then throw `PayGovError(500)`.
-- If `updateToFailed` itself rejects, the secondary failure is logged so the original cause is not masked.
-- `returnCode` is left undefined for these failures (it is Pay.gov-namespaced); the human-readable cause goes in `returnDetail`.
+`getDetails` is a read; a refresh failure means our source of truth is temporarily unreachable, not that the underlying transaction failed. The use case now:
+- **SOAP/Zod/parse failure on the refresh:** throw `PayGovError(500)` with a retry-encouraging message. The row's state is left untouched — it stays `pending` until Pay.gov is reachable and we can confirm a definitive status.
+- **DB failure on `updateAfterPayGovResponse`:** same — throw `PayGovError(500)`. We had a fresh Pay.gov status but couldn't persist it; the next call will re-fetch and re-persist.
+
+We deliberately do **not** call `updateToFailed` here: marking a `pending` row as `failed` because Pay.gov is briefly unreachable would conflate "we don't know" with "it failed," and a real success would become a false failure once Pay.gov came back online.
 
 ### GetDetailsRequest entity
 - Added Zod validation of the Pay.gov response shape against `PayGovGetDetailsResponseSchema`.

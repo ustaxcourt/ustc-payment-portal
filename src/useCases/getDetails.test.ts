@@ -128,7 +128,6 @@ describe("getDetails", () => {
       feeId: "PETITION_FILING_FEE",
       tcsAppId: "TCSUSTAXCOURTPETITION",
     } as unknown as FeesModel);
-    TransactionModelMock.updateToFailed.mockResolvedValue(undefined as never);
   });
 
   it("throws NotFoundError when no transactions exist for the reference id", async () => {
@@ -351,11 +350,7 @@ describe("getDetails", () => {
         message: "There was an error communicating with Pay.gov. Please retry your transaction.",
       });
 
-      expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
-        "agency-tracking-1",
-        undefined,
-        "Pay.gov refresh failed",
-      );
+      expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
       expect(TransactionModelMock.updateAfterPayGovResponse).not.toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining(
@@ -367,7 +362,7 @@ describe("getDetails", () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it("throws PayGovError(500) when the Pay.gov response fails schema validation (ZodError)", async () => {
+    it("throws PayGovError(500) without mutating the row when the Pay.gov response fails schema validation (ZodError)", async () => {
       const consoleErrorSpy = jest
         .spyOn(console, "error")
         .mockImplementation(jest.fn());
@@ -384,36 +379,7 @@ describe("getDetails", () => {
 
       await expect(promise).rejects.toBeInstanceOf(PayGovError);
       await expect(promise).rejects.toMatchObject({ statusCode: 500 });
-      expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
-        "agency-tracking-1",
-        undefined,
-        "Pay.gov refresh failed",
-      );
-
-      consoleErrorSpy.mockRestore();
-    });
-
-    it("still throws PayGovError when updateToFailed itself rejects after a SOAP failure", async () => {
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(jest.fn());
-      appContext.postHttpRequest = jest
-        .fn()
-        .mockRejectedValue(new Error("SOAP boom"));
-      TransactionModelMock.updateToFailed.mockRejectedValueOnce(
-        new Error("DB also down"),
-      );
-
-      await expect(
-        getDetails(appContext, {
-          client: mockClient,
-          request: { transactionReferenceId: mockTransactionReferenceId },
-        }),
-      ).rejects.toBeInstanceOf(PayGovError);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "Failed to mark transaction as failed",
-        expect.any(Error),
-      );
+      expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
 
       consoleErrorSpy.mockRestore();
     });
@@ -550,7 +516,7 @@ describe("getDetails", () => {
       expect(result.transactions[0].transactionStatus).toBe("processed");
     });
 
-    it("marks the row as failed and throws PayGovError(500) when updateAfterPayGovResponse rejects", async () => {
+    it("throws PayGovError(500) without mutating the row when updateAfterPayGovResponse rejects", async () => {
       const consoleErrorSpy = jest
         .spyOn(console, "error")
         .mockImplementation(jest.fn());
@@ -571,35 +537,11 @@ describe("getDetails", () => {
         message: "There was an error communicating with Pay.gov. Please retry your transaction.",
       });
 
-      expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
-        "agency-tracking-1",
-        undefined,
-        "Failed to persist Pay.gov refresh",
-      );
+      expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining(
           `Failed to persist refreshed status for paygovTrackingId '${mockPayGovTrackingId}'`,
         ),
-        expect.any(Error),
-      );
-
-      consoleErrorSpy.mockRestore();
-    });
-
-    it("still throws PayGovError when updateToFailed itself rejects after a persist failure", async () => {
-      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(jest.fn());
-      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockSuccessSoapResponse);
-      TransactionModelMock.updateAfterPayGovResponse.mockRejectedValueOnce(new Error("DB down"));
-      TransactionModelMock.updateToFailed.mockRejectedValueOnce(new Error("DB even more down"));
-
-      await expect(
-        getDetails(appContext, {
-          client: mockClient,
-          request: { transactionReferenceId: mockTransactionReferenceId },
-        }),
-      ).rejects.toBeInstanceOf(PayGovError);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "Failed to mark transaction as failed",
         expect.any(Error),
       );
 
@@ -714,11 +656,7 @@ describe("getDetails", () => {
         }),
       ).rejects.toMatchObject({ statusCode: 500 });
 
-      expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
-        "row-B",
-        undefined,
-        "Pay.gov refresh failed",
-      );
+      expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
 
       consoleErrorSpy.mockRestore();
     });
