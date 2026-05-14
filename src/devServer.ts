@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express from "express";
+import express, { Request } from "express";
 import path from "path";
 import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
@@ -14,10 +14,16 @@ import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
 import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
 import "./db/knex";
 import { ClientPermission } from "./types/ClientPermission";
+import { LoggerType } from "./types/LoggerType";
 import { getMetadataKeys } from "./utils/logger";
 import { expressLogger } from "./utils/expressLogger";
 
 export const appContext = createAppContext();
+type RequestWithLogger = Request & {
+  locals?: {
+    logger?: LoggerType;
+  };
+};
 
 const app = express();
 // strict: false to match the Lambda's JSON.parse, which accepts primitive top-level
@@ -86,6 +92,8 @@ app.get("/openapi.json", (req, res) => {
 
 // define a route handler for the default home page
 app.post("/init", async (req, res) => {
+  const request = req as RequestWithLogger;
+  const requestLogger = request.locals?.logger ?? appContext.logger;
   const metadata =
     req.body?.metadata &&
     typeof req.body.metadata === "object" &&
@@ -94,7 +102,7 @@ app.post("/init", async (req, res) => {
       : undefined;
   const metadataKeys = getMetadataKeys(metadata);
 
-  appContext.logger.addContext({
+  requestLogger.addContext({
     requestId:
       typeof req.header("x-request-id") === "string"
         ? req.header("x-request-id")
@@ -107,14 +115,14 @@ app.post("/init", async (req, res) => {
     metadataKeys,
   });
 
-  appContext.logger.debug("Received /init request");
+  requestLogger.debug("Received /init request");
   try {
-    const request = parseRequestBody(req, InitPaymentRequestSchema);
+    const parsedRequest = parseRequestBody(req, InitPaymentRequestSchema);
     const result = await appContext.getUseCases().initPayment(appContext, {
       client: devClient,
-      request,
+      request: parsedRequest,
     });
-    appContext.logger.info("Completed /init request");
+    requestLogger.info("Completed /init request");
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
@@ -124,10 +132,11 @@ app.post("/init", async (req, res) => {
 
 app.post("/process", async (req, res) => {
   try {
-    const request = parseRequestBody(req, ProcessPaymentRequestSchema);
-    const result = await appContext
-      .getUseCases()
-      .processPayment(appContext, { client: devClient, request });
+    const parsedRequest = parseRequestBody(req, ProcessPaymentRequestSchema);
+    const result = await appContext.getUseCases().processPayment(appContext, {
+      client: devClient,
+      request: parsedRequest,
+    });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);

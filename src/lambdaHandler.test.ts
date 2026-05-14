@@ -10,6 +10,7 @@ import { GoneError } from "./errors/gone";
 import { ConflictError } from "./errors/conflict";
 import { PayGovError } from "./errors/payGovError";
 import { NotFoundError } from "./errors/notFound";
+import { ServerError } from "./errors/serverError";
 
 jest.mock("./utils/logger", () => {
   const actual = jest.requireActual("./utils/logger");
@@ -489,6 +490,26 @@ describe("lambdaHandler", () => {
       const result = await processPaymentHandler(event);
       expect(result.statusCode).toBe(410);
       expect(JSON.parse(result.body).message).toContain("no longer valid");
+    });
+
+    it("returns 500 with ServerError message when use case throws ServerError", async () => {
+      useCasesMock.processPayment.mockRejectedValueOnce(
+        new ServerError(
+          "Failed to record payment session. Please retry your transaction.",
+        ),
+      );
+
+      const event = {
+        body: JSON.stringify({ token: crypto.randomUUID().replace(/-/g, "") }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await processPaymentHandler(event);
+      expect(result.statusCode).toBe(500);
+      expect(JSON.parse(result.body).message).toBe(
+        "Failed to record payment session. Please retry your transaction.",
+      );
     });
 
     it("returns 500 when use case throws a generic error", async () => {

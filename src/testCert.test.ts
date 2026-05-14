@@ -10,6 +10,12 @@ const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 jest.mock("./appContext", () => ({
   createAppContext: jest.fn(() => ({
     getHttpsAgent: jest.fn().mockReturnValue({ mockAgent: true }),
+    logger: {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+    },
   })),
 }));
 

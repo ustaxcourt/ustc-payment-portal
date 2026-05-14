@@ -1,14 +1,24 @@
 import { EventEmitter } from "events";
 
-jest.mock("./getPortalLogger", () => ({
-  logger: {
-    clearContext: jest.fn(),
-    addContext: jest.fn(),
-    info: jest.fn(),
-  },
+type MockLogger = {
+  child: jest.Mock;
+  debug: jest.Mock;
+  info: jest.Mock;
+  warn: jest.Mock;
+  error: jest.Mock;
+};
+
+const mockBaseLogger = {} as MockLogger;
+mockBaseLogger.child = jest.fn(() => mockBaseLogger);
+mockBaseLogger.debug = jest.fn();
+mockBaseLogger.info = jest.fn();
+mockBaseLogger.warn = jest.fn();
+mockBaseLogger.error = jest.fn();
+
+jest.mock("./logger", () => ({
+  createLogger: jest.fn(() => mockBaseLogger),
 }));
 
-import { logger } from "./getPortalLogger";
 import { expressLogger } from "./expressLogger";
 
 describe("expressLogger", () => {
@@ -16,7 +26,7 @@ describe("expressLogger", () => {
     jest.clearAllMocks();
   });
 
-  it("logs request and response context using the shared logger", () => {
+  it("creates a request-scoped logger and logs request/response lifecycle", () => {
     const req = {
       body: {
         username: "test-user",
@@ -46,8 +56,10 @@ describe("expressLogger", () => {
     expressLogger(req, res, next);
 
     expect(next).toHaveBeenCalled();
-    expect(logger.clearContext).toHaveBeenCalledTimes(1);
-    expect(logger.addContext).toHaveBeenCalledWith(
+    expect(req.locals?.logger).toBeDefined();
+    expect(req.locals?.startTime).toEqual(expect.any(Number));
+
+    expect(mockBaseLogger.child).toHaveBeenCalledWith(
       expect.objectContaining({
         environment: {
           color: "green",
@@ -69,21 +81,17 @@ describe("expressLogger", () => {
         }),
       }),
     );
-    expect(logger.info).toHaveBeenCalledWith("Request started: POST /init");
+
+    expect(mockBaseLogger.info).toHaveBeenCalledWith(
+      "Request started: POST /init",
+      undefined,
+    );
 
     res.emit("finish");
 
-    expect(logger.addContext).toHaveBeenCalledWith(
-      expect.objectContaining({
-        response: {
-          responseSize: 42,
-          responseTimeMs: expect.any(Number),
-          statusCode: 201,
-          event: "finished",
-        },
-      }),
+    expect(mockBaseLogger.info).toHaveBeenCalledWith(
+      "Request ended: POST /init",
+      undefined,
     );
-    expect(logger.info).toHaveBeenCalledWith("Request ended: POST /init");
-    expect(logger.clearContext).toHaveBeenCalledTimes(2);
   });
 });

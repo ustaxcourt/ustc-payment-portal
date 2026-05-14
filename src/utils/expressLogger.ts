@@ -1,10 +1,49 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
-import { logger } from "./getPortalLogger";
+import { ClientPermission } from "../types/ClientPermission";
+import { LoggerType } from "../types/LoggerType";
+import { createLogger } from "./logger";
 
 type RequestWithLocals = Request & {
   locals?: {
-    logger?: typeof logger;
+    logger?: LoggerType;
     startTime?: number;
+  };
+};
+
+const createRequestScopedLogger = (): LoggerType => {
+  const baseLogger = createLogger();
+  let currentContext: Record<string, unknown> = {};
+
+  const getLoggerWithContext = () =>
+    Object.keys(currentContext).length
+      ? baseLogger.child(currentContext)
+      : baseLogger;
+
+  return {
+    addContext: (newMeta: Record<string, any>) => {
+      currentContext = {
+        ...currentContext,
+        ...newMeta,
+      };
+    },
+    addUser: ({ user }: { user: ClientPermission }) => {
+      currentContext = {
+        ...currentContext,
+        user,
+      };
+    },
+    clearContext: () => {
+      currentContext = {};
+    },
+    getContext: () => ({ ...currentContext }),
+    debug: (message: any, context?: any) =>
+      getLoggerWithContext().debug(message, context),
+    info: (message: any, context?: any) =>
+      getLoggerWithContext().info(message, context),
+    warn: (message: any, context?: any) =>
+      getLoggerWithContext().warn(message, context),
+    error: (message: any, context?: any) =>
+      getLoggerWithContext().error(message, context),
   };
 };
 
@@ -44,6 +83,7 @@ function cloneBody<T>(value: T): T {
 }
 
 function buildResponseLogger(
+  requestLogger: LoggerType,
   req: RequestWithLocals,
   res: Response,
   startedAt: number,
@@ -56,7 +96,7 @@ function buildResponseLogger(
     }
     finalized = true;
 
-    logger.addContext({
+    requestLogger.addContext({
       response: {
         responseSize: Number(res.get("content-length") ?? 0),
         responseTimeMs: Date.now() - startedAt,
@@ -64,8 +104,8 @@ function buildResponseLogger(
         event,
       },
     });
-    logger.info(`Request ended: ${req.method} ${req.url}`);
-    logger.clearContext();
+    requestLogger.info(`Request ended: ${req.method} ${req.url}`);
+    requestLogger.clearContext();
   };
 }
 
@@ -76,14 +116,13 @@ export const expressLogger: RequestHandler = (
 ) => {
   const request = req as RequestWithLocals;
   const requestBody = cloneBody(request.body);
-
-  logger.clearContext();
+  const requestLogger = createRequestScopedLogger();
 
   if (requestBody) {
     redactPasswordFields(requestBody);
   }
 
-  logger.addContext({
+  requestLogger.addContext({
     environment: {
       color: process.env.CURRENT_COLOR || "green",
       stage: process.env.STAGE || "local",
@@ -99,15 +138,16 @@ export const expressLogger: RequestHandler = (
     },
   });
 
-  logger.info(`Request started: ${request.method} ${request.url}`);
+  requestLogger.info(`Request started: ${request.method} ${request.url}`);
 
   request.locals = {
     ...(request.locals || {}),
-    logger,
+    logger: requestLogger,
     startTime: Date.now(),
   };
 
   const finalize = buildResponseLogger(
+    requestLogger,
     request,
     res,
     request.locals.startTime ?? Date.now(),

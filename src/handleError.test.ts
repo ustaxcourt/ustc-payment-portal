@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PayGovError } from "./errors/payGovError";
+import { ServerError } from "./errors/serverError";
 import { handleError } from "./handleError";
 import { logger } from "./utils/getPortalLogger";
 
@@ -29,6 +30,18 @@ describe("handleError", () => {
     expect(result.statusCode).toBe(500);
     expect(JSON.parse(result.body).message).toBe(
       "An unexpected error occurred while processing the request",
+    );
+  });
+
+  it("returns 500 with ServerError message when ServerError is thrown", () => {
+    const result = handleError(
+      new ServerError(
+        "Failed to record payment session. Please retry your transaction.",
+      ),
+    );
+    expect(result.statusCode).toBe(500);
+    expect(JSON.parse(result.body).message).toBe(
+      "Failed to record payment session. Please retry your transaction.",
     );
   });
 
