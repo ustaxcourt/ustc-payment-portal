@@ -18,14 +18,6 @@ export type TransactionDetails = {
   payment_date?: string;
 };
 
-export type TransactionDetail = {
-  transaction: TransactionDetails;
-};
-
-export type GetDetailsResponse = {
-  transactions: TransactionDetail | TransactionDetail[];
-};
-
 export type GetRequestRequestParams = {
   paygov_tracking_id: string;
   tcs_app_id: string;
