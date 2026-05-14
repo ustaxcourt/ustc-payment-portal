@@ -33,6 +33,7 @@ services:
       MIGRATION_MODE: "0"
     volumes:
       - ./:/workspace
+      - db_init_node_modules:/workspace/node_modules
     command: >
       sh -c '
         echo "db-init: MIGRATION_MODE=$MIGRATION_MODE";
@@ -48,3 +49,4 @@ services:
 
 volumes:
   postgres_data:
+  db_init_node_modules:

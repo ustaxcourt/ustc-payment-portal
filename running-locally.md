@@ -5,9 +5,43 @@
     - See [.env.example](./.env.example) in this repository for environment variable examples. (Already has the values needed for running locally)
     - Note that `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` needs to match the `ACCESS_TOKEN` defined in your `.env` in `ustc-pay-gov-test-server`
     - `LOCAL_DEV=true` bypasses AWS SigV4 authentication. Locally there is no API Gateway to verify signatures, so the auth pipeline returns a dummy IAM role ARN (`arn:aws:iam::000000000000:role/local-dev-role`) and skips the Secrets Manager permissions fetch entirely.
+    - `.env.example` also includes `PAY_GOV_TEST_SERVER_ACCESS_TOKEN` and `PAY_GOV_TEST_SERVER_PORT` so the local Payment Portal config and the local mock Pay.gov server can share the same token and port values.
 
 2.  Run `npm install` at repo root.
 3.  Run `docker compose up` to spin up a local instance of the Payment Portal database.
+
+## Local Pay.gov test server values
+
+The local `.env` includes these two values for the mock Pay.gov server:
+
+```env
+PAY_GOV_TEST_SERVER_ACCESS_TOKEN="asdf123"
+PAY_GOV_TEST_SERVER_PORT="3366"
+```
+
+Use them as the local defaults for the mock Pay.gov server. They should stay aligned with:
+
+- `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` in this repo's `.env`
+- `SOAP_URL` and `PAYMENT_URL` in this repo's `.env`
+- the port/token configured in the local `@ustaxcourt/ustc-pay-gov-test-server`
+
+If the mock Pay.gov server prompts for a port or access token on first run, enter the same values from your local `.env` so the portal and mock server stay in sync.
+
+## One-command local startup
+
+To start the full local stack together, run:
+
+```bash
+npm run start:server
+```
+
+This script now starts these processes concurrently:
+
+- the mock Pay.gov server via `npm run start:pay-gov-test-server`
+- the local Postgres stack via `npm run docker`
+- the portal dev server via `npm run start:dev-server`
+
+This is the quickest way to bring up the local environment for manual testing.
 
 #### Pretty-printing logs locally
 
