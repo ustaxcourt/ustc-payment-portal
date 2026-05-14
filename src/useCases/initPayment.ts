@@ -116,7 +116,7 @@ export const initPayment: InitPayment = async (
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
     console.error("Error making SOAP request to Pay.gov", err);
-    await safeUpdateToFailed(agencyTrackingId, EXISTING_TOKEN_ERROR_CODE, "Existing token expired");
+    await safeUpdateToFailed(agencyTrackingId, undefined, "Error communicating with Pay.gov");
     throw new PayGovError("There was an error communicating with Pay.gov. Please retry your transaction.");
   }
 
