@@ -12,20 +12,20 @@ export const handleError = (err: any) => {
         errors: [],
       }),
     };
-  } else if (err instanceof PayGovError) {
-    return {
-      statusCode: err.statusCode,
-      body: JSON.stringify({
-        message: err.message,
-        errors: [],
-      }),
-    };
   } else if (err instanceof ZodError) {
     return {
       statusCode: 400,
       body: JSON.stringify({
         message: "Validation error",
         errors: err.issues,
+      }),
+    };
+  } else if (err instanceof PayGovError) {
+    return {
+      statusCode: err.statusCode,
+      body: JSON.stringify({
+        message: err.message,
+        errors: [],
       }),
     };
   } else if (err instanceof ServerError) {
