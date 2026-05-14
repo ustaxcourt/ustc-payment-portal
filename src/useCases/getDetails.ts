@@ -13,8 +13,12 @@ import { toPaymentMethod } from "../utils/toPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
+import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
+
+const PAYGOV_RETRY_MESSAGE =
+  "There was an error communicating with Pay.gov. Please retry your transaction.";
 
 type GetDetailsRequest = {
   transactionReferenceId: string;
@@ -108,7 +112,16 @@ const updatePendingAttemptFromPayGov = async (
           `Failed to refresh status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
-        return toTransactionRecordSummary(row);
+        // returnCode is intentionally undefined — that column holds Pay.gov return codes;
+        // this failure is internal (network, schema, parse), not a Pay.gov-issued code.
+        await TransactionModel.updateToFailed(
+          row.agencyTrackingId,
+          undefined,
+          "Pay.gov refresh failed",
+        ).catch((dbErr) =>
+          console.error("Failed to mark transaction as failed", dbErr),
+        );
+        throw new PayGovError(PAYGOV_RETRY_MESSAGE, 500);
       }
 
       try {
@@ -126,13 +139,18 @@ const updatePendingAttemptFromPayGov = async (
         );
         return toTransactionRecordSummary(updated);
       } catch (err) {
-        // Pay.gov told us the truth; we just couldn't persist it. Return the fresh status anyway —
-        // next call will re-poll and retry the write.
         console.error(
           `Failed to persist refreshed status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
-        return { ...toTransactionRecordSummary(row), transactionStatus: refreshedStatus };
+        await TransactionModel.updateToFailed(
+          row.agencyTrackingId,
+          undefined,
+          "Failed to persist Pay.gov refresh",
+        ).catch((dbErr) =>
+          console.error("Failed to mark transaction as failed", dbErr),
+        );
+        throw new PayGovError(PAYGOV_RETRY_MESSAGE, 500);
       }
     }),
   );
