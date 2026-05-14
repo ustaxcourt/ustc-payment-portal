@@ -1,6 +1,5 @@
 import {
   getClientPermissions,
-  getClientByRoleArn,
   clearPermissionsCache,
 } from "./permissionsClient";
 import { getSecretString } from "./secretsClient";
@@ -118,37 +117,6 @@ describe("permissionsClient", () => {
         "arn:aws:iam::000000000000:role/local-dev-role",
       );
       expect(mockGetSecretString).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("getClientByRoleArn", () => {
-    beforeEach(() => {
-      mockGetSecretString.mockResolvedValue(JSON.stringify(validPermissions));
-    });
-
-    it("returns client permission when role ARN matches", async () => {
-      const result = await getClientByRoleArn(
-        "arn:aws:iam::123456789012:role/dawson-client",
-      );
-
-      expect(result).toEqual(validPermissions[0]);
-    });
-
-    it("returns null when role ARN does not match any client", async () => {
-      const result = await getClientByRoleArn(
-        "arn:aws:iam::111111111111:role/unknown-role",
-      );
-
-      expect(result).toBeNull();
-    });
-
-    it("returns correct client when multiple clients exist", async () => {
-      const result = await getClientByRoleArn(
-        "arn:aws:iam::999888777666:role/test-app",
-      );
-
-      expect(result).toEqual(validPermissions[1]);
-      expect(result?.clientName).toBe("Test App");
     });
   });
 

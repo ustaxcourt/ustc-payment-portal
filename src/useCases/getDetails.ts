@@ -14,8 +14,9 @@ import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
 import { PayGovError } from "../errors/payGovError";
-import { ServerError } from "../errors/serverError";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
+import { ServerError } from "../errors/serverError";
+import { authorizeClient } from "../authorizeClient";
 
 const PAYGOV_RETRY_MESSAGE =
   "There was an error communicating with Pay.gov. Please retry your transaction.";
@@ -44,7 +45,6 @@ export const getDetails: GetDetails = async (
   appContext,
   { client, request },
 ) => {
-  // TODO: Remove client param here as unused, update tests.
   const { transactionReferenceId } = request;
 
   const allRows = await TransactionModel.findByReferenceId(
@@ -55,13 +55,18 @@ export const getDetails: GetDetails = async (
     throw new NotFoundError("Transaction Reference Id was not found");
   }
 
+  const feeId = allRows[0].feeId;
+  authorizeClient(client, feeId);
+
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
-  const fee = await FeesModel.getFeeById(allRows[0].feeId);
+  const fee = await FeesModel.getFeeById(feeId);
   if (!fee || !fee.tcsAppId) {
     // Both branches indicate server-side data corruption: the FK prevents the first,
     // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
     console.error(
-      `Fee misconfigured for feeId '${allRows[0].feeId}' on transactionReferenceId '${transactionReferenceId}': ${
+      `Fee misconfigured for feeId '${
+        allRows[0].feeId
+      }' on transactionReferenceId '${transactionReferenceId}': ${
         !fee ? "fee row missing" : "tcsAppId missing"
       }`,
     );
@@ -73,9 +78,7 @@ export const getDetails: GetDetails = async (
   // If the obligation is already resolved (success or failed), the DB is authoritative —
   // no need to hit Pay.gov. Only the pending path fans out to refresh attempts.
   if (paymentStatus !== "pending") {
-    const transactions = allRows.map((row) =>
-      toTransactionRecordSummary(row),
-    );
+    const transactions = allRows.map((row) => toTransactionRecordSummary(row));
     return { paymentStatus, transactions };
   }
 
@@ -87,9 +90,13 @@ const updatePendingAttemptFromPayGov = async (
   allRows: TransactionModel[],
   tcsAppId: string,
 ): Promise<GetDetailsResponse> => {
-  const pendingRows = allRows.filter((row) => row.transactionStatus === "pending");
+  const pendingRows = allRows.filter(
+    (row) => row.transactionStatus === "pending",
+  );
   if (pendingRows.length > 1) {
-    throw new ServerError(`More than one pending transaction attempt found for reference ID ${allRows[0].transactionReferenceId}`);
+    throw new ServerError(
+      `More than one pending transaction attempt found for reference ID ${allRows[0].transactionReferenceId}`,
+    );
   }
 
   const transactions: TransactionRecordSummary[] = await Promise.all(

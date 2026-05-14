@@ -6,6 +6,9 @@ import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
+import { randomUUID } from "crypto";
+import { mockTrackingId } from "../test/utils/mocks";
+import { ForbiddenError } from "../errors/forbidden";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -23,7 +26,9 @@ jest.mock("../db/FeesModel", () => ({
   },
 }));
 
-const TransactionModelMock = TransactionModel as jest.Mocked<typeof TransactionModel>;
+const TransactionModelMock = TransactionModel as jest.Mocked<
+  typeof TransactionModel
+>;
 const FeesModelMock = FeesModel as jest.Mocked<typeof FeesModel>;
 
 const mockClient: ClientPermission = {
@@ -32,10 +37,12 @@ const mockClient: ClientPermission = {
   allowedFeeIds: ["*"],
 };
 
-const mockTransactionReferenceId = "550e8400-e29b-41d4-a716-446655440000";
-const mockPayGovTrackingId = "TRK1234567890123456AB"; // 21 chars, matches DB column constraint
+const mockTransactionReferenceId = randomUUID();
+const mockPayGovTrackingId = mockTrackingId(); // 21 chars, matches DB column constraint
 
-const buildRow = (overrides: Partial<TransactionModel> = {}): TransactionModel =>
+const buildRow = (
+  overrides: Partial<TransactionModel> = {},
+): TransactionModel =>
   ({
     agencyTrackingId: "agency-tracking-1",
     clientName: mockClient.clientName,
@@ -49,7 +56,7 @@ const buildRow = (overrides: Partial<TransactionModel> = {}): TransactionModel =
     createdAt: "2026-01-15T10:30:00.000Z",
     lastUpdatedAt: "2026-01-15T10:35:00.000Z",
     ...overrides,
-  }) as unknown as TransactionModel;
+  } as unknown as TransactionModel);
 
 const mockPendingSoapResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
@@ -117,9 +124,10 @@ describe("getDetails", () => {
           lastUpdatedAt: "2026-01-15T11:00:00.000Z",
         }),
     );
-    FeesModelMock.getFeeById.mockResolvedValue(
-      { feeId: "PETITION_FILING_FEE", tcsAppId: "TCSUSTAXCOURTPETITION" } as unknown as FeesModel,
-    );
+    FeesModelMock.getFeeById.mockResolvedValue({
+      feeId: "PETITION_FILING_FEE",
+      tcsAppId: "TCSUSTAXCOURTPETITION",
+    } as unknown as FeesModel);
     TransactionModelMock.updateToFailed.mockResolvedValue(undefined as never);
   });
 
@@ -131,7 +139,27 @@ describe("getDetails", () => {
         client: mockClient,
         request: { transactionReferenceId: mockTransactionReferenceId },
       }),
-    ).rejects.toThrow(new NotFoundError("Transaction Reference Id was not found"));
+    ).rejects.toThrow(
+      new NotFoundError("Transaction Reference Id was not found"),
+    );
+  });
+
+  it("throws ForbiddenError when client is not authorized for the transaction's feeId", async () => {
+    const loggerModule = await import("../utils/logger");
+    const consoleInfoSpy = jest
+      .spyOn(loggerModule.logger, "info")
+      .mockImplementation();
+
+    await expect(
+      getDetails(appContext, {
+        client: { ...mockClient, allowedFeeIds: ["SOME_OTHER_FEE"] },
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      }),
+    ).rejects.toThrow(new ForbiddenError("Client not authorized for fee"));
+
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      "Client not authorized for fee",
+    );
   });
 
   it("throws ServerError when fee is not found for the transaction (data corruption)", async () => {
@@ -146,9 +174,10 @@ describe("getDetails", () => {
   });
 
   it("throws ServerError when fee has no tcsAppId", async () => {
-    FeesModelMock.getFeeById.mockResolvedValueOnce(
-      { feeId: "PETITION_FILING_FEE", tcsAppId: "" } as unknown as FeesModel,
-    );
+    FeesModelMock.getFeeById.mockResolvedValueOnce({
+      feeId: "PETITION_FILING_FEE",
+      tcsAppId: "",
+    } as unknown as FeesModel);
     TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
       buildRow({
         transactionStatus: "pending",
@@ -166,7 +195,9 @@ describe("getDetails", () => {
   });
 
   it("passes the fee's tcsAppId to the SOAP request when refreshing a pending attempt", async () => {
-    appContext.postHttpRequest = jest.fn().mockResolvedValue(mockPendingSoapResponse);
+    appContext.postHttpRequest = jest
+      .fn()
+      .mockResolvedValue(mockPendingSoapResponse);
     TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
       buildRow({
         transactionStatus: "pending",
@@ -241,7 +272,9 @@ describe("getDetails", () => {
     });
 
     it("logs and defaults to 'received' when a row has a null transactionStatus (corrupt data)", async () => {
-      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(jest.fn());
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(jest.fn());
       TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
         buildRow({
           agencyTrackingId: "corrupt-row",
@@ -258,7 +291,9 @@ describe("getDetails", () => {
 
       expect(result.transactions[0].transactionStatus).toBe("received");
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Transaction Attempt corrupt-row has null transactionStatus"),
+        expect.stringContaining(
+          "Transaction Attempt corrupt-row has null transactionStatus",
+        ),
       );
 
       consoleErrorSpy.mockRestore();
@@ -267,7 +302,9 @@ describe("getDetails", () => {
 
   describe("non-terminal status with paygovTrackingId (refreshes from Pay.gov)", () => {
     beforeEach(() => {
-      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockPendingSoapResponse);
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockResolvedValue(mockPendingSoapResponse);
       TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
         buildRow({
           transactionStatus: "pending",
@@ -297,8 +334,12 @@ describe("getDetails", () => {
     });
 
     it("marks the row as failed and throws PayGovError(500) when Pay.gov SOAP refresh fails", async () => {
-      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(jest.fn());
-      appContext.postHttpRequest = jest.fn().mockRejectedValue(new Error("Pay.gov network failure"));
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(jest.fn());
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockRejectedValue(new Error("Pay.gov network failure"));
 
       await expect(
         getDetails(appContext, {
@@ -317,7 +358,9 @@ describe("getDetails", () => {
       );
       expect(TransactionModelMock.updateAfterPayGovResponse).not.toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(`Failed to refresh status for paygovTrackingId '${mockPayGovTrackingId}'`),
+        expect.stringContaining(
+          `Failed to refresh status for paygovTrackingId '${mockPayGovTrackingId}'`,
+        ),
         expect.any(Error),
       );
 
@@ -325,7 +368,9 @@ describe("getDetails", () => {
     });
 
     it("throws PayGovError(500) when the Pay.gov response fails schema validation (ZodError)", async () => {
-      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(jest.fn());
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(jest.fn());
       const malformed = mockPendingSoapResponse.replace(
         `<transaction_status>Received</transaction_status>`,
         `<transaction_status>NonsenseStatus</transaction_status>`,
@@ -349,9 +394,15 @@ describe("getDetails", () => {
     });
 
     it("still throws PayGovError when updateToFailed itself rejects after a SOAP failure", async () => {
-      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(jest.fn());
-      appContext.postHttpRequest = jest.fn().mockRejectedValue(new Error("SOAP boom"));
-      TransactionModelMock.updateToFailed.mockRejectedValueOnce(new Error("DB also down"));
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(jest.fn());
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockRejectedValue(new Error("SOAP boom"));
+      TransactionModelMock.updateToFailed.mockRejectedValueOnce(
+        new Error("DB also down"),
+      );
 
       await expect(
         getDetails(appContext, {
@@ -373,8 +424,12 @@ describe("getDetails", () => {
         request: { transactionReferenceId: mockTransactionReferenceId },
       });
 
-      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledTimes(1);
-      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+      expect(
+        TransactionModelMock.updateAfterPayGovResponse,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        TransactionModelMock.updateAfterPayGovResponse,
+      ).toHaveBeenCalledWith(
         "agency-tracking-1",
         mockPayGovTrackingId,
         "pending",
@@ -386,14 +441,18 @@ describe("getDetails", () => {
     });
 
     it("persists payment_type and dates when Pay.gov returns them", async () => {
-      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockSuccessSoapResponse);
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockResolvedValue(mockSuccessSoapResponse);
 
       await getDetails(appContext, {
         client: mockClient,
         request: { transactionReferenceId: mockTransactionReferenceId },
       });
 
-      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+      expect(
+        TransactionModelMock.updateAfterPayGovResponse,
+      ).toHaveBeenCalledWith(
         "agency-tracking-1",
         mockPayGovTrackingId,
         "processed",
@@ -405,7 +464,9 @@ describe("getDetails", () => {
     });
 
     it("returns the persisted row's values, not the stale in-memory row", async () => {
-      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockSuccessSoapResponse);
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockResolvedValue(mockSuccessSoapResponse);
 
       const result = await getDetails(appContext, {
         client: mockClient,
@@ -414,7 +475,9 @@ describe("getDetails", () => {
 
       expect(result.paymentStatus).toBe("success");
       expect(result.transactions[0].transactionStatus).toBe("processed");
-      expect(result.transactions[0].updatedTimestamp).toBe("2026-01-15T11:00:00.000Z");
+      expect(result.transactions[0].updatedTimestamp).toBe(
+        "2026-01-15T11:00:00.000Z",
+      );
     });
 
     it("writes paymentMethod=null when neither Pay.gov nor the row has a recognized value", async () => {
@@ -433,7 +496,9 @@ describe("getDetails", () => {
         request: { transactionReferenceId: mockTransactionReferenceId },
       });
 
-      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+      expect(
+        TransactionModelMock.updateAfterPayGovResponse,
+      ).toHaveBeenCalledWith(
         "agency-tracking-1",
         mockPayGovTrackingId,
         "pending",
@@ -449,14 +514,18 @@ describe("getDetails", () => {
         "<payment_type>ACH</payment_type>",
         "<payment_type>GIFT_CARD</payment_type>",
       );
-      appContext.postHttpRequest = jest.fn().mockResolvedValue(unknownPaymentTypeResponse);
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockResolvedValue(unknownPaymentTypeResponse);
 
       await getDetails(appContext, {
         client: mockClient,
         request: { transactionReferenceId: mockTransactionReferenceId },
       });
 
-      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+      expect(
+        TransactionModelMock.updateAfterPayGovResponse,
+      ).toHaveBeenCalledWith(
         "agency-tracking-1",
         mockPayGovTrackingId,
         "processed",
@@ -468,7 +537,9 @@ describe("getDetails", () => {
     });
 
     it("re-derives the group paymentStatus from refreshed rows after a Pay.gov upgrade", async () => {
-      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockSuccessSoapResponse);
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockResolvedValue(mockSuccessSoapResponse);
 
       const result = await getDetails(appContext, {
         client: mockClient,
@@ -480,8 +551,12 @@ describe("getDetails", () => {
     });
 
     it("marks the row as failed and throws PayGovError(500) when updateAfterPayGovResponse rejects", async () => {
-      const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(jest.fn());
-      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockSuccessSoapResponse);
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(jest.fn());
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockResolvedValue(mockSuccessSoapResponse);
       TransactionModelMock.updateAfterPayGovResponse.mockRejectedValueOnce(
         new Error("DB connection lost"),
       );
@@ -502,7 +577,9 @@ describe("getDetails", () => {
         "Failed to persist Pay.gov refresh",
       );
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(`Failed to persist refreshed status for paygovTrackingId '${mockPayGovTrackingId}'`),
+        expect.stringContaining(
+          `Failed to persist refreshed status for paygovTrackingId '${mockPayGovTrackingId}'`,
+        ),
         expect.any(Error),
       );
 
@@ -560,8 +637,14 @@ describe("getDetails", () => {
       // is returned as-is. If a future requirement (e.g., multiple clients sharing a Fee)
       // makes per-row ownership matter, this test should fail and force a deliberate update.
       TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
-        buildRow({ agencyTrackingId: "ours-1", clientName: mockClient.clientName }),
-        buildRow({ agencyTrackingId: "theirs", clientName: "Some Other Client" }),
+        buildRow({
+          agencyTrackingId: "ours-1",
+          clientName: mockClient.clientName,
+        }),
+        buildRow({
+          agencyTrackingId: "theirs",
+          clientName: "Some Other Client",
+        }),
       ]);
 
       const result = await getDetails(appContext, {
@@ -641,7 +724,9 @@ describe("getDetails", () => {
     });
 
     it("writes back every pending attempt in a multi-row group", async () => {
-      appContext.postHttpRequest = jest.fn().mockResolvedValue(mockPendingSoapResponse);
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockResolvedValue(mockPendingSoapResponse);
       TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
         buildRow({
           agencyTrackingId: "attempt-1",
@@ -662,10 +747,13 @@ describe("getDetails", () => {
         request: { transactionReferenceId: mockTransactionReferenceId },
       });
 
-      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledTimes(2);
-      const agencyIdsWritten = TransactionModelMock.updateAfterPayGovResponse.mock.calls
-        .map((call) => call[0])
-        .sort();
+      expect(
+        TransactionModelMock.updateAfterPayGovResponse,
+      ).toHaveBeenCalledTimes(2);
+      const agencyIdsWritten =
+        TransactionModelMock.updateAfterPayGovResponse.mock.calls
+          .map((call) => call[0])
+          .sort();
       expect(agencyIdsWritten).toEqual(["attempt-1", "attempt-2"]);
       expect(result.transactions).toHaveLength(2);
     });
