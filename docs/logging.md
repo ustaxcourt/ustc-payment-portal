@@ -12,10 +12,10 @@ Use one of these patterns based on where the code runs.
 
 Use message-first call order for both logger APIs:
 
-| Logger API | Use in | Signature |
-| --- | --- | --- |
+| Logger API                              | Use in                                              | Signature                             |
+| --------------------------------------- | --------------------------------------------------- | ------------------------------------- |
 | `appContext.logger` / `getPortalLogger` | Lambda handlers, use cases, request-scoped app code | `logger.info("message", { context })` |
-| `createLogger()` (raw Pino) | standalone scripts and low-level modules | `logger.info("message", { context })` |
+| `createLogger()` (raw Pino)             | standalone scripts and low-level modules            | `logger.info("message", { context })` |
 
 If you are writing endpoint business logic, use message-first via `appContext.logger`.
 

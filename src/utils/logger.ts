@@ -148,7 +148,11 @@ function resolveLogLevel(env: RuntimeEnv, configured?: string): string {
 }
 
 function normalizeMessageFirstArgs(args: unknown[]): unknown[] {
-  if (args.length >= 2 && typeof args[0] === "string" && isPlainObject(args[1])) {
+  if (
+    args.length >= 2 &&
+    typeof args[0] === "string" &&
+    isPlainObject(args[1])
+  ) {
     return [args[1], args[0], ...args.slice(2)];
   }
   return args;
