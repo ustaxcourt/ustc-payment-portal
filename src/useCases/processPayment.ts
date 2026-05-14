@@ -26,7 +26,7 @@ export type ProcessPayment = (
   },
 ) => Promise<ProcessPaymentResponse>;
 
-const PAYGOV_ERROR_MESSAGE = "We could not complete this transaction with Pay.gov. Please retry the request.";
+const PAYGOV_RETRY_MESSAGE = "We could not complete this transaction with Pay.gov. Please retry the request.";
 
 export const processPayment: ProcessPayment = async (
   appContext: AppContext,
@@ -102,7 +102,7 @@ export const processPayment: ProcessPayment = async (
         undefined,
         "Pay.gov returned a response that failed schema validation",
       );
-      throw new PayGovError(PAYGOV_ERROR_MESSAGE);
+      throw new PayGovError(PAYGOV_RETRY_MESSAGE);
     }
 
     console.error(
@@ -114,7 +114,7 @@ export const processPayment: ProcessPayment = async (
       undefined,
       "Error communicating with Pay.gov",
     );
-    throw new PayGovError(PAYGOV_ERROR_MESSAGE);
+    throw new PayGovError(PAYGOV_RETRY_MESSAGE);
   }
 
   console.log("processPayment result", result);
@@ -147,16 +147,12 @@ export const processPayment: ProcessPayment = async (
     );
   }
 
-  const transactions = await TransactionModel.findByReferenceId(
+  const allRows = await TransactionModel.findByReferenceId(
     transaction.transactionReferenceId,
-  );
-
-  const transactionSummaries = transactions.map((row) =>
-    toTransactionRecordSummary(row),
   );
 
   return {
     paymentStatus,
-    transactions: transactionSummaries,
+    transactions: allRows.map((row) => toTransactionRecordSummary(row)),
   };
 };

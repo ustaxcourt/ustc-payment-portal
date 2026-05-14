@@ -23,6 +23,16 @@ describe("safeUpdateToFailed", () => {
     );
   });
 
+  it("forwards undefined for optional args when omitted", async () => {
+    await safeUpdateToFailed("agency-123");
+
+    expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
+      "agency-123",
+      undefined,
+      undefined,
+    );
+  });
+
   it("does not throw when updateToFailed rejects", async () => {
     TransactionModelMock.updateToFailed.mockRejectedValueOnce(
       new Error("db down"),
