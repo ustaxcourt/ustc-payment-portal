@@ -69,9 +69,9 @@ export class SoapRequest {
   ) {
     const xmlBody = this.buildXml(params, requestType);
 
-    appContext.logger.debug("makeRequest", { xmlBody });
+    console.log("makeRequest", xmlBody);
     const result = await appContext.postHttpRequest(appContext, xmlBody);
-    appContext.logger.debug("makeRequest response", { result });
+    console.log("makeRequest", result);
     const responseBody = this.parseXml(result);
     return responseBody;
   }

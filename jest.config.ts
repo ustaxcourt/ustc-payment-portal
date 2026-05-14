@@ -4,7 +4,7 @@ const config: Config = {
   preset: "ts-jest",
   testEnvironment: "node",
   setupFiles: ["dotenv/config"],
-  bail: true,
+  bail: false,
   testPathIgnorePatterns: ["/node_modules/", "/dist/"],
   coveragePathIgnorePatterns: [
     "/node_modules/",

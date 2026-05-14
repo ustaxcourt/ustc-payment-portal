@@ -60,7 +60,7 @@ export class GetRequestRequest extends SoapRequest {
     const response = responseBody["ns2:getDetailsResponse"]
       .getDetailsResponse as GetDetailsResponse;
 
-    appContext.logger.debug("getDetails api response", { response });
+    console.log(`getDetails api response`, response);
 
     if ("transaction" in response.transactions) {
       return response.transactions.transaction;
