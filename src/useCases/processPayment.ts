@@ -16,6 +16,7 @@ import FeesModel from "../db/FeesModel";
 import { toPaymentMethod } from "../utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
 import { safeUpdateToFailed } from "../utils/safeUpdateToFailed";
+import { authorizeClient } from "../authorizeClient";
 
 export type ProcessPayment = (
   appContext: AppContext,

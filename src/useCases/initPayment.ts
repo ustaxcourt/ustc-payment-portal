@@ -14,6 +14,7 @@ import { ServerError } from "../errors/serverError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
 import { safeUpdateToFailed } from "../utils/safeUpdateToFailed";
+import { authorizeClient } from "../authorizeClient";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
@@ -106,8 +107,7 @@ export const initPayment: InitPayment = async (
       );
     }
     throw new Error(
-      `Failed to record received transaction: ${
-        err instanceof Error ? err.message : String(err)
+      `Failed to record received transaction: ${err instanceof Error ? err.message : String(err)
       }`,
     );
   }
