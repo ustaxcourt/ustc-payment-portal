@@ -3,14 +3,12 @@ import fetch from "node-fetch";
 import { APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "./appContext";
 import { getSecretString } from "./clients/secretsClient";
-import { createLogger } from "./utils/logger";
-
-const logger = createLogger();
 
 // This is the handler for the /test endpoint.
 export const handler = async (): Promise<APIGatewayProxyResult> => {
+  const appContext = createAppContext();
+
   try {
-    const appContext = createAppContext();
     const httpsAgent = await appContext.getHttpsAgent();
 
     const headers: { Authorization?: string; Authentication?: string } = {};
@@ -31,7 +29,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
       headers,
     });
 
-    logger.info("testCert response received", {
+    appContext.logger?.info("testCert response received", {
       status: result.status,
       ok: result.ok,
     });
@@ -42,7 +40,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
       body: resultText,
     };
   } catch (err) {
-    logger.error("testCert request failed", { err });
+    appContext.logger?.error("testCert request failed", { err });
     return {
       statusCode: 500,
       body: "not ok",

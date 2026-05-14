@@ -6,7 +6,6 @@ import {
   CompleteOnlineCollectionWithDetailsResponse,
   CompleteOnlineCollectionWithDetailsResponseSchema,
 } from "../schemas/CompleteOnlineCollectionWithDetailsResponse.schema";
-import { logger } from "../utils/getPortalLogger";
 
 export type CompleteOnlineCollectionWithDetailsRequestParams = {
   tcs_app_id: string;
@@ -48,7 +47,7 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
       const parsed =
         CompleteOnlineCollectionWithDetailsResponseSchema.safeParse(raw);
       if (!parsed.success) {
-        logger.error(
+        appContext.logger.error(
           "completeOnlineCollectionWithDetails schema validation failed",
           { raw, errors: parsed.error.issues },
         );

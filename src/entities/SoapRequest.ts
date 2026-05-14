@@ -9,7 +9,6 @@ import { xmlOptions } from "../xmlOptions";
 import { CompleteOnlineCollectionWithDetailsRequestParams } from "./CompleteOnlineCollectionWithDetailsRequest";
 import { StartOnlineCollectionRequestParams } from "./StartOnlineCollectionRequest";
 import { AppContext } from "../types/AppContext";
-import { logger } from "../utils/getPortalLogger";
 
 export type RawSoapRequest =
   | RawStartOnlineCollectionRequest
@@ -70,9 +69,9 @@ export class SoapRequest {
   ) {
     const xmlBody = this.buildXml(params, requestType);
 
-    logger.debug("makeRequest", { xmlBody });
+    appContext.logger.debug("makeRequest", { xmlBody });
     const result = await appContext.postHttpRequest(appContext, xmlBody);
-    logger.debug("makeRequest response", { result });
+    appContext.logger.debug("makeRequest response", { result });
     const responseBody = this.parseXml(result);
     return responseBody;
   }

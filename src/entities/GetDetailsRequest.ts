@@ -1,7 +1,6 @@
 import { AppContext } from "../types/AppContext";
 import { PayGovTransactionStatus } from "../types/TransactionStatus";
 import { RequestType, SoapRequest } from "./SoapRequest";
-import { logger } from "../utils/getPortalLogger";
 
 export type RawGetDetailsRequest = {
   tcsAppId: string;
@@ -61,7 +60,7 @@ export class GetRequestRequest extends SoapRequest {
     const response = responseBody["ns2:getDetailsResponse"]
       .getDetailsResponse as GetDetailsResponse;
 
-    logger.debug("getDetails api response", { response });
+    appContext.logger.debug("getDetails api response", { response });
 
     if ("transaction" in response.transactions) {
       return response.transactions.transaction;
