@@ -34,6 +34,8 @@ export const initPayment: InitPayment = async (
     request;
   const { clientName } = client;
 
+  authorizeClient(client, feeId);
+
   const fee = await FeesModel.getFeeById(feeId);
   if (!fee || !fee.tcsAppId) {
     throw new InvalidRequestError(`Unknown feeId: ${feeId}`);
@@ -50,19 +52,26 @@ export const initPayment: InitPayment = async (
   }
 
   const existingInFlightTransaction =
-    await TransactionModel.findInFlightByReferenceId(
-      transactionReferenceId,
-    );
+    await TransactionModel.findInFlightByReferenceId(transactionReferenceId);
 
   if (existingInFlightTransaction) {
-    const tokenAgeMs = Date.now() - new Date(existingInFlightTransaction.lastUpdatedAt).getTime();
-    if (existingInFlightTransaction.paygovToken && tokenAgeMs < MAX_TOKEN_AGE_MS) {
+    const tokenAgeMs =
+      Date.now() -
+      new Date(existingInFlightTransaction.lastUpdatedAt).getTime();
+    if (
+      existingInFlightTransaction.paygovToken &&
+      tokenAgeMs < MAX_TOKEN_AGE_MS
+    ) {
       return {
         token: existingInFlightTransaction.paygovToken,
         paymentRedirect: `${process.env.PAYMENT_URL}?token=${existingInFlightTransaction.paygovToken}&tcsAppID=${fee.tcsAppId}`,
       };
     } else {
-        await TransactionModel.updateToFailed(existingInFlightTransaction.agencyTrackingId, EXISTING_TOKEN_ERROR_CODE, "Existing token expired");
+      await TransactionModel.updateToFailed(
+        existingInFlightTransaction.agencyTrackingId,
+        EXISTING_TOKEN_ERROR_CODE,
+        "Existing token expired",
+      );
     }
   }
 

@@ -2,6 +2,7 @@ import { getSecretString } from "./secretsClient";
 import { ServerError } from "../errors/serverError";
 import { LOCAL_DEV_ROLE_ARN } from "../extractCallerArn";
 import { ClientPermission } from "../types/ClientPermission";
+import { ForbiddenError } from "../errors/forbidden";
 
 /**
  * Cache for client permissions to avoid per-request Secrets Manager calls.
@@ -105,9 +106,13 @@ export const getClientPermissions = async (): Promise<ClientPermission[]> => {
  */
 export const getClientByRoleArn = async (
   roleArn: string,
-): Promise<ClientPermission | null> => {
+): Promise<ClientPermission> => {
   const permissions = await getClientPermissions();
-  return permissions.find((p) => p.clientRoleArn === roleArn) || null;
+  const client = permissions.find((p) => p.clientRoleArn === roleArn) || null;
+  if (!client) {
+    throw new ForbiddenError("Client not registered");
+  }
+  return client;
 };
 
 /**

@@ -185,6 +185,12 @@ describe("lambdaHandler", () => {
     });
 
     it("returns 403 when feeId is not in client allowedFeeIds", async () => {
+      useCasesMock.initPayment = jest
+        .fn()
+        .mockRejectedValueOnce(
+          new ForbiddenError("Client not authorized for fee"),
+        );
+
       const event = {
         body: JSON.stringify({
           transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
@@ -205,37 +211,37 @@ describe("lambdaHandler", () => {
 
       expect(result.statusCode).toBe(403);
       expect(JSON.parse(result.body).message).toBe(
-        "Client not authorized for feeId",
+        "Client not authorized for fee",
       );
     });
   });
 
   it("returns 409 when init payment use case throws ConflictError", async () => {
-      useCasesMock.initPayment = jest
-        .fn()
-        .mockRejectedValueOnce(
-          new ConflictError(
-            "A payment session is already initiated for this transactionReferenceId",
-          ),
-        );
+    useCasesMock.initPayment = jest
+      .fn()
+      .mockRejectedValueOnce(
+        new ConflictError(
+          "A payment session is already initiated for this transactionReferenceId",
+        ),
+      );
 
-      const event = {
-        body: JSON.stringify({
-          transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-          feeId: "PETITION_FILING_FEE",
-          urlSuccess: "https://example.com/success",
-          urlCancel: "https://example.com/cancel",
-          metadata: { docketNumber: "123-26" },
-        }),
-        headers: mockHeaders,
-        requestContext: mockRequestContext,
-      } as unknown as APIGatewayEvent;
+    const event = {
+      body: JSON.stringify({
+        transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+        feeId: "PETITION_FILING_FEE",
+        urlSuccess: "https://example.com/success",
+        urlCancel: "https://example.com/cancel",
+        metadata: { docketNumber: "123-26" },
+      }),
+      headers: mockHeaders,
+      requestContext: mockRequestContext,
+    } as unknown as APIGatewayEvent;
 
-      const result = await initPaymentHandler(event);
+    const result = await initPaymentHandler(event);
 
-      expect(result.statusCode).toBe(409);
-      expect(JSON.parse(result.body).message).toContain("already initiated");
-    });
+    expect(result.statusCode).toBe(409);
+    expect(JSON.parse(result.body).message).toContain("already initiated");
+  });
 
   describe("processPaymentHandler", () => {
     it("returns 200 with v2 response shape on successful request", async () => {
