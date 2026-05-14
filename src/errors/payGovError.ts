@@ -3,5 +3,7 @@ export class PayGovError extends Error {
 
   constructor(message: string = "Error communicating with Pay.gov") {
     super(message);
+    Object.setPrototypeOf(this, new.target.prototype);
+    this.name = new.target.name;
   }
 }

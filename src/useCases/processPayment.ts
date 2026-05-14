@@ -52,11 +52,15 @@ export const processPayment: ProcessPayment = async (
 
   const fee = await FeesModel.getFeeById(transaction.feeId);
   if (!fee) {
-    console.error(`Fee not found for feeId: ${transaction.feeId}`);
+    appContext.logger.error("Fee not found for feeId", {
+      feeId: transaction.feeId,
+    });
     throw new NotFoundError("Fee configuration not found for this transaction");
   }
   if (!fee.tcsAppId) {
-    console.error(`Fee ${transaction.feeId} is missing tcsAppId configuration`);
+    appContext.logger.error("Fee missing tcsAppId configuration", {
+      feeId: transaction.feeId,
+    });
     throw new ServerError();
   }
 
@@ -64,12 +68,21 @@ export const processPayment: ProcessPayment = async (
     tcsAppId: fee.tcsAppId,
     token: request.token,
   });
-  console.log("processPayment request", req);
+  appContext.logger.debug("processPayment request", {
+    tcsAppId: fee.tcsAppId,
+    tokenLength: request.token.length,
+  });
 
   try {
     const result = await req.makeSoapRequest(appContext);
 
-    console.log("processPayment result", result);
+    appContext.logger.debug("processPayment result", {
+      transactionStatus: result.transaction_status,
+      paymentType: result.payment_type,
+      paygovTrackingId: result.paygov_tracking_id,
+      transactionDate: result.transaction_date,
+      paymentDate: result.payment_date,
+    });
 
     const parsedStatus = parseTransactionStatus(result.transaction_status);
     const paymentStatus =

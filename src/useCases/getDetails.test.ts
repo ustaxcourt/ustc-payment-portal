@@ -1,5 +1,5 @@
 import { getDetails } from "./getDetails";
-import { testAppContext as appContext } from "../test/testAppContext";
+import { testAppContext } from "../test/testAppContext";
 import { ClientPermission } from "../types/ClientPermission";
 import { NotFoundError } from "../errors/notFound";
 import { ServerError } from "../errors/serverError";
@@ -8,6 +8,7 @@ import FeesModel from "../db/FeesModel";
 import { randomUUID } from "crypto";
 import { mockTrackingId } from "../test/utils/mocks";
 import { ForbiddenError } from "../errors/forbidden";
+import { logger } from "../utils/getPortalLogger";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -94,9 +95,20 @@ const mockSuccessSoapResponse = `<?xml version="1.0" encoding="UTF-8"?>
 `;
 
 describe("getDetails", () => {
+  let appContext = {
+    ...testAppContext,
+    logger: { ...testAppContext.logger },
+  };
   beforeEach(() => {
     jest.clearAllMocks();
+
+    appContext = {
+      ...testAppContext,
+      logger: { ...testAppContext.logger },
+    };
+
     TransactionModelMock.findByReferenceId.mockResolvedValue([buildRow()]);
+
     TransactionModelMock.updateAfterPayGovResponse.mockImplementation(
       async (
         agencyTrackingId,
@@ -138,10 +150,7 @@ describe("getDetails", () => {
   });
 
   it("throws ForbiddenError when client is not authorized for the transaction's feeId", async () => {
-    const loggerModule = await import("../utils/logger");
-    const consoleInfoSpy = jest
-      .spyOn(loggerModule.logger, "info")
-      .mockImplementation();
+    const loggerInfoSpy = jest.spyOn(logger, "info").mockImplementation();
 
     await expect(
       getDetails(appContext, {
@@ -149,10 +158,14 @@ describe("getDetails", () => {
         request: { transactionReferenceId: mockTransactionReferenceId },
       }),
     ).rejects.toThrow(new ForbiddenError("Client not authorized for fee"));
-
-    expect(consoleInfoSpy).toHaveBeenCalledWith(
-      "Client not authorized for fee",
+    expect(loggerInfoSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Client not authorized for fee"),
+      expect.objectContaining({
+        feeId: "PETITION_FILING_FEE",
+        clientName: "Test Client",
+      }),
     );
+    loggerInfoSpy.mockRestore();
   });
 
   it("throws ServerError when fee is not found for the transaction (data corruption)", async () => {
@@ -265,9 +278,7 @@ describe("getDetails", () => {
     });
 
     it("logs and defaults to 'received' when a row has a null transactionStatus (corrupt data)", async () => {
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(jest.fn());
+      const loggerErrorSpy = jest.spyOn(logger, "error").mockImplementation();
       TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
         buildRow({
           agencyTrackingId: "corrupt-row",
@@ -283,13 +294,15 @@ describe("getDetails", () => {
       });
 
       expect(result.transactions[0].transactionStatus).toBe("received");
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "Transaction Attempt corrupt-row has null transactionStatus",
-        ),
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        "Transaction attempt has null transactionStatus",
+        expect.objectContaining({
+          transactionReferenceId: mockTransactionReferenceId,
+          agencyTrackingId: "corrupt-row",
+          fallbackTransactionStatus: "received",
+        }),
       );
-
-      consoleErrorSpy.mockRestore();
+      loggerErrorSpy.mockRestore();
     });
   });
 
@@ -327,9 +340,6 @@ describe("getDetails", () => {
     });
 
     it("logs and continues when the Pay.gov SOAP refresh fails for an attempt", async () => {
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(jest.fn());
       appContext.postHttpRequest = jest
         .fn()
         .mockRejectedValue(new Error("Pay.gov network failure"));
@@ -341,17 +351,16 @@ describe("getDetails", () => {
 
       // Refresh failed, so the local "pending" status is returned unchanged
       expect(result.transactions[0].transactionStatus).toBe("pending");
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `Failed to refresh status for paygovTrackingId '${mockPayGovTrackingId}'`,
-        ),
-        expect.any(Error),
+      expect(appContext.logger.error).toHaveBeenCalledWith(
+        "Failed to refresh status from Pay.gov",
+        expect.objectContaining({
+          paygovTrackingId: mockPayGovTrackingId,
+          err: expect.any(Error),
+        }),
       );
       expect(
         TransactionModelMock.updateAfterPayGovResponse,
       ).not.toHaveBeenCalled();
-
-      consoleErrorSpy.mockRestore();
     });
 
     it("persists the refreshed status to the database via updateAfterPayGovResponse", async () => {
@@ -487,9 +496,6 @@ describe("getDetails", () => {
     });
 
     it("returns the fresh Pay.gov status and logs a persist failure when the DB writeback throws", async () => {
-      const consoleErrorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(jest.fn());
       appContext.postHttpRequest = jest
         .fn()
         .mockResolvedValue(mockSuccessSoapResponse);
@@ -504,14 +510,13 @@ describe("getDetails", () => {
 
       expect(result.transactions[0].transactionStatus).toBe("processed");
       expect(result.paymentStatus).toBe("success");
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `Failed to persist refreshed status for paygovTrackingId '${mockPayGovTrackingId}'`,
-        ),
-        expect.any(Error),
+      expect(appContext.logger.error).toHaveBeenCalledWith(
+        "Failed to persist refreshed status",
+        expect.objectContaining({
+          paygovTrackingId: mockPayGovTrackingId,
+          err: expect.any(Error),
+        }),
       );
-
-      consoleErrorSpy.mockRestore();
     });
   });
 

@@ -4,6 +4,13 @@ const config: Config = {
   preset: "ts-jest",
   testEnvironment: "node",
   setupFiles: ["dotenv/config"],
+  bail: false,
+  testPathIgnorePatterns: ["/node_modules/", "/dist/"],
+  coveragePathIgnorePatterns: [
+    "/node_modules/",
+    "/dist/",
+    "src/test/testAppContext.ts",
+  ],
 };
 
 export default config;

@@ -1,10 +1,33 @@
 import { createAppContext } from "./appContext";
 import * as https from "https";
 import { getSecretString } from "./clients/secretsClient";
+import { logger } from "./utils/getPortalLogger";
 
 jest.mock("node-fetch", () => jest.fn());
 jest.mock("https");
 jest.mock("./clients/secretsClient");
+jest.mock("./utils/getPortalLogger", () => ({
+  logger: {
+    addUser: jest.fn(),
+    addContext: jest.fn(),
+    getContext: jest.fn(() => ({})),
+    clearContext: jest.fn(),
+    debug: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+  },
+  getPortalLogger: jest.fn(() => ({
+    addUser: jest.fn(),
+    addContext: jest.fn(),
+    getContext: jest.fn(() => ({})),
+    clearContext: jest.fn(),
+    debug: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+  })),
+}));
 
 // Import after mocking
 let mockFetch: jest.Mock;
@@ -54,6 +77,9 @@ describe("postHttpRequest", () => {
   });
 
   it("should make a POST request to the SOAP_URL with correct headers and body", async () => {
+    delete process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
+    process.env.APP_ENV = "test";
+
     const appContext = createAppContext();
     const body = "<soap>request</soap>";
 
@@ -88,7 +114,7 @@ describe("postHttpRequest", () => {
           Authentication: "Bearer secret-token-from-aws",
           Authorization: "Bearer secret-token-from-aws",
         },
-      })
+      }),
     );
   });
 
@@ -109,7 +135,7 @@ describe("postHttpRequest", () => {
           Authentication: "Bearer local-token-secret-id",
           Authorization: "Bearer local-token-secret-id",
         },
-      })
+      }),
     );
   });
 
@@ -127,7 +153,7 @@ describe("postHttpRequest", () => {
       "https://test-soap-url.com",
       expect.objectContaining({
         agent: expect.any(https.Agent),
-      })
+      }),
     );
   });
 
@@ -141,7 +167,7 @@ describe("postHttpRequest", () => {
       "https://test-soap-url.com",
       expect.objectContaining({
         agent: undefined,
-      })
+      }),
     );
   });
 
@@ -162,7 +188,9 @@ describe("postHttpRequest", () => {
       name: "AccessDeniedException",
     });
     mockGetSecretString.mockRejectedValueOnce(fetchError);
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    const warnSpy = jest
+      .spyOn(logger, "warn")
+      .mockImplementation(() => undefined);
 
     const appContext = createAppContext();
     const body = "<soap>request</soap>";
@@ -170,7 +198,9 @@ describe("postHttpRequest", () => {
     await appContext.postHttpRequest(appContext, body);
 
     const lastFetchCall = mockFetch.mock.calls[mockFetch.mock.calls.length - 1];
-    const lastFetchOptions = lastFetchCall[1] as { headers: Record<string, string> };
+    const lastFetchOptions = lastFetchCall[1] as {
+      headers: Record<string, string>;
+    };
     expect(lastFetchOptions.headers).not.toHaveProperty("Authorization");
     expect(lastFetchOptions.headers).not.toHaveProperty("Authentication");
     expect(warnSpy).toHaveBeenCalledWith(
@@ -179,7 +209,7 @@ describe("postHttpRequest", () => {
         secretId: "token-secret-id",
         errorName: "AccessDeniedException",
         errorMessage: "AccessDenied",
-      }
+      },
     );
 
     warnSpy.mockRestore();

@@ -1,31 +1,56 @@
-import { handleError } from "./handleError";
 import { z } from "zod";
 import { PayGovError } from "./errors/payGovError";
 import { ServerError } from "./errors/serverError";
+import { handleError } from "./handleError";
+import { logger } from "./utils/getPortalLogger";
+
+jest.mock("./utils/getPortalLogger", () => ({
+  logger: {
+    error: jest.fn(),
+  },
+}));
+
+const mockLogger = logger as unknown as {
+  error: jest.Mock;
+};
 
 describe("handleError", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("returns the statusCode and message for known client errors (< 500)", () => {
     const result = handleError({ statusCode: 403, message: "Forbidden" });
     expect(result.statusCode).toBe(403);
     expect(JSON.parse(result.body).message).toBe("Forbidden");
   });
 
-  it("returns 500 with a generic message for known server errors (>= 500, no custom message provided)", () => {
-    const result = handleError({ statusCode: 500 });
+  it("returns 500 with a generic message for known server errors (>= 500)", () => {
+    const result = handleError({ statusCode: 500, message: "Something broke" });
     expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).message).toBe("An unexpected error occurred while processing the request");
+    expect(JSON.parse(result.body).message).toBe(
+      "An unexpected error occurred while processing the request",
+    );
   });
 
-  it("returns 500 with the ServerError message when a ServerError is thrown", () => {
-    const result = handleError(new ServerError("Failed to record payment session. Please retry your transaction."));
+  it("returns 500 with ServerError message when ServerError is thrown", () => {
+    const result = handleError(
+      new ServerError(
+        "Failed to record payment session. Please retry your transaction.",
+      ),
+    );
     expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).message).toBe("Failed to record payment session. Please retry your transaction.");
+    expect(JSON.parse(result.body).message).toBe(
+      "Failed to record payment session. Please retry your transaction.",
+    );
   });
 
-  it("returns 500 with the generic fallback message for unrecognized errors, not leaking internal details", () => {
-    const result = handleError(new Error("internal knex detail"));
+  it("returns 500 with a generic message for unrecognized errors", () => {
+    const result = handleError(new Error("Unexpected failure"));
     expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).message).toBe("An unexpected error occurred while processing the request");
+    expect(JSON.parse(result.body).message).toBe(
+      "An unexpected error occurred while processing the request",
+    );
   });
 
   it("returns 400 with validation details for ZodErrors", () => {
@@ -44,6 +69,20 @@ describe("handleError", () => {
   it("returns 504 with Pay.gov error message for PayGovError", () => {
     const result = handleError(new PayGovError());
     expect(result.statusCode).toBe(504);
-    expect(JSON.parse(result.body).message).toBe("Error communicating with Pay.gov");
+    expect(JSON.parse(result.body).message).toBe(
+      "Error communicating with Pay.gov",
+    );
+  });
+
+  describe("logging behavior", () => {
+    it("calls logger.error when handling an error", () => {
+      const err = new Error("log me");
+      handleError(err);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        "responding with an error",
+        { err },
+      );
+    });
   });
 });

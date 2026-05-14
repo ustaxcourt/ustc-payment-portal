@@ -1,6 +1,6 @@
 import { ForbiddenError } from "./errors/forbidden";
 import { ClientPermission } from "./types/ClientPermission";
-import { logger } from "./utils/logger";
+import { logger } from "./utils/getPortalLogger";
 
 /**
  * Validates that the client (identified by IAM role ARN) is registered and,
@@ -20,6 +20,12 @@ export const authorizeClient = (
   if (isAuthorized) {
     return true;
   }
-  logger.info(`Client not authorized for fee`);
+
+  logger.info("Client not authorized for fee", {
+    feeId,
+    clientName: client.clientName,
+    allowedFeeIds: client.allowedFeeIds,
+  });
+
   throw new ForbiddenError("Client not authorized for fee");
 };

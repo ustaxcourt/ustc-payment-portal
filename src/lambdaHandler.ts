@@ -2,6 +2,7 @@ import {
   APIGatewayProxyResult,
   APIGatewayEvent,
   APIGatewayEventRequestContext,
+  Context,
 } from "aws-lambda";
 import { ZodType } from "zod";
 import { createAppContext } from "./appContext";
@@ -15,20 +16,24 @@ import { ClientPermission } from "./types/ClientPermission";
 import { AppContext } from "./types/AppContext";
 import { isValidPaymentStatus } from "./useCases/getTransactionsByStatus";
 import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
+import { Metadata, InitPaymentRequest } from "./schemas";
+import { getMetadataKeys } from "./utils/logger";
 import { getClientByRoleArn } from "./clients/permissionsClient";
 
-const appContext = createAppContext();
+export const appContext = createAppContext();
 
 type LambdaHandler<T> = (
   appContext: AppContext,
-  params: { client: ClientPermission; request: T },
+  params: {
+    client: ClientPermission;
+    request: T;
+  },
 ) => Promise<unknown>;
 
 const lambdaHandler = async <T>(
   request: T,
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler<T>,
-  feeId?: string,
 ): Promise<APIGatewayProxyResult> => {
   try {
     const roleArn = extractCallerArn(requestContext);
@@ -88,21 +93,51 @@ const parseAndValidate = <T>(
 
 export const initPaymentHandler = (
   event: APIGatewayEvent,
+  context?: Context,
 ): Promise<APIGatewayProxyResult> => {
-  const result = parseAndValidate(event.body, InitPaymentRequestSchema);
+  appContext.logger.clearContext();
+  appContext.logger.addContext({
+    apiGatewayRequestId: event.requestContext.requestId,
+    lambdaRequestId: context?.awsRequestId,
+    path: event.path,
+    httpMethod: event.httpMethod,
+  });
+  appContext.logger.debug("Received /init request");
+
+  const result: ParseResult<InitPaymentRequest> = parseAndValidate(
+    event.body,
+    InitPaymentRequestSchema,
+  );
   if (!result.ok) return Promise.resolve(result.error);
+
+  // Extract metadata from the validated request, normalizing it to Record<string, unknown> or undefined
+  const metadata: Metadata | undefined =
+    result.value.metadata &&
+    typeof result.value.metadata === "object" &&
+    !Array.isArray(result.value.metadata)
+      ? result.value.metadata
+      : undefined;
+  const metadataKeys = getMetadataKeys(metadata);
+
+  appContext.logger.addContext({
+    feeId: result.value.feeId,
+    transactionReferenceId: result.value.transactionReferenceId,
+    metadataKeys,
+  });
+  appContext.logger.debug("Validated /init request");
 
   return lambdaHandler(
     result.value,
     event.requestContext,
     appContext.getUseCases().initPayment,
-    result.value.feeId,
   );
 };
 
 export const processPaymentHandler = (
   event: APIGatewayEvent,
+  _context?: Context,
 ): Promise<APIGatewayProxyResult> => {
+  appContext.logger.clearContext();
   const result = parseAndValidate(event.body, ProcessPaymentRequestSchema);
   if (!result.ok) return Promise.resolve(result.error);
 
@@ -115,7 +150,9 @@ export const processPaymentHandler = (
 
 export const getDetailsHandler = (
   event: APIGatewayEvent,
+  _context?: Context,
 ): Promise<APIGatewayProxyResult> => {
+  appContext.logger.clearContext();
   const result = GetDetailsPathParamsSchema.safeParse(
     event.pathParameters ?? {},
   );
@@ -126,7 +163,7 @@ export const getDetailsHandler = (
       ),
     );
   }
-  // getDetails is a read-only lookup — no feeId required, IAM registration check is sufficient.
+  // getDetails is a read-only lookup - no feeId required, IAM registration check is sufficient.
   // Per-transaction client ownership is enforced inside the use case.
   return lambdaHandler(
     { transactionReferenceId: result.data.transactionReferenceId },
@@ -135,10 +172,10 @@ export const getDetailsHandler = (
   );
 };
 
-// ──────────────────────────────
+// ------------------------------
 // Dashboard Lambda Handlers
 // NOTE: If we write integration tests for these handlers, we will need to setup PR ephemeral environments to spin up a RDS instance, otherwise the tests will always fail.
-// ──────────────────────────────
+// ------------------------------
 const getDashboardCorsHeaders = () => {
   const origin = process.env.DASHBOARD_ALLOWED_ORIGIN;
   if (!origin) {
@@ -172,13 +209,16 @@ const dashboardError = (
  */
 export const getAllTransactionsHandler =
   async (): Promise<APIGatewayProxyResult> => {
+    appContext.logger.clearContext();
     try {
       const result = await appContext
         .getUseCases()
         .getRecentTransactions(appContext);
       return dashboardOk(result);
     } catch (err) {
-      console.error("[Dashboard] getAllTransactions error:", err);
+      appContext.logger.error("[Dashboard] getAllTransactions error", {
+        err,
+      });
       return dashboardError(500, "Internal server error");
     }
   };
@@ -190,6 +230,7 @@ export const getAllTransactionsHandler =
 export const getTransactionsByStatusHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
+  appContext.logger.clearContext();
   const paymentStatus = event.pathParameters?.paymentStatus;
   if (!paymentStatus) {
     return dashboardError(
@@ -213,7 +254,9 @@ export const getTransactionsByStatusHandler = async (
       });
     return dashboardOk(result);
   } catch (err) {
-    console.error("[Dashboard] getTransactionsByStatus error:", err);
+    appContext.logger.error("[Dashboard] getTransactionsByStatus error", {
+      err,
+    });
     return dashboardError(500, "Internal server error");
   }
 };
@@ -224,13 +267,16 @@ export const getTransactionsByStatusHandler = async (
  */
 export const getTransactionPaymentStatusHandler =
   async (): Promise<APIGatewayProxyResult> => {
+    appContext.logger.clearContext();
     try {
       const result = await appContext
         .getUseCases()
         .getTransactionPaymentStatus(appContext);
       return dashboardOk(result);
     } catch (err) {
-      console.error("[Dashboard] getTransactionPaymentStatus error:", err);
+      appContext.logger.error("[Dashboard] getTransactionPaymentStatus error", {
+        err,
+      });
       return dashboardError(500, "Internal server error");
     }
   };

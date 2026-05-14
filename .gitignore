@@ -15,3 +15,7 @@ dist/
 
 *.tgz
 .DS_Store
+
+# Tests
+integration-*.txt
+test-*.txt

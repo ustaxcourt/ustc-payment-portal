@@ -7,6 +7,9 @@ import Knex from "knex";
 import { knexSnakeCaseMappers } from "objection";
 import path from "path";
 import { parseRdsEndpoint } from "./db/getRdsCredentials";
+import { createLogger } from "./utils/logger";
+
+const logger = createLogger();
 
 type Command =
   | "create-db"
@@ -155,16 +158,16 @@ const getMigrationsDirectory = (): string => {
   const bundledDirectory = path.join(__dirname, "db", "migrations");
 
   if (fs.existsSync(bundledDirectory)) {
-    console.log(
-      `[migrationHandler] using bundled migrations directory: ${bundledDirectory}`,
-    );
+    logger.info("[migrationHandler] using bundled migrations directory", {
+      bundledDirectory,
+    });
     return bundledDirectory;
   }
 
   const sourceDirectory = path.join(__dirname, "..", "db", "migrations");
-  console.log(
-    `[migrationHandler] using source migrations directory: ${sourceDirectory}`,
-  );
+  logger.info("[migrationHandler] using source migrations directory", {
+    sourceDirectory,
+  });
   return sourceDirectory;
 };
 
@@ -260,7 +263,7 @@ const gcDbs = async (
       if (openPrNumbers.includes(prNumber)) continue;
       await knex.raw(`DROP DATABASE IF EXISTS ?? WITH (FORCE)`, [datname]);
       dropped.push(datname);
-      console.log(`[migrationHandler] gc-dbs: dropped ${datname}`);
+      logger.info("[migrationHandler] gc-dbs: dropped database", { datname });
     }
   } finally {
     await knex.destroy();
@@ -277,11 +280,10 @@ export const migrationHandler = async (
 ): Promise<MigrationHandlerResult> => {
   const command: Command = event?.command ?? "migrate";
 
-  console.log(
-    `[migrationHandler] command=${command} db=${
-      process.env.RDS_DB_NAME ?? "(local)"
-    }`,
-  );
+  logger.info("[migrationHandler] command received", {
+    command,
+    db: process.env.RDS_DB_NAME ?? "(local)",
+  });
 
   if (command === "create-db") return createDb();
   if (command === "drop-db") return dropDb();

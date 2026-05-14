@@ -1,9 +1,10 @@
 import { ZodError } from "zod";
 import { PayGovError } from "./errors/payGovError";
 import { ServerError } from "./errors/serverError";
+import { logger } from "./utils/getPortalLogger";
 
 export const handleError = (err: any) => {
-  console.error(`responding with an error`, err);
+  logger.error("responding with an error", { err });
   if (err.statusCode && err.statusCode < 500) {
     return {
       statusCode: err.statusCode,

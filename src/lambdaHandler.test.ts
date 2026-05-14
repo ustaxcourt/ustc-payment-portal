@@ -2,6 +2,7 @@ import {
   initPaymentHandler,
   processPaymentHandler,
   getDetailsHandler,
+  appContext,
 } from "./lambdaHandler";
 import { APIGatewayEvent } from "aws-lambda";
 import { ForbiddenError } from "./errors/forbidden";
@@ -9,8 +10,23 @@ import { GoneError } from "./errors/gone";
 import { ConflictError } from "./errors/conflict";
 import { PayGovError } from "./errors/payGovError";
 import { NotFoundError } from "./errors/notFound";
+import { ServerError } from "./errors/serverError";
 
-// Reusable mock for appContext with dynamic use case injection
+jest.mock("./utils/logger", () => {
+  const actual = jest.requireActual("./utils/logger");
+  const mockLogger: any = {
+    child: jest.fn(() => mockLogger),
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  };
+  return {
+    ...actual,
+    createLogger: jest.fn(() => mockLogger),
+  };
+});
+
 const useCasesMock = {
   initPayment: jest.fn().mockResolvedValue({ token: "test-token-123" }),
   processPayment: jest.fn().mockResolvedValue({
@@ -40,11 +56,22 @@ const useCasesMock = {
   }),
 };
 
-jest.mock("./appContext", () => ({
-  createAppContext: jest.fn(() => ({
-    getHttpsAgent: jest.fn(),
-    postHttpRequest: jest.fn()
-      .mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
+jest.mock("./appContext", () => {
+  const logger = {
+    clearContext: jest.fn(),
+    addContext: jest.fn(),
+    addUser: jest.fn(),
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  };
+
+  return {
+    createAppContext: jest.fn(() => ({
+      getHttpsAgent: jest.fn(),
+      postHttpRequest: jest.fn()
+        .mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
       <S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
         <S:Header>
           <WorkContext xmlns="http://oracle.com/weblogic/soap/workarea/">blah=</WorkContext>
@@ -57,9 +84,11 @@ jest.mock("./appContext", () => ({
           </ns2:startOnlineCollectionResponse>
         </S:Body>
       </S:Envelope>`),
-    getUseCases: () => useCasesMock,
-  })),
-}));
+      getUseCases: () => useCasesMock,
+      logger,
+    })),
+  };
+});
 
 // Mock permissionsClient to return valid permissions for test role
 jest.mock("./clients/permissionsClient", () => ({
@@ -93,6 +122,10 @@ const mockHeaders = {
 };
 
 describe("lambdaHandler", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe("initPaymentHandler", () => {
     it("returns 200 with token on successful request and client", async () => {
       const mockInitPayment = jest
@@ -115,6 +148,7 @@ describe("lambdaHandler", () => {
       const result = await initPaymentHandler(event);
 
       expect(result.statusCode).toBe(200);
+      expect(appContext.logger.clearContext).toHaveBeenCalled();
       expect(JSON.parse(result.body)).toHaveProperty("token");
       // Check that client was passed to use case with correct clientName from mocked permissionsClient
       const calledWith = mockInitPayment.mock.calls[0][1];
@@ -456,6 +490,26 @@ describe("lambdaHandler", () => {
       const result = await processPaymentHandler(event);
       expect(result.statusCode).toBe(410);
       expect(JSON.parse(result.body).message).toContain("no longer valid");
+    });
+
+    it("returns 500 with ServerError message when use case throws ServerError", async () => {
+      useCasesMock.processPayment.mockRejectedValueOnce(
+        new ServerError(
+          "Failed to record payment session. Please retry your transaction.",
+        ),
+      );
+
+      const event = {
+        body: JSON.stringify({ token: crypto.randomUUID().replace(/-/g, "") }),
+        headers: mockHeaders,
+        requestContext: mockRequestContext,
+      } as unknown as APIGatewayEvent;
+
+      const result = await processPaymentHandler(event);
+      expect(result.statusCode).toBe(500);
+      expect(JSON.parse(result.body).message).toBe(
+        "Failed to record payment session. Please retry your transaction.",
+      );
     });
 
     it("returns 500 when use case throws a generic error", async () => {

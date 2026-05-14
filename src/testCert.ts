@@ -6,8 +6,9 @@ import { getSecretString } from "./clients/secretsClient";
 
 // This is the handler for the /test endpoint.
 export const handler = async (): Promise<APIGatewayProxyResult> => {
+  const appContext = createAppContext();
+
   try {
-    const appContext = createAppContext();
     const httpsAgent = await appContext.getHttpsAgent();
 
     const headers: { Authorization?: string; Authentication?: string } = {};
@@ -28,7 +29,10 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
       headers,
     });
 
-    console.log(result);
+    appContext.logger.info("testCert response received", {
+      status: result.status,
+      ok: result.ok,
+    });
     const resultText = await result.text();
 
     return {
@@ -36,7 +40,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
       body: resultText,
     };
   } catch (err) {
-    console.log(err);
+    appContext.logger.error("testCert request failed", { err });
     return {
       statusCode: 500,
       body: "not ok",

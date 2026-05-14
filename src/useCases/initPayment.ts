@@ -10,13 +10,26 @@ import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
 import { isUniqueViolation } from "../db/pgErrors";
 import { PayGovError } from "../errors/payGovError";
-import { ServerError } from "../errors/serverError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
+import { getMetadataKeys, getUrlOrigin } from "../utils/logger";
 import { authorizeClient } from "../authorizeClient";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
+
+const NETWORK_ERROR_CODES = new Set([
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "ENOTFOUND",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+]);
+
+const isNetworkError = (err: unknown): boolean =>
+  err instanceof Error &&
+  NETWORK_ERROR_CODES.has((err as NodeJS.ErrnoException).code ?? "");
 
 export type InitPayment = (
   appContext: AppContext,
@@ -33,6 +46,24 @@ export const initPayment: InitPayment = async (
   const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel } =
     request;
   const { clientName } = client;
+  const metadataKeys = getMetadataKeys(request.metadata);
+
+  appContext.logger.addContext({
+    clientName,
+    feeId,
+    transactionReferenceId,
+  });
+
+  appContext.logger.info("initPayment use case started", {
+    requestParams: {
+      feeId,
+      amount,
+      transactionReferenceId,
+      urlSuccessOrigin: getUrlOrigin(urlSuccess),
+      urlCancelOrigin: getUrlOrigin(urlCancel),
+      metadataKeys,
+    },
+  });
 
   authorizeClient(client, feeId);
 
@@ -77,6 +108,7 @@ export const initPayment: InitPayment = async (
 
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
   const agencyTrackingId = generateAgencyTrackingId();
+  appContext.logger.addContext({ agencyTrackingId });
 
   const req = new StartOnlineCollectionRequest({
     tcsAppId: fee.tcsAppId,
@@ -96,6 +128,16 @@ export const initPayment: InitPayment = async (
       transactionReferenceId,
       metadata: request.metadata,
     });
+    appContext.logger.info(
+      "Persisted received transaction with generated agency tracking id",
+      {
+        requestParams: {
+          feeId,
+          transactionReferenceId,
+          metadataKeys,
+        },
+      },
+    );
   } catch (err) {
     if (isUniqueViolation(err)) {
       // Concurrent initPayment lost the createReceived race — the partial unique index
@@ -105,6 +147,7 @@ export const initPayment: InitPayment = async (
         "A payment session is already in-flight for this transactionReferenceId",
       );
     }
+    appContext.logger.error("Failed to persist received transaction", { err });
     throw new Error(
       `Failed to record received transaction: ${
         err instanceof Error ? err.message : String(err)
@@ -114,31 +157,51 @@ export const initPayment: InitPayment = async (
 
   try {
     result = await req.makeSoapRequest(appContext);
+    appContext.logger.info("Pay.gov startOnlineCollection completed", {
+      agencyTrackingId,
+      payGovResponse: result,
+    });
   } catch (err) {
-    console.error("Error making SOAP request to Pay.gov", err);
+    appContext.logger.error("Error making SOAP request to Pay.gov", {
+      err,
+      agencyTrackingId,
+    });
+
     await TransactionModel.updateToFailed(
       agencyTrackingId,
       EXISTING_TOKEN_ERROR_CODE,
       "Existing token expired",
-    ).catch((dbErr) =>
-      console.error("Failed to mark transaction as failed", dbErr),
     );
-    throw new PayGovError(
-      "There was an error communicating with Pay.gov. Please retry your transaction.",
-    );
+
+    if (isNetworkError(err)) {
+      throw new PayGovError(
+        "There was an error communicating with Pay.gov. Please retry your transaction.",
+      );
+    }
+
+    throw err;
   }
 
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
+    appContext.logger.info("Persisted initiated transaction", {
+      agencyTrackingId,
+    });
   } catch (err) {
-    console.error("Failed to mark transaction as initiated", err);
-    await TransactionModel.updateToFailed(agencyTrackingId).catch((dbErr) =>
-      console.error("Failed to mark transaction as failed", dbErr),
+    appContext.logger.error(
+      "Failed to persist initiated transaction after Pay.gov response",
+      { err },
     );
-    throw new ServerError(
-      "Failed to record payment session. Please retry your transaction.",
+    throw new Error(
+      `Payment was initiated but failed to persist initiated status: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
     );
   }
+
+  appContext.logger.info("initPayment use case completed", {
+    agencyTrackingId,
+  });
 
   return {
     token: result.token,

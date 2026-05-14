@@ -6,7 +6,9 @@ const describeWithEnv = baseUrl ? describe : describe.skip;
 
 describeWithEnv("POST /init", () => {
   const portalFetch = (options: RequestInit) =>
-    isLocal() ? fetch(`${baseUrl}/init`, options) : signedFetch(`${baseUrl}/init`, options);
+    isLocal()
+      ? fetch(`${baseUrl}/init`, options)
+      : signedFetch(`${baseUrl}/init`, options);
 
   it("returns 200 with token and paymentRedirect for a valid request", async () => {
     const result = await portalFetch({
@@ -36,7 +38,11 @@ describeWithEnv("POST /init", () => {
       urlCancel: "https://example.com",
       metadata: { docketNumber: "123-26" },
     });
-    const options: RequestInit = { method: "POST", headers: { "Content-Type": "application/json" }, body };
+    const options: RequestInit = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    };
 
     const first = await portalFetch(options);
     const firstData = await first.json();
@@ -51,20 +57,32 @@ describeWithEnv("POST /init", () => {
   });
 
   it("returns different tokens for different transactionReferenceIds", async () => {
-    const makeBody = () => JSON.stringify({
-      transactionReferenceId: crypto.randomUUID(),
-      feeId: "PETITION_FILING_FEE",
-      urlSuccess: "https://example.com",
-      urlCancel: "https://example.com",
-      metadata: { docketNumber: "123-26" },
-    });
+    const makeBody = () =>
+      JSON.stringify({
+        transactionReferenceId: crypto.randomUUID(),
+        feeId: "PETITION_FILING_FEE",
+        urlSuccess: "https://example.com",
+        urlCancel: "https://example.com",
+        metadata: { docketNumber: "123-26" },
+      });
 
     const [first, second] = await Promise.all([
-      portalFetch({ method: "POST", headers: { "Content-Type": "application/json" }, body: makeBody() }),
-      portalFetch({ method: "POST", headers: { "Content-Type": "application/json" }, body: makeBody() }),
+      portalFetch({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: makeBody(),
+      }),
+      portalFetch({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: makeBody(),
+      }),
     ]);
 
-    const [firstData, secondData] = await Promise.all([first.json(), second.json()]);
+    const [firstData, secondData] = await Promise.all([
+      first.json(),
+      second.json(),
+    ]);
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);

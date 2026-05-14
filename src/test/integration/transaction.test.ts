@@ -125,6 +125,18 @@ describe("make a transaction", () => {
     if (scenario.expectPendingDuringResolution) {
       assertSingleTransaction(detailsResponse, scenario, "pending", "pending");
 
+      // The local Pay.gov test server keeps ACH-success transactions in
+      // Received/pending, so only deployed environments can assert eventual
+      // settlement here.
+      if (
+        isLocal() &&
+        scenario.paymentMethod === "ACH" &&
+        scenario.paymentStatus === "Success"
+      ) {
+        expect(detailsResponse.transactions[0].payGovTrackingId).toBeTruthy();
+        return;
+      }
+
       const resolvedDetails = await waitForResolvedDetails(
         initialized.transactionReferenceId,
         scenario,

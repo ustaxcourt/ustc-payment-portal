@@ -1,14 +1,17 @@
 import TransactionModel from "../db/TransactionModel";
 import { TransactionRecordSummary } from "../schemas/TransactionRecord.schema";
 import { toApiPaymentMethod } from "./toApiPaymentMethod";
+import { logger } from "./getPortalLogger";
 
 export const toTransactionRecordSummary = (
   row: TransactionModel,
 ): TransactionRecordSummary => {
   if (!row.transactionStatus) {
-    console.error(
-      `For ${row.transactionReferenceId}: Transaction Attempt ${row.agencyTrackingId} has null transactionStatus — defaulting to 'received'. This indicates corrupt data.`,
-    );
+    logger.error("Transaction attempt has null transactionStatus", {
+      transactionReferenceId: row.transactionReferenceId,
+      agencyTrackingId: row.agencyTrackingId,
+      fallbackTransactionStatus: "received",
+    });
   }
   return {
     payGovTrackingId: row.paygovTrackingId ?? undefined,

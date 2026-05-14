@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express from "express";
+import express, { Request } from "express";
 import path from "path";
 import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
@@ -14,9 +14,16 @@ import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
 import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
 import "./db/knex";
 import { ClientPermission } from "./types/ClientPermission";
-import { logger } from "./utils/logger";
+import { LoggerType } from "./types/LoggerType";
+import { getMetadataKeys } from "./utils/logger";
+import { expressLogger } from "./utils/expressLogger";
 
-const appContext = createAppContext();
+export const appContext = createAppContext();
+type RequestWithLogger = Request & {
+  locals?: {
+    logger?: LoggerType;
+  };
+};
 
 const app = express();
 // strict: false to match the Lambda's JSON.parse, which accepts primitive top-level
@@ -59,6 +66,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+app.use(expressLogger);
 
 // Configure Express to use EJS
 app.set("views", path.join(__dirname, "views"));
@@ -84,18 +92,37 @@ app.get("/openapi.json", (req, res) => {
 
 // define a route handler for the default home page
 app.post("/init", async (req, res) => {
-  logger.info(
-    {
-      feeId: req.body?.feeId,
-      transactionReferenceId: req.body?.transactionReferenceId,
-    },
-    "Received /init request",
-  );
+  const request = req as RequestWithLogger;
+  const requestLogger = request.locals?.logger ?? appContext.logger;
+  const metadata =
+    req.body?.metadata &&
+    typeof req.body.metadata === "object" &&
+    !Array.isArray(req.body.metadata)
+      ? req.body.metadata
+      : undefined;
+  const metadataKeys = getMetadataKeys(metadata);
+
+  requestLogger.addContext({
+    requestId:
+      typeof req.header("x-request-id") === "string"
+        ? req.header("x-request-id")
+        : undefined,
+    path: req.path,
+    httpMethod: req.method,
+    clientName: devClient.clientName,
+    feeId: req.body?.feeId,
+    transactionReferenceId: req.body?.transactionReferenceId,
+    metadataKeys,
+  });
+
+  requestLogger.debug("Received /init request");
   try {
-    const request = parseRequestBody(req, InitPaymentRequestSchema);
-    const result = await appContext
-      .getUseCases()
-      .initPayment(appContext, { client: devClient, request });
+    const parsedRequest = parseRequestBody(req, InitPaymentRequestSchema);
+    const result = await appContext.getUseCases().initPayment(appContext, {
+      client: devClient,
+      request: parsedRequest,
+    });
+    requestLogger.info("Completed /init request");
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
@@ -105,10 +132,11 @@ app.post("/init", async (req, res) => {
 
 app.post("/process", async (req, res) => {
   try {
-    const request = parseRequestBody(req, ProcessPaymentRequestSchema);
-    const result = await appContext
-      .getUseCases()
-      .processPayment(appContext, { client: devClient, request });
+    const parsedRequest = parseRequestBody(req, ProcessPaymentRequestSchema);
+    const result = await appContext.getUseCases().processPayment(appContext, {
+      client: devClient,
+      request: parsedRequest,
+    });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
@@ -183,7 +211,6 @@ app.get("/transaction-payment-status", async (_req, res, next) => {
 
 // start the express server
 app.listen(port, () => {
-  // tslint:disable-next-line:no-console
-  console.log(`server started at http://localhost:${port}`);
-  console.log(`API docs available at http://localhost:${port}/docs`);
+  appContext.logger.info(`server started at http://localhost:${port}`);
+  appContext.logger.info(`API docs available at http://localhost:${port}/docs`);
 });

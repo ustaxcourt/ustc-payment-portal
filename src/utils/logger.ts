@@ -1,7 +1,14 @@
-import pino from "pino";
-import { getAppEnv, isLocal } from "../config/appEnv";
+import pino, { LoggerOptions, Logger } from "pino";
 
 type RuntimeEnv = "test" | "development" | "production";
+type LogContext = Record<string, unknown>;
+
+export type AppLoggerLike = Logger & {
+  debug(message: string, context?: LogContext): void;
+  info(message: string, context?: LogContext): void;
+  warn(message: string, context?: LogContext): void;
+  error(message: string, context?: LogContext): void;
+};
 
 const VALID_LEVELS = new Set([
   "trace",
@@ -19,153 +26,248 @@ const DEFAULT_LEVEL_BY_ENV: Record<RuntimeEnv, string> = {
   production: "info",
 };
 
-const SENSITIVE_KEYS = new Set([
-  "authorization",
-  "token",
-  "password",
-  "secret",
-  "certpassphrase",
-]);
+const SENSITIVE_PATHS = [
+  "user.token",
+  "request.headers.authorization",
+  "request.headers.Authorization",
+];
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+// --- Native helpers ---
+
+function isPlainObject(value: unknown): value is Record<string, any> {
   return Object.prototype.toString.call(value) === "[object Object]";
 }
 
-function redactSensitiveFields(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(redactSensitiveFields);
-  }
-
-  if (!isPlainObject(value)) {
-    return value;
-  }
-
-  return Object.fromEntries(
-    Object.entries(value).map(([key, nestedValue]) => {
-      if (SENSITIVE_KEYS.has(key.toLowerCase())) {
-        return [key, "[Redacted]"];
-      }
-
-      return [key, redactSensitiveFields(nestedValue)];
-    }),
-  );
+function deepClone<T>(obj: T): T {
+  // Node 17+ / modern runtimes
+  return structuredClone(obj);
 }
 
-function resolveNodeEnv(raw?: string): RuntimeEnv {
-  const normalizedEnv = raw?.toLowerCase();
+function unsetPath(obj: any, path: string) {
+  const parts = path.split(".");
+  let current = obj;
+
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (!current || typeof current !== "object") return;
+    current = current[parts[i]];
+  }
+
+  if (current && typeof current === "object") {
+    delete current[parts[parts.length - 1]];
+  }
+}
+
+function deepEqual(a: any, b: any): boolean {
+  // Simple deep equality (sufficient for logging metadata)
+  if (a === b) return true;
 
   if (
-    normalizedEnv === "test" ||
-    normalizedEnv === "development" ||
-    normalizedEnv === "production"
+    typeof a !== "object" ||
+    typeof b !== "object" ||
+    a == null ||
+    b == null
   ) {
-    return normalizedEnv;
+    return false;
   }
 
-  if (raw) {
-    process.stderr.write(
-      `[logger] Invalid NODE_ENV="${raw}"; falling back to development\n`,
-    );
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+
+  if (keysA.length !== keysB.length) return false;
+
+  return keysA.every((key) => deepEqual(a[key], b[key]));
+}
+
+function redactPaths(obj: any) {
+  const copy = isPlainObject(obj) ? deepClone(obj) : obj;
+
+  if (!isPlainObject(copy)) return copy;
+
+  for (const path of SENSITIVE_PATHS) {
+    unsetPath(copy, path);
   }
 
+  return copy;
+}
+
+function removeDuplicateLogInformation(obj: any) {
+  if (!isPlainObject(obj)) return obj;
+
+  const copy = deepClone(obj);
+
+  if (!copy.context || !isPlainObject(copy.context)) return copy;
+
+  for (const key of Object.keys(copy.context)) {
+    if (deepEqual(copy[key], copy.context[key])) {
+      delete copy.context[key];
+    }
+  }
+
+  return copy;
+}
+
+// TODO: Replace with a more robust solution if we find ourselves
+// needing to log more complex metadata structures,
+// or if performance of deepClone/deepEqual becomes an issue.
+// function getMetadataLines(info: any): string[] {
+//   const metadata = { ...info };
+//   delete metadata.level;
+//   delete metadata.msg;
+//   delete metadata.time;
+
+//   const stringified = util.inspect(metadata, {
+//     compact: false,
+//     maxStringLength: null,
+//   });
+
+//   const stripped = stringified.replace(/.+: undefined,*/gm, "").trim();
+
+//   if (stripped === "{}") return [];
+
+//   return stripped.split("\n");
+// }
+
+// --- ENV helpers ---
+
+function resolveNodeEnv(raw?: string): RuntimeEnv {
+  const normalized = raw?.toLowerCase();
+  if (
+    normalized === "test" ||
+    normalized === "development" ||
+    normalized === "production"
+  ) {
+    return normalized;
+  }
   return "development";
 }
 
-function resolveLogLevel(
-  runtimeEnv: RuntimeEnv,
-  configuredLevel?: string,
-): string {
-  const normalizedLevel = configuredLevel?.toLowerCase();
-
-  if (normalizedLevel && VALID_LEVELS.has(normalizedLevel)) {
-    return normalizedLevel;
-  }
-
-  if (
-    configuredLevel &&
-    (!normalizedLevel || !VALID_LEVELS.has(normalizedLevel))
-  ) {
-    // One startup warning if LOG_LEVEL is invalid.
-    process.stderr.write(
-      `[logger] Invalid LOG_LEVEL="${configuredLevel}"; falling back to ${DEFAULT_LEVEL_BY_ENV[runtimeEnv]}\n`,
-    );
-  }
-
-  return DEFAULT_LEVEL_BY_ENV[runtimeEnv];
+function resolveLogLevel(env: RuntimeEnv, configured?: string): string {
+  const normalized = configured?.toLowerCase();
+  if (normalized && VALID_LEVELS.has(normalized)) return normalized;
+  return DEFAULT_LEVEL_BY_ENV[env];
 }
 
-const nodeEnv = resolveNodeEnv(process.env.NODE_ENV);
-const appEnv = getAppEnv();
-const level = resolveLogLevel(nodeEnv, process.env.LOG_LEVEL);
+function normalizeMessageFirstArgs(args: unknown[]): unknown[] {
+  if (
+    args.length >= 2 &&
+    typeof args[0] === "string" &&
+    isPlainObject(args[1])
+  ) {
+    return [args[1], args[0], ...args.slice(2)];
+  }
+  return args;
+}
 
-const usePretty = isLocal();
+// --- Factory (Pino-style) ---
 
-export const logger = pino({
-  level,
-  hooks: {
-    logMethod(inputArgs, method) {
-      method.apply(
-        this,
-        inputArgs.map((arg) => redactSensitiveFields(arg)) as Parameters<
-          typeof method
-        >,
-      );
-    },
-  },
-  // Emit string level labels ("info") instead of numbers (30) in JSON output.
-  formatters: {
-    level(label) {
-      return { level: label };
-    },
-  },
-  // Use ISO timestamp for CloudWatch compatibility.
-  timestamp: pino.stdTimeFunctions.isoTime,
-  // Suppress pid/hostname in deployed environments to reduce noise.
-  base: usePretty
-    ? { pid: process.pid }
-    : {
-        service: "ustc-payment-portal",
-        nodeEnv,
-        appEnv,
+export function createLogger(opts: LoggerOptions = {}): AppLoggerLike {
+  const nodeEnv = resolveNodeEnv(process.env.NODE_ENV);
+  const level = resolveLogLevel(nodeEnv, process.env.LOG_LEVEL);
+
+  const usePretty = nodeEnv !== "production";
+
+  const baseOptions: LoggerOptions = {
+    level,
+    timestamp: pino.stdTimeFunctions.isoTime,
+
+    formatters: {
+      level(label) {
+        return { level: label };
       },
-  // Redact sensitive keys before serialization.
-  redact: {
-    paths: [
-      "authorization",
-      "*.authorization",
-      "token",
-      "*.token",
-      "password",
-      "*.password",
-      "secret",
-      "*.secret",
-      "certPassphrase",
-      "*.certPassphrase",
-    ],
-    censor: "[Redacted]",
-  },
-  // Route to pino-pretty for local/development, raw stdout otherwise.
-  transport: usePretty
-    ? {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          translateTime: "SYS:standard",
-          ignore: "pid,hostname",
-        },
-      }
-    : undefined,
-});
+    },
+
+    base: {
+      ...(opts.base || {}),
+    },
+
+    hooks: {
+      logMethod(args, method) {
+        const normalizedArgs = normalizeMessageFirstArgs(args);
+        const processed = normalizedArgs.map((arg) => {
+          let value = arg;
+
+          value = redactPaths(value);
+          value = removeDuplicateLogInformation(value);
+
+          return value;
+        });
+
+        method.apply(this, processed as any);
+      },
+    },
+
+    serializers: {
+      err: (err: any) => ({
+        message: err?.message,
+        stack: err?.stack,
+        ...err,
+      }),
+    },
+
+    transport: usePretty
+      ? {
+          target: "pino-pretty",
+          options: {
+            colorize: true,
+            translateTime: "SYS:standard",
+          },
+        }
+      : undefined,
+  };
+
+  let logger: Logger;
+
+  try {
+    logger = pino(baseOptions);
+  } catch (error: any) {
+    const message = String(error?.message || "");
+    const isPrettyTransportError =
+      usePretty &&
+      (message.includes("pino-pretty") ||
+        message.includes("transport target") ||
+        message.includes("unable to determine transport target"));
+
+    if (!isPrettyTransportError) {
+      throw error;
+    }
+
+    // Fallback for serverless/runtime bundles where pino-pretty is unavailable.
+    logger = pino({
+      ...baseOptions,
+      transport: undefined,
+    });
+  }
+
+  (logger as any).warning = logger.warn;
+
+  return logger as AppLoggerLike;
+}
 
 // Add global context when not using pretty (base already included above for pretty).
 // For staging/production, default meta is embedded in the base option above.
 
-export function createRequestLogger(context: {
-  awsRequestId?: string;
-  path?: string;
-  httpMethod?: string;
-  clientArn?: string;
-  transactionReferenceId?: string;
-}) {
-  return logger.child(context);
-}
+/**
+ * Returns the origin (scheme + host + port) of a URL string, or undefined if
+ * the URL is absent or unparseable. Use this to log redirect destinations
+ * without exposing path or query parameters.
+ */
+export const getUrlOrigin = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Returns a sorted list of keys present in a metadata object, or undefined if
+ * the value is not a plain object. Use this to log which metadata fields were
+ * provided without exposing their values.
+ */
+export const getMetadataKeys = (metadata: unknown): string[] | undefined => {
+  if (!isPlainObject(metadata)) {
+    return undefined;
+  }
+  return Object.keys(metadata).sort();
+};

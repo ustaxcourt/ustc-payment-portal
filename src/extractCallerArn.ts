@@ -1,11 +1,13 @@
 import { ForbiddenError } from "./errors/forbidden";
 import { APIGatewayEventRequestContext } from "aws-lambda";
+import { logger } from "./utils/getPortalLogger";
 
 /**
  * Mock IAM role ARN for local development when SigV4 is bypassed.
  * Exported so permissionsClient can reference the same value without duplication.
  */
-export const LOCAL_DEV_ROLE_ARN = "arn:aws:iam::000000000000:role/local-dev-role";
+export const LOCAL_DEV_ROLE_ARN =
+  "arn:aws:iam::000000000000:role/local-dev-role";
 
 /**
  * Converts an STS assumed-role ARN to an IAM role ARN for lookup.
@@ -18,7 +20,7 @@ export const LOCAL_DEV_ROLE_ARN = "arn:aws:iam::000000000000:role/local-dev-role
  */
 export const convertAssumedRoleToIamArn = (assumedRoleArn: string): string => {
   const match = assumedRoleArn.match(
-    /^arn:aws:sts::(\d+):assumed-role\/([^/]+)\/.+$/
+    /^arn:aws:sts::(\d+):assumed-role\/([^/]+)\/.+$/,
   );
 
   if (!match) {
@@ -43,11 +45,11 @@ export const convertAssumedRoleToIamArn = (assumedRoleArn: string): string => {
  * @throws ForbiddenError if IAM principal is missing or invalid
  */
 export const extractCallerArn = (
-  requestContext?: APIGatewayEventRequestContext
+  requestContext?: APIGatewayEventRequestContext,
 ): string => {
   // Bypass for local development
   if (process.env.LOCAL_DEV === "true") {
-    console.log("Local development mode: bypassing IAM authorization");
+    logger.info("Local development mode: bypassing IAM authorization");
     return LOCAL_DEV_ROLE_ARN;
   }
 

@@ -3,5 +3,7 @@ export class InvalidRequestError extends Error {
 
   constructor(message: string = "Invalid Request") {
     super(message);
+    Object.setPrototypeOf(this, new.target.prototype);
+    this.name = new.target.name;
   }
 }

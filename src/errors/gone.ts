@@ -3,5 +3,7 @@ export class GoneError extends Error {
 
   constructor(message: string = "Gone") {
     super(message);
+    Object.setPrototypeOf(this, new.target.prototype);
+    this.name = new.target.name;
   }
 }

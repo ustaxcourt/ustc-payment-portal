@@ -5,12 +5,11 @@ import { getDetails } from "./useCases/getDetails";
 import { initPayment } from "./useCases/initPayment";
 import { processPayment } from "./useCases/processPayment";
 import { getRecentTransactions } from "./useCases/getRecentTransactions";
-import {
-  getTransactionsByStatus,
-} from "./useCases/getTransactionsByStatus";
+import { getTransactionsByStatus } from "./useCases/getTransactionsByStatus";
 import { getTransactionPaymentStatus } from "./useCases/getTransactionPaymentStatus";
 import * as https from "https";
 import fetch from "node-fetch";
+import { logger } from "./utils/getPortalLogger";
 
 let httpsAgentCache: https.Agent | undefined;
 
@@ -48,7 +47,7 @@ export const createAppContext = (): AppContext => {
     },
     postHttpRequest: async (
       appContext: AppContext,
-      body: string
+      body: string,
     ): Promise<string> => {
       const httpsAgent = await appContext.getHttpsAgent();
 
@@ -72,13 +71,13 @@ export const createAppContext = (): AppContext => {
             headers.Authorization = `Bearer ${token}`;
             headers.Authentication = headers.Authorization;
           } catch (err: any) {
-            console.warn(
+            appContext.logger.warn(
               "[postHttpRequest] Failed to read token from Secrets Manager",
               {
                 secretId: tokenSecretId,
                 errorName: err?.name,
                 errorMessage: err?.message,
-              }
+              },
             );
             // Proceed without Authorization header if token fetch fails
           }
@@ -103,5 +102,6 @@ export const createAppContext = (): AppContext => {
       getTransactionPaymentStatus,
       getTransactionsByStatus,
     }),
+    logger,
   };
 };
