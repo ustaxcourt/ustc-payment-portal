@@ -31,10 +31,10 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
       headers,
     });
 
-    logger.info(
-      { status: result.status, ok: result.ok },
-      "testCert response received",
-    );
+    logger.info("testCert response received", {
+      status: result.status,
+      ok: result.ok,
+    });
     const resultText = await result.text();
 
     return {
@@ -42,7 +42,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
       body: resultText,
     };
   } catch (err) {
-    logger.error({ err }, "testCert request failed");
+    logger.error("testCert request failed", { err });
     return {
       statusCode: 500,
       body: "not ok",

@@ -32,7 +32,7 @@ describe("createLogger (pino)", () => {
   test("includes context object", () => {
     const logger = createLogger();
 
-    logger.info({ context: { foo: "bar" } }, "test message");
+    logger.info("test message", { context: { foo: "bar" } });
 
     const output = writeSpy.mock.calls[0][0] as string;
 
@@ -72,7 +72,7 @@ describe("createLogger (pino)", () => {
 
     const error = new Error("boom");
 
-    logger.error({ err: error });
+    logger.error("error occurred", { err: error });
 
     const output = writeSpy.mock.calls[0][0] as string;
 

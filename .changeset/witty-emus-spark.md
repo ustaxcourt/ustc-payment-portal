@@ -17,4 +17,6 @@ Standardizes logging usage, improves request lifecycle logging, and documents th
 - Fix a CloudWatch-reported logging crash in `processPayment` by avoiding logging a non-serializable request class instance.
 - Update `processPayment` logs to emit safe scalar fields so logger structured-clone sanitization cannot fail at runtime.
 - Clarified request-scoped logging guidance to use `appContext.logger` / `getPortalLogger` with context helpers (`clearContext`, `addContext`).
+- Clarified logger call-order differences in docs with a signature matrix: message-first for `appContext.logger`, object-first for raw `createLogger()`.
+- Unified logger call order to message-first for both `appContext.logger` and `createLogger()` to remove API confusion.
 - Updated logging docs to distinguish when to use `createLogger` vs `appContext.logger`, and removed outdated guidance that referenced `createRequestLogger`.

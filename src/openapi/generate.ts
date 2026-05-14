@@ -24,8 +24,8 @@ const document = generateOpenAPIDocument();
 
 // Write JSON
 fs.writeFileSync(outputPath, JSON.stringify(document, null, 2));
-logger.info({ outputPath }, "OpenAPI JSON spec generated");
+logger.info("OpenAPI JSON spec generated", { outputPath });
 
 // Write YAML
 fs.writeFileSync(outputPathYaml, yaml.dump(document, { noRefs: true }));
-logger.info({ outputPathYaml }, "OpenAPI YAML spec generated");
+logger.info("OpenAPI YAML spec generated", { outputPathYaml });

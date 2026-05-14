@@ -8,6 +8,17 @@ The Payment Portal uses [Pino](https://getpino.io) for structured JSON logging. 
 
 Use one of these patterns based on where the code runs.
 
+### Logger Signature Matrix
+
+Use message-first call order for both logger APIs:
+
+| Logger API | Use in | Signature |
+| --- | --- | --- |
+| `appContext.logger` / `getPortalLogger` | Lambda handlers, use cases, request-scoped app code | `logger.info("message", { context })` |
+| `createLogger()` (raw Pino) | standalone scripts and low-level modules | `logger.info("message", { context })` |
+
+If you are writing endpoint business logic, use message-first via `appContext.logger`.
+
 #### Pattern A: request and use-case code (preferred)
 
 In handlers and use cases, use `appContext.logger` (or `logger` from `getPortalLogger`) so request context can be added and reused.
@@ -38,11 +49,11 @@ import { createLogger } from "./utils/logger";
 
 const logger = createLogger();
 
-// Object-first API for raw Pino logger
-logger.debug({ operation: "openapi:generate" }, "Starting generation");
-logger.info({ outputPath: "docs/openapi.json" }, "OpenAPI JSON generated");
-logger.warn({ retries: 1 }, "Retrying operation");
-logger.error({ err }, "Script failed");
+// Message-first API for createLogger()
+logger.debug("Starting generation", { operation: "openapi:generate" });
+logger.info("OpenAPI JSON generated", { outputPath: "docs/openapi.json" });
+logger.warn("Retrying operation", { retries: 1 });
+logger.error("Script failed", { err });
 ```
 
 ### Logging with structured fields
@@ -58,14 +69,11 @@ appContext.logger.info("Payment initiated", {
 });
 
 // Good with createLogger() / raw Pino ✓
-logger.info(
-  {
-    feeId: "FEE-001",
-    transactionReferenceId: "8d537be3-80e8-41a3-8acd-8d44cc2a7183",
-    amount: 150.0,
-  },
-  "Payment initiated",
-);
+logger.info("Payment initiated", {
+  feeId: "FEE-001",
+  transactionReferenceId: "8d537be3-80e8-41a3-8acd-8d44cc2a7183",
+  amount: 150.0,
+});
 
 // Avoid ✗ string interpolation
 appContext.logger.info(
@@ -152,7 +160,7 @@ If you need to log an object containing sensitive fields, they will be masked au
 ```typescript
 // Sensitive fields are redacted automatically
 const credentials = { password: "secret123", token: "xyz789" };
-logger.info({ credentials }, "Login attempt"); // password and token will be masked
+logger.info("Login attempt", { credentials }); // password and token will be masked
 ```
 
 Avoid logging full runtime objects (for example raw `fetch` response objects) because they can include complex internal structures. Prefer a safe summary such as `status`, `ok`, IDs, or key names.

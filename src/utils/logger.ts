@@ -1,6 +1,14 @@
 import pino, { LoggerOptions, Logger } from "pino";
 
 type RuntimeEnv = "test" | "development" | "production";
+type LogContext = Record<string, unknown>;
+
+export type AppLoggerLike = Logger & {
+  debug(message: string, context?: LogContext): void;
+  info(message: string, context?: LogContext): void;
+  warn(message: string, context?: LogContext): void;
+  error(message: string, context?: LogContext): void;
+};
 
 const VALID_LEVELS = new Set([
   "trace",
@@ -139,9 +147,16 @@ function resolveLogLevel(env: RuntimeEnv, configured?: string): string {
   return DEFAULT_LEVEL_BY_ENV[env];
 }
 
+function normalizeMessageFirstArgs(args: unknown[]): unknown[] {
+  if (args.length >= 2 && typeof args[0] === "string" && isPlainObject(args[1])) {
+    return [args[1], args[0], ...args.slice(2)];
+  }
+  return args;
+}
+
 // --- Factory (Pino-style) ---
 
-export function createLogger(opts: LoggerOptions = {}): Logger {
+export function createLogger(opts: LoggerOptions = {}): AppLoggerLike {
   const nodeEnv = resolveNodeEnv(process.env.NODE_ENV);
   const level = resolveLogLevel(nodeEnv, process.env.LOG_LEVEL);
 
@@ -163,7 +178,8 @@ export function createLogger(opts: LoggerOptions = {}): Logger {
 
     hooks: {
       logMethod(args, method) {
-        const processed = args.map((arg) => {
+        const normalizedArgs = normalizeMessageFirstArgs(args);
+        const processed = normalizedArgs.map((arg) => {
           let value = arg;
 
           value = redactPaths(value);
@@ -220,7 +236,7 @@ export function createLogger(opts: LoggerOptions = {}): Logger {
 
   (logger as any).warning = logger.warn;
 
-  return logger;
+  return logger as AppLoggerLike;
 }
 
 // Add global context when not using pretty (base already included above for pretty).
