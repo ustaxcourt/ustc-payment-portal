@@ -1,11 +1,10 @@
 import { ZodError } from "zod";
 import { PayGovError } from "./errors/payGovError";
-import { Logger } from "pino/pino";
-import { createLogger } from "./utils/logger";
 import { ServerError } from "./errors/serverError";
+import { logger } from "./utils/getPortalLogger";
 
-export const handleError = (err: any, errorLogger: Logger = createLogger()) => {
-  errorLogger.error({ err }, "responding with an error");
+export const handleError = (err: any) => {
+  logger.error("responding with an error", { err });
   if (err.statusCode && err.statusCode < 500) {
     return {
       statusCode: err.statusCode,

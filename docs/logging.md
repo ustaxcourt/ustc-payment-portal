@@ -108,6 +108,13 @@ export async function lambdaHandler(event: any, context: any) {
 
 Note: `createRequestLogger` is not part of the current implementation in this repo.
 
+## Error Handling Logger
+
+`handleError` uses the shared logger from `src/utils/getPortalLogger.ts` and does not support logger dependency injection.
+
+- Runtime code should call `handleError(err)`.
+- Tests should mock `src/utils/getPortalLogger.ts` when asserting error logging behavior.
+
 The request logger automatically includes:
 
 - API request ID (`apiGatewayRequestId` from API Gateway `event.requestContext.requestId`)

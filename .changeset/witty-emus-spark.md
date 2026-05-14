@@ -10,6 +10,7 @@ Standardizes logging usage, improves request lifecycle logging, and documents th
 - Log receipt at `debug` level and key request and processing milestones at `info` level.
 - Include structured `error` logs for Pay.gov interaction and database persistence failures.
 - Use shared logger inside `handleError` and add unit tests to verify logger calls.
+- Remove logger dependency injection from `handleError` usage and update tests to mock the shared logger module directly.
 
 - Added missing logger initialization in standalone modules that now use `createLogger()`.
 - Updated logger calls in raw Pino contexts to object-first signatures, for example `logger.info({ outputPath }, "message")`.
