@@ -56,12 +56,11 @@ describeIfDeployed("database migration and seed verification", () => {
     it("should return transactions with the correct schema shape", () => {
       const row = body.data[0];
 
-      // Columns from 20260305195503_init_db migration
       expect(row).toHaveProperty("agencyTrackingId");
       expect(row).toHaveProperty("transactionReferenceId");
       expect(row).toHaveProperty("feeName");
       expect(row).toHaveProperty("feeId");
-      expect(row).toHaveProperty("transactionAmount");
+      expect(row).toHaveProperty("transactionAmount"); // derived from fees.amount via join
       expect(row).toHaveProperty("clientName");
       expect(row).toHaveProperty("paymentStatus");
       expect(row).toHaveProperty("transactionStatus");

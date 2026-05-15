@@ -9,11 +9,7 @@ jest.mock("./TransactionModel", () => {
     ...actual,
     default: class MockTransactionModel {
       static $parseDatabaseJson(json: Record<string, unknown>) {
-        const parsed = { ...json };
-        if (parsed.transactionAmount !== undefined && parsed.transactionAmount !== null) {
-          parsed.transactionAmount = Number(parsed.transactionAmount);
-        }
-        return parsed;
+        return { ...json };
       }
       static getByPaymentStatus = jest.fn(() => Promise.resolve([]));
       static getAll = jest.fn(() => Promise.resolve([]));
@@ -109,18 +105,6 @@ describe("TransactionModel", () => {
 
   afterEach(() => {
     mockTransaction = null;
-  });
-
-  describe("$parseDatabaseJson", () => {
-    it("converts transactionAmount to number", () => {
-      const model = new TransactionModel();
-
-      const parsed = model.$parseDatabaseJson({
-        transactionAmount: "150.25",
-      });
-
-      expect(parsed.transactionAmount).toBe(150.25);
-    });
   });
 
   describe("getAll", () => {

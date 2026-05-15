@@ -23,7 +23,7 @@ import {
   ProcessPaymentRequestSchema,
   ProcessPaymentResponseSchema,
   GoneErrorSchema,
-  FeeIdSchema,
+  FeeKeySchema,
   RecentTransactionsResponseSchema,
   TransactionPaymentStatusResponseSchema,
   TransactionsByStatusPathParamsSchema,
@@ -38,7 +38,7 @@ export const registry = new OpenAPIRegistry();
 // ============================================
 // Register Schemas
 // ============================================
-registry.register("FeeId", FeeIdSchema);
+registry.register("FeeKey", FeeKeySchema);
 registry.register("MetadataDawson", MetadataDawsonSchema);
 registry.register("MetadataNonattorneyExam", MetadataNonattorneyExamSchema);
 registry.register("Metadata", MetadataSchema);

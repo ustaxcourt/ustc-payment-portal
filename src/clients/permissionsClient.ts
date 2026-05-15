@@ -33,7 +33,7 @@ const LOCAL_DEV_PERMISSIONS: ClientPermission[] = [
   {
     clientName: "Local Development",
     clientRoleArn: LOCAL_DEV_ROLE_ARN,
-    allowedFeeIds: ["*"], // Wildcard: allow all feeIds in local dev
+    allowedFeeKeys: ["*"], // Wildcard: allow all fee keys in local dev
   },
 ];
 
@@ -76,7 +76,7 @@ export const getClientPermissions = async (): Promise<ClientPermission[]> => {
       if (
         !perm.clientName ||
         !perm.clientRoleArn ||
-        !Array.isArray(perm.allowedFeeIds)
+        !Array.isArray(perm.allowedFeeKeys)
       ) {
         throw new Error("Invalid client permission structure");
       }

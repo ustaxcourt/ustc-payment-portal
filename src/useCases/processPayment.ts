@@ -32,8 +32,6 @@ export const processPayment: ProcessPayment = async (
     throw new NotFoundError("Transaction could not be found");
   }
 
-  authorizeClient(client, transaction.feeId);
-
   const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
     transaction.clientName,
     transaction.transactionReferenceId,
@@ -59,6 +57,8 @@ export const processPayment: ProcessPayment = async (
     console.error(`Fee ${transaction.feeId} is missing tcsAppId configuration`);
     throw new ServerError();
   }
+
+  authorizeClient(client, fee.feeKey);
 
   const req = new CompleteOnlineCollectionWithDetailsRequest({
     tcsAppId: fee.tcsAppId,

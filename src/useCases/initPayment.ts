@@ -30,25 +30,25 @@ export const initPayment: InitPayment = async (
   appContext,
   { client, request },
 ) => {
-  const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel } =
+  const { fee: feeKey, amount, transactionReferenceId, urlSuccess, urlCancel } =
     request;
   const { clientName } = client;
 
-  authorizeClient(client, feeId);
+  authorizeClient(client, feeKey);
 
-  const fee = await FeesModel.getFeeById(feeId);
+  const fee = await FeesModel.getActiveFeeByKey(feeKey);
   if (!fee || !fee.tcsAppId) {
-    throw new InvalidRequestError(`Unknown feeId: ${feeId}`);
+    throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
   }
 
   if (amount !== undefined && !fee.isVariable) {
     throw new InvalidRequestError(
-      `Fee ${feeId} does not allow variable amounts`,
+      `Fee ${feeKey} does not allow variable amounts`,
     );
   }
 
   if (amount === undefined && fee.isVariable) {
-    throw new InvalidRequestError(`Fee ${feeId} requires an amount`);
+    throw new InvalidRequestError(`Fee ${feeKey} requires an amount`);
   }
 
   const existingInFlightTransaction =
@@ -90,8 +90,7 @@ export const initPayment: InitPayment = async (
   try {
     await TransactionModel.createReceived({
       agencyTrackingId,
-      feeId,
-      transactionAmount,
+      feeId: fee.feeId,
       clientName,
       transactionReferenceId,
       metadata: request.metadata,

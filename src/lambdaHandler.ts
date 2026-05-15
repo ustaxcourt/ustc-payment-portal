@@ -96,7 +96,7 @@ export const initPaymentHandler = (
     result.value,
     event.requestContext,
     appContext.getUseCases().initPayment,
-    result.value.feeId,
+    result.value.fee,
   );
 };
 

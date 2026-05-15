@@ -16,18 +16,20 @@ jest.mock("../db/TransactionModel", () => ({
 jest.mock("../db/FeesModel", () => ({
   __esModule: true,
   default: {
-    getFeeById: jest.fn((feeId) => {
-      if (feeId === "PETITION_FILING_FEE") {
+    getActiveFeeByKey: jest.fn((feeKey) => {
+      if (feeKey === "PETITION_FILING_FEE") {
         return Promise.resolve({
           feeId: "PETITION_FILING_FEE",
+          feeKey: "PETITION_FILING_FEE",
           tcsAppId: "TCSUSTAXCOURTPETITION",
           amount: 250,
           isVariable: false,
         });
       }
-      if (feeId === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
+      if (feeKey === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
         return Promise.resolve({
-          feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+          fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+          feeKey: "NONATTORNEY_EXAM_REGISTRATION_FEE",
           tcsAppId: "TCSUSTAXCOURTANAEF",
           amount: 250,
           isVariable: false,
@@ -50,12 +52,12 @@ import { ClientPermission } from "../types/ClientPermission";
 const mockClient: ClientPermission = {
   clientName: "Test Client App",
   clientRoleArn: "arn:aws:iam::123456789012:role/test-client",
-  allowedFeeIds: ["*"],
+  allowedFeeKeys: ["*"],
 };
 
 const validPetitionRequest: InitPaymentRequest = {
   transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-  feeId: "PETITION_FILING_FEE",
+  fee: "PETITION_FILING_FEE",
   urlSuccess: "https://example.com/success",
   urlCancel: "https://example.com/cancel",
   metadata: { docketNumber: "123-26" },
@@ -80,19 +82,19 @@ describe("initPayment", () => {
     jest.restoreAllMocks();
   });
 
-  it("throws InvalidRequestError with a clear message when feeId is unrecognized", async () => {
+  it("throws InvalidRequestError with a clear message when fee key is unrecognized", async () => {
     await expect(
       initPayment(appContext, {
         client: mockClient,
         request: {
           transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-          feeId: "UNKNOWN_FEE" as any,
+          fee: "UNKNOWN_FEE" as any,
           urlCancel: "https://example.com/cancel",
           urlSuccess: "https://example.com/success",
           metadata: { docketNumber: "123-26" },
         },
       }),
-    ).rejects.toThrow("Unknown feeId: UNKNOWN_FEE");
+    ).rejects.toThrow("Unknown fee: UNKNOWN_FEE");
   });
 
   it("returns a token and paymentRedirect for a valid PETITION_FILING_FEE request", async () => {
@@ -117,7 +119,7 @@ describe("initPayment", () => {
       client: mockClient,
       request: {
         transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-        feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
         urlSuccess: "https://example.com/success",
         urlCancel: "https://example.com/cancel",
         metadata: {
@@ -133,8 +135,9 @@ describe("initPayment", () => {
 
   it("throws InvalidRequestError when amount is missing for a variable fee", async () => {
     const FeesModel = require("../db/FeesModel").default;
-    FeesModel.getFeeById.mockResolvedValueOnce({
+    FeesModel.getActiveFeeByKey.mockResolvedValueOnce({
       feeId: "PETITION_FILING_FEE",
+      feeKey: "PETITION_FILING_FEE",
       tcsAppId: "TCSUSTAXCOURTPETITION",
       amount: 60,
       isVariable: true,
