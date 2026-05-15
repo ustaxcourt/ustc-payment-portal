@@ -30,9 +30,42 @@ export async function up(knex: Knex): Promise<void> {
     ADD CONSTRAINT fees_fee_key_activation_date_unique
     UNIQUE (fee_key, activation_date)
   `);
+
+  // Remove transaction_amount — now derived from the fee version via join
+  await knex.schema.raw(`
+    ALTER TABLE transactions
+    DROP CONSTRAINT IF EXISTS transactions_transaction_amount_nonneg
+  `);
+
+  await knex.schema.alterTable('transactions', (t) => {
+    t.dropColumn('transaction_amount');
+  });
 }
 
 export async function down(knex: Knex): Promise<void> {
+  // Restore transaction_amount
+  await knex.schema.alterTable('transactions', (t) => {
+    t.decimal('transaction_amount', 12, 2).nullable().comment('Actual amount charged for this transaction (USD)');
+  });
+
+  await knex.raw(`
+    UPDATE transactions t
+    SET transaction_amount = f.amount
+    FROM fees f
+    WHERE t.fee_id = f.fee_id
+  `);
+
+  await knex.schema.alterTable('transactions', (t) => {
+    t.decimal('transaction_amount', 12, 2).notNullable().alter();
+  });
+
+  await knex.schema.raw(`
+    ALTER TABLE transactions
+    ADD CONSTRAINT transactions_transaction_amount_nonneg
+    CHECK (transaction_amount >= 0)
+  `);
+
+  // Remove fee versioning columns
   await knex.raw(`
     ALTER TABLE fees
     DROP CONSTRAINT IF EXISTS fees_fee_key_activation_date_unique
