@@ -34,6 +34,7 @@ loadEnvFile();
 
 const port = process.env.PAY_GOV_TEST_SERVER_PORT;
 const token = process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN;
+const payGovNodeEnv = process.env.PAY_GOV_NODE_ENV || 'local';
 
 if (!port || !token) {
   throw new Error(
@@ -43,6 +44,11 @@ if (!port || !token) {
 
 process.env.PORT = port;
 process.env.ACCESS_TOKEN = token;
+process.env.NODE_ENV = payGovNodeEnv;
+
+console.log(
+  `[start:pay-gov-test-server] Using NODE_ENV=${process.env.NODE_ENV} (from PAY_GOV_NODE_ENV=${process.env.PAY_GOV_NODE_ENV || 'default:local'})`
+);
 
 const originalLoad = Module._load;
 Module._load = function patchedLoad(request, parent, isMain) {

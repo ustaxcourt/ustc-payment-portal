@@ -17,6 +17,7 @@ The local `.env` includes these two values for the mock Pay.gov server:
 ```env
 PAY_GOV_TEST_SERVER_ACCESS_TOKEN="asdf123"
 PAY_GOV_TEST_SERVER_PORT="3366"
+PAY_GOV_NODE_ENV="local"
 ```
 
 Use them as the local defaults for the mock Pay.gov server. They should stay aligned with:
@@ -24,6 +25,8 @@ Use them as the local defaults for the mock Pay.gov server. They should stay ali
 - `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` in this repo's `.env`
 - `SOAP_URL` and `PAYMENT_URL` in this repo's `.env`
 - the port/token configured in the local `@ustaxcourt/ustc-pay-gov-test-server`
+
+`PAY_GOV_NODE_ENV` is used only for the mock Pay.gov server process and is mapped to that process's `NODE_ENV` by `npm run start:pay-gov-test-server`. Keep this as `local` for local development so the mock server uses local file persistence instead of S3.
 
 If the mock Pay.gov server prompts for a port or access token on first run, enter the same values from your local `.env` so the portal and mock server stay in sync.
 

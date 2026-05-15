@@ -26,7 +26,7 @@
     "ci:publish": "npm run build && changeset publish --provenance",
     "generate:openapi": "ts-node src/openapi/generate.ts",
     "start:dev-server": "node node_modules/ts-node/dist/bin.js src/devServer.ts",
-    "start:server": "node scripts/start-local-stack.js",
+    "start:server": "node -r dotenv/config scripts/start-local-stack.js",
     "start:pay-gov-test-server": "node scripts/start-pay-gov-test-server.js",
     "knex": "node -r ts-node/register -r dotenv/config ./node_modules/knex/bin/cli.js",
     "migrate:make": "npm run knex -- migrate:make",
