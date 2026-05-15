@@ -38,7 +38,7 @@ app.use((req, res, next) => {
     next();
   });
 });
-const port = 8080; // default port to listen
+const port = Number(process.env.API_PORT || 8080);
 const devClient: ClientPermission = {
   clientName: "Dev Client App",
   clientRoleArn: "arn:aws:iam::123456789012:role/dev-client",

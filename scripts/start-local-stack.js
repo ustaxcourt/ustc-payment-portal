@@ -2,7 +2,22 @@ const { spawn, spawnSync } = require('node:child_process');
 const readline = require('node:readline/promises');
 const { stdin, stdout } = require('node:process');
 
-const REQUIRED_PORTS = [3366, 8080, 5433];
+function parsePort(value, fallback, envName) {
+  const numericPort = Number(value || fallback);
+  const isValidPort = Number.isInteger(numericPort) && numericPort > 0 && numericPort <= 65535;
+
+  if (!isValidPort) {
+    throw new Error(`[start:server] Invalid ${envName}: ${value}`);
+  }
+
+  return numericPort;
+}
+
+const REQUIRED_PORTS = [
+  parsePort(process.env.PAY_GOV_TEST_SERVER_PORT, 3366, 'PAY_GOV_TEST_SERVER_PORT'),
+  parsePort(process.env.API_PORT, 8080, 'API_PORT'),
+  parsePort(process.env.DB_PORT, 5433, 'DB_PORT'),
+].filter((port, index, ports) => ports.indexOf(port) === index);
 
 const commands = [
   { name: 'pay-gov', command: 'node', args: ['scripts/start-pay-gov-test-server.js'] },
