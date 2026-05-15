@@ -53,6 +53,17 @@ Add `fee_key`, `activation_date`, `is_active` to the `FeesRow` type and to each 
 
 Rename exports: `FeeIdSchema` → `FeeKeySchema`, `FeeId` → `FeeKey`. Update OpenAPI description. Remove the stale `TODO: replace with DB lookup` comment. **Enum values are unchanged.**
 
+### `src/schemas/index.ts`
+
+- `export * from "./FeeId.schema"` → `export * from "./FeeKey.schema"`
+
+### `src/openapi/registry.ts`
+
+- Import: `FeeIdSchema` → `FeeKeySchema`
+- Registration: `registry.register("FeeId", FeeIdSchema)` → `registry.register("FeeKey", FeeKeySchema)`
+
+> **Note:** The registered name `"FeeId"` becomes `"FeeKey"` in the generated OpenAPI spec (`#/components/schemas/FeeId` → `#/components/schemas/FeeKey`). Add this to the changeset as a breaking change for any API docs consumers.
+
 ### `src/schemas/InitPayment.schema.ts`
 
 - `feeId: FeeIdSchema` → `fee: FeeKeySchema`
@@ -138,6 +149,59 @@ Note as breaking changes:
 - `initPayment` request field renamed `feeId` → `fee`
 - Client permissions config (`allowedFeeIds` → `allowedFeeKeys`) requires Secrets Manager update per client
 - `transaction_amount` column removed from the `transactions` table
+
+---
+
+## Deployment — Secrets Manager update (must precede code deploy)
+
+`permissionsClient.ts` validates the `allowedFeeKeys` field name directly when parsing the secret. If the secret still contains `allowedFeeIds` when the new code is live, every request will return a 500. **Update the secret in each environment before deploying the code.**
+
+### Secret format
+
+Each environment has one secret (identified by the `CLIENT_PERMISSIONS_SECRET_ID` env var) containing a JSON array. Update every object in that array, renaming the key:
+
+```json
+// Before
+[
+  {
+    "clientName": "DAWSON",
+    "clientRoleArn": "arn:aws:iam::123456789012:role/dawson-client",
+    "allowedFeeIds": ["PETITION_FILING_FEE"]
+  }
+]
+
+// After
+[
+  {
+    "clientName": "DAWSON",
+    "clientRoleArn": "arn:aws:iam::123456789012:role/dawson-client",
+    "allowedFeeKeys": ["PETITION_FILING_FEE"]
+  }
+]
+```
+
+### Steps per environment (dev → staging → prod)
+
+1. Retrieve the current secret value and confirm its contents:
+   ```bash
+   aws secretsmanager get-secret-value \
+     --secret-id <CLIENT_PERMISSIONS_SECRET_ID> \
+     --query SecretString \
+     --output text
+   ```
+2. Edit the JSON — rename every `allowedFeeIds` key to `allowedFeeKeys`. Values are unchanged.
+3. Put the updated value:
+   ```bash
+   aws secretsmanager put-secret-value \
+     --secret-id <CLIENT_PERMISSIONS_SECRET_ID> \
+     --secret-string '<updated JSON>'
+   ```
+4. The in-memory cache TTL is 5 minutes (`CLIENT_PERMISSIONS_CACHE_TTL_MS`). Wait for the TTL to expire (or restart the Lambda) before deploying the code change, to ensure no running instances are holding a parsed copy with the old field name.
+5. Deploy the code.
+
+### Rollback
+
+If the deploy needs to be rolled back, revert the secret to the `allowedFeeIds` form before rolling back the code — the same ordering constraint applies in reverse.
 
 ---
 
