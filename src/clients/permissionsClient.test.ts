@@ -100,6 +100,22 @@ describe("permissionsClient", () => {
       await expect(getClientPermissions()).rejects.toThrow(ServerError);
     });
 
+    it("coerces allowedFeeIds to allowedFeeKeys for pre-PAY-284 secrets", async () => {
+      const oldFormatPermissions = [
+        {
+          clientName: "DAWSON",
+          clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
+          allowedFeeIds: ["PETITION_FILING_FEE"],
+        },
+      ];
+      mockGetSecretString.mockResolvedValueOnce(JSON.stringify(oldFormatPermissions));
+
+      const result = await getClientPermissions();
+
+      expect(result[0].allowedFeeKeys).toEqual(["PETITION_FILING_FEE"]);
+      expect((result[0] as any).allowedFeeIds).toBeUndefined();
+    });
+
     it("throws ServerError when Secrets Manager call fails", async () => {
       mockGetSecretString.mockRejectedValueOnce(new Error("AWS error"));
 

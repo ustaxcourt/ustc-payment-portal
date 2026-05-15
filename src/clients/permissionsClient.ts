@@ -65,22 +65,31 @@ export const getClientPermissions = async (): Promise<ClientPermission[]> => {
 
   try {
     const secretValue = await getSecretString(secretId);
-    const permissions: ClientPermission[] = JSON.parse(secretValue);
+    const raw: unknown[] = JSON.parse(secretValue);
 
     // Validate the structure
-    if (!Array.isArray(permissions)) {
+    if (!Array.isArray(raw)) {
       throw new Error("Client permissions must be an array");
     }
 
-    for (const perm of permissions) {
+    for (const entry of raw) {
+      const perm = entry as Record<string, unknown>;
+      // Backward compat: secrets may still use allowedFeeIds (pre-PAY-284 name).
+      // Coerce to allowedFeeKeys so the rest of the codebase sees the canonical field.
+      if (Array.isArray(perm["allowedFeeIds"]) && !perm["allowedFeeKeys"]) {
+        perm["allowedFeeKeys"] = perm["allowedFeeIds"];
+        delete perm["allowedFeeIds"];
+      }
       if (
-        !perm.clientName ||
-        !perm.clientRoleArn ||
-        !Array.isArray(perm.allowedFeeKeys)
+        !perm["clientName"] ||
+        !perm["clientRoleArn"] ||
+        !Array.isArray(perm["allowedFeeKeys"])
       ) {
         throw new Error("Invalid client permission structure");
       }
     }
+
+    const permissions = raw as ClientPermission[];
 
     // Update cache
     cache = {
