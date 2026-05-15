@@ -46,6 +46,49 @@ This script now starts these processes concurrently:
 
 This is the quickest way to bring up the local environment for manual testing.
 
+## Configuring local ports
+
+You can change local ports by editing your `.env` file:
+
+```env
+PAY_GOV_TEST_SERVER_PORT="3366"
+API_PORT=8080
+DB_PORT=5433
+```
+
+How each port is used:
+
+- `PAY_GOV_TEST_SERVER_PORT`: mock Pay.gov server bind port.
+- `API_PORT`: local Payment Portal Express API bind port.
+- `DB_PORT`: host port mapped to Postgres in Docker Compose (`${DB_PORT}:5432`).
+
+Notes:
+
+- `npm run start:server` and `npm run start:server:autokill` read these values at startup.
+- `npm run start:server:autokill` checks the configured ports and auto-stops listeners on those same ports before starting.
+- If you change `API_PORT`, keep `BASE_URL` aligned (example: `BASE_URL="http://localhost:8081"`).
+- If you change `PAY_GOV_TEST_SERVER_PORT`, keep `SOAP_URL` and `PAYMENT_URL` aligned.
+
+One-off overrides are also supported without editing `.env`, for example:
+
+```bash
+API_PORT=8081 DB_PORT=5434 PAY_GOV_TEST_SERVER_PORT=3367 npm run start:server:autokill
+```
+
+## Local script reference
+
+- `npm run start:dev-server`: starts only the portal API server (`src/devServer.ts`).
+- `npm run start:pay-gov-test-server`: starts only the local mock Pay.gov server.
+- `npm run start:server`: starts mock Pay.gov + Docker Postgres stack + portal API together.
+- `npm run start:server:autokill`: same as `start:server`, but automatically frees required ports first.
+- `npm run check:local-flow`: runs a smoke test (`/init` then `/pay`) against your running local stack.
+
+Example health check after startup:
+
+```bash
+npm run check:local-flow
+```
+
 #### Pretty-printing logs locally
 
 When running the development server, logs are automatically pretty-printed with colors and timestamps:
@@ -76,8 +119,8 @@ The `init`, `process`, and `transaction` integration tests run against the local
 Prerequisites — three things must be running on your machine before you start the tests:
 
 1. **Postgres** — `docker compose up` (from this repo).
-2. **Pay.gov test server** — clone and start [ustc-pay-gov-test-server](https://github.com/ustaxcourt/ustc-pay-gov-test-server) on `http://localhost:3366` (the URL `.env.example` already points `SOAP_URL` and `PAYMENT_URL` at). Make sure its `ACCESS_TOKEN` matches `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` in your `.env`.
-3. **Local payment portal** — `npm run start:server` to bind the portal to `http://localhost:8080`.
+2. **Pay.gov test server** — clone and start [ustc-pay-gov-test-server](https://github.com/ustaxcourt/ustc-pay-gov-test-server) on the port from `PAY_GOV_TEST_SERVER_PORT` (the `.env.example` URLs already point `SOAP_URL` and `PAYMENT_URL` at that local server). Make sure its `ACCESS_TOKEN` matches `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` in your `.env`.
+3. **Local payment portal** — `npm run start:server` to bind the portal to the port from `API_PORT`.
 
 Then, in a fourth terminal:
 
