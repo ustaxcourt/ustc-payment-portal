@@ -72,18 +72,25 @@ export const getClientPermissions = async (): Promise<ClientPermission[]> => {
       throw new Error("Client permissions must be an array");
     }
 
+    type RawPermission = {
+      clientName?: unknown;
+      clientRoleArn?: unknown;
+      allowedFeeKeys?: unknown;
+      allowedFeeIds?: unknown;
+    };
+
     for (const entry of raw) {
-      const perm = entry as Record<string, unknown>;
+      const perm = entry as RawPermission;
       // Backward compat: secrets may still use allowedFeeIds (pre-PAY-284 name).
       // Coerce to allowedFeeKeys so the rest of the codebase sees the canonical field.
-      if (Array.isArray(perm["allowedFeeIds"]) && !perm["allowedFeeKeys"]) {
-        perm["allowedFeeKeys"] = perm["allowedFeeIds"];
-        delete perm["allowedFeeIds"];
+      if (Array.isArray(perm.allowedFeeIds) && !perm.allowedFeeKeys) {
+        perm.allowedFeeKeys = perm.allowedFeeIds;
+        delete perm.allowedFeeIds;
       }
       if (
-        !perm["clientName"] ||
-        !perm["clientRoleArn"] ||
-        !Array.isArray(perm["allowedFeeKeys"])
+        !perm.clientName ||
+        !perm.clientRoleArn ||
+        !Array.isArray(perm.allowedFeeKeys)
       ) {
         throw new Error("Invalid client permission structure");
       }
