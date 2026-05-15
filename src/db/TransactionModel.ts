@@ -56,7 +56,11 @@ export default class TransactionModel extends Model {
   }
 
   $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
-    return super.$parseDatabaseJson(json);
+    const parsed = super.$parseDatabaseJson(json);
+    if (parsed.transactionAmount !== undefined && parsed.transactionAmount !== null) {
+      parsed.transactionAmount = Number(parsed.transactionAmount);
+    }
+    return parsed;
   }
 
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
