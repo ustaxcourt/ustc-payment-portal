@@ -25,11 +25,11 @@ Add to `fees`:
 |---|---|---|
 | `fee_key` | `varchar(100) NOT NULL` | Backfill: `fee_key = fee_id`. Index: `idx_fees_fee_key`. |
 | `activation_date` | `timestamptz NOT NULL` | Backfill: `activation_date = created_at`. |
-| `is_active` | `boolean NOT NULL DEFAULT false` | Backfill: `true` for all existing rows. |
 
 New indexes:
 - `UNIQUE (fee_key, activation_date)` — no two versions of the same key can share a timestamp
-- `UNIQUE (fee_key) WHERE is_active = true` — DB-enforced at-most-one active version per key
+
+The "active" version for a given `fee_key` is the row with the most recent `activation_date` that is not in the future (`activation_date <= NOW()`). No `is_active` column is needed.
 
 ### Migration 2 — `[timestamp]_remove_transaction_amount.ts`
 
@@ -43,7 +43,7 @@ Down migration: re-add column as nullable, backfill from `JOIN fees ON transacti
 
 ## Seed data — `db/seeds/data/fees.ts`
 
-Add `fee_key`, `activation_date`, `is_active` to the `FeesRow` type and to each seed entry. For the initial versions, `fee_key = fee_id` (the existing value), `is_active = true`.
+Add `fee_key` and `activation_date` to the `FeesRow` type and to each seed entry. For the initial versions, `fee_key = fee_id` (the existing value) and `activation_date` set to a defined ISO timestamp (e.g. the portal's initial launch date).
 
 ---
 
@@ -83,8 +83,8 @@ Rename exports: `FeeIdSchema` → `FeeKeySchema`, `FeeId` → `FeeKey`. Update O
 
 ### `src/db/FeesModel.ts`
 
-- Add properties: `feeKey`, `activationDate`, `isActive`
-- Add method: `getActiveFeeByKey(feeKey: string)` → `WHERE fee_key = ? AND is_active = true`
+- Add properties: `feeKey`, `activationDate`
+- Add method: `getActiveFeeByKey(feeKey: string)` → `WHERE fee_key = ? AND activation_date <= NOW() ORDER BY activation_date DESC LIMIT 1`
 - Keep `getFeeById(feeId)` for internal lookups by stored FK
 
 ### `src/useCases/initPayment.ts`
@@ -139,7 +139,7 @@ No change — `transactionAmount` remains in the schema; it is now populated by 
 | `src/useCases/processPayment.test.ts` | `allowedFeeIds` → `allowedFeeKeys`; mock fee objects gain `feeKey` |
 | `src/useCases/getDetails.test.ts` | `allowedFeeIds` → `allowedFeeKeys`; mock fee objects gain `feeKey` |
 | `src/db/TransactionModel.test.ts` | Remove `transactionAmount` from test data |
-| `src/test/integration/migration.test.ts` | Assert `transaction_amount` column is absent; assert `fee_key`, `activation_date`, `is_active` exist on `fees` |
+| `src/test/integration/migration.test.ts` | Assert `transaction_amount` column is absent; assert `fee_key` and `activation_date` exist on `fees` |
 
 ---
 
@@ -206,6 +206,4 @@ If the deploy needs to be rolled back, revert the secret to the `allowedFeeIds` 
 ---
 
 ## Out of scope
-
-- **Creating new fee versions** — inserting a second version and toggling `is_active` is an operational concern deferred to a future story. The partial unique index enforces correctness at the DB level.
 - **Variable fees** — both current fees are `is_variable = false`. If variable fees are introduced later, a separate `override_amount` column on `transactions` would be needed.
