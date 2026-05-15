@@ -42,7 +42,7 @@ const port = 8080; // default port to listen
 const devClient: ClientPermission = {
   clientName: "Dev Client App",
   clientRoleArn: "arn:aws:iam::123456789012:role/dev-client",
-  allowedFeeIds: ["*"],
+  allowedFeeKeys: ["*"],
 };
 
 // Note: This is only needed for local development
