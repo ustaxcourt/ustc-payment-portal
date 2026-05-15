@@ -38,7 +38,20 @@ app.use((req, res, next) => {
     next();
   });
 });
-const port = Number(process.env.API_PORT || 8080);
+function getApiPort(): number {
+  const rawPort = process.env.API_PORT || "8080";
+  const parsedPort = Number(rawPort);
+  const isValidPort =
+    Number.isInteger(parsedPort) && parsedPort >= 1 && parsedPort <= 65535;
+
+  if (!isValidPort) {
+    throw new Error(`Invalid API_PORT: ${rawPort}. Expected integer 1-65535.`);
+  }
+
+  return parsedPort;
+}
+
+const port = getApiPort();
 const devClient: ClientPermission = {
   clientName: "Dev Client App",
   clientRoleArn: "arn:aws:iam::123456789012:role/dev-client",

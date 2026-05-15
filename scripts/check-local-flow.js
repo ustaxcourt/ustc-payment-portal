@@ -34,8 +34,10 @@ function parseToken(initResponseBody) {
 }
 
 async function main() {
-  const baseUrl = process.env.BASE_URL || 'http://localhost:8080';
-  const paymentBase = process.env.PAYMENT_URL || 'http://localhost:3366/pay';
+  const apiPort = process.env.API_PORT || '8080';
+  const paymentPort = process.env.PAY_GOV_TEST_SERVER_PORT || '3366';
+  const baseUrl = process.env.BASE_URL || `http://localhost:${apiPort}`;
+  const paymentBase = process.env.PAYMENT_URL || `http://localhost:${paymentPort}/pay`;
   const feeId = process.env.FEE_ID || 'PETITION_FILING_FEE';
   const metadata =
     feeId === 'NONATTORNEY_EXAM_REGISTRATION_FEE'

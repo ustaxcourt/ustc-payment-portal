@@ -20,14 +20,15 @@ const REQUIRED_PORTS = [
 ].filter((port, index, ports) => ports.indexOf(port) === index);
 
 const commands = [
-  { name: 'pay-gov', command: 'node', args: ['scripts/start-pay-gov-test-server.js'] },
+  { name: 'pay-gov', command: 'npm', args: ['run', 'start:pay-gov-test-server'] },
   { name: 'docker', command: 'npm', args: ['run', 'docker'] },
-  { name: 'portal', command: 'node', args: ['node_modules/ts-node/dist/bin.js', 'src/devServer.ts'] },
+  { name: 'portal', command: 'npm', args: ['run', 'start:dev-server'] },
 ];
 
 const children = [];
 let shuttingDown = false;
 let exitCode = 0;
+let warnedMissingLsof = false;
 
 function getListeningPids(port) {
   const result = spawnSync('lsof', ['-nP', '-ti', `tcp:${port}`, '-sTCP:LISTEN'], {
@@ -35,6 +36,15 @@ function getListeningPids(port) {
   });
 
   if (result.error) {
+    if (result.error.code === 'ENOENT') {
+      if (!warnedMissingLsof) {
+        warnedMissingLsof = true;
+        console.warn(
+          '[start:server] lsof is not installed. Skipping port preflight checks. Install lsof to enable port conflict detection and auto-kill prompts.'
+        );
+      }
+      return [];
+    }
     throw result.error;
   }
 
@@ -152,10 +162,22 @@ async function main() {
         return;
       }
 
-      if (code && code !== 0) {
+      if (code === 0) {
+        console.error(`[start:server] ${item.name} exited unexpectedly with code 0. Stopping local stack.`);
         if (item.name === 'pay-gov') {
           console.error(
-            '[start:server] pay-gov exited unexpectedly. Existing /pay token links may now be invalid because local pay-gov state is in-memory.'
+            '[start:server] Existing /pay token links may now be invalid because local pay-gov state is in-memory.'
+          );
+        }
+        shutdown(1, 'SIGTERM');
+        return;
+      }
+
+      if (code && code !== 0) {
+        console.error(`[start:server] ${item.name} exited with code ${code}. Stopping local stack.`);
+        if (item.name === 'pay-gov') {
+          console.error(
+            '[start:server] Existing /pay token links may now be invalid because local pay-gov state is in-memory.'
           );
         }
         shutdown(code, 'SIGTERM');

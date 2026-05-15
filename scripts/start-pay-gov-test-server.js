@@ -2,6 +2,17 @@ const fs = require('node:fs');
 const Module = require('node:module');
 const path = require('node:path');
 
+function parsePort(value, fallback, envName) {
+  const numericPort = Number(value || fallback);
+  const isValidPort = Number.isInteger(numericPort) && numericPort > 0 && numericPort <= 65535;
+
+  if (!isValidPort) {
+    throw new Error(`[start:pay-gov-test-server] Invalid ${envName}: ${value}`);
+  }
+
+  return String(numericPort);
+}
+
 function loadEnvFile() {
   const envFilePath = path.join(process.cwd(), '.env');
   if (!fs.existsSync(envFilePath)) {
@@ -32,7 +43,7 @@ function loadEnvFile() {
 
 loadEnvFile();
 
-const port = process.env.PAY_GOV_TEST_SERVER_PORT;
+const port = parsePort(process.env.PAY_GOV_TEST_SERVER_PORT, 3366, 'PAY_GOV_TEST_SERVER_PORT');
 const token = process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN;
 const payGovNodeEnv = process.env.PAY_GOV_NODE_ENV || 'local';
 
@@ -59,11 +70,15 @@ Module._load = function patchedLoad(request, parent, isMain) {
   return originalLoad.call(this, request, parent, isMain);
 };
 
-require(path.join(
-  process.cwd(),
-  'node_modules',
-  '@ustaxcourt',
-  'ustc-pay-gov-test-server',
-  'dist',
-  'server.js'
-));
+try {
+  require(path.join(
+    process.cwd(),
+    'node_modules',
+    '@ustaxcourt',
+    'ustc-pay-gov-test-server',
+    'dist',
+    'server.js'
+  ));
+} finally {
+  Module._load = originalLoad;
+}

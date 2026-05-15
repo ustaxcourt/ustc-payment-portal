@@ -15,7 +15,7 @@
 The local `.env` includes these two values for the mock Pay.gov server:
 
 ```env
-PAY_GOV_TEST_SERVER_ACCESS_TOKEN="asdf123"
+PAY_GOV_TEST_SERVER_ACCESS_TOKEN="development-token"
 PAY_GOV_TEST_SERVER_PORT="3366"
 PAY_GOV_NODE_ENV="local"
 ```
