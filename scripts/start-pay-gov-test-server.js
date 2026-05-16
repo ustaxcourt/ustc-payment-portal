@@ -1,84 +1,65 @@
-const fs = require('node:fs');
-const Module = require('node:module');
-const path = require('node:path');
+const { spawn } = require("node:child_process");
+const path = require("node:path");
+const { parsePort } = require("./lib/parsePort");
+const { createLogger } = require("./lib/log");
 
-function parsePort(value, fallback, envName) {
-  const numericPort = Number(value || fallback);
-  const isValidPort = Number.isInteger(numericPort) && numericPort > 0 && numericPort <= 65535;
+const log = createLogger("start:pay-gov-test-server");
+const PACKAGE_NAME = "@ustaxcourt/ustc-pay-gov-test-server";
 
-  if (!isValidPort) {
-    throw new Error(`[start:pay-gov-test-server] Invalid ${envName}: ${value}`);
-  }
-
-  return String(numericPort);
+// The package's `main` is a barrel of type exports; the runnable server is dist/server.js.
+function resolveTestServerEntry() {
+  return require.resolve(`${PACKAGE_NAME}/dist/server.js`);
 }
 
-function loadEnvFile() {
-  const envFilePath = path.join(process.cwd(), '.env');
-  if (!fs.existsSync(envFilePath)) {
-    return;
-  }
-
-  const fileContents = fs.readFileSync(envFilePath, 'utf8');
-  for (const line of fileContents.split(/\r?\n/)) {
-    const trimmedLine = line.trim();
-    if (!trimmedLine || trimmedLine.startsWith('#')) {
-      continue;
-    }
-
-    const separatorIndex = trimmedLine.indexOf('=');
-    if (separatorIndex === -1) {
-      continue;
-    }
-
-    const key = trimmedLine.slice(0, separatorIndex).trim();
-    const rawValue = trimmedLine.slice(separatorIndex + 1).trim();
-    const value = rawValue.replace(/^['\"]|['\"]$/g, '');
-
-    if (!(key in process.env)) {
-      process.env[key] = value;
-    }
-  }
-}
-
-loadEnvFile();
-
-const port = parsePort(process.env.PAY_GOV_TEST_SERVER_PORT, 3366, 'PAY_GOV_TEST_SERVER_PORT');
+const port = parsePort(
+  process.env.PAY_GOV_TEST_SERVER_PORT,
+  3366,
+  "PAY_GOV_TEST_SERVER_PORT",
+);
 const token = process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN;
-const payGovNodeEnv = process.env.PAY_GOV_NODE_ENV || 'local';
+const payGovNodeEnv = process.env.PAY_GOV_NODE_ENV || "local";
 
-if (!port || !token) {
+if (!token) {
   throw new Error(
-    'Missing PAY_GOV_TEST_SERVER_PORT or PAY_GOV_TEST_SERVER_ACCESS_TOKEN in .env'
+    "Missing PAY_GOV_TEST_SERVER_ACCESS_TOKEN in environment (set it in .env).",
   );
 }
 
-process.env.PORT = port;
-process.env.ACCESS_TOKEN = token;
-process.env.NODE_ENV = payGovNodeEnv;
-
-console.log(
-  `[start:pay-gov-test-server] Using NODE_ENV=${process.env.NODE_ENV} (from PAY_GOV_NODE_ENV=${process.env.PAY_GOV_NODE_ENV || 'default:local'})`
+const entry = resolveTestServerEntry();
+const packageDir = path.dirname(
+  require.resolve(`${PACKAGE_NAME}/package.json`),
 );
 
-const originalLoad = Module._load;
-Module._load = function patchedLoad(request, parent, isMain) {
-  if (request === 'dotenv') {
-    return { config() {} };
+log.info(`starting on port ${port} with NODE_ENV=${payGovNodeEnv}`);
+
+const child = spawn(process.execPath, [entry], {
+  cwd: packageDir,
+  stdio: "inherit",
+  env: {
+    ...process.env,
+    PORT: String(port),
+    ACCESS_TOKEN: token,
+    NODE_ENV: payGovNodeEnv,
+  },
+});
+
+const forward = (signal) => () => {
+  if (!child.killed) {
+    child.kill(signal);
   }
-
-  return originalLoad.call(this, request, parent, isMain);
 };
+process.on("SIGINT", forward("SIGINT"));
+process.on("SIGTERM", forward("SIGTERM"));
 
-try {
-  require(path.join(
-    process.cwd(),
-    'node_modules',
-    '@ustaxcourt',
-    'ustc-pay-gov-test-server',
-    'dist',
-    'server.js'
-  ));
-} finally {
-  Module._load = originalLoad;
-}
+child.on("exit", (code, signal) => {
+  if (signal) {
+    process.kill(process.pid, signal);
+    return;
+  }
+  process.exit(code ?? 1);
+});
+
+child.on("error", (error) => {
+  log.error("failed to spawn:", error);
+  process.exit(1);
+});

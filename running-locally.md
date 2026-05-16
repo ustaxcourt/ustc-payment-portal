@@ -1,54 +1,80 @@
-# How to run Payment Portal locally for Development
+# Running Payment Portal locally
 
-1.  At repo root run `cp .env.example .env` (Creates `.env` file from `.env.example`)
+This document is split into two parts:
 
-    - See [.env.example](./.env.example) in this repository for environment variable examples. (Already has the values needed for running locally)
-    - Note that `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` needs to match the `ACCESS_TOKEN` defined in your `.env` in `ustc-pay-gov-test-server`
-    - `LOCAL_DEV=true` bypasses AWS SigV4 authentication. Locally there is no API Gateway to verify signatures, so the auth pipeline returns a dummy IAM role ARN (`arn:aws:iam::000000000000:role/local-dev-role`) and skips the Secrets Manager permissions fetch entirely.
-    - `.env.example` also includes `PAY_GOV_TEST_SERVER_ACCESS_TOKEN` and `PAY_GOV_TEST_SERVER_PORT` so the local Payment Portal config and the local mock Pay.gov server can share the same token and port values.
+1. **Setting up the App to run locally** — one-time setup (clone, install, configure).
+2. **Running the App locally** — day-to-day commands once setup is done.
 
-2.  Run `npm install` at repo root.
-3.  Run `docker compose up` to spin up a local instance of the Payment Portal database.
+---
 
-## Local Pay.gov test server values
+## Setting up the App to run locally
 
-The local `.env` includes these two values for the mock Pay.gov server:
+One-time steps after cloning the repo.
 
-```env
-PAY_GOV_TEST_SERVER_ACCESS_TOKEN="development-token"
-PAY_GOV_TEST_SERVER_PORT="3366"
-PAY_GOV_NODE_ENV="local"
-```
+1. **Create your `.env`**:
 
-Use them as the local defaults for the mock Pay.gov server. They should stay aligned with:
+   ```bash
+   cp .env.example .env
+   ```
 
-- `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` in this repo's `.env`
-- `SOAP_URL` and `PAYMENT_URL` in this repo's `.env`
-- the port/token configured in the local `@ustaxcourt/ustc-pay-gov-test-server`
+   See [.env.example](./.env.example). The defaults are pre-tuned for local development — you don't usually need to change anything.
 
-`PAY_GOV_NODE_ENV` is used only for the mock Pay.gov server process and is mapped to that process's `NODE_ENV` by `npm run start:pay-gov-test-server`. Keep this as `local` for local development so the mock server uses local file persistence instead of S3.
+   Notes on a few values:
+   - `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` must match `PAY_GOV_TEST_SERVER_ACCESS_TOKEN`. Both default to `development-token`.
+   - `LOCAL_DEV=true` bypasses AWS SigV4 authentication. Locally there is no API Gateway to verify signatures, so the auth pipeline returns a dummy IAM role ARN (`arn:aws:iam::000000000000:role/local-dev-role`) and skips the Secrets Manager permissions fetch entirely.
+   - `PAY_GOV_NODE_ENV=local` makes the mock Pay.gov server use local file persistence instead of S3. Keep this as `local` for development.
 
-If the mock Pay.gov server prompts for a port or access token on first run, enter the same values from your local `.env` so the portal and mock server stay in sync.
+2. **Install dependencies**:
 
-## One-command local startup
+   ```bash
+   npm install
+   ```
 
-To start the full local stack together, run:
+3. **Confirm Docker is running**. The local Postgres database runs in Docker. Install Docker Desktop (or equivalent) if you don't already have it.
+
+4. **(macOS / Linux only)** Confirm `lsof` is installed. The local startup scripts use it to detect port conflicts. It's pre-installed on macOS and most Linux distros. On Windows the preflight check is skipped — you must free required ports manually before running the stack.
+
+That's it for setup. You won't need to repeat any of these steps unless you reclone the repo or `.env.example` changes.
+
+---
+
+## Running the App locally
+
+### One-command startup (recommended)
 
 ```bash
 npm run start:server
 ```
 
-This script now starts these processes concurrently:
+This single command:
 
-- the mock Pay.gov server via `npm run start:pay-gov-test-server`
-- the local Postgres stack via `npm run docker`
-- the portal dev server via `npm run start:dev-server`
+1. Checks the configured local ports (`PAY_GOV_TEST_SERVER_PORT`, `API_PORT`, `DB_PORT`) for conflicts. If any are taken, you'll be prompted to free them.
+2. Brings up Postgres via `docker compose up -d --wait` and **waits for it to report healthy** (so the portal never races the DB).
+3. Starts the local mock Pay.gov server.
+4. Starts the portal Express API.
+5. On `Ctrl-C`, gracefully stops the Pay.gov server and portal, then stops the docker stack (volumes preserved).
 
-This is the quickest way to bring up the local environment for manual testing.
+If you also want the script to auto-stop processes holding required ports (instead of prompting), use the autokill variant:
 
-## Configuring local ports
+```bash
+npm run start:server:autokill
+```
 
-You can change local ports by editing your `.env` file:
+The autokill variant prints the process name for each PID before sending `SIGTERM`, so you can see what it's about to stop.
+
+### Smoke-checking the running stack
+
+In a second terminal, after the stack is up:
+
+```bash
+npm run check:local-flow
+```
+
+This sends a `POST /init` to the portal, follows the returned token to the mock Pay.gov `/pay` page, and verifies the response is a real payment-form HTML document containing the issued token. Exits non-zero if anything is wrong.
+
+### Configuring local ports
+
+Edit `.env` to change ports:
 
 ```env
 PAY_GOV_TEST_SERVER_PORT="3366"
@@ -65,67 +91,55 @@ How each port is used:
 Notes:
 
 - `npm run start:server` and `npm run start:server:autokill` read these values at startup.
-- `npm run start:server:autokill` checks the configured ports and auto-stops listeners on those same ports before starting.
-- If you change `API_PORT`, keep `BASE_URL` aligned (example: `BASE_URL="http://localhost:8081"`).
+- If you change `API_PORT`, keep `BASE_URL` aligned (e.g. `BASE_URL="http://localhost:8081"`).
 - If you change `PAY_GOV_TEST_SERVER_PORT`, keep `SOAP_URL` and `PAYMENT_URL` aligned.
 
-One-off overrides are also supported without editing `.env`, for example:
+One-off overrides are also supported without editing `.env`:
 
 ```bash
 API_PORT=8081 DB_PORT=5434 PAY_GOV_TEST_SERVER_PORT=3367 npm run start:server:autokill
 ```
 
-## Local script reference
+### Pretty-printing logs locally
 
-- `npm run start:dev-server`: starts only the portal API server (`src/devServer.ts`).
-- `npm run start:pay-gov-test-server`: starts only the local mock Pay.gov server.
-- `npm run start:server`: starts mock Pay.gov + Docker Postgres stack + portal API together.
-- `npm run start:server:autokill`: same as `start:server`, but automatically frees required ports first.
-- `npm run check:local-flow`: runs a smoke test (`/init` then `/pay`) against your running local stack.
+Logs are automatically pretty-printed (colors + timestamps) when `APP_ENV=local`, which is the default in `.env.example`. No extra flags needed.
 
-Example health check after startup:
-
-```bash
-npm run check:local-flow
-```
-
-#### Pretty-printing logs locally
-
-When running the development server, logs are automatically pretty-printed with colors and timestamps:
-
-```bash
-npm run start:server
-```
-
-This is enabled automatically because `APP_ENV=local` triggers the `pino-pretty` transport in the logger.
-
-#### Running with custom log levels
-
-To see more verbose output during troubleshooting:
+### Running with custom log levels
 
 ```bash
 LOG_LEVEL=debug npm run start:server
 ```
 
-#### What if I need to stop my DB?
+### Stopping the local stack
 
-- Use `docker compose down` to gracefully stop the DB container. (Removes the container, but keeps the volume with the DB data)
-- Use `docker compose down -v` to gracefully stop the container and **wipe the container's volume**. Note that this will delete any data in your local DB.
+- `Ctrl-C` in the `start:server` terminal stops everything and calls `docker compose stop` (containers preserved, data preserved).
+- `docker compose down` removes the containers but keeps the volume with your DB data.
+- `docker compose down -v` removes the containers **and wipes the DB volume**. Use this when you want a clean DB.
+
+### Individual scripts (advanced / debugging)
+
+Most of the time you only need `start:server`. These exist if you want to start pieces in isolation:
+
+- `npm run start:dev-server` — only the portal API (`src/devServer.ts`). Assumes Postgres and the Pay.gov server are already running.
+- `npm run start:pay-gov-test-server` — only the local mock Pay.gov server. **Does not auto-load `.env`** — either export the required vars in your shell, or run it as `node -r dotenv/config scripts/start-pay-gov-test-server.js`. When invoked indirectly via `start:server`, env is already loaded and inherited.
+- `npm run docker` — only the Postgres stack in the foreground.
+
+---
 
 ## Running integration tests locally
 
 The `init`, `process`, and `transaction` integration tests run against the local Express server (`devServer.ts`) using plain `fetch` — no SigV4 is needed, since there is no API Gateway in front of the local portal. The `sigv4Smoke` suite only runs against a deployed API Gateway and is skipped locally.
 
-Prerequisites — three things must be running on your machine before you start the tests:
+1. In one terminal, start the full local stack:
 
-1. **Postgres** — `docker compose up` (from this repo).
-2. **Pay.gov test server** — clone and start [ustc-pay-gov-test-server](https://github.com/ustaxcourt/ustc-pay-gov-test-server) on the port from `PAY_GOV_TEST_SERVER_PORT` (the `.env.example` URLs already point `SOAP_URL` and `PAYMENT_URL` at that local server). Make sure its `ACCESS_TOKEN` matches `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` in your `.env`.
-3. **Local payment portal** — `npm run start:server` to bind the portal to the port from `API_PORT`.
+   ```bash
+   npm run start:server
+   ```
 
-Then, in a fourth terminal:
+2. In a second terminal, run the integration tests:
 
-```bash
-npm run test:integration:dev
-```
+   ```bash
+   npm run test:integration:dev
+   ```
 
 This runs `./src/test/integration/` with `sigv4Smoke.test.ts` excluded. The script sets `APP_ENV=local`, which `isLocal()` (from [src/config/appEnv.ts](./src/config/appEnv.ts), introduced in PAY-257) reads to decide whether the test should use plain `fetch` or `signedFetch`. CI runs the same files with `APP_ENV=dev`, so `isLocal()` returns `false` and requests are SigV4-signed against the deployed API.

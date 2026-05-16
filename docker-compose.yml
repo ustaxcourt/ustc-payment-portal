@@ -36,9 +36,9 @@ services:
       - db_init_node_modules:/workspace/node_modules
     command: >
       sh -c '
-        echo "db-init: MIGRATION_MODE=$MIGRATION_MODE";
+        echo "db-init: MIGRATION_MODE=$$MIGRATION_MODE";
 
-        if [ "$MIGRATION_MODE" = "1" ]; then
+        if [ "$$MIGRATION_MODE" = "1" ]; then
           echo "db-init: MIGRATION_MODE=1 → skipping db-init";
           exit 0;
         fi;
