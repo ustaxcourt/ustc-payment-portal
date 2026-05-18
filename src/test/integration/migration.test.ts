@@ -98,6 +98,20 @@ describeIfDeployed("database migration and seed verification", () => {
         expect(Number(row.transactionAmount)).toBeGreaterThanOrEqual(0);
       }
     });
+
+    it("reports the same transactionAmount for every row with the same feeId", () => {
+      const amountByFeeId = new Map<string, number>();
+      for (const row of body.data) {
+        const feeId = row.feeId as string;
+        const amount = Number(row.transactionAmount);
+        if (amountByFeeId.has(feeId)) {
+          expect(amount).toBe(amountByFeeId.get(feeId));
+        } else {
+          amountByFeeId.set(feeId, amount);
+        }
+      }
+      expect(amountByFeeId.size).toBeGreaterThan(0);
+    });
   });
 
   // ── GET /transactions/{paymentStatus} ─────────────────────────────────────
