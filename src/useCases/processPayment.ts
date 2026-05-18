@@ -102,7 +102,7 @@ export const processPayment: ProcessPayment = async (
         undefined,
         "Pay.gov returned a response that failed schema validation",
       );
-      throw new PayGovError(PAYGOV_RETRY_MESSAGE);
+      throw new PayGovError(PAYGOV_RETRY_MESSAGE, 500);
     }
 
     console.error(
@@ -143,7 +143,7 @@ export const processPayment: ProcessPayment = async (
       "Failed to persist Pay.gov response",
     );
     throw new ServerError(
-      "Failed to record the payment result. Please retry the request.",
+      "Failed to record the payment result. Please retry the request."
     );
   }
 

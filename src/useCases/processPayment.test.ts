@@ -608,7 +608,7 @@ describe("processPayment", () => {
   });
 
   describe("Infrastructure errors", () => {
-    it("throws PayGovError (504) and marks the transaction failed when Pay.gov response fails schema validation", async () => {
+    it("throws PayGovError (500) and marks the transaction failed when Pay.gov response fails schema validation", async () => {
       appContext.postHttpRequest = jest
         .fn()
         .mockReturnValue(mockMalformedResponse);
@@ -619,7 +619,7 @@ describe("processPayment", () => {
       }).catch((e) => e);
 
       expect(zodErr).toBeInstanceOf(PayGovError);
-      expect(zodErr.statusCode).toBe(504);
+      expect(zodErr.statusCode).toBe(500);
 
       expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
         "agency-tracking-id-001",
@@ -650,7 +650,7 @@ describe("processPayment", () => {
       expect(TransactionModelMock.updateAfterPayGovResponse).not.toHaveBeenCalled();
     });
 
-    it("throws ServerError (500) and marks the transaction failed when updateAfterPayGovResponse rejects", async () => {
+    it("throws PayGovError (500) and marks the transaction failed when updateAfterPayGovResponse rejects", async () => {
       appContext.postHttpRequest = jest
         .fn()
         .mockReturnValue(mockSuccessfulResponse);
