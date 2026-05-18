@@ -28,7 +28,7 @@ jest.mock("../db/FeesModel", () => ({
       }
       if (feeKey === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
         return Promise.resolve({
-          fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+          feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
           feeKey: "NONATTORNEY_EXAM_REGISTRATION_FEE",
           tcsAppId: "TCSUSTAXCOURTANAEF",
           amount: 250,
@@ -109,12 +109,16 @@ describe("initPayment", () => {
     expect(result.token).toBe("test-token-123");
     expect(result.paymentRedirect).toContain("test-token-123");
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTPETITION");
-    expect(TransactionModel.createReceived).toHaveBeenCalled();
+    expect(TransactionModel.createReceived).toHaveBeenCalledWith(
+      expect.objectContaining({ feeId: "PETITION_FILING_FEE" }),
+    );
     expect(TransactionModel.updateToInitiated).toHaveBeenCalled();
   });
 
   it("returns a token and paymentRedirect for a valid NONATTORNEY_EXAM_REGISTRATION_FEE request", async () => {
     mockSoapRequest("test-token-456");
+    const TransactionModel = require("../db/TransactionModel").default;
+
     const result = await initPayment(appContext, {
       client: mockClient,
       request: {
@@ -131,6 +135,9 @@ describe("initPayment", () => {
     });
     expect(result.token).toBe("test-token-456");
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTANAEF");
+    expect(TransactionModel.createReceived).toHaveBeenCalledWith(
+      expect.objectContaining({ feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE" }),
+    );
   });
 
   it("throws InvalidRequestError when amount is missing for a variable fee", async () => {

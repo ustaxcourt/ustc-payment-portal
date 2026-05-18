@@ -86,7 +86,7 @@ app.get("/openapi.json", (req, res) => {
 app.post("/init", async (req, res) => {
   logger.info(
     {
-      feeId: req.body?.feeId,
+      fee: req.body?.fee,
       transactionReferenceId: req.body?.transactionReferenceId,
     },
     "Received /init request",
