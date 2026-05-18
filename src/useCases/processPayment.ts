@@ -102,7 +102,7 @@ export const processPayment: ProcessPayment = async (
         undefined,
         "Pay.gov returned a response that failed schema validation",
       );
-      throw new PayGovError(PAYGOV_RETRY_MESSAGE, 500);
+      throw new PayGovError(PAYGOV_RETRY_MESSAGE, 502);
     }
 
     console.error(

@@ -619,7 +619,7 @@ describe("processPayment", () => {
       }).catch((e) => e);
 
       expect(zodErr).toBeInstanceOf(PayGovError);
-      expect(zodErr.statusCode).toBe(500);
+      expect(zodErr.statusCode).toBe(502);
 
       expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
         "agency-tracking-id-001",
