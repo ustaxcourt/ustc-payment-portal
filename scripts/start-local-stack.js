@@ -73,6 +73,7 @@ async function main() {
 
   try {
     startDockerStack();
+    log.info("Docker, pay-gov, and portal logs will stream in this terminal.");
   } catch (error) {
     log.error(error.message);
     process.exit(1);
