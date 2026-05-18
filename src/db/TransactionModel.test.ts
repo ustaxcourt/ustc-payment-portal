@@ -107,6 +107,32 @@ describe("TransactionModel", () => {
     mockTransaction = null;
   });
 
+  describe("$parseDatabaseJson", () => {
+    // Uses the real (unmocked) class to exercise the load-bearing coercion:
+    // f.amount is returned as a decimal string by the pg driver and must be
+    // cast to a number before hitting DashboardTransactionSchema's z.number().
+    const ActualTransactionModel = (jest.requireActual("./TransactionModel") as any).default;
+
+    it("casts feeAmount from a Postgres decimal string to a number", () => {
+      const instance = new ActualTransactionModel();
+      const result = instance.$parseDatabaseJson({ feeAmount: "60.50" });
+      expect(typeof result.feeAmount).toBe("number");
+      expect(result.feeAmount).toBe(60.5);
+    });
+
+    it("leaves feeAmount null when the join produces null", () => {
+      const instance = new ActualTransactionModel();
+      const result = instance.$parseDatabaseJson({ feeAmount: null });
+      expect(result.feeAmount).toBeNull();
+    });
+
+    it("leaves feeAmount absent when the column is not in the row", () => {
+      const instance = new ActualTransactionModel();
+      const result = instance.$parseDatabaseJson({ agencyTrackingId: "TEST-123" });
+      expect(result.feeAmount).toBeUndefined();
+    });
+  });
+
   describe("getAll", () => {
     it("resolves without error and returns an array", async () => {
       const result = await TransactionModel.getAll();

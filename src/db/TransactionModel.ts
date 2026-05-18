@@ -55,10 +55,12 @@ export default class TransactionModel extends Model {
     };
   }
 
+  feeAmount?: number;
+
   $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
     const parsed = super.$parseDatabaseJson(json);
-    if (parsed.transactionAmount !== undefined && parsed.transactionAmount !== null) {
-      parsed.transactionAmount = Number(parsed.transactionAmount);
+    if (parsed.feeAmount !== undefined && parsed.feeAmount !== null) {
+      parsed.feeAmount = Number(parsed.feeAmount);
     }
     return parsed;
   }
@@ -68,7 +70,7 @@ export default class TransactionModel extends Model {
     return TransactionModel.query()
       .alias('t')
       .join('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.name as feeName', 'f.amount as transactionAmount')
+      .select('t.*', 'f.name as feeName', 'f.amount as feeAmount')
       .where('t.paymentStatus', paymentStatus)
       .orderBy('t.createdAt', 'desc')
       .limit(100);
@@ -79,7 +81,7 @@ export default class TransactionModel extends Model {
     return TransactionModel.query()
       .alias('t')
       .join('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.name as feeName', 'f.amount as transactionAmount')
+      .select('t.*', 'f.name as feeName', 'f.amount as feeAmount')
       .orderBy('t.createdAt', 'desc')
       .limit(100);
   }
