@@ -116,6 +116,38 @@ describe("permissionsClient", () => {
       expect((result[0] as any).allowedFeeIds).toBeUndefined();
     });
 
+    it("keeps allowedFeeKeys when both allowedFeeKeys and allowedFeeIds are present", async () => {
+      const mixedFormatPermissions = [
+        {
+          clientName: "DAWSON",
+          clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
+          allowedFeeKeys: ["NEW_FEE"],
+          allowedFeeIds: ["OLD_FEE"],
+        },
+      ];
+      mockGetSecretString.mockResolvedValueOnce(
+        JSON.stringify(mixedFormatPermissions),
+      );
+
+      const result = await getClientPermissions();
+
+      expect(result[0].allowedFeeKeys).toEqual(["NEW_FEE"]);
+    });
+
+    it("throws ServerError when neither allowedFeeKeys nor allowedFeeIds is present", async () => {
+      const missingFeeFieldPermissions = [
+        {
+          clientName: "DAWSON",
+          clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
+        },
+      ];
+      mockGetSecretString.mockResolvedValueOnce(
+        JSON.stringify(missingFeeFieldPermissions),
+      );
+
+      await expect(getClientPermissions()).rejects.toThrow(ServerError);
+    });
+
     it("throws ServerError when Secrets Manager call fails", async () => {
       mockGetSecretString.mockRejectedValueOnce(new Error("AWS error"));
 
