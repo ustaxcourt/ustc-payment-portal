@@ -28,7 +28,7 @@ Single migration (`20260515000001_add_fee_versioning.ts`) covers both schema cha
 - `initPayment` request field renamed `feeId` → `fee` — **breaking change for callers**.
 - `FeeId.schema.ts` → `FeeKey.schema.ts`; exports renamed `FeeIdSchema`/`FeeId` → `FeeKeySchema`/`FeeKey`; OpenAPI `$ref` changes from `#/components/schemas/FeeId` to `#/components/schemas/FeeKey`.
 - `ClientPermission.allowedFeeIds` → `allowedFeeKeys` — **breaking change for Secrets Manager config**.
-- Dashboard `transactionAmount` response field is unchanged for consumers. It is now sourced from `f.amount as transactionAmount` via the fee JOIN rather than the dropped column. `TransactionModel.$parseDatabaseJson` re-applies `Number()` to handle Postgres returning decimals as strings.
+- Dashboard `transactionAmount` response field is unchanged for consumers. It is now sourced from `f.amount as transactionAmount` via the fee JOIN rather than the dropped column. The join alias was renamed from the intermediate `feeAmount` to `transactionAmount` directly, so `TransactionModel` gains a `transactionAmount?: number` property (replacing `feeAmount?: number`) and the explicit `transactionAmount: row.feeAmount` mapping previously required in `getRecentTransactions` and `getTransactionsByStatus` is removed — the spread of the model row now includes `transactionAmount` without transformation. `TransactionModel.$parseDatabaseJson` re-applies `Number()` to handle Postgres returning decimals as strings.
 
 ### Client Permissions
 
@@ -42,4 +42,5 @@ Single migration (`20260515000001_add_fee_versioning.ts`) covers both schema cha
 - `permissionsClient.test.ts`: new test verifies the `allowedFeeIds` → `allowedFeeKeys` coercion path produces a `ClientPermission` with `allowedFeeKeys` set and no `allowedFeeIds` residue.
 - Integration tests (`initPayment.test.ts`, `processPayment.test.ts`, `transaction.test.ts`, `sigv4Smoke.test.ts`): request bodies updated from `feeId` to `fee`.
 - `migration.test.ts`: comment on `transactionAmount` assertion updated to note it is now sourced from the fee join.
+- `TransactionModel.test.ts`: `$parseDatabaseJson` tests updated from `feeAmount` → `transactionAmount`; fixture fields in `getRecentTransactions.test.ts` and `getTransactionsByStatus.test.ts` updated to match.
 
