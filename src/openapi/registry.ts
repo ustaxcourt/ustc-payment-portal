@@ -299,6 +299,14 @@ registry.registerPath({
         },
       },
     },
+    502: {
+      description: "Bad Gateway - Pay.gov returned an invalid or unparseable response",
+      content: {
+        "application/json": {
+          schema: GatewayErrorSchema,
+        },
+      },
+    },
     504: {
       description: "Gateway timeout communicating with Pay.gov",
       content: {
