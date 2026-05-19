@@ -113,23 +113,23 @@ describe("TransactionModel", () => {
     // cast to a number before hitting DashboardTransactionSchema's z.number().
     const ActualTransactionModel = (jest.requireActual("./TransactionModel") as any).default;
 
-    it("casts feeAmount from a Postgres decimal string to a number", () => {
+    it("casts transactionAmount from a Postgres decimal string to a number", () => {
       const instance = new ActualTransactionModel();
-      const result = instance.$parseDatabaseJson({ feeAmount: "60.50" });
-      expect(typeof result.feeAmount).toBe("number");
-      expect(result.feeAmount).toBe(60.5);
+      const result = instance.$parseDatabaseJson({ transactionAmount: "60.50" });
+      expect(typeof result.transactionAmount).toBe("number");
+      expect(result.transactionAmount).toBe(60.5);
     });
 
-    it("leaves feeAmount null when the join produces null", () => {
+    it("leaves transactionAmount null when the join produces null", () => {
       const instance = new ActualTransactionModel();
-      const result = instance.$parseDatabaseJson({ feeAmount: null });
-      expect(result.feeAmount).toBeNull();
+      const result = instance.$parseDatabaseJson({ transactionAmount: null });
+      expect(result.transactionAmount).toBeNull();
     });
 
-    it("leaves feeAmount absent when the column is not in the row", () => {
+    it("leaves transactionAmount absent when the column is not in the row", () => {
       const instance = new ActualTransactionModel();
       const result = instance.$parseDatabaseJson({ agencyTrackingId: "TEST-123" });
-      expect(result.feeAmount).toBeUndefined();
+      expect(result.transactionAmount).toBeUndefined();
     });
   });
 

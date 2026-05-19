@@ -36,11 +36,7 @@ export const getTransactionsByStatus: GetTransactionsByStatus = async (
   const data = await TransactionModel.getByPaymentStatus(paymentStatus);
 
   return TransactionsByStatusResponseSchema.parse({
-    data: data.map((row) => ({
-      ...row,
-      transactionAmount: row.feeAmount,
-      paymentMethod: toApiPaymentMethod(row.paymentMethod),
-    })),
+    data: data.map((row) => ({ ...row, paymentMethod: toApiPaymentMethod(row.paymentMethod) })),
     total: data.length,
   });
 };

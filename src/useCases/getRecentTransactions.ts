@@ -16,7 +16,7 @@ export const getRecentTransactions: GetRecentTransactions = async (
 ) => {
   const data = await TransactionModel.getAll();
   return RecentTransactionsResponseSchema.parse({
-    data: data.map((row) => ({ ...row, transactionAmount: row.feeAmount, paymentMethod: toApiPaymentMethod(row.paymentMethod) })),
+    data: data.map((row) => ({ ...row, paymentMethod: toApiPaymentMethod(row.paymentMethod) })),
     total: data.length,
   });
 };

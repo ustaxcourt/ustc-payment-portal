@@ -10,7 +10,7 @@ const transactionRow = {
   paygovTrackingId: "paygov-1",
   feeName: "Filing Fee",
   feeId: "PETITION_FILING_FEE",
-  feeAmount: 100,
+  transactionAmount: 100,
   clientName: "payment-portal",
   transactionReferenceId: "ref-1",
   paymentStatus: "success",
