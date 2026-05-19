@@ -84,9 +84,8 @@ const response = await signedFetch(
   "https://payments.ustaxcourt.gov/init",
   "POST",
   JSON.stringify({
-    feeId: "PETITION_FILING_FEE",
-    trackingId: "your-tracking-id",
-    amount: 60.0,
+    fee: "PETITION_FILING_FEE",
+    transactionReferenceId: "your-tracking-id",
     urlSuccess: "https://your-app.com/payment/success",
     urlCancel: "https://your-app.com/payment/cancel",
   }),
@@ -103,7 +102,7 @@ To be onboarded, provide the following:
 
 1. **Your IAM role ARN** — the role your application will use to sign requests (e.g., `arn:aws:iam::123456789012:role/your-role-name`). Confirm the role is at the root path.
 2. **Your AWS account ID** — needed to add your account to the API Gateway resource policy.
-3. **The fee IDs you need access to** — the Payment Portal authorizes per fee type. You will only be granted access to the specific fee IDs your application needs.
+3. **The fee keys you need access to** — the Payment Portal authorizes per fee type. You will only be granted access to the specific fee keys your application needs.
 
 ---
 
@@ -113,24 +112,24 @@ The Payment Portal authorizes each client application on a per-fee basis. Author
 
 ### How it works
 
-Client permissions are stored in the `ustc/pay-gov/{env}/client-permissions` secret in AWS Secrets Manager. The secret value is a JSON **array** of client entries; each entry lists the fee IDs that client is permitted to charge and has this shape:
+Client permissions are stored in the `ustc/pay-gov/{env}/client-permissions` secret in AWS Secrets Manager. The secret value is a JSON **array** of client entries; each entry lists the fee keys that client is permitted to charge and has this shape:
 
 ```json
 {
   "clientName": "DAWSON",
   "clientRoleArn": "arn:aws:iam::111111111111:role/dawson-client",
-  "allowedFeeIds": ["PETITION_FILING_FEE"]
+  "allowedFeeKeys": ["PETITION_FILING_FEE"]
 }
 ```
 
-- **Adding a `feeId` to `allowedFeeIds`** — permits that app to charge the fee. Requests with that `feeId` will proceed.
-- **Omitting a `feeId` from `allowedFeeIds`** — blocks that app from charging the fee. Requests with an unauthorized `feeId` return `403 Forbidden` with `"Client not authorized for feeId"`.
+- **Adding a fee key to `allowedFeeKeys`** — permits that app to charge the fee. Requests with that fee key will proceed.
+- **Omitting a fee key from `allowedFeeKeys`** — blocks that app from charging the fee. Requests with an unauthorized fee key return `403 Forbidden` with `"Client not authorized for fee key"`.
 - **A client not present in the secret at all** — returns `403 Forbidden` with `"Client not registered"`.
-- **`"*"` in `allowedFeeIds`** — wildcard that permits all fee IDs. **Used only in local development and CI.** Never configure `"*"` in production secrets.
+- **`"*"` in `allowedFeeKeys`** — wildcard that permits all fee keys. **Used only in local development and CI.** Never configure `"*"` in production secrets.
 
-### Currently supported fee IDs
+### Currently supported fee keys
 
-| Fee ID                              | Description                                             |
+| Fee Key                             | Description                                             |
 | ----------------------------------- | ------------------------------------------------------- |
 | `PETITION_FILING_FEE`               | Petition filing fee (fixed: $60)                        |
 | `NONATTORNEY_EXAM_REGISTRATION_FEE` | Non-attorney admissions exam registration (fixed: $250) |
@@ -166,12 +165,12 @@ Add the new client entry to the `ustc/pay-gov/{env}/client-permissions` secret i
   {
     "clientName": "DAWSON",
     "clientRoleArn": "arn:aws:iam::111111111111:role/dawson-client",
-    "allowedFeeIds": ["PETITION_FILING_FEE"]
+    "allowedFeeKeys": ["PETITION_FILING_FEE"]
   },
   {
     "clientName": "New Client Name",
     "clientRoleArn": "arn:aws:iam::222222222222:role/new-client-role",
-    "allowedFeeIds": ["FEE_ID_ONE"]
+    "allowedFeeKeys": ["FEE_KEY_ONE"]
   }
 ]
 ```
