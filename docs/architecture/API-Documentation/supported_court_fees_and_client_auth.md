@@ -408,10 +408,5 @@ This design provides the following guarantees:
 | `UNAUTHORIZED_FEE` | 403 | Client not authorized for this fee key | Request authorization via onboarding |
 | `INVALID_REQUEST` | 400 | Schema validation failure | Fix request format |
 | `PAY_GOV_ERROR` | 500 | Pay.gov responded but result could not be processed | Retry later |
-| `PAY_GOV_ERROR` | 502 | Pay.gov's response was invalid or malformed | Retry later
+| `PAY_GOV_ERROR` | 502 | Pay.gov's response was invalid or malformed | Retry later |
 | `PAY_GOV_ERROR` | 504 | Could not reach Pay.gov | Retry later |
-
-
----
-
-
