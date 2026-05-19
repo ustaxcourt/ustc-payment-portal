@@ -20,4 +20,15 @@ describe("PayGovError", () => {
     const err = new PayGovError();
     expect(err).toBeInstanceOf(Error);
   });
+
+  it("defaults to statusCode 504 when none provided (back-compat)", () => {
+    expect(new PayGovError().statusCode).toBe(504);
+    expect(new PayGovError("msg").statusCode).toBe(504);
+  });
+
+  it("accepts a custom statusCode", () => {
+    const err = new PayGovError("retry", 500);
+    expect(err.statusCode).toBe(500);
+    expect(err.message).toBe("retry");
+  });
 });
