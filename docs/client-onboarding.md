@@ -80,6 +80,7 @@ async function signedFetch(
 }
 
 // Example: initialize a payment
+// Including `amount` is only needed if we are dealing with a variable fee transaction.
 const response = await signedFetch(
   "https://payments.ustaxcourt.gov/init",
   "POST",
