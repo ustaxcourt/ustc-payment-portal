@@ -28,7 +28,6 @@ const lambdaHandler = async <T>(
   request: T,
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler<T>,
-  feeId?: string,
 ): Promise<APIGatewayProxyResult> => {
   try {
     const roleArn = extractCallerArn(requestContext);
@@ -96,7 +95,6 @@ export const initPaymentHandler = (
     result.value,
     event.requestContext,
     appContext.getUseCases().initPayment,
-    result.value.feeId,
   );
 };
 

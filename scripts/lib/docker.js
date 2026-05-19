@@ -51,6 +51,15 @@ function startDockerStack() {
   }
 
   if (result.status !== 0) {
+    // Dump recent compose logs so the failing service (typically db-init) explains
+    // itself instead of leaving the dev to re-run `docker compose logs` manually.
+    log.error(
+      `docker compose exited with code ${result.status}. Recent container logs:`,
+    );
+    spawnSync("docker", ["compose", "logs", "--tail", "200"], {
+      stdio: "inherit",
+      shell: IS_WINDOWS,
+    });
     throw new Error(
       `docker compose exited with code ${result.status} before becoming healthy.`,
     );

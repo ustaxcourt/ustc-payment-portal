@@ -80,7 +80,7 @@ app.use(
 );
 
 // Serve raw OpenAPI spec as JSON
-app.get("/openapi.json", (req, res) => {
+app.get("/openapi.json", (_req, res) => {
   res.json(openApiDocument);
 });
 
@@ -133,7 +133,7 @@ app.get("/details/:transactionReferenceId", async (req, res) => {
 
 // ONLY FOR LOCAL TESTING - DO NOT CONNECT TO API GATEWAY
 if (isLocal()) {
-  app.get("/migrations", async (req, res, next) => {
+  app.get("/migrations", async (_req, res, next) => {
     try {
       const result = await migrationHandler();
       res.status(result.statusCode).json(JSON.parse(result.body));
@@ -143,7 +143,7 @@ if (isLocal()) {
   });
 }
 
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.send("hello world!");
 });
 
