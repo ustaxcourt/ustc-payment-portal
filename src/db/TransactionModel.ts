@@ -26,6 +26,7 @@ export default class TransactionModel extends Model {
   transactionStatus?: TransactionStatus | null;
   paygovToken?: string | null;
   paymentMethod?: PaymentMethod | null;
+  transactionAmount?: number | null;
   transactionDate?: string | null;
   paymentDate?: string | null;
   returnCode?: number | null;
@@ -54,8 +55,6 @@ export default class TransactionModel extends Model {
       },
     };
   }
-
-  transactionAmount?: number;
 
   $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
     const parsed = super.$parseDatabaseJson(json);
