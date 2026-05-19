@@ -1,5 +1,6 @@
 const crypto = require('node:crypto');
 const { createLogger } = require('./lib/log');
+const { parsePort } = require('./lib/parsePort');
 
 const log = createLogger('check:local-flow');
 
@@ -65,8 +66,12 @@ function selectScenario(feeId) {
 }
 
 async function main() {
-  const apiPort = process.env.API_PORT || '8080';
-  const paymentPort = process.env.PAY_GOV_TEST_SERVER_PORT || '3366';
+  const apiPort = parsePort(process.env.API_PORT, 8080, 'API_PORT');
+  const paymentPort = parsePort(
+    process.env.PAY_GOV_TEST_SERVER_PORT,
+    3366,
+    'PAY_GOV_TEST_SERVER_PORT',
+  );
   const baseUrl = process.env.BASE_URL || `http://localhost:${apiPort}`;
   const paymentBase = process.env.PAYMENT_URL || `http://localhost:${paymentPort}/pay`;
   const scenario = selectScenario(process.env.FEE_ID || TEST_DATA.petitionFiling.feeId);

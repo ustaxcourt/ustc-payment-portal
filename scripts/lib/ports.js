@@ -74,6 +74,33 @@ function formatUsedPorts(usedPorts) {
     .join("; ");
 }
 
+async function waitForPortsFree(ports, timeoutMs = 5000, intervalMs = 100) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const stillBound = ports.filter((port) => getListeningPids(port).length > 0);
+    if (stillBound.length === 0) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return false;
+}
+
+async function killAndConfirm(usedPorts) {
+  const pidsToKill = [...new Set(usedPorts.flatMap((item) => item.pids))];
+  killPids(pidsToKill);
+  // SIGTERM is asynchronous — poll until the ports are actually free, otherwise
+  // the portal can still race the kernel and hit EADDRINUSE on bind.
+  const freed = await waitForPortsFree(usedPorts.map((item) => item.port));
+  if (!freed) {
+    log.error(
+      "Ports did not become free within 5s after SIGTERM. Aborting startup.",
+    );
+    return false;
+  }
+  return true;
+}
+
 async function ensurePortsAvailable(requiredPorts) {
   const usedPorts = listUsedPorts(requiredPorts);
   if (usedPorts.length === 0) {
@@ -86,10 +113,8 @@ async function ensurePortsAvailable(requiredPorts) {
   );
 
   if (shouldAutoKill) {
-    const pidsToKill = [...new Set(usedPorts.flatMap((item) => item.pids))];
     log.info(`AUTO_KILL_PORTS enabled. Stopping: ${details}`);
-    killPids(pidsToKill);
-    return true;
+    return killAndConfirm(usedPorts);
   }
 
   if (!stdin.isTTY) {
@@ -109,9 +134,7 @@ async function ensurePortsAvailable(requiredPorts) {
     return false;
   }
 
-  const pidsToKill = [...new Set(usedPorts.flatMap((item) => item.pids))];
-  killPids(pidsToKill);
-  return true;
+  return killAndConfirm(usedPorts);
 }
 
 module.exports = { ensurePortsAvailable };

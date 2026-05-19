@@ -53,6 +53,11 @@ process.on("SIGTERM", forward("SIGTERM"));
 
 child.on("exit", (code, signal) => {
   if (signal) {
+    // Remove our own SIGINT/SIGTERM listeners before re-raising, otherwise the
+    // handlers would just no-op (child is already dead) and the wrapper would
+    // hang forever — blocking `start:server` shutdown.
+    process.removeAllListeners("SIGINT");
+    process.removeAllListeners("SIGTERM");
     process.kill(process.pid, signal);
     return;
   }

@@ -70,7 +70,7 @@ In a second terminal, after the stack is up:
 npm run check:local-flow
 ```
 
-This sends a `POST /init` to the portal, follows the returned token to the mock Pay.gov `/pay` page, and verifies the response is a real payment-form HTML document containing the issued token. Exits non-zero if anything is wrong.
+This sends a `POST /init` to the portal, follows the returned token to the mock Pay.gov `/pay` page, and verifies the response is a real HTML document with the expected mock-page markers (the mock holds the token server-side rather than echoing it in HTML). Exits non-zero if anything is wrong.
 
 ### Configuring local ports
 
