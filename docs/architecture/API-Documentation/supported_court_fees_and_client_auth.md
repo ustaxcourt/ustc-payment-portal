@@ -169,8 +169,9 @@ CREATE TABLE fees (
 
 | fee_id | fee_key | name | tcs_app_id | is_variable | amount | activation_date |
 |--------|---------|------|------------|-------------|--------|-----------------|
-| PETITION_FILING_FEE | PETITION_FILING_FEE | Petition Filing | TCSUSTAXCOURTPETITION | false | 60.00 | 2026-03-05 |
-| NONATTORNEY_EXAM_REGISTRATION_FEE | NONATTORNEY_EXAM_REGISTRATION_FEE | Admission Exam | TCSUSTAXCOURTANAEF | false | 250.00 | 2026-03-05 |
+| PETITION_FILING_FEE | PETITION_FILING_FEE | Petition Filing | TCSUSTAXCOURTPETITION | false | 60.00 | 2026-03-05T00:00:00Z |
+| PETITION_FILING_FEE_2026_06_01 | PETITION_FILING_FEE | Petition Filing | TCSUSTAXCOURTPETITION | false | 60.00 | 2026-06-01T00:00:00Z |
+| NONATTORNEY_EXAM_REGISTRATION_FEE | NONATTORNEY_EXAM_REGISTRATION_FEE | Admission Exam | TCSUSTAXCOURTANAEF | false | 250.00 | 2026-03-05T00:00:00Z |
 
 **Note:** Clients send `fee_key` via the `fee` field. The `fee_id` stored on a transaction identifies the exact fee version that was active at initiation — this is how `transactionAmount` is derived for the dashboard without storing it per transaction.
 
