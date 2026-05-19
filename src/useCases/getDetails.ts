@@ -13,9 +13,13 @@ import { toPaymentMethod } from "../utils/toPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { NotFoundError } from "../errors/notFound";
+import { PayGovError } from "../errors/payGovError";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
 import { ServerError } from "../errors/serverError";
 import { authorizeClient } from "../authorizeClient";
+
+const PAYGOV_RETRY_MESSAGE =
+  "There was an error communicating with Pay.gov. Please retry your transaction.";
 
 type GetDetailsRequest = {
   transactionReferenceId: string;
@@ -111,11 +115,14 @@ const updatePendingAttemptFromPayGov = async (
         result = await req.makeSoapRequest(appContext);
         refreshedStatus = parseTransactionStatus(result.transaction_status);
       } catch (err) {
+        // getDetails is a read — a refresh failure means the source of truth is
+        // temporarily unreachable, not that the underlying transaction failed.
+        // We surface a retryable error and leave the row's pending state alone.
         console.error(
           `Failed to refresh status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
-        return toTransactionRecordSummary(row);
+        throw new PayGovError(PAYGOV_RETRY_MESSAGE, 500);
       }
 
       try {
@@ -133,16 +140,13 @@ const updatePendingAttemptFromPayGov = async (
         );
         return toTransactionRecordSummary(updated);
       } catch (err) {
-        // Pay.gov told us the truth; we just couldn't persist it. Return the fresh status anyway —
-        // next call will re-poll and retry the write.
+        // We had a fresh status from Pay.gov but couldn't persist it. The row's
+        // recorded state is stale, not wrong — a retry will re-fetch and re-persist.
         console.error(
           `Failed to persist refreshed status for paygovTrackingId '${row.paygovTrackingId}':`,
           err,
         );
-        return {
-          ...toTransactionRecordSummary(row),
-          transactionStatus: refreshedStatus,
-        };
+        throw new PayGovError(PAYGOV_RETRY_MESSAGE, 500);
       }
     }),
   );
