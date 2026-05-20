@@ -124,7 +124,7 @@ export const getDetailsHandler = (
       ),
     );
   }
-  // getDetails is a read-only lookup — no feeId required, IAM registration check is sufficient.
+  // getDetails is a read-only lookup — IAM registration check is sufficient.
   // Per-transaction client ownership is enforced inside the use case.
   return lambdaHandler(
     { transactionReferenceId: result.data.transactionReferenceId },
