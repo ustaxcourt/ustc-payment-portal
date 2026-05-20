@@ -43,7 +43,7 @@ That's it for setup. You won't need to repeat any of these steps unless you recl
 ### One-command startup (recommended)
 
 ```bash
-npm run start:server
+npm run start:all
 ```
 
 This single command:
@@ -61,6 +61,16 @@ npm run start:server:autokill
 ```
 
 The autokill variant prints the process name for each PID before sending `SIGTERM`, so you can see what it's about to stop.
+
+### Running without Pay.gov
+
+If you're iterating on portal code that doesn't touch `/init` or `/process`, you can skip the mock Pay.gov server to keep the output quieter:
+
+```bash
+npm run start:portal
+```
+
+This brings up Postgres + the portal only. `/init` and `/process` will fail (the portal can't reach a SOAP endpoint that isn't running), but every other route works. Equivalent to `START_PAY_GOV=false npm run start:all`, so you can combine with `AUTO_KILL_PORTS=true` if needed.
 
 ### Smoke-checking the running stack
 
@@ -90,7 +100,7 @@ How each port is used:
 
 Notes:
 
-- `npm run start:server` and `npm run start:server:autokill` read these values at startup.
+- `npm run start:all` and `npm run start:server:autokill` read these values at startup.
 - If you change `API_PORT`, keep `BASE_URL` aligned (e.g. `BASE_URL="http://localhost:8081"`).
 - If you change `PAY_GOV_TEST_SERVER_PORT`, keep `SOAP_URL` and `PAYMENT_URL` aligned.
 
@@ -107,21 +117,22 @@ Logs are automatically pretty-printed (colors + timestamps) when `APP_ENV=local`
 ### Running with custom log levels
 
 ```bash
-LOG_LEVEL=debug npm run start:server
+LOG_LEVEL=debug npm run start:all
 ```
 
 ### Stopping the local stack
 
-- `Ctrl-C` in the `start:server` terminal stops everything and calls `docker compose stop` (containers preserved, data preserved).
+- `Ctrl-C` in the `start:all` terminal stops everything and calls `docker compose stop` (containers preserved, data preserved).
 - `docker compose down` removes the containers but keeps the volume with your DB data.
 - `docker compose down -v` removes the containers **and wipes the DB volume**. Use this when you want a clean DB.
 
 ### Individual scripts (advanced / debugging)
 
-Most of the time you only need `start:server`. These exist if you want to start pieces in isolation:
+Most of the time you only need `start:all`. These exist if you want to start pieces in isolation:
 
+- `npm run start:portal` — docker + portal only (skips Pay.gov). Use when iterating on routes that don't call `/init` or `/process`.
 - `npm run start:dev-server` — only the portal API (`src/devServer.ts`). Assumes Postgres and the Pay.gov server are already running.
-- `npm run start:pay-gov-test-server` — only the local mock Pay.gov server. **Does not auto-load `.env`** — either export the required vars in your shell, or run it as `node -r dotenv/config scripts/start-pay-gov-test-server.js`. When invoked indirectly via `start:server`, env is already loaded and inherited.
+- `npm run start:pay-gov-test-server` — only the local mock Pay.gov server. **Does not auto-load `.env`** — either export the required vars in your shell, or run it as `node -r dotenv/config scripts/start-pay-gov-test-server.js`. When invoked indirectly via `start:all`, env is already loaded and inherited.
 - `npm run docker` — only the Postgres stack in the foreground.
 
 ---
@@ -133,7 +144,7 @@ The `init`, `process`, and `transaction` integration tests run against the local
 1. In one terminal, start the full local stack:
 
    ```bash
-   npm run start:server
+   npm run start:all
    ```
 
 2. In a second terminal, run the integration tests:

@@ -1,7 +1,7 @@
 const { spawn, spawnSync } = require("node:child_process");
 const { createLogger } = require("./log");
 
-const log = createLogger("start:server");
+const log = createLogger(process.env.npm_lifecycle_event || "start");
 const IS_WINDOWS = process.platform === "win32";
 let dockerStarted = false;
 let dockerLogsProcess = null;

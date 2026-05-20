@@ -3,7 +3,7 @@ const readline = require("node:readline/promises");
 const { stdin, stdout } = require("node:process");
 const { createLogger } = require("./log");
 
-const log = createLogger("start:server");
+const log = createLogger(process.env.npm_lifecycle_event || "start");
 let warnedMissingLsof = false;
 
 function getListeningPids(port) {

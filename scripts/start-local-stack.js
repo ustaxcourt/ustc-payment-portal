@@ -4,16 +4,25 @@ const { ensurePortsAvailable } = require("./lib/ports");
 const { startDockerStack, stopDockerStack } = require("./lib/docker");
 const { createLogger } = require("./lib/log");
 
-const log = createLogger("start:server");
+const log = createLogger(process.env.npm_lifecycle_event || "start");
 const IS_WINDOWS = process.platform === "win32";
 const NPM_COMMAND = IS_WINDOWS ? "npm.cmd" : "npm";
 
+// Default is to include Pay.gov. `START_PAY_GOV=false` (used by
+// `npm run start:portal`) brings up only docker + portal — useful when
+// you're iterating on portal code that doesn't touch /init or /process.
+const includePayGov = String(process.env.START_PAY_GOV || "true").toLowerCase() !== "false";
+
 const REQUIRED_PORTS = [
-  parsePort(
-    process.env.PAY_GOV_TEST_SERVER_PORT,
-    3366,
-    "PAY_GOV_TEST_SERVER_PORT",
-  ),
+  ...(includePayGov
+    ? [
+        parsePort(
+          process.env.PAY_GOV_TEST_SERVER_PORT,
+          3366,
+          "PAY_GOV_TEST_SERVER_PORT",
+        ),
+      ]
+    : []),
   parsePort(process.env.API_PORT, 8080, "API_PORT"),
   parsePort(process.env.DB_PORT, 5433, "DB_PORT"),
 ].filter((port, index, ports) => ports.indexOf(port) === index);
@@ -21,19 +30,27 @@ const REQUIRED_PORTS = [
 // Pay.gov first: it's in-memory, so restarts mid-session invalidate /pay token links.
 // The onCrashHint travels with the process so the exit handler stays generic.
 const longRunningProcesses = [
-  {
-    name: "pay-gov",
-    command: NPM_COMMAND,
-    args: ["run", "start:pay-gov-test-server"],
-    onCrashHint:
-      "Existing /pay token links may now be invalid because local pay-gov state is in-memory.",
-  },
+  ...(includePayGov
+    ? [
+        {
+          name: "pay-gov",
+          command: NPM_COMMAND,
+          args: ["run", "start:pay-gov-test-server"],
+          onCrashHint:
+            "Existing /pay token links may now be invalid because local pay-gov state is in-memory.",
+        },
+      ]
+    : []),
   {
     name: "portal",
     command: NPM_COMMAND,
     args: ["run", "start:dev-server"],
   },
 ];
+
+if (!includePayGov) {
+  log.info("START_PAY_GOV=false → skipping Pay.gov test server (docker + portal only).");
+}
 
 const children = [];
 let shuttingDown = false;
