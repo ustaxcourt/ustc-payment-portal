@@ -64,6 +64,8 @@ export default class TransactionModel extends Model {
     return parsed;
   }
 
+  // Fees from Fee Table will never be deleted, new ones are versioned according
+  // to FeeKey & activation date, with the latest date accepted as the active fee.
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
     await getKnex();
     return TransactionModel.query()
