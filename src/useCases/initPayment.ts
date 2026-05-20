@@ -13,6 +13,7 @@ import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
+import { safeUpdateToFailed } from "../utils/safeUpdateToFailed";
 import { authorizeClient } from "../authorizeClient";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
@@ -105,8 +106,7 @@ export const initPayment: InitPayment = async (
       );
     }
     throw new Error(
-      `Failed to record received transaction: ${
-        err instanceof Error ? err.message : String(err)
+      `Failed to record received transaction: ${err instanceof Error ? err.message : String(err)
       }`,
     );
   }
@@ -115,28 +115,16 @@ export const initPayment: InitPayment = async (
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
     console.error("Error making SOAP request to Pay.gov", err);
-    await TransactionModel.updateToFailed(
-      agencyTrackingId,
-      EXISTING_TOKEN_ERROR_CODE,
-      "Existing token expired",
-    ).catch((dbErr) =>
-      console.error("Failed to mark transaction as failed", dbErr),
-    );
-    throw new PayGovError(
-      "There was an error communicating with Pay.gov. Please retry your transaction.",
-    );
+    await safeUpdateToFailed(agencyTrackingId, undefined, "Error communicating with Pay.gov");
+    throw new PayGovError("There was an error communicating with Pay.gov. Please retry your transaction.");
   }
 
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
     console.error("Failed to mark transaction as initiated", err);
-    await TransactionModel.updateToFailed(agencyTrackingId).catch((dbErr) =>
-      console.error("Failed to mark transaction as failed", dbErr),
-    );
-    throw new ServerError(
-      "Failed to record payment session. Please retry your transaction.",
-    );
+    await safeUpdateToFailed(agencyTrackingId);
+    throw new ServerError("Failed to record payment session. Please retry your transaction.");
   }
 
   return {
