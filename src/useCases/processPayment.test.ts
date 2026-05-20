@@ -33,7 +33,7 @@ const FeesModelMock = FeesModel as jest.Mocked<typeof FeesModel>;
 const mockClient: ClientPermission = {
   clientName: "Test Client",
   clientRoleArn: "arn:aws:iam::123456789012:role/test-client",
-  allowedFeeIds: ["*"],
+  allowedFeeKeys: ["*"],
 };
 
 const mockTransaction = {
@@ -209,7 +209,7 @@ describe("processPayment", () => {
     );
     TransactionModelMock.updateToFailed.mockResolvedValue(mockUpdatedTransaction(null));
     TransactionModelMock.findByReferenceId.mockResolvedValue([]);
-    FeesModelMock.getFeeById.mockResolvedValue({ feeId: "fee-123", tcsAppId: "TCSUSTAXCOURTPETITION" } as unknown as FeesModel);
+    FeesModelMock.getFeeById.mockResolvedValue({ feeId: "fee-123", feeKey: "fee-123", tcsAppId: "TCSUSTAXCOURTPETITION" } as unknown as FeesModel);
   });
 
   it("throws NotFoundError when token is not in the database", async () => {
@@ -226,7 +226,7 @@ describe("processPayment", () => {
   it("throws ForbiddenError when client does not have access to the transaction's fee", async () => {
     await expect(
       processPayment(appContext, {
-        client: { ...mockClient, allowedFeeIds: ["some-other-fee"] },
+        client: { ...mockClient, allowedFeeKeys: ["some-other-fee"] },
         request: { token: "mock-token" },
       }),
     ).rejects.toThrow(ForbiddenError);
@@ -235,7 +235,7 @@ describe("processPayment", () => {
   it("proceeds when client has wildcard fee access", async () => {
     await expect(
       processPayment(appContext, {
-        client: { ...mockClient, allowedFeeIds: ["*"] },
+        client: { ...mockClient, allowedFeeKeys: ["*"] },
         request: { token: "mock-token" },
       }),
     ).rejects.not.toThrow(ForbiddenError);
@@ -292,7 +292,7 @@ describe("processPayment", () => {
   });
 
   it("throws ServerError when fee has no tcsAppId", async () => {
-    FeesModelMock.getFeeById.mockResolvedValueOnce({ feeId: "fee-123", tcsAppId: "" } as unknown as FeesModel);
+    FeesModelMock.getFeeById.mockResolvedValueOnce({ feeId: "fee-123", feeKey: "fee-123", tcsAppId: "" } as unknown as FeesModel);
 
     await expect(
       processPayment(appContext, {
@@ -399,7 +399,7 @@ describe("processPayment", () => {
 
     it("proceeds when client has exact fee access", async () => {
       const result = await processPayment(appContext, {
-        client: { ...mockClient, allowedFeeIds: ["fee-123"] },
+        client: { ...mockClient, allowedFeeKeys: ["fee-123"] },
         request: { token: "mock-token" },
       });
 

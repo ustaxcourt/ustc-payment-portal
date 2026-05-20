@@ -1,6 +1,6 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
-import { FeeIdSchema } from "./FeeId.schema";
+import { FeeKeySchema } from "./FeeKey.schema";
 import {
   MetadataDawsonSchema,
   MetadataNonattorneyExamSchema,
@@ -13,7 +13,7 @@ extendZodWithOpenApi(z);
 const metadataValidators = {
   PETITION_FILING_FEE: MetadataDawsonSchema,
   NONATTORNEY_EXAM_REGISTRATION_FEE: MetadataNonattorneyExamSchema,
-} as const satisfies Record<z.infer<typeof FeeIdSchema>, z.ZodSchema>;
+} as const satisfies Record<z.infer<typeof FeeKeySchema>, z.ZodSchema>;
 
 export const InitPaymentRequestSchema = z
   .object({
@@ -25,7 +25,7 @@ export const InitPaymentRequestSchema = z
           "Must be randomly generated (not derived from names or timestamps).",
         example: "550e8400-e29b-41d4-a716-446655440000",
       }),
-    feeId: FeeIdSchema,
+    fee: FeeKeySchema,
     amount: z.number().positive().optional().openapi({
       description:
         "Override amount in dollars. Only valid for fees that allow variable amounts.",
@@ -43,12 +43,12 @@ export const InitPaymentRequestSchema = z
   })
   .strict()
   .superRefine((data, ctx) => {
-    const validator = metadataValidators[data.feeId];
+    const validator = metadataValidators[data.fee];
     const result = validator.safeParse(data.metadata);
     if (!result.success) {
       ctx.addIssue({
         code: "custom",
-        message: `Metadata is invalid for feeId "${data.feeId}": ${result.error.issues.map((i) => i.message).join(", ")}`,
+        message: `Metadata is invalid for fee "${data.fee}": ${result.error.issues.map((i: { message: string }) => i.message).join(", ")}`,
         path: ["metadata"],
       });
     }

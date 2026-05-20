@@ -42,7 +42,7 @@ const port = 8080; // default port to listen
 const devClient: ClientPermission = {
   clientName: "Dev Client App",
   clientRoleArn: "arn:aws:iam::123456789012:role/dev-client",
-  allowedFeeIds: ["*"],
+  allowedFeeKeys: ["*"],
 };
 
 // Note: This is only needed for local development
@@ -86,7 +86,7 @@ app.get("/openapi.json", (req, res) => {
 app.post("/init", async (req, res) => {
   logger.info(
     {
-      feeId: req.body?.feeId,
+      fee: req.body?.fee,
       transactionReferenceId: req.body?.transactionReferenceId,
     },
     "Received /init request",

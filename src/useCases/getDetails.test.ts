@@ -34,7 +34,7 @@ const FeesModelMock = FeesModel as jest.Mocked<typeof FeesModel>;
 const mockClient: ClientPermission = {
   clientName: "Test Client",
   clientRoleArn: "arn:aws:iam::123456789012:role/test-client",
-  allowedFeeIds: ["*"],
+  allowedFeeKeys: ["*"],
 };
 
 const mockTransactionReferenceId = randomUUID();
@@ -52,7 +52,6 @@ const buildRow = (
     paymentStatus: "success",
     paygovTrackingId: mockPayGovTrackingId,
     paymentMethod: "plastic_card",
-    transactionAmount: 60,
     createdAt: "2026-01-15T10:30:00.000Z",
     lastUpdatedAt: "2026-01-15T10:35:00.000Z",
     ...overrides,
@@ -126,6 +125,7 @@ describe("getDetails", () => {
     );
     FeesModelMock.getFeeById.mockResolvedValue({
       feeId: "PETITION_FILING_FEE",
+      feeKey: "PETITION_FILING_FEE",
       tcsAppId: "TCSUSTAXCOURTPETITION",
     } as unknown as FeesModel);
   });
@@ -151,7 +151,7 @@ describe("getDetails", () => {
 
     await expect(
       getDetails(appContext, {
-        client: { ...mockClient, allowedFeeIds: ["SOME_OTHER_FEE"] },
+        client: { ...mockClient, allowedFeeKeys: ["SOME_OTHER_FEE"] },
         request: { transactionReferenceId: mockTransactionReferenceId },
       }),
     ).rejects.toThrow(new ForbiddenError("Client not authorized for fee"));
@@ -175,6 +175,7 @@ describe("getDetails", () => {
   it("throws ServerError when fee has no tcsAppId", async () => {
     FeesModelMock.getFeeById.mockResolvedValueOnce({
       feeId: "PETITION_FILING_FEE",
+      feeKey: "PETITION_FILING_FEE",
       tcsAppId: "",
     } as unknown as FeesModel);
     TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
