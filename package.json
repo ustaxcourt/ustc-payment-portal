@@ -1,6 +1,6 @@
 {
   "name": "@ustaxcourt/payment-portal",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "USTC Payment Portal client for Pay.gov integration",
   "main": "dist/index.js",
   "engines": {
