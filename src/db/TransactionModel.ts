@@ -18,7 +18,7 @@ export type PaymentMethod =
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
-  feeId!: string;
+  feeId!: string; // e.g. "PETITION_FILING_FEE_2026_03_05" — the specific fee version in effect at the time of the transaction attempt. FK to FeesModel.
   feeName?: string;
   clientName!: string;
   transactionReferenceId!: string;
