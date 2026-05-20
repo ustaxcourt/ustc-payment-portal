@@ -1,5 +1,5 @@
 ---
-"@ustaxcourt/payment-portal": patch
+"@ustaxcourt/payment-portal": minor
 ---
 
 ## What Changed?
