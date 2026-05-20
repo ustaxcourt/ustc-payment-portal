@@ -99,8 +99,6 @@ async function main() {
 
   for (const item of longRunningProcesses) {
     const child = spawn(item.command, item.args, {
-      cwd: process.cwd(),
-      env: process.env,
       stdio: "inherit",
       shell: IS_WINDOWS,
     });
