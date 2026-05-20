@@ -277,7 +277,7 @@ describe("GetRequestRequest", () => {
         const result = request.handleFault({
           faultcode: "soap:Server",
           faultstring: "boom",
-        } as never);
+        });
         expect(result).toBeInstanceOf(FailedTransactionError);
         expect(result.message).toBe(
           "Pay.gov returned a fault without error details",
