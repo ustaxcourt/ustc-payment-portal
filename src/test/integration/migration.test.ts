@@ -26,15 +26,25 @@ import { isLocal } from "../../config/appEnv";
 const TOTAL_SEEDED_ROWS = 270; // 200 success + 50 failed + 20 pending from 02_dummy_data.ts
 
 const baseUrl = process.env.BASE_URL;
-const isDeployed =
-  !!baseUrl &&
-  baseUrl.startsWith("https://") &&
-  !isLocal();
+const isDeployed = !!baseUrl && baseUrl.startsWith("https://") && !isLocal();
 
 // Skip the entire suite when not running against a deployed environment.
 const describeIfDeployed = isDeployed ? describe : describe.skip;
 
 describeIfDeployed("database migration and seed verification", () => {
+  const namespaceFromBaseUrl = (): string | undefined => {
+    if (!baseUrl) {
+      return undefined;
+    }
+
+    try {
+      const stage = new URL(baseUrl).pathname.split("/").filter(Boolean)[0];
+      return stage || undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
   // ── GET /transactions ─────────────────────────────────────────────────────
   describe("GET /transactions (all seeded data)", () => {
     let body: { data: Record<string, unknown>[]; total: number };
@@ -42,7 +52,11 @@ describeIfDeployed("database migration and seed verification", () => {
     beforeAll(async () => {
       const response = await fetch(`${baseUrl}/transactions`);
       if (!response.ok) {
-        throw new Error(`GET /transactions failed: ${response.status} ${await response.text()}`);
+        throw new Error(
+          `GET /transactions failed: ${
+            response.status
+          } ${await response.text()}`,
+        );
       }
       body = (await response.json()) as typeof body;
     });
@@ -106,9 +120,7 @@ describeIfDeployed("database migration and seed verification", () => {
     it.each(["pending", "success", "failed"])(
       "should return rows for payment status '%s'",
       async (status) => {
-        const response = await fetch(
-          `${baseUrl}/transactions/${status}`,
-        );
+        const response = await fetch(`${baseUrl}/transactions/${status}`);
         expect(response.status).toBe(200);
 
         const body = (await response.json()) as {
@@ -128,9 +140,7 @@ describeIfDeployed("database migration and seed verification", () => {
     );
 
     it("should reject an invalid payment status with 400", async () => {
-      const response = await fetch(
-        `${baseUrl}/transactions/nonexistent`,
-      );
+      const response = await fetch(`${baseUrl}/transactions/nonexistent`);
       expect(response.status).toBe(400);
     });
   });
@@ -138,9 +148,7 @@ describeIfDeployed("database migration and seed verification", () => {
   // ── GET /transaction-payment-status ───────────────────────────────────────
   describe("GET /transaction-payment-status (aggregated counts)", () => {
     it("should return status counts that include the seeded total", async () => {
-      const response = await fetch(
-        `${baseUrl}/transaction-payment-status`,
-      );
+      const response = await fetch(`${baseUrl}/transaction-payment-status`);
       expect(response.status).toBe(200);
 
       const body = (await response.json()) as {
@@ -163,7 +171,7 @@ describeIfDeployed("database migration and seed verification", () => {
   // ── Database isolation ────────────────────────────────────────────────────
   describe("database isolation", () => {
     it("should be scoped to a PR-specific namespace", () => {
-      const namespace = process.env.TEST_NAMESPACE;
+      const namespace = process.env.TEST_NAMESPACE ?? namespaceFromBaseUrl();
       expect(namespace).toBeDefined();
       expect(namespace).toMatch(/^pr-\d+$/);
     });
