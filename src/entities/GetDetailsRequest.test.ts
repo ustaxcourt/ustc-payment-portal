@@ -2,6 +2,7 @@ import { ZodError } from "zod";
 import { GetRequestRequest } from "./GetDetailsRequest";
 import { SoapRequest } from "./SoapRequest";
 import { testAppContext as appContext } from "../test/testAppContext";
+import { FailedTransactionError } from "../errors/failedTransaction";
 
 const mockPayGovTrackingId = "test-tracking-id-12345";
 
@@ -194,7 +195,9 @@ describe("GetRequestRequest", () => {
       );
     });
 
-    it("throws a ZodError when the SOAP envelope is missing the ns2:getDetailsResponse key", async () => {
+    it("throws FailedTransactionError when the SOAP envelope is missing the ns2:getDetailsResponse key", async () => {
+      // Empty envelope: no success response and no S:Fault — handleFault(undefined)
+      // path. This is the "Pay.gov returned a malformed/empty envelope" case.
       jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({});
 
       const request = new GetRequestRequest({
@@ -203,8 +206,35 @@ describe("GetRequestRequest", () => {
       });
 
       await expect(request.makeSoapRequest(appContext)).rejects.toBeInstanceOf(
-        ZodError,
+        FailedTransactionError,
       );
+    });
+
+    it("throws FailedTransactionError when the envelope has no ns2:getDetailsResponse and carries an S:Fault", async () => {
+      jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({
+        "S:Fault": {
+          faultcode: "S:Server",
+          faultstring: "TCSServiceFault",
+          detail: {
+            "ns2:TCSServiceFault": {
+              return_code: "404",
+              return_detail: "Transaction not found",
+            },
+          },
+        },
+      });
+
+      const request = new GetRequestRequest({
+        tcsAppId: "test-app-id",
+        payGovTrackingId: mockPayGovTrackingId,
+      });
+
+      const promise = request.makeSoapRequest(appContext);
+      await expect(promise).rejects.toBeInstanceOf(FailedTransactionError);
+      await expect(promise).rejects.toMatchObject({
+        message: "Transaction not found",
+        code: 404,
+      });
     });
 
     it("logs the raw response and the Zod issues when validation fails", async () => {
@@ -229,6 +259,46 @@ describe("GetRequestRequest", () => {
         "getDetails schema validation failed",
         expect.stringContaining("errors"),
       );
+    });
+
+    describe("handleFault", () => {
+      const request = new GetRequestRequest({
+        tcsAppId: "test-app-id",
+        payGovTrackingId: mockPayGovTrackingId,
+      });
+
+      it("returns a FailedTransactionError when fault is undefined", () => {
+        expect(request.handleFault(undefined)).toBeInstanceOf(
+          FailedTransactionError,
+        );
+      });
+
+      it("returns a FailedTransactionError when fault has no detail", () => {
+        const result = request.handleFault({
+          faultcode: "soap:Server",
+          faultstring: "boom",
+        });
+        expect(result).toBeInstanceOf(FailedTransactionError);
+        expect(result.message).toBe(
+          "Pay.gov returned a fault without error details",
+        );
+      });
+
+      it("carries return_code and return_detail when fault is fully populated", () => {
+        const result = request.handleFault({
+          faultcode: "soap:Server",
+          faultstring: "TCS fault",
+          detail: {
+            "ns2:TCSServiceFault": {
+              return_code: "42",
+              return_detail: "Transaction not found",
+            },
+          },
+        });
+        expect(result).toBeInstanceOf(FailedTransactionError);
+        expect(result.message).toBe("Transaction not found");
+        expect(result.code).toBe(42);
+      });
     });
   });
 });
