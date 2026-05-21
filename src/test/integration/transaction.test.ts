@@ -84,14 +84,7 @@ const scenarios: Scenario[] = [
   },
 ];
 
-const hasSigningCredentials =
-  Boolean(process.env.AWS_ACCESS_KEY_ID) &&
-  Boolean(process.env.AWS_SECRET_ACCESS_KEY);
-const canRunSuite =
-  Boolean(process.env.BASE_URL) && (isLocal() || hasSigningCredentials);
-const describeWithEnv = canRunSuite ? describe : describe.skip;
-
-describeWithEnv("make a transaction", () => {
+describe("make a transaction", () => {
   jest.setTimeout(60_000);
   let transactionReferenceId: string;
   let baseUrl: string;

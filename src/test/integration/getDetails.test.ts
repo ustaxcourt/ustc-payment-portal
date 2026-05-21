@@ -2,12 +2,8 @@ import { isLocal } from "../../config/appEnv";
 import { signedFetch } from "./sigv4Helper";
 
 const baseUrl = process.env.BASE_URL;
-const hasSigningCredentials =
-  Boolean(process.env.AWS_ACCESS_KEY_ID) &&
-  Boolean(process.env.AWS_SECRET_ACCESS_KEY);
 const isDeployed = baseUrl && !baseUrl.includes("localhost");
-const canRunSuite = Boolean(isDeployed) && (isLocal() || hasSigningCredentials);
-const describeWithEnv = canRunSuite ? describe : describe.skip;
+const describeWithEnv = isDeployed ? describe : describe.skip;
 
 describeWithEnv("GET /details/{transactionReferenceId}", () => {
   const portalFetch = (path: string) =>

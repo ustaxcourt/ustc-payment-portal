@@ -7,11 +7,7 @@ type PayGovPaymentMethod = "PLASTIC_CARD" | "ACH" | "PAYPAL";
 type PayGovPaymentStatus = "Success" | "Failed";
 
 const baseUrl = process.env.BASE_URL;
-const hasSigningCredentials =
-  Boolean(process.env.AWS_ACCESS_KEY_ID) &&
-  Boolean(process.env.AWS_SECRET_ACCESS_KEY);
-const canRunSuite = Boolean(baseUrl) && (isLocal() || hasSigningCredentials);
-const describeWithEnv = canRunSuite ? describe : describe.skip;
+const describeWithEnv = baseUrl ? describe : describe.skip;
 
 describeWithEnv("POST /process", () => {
   beforeAll(() => {
