@@ -64,7 +64,7 @@ Full comparison: [docs/architecture/proposals/PAY-302-environment-logger/solutio
 
 **Sensitive field redaction:** Configured globally via `redact` option to censor `authorization`, `token`, `password`, `secret`, `certPassphrase`
 
-**Local output:** `npm run start:server` automatically enables the `pino-pretty` transport when `APP_ENV=local`
+**Local output:** `npm run start:all` automatically enables the `pino-pretty` transport when `APP_ENV=local`
 
 **Production output:** Structured JSON to stdout, automatically forwarded by Lambda to CloudWatch Logs
 

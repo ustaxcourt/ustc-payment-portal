@@ -92,7 +92,7 @@ logger.info({ credentials }, "Login attempt"); // password and token will be mas
 
 ### Local Development
 
-When running `npm run start:server`, logs appear as colorized, human-readable text:
+When running `npm run start:all`, logs appear as colorized, human-readable text:
 
 ```
 [14:35:22.125] INFO: Request started
@@ -136,10 +136,10 @@ In this repo, deployment topology comes from `APP_ENV` (`local|dev|stg|prod|test
 
 ```bash
 # See all DEBUG messages
-LOG_LEVEL=debug npm run start:server
+LOG_LEVEL=debug npm run start:all
 
 # Only show errors and above
-LOG_LEVEL=error npm run start:server
+LOG_LEVEL=error npm run start:all
 ```
 
 ## CloudWatch Log Queries
