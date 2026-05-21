@@ -28,11 +28,13 @@ if [ -z "$GIT_SHA" ]; then
 
   # Get the latest object key and extract the SHA from it
   # S3 path structure: artifacts/pr-123/abc123def456.../functionName.zip
+  # NOTE: list-objects-v2 omits "Contents" when no objects exist under the prefix.
+  # Parse with jq so empty prefixes fail gracefully instead of a JMESPath type error.
   LATEST_KEY=$(aws s3api list-objects-v2 \
     --bucket "${BUCKET}" \
     --prefix "${PR_PREFIX}" \
-    --query 'reverse(sort_by(Contents, &LastModified))[0].Key' \
-    --output text)
+    --output json | \
+    jq -r '.Contents // [] | sort_by(.LastModified) | last | .Key // empty')
 
   if [ -z "$LATEST_KEY" ] || [ "$LATEST_KEY" = "None" ]; then
     echo "Error: No artifacts found for PR ${PR_NUMBER} in s3://${BUCKET}/${PR_PREFIX}"
