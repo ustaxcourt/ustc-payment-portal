@@ -14,7 +14,7 @@ describeWithEnv("POST /init", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         transactionReferenceId: crypto.randomUUID(),
-        feeId: "PETITION_FILING_FEE",
+        fee: "PETITION_FILING_FEE",
         urlSuccess: "https://example.com",
         urlCancel: "https://example.com",
         metadata: { docketNumber: "123-26" },
@@ -31,7 +31,7 @@ describeWithEnv("POST /init", () => {
   it("returns the same token on a second call with the same transactionReferenceId (fresh token reuse)", async () => {
     const body = JSON.stringify({
       transactionReferenceId: crypto.randomUUID(),
-      feeId: "PETITION_FILING_FEE",
+      fee: "PETITION_FILING_FEE",
       urlSuccess: "https://example.com",
       urlCancel: "https://example.com",
       metadata: { docketNumber: "123-26" },
@@ -53,7 +53,7 @@ describeWithEnv("POST /init", () => {
   it("returns different tokens for different transactionReferenceIds", async () => {
     const makeBody = () => JSON.stringify({
       transactionReferenceId: crypto.randomUUID(),
-      feeId: "PETITION_FILING_FEE",
+      fee: "PETITION_FILING_FEE",
       urlSuccess: "https://example.com",
       urlCancel: "https://example.com",
       metadata: { docketNumber: "123-26" },

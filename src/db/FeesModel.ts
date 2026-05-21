@@ -2,12 +2,14 @@ import { Model } from 'objection';
 import { getKnex } from './knex';
 
 export default class FeesModel extends Model {
-  feeId!: string;
+  feeId!: string; // e.g. "PETITION_FILING_FEE_2026_03_05"
+  feeKey!: string; // e.g. "PETITION_FILING_FEE"
   name!: string;
   tcsAppId!: string;
   isVariable!: boolean;
   amount?: number | null;
   description?: string | null;
+  activationDate!: string;
   createdAt!: string;
   updatedAt!: string;
 
@@ -52,5 +54,14 @@ export default class FeesModel extends Model {
   static async getFeeById(feeId: string): Promise<FeesModel | undefined> {
     await getKnex();
     return FeesModel.query().findById(feeId) || undefined;
+  }
+
+  static async getActiveFeeByKey(feeKey: string): Promise<FeesModel | undefined> {
+    await getKnex();
+    return FeesModel.query()
+      .where('feeKey', feeKey)
+      .where('activationDate', '<=', new Date().toISOString())
+      .orderBy('activationDate', 'desc')
+      .first();
   }
 }

@@ -44,7 +44,7 @@ const port: number = parsePort(process.env.API_PORT, 8080, "API_PORT");
 const devClient: ClientPermission = {
   clientName: "Dev Client App",
   clientRoleArn: "arn:aws:iam::123456789012:role/dev-client",
-  allowedFeeIds: ["*"],
+  allowedFeeKeys: ["*"],
 };
 
 // Note: This is only needed for local development
@@ -88,7 +88,7 @@ app.get("/openapi.json", (_req, res) => {
 app.post("/init", async (req, res) => {
   logger.info(
     {
-      feeId: req.body?.feeId,
+      fee: req.body?.fee,
       transactionReferenceId: req.body?.transactionReferenceId,
     },
     "Received /init request",
