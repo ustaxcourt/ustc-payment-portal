@@ -7,6 +7,6 @@ export type ClientPermission = {
   clientName: string;
   /** IAM role ARN for the client (e.g., "arn:aws:iam::123456789012:role/dawson-client") */
   clientRoleArn: string;
-  /** List of feeIds this client is authorized to use */
-  allowedFeeIds: string[];
+  /** List of fee keys this client is authorized to use */
+  allowedFeeKeys: string[];
 };

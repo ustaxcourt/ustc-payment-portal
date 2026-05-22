@@ -42,13 +42,13 @@
       }
     },
     "schemas": {
-      "FeeId": {
+      "FeeKey": {
         "type": "string",
         "enum": [
           "PETITION_FILING_FEE",
           "NONATTORNEY_EXAM_REGISTRATION_FEE"
         ],
-        "description": "The fee type identifier. Available fee types:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee type. See the API documentation for more details on fee authorization and supported fees.",
+        "description": "The stable fee identifier sent by the client. Available fee keys:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee key. See the API documentation for more details on fee authorization and supported fees.",
         "example": "PETITION_FILING_FEE"
       },
       "MetadataDawson": {
@@ -110,13 +110,13 @@
             "description": "Client-generated UUIDv4 uniquely identifying this transaction. Must be randomly generated (not derived from names or timestamps).",
             "example": "550e8400-e29b-41d4-a716-446655440000"
           },
-          "feeId": {
+          "fee": {
             "type": "string",
             "enum": [
               "PETITION_FILING_FEE",
               "NONATTORNEY_EXAM_REGISTRATION_FEE"
             ],
-            "description": "The fee type identifier. Available fee types:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee type. See the API documentation for more details on fee authorization and supported fees.",
+            "description": "The stable fee identifier sent by the client. Available fee keys:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee key. See the API documentation for more details on fee authorization and supported fees.",
             "example": "PETITION_FILING_FEE"
           },
           "amount": {
@@ -151,7 +151,7 @@
         },
         "required": [
           "transactionReferenceId",
-          "feeId",
+          "fee",
           "urlSuccess",
           "urlCancel",
           "metadata"
