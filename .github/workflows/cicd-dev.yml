@@ -218,6 +218,25 @@ jobs:
             exit 1
           fi
 
+      - name: Provision PR database user
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
+        working-directory: terraform/environments/dev
+        run: |
+          FUNCTION_NAME=$(terraform output -raw migration_runner_function_name)
+          echo "Provisioning PR user via: $FUNCTION_NAME"
+          aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload '{"command":"provision-user"}' \
+            --cli-binary-format raw-in-base64-out \
+            --log-type Tail \
+            --cli-read-timeout 130 \
+            response.json | tee invoke-meta.json
+          cat response.json
+          if jq -e '.FunctionError' invoke-meta.json > /dev/null 2>&1; then
+            echo "ERROR: provision-user Lambda reported a function error"
+            exit 1
+          fi
+
       # Migrations must run before seeding — seed files depend on the schema
       # created by migrations (tables, columns, constraints). Reversing this
       # order would cause the seed to fail on a blank database.
@@ -386,6 +405,25 @@ jobs:
         run: |
           WS="pr-${PR_NUMBER}"
           (terraform workspace select "$WS" && echo "workspace=$WS" >> $GITHUB_OUTPUT) || echo "no_ws=true" >> $GITHUB_OUTPUT
+
+      - name: Deprovision PR database user (best-effort)
+        if: ${{ steps.ws.outputs.no_ws != 'true' }}
+        working-directory: terraform/environments/dev
+        run: |
+          FUNCTION_NAME=$(terraform output -raw migration_runner_function_name 2>/dev/null || true)
+          if [ -z "$FUNCTION_NAME" ]; then
+            echo "Could not resolve migration runner function name — skipping deprovision-user"
+          else
+            echo "Deprovisioning PR user via: $FUNCTION_NAME"
+            aws lambda invoke \
+              --function-name "$FUNCTION_NAME" \
+              --payload '{"command":"deprovision-user"}' \
+              --cli-binary-format raw-in-base64-out \
+              --log-type Tail \
+              --cli-read-timeout 130 \
+              response.json || true
+            cat response.json || true
+          fi
 
       - name: Drop PR database (best-effort)
         if: ${{ steps.ws.outputs.no_ws != 'true' }}
