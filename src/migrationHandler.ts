@@ -11,6 +11,8 @@ import { parseRdsEndpoint } from "./db/getRdsCredentials";
 type Command =
   | "create-db"
   | "drop-db"
+  | "provision-user"
+  | "deprovision-user"
   | "migrate"
   | "seed"
   | "verify"
@@ -178,10 +180,123 @@ const getSeedsDirectory = (): string => {
   return path.join(__dirname, "..", "db", "seeds");
 };
 
-// TODO: For better isolation, create a dedicated PostgreSQL user scoped to each
-// PR database rather than reusing the shared admin credentials. This would prevent
-// a PR environment from accidentally accessing another PR's database.
-// At current team size this is low risk, but worth revisiting at DAWSON scale.
+const provisionUser = async (): Promise<MigrationHandlerResult> => {
+  const prUserSecretArn = process.env.PR_USER_SECRET_ARN;
+  if (!prUserSecretArn) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: "Skipping provision-user: PR_USER_SECRET_ARN is not set",
+      }),
+    };
+  }
+
+  const dbName = process.env.RDS_DB_NAME;
+  if (!dbName) throw new Error("RDS_DB_NAME is not set");
+
+  const { username: prRole, password: prPassword } = await getRdsSecret(
+    prUserSecretArn,
+  );
+
+  const maintenanceKnex = await getMaintenanceKnex();
+  try {
+    await maintenanceKnex.raw(
+      `
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ?) THEN
+          EXECUTE format('CREATE ROLE %I LOGIN PASSWORD %L', ?, ?);
+        ELSE
+          EXECUTE format('ALTER ROLE %I WITH LOGIN PASSWORD %L', ?, ?);
+        END IF;
+      END
+      $$;
+      `,
+      [prRole, prRole, prPassword, prRole, prPassword],
+    );
+  } finally {
+    await maintenanceKnex.destroy();
+  }
+
+  const connection = await getDatabaseConnection();
+  const dbKnex = Knex({
+    client: "pg",
+    connection,
+    pool: { min: 0, max: 1, acquireTimeoutMillis: 10000 },
+  });
+
+  try {
+    await dbKnex.raw(`GRANT CONNECT ON DATABASE ?? TO ??`, [dbName, prRole]);
+    await dbKnex.raw(`GRANT USAGE ON SCHEMA public TO ??`, [prRole]);
+    await dbKnex.raw(
+      `ALTER DEFAULT PRIVILEGES FOR ROLE ?? IN SCHEMA public
+       GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ??`,
+      [connection.user, prRole],
+    );
+    await dbKnex.raw(
+      `ALTER DEFAULT PRIVILEGES FOR ROLE ?? IN SCHEMA public
+       GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO ??`,
+      [connection.user, prRole],
+    );
+  } finally {
+    await dbKnex.destroy();
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      message: `Provisioned role "${prRole}" for database "${dbName}"`,
+    }),
+  };
+};
+
+const deprovisionUser = async (): Promise<MigrationHandlerResult> => {
+  const prUserSecretArn = process.env.PR_USER_SECRET_ARN;
+  if (!prUserSecretArn) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: "Skipping deprovision-user: PR_USER_SECRET_ARN is not set",
+      }),
+    };
+  }
+
+  const { username: prRole } = await getRdsSecret(prUserSecretArn);
+  const connection = await getDatabaseConnection();
+
+  const dbKnex = Knex({
+    client: "pg",
+    connection,
+    pool: { min: 0, max: 1, acquireTimeoutMillis: 10000 },
+  });
+
+  try {
+    await dbKnex.raw(
+      `SELECT pg_terminate_backend(pid)
+       FROM pg_stat_activity
+       WHERE usename = ?
+         AND pid <> pg_backend_pid()`,
+      [prRole],
+    );
+    await dbKnex.raw(`REASSIGN OWNED BY ?? TO ??`, [prRole, connection.user]);
+    await dbKnex.raw(`DROP OWNED BY ??`, [prRole]);
+  } finally {
+    await dbKnex.destroy();
+  }
+
+  const maintenanceKnex = await getMaintenanceKnex();
+  try {
+    await maintenanceKnex.raw(`DROP ROLE IF EXISTS ??`, [prRole]);
+  } finally {
+    await maintenanceKnex.destroy();
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ message: `Deprovisioned role "${prRole}"` }),
+  };
+};
+
 const createDb = async (): Promise<MigrationHandlerResult> => {
   const dbName = process.env.RDS_DB_NAME;
   if (!dbName) throw new Error("RDS_DB_NAME is not set");
@@ -285,6 +400,8 @@ export const migrationHandler = async (
 
   if (command === "create-db") return createDb();
   if (command === "drop-db") return dropDb();
+  if (command === "provision-user") return provisionUser();
+  if (command === "deprovision-user") return deprovisionUser();
   if (command === "gc-dbs") {
     if (!event?.openPrNumbers?.length) {
       throw new Error(
