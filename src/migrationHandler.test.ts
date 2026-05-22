@@ -37,6 +37,10 @@ const MASTER_SECRET = JSON.stringify({
   username: "master_user",
   password: "master_password",
 });
+const PR_USER_SECRET = JSON.stringify({
+  username: "pr_user_pr_99",
+  password: "pr_password",
+});
 
 describe("migrationHandler", () => {
   let mockSend: jest.Mock;
@@ -55,6 +59,8 @@ describe("migrationHandler", () => {
       "arn:aws:secretsmanager:us-east-1:123:secret:rds-master";
     process.env.RDS_ENDPOINT = "db.example.us-east-1.rds.amazonaws.com:5432";
     process.env.RDS_DB_NAME = "paymentportal_pr_99";
+    process.env.PR_USER_SECRET_ARN =
+      "arn:aws:secretsmanager:us-east-1:123:secret:pr-user";
     process.env.DB_HOST = "localhost";
     process.env.DB_PORT = "5433";
     process.env.DB_USER = "local_user";
@@ -85,6 +91,7 @@ describe("migrationHandler", () => {
     delete process.env.RDS_MASTER_SECRET_ARN;
     delete process.env.RDS_ENDPOINT;
     delete process.env.RDS_DB_NAME;
+    delete process.env.PR_USER_SECRET_ARN;
     delete process.env.DB_HOST;
     delete process.env.DB_PORT;
     delete process.env.DB_USER;
@@ -272,6 +279,128 @@ describe("migrationHandler", () => {
     expect(mockRaw).not.toHaveBeenCalled();
   });
 
+  describe("provision-user", () => {
+    it("returns a no-op response when PR_USER_SECRET_ARN is not set", async () => {
+      delete process.env.PR_USER_SECRET_ARN;
+
+      const result = await migrationHandler({ command: "provision-user" });
+
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          message: "Skipping provision-user: PR_USER_SECRET_ARN is not set",
+        }),
+      });
+      expect(mockRaw).not.toHaveBeenCalled();
+      expect(mockKnex).not.toHaveBeenCalled();
+    });
+
+    it("creates or updates role and grants PR database permissions", async () => {
+      mockSend.mockImplementation(({ SecretId }: { SecretId: string }) => {
+        if (SecretId === process.env.PR_USER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: PR_USER_SECRET });
+        }
+
+        if (SecretId === process.env.RDS_MASTER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: MASTER_SECRET });
+        }
+
+        return Promise.resolve({ SecretString: RDS_SECRET });
+      });
+      mockRaw.mockResolvedValue(undefined);
+
+      const result = await migrationHandler({ command: "provision-user" });
+
+      expect(mockRaw).toHaveBeenCalledWith(
+        expect.stringContaining("IF NOT EXISTS (SELECT 1 FROM pg_roles"),
+        [
+          "pr_user_pr_99",
+          "pr_user_pr_99",
+          "pr_password",
+          "pr_user_pr_99",
+          "pr_password",
+        ],
+      );
+      expect(mockRaw).toHaveBeenCalledWith(
+        "GRANT CONNECT ON DATABASE ?? TO ??",
+        ["paymentportal_pr_99", "pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenCalledWith(
+        "GRANT USAGE ON SCHEMA public TO ??",
+        ["pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "ALTER DEFAULT PRIVILEGES FOR ROLE ?? IN SCHEMA public",
+        ),
+        ["db_user", "pr_user_pr_99"],
+      );
+      expect(mockDestroy).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          message:
+            'Provisioned role "pr_user_pr_99" for database "paymentportal_pr_99"',
+        }),
+      });
+    });
+  });
+
+  describe("deprovision-user", () => {
+    it("returns a no-op response when PR_USER_SECRET_ARN is not set", async () => {
+      delete process.env.PR_USER_SECRET_ARN;
+
+      const result = await migrationHandler({ command: "deprovision-user" });
+
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          message: "Skipping deprovision-user: PR_USER_SECRET_ARN is not set",
+        }),
+      });
+      expect(mockRaw).not.toHaveBeenCalled();
+      expect(mockKnex).not.toHaveBeenCalled();
+    });
+
+    it("drops role access in the expected order and then drops role", async () => {
+      mockSend.mockImplementation(({ SecretId }: { SecretId: string }) => {
+        if (SecretId === process.env.PR_USER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: PR_USER_SECRET });
+        }
+
+        if (SecretId === process.env.RDS_MASTER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: MASTER_SECRET });
+        }
+
+        return Promise.resolve({ SecretString: RDS_SECRET });
+      });
+      mockRaw.mockResolvedValue(undefined);
+
+      const result = await migrationHandler({ command: "deprovision-user" });
+
+      expect(mockRaw).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining("SELECT pg_terminate_backend(pid)"),
+        ["pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenNthCalledWith(2, "REASSIGN OWNED BY ?? TO ??", [
+        "pr_user_pr_99",
+        "db_user",
+      ]);
+      expect(mockRaw).toHaveBeenNthCalledWith(3, "DROP OWNED BY ??", [
+        "pr_user_pr_99",
+      ]);
+      expect(mockRaw).toHaveBeenNthCalledWith(4, "DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_99",
+      ]);
+      expect(mockDestroy).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({ message: 'Deprovisioned role "pr_user_pr_99"' }),
+      });
+    });
+  });
+
   describe("gc-dbs", () => {
     beforeEach(() => {
       mockSend.mockResolvedValue({ SecretString: MASTER_SECRET });
@@ -369,10 +498,9 @@ describe("migrationHandler", () => {
         "DROP DATABASE IF EXISTS ?? WITH (FORCE)",
         ["paymentportal_pr_10"],
       );
-      expect(mockRaw).not.toHaveBeenCalledWith(
-        expect.anything(),
-        ["paymentportal_pr_unexpected_name"],
-      );
+      expect(mockRaw).not.toHaveBeenCalledWith(expect.anything(), [
+        "paymentportal_pr_unexpected_name",
+      ]);
       expect(result).toEqual({
         statusCode: 200,
         body: JSON.stringify({ dropped: ["paymentportal_pr_10"] }),
