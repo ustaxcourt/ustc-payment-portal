@@ -13,6 +13,8 @@ type Command =
   | "drop-db"
   | "provision-user"
   | "deprovision-user"
+  | "show-users"
+  | "show-databases"
   | "migrate"
   | "seed"
   | "verify"
@@ -297,6 +299,44 @@ const deprovisionUser = async (): Promise<MigrationHandlerResult> => {
   };
 };
 
+const showUsers = async (): Promise<MigrationHandlerResult> => {
+  const knex = await getMaintenanceKnex();
+  try {
+    const result = await knex.raw<{ rows: { username: string }[] }>(
+      `SELECT usename AS username FROM pg_user ORDER BY usename`,
+    );
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ users: result.rows.map((row) => row.username) }),
+    };
+  } finally {
+    await knex.destroy();
+  }
+};
+
+const showDatabases = async (): Promise<MigrationHandlerResult> => {
+  const knex = await getMaintenanceKnex();
+
+  try {
+    const result = await knex.raw<{ rows: { databaseName: string }[] }>(
+      `SELECT datname AS "databaseName"
+       FROM pg_database
+       WHERE datistemplate = false
+       ORDER BY datname`,
+    );
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        databases: result.rows.map((row) => row.databaseName),
+      }),
+    };
+  } finally {
+    await knex.destroy();
+  }
+};
+
 const createDb = async (): Promise<MigrationHandlerResult> => {
   const dbName = process.env.RDS_DB_NAME;
   if (!dbName) throw new Error("RDS_DB_NAME is not set");
@@ -410,6 +450,8 @@ export const migrationHandler = async (
     }
     return gcDbs(event.openPrNumbers);
   }
+  if (command === "show-users") return showUsers();
+  if (command === "show-databases") return showDatabases();
 
   const connection = await getDatabaseConnection();
 

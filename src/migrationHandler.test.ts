@@ -401,6 +401,64 @@ describe("migrationHandler", () => {
     });
   });
 
+  describe("show-users", () => {
+    it("returns database users from pg_user", async () => {
+      mockSend.mockResolvedValue({ SecretString: MASTER_SECRET });
+      mockRaw.mockResolvedValueOnce({
+        rows: [{ username: "master_user" }, { username: "pr_user_pr_99" }],
+      });
+
+      const result = await migrationHandler({ command: "show-users" });
+
+      expect(mockRaw).toHaveBeenCalledWith(
+        "SELECT usename AS username FROM pg_user ORDER BY usename",
+      );
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({ users: ["master_user", "pr_user_pr_99"] }),
+      });
+    });
+  });
+
+  describe("show-databases", () => {
+    it("returns non-template database names", async () => {
+      mockSend.mockResolvedValue({ SecretString: MASTER_SECRET });
+      mockRaw.mockResolvedValueOnce({
+        rows: [
+          { databaseName: "paymentportal" },
+          { databaseName: "paymentportal_pr_99" },
+        ],
+      });
+
+      const result = await migrationHandler({ command: "show-databases" });
+
+      expect(mockRaw).toHaveBeenCalledWith(
+        `SELECT datname AS "databaseName"
+       FROM pg_database
+       WHERE datistemplate = false
+       ORDER BY datname`,
+      );
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          databases: ["paymentportal", "paymentportal_pr_99"],
+        }),
+      });
+    });
+
+    it("destroys the knex connection when listing databases fails", async () => {
+      mockSend.mockResolvedValue({ SecretString: MASTER_SECRET });
+      mockRaw.mockRejectedValueOnce(new Error("list databases failed"));
+
+      await expect(
+        migrationHandler({ command: "show-databases" }),
+      ).rejects.toThrow("list databases failed");
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("gc-dbs", () => {
     beforeEach(() => {
       mockSend.mockResolvedValue({ SecretString: MASTER_SECRET });
