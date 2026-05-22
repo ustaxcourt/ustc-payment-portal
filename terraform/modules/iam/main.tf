@@ -390,6 +390,26 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "ssm:ListTagsForResource"
         ],
         Resource = "arn:aws:ssm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/ustc/pay-gov/dev/rds-*"
+      },
+      {
+        # Open SSM port-forward tunnel to the db-bastion. Scoped by instance tag so
+        # this grant doesn't extend to arbitrary EC2 instances in the account.
+        Effect = "Allow",
+        Action = [
+          "ssm:StartSession",
+          "ssm:TerminateSession",
+          "ssm:DescribeSessions",
+          "ssm:GetConnectionStatus"
+        ],
+        Resource = [
+          "arn:aws:ec2:${local.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*",
+          "arn:aws:ssm:${local.aws_region}::document/AWS-StartPortForwardingSessionToRemoteHost"
+        ],
+        Condition = {
+          StringEquals = {
+            "ssm:resourceTag/Role" = "db-bastion"
+          }
+        }
       }
     ]
   })

@@ -90,6 +90,24 @@ module "rds" {
   }
 }
 
+# Shared SSM-managed bastion. Lives only in the dev workspace; PR workspaces tunnel
+# through it via SSM port-forwarding when Terraform needs to reach the private RDS
+# instance to provision per-PR Postgres roles.
+module "db_bastion" {
+  count  = local.environment == "dev" ? 1 : 0
+  source = "../../modules/db_bastion"
+
+  name_prefix           = local.name_prefix
+  vpc_id                = data.terraform_remote_state.foundation.outputs.vpc_id
+  private_subnet_id     = data.terraform_remote_state.foundation.outputs.private_subnet_id
+  rds_security_group_id = data.terraform_remote_state.foundation.outputs.rds_security_group_id
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
 resource "aws_route53_zone" "this" {
   count = local.environment == "dev" ? 1 : 0
   name  = local.custom_domain
