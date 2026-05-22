@@ -39,6 +39,12 @@ type DatabaseConnection = {
   ssl?: { rejectUnauthorized: boolean };
 };
 
+const quoteSqlIdentifier = (value: string): string =>
+  `"${value.replace(/"/g, '""')}"`;
+
+const quoteSqlLiteral = (value: string): string =>
+  `'${value.replace(/'/g, "''")}'`;
+
 const getRdsSecret = async (
   secretArn: string,
 ): Promise<{ username: string; password: string }> => {
@@ -209,15 +215,17 @@ const provisionUser = async (): Promise<MigrationHandlerResult> => {
     ]);
 
     if (roleExistsResult.rows[0].exists) {
-      await maintenanceKnex.raw(`ALTER ROLE ?? WITH LOGIN PASSWORD ?`, [
-        prRole,
-        prPassword,
-      ]);
+      await maintenanceKnex.raw(
+        `ALTER ROLE ${quoteSqlIdentifier(
+          prRole,
+        )} WITH LOGIN PASSWORD ${quoteSqlLiteral(prPassword)}`,
+      );
     } else {
-      await maintenanceKnex.raw(`CREATE ROLE ?? LOGIN PASSWORD ?`, [
-        prRole,
-        prPassword,
-      ]);
+      await maintenanceKnex.raw(
+        `CREATE ROLE ${quoteSqlIdentifier(
+          prRole,
+        )} LOGIN PASSWORD ${quoteSqlLiteral(prPassword)}`,
+      );
     }
   } finally {
     await maintenanceKnex.destroy();

@@ -317,13 +317,11 @@ describe("migrationHandler", () => {
         "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = ?) AS exists",
         ["pr_user_pr_99"],
       );
-      expect(mockRaw).toHaveBeenCalledWith("CREATE ROLE ?? LOGIN PASSWORD ?", [
-        "pr_user_pr_99",
-        "pr_password",
-      ]);
+      expect(mockRaw).toHaveBeenCalledWith(
+        "CREATE ROLE \"pr_user_pr_99\" LOGIN PASSWORD 'pr_password'",
+      );
       expect(mockRaw).not.toHaveBeenCalledWith(
-        "ALTER ROLE ?? WITH LOGIN PASSWORD ?",
-        ["pr_user_pr_99", "pr_password"],
+        "ALTER ROLE \"pr_user_pr_99\" WITH LOGIN PASSWORD 'pr_password'",
       );
       expect(mockRaw).toHaveBeenCalledWith(
         "GRANT CONNECT ON DATABASE ?? TO ??",
@@ -368,12 +366,10 @@ describe("migrationHandler", () => {
       await migrationHandler({ command: "provision-user" });
 
       expect(mockRaw).toHaveBeenCalledWith(
-        "ALTER ROLE ?? WITH LOGIN PASSWORD ?",
-        ["pr_user_pr_99", "pr_password"],
+        "ALTER ROLE \"pr_user_pr_99\" WITH LOGIN PASSWORD 'pr_password'",
       );
       expect(mockRaw).not.toHaveBeenCalledWith(
-        "CREATE ROLE ?? LOGIN PASSWORD ?",
-        ["pr_user_pr_99", "pr_password"],
+        "CREATE ROLE \"pr_user_pr_99\" LOGIN PASSWORD 'pr_password'",
       );
     });
   });
