@@ -33,7 +33,7 @@ const LOCAL_DEV_PERMISSIONS: ClientPermission[] = [
   {
     clientName: "Local Development",
     clientRoleArn: LOCAL_DEV_ROLE_ARN,
-    allowedFeeIds: ["*"], // Wildcard: allow all feeIds in local dev
+    allowedFeeKeys: ["*"], // Wildcard: allow all fee keys in local dev
   },
 ];
 
@@ -65,22 +65,38 @@ export const getClientPermissions = async (): Promise<ClientPermission[]> => {
 
   try {
     const secretValue = await getSecretString(secretId);
-    const permissions: ClientPermission[] = JSON.parse(secretValue);
+    const raw: unknown[] = JSON.parse(secretValue);
 
     // Validate the structure
-    if (!Array.isArray(permissions)) {
+    if (!Array.isArray(raw)) {
       throw new Error("Client permissions must be an array");
     }
 
-    for (const perm of permissions) {
+    type RawPermission = {
+      clientName?: unknown;
+      clientRoleArn?: unknown;
+      allowedFeeKeys?: unknown;
+      allowedFeeIds?: unknown;
+    };
+
+    for (const entry of raw) {
+      const perm = entry as RawPermission;
+      // Backward compat: secrets may still use allowedFeeIds (pre-PAY-284 name).
+      // Coerce to allowedFeeKeys so the rest of the codebase sees the canonical field.
+      if (Array.isArray(perm.allowedFeeIds) && !perm.allowedFeeKeys) {
+        perm.allowedFeeKeys = perm.allowedFeeIds;
+        delete perm.allowedFeeIds;
+      }
       if (
         !perm.clientName ||
         !perm.clientRoleArn ||
-        !Array.isArray(perm.allowedFeeIds)
+        !Array.isArray(perm.allowedFeeKeys)
       ) {
         throw new Error("Invalid client permission structure");
       }
     }
+
+    const permissions = raw as ClientPermission[];
 
     // Update cache
     cache = {

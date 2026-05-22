@@ -3,20 +3,19 @@ import { ClientPermission } from "./types/ClientPermission";
 import { logger } from "./utils/logger";
 
 /**
- * Validates that the client (identified by IAM role ARN) is registered and,
- * when a feeId is provided, authorized to access that fee type.
+ * Validates that the client is authorized to access the given fee key.
  *
- * @param roleArn - The IAM role ARN of the client (from extractCallerArn)
- * @param feeId - The feeId being requested. Only required for initPayment.
- * @throws ForbiddenError if client is not registered or not authorized for the feeId
+ * @param client - The resolved client permission record
+ * @param feeKey - The fee key being requested
+ * @throws ForbiddenError if client is not authorized for the fee key
  */
 export const authorizeClient = (
   client: ClientPermission,
-  feeId: string,
+  feeKey: string,
 ): boolean => {
   // Check for wildcard permission (used in local dev)
   const isAuthorized =
-    client.allowedFeeIds.includes("*") || client.allowedFeeIds.includes(feeId);
+    client.allowedFeeKeys.includes("*") || client.allowedFeeKeys.includes(feeKey);
   if (isAuthorized) {
     return true;
   }

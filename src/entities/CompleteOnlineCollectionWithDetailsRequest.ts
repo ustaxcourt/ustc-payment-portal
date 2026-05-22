@@ -74,8 +74,8 @@ type ProcessorFault =
   | {
     faultcode: string;
     faultstring: string;
-    detail: {
-      "ns2:TCSServiceFault": {
+    detail?: {
+      "ns2:TCSServiceFault"?: {
         return_code: string;
         return_detail: string;
       };

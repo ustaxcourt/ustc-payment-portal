@@ -56,7 +56,6 @@ export const getDetails: GetDetails = async (
   }
 
   const feeId = allRows[0].feeId;
-  authorizeClient(client, feeId);
 
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
   const fee = await FeesModel.getFeeById(feeId);
@@ -72,6 +71,8 @@ export const getDetails: GetDetails = async (
     );
     throw new ServerError();
   }
+
+  authorizeClient(client, fee.feeKey);
 
   const paymentStatus = derivePaymentStatus(allRows);
 
