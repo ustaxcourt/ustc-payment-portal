@@ -401,48 +401,43 @@ resource "aws_api_gateway_deployment" "deployment" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
 
   triggers = {
-    redeployment = sha1(jsonencode([
-      # Path resources — included so path_part changes force a fresh deployment snapshot.
-      aws_api_gateway_resource.init.id,
-      aws_api_gateway_resource.process.id,
-      aws_api_gateway_resource.test.id,
-      aws_api_gateway_resource.details.id,
-      aws_api_gateway_resource.details_tracking.id,
-
-      try(aws_api_gateway_resource.transactions[0].id, ""),
-      try(aws_api_gateway_resource.transactions_by_status[0].id, ""),
-      try(aws_api_gateway_resource.transaction_payment_status[0].id, ""),
-
-      aws_api_gateway_method.init_post.id,
-      aws_api_gateway_method.process_post.id,
-      aws_api_gateway_method.test_get.id,
-      aws_api_gateway_method.details_get.id,
-
-      try(aws_api_gateway_method.transactions_get[0].id, ""),
-      try(aws_api_gateway_method.transactions_by_status_get[0].id, ""),
-      try(aws_api_gateway_method.transaction_payment_status_get[0].id, ""),
-
-      try(aws_api_gateway_method.transactions_options[0].id, ""),
-      try(aws_api_gateway_method.transactions_by_status_options[0].id, ""),
-      try(aws_api_gateway_method.transaction_payment_status_options[0].id, ""),
-
-      aws_api_gateway_integration.init_integration.id,
-      aws_api_gateway_integration.process_integration.id,
-      aws_api_gateway_integration.test_integration.id,
-      aws_api_gateway_integration.details_integration.id,
-
-      try(aws_api_gateway_integration.transactions_integration[0].id, ""),
-      try(aws_api_gateway_integration.transactions_by_status_integration[0].id, ""),
-      try(aws_api_gateway_integration.transaction_payment_status_integration[0].id, ""),
-
-      try(aws_api_gateway_integration.transactions_options_integration[0].id, ""),
-      try(aws_api_gateway_integration.transactions_by_status_options_integration[0].id, ""),
-      try(aws_api_gateway_integration.transaction_payment_status_options_integration[0].id, ""),
-
-      aws_api_gateway_rest_api_policy.policy.policy,
-      aws_api_gateway_gateway_response.default_4xx.id,
-      aws_api_gateway_gateway_response.default_5xx.id,
-    ]))
+    redeployment = sha1(jsonencode({
+      resources = [
+        "init",
+        "process",
+        "test",
+        "details",
+        "details/{trackingId}",
+        local.enable_dashboard_endpoints ? "transactions" : "",
+        local.enable_dashboard_endpoints ? "transactions/{paymentStatus}" : "",
+        local.enable_dashboard_endpoints ? "transaction-payment-status" : "",
+      ]
+      methods = [
+        "POST /init",
+        "POST /process",
+        "GET /test",
+        "GET /details/{trackingId}",
+        local.enable_dashboard_endpoints ? "GET /transactions" : "",
+        local.enable_dashboard_endpoints ? "GET /transactions/{paymentStatus}" : "",
+        local.enable_dashboard_endpoints ? "GET /transaction-payment-status" : "",
+        local.enable_dashboard_endpoints ? "OPTIONS /transactions" : "",
+        local.enable_dashboard_endpoints ? "OPTIONS /transactions/{paymentStatus}" : "",
+        local.enable_dashboard_endpoints ? "OPTIONS /transaction-payment-status" : "",
+      ]
+      integrations = {
+        init_payment                   = var.lambda_function_arns["initPayment"]
+        process_payment                = var.lambda_function_arns["processPayment"]
+        test_cert                      = var.lambda_function_arns["testCert"]
+        get_details                    = var.lambda_function_arns["getDetails"]
+        get_all_transactions           = try(var.lambda_function_arns["getAllTransactions"], "")
+        get_transactions_by_status     = try(var.lambda_function_arns["getTransactionsByStatus"], "")
+        get_transaction_payment_status = try(var.lambda_function_arns["getTransactionPaymentStatus"], "")
+      }
+      policy                   = data.aws_iam_policy_document.api_resource_policy.json
+      dashboard_allowed_origin = var.dashboard_allowed_origin
+      enable_public_dashboard  = var.enable_public_dashboard
+      stage_name               = var.stage_name
+    }))
   }
 
   lifecycle {
