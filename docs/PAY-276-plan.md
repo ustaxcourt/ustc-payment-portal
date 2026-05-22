@@ -27,7 +27,7 @@ Two concurrent workstreams on one PR branch.
 
 ### Interface contract (lock before either dev starts)
 
-- Secret name: `ustc/pay-gov/dev/pr-${env}-db-user` — fits the existing `ustc/pay-gov/*` IAM wildcard at [terraform/modules/iam/main.tf:46](../terraform/modules/iam/main.tf#L46), no IAM change.
+- Secret name: `ustc/pay-gov/dev/${local.environment}-db-user` (e.g. `ustc/pay-gov/dev/pr-123-db-user`) — fits the existing `ustc/pay-gov/*` IAM wildcard at [terraform/modules/iam/main.tf:46](../terraform/modules/iam/main.tf#L46), no IAM change.
 - Secret shape: `{ "username": "...", "password": "..." }` JSON (matches existing `RDS_SECRET_ARN` consumers).
 - PR role name: `pr_user_${env_with_underscores}`.
 - New Lambda commands: `provision-user`, `deprovision-user`.
