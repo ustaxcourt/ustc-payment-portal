@@ -1,4 +1,4 @@
-# PAY-276: Per-PR Scoped Database Users (Option B — Terraform-owned)
+# PAY-276: Per-PR Scoped Database Users (Option C — Hybrid)
 
 ## Goal
 
@@ -6,137 +6,97 @@ Each PR workspace gets its own Postgres user, scoped to its own database on the 
 
 ## Approach
 
-The `cyrilgdn/postgresql` provider owns the per-PR database, role, secret, and grants. Lifecycle binds to the workspace: `terraform apply` provisions, `terraform destroy` tears down. The Lambda stops creating/dropping DBs — it only runs migrations and seeds.
+Split ownership along the natural seam: **Terraform** owns the per-PR Secrets Manager secret (random password, secret, version) — lifecycle binds to the workspace, `terraform destroy` removes it. **The migrationHandler Lambda** owns the Postgres DDL — it already has master credentials via `getMaintenanceKnex` and runs inside the VPC, so no bastion or tunnel is needed.
 
-The one non-obvious load-bearing decision: **migrations continue to run as the admin role, not the PR user.** Reason: `postgresql_default_privileges` cascades grants from the table owner. If migrations ran as the PR user, the PR user would own its tables and the default-privileges mechanism wouldn't apply on subsequent role changes. Admin owns tables → PR user gets automatic SELECT/INSERT/UPDATE/DELETE on every future migration's table.
+Two new Lambda commands — `provision-user` and `deprovision-user` — bracket the existing `create-db` and `drop-db` commands in the workflow. Migrations continue to run as the admin role so `ALTER DEFAULT PRIVILEGES` cascades new migration tables to the PR user.
 
-## Prerequisite: VPC reachability for Terraform
+Picked over A (Lambda owns secret → predicted-ARN drift) and B (Terraform owns DDL → requires bastion + SSM tunnel + new provider + ~$3/mo).
 
-RDS is private. Terraform's postgres provider must reach it during apply *and* destroy.
+## Acceptance Criteria → Implementation
 
-**Decision:** add a `t4g.nano` SSM-managed bastion in the dev VPC (~$3/mo). GitHub-hosted runners assume the OIDC role, then `aws ssm start-session --document-name AWS-StartPortForwardingSessionToRemoteHost` opens `localhost:5432` → RDS:5432 for the apply/destroy steps.
-
-Alternative considered: AWS CodeBuild as the runner (VPC-native). Rejected — bigger CI rewrite for the same outcome. Bastion is reversible.
+| AC | Mechanism |
+| --- | --- |
+| Each PR creates its own user | `provision-user` runs `CREATE ROLE` per PR |
+| Perms only to its DB/tables | `GRANT CONNECT/USAGE` + `ALTER DEFAULT PRIVILEGES` on the PR DB only |
+| No perms to other DBs | Postgres `CONNECT` is per-database; not granted elsewhere |
+| TODO removed | Delete lines 181-184 of `migrationHandler.ts` |
 
 ## Implementation
 
-### 1. Bastion module
+Two concurrent workstreams on one PR branch.
 
-New `terraform/modules/db_bastion/` — single `t4g.nano`, no SSH, `AmazonSSMManagedInstanceCore` instance profile, SG with outbound 5432 to RDS only. RDS SG gains ingress from the bastion SG. Instantiated once in [terraform/environments/dev/main.tf](../terraform/environments/dev/main.tf) under `count = local.environment == "dev" ? 1 : 0` — shared across all PR workspaces. Instance ID exported to SSM Parameter Store for the workflow to discover.
+### Interface contract (lock before either dev starts)
 
-### 2. Postgres provider + per-PR resources
+- Secret name: `ustc/pay-gov/dev/pr-${env}-db-user` — fits the existing `ustc/pay-gov/*` IAM wildcard at [terraform/modules/iam/main.tf:46](../terraform/modules/iam/main.tf#L46), no IAM change.
+- Secret shape: `{ "username": "...", "password": "..." }` JSON (matches existing `RDS_SECRET_ARN` consumers).
+- PR role name: `pr_user_${env_with_underscores}`.
+- New Lambda commands: `provision-user`, `deprovision-user`.
+- Migrations run as the admin role (`migrationRunner.RDS_SECRET_ARN` stays on the admin secret).
 
-`terraform/environments/dev/versions.tf` adds `cyrilgdn/postgresql ~> 1.23`.
+### Workstream A — Terraform + Lambda DDL
 
-`terraform/environments/dev/locals.tf` gains `is_pr`, `pr_db_name`, `pr_role`. New file `terraform/environments/dev/pr_database.tf` (all resources gated `count = local.is_pr ? 1 : 0`):
+**A1.** New `terraform/environments/dev/pr_user_secret.tf` — `random_password`, `aws_secretsmanager_secret`, `aws_secretsmanager_secret_version`, all gated `count = local.is_pr ? 1 : 0`.
 
-```hcl
-data "aws_secretsmanager_secret_version" "rds_admin" {
-  secret_id = data.aws_ssm_parameter.dev_rds_secret_arn[0].value
-}
+**A2.** Modify `terraform/environments/dev/locals.tf` — add `is_pr`, `pr_role`, `app_rds_secret_arn`. Point `lambda_env_payment.RDS_SECRET_ARN` and `lambda_env_dashboard.RDS_SECRET_ARN` at `app_rds_secret_arn`; leave `lambda_env_migration` on the admin secret. Wire `PR_USER_SECRET_ARN` into the migration Lambda's env.
 
-locals {
-  admin = jsondecode(data.aws_secretsmanager_secret_version.rds_admin[0].secret_string)
-}
+**A3.** Modify `src/migrationHandler.ts` — add `provision-user` (reads PR secret → CREATE ROLE in maintenance DB → GRANTs + ALTER DEFAULT PRIVILEGES in PR DB) and `deprovision-user` (terminate connections → REASSIGN OWNED → DROP OWNED → DROP ROLE). Delete the TODO. Idempotency via a `DO $$ ... IF NOT EXISTS` guard around `CREATE ROLE`.
 
-provider "postgresql" {
-  host     = "localhost"  # SSM port-forward terminus
-  port     = 5432
-  database = "postgres"
-  username = local.admin.username
-  password = local.admin.password
-  sslmode  = "require"
-}
+### Workstream B — Workflow + tests
 
-resource "random_password" "pr_user" { length = 32, special = false }
+**B1.** Modify `.github/workflows/cicd-dev.yml` — invoke `provision-user` immediately after the existing `create-db` step (~line 210) and `deprovision-user` immediately before the existing `drop-db` step (~line 401). `migrate` invoke stays unchanged.
 
-resource "aws_secretsmanager_secret"         "pr_user" { name = "ustc-payment-portal/${local.environment}/db-user", recovery_window_in_days = 0 }
-resource "aws_secretsmanager_secret_version" "pr_user" { secret_id = aws_secretsmanager_secret.pr_user[0].id, secret_string = jsonencode({ username = local.pr_role, password = random_password.pr_user[0].result }) }
+**B2.** Modify `src/migrationHandler.test.ts` — cover both new commands: happy path (assert SQL via `knex.raw` spy), idempotency (re-run with role already present), drop ordering (terminate → REASSIGN → DROP OWNED → DROP ROLE), drop when role missing (`IF EXISTS` succeeds silently). Target ≥90% coverage on new code paths.
 
-resource "postgresql_role"     "pr_user" { name = local.pr_role, login = true, password = random_password.pr_user[0].result }
-resource "postgresql_database" "pr_db"   { name = local.pr_db_name, owner = local.admin.username }
+## Postgres DDL — canonical sequences
 
-resource "postgresql_grant" "connect" { database = postgresql_database.pr_db[0].name, role = postgresql_role.pr_user[0].name, object_type = "database", privileges = ["CONNECT"] }
-resource "postgresql_grant" "schema"  { database = postgresql_database.pr_db[0].name, role = postgresql_role.pr_user[0].name, schema = "public", object_type = "schema", privileges = ["USAGE"] }
+**Provision** (Lambda, as admin):
 
-# Cascades to every table/sequence migrations create later, since admin owns them.
-resource "postgresql_default_privileges" "tables"    { database = postgresql_database.pr_db[0].name, schema = "public", owner = local.admin.username, role = postgresql_role.pr_user[0].name, object_type = "table",    privileges = ["SELECT","INSERT","UPDATE","DELETE"] }
-resource "postgresql_default_privileges" "sequences" { database = postgresql_database.pr_db[0].name, schema = "public", owner = local.admin.username, role = postgresql_role.pr_user[0].name, object_type = "sequence", privileges = ["USAGE","SELECT","UPDATE"] }
+```sql
+-- maintenance DB:
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'pr_user_pr_123') THEN
+    CREATE ROLE pr_user_pr_123 LOGIN PASSWORD '<from secret>';
+  ELSE
+    ALTER ROLE pr_user_pr_123 WITH LOGIN PASSWORD '<from secret>';
+  END IF;
+END $$;
+
+-- PR DB (paymentportal_pr_123):
+GRANT CONNECT ON DATABASE paymentportal_pr_123 TO pr_user_pr_123;
+GRANT USAGE ON SCHEMA public TO pr_user_pr_123;
+ALTER DEFAULT PRIVILEGES FOR ROLE payment_portal_admin IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES    TO pr_user_pr_123;
+ALTER DEFAULT PRIVILEGES FOR ROLE payment_portal_admin IN SCHEMA public
+  GRANT USAGE, SELECT, UPDATE          ON SEQUENCES TO pr_user_pr_123;
 ```
 
-### 3. Lambda env var swap
+**Deprovision**:
 
-In `locals.tf`, introduce `app_rds_secret_arn = local.is_pr ? aws_secretsmanager_secret.pr_user[0].arn : local.rds_secret_arn`.
+```sql
+-- PR DB:
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+  WHERE usename = 'pr_user_pr_123' AND pid <> pg_backend_pid();
+REASSIGN OWNED BY pr_user_pr_123 TO payment_portal_admin;
+DROP OWNED BY pr_user_pr_123;
 
-- `lambda_env_payment.RDS_SECRET_ARN` → `app_rds_secret_arn`
-- `lambda_env_dashboard.RDS_SECRET_ARN` → `app_rds_secret_arn`
-- `lambda_env_migration.RDS_SECRET_ARN` → stays `local.rds_secret_arn` (admin, runs migrations)
-
-`RDS_MASTER_SECRET_ARN` is removed from `lambda_env_migration` — Lambda no longer needs it.
-
-### 4. Strip dead code
-
-[src/migrationHandler.ts](../src/migrationHandler.ts): delete `createDb`, `dropDb`, `gcDbs`, `getMaintenanceKnex`, the matching command-dispatch branches, and the TODO. The `Command` type collapses to `"migrate" | "seed" | "verify"`.
-
-[src/migrationHandler.test.ts](../src/migrationHandler.test.ts): delete the create-db / drop-db / gc-dbs blocks; drop `RDS_MASTER_SECRET_ARN` from setup.
-
-[terraform/modules/iam/main.tf](../terraform/modules/iam/main.tf): remove migrationRunner's `CreateDatabase`-related grants on the master secret (Lambda no longer reads it).
-
-### 5. Workflow changes
-
-[.github/workflows/cicd-dev.yml](../.github/workflows/cicd-dev.yml):
-
-- **New step before `Terraform Apply`**: open the SSM tunnel (background process, wait for `localhost:5432` to accept connections, store PID).
-- **New step on job exit**: kill the tunnel PID.
-- **Remove** the `create-db` invoke ([line 210](../.github/workflows/cicd-dev.yml#L210)) and the `drop-db` invoke ([line 401](../.github/workflows/cicd-dev.yml#L401)).
-- **Keep** the `migrate` invoke unchanged.
-
-[.github/workflows/gc-pr-dbs.yml](../.github/workflows/gc-pr-dbs.yml): repurpose from auto-drop to alert-only. Under Option B, an orphan DB means a failed `terraform destroy` and should be investigated, not swept.
-
-### 6. Destroy ordering
-
-Postgres refuses to drop a role that owns objects or a DB with open connections. Add a `null_resource` with `when = destroy` provisioner that runs before the `postgresql_database` destroys:
-
-```hcl
-resource "null_resource" "pre_destroy" {
-  triggers = { db = local.pr_db_name, role = local.pr_role, admin_user = local.admin.username, admin_pw = local.admin.password }
-  provisioner "local-exec" {
-    when    = destroy
-    command = <<-EOT
-      PGPASSWORD='${self.triggers.admin_pw}' psql -h localhost -U ${self.triggers.admin_user} -d postgres -c "
-        SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='${self.triggers.db}';
-        REASSIGN OWNED BY ${self.triggers.role} TO ${self.triggers.admin_user};
-        DROP OWNED BY ${self.triggers.role};"
-    EOT
-  }
-}
+-- maintenance DB:
+DROP ROLE IF EXISTS pr_user_pr_123;
 ```
 
-Admin creds are captured in `triggers` so the data source isn't needed at destroy time.
+## Tests & rollback
 
-## Tests
+**Integration** (the PR pipeline is the only real signal): apply → app Lambdas read/write as PR user → `psql` as PR user proves `\c paymentportal_pr_<other>` is rejected → close PR → role/secret/DB all gone → reopen same PR number works with fresh password.
 
-- **Jest**: delete obsolete create-db/drop-db/gc-dbs cases; assert `migrate` works without `RDS_MASTER_SECRET_ARN`.
-- **`terraform validate`** on dev workspace and a sample PR workspace.
-- **End-to-end on the validation PR**:
-  1. Apply → app Lambdas read/write via PR user.
-  2. Connect as PR user via `psql` → `\l` shows only the PR's DB accessible; cross-DB `\c` rejected.
-  3. Close PR → destroy succeeds → role, DB, secret all gone.
-  4. Reopen same PR number → fresh credentials, no name collision.
-
-## Rollback
-
-Reachable via revert of the PR — the change is gated by `local.is_pr` and the postgres provider. To roll back without revert: point `app_rds_secret_arn` back to the admin secret, restore the Lambda commands from git, re-add the workflow invokes, `terraform destroy` orphans. Bastion + IAM stay (cheap, harmless).
+**Rollback**: revert the PR. Gated by `local.is_pr` and command-dispatch — no infra to undo, no migrations to roll back.
 
 ## Risks
 
 | Risk | Mitigation |
-|---|---|
-| SSM tunnel flakes mid-apply | Readiness loop on `localhost:5432`; retry apply once |
-| Tunnel not running during destroy | Same tunnel step must run in the cleanup job, not just apply |
-| `default_privileges` only covers *future* tables | All app tables come from migrations that run after the role exists — order is correct by construction |
-| Concurrent PR applies contend | Tunnel binds runner-local 5432; isolated per runner |
-| Bastion = SPOF for PR provisioning | Acceptable for dev. If it bottlenecks, move to CodeBuild |
+| --- | --- |
+| `provision-user` runs before secret exists | Workflow order: terraform apply → create-db → provision-user → migrate |
+| `DROP ROLE` fails (owned objects / open conns) | `pg_terminate_backend` → `REASSIGN OWNED` → `DROP OWNED` precede it |
+| `ALTER DEFAULT PRIVILEGES` only affects future tables | Migrations run after the role exists — order is correct by construction |
+| Workflow retry re-invokes `provision-user` | DDL is idempotent: `DO` block guards `CREATE ROLE`; `GRANT`/`ALTER DEFAULT PRIVILEGES` are inherently idempotent |
 
 ## Out of scope
 
