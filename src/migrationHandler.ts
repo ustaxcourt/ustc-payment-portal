@@ -242,6 +242,14 @@ const provisionUser = async (): Promise<MigrationHandlerResult> => {
     await dbKnex.raw(`GRANT CONNECT ON DATABASE ?? TO ??`, [dbName, prRole]);
     await dbKnex.raw(`GRANT USAGE ON SCHEMA public TO ??`, [prRole]);
     await dbKnex.raw(
+      `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ??`,
+      [prRole],
+    );
+    await dbKnex.raw(
+      `GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO ??`,
+      [prRole],
+    );
+    await dbKnex.raw(
       `ALTER DEFAULT PRIVILEGES FOR ROLE ?? IN SCHEMA public
        GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ??`,
       [connection.user, prRole],

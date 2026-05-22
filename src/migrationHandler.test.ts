@@ -332,6 +332,14 @@ describe("migrationHandler", () => {
         ["pr_user_pr_99"],
       );
       expect(mockRaw).toHaveBeenCalledWith(
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ??",
+        ["pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenCalledWith(
+        "GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO ??",
+        ["pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenCalledWith(
         expect.stringContaining(
           "ALTER DEFAULT PRIVILEGES FOR ROLE ?? IN SCHEMA public",
         ),
