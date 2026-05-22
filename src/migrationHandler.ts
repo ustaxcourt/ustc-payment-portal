@@ -202,20 +202,23 @@ const provisionUser = async (): Promise<MigrationHandlerResult> => {
 
   const maintenanceKnex = await getMaintenanceKnex();
   try {
-    await maintenanceKnex.raw(
-      `
-      DO $$
-      BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ?) THEN
-          EXECUTE format('CREATE ROLE %I LOGIN PASSWORD %L', ?, ?);
-        ELSE
-          EXECUTE format('ALTER ROLE %I WITH LOGIN PASSWORD %L', ?, ?);
-        END IF;
-      END
-      $$;
-      `,
-      [prRole, prRole, prPassword, prRole, prPassword],
-    );
+    const roleExistsResult = await maintenanceKnex.raw<{
+      rows: { exists: boolean }[];
+    }>(`SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = ?) AS exists`, [
+      prRole,
+    ]);
+
+    if (roleExistsResult.rows[0].exists) {
+      await maintenanceKnex.raw(`ALTER ROLE ?? WITH LOGIN PASSWORD ?`, [
+        prRole,
+        prPassword,
+      ]);
+    } else {
+      await maintenanceKnex.raw(`CREATE ROLE ?? LOGIN PASSWORD ?`, [
+        prRole,
+        prPassword,
+      ]);
+    }
   } finally {
     await maintenanceKnex.destroy();
   }

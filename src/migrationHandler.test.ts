@@ -295,7 +295,7 @@ describe("migrationHandler", () => {
       expect(mockKnex).not.toHaveBeenCalled();
     });
 
-    it("creates or updates role and grants PR database permissions", async () => {
+    it("creates role and grants PR database permissions when role is missing", async () => {
       mockSend.mockImplementation(({ SecretId }: { SecretId: string }) => {
         if (SecretId === process.env.PR_USER_SECRET_ARN) {
           return Promise.resolve({ SecretString: PR_USER_SECRET });
@@ -307,19 +307,23 @@ describe("migrationHandler", () => {
 
         return Promise.resolve({ SecretString: RDS_SECRET });
       });
-      mockRaw.mockResolvedValue(undefined);
+      mockRaw
+        .mockResolvedValueOnce({ rows: [{ exists: false }] })
+        .mockResolvedValue(undefined);
 
       const result = await migrationHandler({ command: "provision-user" });
 
       expect(mockRaw).toHaveBeenCalledWith(
-        expect.stringContaining("IF NOT EXISTS (SELECT 1 FROM pg_roles"),
-        [
-          "pr_user_pr_99",
-          "pr_user_pr_99",
-          "pr_password",
-          "pr_user_pr_99",
-          "pr_password",
-        ],
+        "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = ?) AS exists",
+        ["pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenCalledWith("CREATE ROLE ?? LOGIN PASSWORD ?", [
+        "pr_user_pr_99",
+        "pr_password",
+      ]);
+      expect(mockRaw).not.toHaveBeenCalledWith(
+        "ALTER ROLE ?? WITH LOGIN PASSWORD ?",
+        ["pr_user_pr_99", "pr_password"],
       );
       expect(mockRaw).toHaveBeenCalledWith(
         "GRANT CONNECT ON DATABASE ?? TO ??",
@@ -343,6 +347,34 @@ describe("migrationHandler", () => {
             'Provisioned role "pr_user_pr_99" for database "paymentportal_pr_99"',
         }),
       });
+    });
+
+    it("alters role password when role already exists", async () => {
+      mockSend.mockImplementation(({ SecretId }: { SecretId: string }) => {
+        if (SecretId === process.env.PR_USER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: PR_USER_SECRET });
+        }
+
+        if (SecretId === process.env.RDS_MASTER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: MASTER_SECRET });
+        }
+
+        return Promise.resolve({ SecretString: RDS_SECRET });
+      });
+      mockRaw
+        .mockResolvedValueOnce({ rows: [{ exists: true }] })
+        .mockResolvedValue(undefined);
+
+      await migrationHandler({ command: "provision-user" });
+
+      expect(mockRaw).toHaveBeenCalledWith(
+        "ALTER ROLE ?? WITH LOGIN PASSWORD ?",
+        ["pr_user_pr_99", "pr_password"],
+      );
+      expect(mockRaw).not.toHaveBeenCalledWith(
+        "CREATE ROLE ?? LOGIN PASSWORD ?",
+        ["pr_user_pr_99", "pr_password"],
+      );
     });
   });
 
