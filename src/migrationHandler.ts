@@ -292,6 +292,24 @@ const deprovisionUser = async (): Promise<MigrationHandlerResult> => {
   });
 
   try {
+    // REASSIGN OWNED BY / DROP OWNED BY both error if the role doesn't exist,
+    // which would mask a clean teardown (role was never created, or a previous
+    // deprovision-user already ran). Short-circuit if the role isn't there.
+    const roleExistsResult = await dbKnex.raw<{
+      rows: { exists: boolean }[];
+    }>(`SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = ?) AS exists`, [
+      prRole,
+    ]);
+
+    if (!roleExistsResult.rows[0].exists) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          message: `Role "${prRole}" does not exist; nothing to deprovision`,
+        }),
+      };
+    }
+
     await dbKnex.raw(
       `SELECT pg_terminate_backend(pid)
        FROM pg_stat_activity

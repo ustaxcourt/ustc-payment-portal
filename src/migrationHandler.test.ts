@@ -410,29 +410,64 @@ describe("migrationHandler", () => {
 
         return Promise.resolve({ SecretString: RDS_SECRET });
       });
-      mockRaw.mockResolvedValue(undefined);
+      // First call is the existence check; subsequent destructive calls return undefined.
+      mockRaw
+        .mockResolvedValueOnce({ rows: [{ exists: true }] })
+        .mockResolvedValue(undefined);
 
       const result = await migrationHandler({ command: "deprovision-user" });
 
       expect(mockRaw).toHaveBeenNthCalledWith(
         1,
+        expect.stringContaining("SELECT EXISTS"),
+        ["pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenNthCalledWith(
+        2,
         expect.stringContaining("SELECT pg_terminate_backend(pid)"),
         ["pr_user_pr_99"],
       );
-      expect(mockRaw).toHaveBeenNthCalledWith(2, "REASSIGN OWNED BY ?? TO ??", [
+      expect(mockRaw).toHaveBeenNthCalledWith(3, "REASSIGN OWNED BY ?? TO ??", [
         "pr_user_pr_99",
         "db_user",
       ]);
-      expect(mockRaw).toHaveBeenNthCalledWith(3, "DROP OWNED BY ??", [
+      expect(mockRaw).toHaveBeenNthCalledWith(4, "DROP OWNED BY ??", [
         "pr_user_pr_99",
       ]);
-      expect(mockRaw).toHaveBeenNthCalledWith(4, "DROP ROLE IF EXISTS ??", [
+      expect(mockRaw).toHaveBeenNthCalledWith(5, "DROP ROLE IF EXISTS ??", [
         "pr_user_pr_99",
       ]);
       expect(mockDestroy).toHaveBeenCalledTimes(2);
       expect(result).toEqual({
         statusCode: 200,
         body: JSON.stringify({ message: 'Deprovisioned role "pr_user_pr_99"' }),
+      });
+    });
+
+    it("is a no-op when the role does not exist", async () => {
+      mockSend.mockImplementation(({ SecretId }: { SecretId: string }) => {
+        if (SecretId === process.env.PR_USER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: PR_USER_SECRET });
+        }
+        return Promise.resolve({ SecretString: RDS_SECRET });
+      });
+      // Existence check returns false — destructive SQL must not run.
+      mockRaw.mockResolvedValueOnce({ rows: [{ exists: false }] });
+
+      const result = await migrationHandler({ command: "deprovision-user" });
+
+      expect(mockRaw).toHaveBeenCalledTimes(1);
+      expect(mockRaw).toHaveBeenCalledWith(
+        expect.stringContaining("SELECT EXISTS"),
+        ["pr_user_pr_99"],
+      );
+      // Only the PR-DB knex was opened; maintenance knex (for DROP ROLE) was not.
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          message: 'Role "pr_user_pr_99" does not exist; nothing to deprovision',
+        }),
       });
     });
   });
