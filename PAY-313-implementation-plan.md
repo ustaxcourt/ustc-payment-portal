@@ -20,6 +20,26 @@ Goals covered by this plan:
 - The package is publishable to npm under `@ustaxcourt/payment-portal`.
 - Developer docs now include a dedicated local package testing guide.
 
+## Implementation Status Update (May 26, 2026)
+
+Completed in this repo:
+
+- Added package CLI entrypoint via `bin/payment-portal.js` and npm `bin` mapping.
+- CLI now launches `npm run start:all` from the installed package root.
+- CLI loads `.env` from the consumer project's current working directory.
+- Expanded published package contents (`files`) to include runtime startup assets (for example `scripts`, `db`, `src`, `docker-compose.yml`, `knexfile.ts`, `tsconfig.json`).
+- Moved runtime-required dependencies used by startup flow into `dependencies`.
+- Updated docker db-init command to handle both lockfile-present (`npm ci`) and lockfile-absent (`npm install`) packaged contexts.
+- Added docs for safe consumer-package testing: `docs/testing-package-locally.md`.
+- Linked new guide from `README.md` publishing section.
+- Updated `start:dev-server` to run compiled JS (`node dist/devServer.js`) instead of compiling TS with `ts-node` at consumer runtime.
+
+Still pending to close PAY-313:
+
+- Full DAWSON (ef-cms) POC validation on latest tarball/package version.
+- Anurag walkthrough and sign-off notes.
+- Any follow-up fixes discovered during walkthrough (Portal and/or Pay.gov Test Server).
+
 ## Scope
 
 In scope:
@@ -131,6 +151,11 @@ Deliverable:
 - `npx @ustaxcourt/payment-portal` starts docker + Portal + Pay.gov Test Server.
 - Basic health/API check succeeds (for example `/` and `/docs`).
 - Walkthrough completed by Anurag with no undocumented steps.
+
+Additional checks from implementation:
+
+- Consumer startup does not require compiling TS in consumer repo (`start:dev-server` uses `dist/devServer.js`).
+- Packaged startup works when `package-lock.json` is not included in the published artifact.
 
 ## Exit Criteria
 

@@ -11,7 +11,8 @@ const packageRoot = path.resolve(__dirname, "..");
 // Load .env from the caller's working directory for npx usage in other projects.
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
-const child = spawn(npmCommand, ["--prefix", packageRoot, "run", "start:all"], {
+const child = spawn(npmCommand, ["run", "start:all"], {
+  cwd: packageRoot,
   stdio: "inherit",
   shell: IS_WINDOWS,
   env: process.env,

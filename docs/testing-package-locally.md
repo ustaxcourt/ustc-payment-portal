@@ -45,6 +45,8 @@ npm install /absolute/path/to/ustaxcourt-payment-portal-0.1.3.tgz
 
 Create a `.env` file in the consumer project with values needed by local startup.
 
+Important: when launched via `npx @ustaxcourt/payment-portal`, the CLI loads `.env` from the consumer project's current working directory.
+
 At minimum, include:
 
 ```env
@@ -97,6 +99,35 @@ npx @ustaxcourt/payment-portal
 - If startup fails due to ports in use, free those ports or set your own port env vars.
 - If startup fails due to missing env vars, verify `.env` exists in the consumer project root.
 - If docker is not running, start Docker Desktop and retry.
+
+### Engine mismatch (`EBADENGINE`)
+
+If install fails with `EBADENGINE`, your consumer project's Node/npm versions do not satisfy that project's `engines` policy.
+
+Quick checks:
+
+```bash
+node -v
+npm -v
+cat .nvmrc
+```
+
+After switching Node/npm versions, do a clean reinstall in the consumer project:
+
+```bash
+rm -rf node_modules
+npm ci
+```
+
+Then reinstall the payment-portal tarball (or package version) and retry `npx @ustaxcourt/payment-portal`.
+
+### Stale tarball / package state
+
+If behavior does not match latest local changes:
+
+1. Rebuild package tarball in this repo (`npm pack`).
+2. Reinstall that exact tarball in consumer repo.
+3. Retry startup.
 
 ## Official npm Docs
 
