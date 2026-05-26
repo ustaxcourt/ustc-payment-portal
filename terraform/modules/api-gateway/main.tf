@@ -406,45 +406,50 @@ resource "aws_api_gateway_deployment" "deployment" {
   # and conditional enablement — no risk of the stage pointing at a stale
   # deployment because someone forgot to update a string here.
   triggers = {
-    redeployment = sha1(jsonencode({
-      resources = [
-        aws_api_gateway_resource.init.id,
-        aws_api_gateway_resource.process.id,
-        aws_api_gateway_resource.test.id,
-        aws_api_gateway_resource.details.id,
-        aws_api_gateway_resource.details_tracking.id,
-        try(aws_api_gateway_resource.transactions[0].id, ""),
-        try(aws_api_gateway_resource.transactions_by_status[0].id, ""),
-        try(aws_api_gateway_resource.transaction_payment_status[0].id, ""),
-      ]
-      methods = [
-        aws_api_gateway_method.init_post.id,
-        aws_api_gateway_method.process_post.id,
-        aws_api_gateway_method.test_get.id,
-        aws_api_gateway_method.details_get.id,
-        try(aws_api_gateway_method.transactions_get[0].id, ""),
-        try(aws_api_gateway_method.transactions_by_status_get[0].id, ""),
-        try(aws_api_gateway_method.transaction_payment_status_get[0].id, ""),
-        try(aws_api_gateway_method.transactions_options[0].id, ""),
-        try(aws_api_gateway_method.transactions_by_status_options[0].id, ""),
-        try(aws_api_gateway_method.transaction_payment_status_options[0].id, ""),
-      ]
-      integrations = [
-        aws_api_gateway_integration.init_integration.id,
-        aws_api_gateway_integration.process_integration.id,
-        aws_api_gateway_integration.test_integration.id,
-        aws_api_gateway_integration.details_integration.id,
-        try(aws_api_gateway_integration.transactions_integration[0].id, ""),
-        try(aws_api_gateway_integration.transactions_by_status_integration[0].id, ""),
-        try(aws_api_gateway_integration.transaction_payment_status_integration[0].id, ""),
-        try(aws_api_gateway_integration.transactions_options_integration[0].id, ""),
-        try(aws_api_gateway_integration.transactions_by_status_options_integration[0].id, ""),
-        try(aws_api_gateway_integration.transaction_payment_status_options_integration[0].id, ""),
-      ]
-      # Resource policy isn't tied to a specific method/resource ID, so we still
-      # hash its contents directly so policy edits force a redeploy.
-      policy = data.aws_iam_policy_document.api_resource_policy.json
-    }))
+    redeployment = sha1(jsonencode([
+      # Path resources — included so path_part changes force a fresh deployment snapshot.
+      aws_api_gateway_resource.init.id,
+      aws_api_gateway_resource.process.id,
+      aws_api_gateway_resource.test.id,
+      aws_api_gateway_resource.details.id,
+      aws_api_gateway_resource.details_tracking.id,
+
+      try(aws_api_gateway_resource.transactions[0].id, ""),
+      try(aws_api_gateway_resource.transactions_by_status[0].id, ""),
+      try(aws_api_gateway_resource.transaction_payment_status[0].id, ""),
+
+      aws_api_gateway_method.init_post.id,
+      aws_api_gateway_method.process_post.id,
+      aws_api_gateway_method.test_get.id,
+      aws_api_gateway_method.details_get.id,
+
+      try(aws_api_gateway_method.transactions_get[0].id, ""),
+      try(aws_api_gateway_method.transactions_by_status_get[0].id, ""),
+      try(aws_api_gateway_method.transaction_payment_status_get[0].id, ""),
+
+      try(aws_api_gateway_method.transactions_options[0].id, ""),
+      try(aws_api_gateway_method.transactions_by_status_options[0].id, ""),
+      try(aws_api_gateway_method.transaction_payment_status_options[0].id, ""),
+
+      aws_api_gateway_integration.init_integration.id,
+      aws_api_gateway_integration.process_integration.id,
+      aws_api_gateway_integration.test_integration.id,
+      aws_api_gateway_integration.details_integration.id,
+
+      try(aws_api_gateway_integration.transactions_integration[0].id, ""),
+      try(aws_api_gateway_integration.transactions_by_status_integration[0].id, ""),
+      try(aws_api_gateway_integration.transaction_payment_status_integration[0].id, ""),
+
+      try(aws_api_gateway_integration.transactions_options_integration[0].id, ""),
+      try(aws_api_gateway_integration.transactions_by_status_options_integration[0].id, ""),
+      try(aws_api_gateway_integration.transaction_payment_status_options_integration[0].id, ""),
+
+      # Use the data source JSON (not the applied resource field) to avoid
+      # provider-side normalization changing this value mid-apply.
+      data.aws_iam_policy_document.api_resource_policy.json,
+      aws_api_gateway_gateway_response.default_4xx.id,
+      aws_api_gateway_gateway_response.default_5xx.id,
+    ]))
   }
 
   lifecycle {
