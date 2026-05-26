@@ -18,7 +18,8 @@ type Command =
   | "migrate"
   | "seed"
   | "verify"
-  | "gc-dbs";
+  | "gc-dbs"
+  | "gc-roles";
 
 type MigrationHandlerEvent = {
   command?: Command;
@@ -460,6 +461,45 @@ const gcDbs = async (
   return { statusCode: 200, body: JSON.stringify({ dropped }) };
 };
 
+/**
+ * Drops all pr_user_pr_* roles that are not in the provided list of open PR numbers.
+ * Run after gc-dbs in the nightly workflow — the per-PR database is gone by then, so
+ * the role no longer owns anything and DROP ROLE succeeds cleanly. Catches roles that
+ * lingered because deprovision-user failed during PR teardown.
+ */
+const gcRoles = async (
+  openPrNumbers: number[],
+): Promise<MigrationHandlerResult> => {
+  const knex = await getMaintenanceKnex();
+  const dropped: string[] = [];
+  const failed: { rolname: string; error: string }[] = [];
+  try {
+    const result = await knex.raw<{ rows: { rolname: string }[] }>(
+      `SELECT rolname FROM pg_roles WHERE rolname LIKE 'pr_user_pr_%'`,
+    );
+    for (const { rolname } of result.rows) {
+      const match = rolname.match(/^pr_user_pr_(\d+)$/);
+      if (!match) continue;
+      const prNumber = Number(match[1]);
+      if (openPrNumbers.includes(prNumber)) continue;
+      try {
+        await knex.raw(`DROP ROLE IF EXISTS ??`, [rolname]);
+        dropped.push(rolname);
+        console.log(`[migrationHandler] gc-roles: dropped ${rolname}`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        failed.push({ rolname, error: message });
+        console.error(
+          `[migrationHandler] gc-roles: failed to drop ${rolname}: ${message}`,
+        );
+      }
+    }
+  } finally {
+    await knex.destroy();
+  }
+  return { statusCode: 200, body: JSON.stringify({ dropped, failed }) };
+};
+
 // THIS WILL ONLY BE FOR CI/CD USAGE AND SHOULD NOT BE EXPOSED IN API GATEWAY
 // If we ever write integration tests for this Lambda or any of the dashboard endpoints,
 // we will need to setup PR ephemeral environments to spin up a RDS instance, otherwise the tests
@@ -486,6 +526,14 @@ export const migrationHandler = async (
       );
     }
     return gcDbs(event.openPrNumbers);
+  }
+  if (command === "gc-roles") {
+    if (!event?.openPrNumbers?.length) {
+      throw new Error(
+        "gc-roles requires a non-empty openPrNumbers array — omitting it would drop all PR roles",
+      );
+    }
+    return gcRoles(event.openPrNumbers);
   }
   if (command === "show-users") return showUsers();
   if (command === "show-databases") return showDatabases();

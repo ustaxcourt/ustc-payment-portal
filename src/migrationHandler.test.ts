@@ -649,4 +649,144 @@ describe("migrationHandler", () => {
       expect(mockDestroy).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("gc-roles", () => {
+    beforeEach(() => {
+      mockSend.mockResolvedValue({ SecretString: MASTER_SECRET });
+    });
+
+    it("throws when openPrNumbers is not provided", async () => {
+      await expect(migrationHandler({ command: "gc-roles" })).rejects.toThrow(
+        "gc-roles requires a non-empty openPrNumbers array",
+      );
+      expect(mockRaw).not.toHaveBeenCalled();
+    });
+
+    it("throws when openPrNumbers is an empty array", async () => {
+      await expect(
+        migrationHandler({ command: "gc-roles", openPrNumbers: [] }),
+      ).rejects.toThrow("gc-roles requires a non-empty openPrNumbers array");
+      expect(mockRaw).not.toHaveBeenCalled();
+    });
+
+    it("drops roles for closed PRs and keeps open ones", async () => {
+      mockRaw.mockResolvedValueOnce({
+        rows: [
+          { rolname: "pr_user_pr_10" },
+          { rolname: "pr_user_pr_20" },
+          { rolname: "pr_user_pr_30" },
+        ],
+      });
+      mockRaw.mockResolvedValue(undefined);
+
+      const result = await migrationHandler({
+        command: "gc-roles",
+        openPrNumbers: [20],
+      });
+
+      expect(mockRaw).toHaveBeenCalledWith("DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_10",
+      ]);
+      expect(mockRaw).toHaveBeenCalledWith("DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_30",
+      ]);
+      // pr_20 is open — must NOT be dropped
+      expect(mockRaw).not.toHaveBeenCalledWith("DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_20",
+      ]);
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          dropped: ["pr_user_pr_10", "pr_user_pr_30"],
+          failed: [],
+        }),
+      });
+    });
+
+    it("drops nothing when all PR roles are still open", async () => {
+      mockRaw.mockResolvedValueOnce({
+        rows: [{ rolname: "pr_user_pr_10" }, { rolname: "pr_user_pr_20" }],
+      });
+
+      const result = await migrationHandler({
+        command: "gc-roles",
+        openPrNumbers: [10, 20],
+      });
+
+      expect(mockRaw).toHaveBeenCalledTimes(1); // only the SELECT
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({ dropped: [], failed: [] }),
+      });
+    });
+
+    it("skips role names that do not match the expected pattern", async () => {
+      mockRaw.mockResolvedValueOnce({
+        rows: [
+          { rolname: "pr_user_pr_10" },
+          { rolname: "pr_user_pr_unexpected" },
+        ],
+      });
+      mockRaw.mockResolvedValue(undefined);
+
+      const result = await migrationHandler({
+        command: "gc-roles",
+        openPrNumbers: [99],
+      });
+
+      expect(mockRaw).toHaveBeenCalledWith("DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_10",
+      ]);
+      expect(mockRaw).not.toHaveBeenCalledWith(expect.anything(), [
+        "pr_user_pr_unexpected",
+      ]);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          dropped: ["pr_user_pr_10"],
+          failed: [],
+        }),
+      });
+    });
+
+    it("continues past individual drop failures and reports them", async () => {
+      mockRaw
+        .mockResolvedValueOnce({
+          rows: [
+            { rolname: "pr_user_pr_10" },
+            { rolname: "pr_user_pr_20" },
+          ],
+        })
+        .mockRejectedValueOnce(new Error("role pr_user_pr_10 cannot be dropped"))
+        .mockResolvedValueOnce(undefined);
+
+      const result = await migrationHandler({
+        command: "gc-roles",
+        openPrNumbers: [99],
+      });
+
+      // Both drops were attempted; one failed, one succeeded
+      expect(mockRaw).toHaveBeenCalledWith("DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_10",
+      ]);
+      expect(mockRaw).toHaveBeenCalledWith("DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_20",
+      ]);
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          dropped: ["pr_user_pr_20"],
+          failed: [
+            {
+              rolname: "pr_user_pr_10",
+              error: "role pr_user_pr_10 cannot be dropped",
+            },
+          ],
+        }),
+      });
+    });
+  });
 });
