@@ -4,9 +4,7 @@ import { ProcessPayment } from "../useCases/processPayment";
 import { GetDetails } from "../useCases/getDetails";
 import { GetRecentTransactions } from "../useCases/getRecentTransactions";
 import { GetTransactionPaymentStatus } from "../useCases/getTransactionPaymentStatus";
-import {
-  GetTransactionsByStatus,
-} from "../useCases/getTransactionsByStatus";
+import { GetTransactionsByStatus } from "../useCases/getTransactionsByStatus";
 
 export type AppContext = {
   getHttpsAgent: () => Promise<https.Agent | undefined>;
@@ -18,5 +16,10 @@ export type AppContext = {
     getRecentTransactions: GetRecentTransactions;
     getTransactionPaymentStatus: GetTransactionPaymentStatus;
     getTransactionsByStatus: GetTransactionsByStatus;
+  };
+  logger: {
+    info: (message: string, additionalFields?: Record<string, any>) => void;
+    error: (message: string, additionalFields?: Record<string, any>) => void;
+    warn: (message: string, additionalFields?: Record<string, any>) => void;
   };
 };

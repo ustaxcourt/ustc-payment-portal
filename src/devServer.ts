@@ -16,9 +16,17 @@ import "./db/knex";
 import { ClientPermission } from "./types/ClientPermission";
 import { logger } from "./utils/logger";
 
-const appContext = createAppContext();
-
 const app = express();
+
+const setupLocalAppContext = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): void => {
+  res.locals.appContext = createAppContext({ localRequest: req });
+  next();
+};
+
 // strict: false to match the Lambda's JSON.parse, which accepts primitive top-level
 // values (strings, null, booleans, numbers). With strict: true (the express default),
 // those would be rejected as parse errors before reaching schema validation, so a
@@ -38,6 +46,9 @@ app.use((req, res, next) => {
     next();
   });
 });
+app.use(setupLocalAppContext);
+
+
 // tslint:disable-next-line:no-var-requires
 const { parsePort } = require("../scripts/lib/parsePort");
 const port: number = parsePort(process.env.API_PORT, 8080, "API_PORT");
@@ -95,9 +106,9 @@ app.post("/init", async (req, res) => {
   );
   try {
     const request = parseRequestBody(req, InitPaymentRequestSchema);
-    const result = await appContext
+    const result = await res.locals.appContext
       .getUseCases()
-      .initPayment(appContext, { client: devClient, request });
+      .initPayment(res.locals.appContext, { client: devClient, request });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
@@ -108,9 +119,9 @@ app.post("/init", async (req, res) => {
 app.post("/process", async (req, res) => {
   try {
     const request = parseRequestBody(req, ProcessPaymentRequestSchema);
-    const result = await appContext
+    const result = await res.locals.appContext
       .getUseCases()
-      .processPayment(appContext, { client: devClient, request });
+      .processPayment(res.locals.appContext, { client: devClient, request });
     res.json(result);
   } catch (err) {
     const { statusCode, body } = handleError(err);
@@ -120,7 +131,7 @@ app.post("/process", async (req, res) => {
 
 app.get("/details/:transactionReferenceId", async (req, res) => {
   try {
-    const result = await appContext.getUseCases().getDetails(appContext, {
+    const result = await res.locals.appContext.getUseCases().getDetails(res.locals.appContext, {
       client: devClient,
       request: { transactionReferenceId: req.params.transactionReferenceId },
     });
@@ -149,9 +160,9 @@ app.get("/", (_req, res) => {
 
 app.get("/transactions", async (_req, res, next) => {
   try {
-    const result = await appContext
+    const result = await res.locals.appContext
       .getUseCases()
-      .getRecentTransactions(appContext);
+      .getRecentTransactions(res.locals.appContext);
     res.json(result);
   } catch (err) {
     next(err);
@@ -160,10 +171,10 @@ app.get("/transactions", async (_req, res, next) => {
 
 app.get("/transactions/:paymentStatus", async (req, res, next) => {
   try {
-    const result = await appContext
+    const result = await res.locals.appContext
       .getUseCases()
       .getTransactionsByStatus(
-        appContext,
+        res.locals.appContext,
         req.params as unknown as TransactionsByStatusPathParams,
       );
     res.json(result);
@@ -174,9 +185,9 @@ app.get("/transactions/:paymentStatus", async (req, res, next) => {
 
 app.get("/transaction-payment-status", async (_req, res, next) => {
   try {
-    const result = await appContext
+    const result = await res.locals.appContext
       .getUseCases()
-      .getTransactionPaymentStatus(appContext);
+      .getTransactionPaymentStatus(res.locals.appContext);
     res.json(result);
   } catch (err) {
     next(err);
