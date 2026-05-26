@@ -8,16 +8,14 @@ This ticket closes that gap by mirroring the validation/fault pattern already pr
 
 ## 2. Acceptance criteria — direct mapping
 
-| # | AC                                                                                                                 | Where addressed |
-|---|--------------------------------------------------------------------------------------------------------------------|-----------------|
-| 1 | Add a Zod XML schema for `StartOnlineCollectionResponse`                                                           | §4.1            |
-| 2 | Remove the current `StartOnlineCollectionResponse` type file                                                       | §4.2            |
-| 3 | Schema file exports `type StartOnlineCollectionResponse = z.infer<typeof StartOnlineCollectionResponseSchema>`     | §4.1            |
-| 4 | Replace any uses of the non-Zod `StartOnlineCollectionResponse` type with the schema-inferred version              | §4.3            |
-| 5 | Do **not** register the new schema with the OpenAPI registry — it is internal-only                                 | §4.4 + §6 gate  |
-| 6 | In [StartOnlineCollectionRequest.ts](src/entities/StartOnlineCollectionRequest.ts), `safeParse` `tokenResponse` in `useHttp()` before returning | §4.3            |
-| 7 | Update integration / unit tests as needed                                                                          | §5              |
-| 8 | Add a `handleFault` function mirroring `CompleteOnlineCollectionWithDetailsRequest.ts` if a fault is detected in the envelope | §4.3            |
+- **AC 1** — Add a Zod XML schema for `StartOnlineCollectionResponse` → §4.1
+- **AC 2** — Remove the current `StartOnlineCollectionResponse` type file → §4.2
+- **AC 3** — Schema file exports `type StartOnlineCollectionResponse = z.infer<typeof StartOnlineCollectionResponseSchema>` → §4.1
+- **AC 4** — Replace any uses of the non-Zod `StartOnlineCollectionResponse` type with the schema-inferred version → §4.3
+- **AC 5** — Do **not** register the new schema with the OpenAPI registry — it is internal-only → §3.4 + §6 gate
+- **AC 6** — In [StartOnlineCollectionRequest.ts](src/entities/StartOnlineCollectionRequest.ts), `safeParse` `tokenResponse` in `useHttp()` before returning → §4.3
+- **AC 7** — Update integration / unit tests as needed → §5
+- **AC 8** — Add a `handleFault` function mirroring `CompleteOnlineCollectionWithDetailsRequest.ts` if a fault is detected in the envelope → §4.3
 
 ## 3. Design decisions (calling these out now so review doesn't get derailed)
 
@@ -53,18 +51,35 @@ The fault envelope key (`S:Fault`) is the one fast-xml-parser produces after `So
 
 No change to `PayGovError` status codes, no change to `handleError`.
 
-### 3.4 OpenAPI exposure
+### 3.4 OpenAPI exposure & barrel placement
 
-The new schema is **internal-only** (it represents Pay.gov's wire response, not our public API). It will **not** be registered with [src/openapi/registry.ts](src/openapi/registry.ts). It will be exported from [src/schemas/index.ts](src/schemas/index.ts) (consistent with the sister response schemas) — that file is a TypeScript barrel, not the OpenAPI surface, so re-export does not leak it to the docs.
+The new schema is **internal-only** (it represents Pay.gov's wire response, not our public API). Two surfaces to keep it off of:
+
+1. **OpenAPI registry** — not registered in [src/openapi/registry.ts](src/openapi/registry.ts). AC #5.
+2. **Schema barrel** — not re-exported from [src/schemas/index.ts](src/schemas/index.ts). Grep-verified: neither sister Pay.gov response schema ([CompleteOnlineCollectionWithDetailsResponse.schema.ts](src/schemas/CompleteOnlineCollectionWithDetailsResponse.schema.ts), [PayGovGetDetailsResponse.schema.ts](src/schemas/PayGovGetDetailsResponse.schema.ts)) is in the barrel. The implicit convention is that wire-format schemas are imported by their entity with a direct path; only public-API-shaped schemas go through the barrel. Adding the new schema to the barrel would promote an internal vendor-protocol detail onto the convenience-import surface.
+
+The entity imports the schema directly: `import { ... } from "../schemas/StartOnlineCollectionResponse.schema"`.
 
 ### 3.5 Schema shape
 
-Two reasonable choices:
+Three options, in order of permissiveness:
 
-- **A. Minimal & strict:** `z.object({ token: z.string().min(1) })`.
-- **B. Loose:** `z.object({ token: z.string() })`.
+- **A. Loose:** `z.object({ token: z.string() })` — accepts empty strings.
+- **B. Non-empty:** `z.object({ token: z.string().min(1) })`.
+- **C. Exact length:** `z.object({ token: z.string().length(32) })`.
 
-Picking **A**. Pay.gov returning an empty-string token is functionally indistinguishable from a missing token — downstream we build a redirect URL with `?token=${token}` and persist the value to `paygovToken`. An empty string would create a poisoned in-flight record that the 3-hour reuse path in [initPayment.ts:62-69](src/useCases/initPayment.ts#L62-L69) would replay forever. Failing fast at the schema boundary is the right move.
+Picking **C**. Three signals confirm Pay.gov tokens are exactly 32 characters:
+
+1. [ProcessPayment.schema.ts:11](src/schemas/ProcessPayment.schema.ts#L11) — the client-facing request schema already enforces `z.string().length(32)` on the same token coming back in, with the description "The payment token received from Pay.gov after user completes payment form. Must be exactly 32 characters long."
+2. [initPayment.test.ts:193](src/useCases/initPayment.test.ts#L193) — fixture comment: `// 32 chars with the dashes removed.`
+3. [lambdaHandler.test.ts:345,357](src/lambdaHandler.test.ts#L345) — two tests explicitly assert 400 for under-32 and over-32 tokens.
+
+Choosing **C** over **B**:
+
+- **Symmetry.** The same token flows `Pay.gov → us → client → us → Pay.gov`. The `/process` boundary already rejects non-32-char tokens. If we accept them here and they're persisted, the round-trip will fail at `/process` time with a confusing client-side validation error. Better to fail at `/init` with a focused "Pay.gov returned a malformed token" log.
+- **Sandbox/regression detection.** If Pay.gov's sandbox or a future API change emits a different length, we want to know at the boundary, not three layers in.
+
+Choosing **C** over **A**: an empty-string token would poison the in-flight reuse path in [initPayment.ts:62-69](src/useCases/initPayment.ts#L62-L69) — the 3-hour replay window would keep handing the broken token back to clients. `.length(32)` rules this out by construction.
 
 Schema is a plain `z.object` (not `.strict()`) — fast-xml-parser may surface unknown nested elements, and we don't want to break on Pay.gov adding optional fields. Matches the convention in [CompleteOnlineCollectionWithDetailsResponse.schema.ts](src/schemas/CompleteOnlineCollectionWithDetailsResponse.schema.ts).
 
@@ -75,8 +90,10 @@ Schema is a plain `z.object` (not `.strict()`) — fast-xml-parser may surface u
 ```ts
 import { z } from "zod";
 
+// Pay.gov tokens are exactly 32 characters. The symmetric constraint lives on the
+// client-facing side in ProcessPayment.schema.ts. See §3.5 for rationale.
 export const StartOnlineCollectionResponseSchema = z.object({
-  token: z.string().min(1),
+  token: z.string().length(32),
 });
 
 export type StartOnlineCollectionResponse = z.infer<
@@ -84,7 +101,7 @@ export type StartOnlineCollectionResponse = z.infer<
 >;
 ```
 
-No `.openapi(...)` decoration, no registry registration.
+No `.openapi(...)` decoration, no registry registration, no barrel re-export (see §3.4).
 
 ### 4.2 Delete `src/types/StartOnlineCollectionResponse.ts`
 
@@ -189,9 +206,11 @@ Verify [src/openapi/registry.ts](src/openapi/registry.ts) is **not touched** —
 
 Mirrors [CompleteOnlineCollectionWithDetailsResponse.schema.test.ts](src/schemas/CompleteOnlineCollectionWithDetailsResponse.schema.test.ts). Cases:
 
-- accepts `{ token: "abc123" }`
+- accepts `{ token: "<32-char string>" }`
 - rejects missing `token`
 - rejects `token: ""` (empty string)
+- rejects `token: "<31-char string>"` (too short — pins `.length(32)`)
+- rejects `token: "<33-char string>"` (too long — pins `.length(32)`)
 - rejects `token: null`
 - rejects `token: 123` (wrong type)
 - accepts extra unknown fields (forward-compat assertion — confirms we did not accidentally `.strict()`)
@@ -231,16 +250,24 @@ Run the full integration suite locally before opening the PR — the new `safePa
 
 ## 6. Verification checklist (run before marking ticket done)
 
-- [ ] `npm run typecheck` — no errors. The `as StartOnlineCollectionResponse` cast removal must not regress.
+**Pre-work baseline** (do before any edits — gives you a known-good starting point):
+
+- [ ] `npm test` on the branch's starting commit — confirm green; record the test count.
+- [ ] `npm run lint` on the starting commit — confirm clean.
+
+**After implementation:**
+
+- [ ] `npm run tsc` — no errors. The `as StartOnlineCollectionResponse` cast removal must not regress.
 - [ ] `npm run lint` — clean.
-- [ ] `npm test -- StartOnlineCollectionResponse.schema` — all green.
-- [ ] `npm test -- StartOnlineCollectionRequest.test` — all green.
-- [ ] `npm test -- initPayment` — all green; the new "real malformed response" and "fault envelope" cases exercise the previously-dead `ZodError` and (new) `FailedTransactionError` branches.
-- [ ] `npm test` — full suite green.
+- [ ] `npx jest src/schemas/StartOnlineCollectionResponse.schema.test.ts` — all green.
+- [ ] `npx jest src/entities/StartOnlineCollectionRequest.test.ts` — all green.
+- [ ] `npx jest src/useCases/initPayment.test.ts` — all green; the new "real malformed response" and "fault envelope" cases exercise the previously-dead `ZodError` and (new) `FailedTransactionError` branches.
+- [ ] `npm test` — full suite green; expected test count is baseline + new tests, every previously passing test still passes.
 - [ ] `grep -r "src/types/StartOnlineCollectionResponse" src` — **empty** (file deleted, no stragglers).
 - [ ] `grep -rn "StartOnlineCollectionResponse" src/openapi` — **empty** (AC #5 — schema not in OpenAPI surface).
-- [ ] `npm run generate:openapi` (or whichever script emits the spec) — diff the generated spec against `main`; only the auto-bumped `info.version` should change. **No** new component schemas, no `StartOnlineCollectionResponse` key anywhere in the spec.
-- [ ] Manually trigger initPayment against the Pay.gov dev endpoint (or the local SOAP stub) and confirm a valid token still flows end-to-end into the database (`updateToInitiated` succeeds, `paymentRedirect` returned).
+- [ ] `npm run generate:openapi` — diff the generated spec against `main`; only the auto-bumped `info.version` should change. **No** new component schemas, no `StartOnlineCollectionResponse` key anywhere in the spec.
+- [ ] Confirm a changeset entry exists at `.changeset/pay-309-validate-init-payment-response.md` (repo uses [@changesets/cli](https://github.com/changesets/changesets); CHANGELOG.md is auto-generated from these on publish).
+- [ ] Manually trigger initPayment against the Pay.gov dev endpoint (or the local SOAP stub) and confirm a valid 32-char token still flows end-to-end into the database (`updateToInitiated` succeeds, `paymentRedirect` returned).
 - [ ] Manually inject a malformed XML response in the local stub and confirm: (a) client receives a 504 `PayGovError`, (b) the `transactions` row reaches `failed`, (c) the log line `"startOnlineCollection schema validation failed"` appears with the raw payload and Zod issues.
 
 ## 7. Out of scope (explicit non-goals)
