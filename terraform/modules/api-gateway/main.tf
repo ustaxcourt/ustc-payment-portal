@@ -400,11 +400,6 @@ resource "aws_api_gateway_integration" "details_integration" {
 resource "aws_api_gateway_deployment" "deployment" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
 
-  # Trigger redeployment whenever any Terraform-managed resource, method, or
-  # integration changes. Keying off resource IDs (rather than hand-maintained
-  # string lists) means the hash automatically tracks renames, replacements,
-  # and conditional enablement — no risk of the stage pointing at a stale
-  # deployment because someone forgot to update a string here.
   triggers = {
     redeployment = sha1(jsonencode([
       # Path resources — included so path_part changes force a fresh deployment snapshot.
