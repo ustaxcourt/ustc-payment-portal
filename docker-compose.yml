@@ -44,7 +44,11 @@ services:
         fi;
 
         echo "db-init: MIGRATION_MODE=0 → running migrations + seeds";
-        npm ci && npm run migrate:latest && npm run seed:run
+        if [ -f package-lock.json ]; then
+          npm ci;
+        else
+          npm install;
+        fi && npm run migrate:latest && npm run seed:run
       '
 
 volumes:
