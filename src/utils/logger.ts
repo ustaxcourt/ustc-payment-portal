@@ -99,6 +99,28 @@ const appEnv = getAppEnv();
 const level = resolveLogLevel(nodeEnv, process.env.LOG_LEVEL);
 
 const usePretty = isLocal();
+const transport = (() => {
+  if (!usePretty) {
+    return undefined;
+  }
+
+  try {
+    require.resolve("pino-pretty");
+    return {
+      target: "pino-pretty",
+      options: {
+        colorize: true,
+        translateTime: "SYS:standard",
+        ignore: "pid,hostname",
+      },
+    };
+  } catch {
+    process.stderr.write(
+      "[logger] pino-pretty is unavailable; falling back to JSON logs\n",
+    );
+    return undefined;
+  }
+})();
 
 export const logger = pino({
   level,
@@ -145,16 +167,7 @@ export const logger = pino({
     censor: "[Redacted]",
   },
   // Route to pino-pretty for local/development, raw stdout otherwise.
-  transport: usePretty
-    ? {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          translateTime: "SYS:standard",
-          ignore: "pid,hostname",
-        },
-      }
-    : undefined,
+  transport,
 });
 
 // Add global context when not using pretty (base already included above for pretty).
