@@ -1,5 +1,7 @@
 "use strict";
 
+const path = require("node:path");
+
 describe("start-dev-server-runtime", () => {
   let processExitSpy;
   let processKillSpy;
@@ -28,6 +30,8 @@ describe("start-dev-server-runtime", () => {
   beforeEach(() => {
     jest.resetModules();
 
+    delete process.env.PAYMENT_PORTAL_USE_SOURCE_DEV_SERVER;
+
     processExitSpy = jest.spyOn(process, "exit").mockImplementation(() => {});
     processKillSpy = jest.spyOn(process, "kill").mockImplementation(() => {});
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
@@ -45,8 +49,31 @@ describe("start-dev-server-runtime", () => {
     process.removeAllListeners("SIGTERM");
   });
 
-  it("starts source dev server with ts-node/register/transpile-only when source exists", () => {
-    mockExistsSync.mockReturnValue(true);
+  it("starts dist dev server by default when dist and source both exist", () => {
+    mockExistsSync.mockImplementation((entry) =>
+      entry.includes(path.join("dist", "devServer.js")) ||
+      entry.includes(path.join("src", "devServer.ts")),
+    );
+    mockSpawn.mockReturnValue(makeChildProcess());
+
+    require("./start-dev-server-runtime");
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      process.execPath,
+      [expect.stringContaining(path.join("dist", "devServer.js"))],
+      expect.objectContaining({
+        stdio: "inherit",
+        env: process.env,
+      }),
+    );
+  });
+
+  it("uses source dev server when PAYMENT_PORTAL_USE_SOURCE_DEV_SERVER is enabled", () => {
+    process.env.PAYMENT_PORTAL_USE_SOURCE_DEV_SERVER = "true";
+    mockExistsSync.mockImplementation((entry) =>
+      entry.includes(path.join("dist", "devServer.js")) ||
+      entry.includes(path.join("src", "devServer.ts")),
+    );
     mockSpawn.mockReturnValue(makeChildProcess());
 
     require("./start-dev-server-runtime");
@@ -56,30 +83,36 @@ describe("start-dev-server-runtime", () => {
       [
         "-r",
         "ts-node/register/transpile-only",
-        expect.stringContaining("src/devServer.ts"),
+        expect.stringContaining(path.join("src", "devServer.ts")),
       ],
-      expect.objectContaining({
-        stdio: "inherit",
-        env: process.env,
-      }),
+      expect.objectContaining({ stdio: "inherit" }),
     );
   });
 
-  it("falls back to dist/devServer.js when source file does not exist", () => {
-    mockExistsSync.mockReturnValue(false);
+  it("falls back to source when dist file does not exist", () => {
+    mockExistsSync.mockImplementation((entry) =>
+      entry.includes(path.join("src", "devServer.ts")),
+    );
     mockSpawn.mockReturnValue(makeChildProcess());
 
     require("./start-dev-server-runtime");
 
     expect(mockSpawn).toHaveBeenCalledWith(
       process.execPath,
-      [expect.stringContaining("dist/devServer.js")],
+      [
+        "-r",
+        "ts-node/register/transpile-only",
+        expect.stringContaining(path.join("src", "devServer.ts")),
+      ],
       expect.objectContaining({ stdio: "inherit" }),
     );
   });
 
   it("forwards SIGTERM to the child process", () => {
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((entry) =>
+      entry.includes(path.join("dist", "devServer.js")) ||
+      entry.includes(path.join("src", "devServer.ts")),
+    );
     const child = makeChildProcess();
     mockSpawn.mockReturnValue(child);
 
@@ -90,7 +123,10 @@ describe("start-dev-server-runtime", () => {
   });
 
   it("exits with the child exit code on normal exit", () => {
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((entry) =>
+      entry.includes(path.join("dist", "devServer.js")) ||
+      entry.includes(path.join("src", "devServer.ts")),
+    );
     const child = makeChildProcess();
     mockSpawn.mockReturnValue(child);
 
@@ -101,7 +137,10 @@ describe("start-dev-server-runtime", () => {
   });
 
   it("re-raises a signal when child exits from a signal", () => {
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((entry) =>
+      entry.includes(path.join("dist", "devServer.js")) ||
+      entry.includes(path.join("src", "devServer.ts")),
+    );
     const child = makeChildProcess();
     mockSpawn.mockReturnValue(child);
 
@@ -112,7 +151,10 @@ describe("start-dev-server-runtime", () => {
   });
 
   it("logs and exits 1 when child emits an error", () => {
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((entry) =>
+      entry.includes(path.join("dist", "devServer.js")) ||
+      entry.includes(path.join("src", "devServer.ts")),
+    );
     const child = makeChildProcess();
     mockSpawn.mockReturnValue(child);
 

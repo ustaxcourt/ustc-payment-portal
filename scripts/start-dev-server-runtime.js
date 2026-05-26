@@ -6,9 +6,28 @@ const projectRoot = path.resolve(__dirname, "..");
 const distEntry = path.join(projectRoot, "dist", "devServer.js");
 const sourceEntry = path.join(projectRoot, "src", "devServer.ts");
 
-const nodeArgs = fs.existsSync(sourceEntry)
-  ? ["-r", "ts-node/register/transpile-only", sourceEntry]
-  : [distEntry];
+const prefersSource = ["1", "true", "yes"].includes(
+  String(process.env.PAYMENT_PORTAL_USE_SOURCE_DEV_SERVER || "").toLowerCase(),
+);
+
+const hasDistEntry = fs.existsSync(distEntry);
+const hasSourceEntry = fs.existsSync(sourceEntry);
+
+const sourceArgs = ["-r", "ts-node/register/transpile-only", sourceEntry];
+const nodeArgs = prefersSource && hasSourceEntry
+  ? sourceArgs
+  : hasDistEntry
+    ? [distEntry]
+    : hasSourceEntry
+      ? sourceArgs
+      : null;
+
+if (!nodeArgs) {
+  console.error(
+    "[start:dev-server] Could not find dev server entrypoint in dist/ or src/.",
+  );
+  process.exit(1);
+}
 
 const child = spawn(process.execPath, nodeArgs, {
   cwd: projectRoot,

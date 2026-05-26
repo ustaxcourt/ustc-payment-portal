@@ -32,7 +32,7 @@ Completed in this repo:
 - Updated docker db-init command to handle both lockfile-present (`npm ci`) and lockfile-absent (`npm install`) packaged contexts.
 - Added docs for safe consumer-package testing: `docs/testing-package-locally.md`.
 - Linked new guide from `README.md` publishing section.
-- Updated `start:dev-server` to run compiled JS (`node dist/devServer.js`) instead of compiling TS with `ts-node` at consumer runtime.
+- Updated `start:dev-server` to use `scripts/start-dev-server-runtime.js`, which defaults to compiled JS (`dist/devServer.js`) for consumer/package runtime and supports explicit source mode via `PAYMENT_PORTAL_USE_SOURCE_DEV_SERVER=true`.
 
 Still pending to close PAY-313:
 
@@ -154,7 +154,7 @@ Deliverable:
 
 Additional checks from implementation:
 
-- Consumer startup does not require compiling TS in consumer repo (`start:dev-server` uses `dist/devServer.js`).
+- Consumer startup does not require compiling TS in consumer repo by default (`start:dev-server` uses `dist/devServer.js` unless explicit source mode is requested).
 - Packaged startup works when `package-lock.json` is not included in the published artifact.
 
 ## Exit Criteria
