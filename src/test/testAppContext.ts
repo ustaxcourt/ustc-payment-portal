@@ -11,4 +11,9 @@ export const testAppContext: AppContext = {
     getTransactionPaymentStatus: jest.fn(),
     getTransactionsByStatus: jest.fn(),
   }),
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+  },
 };

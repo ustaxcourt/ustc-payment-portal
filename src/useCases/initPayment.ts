@@ -146,6 +146,7 @@ export const initPayment: InitPayment = async (
 
     // console.error("Error making SOAP request to Pay.gov", err);
     await safeUpdateToFailed(
+      appContext,
       agencyTrackingId,
       undefined,
       "Error communicating with Pay.gov",
@@ -162,7 +163,7 @@ export const initPayment: InitPayment = async (
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
     });
-    await safeUpdateToFailed(agencyTrackingId);
+    await safeUpdateToFailed(appContext, agencyTrackingId);
     throw new ServerError(
       "Failed to record payment session. Please retry your transaction.",
     );

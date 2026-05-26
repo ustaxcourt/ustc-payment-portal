@@ -37,7 +37,7 @@ const lambdaHandler = async <T>(
       body: JSON.stringify(result),
     };
   } catch (err) {
-    return handleError(err);
+    return handleError(appContext, err);
   }
 };
 
@@ -46,10 +46,14 @@ type ParseResult<T> =
   | { ok: false; error: APIGatewayProxyResult };
 
 const safeJsonParse = <T = any>(
+  appContext: AppContext,
   body: string | null | undefined,
 ): ParseResult<T> => {
   if (!body) {
-    const error = handleError(new InvalidRequestError("missing body"));
+    const error = handleError(
+      appContext,
+      new InvalidRequestError("missing body"),
+    );
     return { ok: false, error };
   }
 
@@ -59,6 +63,7 @@ const safeJsonParse = <T = any>(
     return {
       ok: false,
       error: handleError(
+        appContext,
         new InvalidRequestError("invalid JSON in request body"),
       ),
     };
@@ -72,13 +77,14 @@ const safeJsonParse = <T = any>(
 const parseAndValidate = <T>(
   body: string | null | undefined,
   schema: ZodType<T>,
+  appContext: AppContext,
 ): ParseResult<T> => {
-  const parsed = safeJsonParse(body);
+  const parsed = safeJsonParse(appContext, body);
   if (!parsed.ok) return parsed;
 
   const result = schema.safeParse(parsed.value);
   if (!result.success) {
-    return { ok: false, error: handleError(result.error) };
+    return { ok: false, error: handleError(appContext, result.error) };
   }
 
   return { ok: true, value: result.data };
@@ -87,10 +93,14 @@ const parseAndValidate = <T>(
 export const initPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const result = parseAndValidate(event.body, InitPaymentRequestSchema);
+  const appContext = createAppContext({ lambdaRequest: event });
+  const result = parseAndValidate(
+    event.body,
+    InitPaymentRequestSchema,
+    appContext,
+  );
   if (!result.ok) return Promise.resolve(result.error);
 
-  const appContext = createAppContext({ lambdaRequest: event });
   return lambdaHandler(
     appContext,
     result.value,
@@ -102,10 +112,14 @@ export const initPaymentHandler = (
 export const processPaymentHandler = (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const result = parseAndValidate(event.body, ProcessPaymentRequestSchema);
+  const appContext = createAppContext({ lambdaRequest: event });
+  const result = parseAndValidate(
+    event.body,
+    ProcessPaymentRequestSchema,
+    appContext,
+  );
   if (!result.ok) return Promise.resolve(result.error);
 
-  const appContext = createAppContext({ lambdaRequest: event });
   return lambdaHandler(
     appContext,
     result.value,
@@ -120,16 +134,18 @@ export const getDetailsHandler = (
   const result = GetDetailsPathParamsSchema.safeParse(
     event.pathParameters ?? {},
   );
+  const appContext = createAppContext({ lambdaRequest: event });
   if (!result.success) {
     return Promise.resolve(
       handleError(
+        appContext,
         new InvalidRequestError("Transaction Reference Id was invalid"),
       ),
     );
   }
   // getDetails is a read-only lookup — IAM registration check is sufficient.
   // Per-transaction client ownership is enforced inside the use case.
-  const appContext = createAppContext({ lambdaRequest: event });
+
   return lambdaHandler(
     appContext,
     result.data,

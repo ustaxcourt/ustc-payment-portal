@@ -58,6 +58,11 @@ jest.mock("./appContext", () => ({
         </S:Body>
       </S:Envelope>`),
     getUseCases: () => useCasesMock,
+    logger: {
+      info: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+    },
   })),
 }));
 
