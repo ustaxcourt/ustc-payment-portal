@@ -55,4 +55,17 @@ describe("StartOnlineCollectionResponseSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  // Whitespace is preserved — Pay.gov-issued IDs have historically carried
+  // embedded spaces; do not trim or reject them.
+  it.each([
+    [" " + "a".repeat(31), "leading space"],
+    ["a".repeat(31) + " ", "trailing space"],
+    ["a".repeat(15) + " " + "a".repeat(16), "internal space"],
+    [" ".repeat(32), "all spaces"],
+  ])("accepts a 32-character token containing whitespace (%s)", (token) => {
+    const result = StartOnlineCollectionResponseSchema.safeParse({ token });
+    expect(result.success).toBe(true);
+    expect(result.data?.token).toBe(token);
+  });
 });
