@@ -13,7 +13,7 @@ Migrate the dev `client-permissions` secret value's field name from `allowedFeeI
 | 1 | PAY-284 has merged or been deployed to dev | `git log origin/main --oneline -20 \| grep PAY-284`, and verify the dev Lambda's image is on a SHA that contains the shim |
 | 2 | You have AWS credentials with `secretsmanager:GetSecretValue` and `secretsmanager:PutSecretValue` on `ustc/pay-gov/dev/client-permissions` | `aws sts get-caller-identity` and confirm the role has the right perms (typically the dev deployer or a break-glass admin role) |
 | 3 | `jq` is installed | `jq --version` |
-| 4 | You know how to force-invalidate the Lambda's in-memory cache | See "Step 6 — Force cache invalidation" below |
+| 4 | You know how to force-invalidate the Lambda's in-memory cache | See "Step 7 — Force cache invalidation" below |
 | 5 | You have the dev integration tests handy and they currently pass | `BASE_URL=https://dev-payments.ustaxcourt.gov npm run test:integration:dev` — confirm green before starting |
 
 If any of these aren't true, **stop** and resolve before proceeding.
@@ -212,7 +212,7 @@ This writes a new version with the original content. Slower (creates a third ver
 ## What this runbook does NOT cover
 
 - **Stg / prod migrations** — same pattern, separate execution. Run dev to completion (including 24h soak) before starting stg. Run stg the same way before prod. Don't batch them.
-- **CI seeder update** ([`.github/workflows/cicd-dev.yml:295`](../.github/workflows/cicd-dev.yml#L295)) — the PR-env seeder still writes `allowedFeeIds`. Update it in a separate PR before removing the shim. Not blocking for the dev secret rename itself.
+- **CI seeder update** ([`.github/workflows/cicd-dev.yml:295`](../.github/workflows/cicd-dev.yml#L295)) — the PR-env seeder now writes `allowedFeeKeys`. No separate CI seeder change is required as part of this runbook.
 - **Shim removal** — only after dev, stg, prod, AND the CI seeder are all on the new shape, AND a bake-in period has passed. Tracked in a separate follow-up ticket. **Don't** combine shim removal with this runbook.
 
 ---
