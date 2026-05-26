@@ -105,6 +105,8 @@ This package is published to npmjs.org as `@ustaxcourt/payment-portal` and can b
 npm install --save-dev @ustaxcourt/payment-portal
 ```
 
+For pre-publish package validation in another project (safe POC), see [docs/testing-package-locally.md](./docs/testing-package-locally.md).
+
 ### Publishing Process
 
 1. **Make changes** on a feature branch
