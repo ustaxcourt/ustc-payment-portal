@@ -17,9 +17,6 @@ describe("StartOnlineCollectionResponseSchema", () => {
   });
 
   it("rejects an empty-string token", () => {
-    // An empty token would poison the in-flight reuse path in initPayment:
-    // the 3-hour replay window would keep handing the same broken token back
-    // to clients, and the redirect URL would render as `?token=&tcsAppID=...`.
     const result = StartOnlineCollectionResponseSchema.safeParse({ token: "" });
     expect(result.success).toBe(false);
   });
@@ -39,12 +36,16 @@ describe("StartOnlineCollectionResponseSchema", () => {
   });
 
   it("rejects a null token", () => {
-    const result = StartOnlineCollectionResponseSchema.safeParse({ token: null });
+    const result = StartOnlineCollectionResponseSchema.safeParse({
+      token: null,
+    });
     expect(result.success).toBe(false);
   });
 
   it("rejects a non-string token", () => {
-    const result = StartOnlineCollectionResponseSchema.safeParse({ token: 12345 });
+    const result = StartOnlineCollectionResponseSchema.safeParse({
+      token: 12345,
+    });
     expect(result.success).toBe(false);
   });
 

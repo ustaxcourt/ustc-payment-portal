@@ -333,7 +333,7 @@ describe("initPayment", () => {
     expect(console.error).toHaveBeenCalled();
   });
 
-  it("throws PayGovError with the generic retry message when Pay.gov returns an unparseable response (ZodError)", async () => {
+  it("wraps a ZodError thrown from makeSoapRequest as PayGovError (use-case catch-block contract)", async () => {
     const zodError = new ZodError([{ code: "custom", path: [], message: "Required" }]);
     jest
       .spyOn(
@@ -346,6 +346,65 @@ describe("initPayment", () => {
       client: mockClient,
       request: validPetitionRequest,
     }).catch((e) => e);
+    expect(err).toBeInstanceOf(PayGovError);
+    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
+    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
+  });
+
+  it("wraps a real malformed Pay.gov XML response as PayGovError (drives safeParse end-to-end)", async () => {
+    // <token/> is empty → schema's z.string().length(32) rejects it → ZodError
+    // bubbles up through useHttp, caught by initPayment, wrapped as PayGovError.
+    const malformedXml = `<?xml version="1.0" encoding="UTF-8"?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Body>
+    <ns2:startOnlineCollectionResponse xmlns:ns2="http://fms.treas.gov/services/tcsonline_3_1">
+      <startOnlineCollectionResponse>
+        <token></token>
+      </startOnlineCollectionResponse>
+    </ns2:startOnlineCollectionResponse>
+  </S:Body>
+</S:Envelope>`;
+    (appContext.postHttpRequest as jest.Mock).mockResolvedValueOnce(malformedXml);
+    const TransactionModel = require("../db/TransactionModel").default;
+
+    const err = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(PayGovError);
+    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
+    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
+  });
+
+  it("wraps a Pay.gov S:Fault envelope as PayGovError (drives handleFault end-to-end)", async () => {
+    // No success key in the envelope → handleFault path throws FailedTransactionError,
+    // caught by initPayment, wrapped as PayGovError. 5009 = existing-token return code.
+    const faultXml = `<?xml version="1.0" encoding="UTF-8"?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Body>
+    <S:Fault>
+      <faultcode>S:Server</faultcode>
+      <faultstring>TCSServiceFault</faultstring>
+      <detail>
+        <ns2:TCSServiceFault xmlns:ns2="http://fms.treas.gov/services/tcsonline_3_1">
+          <return_code>5009</return_code>
+          <return_detail>Existing token for this agency tracking id</return_detail>
+        </ns2:TCSServiceFault>
+      </detail>
+    </S:Fault>
+  </S:Body>
+</S:Envelope>`;
+    (appContext.postHttpRequest as jest.Mock).mockResolvedValueOnce(faultXml);
+    const TransactionModel = require("../db/TransactionModel").default;
+
+    const err = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    }).catch((e) => e);
+
     expect(err).toBeInstanceOf(PayGovError);
     expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
