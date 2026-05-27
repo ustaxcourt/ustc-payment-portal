@@ -1,6 +1,5 @@
 import { StartOnlineCollectionResponseSchema } from "./StartOnlineCollectionResponse.schema";
 
-// Pay.gov tokens are exactly 32 characters. See the schema file for context.
 const validToken = "a".repeat(32);
 
 describe("StartOnlineCollectionResponseSchema", () => {

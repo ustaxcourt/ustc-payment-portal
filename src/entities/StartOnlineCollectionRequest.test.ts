@@ -115,8 +115,7 @@ describe("StartOnlineCollectionRequest", () => {
     });
 
     it("throws FailedTransactionError when the SOAP envelope is missing the ns2:startOnlineCollectionResponse key", async () => {
-      // Empty envelope: no success response and no S:Fault — handleFault(undefined)
-      // path. This is the "Pay.gov returned a malformed/empty envelope" case.
+      // Empty envelope: no success key and no S:Fault → handleFault(undefined) path.
       jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({});
 
       const request = new StartOnlineCollectionRequest(baseRequest);

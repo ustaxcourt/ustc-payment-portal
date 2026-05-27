@@ -353,8 +353,7 @@ describe("initPayment", () => {
   });
 
   it("wraps a real malformed Pay.gov XML response as PayGovError (drives safeParse end-to-end)", async () => {
-    // <token/> is empty → schema's z.string().length(32) rejects it → ZodError
-    // bubbles up through useHttp, caught by initPayment, wrapped as PayGovError.
+    // Empty <token/> → safeParse rejects → ZodError caught by initPayment as PayGovError.
     const malformedXml = `<?xml version="1.0" encoding="UTF-8"?>
 <S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
   <S:Body>
@@ -380,8 +379,7 @@ describe("initPayment", () => {
   });
 
   it("wraps a Pay.gov S:Fault envelope as PayGovError (drives handleFault end-to-end)", async () => {
-    // No success key in the envelope → handleFault path throws FailedTransactionError,
-    // caught by initPayment, wrapped as PayGovError. 5009 = existing-token return code.
+    // Drives the handleFault path end-to-end. 5009 = existing-token return code.
     const faultXml = `<?xml version="1.0" encoding="UTF-8"?>
 <S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
   <S:Body>
