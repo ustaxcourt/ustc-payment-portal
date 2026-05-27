@@ -47,20 +47,33 @@ Create a `.env` file in the consumer project with values needed by local startup
 
 Important: when launched via `npx @ustaxcourt/payment-portal`, the CLI loads `.env` from the consumer project's current working directory.
 
-At minimum, include:
+Use this known-good local config:
 
 ```env
-PAY_GOV_TEST_SERVER_ACCESS_TOKEN=local-dev-token
 APP_ENV=local
-```
+LOCAL_DEV=true
 
-You can add optional port overrides if needed:
-
-```env
-API_PORT=8080
-DB_PORT=5433
+PAY_GOV_NODE_ENV=local
+PAY_GOV_TEST_SERVER_ACCESS_TOKEN=local-dev-token
+PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID=local-dev-token
 PAY_GOV_TEST_SERVER_PORT=3366
+SOAP_URL=http://localhost:3366/wsdl
+PAYMENT_URL=http://localhost:3366/pay
+
+DB_HOST=127.0.0.1
+DB_PORT=5433
+DB_USER=user
+DB_PASSWORD=password
+DB_NAME=mydb
+
+API_PORT=8080
 ```
+
+Notes:
+
+- `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` and `PAY_GOV_TEST_SERVER_ACCESS_TOKEN` must match for local runs.
+- `DB_PORT=5433` avoids conflicts when another local Postgres is already using `5432`.
+- Avoid duplicate keys in `.env` (the last duplicate wins, which can cause confusing behavior).
 
 ### 4. Run as a consumer would
 
@@ -99,6 +112,7 @@ npx @ustaxcourt/payment-portal
 - If startup fails due to ports in use, free those ports or set your own port env vars.
 - If startup fails due to missing env vars, verify `.env` exists in the consumer project root.
 - If docker is not running, start Docker Desktop and retry.
+- If you see `Missing Authentication` followed by `Cannot read properties of undefined (reading 'S:Body')`, your local token settings are misaligned. Confirm both `PAY_GOV_TEST_SERVER_ACCESS_TOKEN` and `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` exist and are identical in the consumer project's `.env`.
 
 ### Engine mismatch (`EBADENGINE`)
 
