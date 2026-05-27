@@ -4,7 +4,7 @@ Biome is a relatively new (compared to ESLint) Rust-based toolchain that combine
 
 ## Tech Stack
 
-Biome is written in Rust, causing it to perform significantly faster than ESLint written in JavaScript. Biome takes about **<10 MS per file** using Rust compared to ESLint's **~100-500 MS per file** when using it's default single threaded Node.js.
+Biome is written in Rust, causing it to perform significantly faster than ESLint written in JavaScript. Biome takes about **<10 MS per file** using Rust compared to ESLint's **~100-500 MS per file** when using its default single-threaded Node.js.
 
 ## Formatting
 
