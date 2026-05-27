@@ -1,6 +1,6 @@
 # Biome versus ESLint
 
-Biome is a relatively new (compared to ESLint) Rust based toolchain that combines Linting and Formatting in the same package. We will be comparing the next Biome directly with it's equivalent ESlint setup (ESlint + Prettier) which is typical the direct replacement for TSLint setups.
+Biome is a relatively new (compared to ESLint) Rust-based toolchain that combines linting and formatting in the same package. We will be comparing Biome directly with its equivalent ESLint setup (ESLint + Prettier), which is typically the direct replacement for TSLint setups.
 
 ## Tech Stack
 
