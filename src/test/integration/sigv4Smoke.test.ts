@@ -32,7 +32,7 @@ const parseJsonOrText = async (result: Response): Promise<any> => {
 
 const body = JSON.stringify({
   transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-  feeId: "PETITION_FILING_FEE",
+  fee: "PETITION_FILING_FEE",
   urlSuccess: "https://example.com",
   urlCancel: "https://example.com",
   metadata: { docketNumber: "123-26" },

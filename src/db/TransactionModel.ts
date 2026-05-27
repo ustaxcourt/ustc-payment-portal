@@ -18,8 +18,7 @@ export type PaymentMethod =
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
-  feeId!: string;
-  transactionAmount!: number;
+  feeId!: string; // e.g. "PETITION_FILING_FEE_2026_03_05" — the specific fee version in effect at the time of the transaction attempt. FK to FeesModel.
   feeName?: string;
   clientName!: string;
   transactionReferenceId!: string;
@@ -27,6 +26,7 @@ export default class TransactionModel extends Model {
   transactionStatus?: TransactionStatus | null;
   paygovToken?: string | null;
   paymentMethod?: PaymentMethod | null;
+  transactionAmount?: number | null;
   transactionDate?: string | null;
   paymentDate?: string | null;
   returnCode?: number | null;
@@ -58,20 +58,20 @@ export default class TransactionModel extends Model {
 
   $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
     const parsed = super.$parseDatabaseJson(json);
-
     if (parsed.transactionAmount !== undefined && parsed.transactionAmount !== null) {
       parsed.transactionAmount = Number(parsed.transactionAmount);
     }
-
     return parsed;
   }
 
+  // Fees from Fee Table will never be deleted, new ones are versioned according
+  // to FeeKey & activation date, with the latest date accepted as the active fee.
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
     await getKnex();
     return TransactionModel.query()
       .alias('t')
       .join('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.name as feeName')
+      .select('t.*', 'f.name as feeName', 'f.amount as transactionAmount')
       .where('t.paymentStatus', paymentStatus)
       .orderBy('t.createdAt', 'desc')
       .limit(100);
@@ -82,7 +82,7 @@ export default class TransactionModel extends Model {
     return TransactionModel.query()
       .alias('t')
       .join('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.name as feeName')
+      .select('t.*', 'f.name as feeName', 'f.amount as transactionAmount')
       .orderBy('t.createdAt', 'desc')
       .limit(100);
   }

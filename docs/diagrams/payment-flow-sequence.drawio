@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Payment Authorization Flow" id="payment-auth">
-        <mxGraphModel dx="477" dy="345" grid="1" gridSize="10" guides="0" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1900" background="#ffffff" math="0" shadow="0">
+        <mxGraphModel dx="1024" dy="521" grid="1" gridSize="10" guides="0" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1900" background="#ffffff" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -25,7 +25,7 @@
                 <mxCell id="paygov" value="Pay.gov (SOAP)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#f8cecc;strokeColor=#b85450;size=40;" parent="1" vertex="1">
                     <mxGeometry x="1200" y="80" width="140" height="1700" as="geometry"/>
                 </mxCell>
-                <mxCell id="step1" value="1: POST /init { fee_id, transactionReferenceId, urls, metadata, amount }" style="html=1;verticalAlign=bottom;endArrow=block;entryX=0;entryY=0;" parent="1" source="client-lifeline" target="portal-lifeline" edge="1">
+                <mxCell id="step1" value="1: POST /init { fee (internally known as feeKey), transactionReferenceId, urls, metadata, amount }" style="html=1;verticalAlign=bottom;endArrow=block;entryX=0;entryY=0;" parent="1" source="client-lifeline" target="portal-lifeline" edge="1">
                     <mxGeometry width="80" relative="1" as="geometry">
                         <mxPoint x="175" y="180" as="sourcePoint"/>
                         <mxPoint x="385" y="180" as="targetPoint"/>
@@ -34,13 +34,13 @@
                 <mxCell id="alt1" value="alt" style="shape=umlFrame;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;width=50;height=30;" parent="1" vertex="1">
                     <mxGeometry x="80" y="240" width="1260" height="1370" as="geometry"/>
                 </mxCell>
-                <mxCell id="alt1-label" value="[fee_id resolved]" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontSize=11;" parent="1" vertex="1">
+                <mxCell id="alt1-label" value="[fee_key resolved]" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontSize=11;" parent="1" vertex="1">
                     <mxGeometry x="130" y="250" width="120" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="fees-activation1" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
                     <mxGeometry x="825" y="300" width="10" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="step2" value="2: SELECT fee_id, name, is_variable, amount FROM fees WHERE fee_id = :fee_id" style="html=1;verticalAlign=bottom;endArrow=block;" parent="1" source="portal-lifeline" target="fees-activation1" edge="1">
+                <mxCell id="step2" value="2: SELECT fee_id, fee_key, name, tcs_app_id, is_variable, amount FROM fees WHERE fee_key = :fee_key AND activation_date &lt;= NOW() ORDER BY activation_date DESC LIMIT 1" style="html=1;verticalAlign=bottom;endArrow=block;" parent="1" source="portal-lifeline" target="fees-activation1" edge="1">
                     <mxGeometry width="80" relative="1" as="geometry">
                         <mxPoint x="395" y="300" as="sourcePoint"/>
                         <mxPoint x="825" y="300" as="targetPoint"/>
@@ -70,7 +70,7 @@
                         <mxPoint x="1045" y="530" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="step5" value="5: authorized? (feeId in allowedFeeIds)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;" parent="1" source="authz-activation1" target="portal-lifeline" edge="1">
+                <mxCell id="step5" value="5: authorized? (feeKey in allowedFeeKeys)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;" parent="1" source="authz-activation1" target="portal-lifeline" edge="1">
                     <mxGeometry width="80" relative="1" as="geometry">
                         <mxPoint x="1045" y="570" as="sourcePoint"/>
                         <mxPoint x="395" y="570" as="targetPoint"/>
@@ -192,7 +192,7 @@
                         <mxPoint x="175" y="1480" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="alt1-label2" value="[fee_id not resolved]" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontSize=11;" parent="1" vertex="1">
+                <mxCell id="alt1-label2" value="[fee_key not resolved]" style="text;html=1;align=left;verticalAlign=top;fontStyle=2;fontSize=11;" parent="1" vertex="1">
                     <mxGeometry x="130" y="1550" width="140" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="step18" value="18: 400 Bad Request (UNKNOWN_FEE_TYPE)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;strokeColor=#b85450;" parent="1" source="portal-lifeline" target="client-lifeline" edge="1">

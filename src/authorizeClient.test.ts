@@ -5,19 +5,19 @@ import { ClientPermission } from "./types/ClientPermission";
 const dawsonClient: ClientPermission = {
   clientName: "DAWSON",
   clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
-  allowedFeeIds: ["PETITION_FILING_FEE"],
+  allowedFeeKeys: ["PETITION_FILING_FEE"],
 };
 
 const nonattorneyClient: ClientPermission = {
   clientName: "Nonattorney Exam App",
   clientRoleArn: "arn:aws:iam::999999999999:role/nonattorney-client",
-  allowedFeeIds: ["NONATTORNEY_EXAM_REGISTRATION_FEE"],
+  allowedFeeKeys: ["NONATTORNEY_EXAM_REGISTRATION_FEE"],
 };
 
 const localDevClient: ClientPermission = {
   clientName: "Local Development",
   clientRoleArn: "arn:aws:iam::000000000000:role/local-dev-role",
-  allowedFeeIds: ["*"],
+  allowedFeeKeys: ["*"],
 };
 
 describe("authorizeClient", () => {

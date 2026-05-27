@@ -2,7 +2,7 @@ services:
   postgres:
     image: postgres:14
     ports:
-      - "5433:5432"
+      - "${DB_PORT:-5433}:5432"
     environment:
       POSTGRES_PASSWORD: password
       POSTGRES_USER: user
@@ -33,11 +33,12 @@ services:
       MIGRATION_MODE: "0"
     volumes:
       - ./:/workspace
+      - db_init_node_modules:/workspace/node_modules
     command: >
       sh -c '
-        echo "db-init: MIGRATION_MODE=$MIGRATION_MODE";
+        echo "db-init: MIGRATION_MODE=$$MIGRATION_MODE";
 
-        if [ "$MIGRATION_MODE" = "1" ]; then
+        if [ "$$MIGRATION_MODE" = "1" ]; then
           echo "db-init: MIGRATION_MODE=1 → skipping db-init";
           exit 0;
         fi;
@@ -48,3 +49,4 @@ services:
 
 volumes:
   postgres_data:
+  db_init_node_modules:

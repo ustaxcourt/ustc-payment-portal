@@ -9,11 +9,7 @@ jest.mock("./TransactionModel", () => {
     ...actual,
     default: class MockTransactionModel {
       static $parseDatabaseJson(json: Record<string, unknown>) {
-        const parsed = { ...json };
-        if (parsed.transactionAmount !== undefined && parsed.transactionAmount !== null) {
-          parsed.transactionAmount = Number(parsed.transactionAmount);
-        }
-        return parsed;
+        return { ...json };
       }
       static getByPaymentStatus = jest.fn(() => Promise.resolve([]));
       static getAll = jest.fn(() => Promise.resolve([]));
@@ -112,14 +108,28 @@ describe("TransactionModel", () => {
   });
 
   describe("$parseDatabaseJson", () => {
-    it("converts transactionAmount to number", () => {
-      const model = new TransactionModel();
+    // Uses the real (unmocked) class to exercise the load-bearing coercion:
+    // f.amount is returned as a decimal string by the pg driver and must be
+    // cast to a number before hitting DashboardTransactionSchema's z.number().
+    const ActualTransactionModel = (jest.requireActual("./TransactionModel") as any).default;
 
-      const parsed = model.$parseDatabaseJson({
-        transactionAmount: "150.25",
-      });
+    it("casts transactionAmount from a Postgres decimal string to a number", () => {
+      const instance = new ActualTransactionModel();
+      const result = instance.$parseDatabaseJson({ transactionAmount: "60.50" });
+      expect(typeof result.transactionAmount).toBe("number");
+      expect(result.transactionAmount).toBe(60.5);
+    });
 
-      expect(parsed.transactionAmount).toBe(150.25);
+    it("leaves transactionAmount null when the join produces null", () => {
+      const instance = new ActualTransactionModel();
+      const result = instance.$parseDatabaseJson({ transactionAmount: null });
+      expect(result.transactionAmount).toBeNull();
+    });
+
+    it("leaves transactionAmount absent when the column is not in the row", () => {
+      const instance = new ActualTransactionModel();
+      const result = instance.$parseDatabaseJson({ agencyTrackingId: "TEST-123" });
+      expect(result.transactionAmount).toBeUndefined();
     });
   });
 

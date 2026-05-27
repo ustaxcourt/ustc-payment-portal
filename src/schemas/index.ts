@@ -1,5 +1,5 @@
 // Re-export all schemas from individual files
-export * from "./FeeId.schema";
+export * from "./FeeKey.schema";
 export * from "./Metadata.schema";
 export * from "./InitPayment.schema";
 export * from "./TransactionStatus.schema";

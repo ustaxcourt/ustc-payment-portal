@@ -66,7 +66,7 @@ jest.mock("./clients/permissionsClient", () => ({
   getClientByRoleArn: jest.fn().mockResolvedValue({
     clientName: "Test Client",
     clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
-    allowedFeeIds: ["PETITION_FILING_FEE"],
+    allowedFeeKeys: ["PETITION_FILING_FEE"],
   }),
   clearPermissionsCache: jest.fn(),
 }));
@@ -103,7 +103,7 @@ describe("lambdaHandler", () => {
       const event = {
         body: JSON.stringify({
           transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-          feeId: "PETITION_FILING_FEE",
+          fee: "PETITION_FILING_FEE",
           urlSuccess: "https://example.com/success",
           urlCancel: "https://example.com/cancel",
           metadata: { docketNumber: "123-26" },
@@ -123,7 +123,7 @@ describe("lambdaHandler", () => {
 
     it("returns 400 with structured errors array when request schema validation fails", async () => {
       const event = {
-        body: JSON.stringify({ feeId: "PETITION_FILING_FEE" }), // missing required fields
+        body: JSON.stringify({ fee: "PETITION_FILING_FEE" }), // missing required fields
         headers: mockHeaders,
         requestContext: mockRequestContext,
       } as unknown as APIGatewayEvent;
@@ -167,7 +167,7 @@ describe("lambdaHandler", () => {
       const event = {
         body: JSON.stringify({
           transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-          feeId: "PETITION_FILING_FEE",
+          fee: "PETITION_FILING_FEE",
           urlSuccess: "https://example.com/success",
           urlCancel: "https://example.com/cancel",
           metadata: { docketNumber: "123-26" },
@@ -184,7 +184,7 @@ describe("lambdaHandler", () => {
       expect(result.statusCode).toBe(403);
     });
 
-    it("returns 403 when feeId is not in client allowedFeeIds", async () => {
+    it("returns 403 when fee key is not in client allowedFeeKeys", async () => {
       useCasesMock.initPayment = jest
         .fn()
         .mockRejectedValueOnce(
@@ -194,7 +194,7 @@ describe("lambdaHandler", () => {
       const event = {
         body: JSON.stringify({
           transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-          feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+          fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
           urlSuccess: "https://example.com/success",
           urlCancel: "https://example.com/cancel",
           metadata: {
@@ -228,7 +228,7 @@ describe("lambdaHandler", () => {
     const event = {
       body: JSON.stringify({
         transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-        feeId: "PETITION_FILING_FEE",
+        fee: "PETITION_FILING_FEE",
         urlSuccess: "https://example.com/success",
         urlCancel: "https://example.com/cancel",
         metadata: { docketNumber: "123-26" },
