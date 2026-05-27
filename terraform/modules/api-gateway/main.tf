@@ -439,7 +439,9 @@ resource "aws_api_gateway_deployment" "deployment" {
       try(aws_api_gateway_integration.transactions_by_status_options_integration[0].id, ""),
       try(aws_api_gateway_integration.transaction_payment_status_options_integration[0].id, ""),
 
-      aws_api_gateway_rest_api_policy.policy.policy,
+      # Use the data source JSON (not the applied resource field) to avoid
+      # provider-side normalization changing this value mid-apply.
+      data.aws_iam_policy_document.api_resource_policy.json,
       aws_api_gateway_gateway_response.default_4xx.id,
       aws_api_gateway_gateway_response.default_5xx.id,
     ]))
