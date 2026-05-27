@@ -1,6 +1,5 @@
 import { RawStartOnlineCollectionRequest } from "../types/RawStartOnlineCollectionRequest";
 import { AppContext } from "../types/AppContext";
-import { FailedTransactionError } from "../errors/failedTransaction";
 import { RequestType, SoapRequest } from "./SoapRequest";
 import {
   StartOnlineCollectionResponse,
@@ -79,36 +78,4 @@ export class StartOnlineCollectionRequest extends SoapRequest {
 
     throw this.handleFault(responseBody["S:Fault"]);
   }
-
-  handleFault = (fault: ProcessorFault) => {
-    if (!fault) {
-      return new FailedTransactionError(
-        "Unexpected response from Pay.gov: no fault detail returned"
-      );
-    }
-
-    if (!fault.detail || !fault.detail["ns2:TCSServiceFault"]) {
-      return new FailedTransactionError(
-        "Pay.gov returned a fault without error details"
-      );
-    }
-
-    return new FailedTransactionError(
-      fault.detail["ns2:TCSServiceFault"].return_detail,
-      Number(fault.detail["ns2:TCSServiceFault"].return_code)
-    );
-  };
 }
-
-type ProcessorFault =
-  | {
-      faultcode: string;
-      faultstring: string;
-      detail?: {
-        "ns2:TCSServiceFault"?: {
-          return_code: string;
-          return_detail: string;
-        };
-      };
-    }
-  | undefined;
