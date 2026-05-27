@@ -85,14 +85,14 @@ Biome wins out when it comes to additional dependencies (or lack of needing them
 
 ## Type Aware Errors
 
-This is where ESLint current wins (atleast for now) over Biome. Biome recently got type-aware rule coverage in v2, but roughly only covers 85% of what type aware errors over in ESLint can do with **typescript-eslint**. This will get better over time, but its something to be aware of if we proceed with Biome.
+This is where ESLint currently wins (at least for now) over Biome. Biome recently got type-aware rule coverage in v2, but roughly only covers 85% of what type aware errors over in ESLint can do with **typescript-eslint**. This will get better over time, but it's something to be aware of if we proceed with Biome.
 
 **As of 2.1, Biome Currently Supports:**
 
 - `noFloatingPromises` rule (85% coverage compared to eslint equivalent)
   - NOTE: If no explicit return type is defined, but it does return a promise, Biome may not detect it. Since we are using typescript and should be including a explicit return type, I don't see this being much of a problem.
-- `noMisuedPromises` rule (experimental)
+- `noMisusedPromises` rule (experimental)
 
 ## Conclusion
 
-Due to Payment Portal's 'Greenfield' nature and relatively small size, its low risk if we want to give Biome a shot, with the upsides being increased preformance, less configuration files, and less devDependencies. If for any reason we find the ruleset coverage lacking on Biome, we can fairly easily switch over to ESLint.
+Due to Payment Portal's 'Greenfield' nature and relatively small size, it's low risk if we want to give Biome a shot, with the upsides being increased performance, fewer configuration files, and less devDependencies. If for any reason we find the ruleset coverage lacking on Biome, we can fairly easily switch over to ESLint.
