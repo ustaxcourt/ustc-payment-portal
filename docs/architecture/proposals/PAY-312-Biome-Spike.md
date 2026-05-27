@@ -77,7 +77,7 @@ Plugins work with Biome using the **GritQL** Query Language. With it, you can wr
 }
 ```
 
-**NOTE: GritQL assumes a target language to run plugins against, but if none is defined it assumes you are using JavaScript. Currently Biome only supports Javascript and CSS for GritQL plugins.**
+**NOTE: GritQL assumes a target language to run plugins against, but if none is defined it assumes you are using JavaScript. Currently Biome only supports JavaScript and CSS for GritQL plugins.**
 
 ## Dependencies
 
