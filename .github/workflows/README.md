@@ -26,6 +26,13 @@
   - Finds dev tag to deploy, validates that sha for that tag exists, creates RC tag, then copies build artifact from dev artifact bucket to staging and deploys any infrastructure updates
   - If no dev tag is specified on workflow trigger, will automatically find the latest dev tag to use for promotion
 
+- **Terraform Validate & Plan** (`terraform-plan.yml`)
+  - Trigger: Pull Request opened/synchronized/reopened.
+  - Runs `terraform validate` and `terraform plan` against dev, stg, and prod in parallel (read-only).
+  - Posts a unified plan summary as a single PR comment, updated in place across pushes; full plans uploaded as run artifacts (`tfplan-{env}`).
+  - Does **not** apply — apply remains owned by `cicd-dev.yml`, `staging-deploy.yml`, and `prod-deploy.yml`.
+  - **Known noise**: Lambda artifact diffs (`*_s3_key`, `*_source_code_hash`) in the plan output are placeholders for plan-only mode and should be ignored. Real Lambda changes ship via the deploy workflows.
+
 ## Notes
 - **Ephemeral envs** are isolated per PR and destroyed on close.
 - **Artifacts**: PR runs upload JUnit XML and coverage (lcov/HTML) for review.
