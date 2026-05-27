@@ -8,7 +8,7 @@ Biome is written in Rust, causing it to perform significantly faster than ESLint
 
 ## Formatting
 
-By default, Biome has it's own Formatter included in the same package as the linter. ESLint requires installing and setting up Prettier separately in order to format your code base. Biome covers setting up both it's Formatter and Linter in the same `biome.json` file. ESLint + Prietter on the other requires an entirely separate prettier config file from ESLint's configuration. Biome currently sits at **97%** compability with Prettier. You can read more about the differences [here.](https://biomejs.dev/formatter/differences-with-prettier/) One of the major differences is caused by which parser each option uses. ESLint uses the Babel parser, which allows looser enforcement of rules, cause errors or syntax errors to be missed. In comparison, Biome's built-in custom Parser has stricter enforcement.
+By default, Biome has its own Formatter included in the same package as the linter. ESLint requires installing and setting up Prettier separately in order to format your code base. Biome covers setting up both its Formatter and Linter in the same `biome.json` file. ESLint + Prettier on the other requires an entirely separate prettier config file from ESLint's configuration. Biome currently sits at **97%** compatibility with Prettier. You can read more about the differences [here.](https://biomejs.dev/formatter/differences-with-prettier/) One of the major differences is caused by which parser each option uses. ESLint uses the Babel parser, which allows looser enforcement of rules, cause errors or syntax errors to be missed. In comparison, Biome's built-in custom Parser has stricter enforcement.
 
 **Something important to note: one of the reasons Biome is so fast is that it
 parses each file only once, then reuses that result for both linting and
@@ -85,7 +85,7 @@ Biome wins out when it comes to additional dependencies (or lack of needing them
 
 ## Type Aware Errors
 
-This is where ESLint currently wins (at least for now) over Biome. Biome recently got type-aware rule coverage in v2, but roughly only covers 85% of what type aware errors over in ESLint can do with **typescript-eslint**. This will get better over time, but it's something to be aware of if we proceed with Biome.
+This is where ESLint currently wins (at least for now) over Biome. Biome recently got type-aware rule coverage in v2, but roughly only covers 85% of what type aware errors over in ESLint can do with **typescript-eslint**. This will get better over time, but it is something to be aware of if we proceed with Biome.
 
 **As of 2.1, Biome Currently Supports:**
 
@@ -95,4 +95,4 @@ This is where ESLint currently wins (at least for now) over Biome. Biome recentl
 
 ## Conclusion
 
-Due to Payment Portal's 'Greenfield' nature and relatively small size, it's low risk if we want to give Biome a shot, with the upsides being increased performance, fewer configuration files, and less devDependencies. If for any reason we find the ruleset coverage lacking on Biome, we can fairly easily switch over to ESLint.
+Due to Payment Portal's 'Greenfield' nature and relatively small size, it is low risk if we want to give Biome a shot, with the upsides being increased performance, fewer configuration files, and less devDependencies. If for any reason we find the ruleset coverage lacking on Biome, we can fairly easily switch over to ESLint.
