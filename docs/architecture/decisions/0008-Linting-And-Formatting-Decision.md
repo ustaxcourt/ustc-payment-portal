@@ -36,3 +36,4 @@ Let's migrate from TSLint (which is depreciated anyway) over to Biome. Biome giv
 ## References
 
 - Biome Docs: [Documentation](https://biomejs.dev/guides/getting-started/)
+- Biome Proposal: [Detail Proposal on Biome](/docs/architecture/proposals/PAY-312-Biome-Spike.md)
