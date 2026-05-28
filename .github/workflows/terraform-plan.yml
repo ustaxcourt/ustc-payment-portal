@@ -22,27 +22,11 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
-  # Lambda artifact placeholders. Plan-only mode never builds real artifacts, so we
-  # pass stable strings. stg/prod variables.tf has no defaults for these, hence the
-  # need to set them here. The resulting Lambda diffs in the plan output are expected
-  # noise — real Lambda changes ship via the deploy workflows.
   TF_VAR_artifact_bucket: "plan-only-no-artifact"
   TF_VAR_initPayment_s3_key: "plan-only-no-artifact"
   TF_VAR_processPayment_s3_key: "plan-only-no-artifact"
   TF_VAR_getDetails_s3_key: "plan-only-no-artifact"
   TF_VAR_testCert_s3_key: "plan-only-no-artifact"
-  TF_VAR_migrationRunner_s3_key: "plan-only-no-artifact"
-  TF_VAR_getAllTransactions_s3_key: "plan-only-no-artifact"
-  TF_VAR_getTransactionsByStatus_s3_key: "plan-only-no-artifact"
-  TF_VAR_getTransactionPaymentStatus_s3_key: "plan-only-no-artifact"
-  TF_VAR_initPayment_source_code_hash: "plan-only-no-artifact"
-  TF_VAR_processPayment_source_code_hash: "plan-only-no-artifact"
-  TF_VAR_getDetails_source_code_hash: "plan-only-no-artifact"
-  TF_VAR_testCert_source_code_hash: "plan-only-no-artifact"
-  TF_VAR_migrationRunner_source_code_hash: "plan-only-no-artifact"
-  TF_VAR_getAllTransactions_source_code_hash: "plan-only-no-artifact"
-  TF_VAR_getTransactionsByStatus_source_code_hash: "plan-only-no-artifact"
-  TF_VAR_getTransactionPaymentStatus_source_code_hash: "plan-only-no-artifact"
 
 jobs:
   plan:
