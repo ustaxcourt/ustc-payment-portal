@@ -43,7 +43,6 @@ export const initPayment: InitPayment = async (
   appContext.logger.debug("Received initPayment request", {
     feeKey,
     clientName,
-    transactionReferenceId,
     hasAmount: amount !== undefined,
     metadataKeys: request.metadata ? Object.keys(request.metadata) : [],
   });
@@ -114,7 +113,6 @@ export const initPayment: InitPayment = async (
 
   appContext.logger.info("Initiating new transaction", {
     agencyTrackingId,
-    transactionReferenceId,
     transactionAmount,
     feeId: fee.feeId,
     clientName,
@@ -139,7 +137,6 @@ export const initPayment: InitPayment = async (
       appContext.logger.error(EXISTING_IN_FLIGHT_TRANSACTION_ERROR, {
         agencyTrackingId,
         clientName,
-        transactionReferenceId,
       });
       throw new ConflictError(EXISTING_IN_FLIGHT_TRANSACTION_ERROR);
     }
@@ -162,7 +159,6 @@ export const initPayment: InitPayment = async (
     transactionAmount,
     feeId: fee.feeId,
     clientName,
-    transactionReferenceId,
     ...(request.metadata
       ? Object.fromEntries(
           Object.entries(request.metadata).map(([k, v]) => [
