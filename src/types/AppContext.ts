@@ -18,8 +18,9 @@ export type AppContext = {
     getTransactionsByStatus: GetTransactionsByStatus;
   };
   logger: {
-    info: (message: string, additionalFields?: Record<string, any>) => void;
+    debug: (message: string, additionalFields?: Record<string, any>) => void;
     error: (message: string, additionalFields?: Record<string, any>) => void;
+    info: (message: string, additionalFields?: Record<string, any>) => void;
     warn: (message: string, additionalFields?: Record<string, any>) => void;
   };
 };
