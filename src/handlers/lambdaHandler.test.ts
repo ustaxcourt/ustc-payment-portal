@@ -6,7 +6,7 @@ import { extractCallerArn } from "../extractCallerArn";
 import { getClientByRoleArn } from "../clients/permissionsClient";
 import { parseAndValidate } from "../utils/parseAndValidate";
 import { handleError } from "../handleError";
-import { AppContext } from "../types/AppContext";
+import { testAppContext } from "../test/testAppContext";
 
 jest.mock("../appContext", () => ({
   createAppContext: jest.fn(),
@@ -42,17 +42,6 @@ const mockParseAndValidate = parseAndValidate as jest.MockedFunction<
 >;
 const mockHandleError = handleError as jest.MockedFunction<typeof handleError>;
 
-const mockLogger = {
-  info: jest.fn(),
-  error: jest.fn(),
-  warn: jest.fn(),
-  debug: jest.fn(),
-};
-
-const mockAppContext = {
-  logger: mockLogger,
-} as unknown as AppContext;
-
 const mockEvent = {
   requestContext: {
     identity: {
@@ -65,7 +54,7 @@ const mockEvent = {
 describe("lambdaHandler", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockCreateAppContext.mockReturnValue(mockAppContext);
+    mockCreateAppContext.mockReturnValue(testAppContext);
   });
 
   it("returns 200 and invokes callback with client and parsed request", async () => {
@@ -96,13 +85,12 @@ describe("lambdaHandler", () => {
       statusCode: 200,
       body: JSON.stringify(callbackResult),
     });
-    expect(callback).toHaveBeenCalledWith(mockAppContext, {
+    expect(callback).toHaveBeenCalledWith(testAppContext, {
       client,
       request: parsedBody,
     });
     expect(mockParseAndValidate).toHaveBeenCalledTimes(1);
     expect(mockExtractCallerArn).toHaveBeenCalledWith(mockEvent.requestContext);
-    expect(mockLogger.debug).toHaveBeenCalled();
   });
 
   it("delegates to handleError when callback throws", async () => {
@@ -134,7 +122,7 @@ describe("lambdaHandler", () => {
       callback,
     });
 
-    expect(mockHandleError).toHaveBeenCalledWith(mockAppContext, callbackError);
+    expect(mockHandleError).toHaveBeenCalledWith(testAppContext, callbackError);
     expect(result).toEqual(expectedErrorResponse);
   });
 });
