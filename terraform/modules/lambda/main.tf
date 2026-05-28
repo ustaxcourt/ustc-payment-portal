@@ -1,15 +1,15 @@
 locals {
   lambda_functions = {
     initPayment = {
-      handler     = "lambdaHandler.initPaymentHandler"
+      handler     = "initPaymentHandler.initPaymentHandler"
       timeout     = 10
     }
     processPayment = {
-      handler     = "lambdaHandler.processPaymentHandler"
+      handler     = "processPaymentHandler.processPaymentHandler"
       timeout     = 10
     }
     getDetails = {
-      handler     = "lambdaHandler.getDetailsHandler"
+      handler     = "getDetailsHandler.getDetailsHandler"
       timeout     = 10
     }
     testCert = {

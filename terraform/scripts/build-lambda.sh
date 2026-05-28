@@ -39,12 +39,12 @@ KNEX_EXTERNALS=(
 # Bundle Init Payment Lambda
 echo "Bundling initPayment..."
 mkdir -p dist/initPayment
-npx esbuild src/lambdaHandler.ts \
+npx esbuild src/handlers/initPaymentHandler.ts \
   --bundle \
   --platform=node \
   --target=node22 \
   --format=cjs \
-  --outfile=dist/initPayment/lambdaHandler.js \
+  --outfile=dist/initPayment/initPaymentHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
@@ -54,12 +54,12 @@ npx esbuild src/lambdaHandler.ts \
 # Bundle Process Payment Lambda
 echo "Bundling processPayment..."
 mkdir -p dist/processPayment
-npx esbuild src/lambdaHandler.ts \
+npx esbuild src/handlers/processPaymentHandler.ts \
   --bundle \
   --platform=node \
   --target=node22 \
   --format=cjs \
-  --outfile=dist/processPayment/lambdaHandler.js \
+  --outfile=dist/processPayment/processPaymentHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
@@ -69,12 +69,12 @@ npx esbuild src/lambdaHandler.ts \
 # Bundle Get Details Lambda
 echo "Bundling getDetails..."
 mkdir -p dist/getDetails
-npx esbuild src/lambdaHandler.ts \
+npx esbuild src/handlers/getDetailsHandler.ts \
   --bundle \
   --platform=node \
   --target=node22 \
   --format=cjs \
-  --outfile=dist/getDetails/lambdaHandler.js \
+  --outfile=dist/getDetails/getDetailsHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
@@ -100,7 +100,7 @@ npx esbuild src/testCert.ts \
 for func in getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
   echo "Bundling ${func}..."
   mkdir -p "dist/${func}"
-  npx esbuild src/lambdaHandler.ts \
+  npx esbuild src/handlers/lambdaHandler.ts \
     --bundle \
     --platform=node \
     --target=node22 \
@@ -170,9 +170,9 @@ npx esbuild db/seeds/*.ts \
 
 echo "Build completed successfully!"
 echo "Bundled Lambda functions ready:"
-echo "  - dist/initPayment/lambdaHandler.js"
-echo "  - dist/processPayment/lambdaHandler.js"
-echo "  - dist/getDetails/lambdaHandler.js"
+echo "  - dist/initPayment/initPaymentHandler.js"
+echo "  - dist/processPayment/processPaymentHandler.js"
+echo "  - dist/getDetails/getDetailsHandler.js"
 echo "  - dist/testCert/lambdaHandler.js"
 echo "  - dist/getAllTransactions/lambdaHandler.js"
 echo "  - dist/getTransactionsByStatus/lambdaHandler.js"
@@ -183,8 +183,17 @@ echo "  - dist/migrationRunner/lambdaHandler.js"
 echo ""
 echo "Bundle sizes:"
 for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus migrationRunner; do
-    if [ -f "dist/$func/lambdaHandler.js" ]; then
-        size=$(du -h "dist/$func/lambdaHandler.js" | cut -f1)
-        echo "  - $func: $size"
+  output_file="lambdaHandler.js"
+  if [ "$func" = "initPayment" ]; then
+    output_file="initPaymentHandler.js"
+  elif [ "$func" = "processPayment" ]; then
+    output_file="processPaymentHandler.js"
+  elif [ "$func" = "getDetails" ]; then
+    output_file="getDetailsHandler.js"
+  fi
+
+  if [ -f "dist/$func/$output_file" ]; then
+    size=$(du -h "dist/$func/$output_file" | cut -f1)
+    echo "  - $func: $size"
     fi
 done
