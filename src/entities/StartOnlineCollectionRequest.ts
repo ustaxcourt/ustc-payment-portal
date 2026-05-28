@@ -67,9 +67,13 @@ export class StartOnlineCollectionRequest extends SoapRequest {
           .startOnlineCollectionResponse;
       const parsed = StartOnlineCollectionResponseSchema.safeParse(raw);
       if (!parsed.success) {
+        // Do not log `raw` — the token is session-equivalent and may be present
+        // even when validation fails. Log only the length for diagnostics.
+        const tokenLength =
+          typeof raw?.token === "string" ? raw.token.length : null;
         console.error(
           "startOnlineCollection schema validation failed",
-          JSON.stringify({ raw, errors: parsed.error.issues })
+          JSON.stringify({ tokenLength, errors: parsed.error.issues })
         );
         throw parsed.error;
       }

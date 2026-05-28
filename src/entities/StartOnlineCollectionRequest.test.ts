@@ -93,13 +93,16 @@ describe("StartOnlineCollectionRequest", () => {
       );
     });
 
-    it("logs the raw response and the Zod issues when validation fails", async () => {
+    it("logs Zod issues and token length without leaking the raw token value", async () => {
       const consoleErrorSpy = jest
         .spyOn(console, "error")
         .mockImplementation(jest.fn());
+      // 31 chars — fails `.length(32)` but is long enough to represent a real
+      // credential we must not write to logs.
+      const sensitiveToken = "SENSITIVE_TOKEN_DO_NOT_LEAK_3CH";
       jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({
         "ns2:startOnlineCollectionResponse": {
-          startOnlineCollectionResponse: { token: "" },
+          startOnlineCollectionResponse: { token: sensitiveToken },
         },
       });
 
@@ -108,10 +111,14 @@ describe("StartOnlineCollectionRequest", () => {
       await expect(request.makeSoapRequest(appContext)).rejects.toBeInstanceOf(
         ZodError,
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+
+      const loggedPayload = consoleErrorSpy.mock.calls[0][1];
+      expect(consoleErrorSpy.mock.calls[0][0]).toBe(
         "startOnlineCollection schema validation failed",
-        expect.stringContaining("errors"),
       );
+      expect(loggedPayload).toContain("errors");
+      expect(loggedPayload).toContain('"tokenLength":31');
+      expect(loggedPayload).not.toContain(sensitiveToken);
     });
 
     it("throws FailedTransactionError when the SOAP envelope is missing the ns2:startOnlineCollectionResponse key", async () => {
