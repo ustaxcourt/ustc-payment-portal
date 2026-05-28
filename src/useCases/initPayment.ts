@@ -40,6 +40,14 @@ export const initPayment: InitPayment = async (
   } = request;
   const { clientName } = client;
 
+  appContext.logger.debug("Received initPayment request", {
+    feeKey,
+    clientName,
+    transactionReferenceId,
+    hasAmount: amount !== undefined,
+    metadataKeys: request.metadata ? Object.keys(request.metadata) : [],
+  });
+
   authorizeClient(client, feeKey);
   appContext.logger.info("Authorized client for initPayment", {
     clientName,
@@ -125,10 +133,22 @@ export const initPayment: InitPayment = async (
       // Concurrent initPayment lost the createReceived race — the partial unique index
       // `idx_transactions_unique_active` ensures at most one in-flight attempt per
       // (clientName, transactionReferenceId). Report the same 409 as the app-level check.
-      throw new ConflictError(
-        "A payment session is already in-flight for this transactionReferenceId",
-      );
+      const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
+        "A payment session is already in-flight for this transactionReferenceId";
+      appContext.logger.error(EXISTING_IN_FLIGHT_TRANSACTION_ERROR, {
+        agencyTrackingId,
+        clientName,
+        transactionReferenceId,
+      });
+      throw new ConflictError(EXISTING_IN_FLIGHT_TRANSACTION_ERROR);
     }
+
+    appContext.logger.error("Failed to record received transaction", {
+      agencyTrackingId,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+
     throw new Error(
       `Failed to record received transaction: ${
         err instanceof Error ? err.message : String(err)
@@ -136,15 +156,32 @@ export const initPayment: InitPayment = async (
     );
   }
 
+  appContext.logger.info("Transaction received and recorded", {
+    agencyTrackingId,
+    transactionAmount,
+    feeId: fee.feeId,
+    clientName,
+    transactionReferenceId,
+    ...(request.metadata
+      ? Object.fromEntries(
+          Object.entries(request.metadata).map(([k, v]) => [
+            `metadata_${k}`,
+            v,
+          ]),
+        )
+      : {}),
+  });
+
   try {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
     appContext.logger.error("Error making SOAP request to Pay.gov", {
+      agencyTrackingId,
+      clientName,
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
     });
 
-    // console.error("Error making SOAP request to Pay.gov", err);
     await safeUpdateToFailed(
       appContext,
       agencyTrackingId,
