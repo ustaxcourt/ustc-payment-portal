@@ -114,6 +114,7 @@ export const initPayment: InitPayment = async (
 
   appContext.logger.info("Initiating new transaction", {
     agencyTrackingId,
+    transactionReferenceId,
     transactionAmount,
     feeId: fee.feeId,
     clientName,
