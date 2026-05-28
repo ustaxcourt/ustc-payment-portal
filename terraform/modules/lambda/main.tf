@@ -1,28 +1,28 @@
 locals {
   lambda_functions = {
     initPayment = {
-      handler     = "initPaymentHandler.initPaymentHandler"
-      timeout     = 10
+      handler = "initPaymentHandler.initPaymentHandler"
+      timeout = 10
     }
     processPayment = {
-      handler     = "processPaymentHandler.processPaymentHandler"
-      timeout     = 10
+      handler = "processPaymentHandler.processPaymentHandler"
+      timeout = 10
     }
     getDetails = {
-      handler     = "getDetailsHandler.getDetailsHandler"
-      timeout     = 10
+      handler = "getDetailsHandler.getDetailsHandler"
+      timeout = 10
     }
     testCert = {
       handler = "lambdaHandler.handler"
     }
     getAllTransactions = {
-      handler = "lambdaHandler.getAllTransactionsHandler"
+      handler = "getAllTransactionsHandler.getAllTransactionsHandler"
     }
     getTransactionsByStatus = {
-      handler = "lambdaHandler.getTransactionsByStatusHandler"
+      handler = "getTransactionsByStatusHandler.getTransactionsByStatusHandler"
     }
     getTransactionPaymentStatus = {
-      handler = "lambdaHandler.getTransactionPaymentStatusHandler"
+      handler = "getTransactionPaymentStatusHandler.getTransactionPaymentStatusHandler"
     }
     migrationRunner = {
       handler           = "lambdaHandler.migrationHandler"
@@ -43,7 +43,7 @@ resource "aws_lambda_function" "functions" {
   role          = var.lambda_execution_role_arn
   handler       = local.lambda_functions[each.key].handler
 
-  timeout     = try(local.lambda_functions[each.key].timeout, null)
+  timeout = try(local.lambda_functions[each.key].timeout, null)
 
   runtime = var.runtime
 

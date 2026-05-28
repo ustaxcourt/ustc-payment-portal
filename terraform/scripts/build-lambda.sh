@@ -96,22 +96,50 @@ npx esbuild src/testCert.ts \
   --minify \
   --keep-names
 
-# Bundle Dashboard Lambdas (all share lambdaHandler.ts entry)
-for func in getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
-  echo "Bundling ${func}..."
-  mkdir -p "dist/${func}"
-  npx esbuild src/handlers/lambdaHandler.ts \
-    --bundle \
-    --platform=node \
-    --target=node22 \
-    --format=cjs \
-    --outfile="dist/${func}/lambdaHandler.js" \
-    --external:aws-sdk \
-    --external:@aws-sdk/* \
-    "${KNEX_EXTERNALS[@]}" \
-    --minify \
-    --keep-names
-done
+# Bundle getAllTransactions Lambda
+echo "Bundling getAllTransactions..."
+mkdir -p dist/getAllTransactions
+npx esbuild src/handlers/getAllTransactionsHandler.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/getAllTransactions/getAllTransactionsHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
+
+# Bundle getTransactionsByStatus Lambda
+echo "Bundling getTransactionsByStatus..."
+mkdir -p dist/getTransactionsByStatus
+npx esbuild src/handlers/getTransactionsByStatusHandler.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/getTransactionsByStatus/getTransactionsByStatusHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
+
+# Bundle getTransactionPaymentStatus Lambda
+echo "Bundling getTransactionPaymentStatus..."
+mkdir -p dist/getTransactionPaymentStatus
+npx esbuild src/handlers/getTransactionPaymentStatusHandler.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/getTransactionPaymentStatus/getTransactionPaymentStatusHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
 
 # Bundle Migration Runner Lambda
 echo "Bundling migrationRunner..."
@@ -174,9 +202,9 @@ echo "  - dist/initPayment/initPaymentHandler.js"
 echo "  - dist/processPayment/processPaymentHandler.js"
 echo "  - dist/getDetails/getDetailsHandler.js"
 echo "  - dist/testCert/lambdaHandler.js"
-echo "  - dist/getAllTransactions/lambdaHandler.js"
-echo "  - dist/getTransactionsByStatus/lambdaHandler.js"
-echo "  - dist/getTransactionPaymentStatus/lambdaHandler.js"
+echo "  - dist/getAllTransactions/getAllTransactionsHandler.js"
+echo "  - dist/getTransactionsByStatus/getTransactionsByStatusHandler.js"
+echo "  - dist/getTransactionPaymentStatus/getTransactionPaymentStatusHandler.js"
 echo "  - dist/migrationRunner/lambdaHandler.js"
 
 # Show file sizes
@@ -190,6 +218,12 @@ for func in initPayment processPayment getDetails testCert getAllTransactions ge
     output_file="processPaymentHandler.js"
   elif [ "$func" = "getDetails" ]; then
     output_file="getDetailsHandler.js"
+  elif [ "$func" = "getAllTransactions" ]; then
+    output_file="getAllTransactionsHandler.js"
+  elif [ "$func" = "getTransactionsByStatus" ]; then
+    output_file="getTransactionsByStatusHandler.js"
+  elif [ "$func" = "getTransactionPaymentStatus" ]; then
+    output_file="getTransactionPaymentStatusHandler.js"
   fi
 
   if [ -f "dist/$func/$output_file" ]; then
