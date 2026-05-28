@@ -26,7 +26,10 @@ Let's migrate from TSLint (which is depreciated anyway) over to Biome. Biome giv
 
 ## Consequences
 
-- **Better code styling enforcement** After Biome is installed, we can add it pre-commit hook requirement and as a GH Action to ensure we stay compilant with code styling.
+- **Biome is relatively young** It doesn't have the 10+ years of development and community support that ESLint has. Biome won't have all the same rules supported as ESLint - if there's a particularly niche rule we need, we will have to write a custom one in GritQL where ESLint might already have a rule or plugin that covers it. On the flip side though, our small size and lack of frontend mitigates the risk of needing an untested custom rule. The core group of JavaScript rules and formatting supported by both Biome and ESLint covers most if not all of what we need for Payment Portal.
+- **Biome plugin support** We can write custom rules in Biome using GritQL (Biome's version of 'plugins'). Note that Biome Plugins should be considered in 'beta', and any custom rules we write should be thoroughly tested before being put in practice.
+- **Nursery rules** Nursery rules are brand new rules Biome is planning on supporting, but aren't quite on parity with their ESLint equivalents. We can still use these, but may only cover 75-85% of the same cases as the ESLint rule. For example, **noFloatingPromises** in Biome covers about 85% of the same cases as `@typescript-eslint/no-floating-promises`. Over time though the coverage will get better as Biome continues to be developed.
+- **Better code styling enforcement** After Biome is installed, we can add it pre-commit hook requirement and as a GH Action to ensure we stay compliant with code styling.
 - **Less PR noise** Consistent styling means less cases of random file formatting changes unrelated to the PR at hand.
 - **Catching the knuckleheaded stuff** Biome rules will help catch unused imports, variables, and parameters, making sure async function calls are properly awaited, etc.
 

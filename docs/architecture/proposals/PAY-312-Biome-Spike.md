@@ -81,7 +81,7 @@ Plugins work with Biome using the **GritQL** Query Language. With it, you can wr
 
 ## Dependencies
 
-Biome wins out when it comes to additional dependencies (or lack of needing them) when compared to ESLint. Since Biome already has a Formatter built into it, you only need to add the core Biome package as a devDependency. Comparing that to ESLint, which requires `eslint, @typescript-eslint/parser, @typescript-eslint/eslint-plugin, prettier, and eslint-config-prettier` to cover Payment Portal.
+Biome wins out when it comes to additional dependencies (or lack of needing them) when compared to ESLint. Since Biome already has a Formatter built into it, you only need to add the core Biome package as a devDependency. Comparing that to ESLint, which requires `eslint`, `@typescript-eslint/parser`, `@typescript-eslint/eslint-plugin`, `prettier`, and `eslint-config-prettier` to cover Payment Portal.
 
 ## Type Aware Errors
 
