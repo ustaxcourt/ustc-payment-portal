@@ -99,7 +99,6 @@ export const processPayment: ProcessPayment = async (
         err,
       );
       await safeUpdateToFailed(
-        appContext,
         transaction.agencyTrackingId,
         undefined,
         "Pay.gov returned a response that failed schema validation",
@@ -112,7 +111,6 @@ export const processPayment: ProcessPayment = async (
       err,
     );
     await safeUpdateToFailed(
-      appContext,
       transaction.agencyTrackingId,
       undefined,
       "Error communicating with Pay.gov",
@@ -141,7 +139,6 @@ export const processPayment: ProcessPayment = async (
       err,
     );
     await safeUpdateToFailed(
-      appContext,
       transaction.agencyTrackingId,
       undefined,
       "Failed to persist Pay.gov response",

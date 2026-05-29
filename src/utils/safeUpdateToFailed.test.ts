@@ -1,6 +1,5 @@
 import { safeUpdateToFailed } from "./safeUpdateToFailed";
 import TransactionModel from "../db/TransactionModel";
-import { AppContext } from "../types/AppContext";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -12,16 +11,11 @@ const TransactionModelMock = TransactionModel as jest.Mocked<
 >;
 
 describe("safeUpdateToFailed", () => {
-  const appContext = {
-    logger: {
-      error: jest.fn(),
-    },
-  } as unknown as AppContext;
-
   beforeEach(() => jest.clearAllMocks());
+  jest.spyOn(console, "error").mockImplementation(jest.fn());
 
   it("calls updateToFailed with the provided args", async () => {
-    await safeUpdateToFailed(appContext, "agency-123", 5009, "some detail");
+    await safeUpdateToFailed("agency-123", 5009, "some detail");
 
     expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
       "agency-123",
@@ -31,7 +25,7 @@ describe("safeUpdateToFailed", () => {
   });
 
   it("forwards undefined for optional args when omitted", async () => {
-    await safeUpdateToFailed(appContext, "agency-123");
+    await safeUpdateToFailed("agency-123");
 
     expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
       "agency-123",
@@ -45,25 +39,18 @@ describe("safeUpdateToFailed", () => {
       new Error("db down"),
     );
 
-    await expect(
-      safeUpdateToFailed(appContext, "agency-123"),
-    ).resolves.toBeUndefined();
+    await expect(safeUpdateToFailed("agency-123")).resolves.toBeUndefined();
   });
 
   it("logs the agencyTrackingId and error when updateToFailed rejects", async () => {
     const dbError = new Error("db down");
     TransactionModelMock.updateToFailed.mockRejectedValueOnce(dbError);
 
-    await safeUpdateToFailed(appContext, "agency-123");
+    await safeUpdateToFailed("agency-123");
 
-    expect(appContext.logger.error).toHaveBeenCalledWith(
-      "Failed to mark transaction as failed during error recovery",
-      {
-        agencyTrackingId: "agency-123",
-        code: undefined,
-        detail: undefined,
-        err: dbError,
-      },
+    expect(console.error).toHaveBeenCalledWith(
+      "Failed to mark transaction 'agency-123' as failed during error recovery:",
+      dbError,
     );
   });
 });
