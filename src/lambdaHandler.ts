@@ -176,8 +176,8 @@ const dashboardError = (
 export const getAllTransactionsHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
+  const appContext = createAppContext({ lambdaRequest: event });
   try {
-    const appContext = createAppContext({ lambdaRequest: event });
     const result = await appContext
       .getUseCases()
       .getRecentTransactions(appContext);
