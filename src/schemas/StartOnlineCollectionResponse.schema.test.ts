@@ -1,6 +1,6 @@
 import { StartOnlineCollectionResponseSchema } from "./StartOnlineCollectionResponse.schema";
 
-const validToken = "a".repeat(32);
+const validToken = crypto.randomUUID().replace(/-/g, ""); // 32 chars — mirrors the shape Pay.gov actually returns.
 
 describe("StartOnlineCollectionResponseSchema", () => {
   it("accepts a valid 32-character Pay.gov token", () => {
