@@ -17,14 +17,13 @@ import { isValidPaymentStatus } from "./useCases/getTransactionsByStatus";
 import { PaymentStatusSchema } from "./schemas/PaymentStatus.schema";
 import { getClientByRoleArn } from "./clients/permissionsClient";
 
-const appContext = createAppContext();
-
 type LambdaHandler<T> = (
   appContext: AppContext,
   params: { client: ClientPermission; request: T },
 ) => Promise<unknown>;
 
 const lambdaHandler = async <T>(
+  appContext: AppContext,
   request: T,
   requestContext: APIGatewayEventRequestContext,
   callback: LambdaHandler<T>,
@@ -91,7 +90,9 @@ export const initPaymentHandler = (
   const result = parseAndValidate(event.body, InitPaymentRequestSchema);
   if (!result.ok) return Promise.resolve(result.error);
 
+  const appContext = createAppContext({ lambdaRequest: event });
   return lambdaHandler(
+    appContext,
     result.value,
     event.requestContext,
     appContext.getUseCases().initPayment,
@@ -104,7 +105,9 @@ export const processPaymentHandler = (
   const result = parseAndValidate(event.body, ProcessPaymentRequestSchema);
   if (!result.ok) return Promise.resolve(result.error);
 
+  const appContext = createAppContext({ lambdaRequest: event });
   return lambdaHandler(
+    appContext,
     result.value,
     event.requestContext,
     appContext.getUseCases().processPayment,
@@ -126,7 +129,9 @@ export const getDetailsHandler = (
   }
   // getDetails is a read-only lookup — IAM registration check is sufficient.
   // Per-transaction client ownership is enforced inside the use case.
+  const appContext = createAppContext({ lambdaRequest: event });
   return lambdaHandler(
+    appContext,
     { transactionReferenceId: result.data.transactionReferenceId },
     event.requestContext,
     appContext.getUseCases().getDetails,
@@ -168,18 +173,20 @@ const dashboardError = (
  * GET /transactions
  * Returns the 100 most recent transactions across all statuses.
  */
-export const getAllTransactionsHandler =
-  async (): Promise<APIGatewayProxyResult> => {
-    try {
-      const result = await appContext
-        .getUseCases()
-        .getRecentTransactions(appContext);
-      return dashboardOk(result);
-    } catch (err) {
-      console.error("[Dashboard] getAllTransactions error:", err);
-      return dashboardError(500, "Internal server error");
-    }
-  };
+export const getAllTransactionsHandler = async (
+  event: APIGatewayEvent,
+): Promise<APIGatewayProxyResult> => {
+  try {
+    const appContext = createAppContext({ lambdaRequest: event });
+    const result = await appContext
+      .getUseCases()
+      .getRecentTransactions(appContext);
+    return dashboardOk(result);
+  } catch (err) {
+    console.error("[Dashboard] getAllTransactions error:", err);
+    return dashboardError(500, "Internal server error");
+  }
+};
 
 /**
  * GET /transactions/{paymentStatus}
@@ -188,6 +195,7 @@ export const getAllTransactionsHandler =
 export const getTransactionsByStatusHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
+  const appContext = createAppContext({ lambdaRequest: event });
   const paymentStatus = event.pathParameters?.paymentStatus;
   if (!paymentStatus) {
     return dashboardError(
@@ -220,13 +228,15 @@ export const getTransactionsByStatusHandler = async (
  * GET /transaction-payment-status
  * Returns aggregated counts per payment status.
  */
-export const getTransactionPaymentStatusHandler =
-  async (): Promise<APIGatewayProxyResult> => {
-    try {
-      const result = await appContext
-        .getUseCases()
-        .getTransactionPaymentStatus(appContext);
-      return dashboardOk(result);
+export const getTransactionPaymentStatusHandler = async (
+  event: APIGatewayEvent,
+): Promise<APIGatewayProxyResult> => {
+  try {
+    const appContext = createAppContext({ lambdaRequest: event });
+    const result = await appContext
+      .getUseCases()
+      .getTransactionPaymentStatus(appContext);
+    return dashboardOk(result);
     } catch (err) {
       console.error("[Dashboard] getTransactionPaymentStatus error:", err);
       return dashboardError(500, "Internal server error");
