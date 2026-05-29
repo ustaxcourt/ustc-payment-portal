@@ -218,6 +218,25 @@ jobs:
             exit 1
           fi
 
+      - name: Provision PR database user
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
+        working-directory: terraform/environments/dev
+        run: |
+          FUNCTION_NAME=$(terraform output -raw migration_runner_function_name)
+          echo "Provisioning PR user via: $FUNCTION_NAME"
+          aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload '{"command":"provision-user"}' \
+            --cli-binary-format raw-in-base64-out \
+            --log-type Tail \
+            --cli-read-timeout 130 \
+            response.json | tee invoke-meta.json
+          cat response.json
+          if jq -e '.FunctionError' invoke-meta.json > /dev/null 2>&1; then
+            echo "ERROR: provision-user Lambda reported a function error"
+            exit 1
+          fi
+
       # Migrations must run before seeding — seed files depend on the schema
       # created by migrations (tables, columns, constraints). Reversing this
       # order would cause the seed to fail on a blank database.
@@ -290,9 +309,9 @@ jobs:
             ROLE_NAME=$(echo "$CALLER_ARN" | sed -n 's|.*assumed-role/\([^/]*\)/.*|\1|p')
             if [ -n "$ROLE_NAME" ]; then
               IAM_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
-              # Wildcard allowedFeeIds so CI tests pass regardless of which fee IDs are added in the future.
+              # Wildcard allowedFeeKeys so CI tests pass regardless of which fee Keys are added in the future.
               # This entry is CI-only and never written to dev/stg/prod client-permissions.
-              DEPLOYER_PERMISSIONS=$(jq -n --arg arn "$IAM_ROLE_ARN" '[{clientName: "CI Deployer", clientRoleArn: $arn, allowedFeeIds: ["*"]}]')
+              DEPLOYER_PERMISSIONS=$(jq -n --arg arn "$IAM_ROLE_ARN" '[{clientName: "CI Deployer", clientRoleArn: $arn, allowedFeeKeys: ["*"]}]')
               aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string "$DEPLOYER_PERMISSIONS"
               echo "Seeded client-permissions with deployer role: $IAM_ROLE_ARN"
             else
@@ -386,6 +405,25 @@ jobs:
         run: |
           WS="pr-${PR_NUMBER}"
           (terraform workspace select "$WS" && echo "workspace=$WS" >> $GITHUB_OUTPUT) || echo "no_ws=true" >> $GITHUB_OUTPUT
+
+      - name: Deprovision PR database user (best-effort)
+        if: ${{ steps.ws.outputs.no_ws != 'true' }}
+        working-directory: terraform/environments/dev
+        run: |
+          FUNCTION_NAME=$(terraform output -raw migration_runner_function_name 2>/dev/null || true)
+          if [ -z "$FUNCTION_NAME" ]; then
+            echo "Could not resolve migration runner function name — skipping deprovision-user"
+          else
+            echo "Deprovisioning PR user via: $FUNCTION_NAME"
+            aws lambda invoke \
+              --function-name "$FUNCTION_NAME" \
+              --payload '{"command":"deprovision-user"}' \
+              --cli-binary-format raw-in-base64-out \
+              --log-type Tail \
+              --cli-read-timeout 130 \
+              response.json || true
+            cat response.json || true
+          fi
 
       - name: Drop PR database (best-effort)
         if: ${{ steps.ws.outputs.no_ws != 'true' }}

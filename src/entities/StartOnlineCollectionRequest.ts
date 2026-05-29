@@ -1,10 +1,10 @@
 import { RawStartOnlineCollectionRequest } from "../types/RawStartOnlineCollectionRequest";
 import { AppContext } from "../types/AppContext";
-import { StartOnlineCollectionResponse } from "../types/StartOnlineCollectionResponse";
 import { RequestType, SoapRequest } from "./SoapRequest";
-import { StartOnlineCollectionSchema } from "../schemas";
-
-export const startOnlineCollectionSchema = StartOnlineCollectionSchema;
+import {
+  StartOnlineCollectionResponse,
+  StartOnlineCollectionResponseSchema,
+} from "../schemas/StartOnlineCollectionResponse.schema";
 
 export type StartOnlineCollectionRequestParams = {
   tcs_app_id: string;
@@ -55,15 +55,31 @@ export class StartOnlineCollectionRequest extends SoapRequest {
       url_cancel: this.urlCancel,
     };
 
-    const response = await SoapRequest.prototype.makeRequest(
+    const responseBody = await SoapRequest.prototype.makeRequest(
       appContext,
       params,
       this.requestType
     );
 
-    const tokenResponse = response["ns2:startOnlineCollectionResponse"]
-      .startOnlineCollectionResponse as StartOnlineCollectionResponse;
+    if (responseBody["ns2:startOnlineCollectionResponse"]) {
+      const raw =
+        responseBody["ns2:startOnlineCollectionResponse"]
+          .startOnlineCollectionResponse;
+      const parsed = StartOnlineCollectionResponseSchema.safeParse(raw);
+      if (!parsed.success) {
+        // Do not log `raw` — the token is session-equivalent and may be present
+        // even when validation fails. Log only the length for diagnostics.
+        const tokenLength =
+          typeof raw?.token === "string" ? raw.token.length : null;
+        console.error(
+          "startOnlineCollection schema validation failed",
+          JSON.stringify({ tokenLength, errors: parsed.error.issues })
+        );
+        throw parsed.error;
+      }
+      return parsed.data;
+    }
 
-    return tokenResponse;
+    throw this.handleFault(responseBody["S:Fault"]);
   }
 }

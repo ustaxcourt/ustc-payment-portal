@@ -5,12 +5,12 @@ import { getDetails } from "./useCases/getDetails";
 import { initPayment } from "./useCases/initPayment";
 import { processPayment } from "./useCases/processPayment";
 import { getRecentTransactions } from "./useCases/getRecentTransactions";
-import {
-  getTransactionsByStatus,
-} from "./useCases/getTransactionsByStatus";
+import { getTransactionsByStatus } from "./useCases/getTransactionsByStatus";
 import { getTransactionPaymentStatus } from "./useCases/getTransactionPaymentStatus";
 import * as https from "https";
 import fetch from "node-fetch";
+import { createRequestLogger } from "./utils/logger";
+import type { APIGatewayEvent } from "aws-lambda";
 
 let httpsAgentCache: https.Agent | undefined;
 
@@ -18,7 +18,40 @@ function normalizePem(pem: string): string {
   return pem.replace(/\r\n/g, "\n").trimEnd() + "\n";
 }
 
-export const createAppContext = (): AppContext => {
+type LocalRequestContext = {
+  method: string;
+  path: string;
+  transactionReferenceId?: string;
+};
+
+type AppContextContext = {
+  localRequest?: LocalRequestContext;
+  lambdaRequest?: APIGatewayEvent;
+};
+
+export const createAppContext = (
+  context: AppContextContext = {},
+): AppContext => {
+  const { localRequest, lambdaRequest } = context;
+  const requestContext = localRequest
+    ? {
+        httpMethod: localRequest.method,
+        path: localRequest.path,
+        transactionReferenceId: localRequest.transactionReferenceId,
+      }
+    : lambdaRequest
+    ? {
+        httpMethod: lambdaRequest.httpMethod,
+        awsRequestId: lambdaRequest.requestContext.requestId,
+        path: lambdaRequest.path,
+        clientArn: lambdaRequest.requestContext.identity.userArn ?? undefined,
+        transactionReferenceId:
+          lambdaRequest.queryStringParameters?.transactionReferenceId,
+      }
+    : {};
+
+  const logger = createRequestLogger(requestContext);
+
   return {
     getHttpsAgent: async () => {
       if (!httpsAgentCache) {
@@ -48,7 +81,7 @@ export const createAppContext = (): AppContext => {
     },
     postHttpRequest: async (
       appContext: AppContext,
-      body: string
+      body: string,
     ): Promise<string> => {
       const httpsAgent = await appContext.getHttpsAgent();
 
@@ -78,7 +111,7 @@ export const createAppContext = (): AppContext => {
                 secretId: tokenSecretId,
                 errorName: err?.name,
                 errorMessage: err?.message,
-              }
+              },
             );
             // Proceed without Authorization header if token fetch fails
           }
@@ -103,5 +136,6 @@ export const createAppContext = (): AppContext => {
       getTransactionPaymentStatus,
       getTransactionsByStatus,
     }),
+    logger,
   };
 };
