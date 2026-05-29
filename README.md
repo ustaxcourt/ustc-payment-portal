@@ -97,6 +97,14 @@ Right now there aren't many unit tests, but there are some integration tests tha
 npm run test
 ```
 
+For package-consumer safety checks, run:
+
+```bash
+npm run test:smoke:consumer
+```
+
+This smoke test validates package shape (pack/install/bin + command wiring) and confirms the installed CLI invokes `npm run start:all` from package root. It does not fully validate Docker-backed local runtime behavior.
+
 ## Publishing to npmjs.org
 
 This package is published to npmjs.org as `@ustaxcourt/payment-portal` and can be installed via:

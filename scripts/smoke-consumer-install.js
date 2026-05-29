@@ -77,6 +77,11 @@ function main() {
   fs.mkdirSync(fakeBinDir, { recursive: true });
 
   try {
+    // Ensure dist artifacts are freshly built before packaging.
+    run(npmCommand, ["run", "prepack"], {
+      cwd: repoRoot,
+    });
+
     const pack = run(npmCommand, ["pack", "--json", "--ignore-scripts"], {
       cwd: repoRoot,
     });

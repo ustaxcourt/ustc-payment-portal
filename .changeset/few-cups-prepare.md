@@ -16,4 +16,5 @@ PAY-313: prepare Payment Portal for consumer-package usage (`npx @ustaxcourt/pay
 - Updated docker db-init lockfile-absent branch to `npm install --no-package-lock` to avoid writing lockfiles in bind-mounted packaged contexts.
 - Added docs for safe package POC testing in another repo: `docs/testing-package-locally.md` (with official npm doc links and troubleshooting).
 - Added unit tests for runtime launcher behavior in `scripts/start-dev-server-runtime.test.js`.
+- Added consumer-package smoke test wiring (`test:smoke:consumer`) in CI and publish flow to verify tarball install + CLI startup contract (`npm run start:all` invocation); this smoke test validates package shape and command wiring only, not full Docker-backed runtime behavior.
 - Guarded local pretty logger transport to avoid startup crashes when `pino-pretty` is unavailable in consumer environments.

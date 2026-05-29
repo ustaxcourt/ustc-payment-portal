@@ -28,7 +28,7 @@
     "test:integration:sigv4": "BASE_URL=$BASE_URL npx jest ./src/test/integration/sigv4Smoke.test.ts --coverage --verbose",
     "test:db:setup": "node -r dotenv/config ./scripts/ensure-test-db.js && NODE_ENV=test APP_ENV=test npm run knex -- migrate:latest && NODE_ENV=test APP_ENV=test npm run knex -- seed:run",
     "ci:install": "npm ci",
-    "ci:publish": "npm run build && changeset publish --provenance",
+    "ci:publish": "npm run test:smoke:consumer && changeset publish --provenance",
     "prepack": "npm-run-all clean build",
     "test:smoke:consumer": "node scripts/smoke-consumer-install.js",
     "generate:openapi": "ts-node src/openapi/generate.ts",
