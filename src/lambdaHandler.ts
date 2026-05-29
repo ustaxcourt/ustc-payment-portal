@@ -231,14 +231,14 @@ export const getTransactionsByStatusHandler = async (
 export const getTransactionPaymentStatusHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
+  const appContext = createAppContext({ lambdaRequest: event });
   try {
-    const appContext = createAppContext({ lambdaRequest: event });
     const result = await appContext
       .getUseCases()
       .getTransactionPaymentStatus(appContext);
     return dashboardOk(result);
-    } catch (err) {
-      console.error("[Dashboard] getTransactionPaymentStatus error:", err);
-      return dashboardError(500, "Internal server error");
-    }
-  };
+  } catch (err) {
+    console.error("[Dashboard] getTransactionPaymentStatus error:", err);
+    return dashboardError(500, "Internal server error");
+  }
+};
