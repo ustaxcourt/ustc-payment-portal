@@ -11,6 +11,15 @@ locals {
   rds_secret_arn = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : data.aws_ssm_parameter.dev_rds_secret_arn[0].value
   rds_db_name    = local.environment == "dev" ? "paymentportal" : "paymentportal_${replace(local.environment, "-", "_")}"
 
+  # PR-scoped DB user (PAY-276). The dev workspace itself uses admin creds; PR
+  # workspaces get an isolated user that can only see their own database.
+  is_pr   = local.environment != "dev"
+  pr_role = local.is_pr ? "pr_user_${replace(local.environment, "-", "_")}" : null
+
+  # Payment + dashboard Lambdas use the PR-scoped secret in PR workspaces;
+  # everywhere else they keep using the admin secret.
+  app_rds_secret_arn = local.is_pr ? aws_secretsmanager_secret.pr_user[0].arn : local.rds_secret_arn
+
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
     APP_ENV                            = local.app_env
@@ -20,7 +29,7 @@ locals {
     PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = module.secrets.paygov_dev_server_token_secret_id
     CLIENT_PERMISSIONS_SECRET_ID       = module.secrets.client_permissions_secret_id
     RDS_ENDPOINT                       = local.rds_endpoint
-    RDS_SECRET_ARN                     = local.rds_secret_arn
+    RDS_SECRET_ARN                     = local.app_rds_secret_arn
     RDS_DB_NAME                        = local.rds_db_name
     }, local.mtls_enabled ? {
     PRIVATE_KEY_SECRET_ID = module.secrets.private_key_secret_id
@@ -33,22 +42,27 @@ locals {
     NODE_ENV                 = local.node_env
     APP_ENV                  = local.app_env
     RDS_ENDPOINT             = local.rds_endpoint
-    RDS_SECRET_ARN           = local.rds_secret_arn
+    RDS_SECRET_ARN           = local.app_rds_secret_arn
     RDS_DB_NAME              = local.rds_db_name
     DASHBOARD_ALLOWED_ORIGIN = local.dashboard_allowed_origin
   }
 
   # Migration Lambda: migrationRunner
   # Needs RDS only — no payment secrets, no CORS origin.
-  # RDS_MASTER_SECRET_ARN uses the same admin credentials — required for CREATE/DROP DATABASE.
-  lambda_env_migration = {
+  # RDS_MASTER_SECRET_ARN uses the admin credentials — required for CREATE/DROP DATABASE
+  # and for the provision-user / deprovision-user commands (PAY-276).
+  # PR_USER_SECRET_ARN is set only in PR workspaces — read by provision-user to
+  # learn the PR role's username/password.
+  lambda_env_migration = merge({
     NODE_ENV              = local.node_env
     APP_ENV               = local.app_env
     RDS_ENDPOINT          = local.rds_endpoint
     RDS_SECRET_ARN        = local.rds_secret_arn
     RDS_MASTER_SECRET_ARN = local.rds_secret_arn
     RDS_DB_NAME           = local.rds_db_name
-  }
+    }, local.is_pr ? {
+    PR_USER_SECRET_ARN = aws_secretsmanager_secret.pr_user[0].arn
+  } : {})
 
   lambda_env_by_function = {
     initPayment                 = local.lambda_env_payment

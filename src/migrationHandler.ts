@@ -11,10 +11,15 @@ import { parseRdsEndpoint } from "./db/getRdsCredentials";
 type Command =
   | "create-db"
   | "drop-db"
+  | "provision-user"
+  | "deprovision-user"
+  | "show-users"
+  | "show-databases"
   | "migrate"
   | "seed"
   | "verify"
-  | "gc-dbs";
+  | "gc-dbs"
+  | "gc-roles";
 
 type MigrationHandlerEvent = {
   command?: Command;
@@ -34,6 +39,12 @@ type DatabaseConnection = {
   database: string;
   ssl?: { rejectUnauthorized: boolean };
 };
+
+const quoteSqlIdentifier = (value: string): string =>
+  `"${value.replace(/"/g, '""')}"`;
+
+const quoteSqlLiteral = (value: string): string =>
+  `'${value.replace(/'/g, "''")}'`;
 
 const getRdsSecret = async (
   secretArn: string,
@@ -178,10 +189,192 @@ const getSeedsDirectory = (): string => {
   return path.join(__dirname, "..", "db", "seeds");
 };
 
-// TODO: For better isolation, create a dedicated PostgreSQL user scoped to each
-// PR database rather than reusing the shared admin credentials. This would prevent
-// a PR environment from accidentally accessing another PR's database.
-// At current team size this is low risk, but worth revisiting at DAWSON scale.
+const provisionUser = async (): Promise<MigrationHandlerResult> => {
+  const prUserSecretArn = process.env.PR_USER_SECRET_ARN;
+  if (!prUserSecretArn) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: "Skipping provision-user: PR_USER_SECRET_ARN is not set",
+      }),
+    };
+  }
+
+  const dbName = process.env.RDS_DB_NAME;
+  if (!dbName) throw new Error("RDS_DB_NAME is not set");
+
+  const { username: prRole, password: prPassword } = await getRdsSecret(
+    prUserSecretArn,
+  );
+
+  const maintenanceKnex = await getMaintenanceKnex();
+  try {
+    const roleExistsResult = await maintenanceKnex.raw<{
+      rows: { exists: boolean }[];
+    }>(`SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = ?) AS exists`, [
+      prRole,
+    ]);
+
+    if (roleExistsResult.rows[0].exists) {
+      await maintenanceKnex.raw(
+        `ALTER ROLE ${quoteSqlIdentifier(
+          prRole,
+        )} WITH LOGIN PASSWORD ${quoteSqlLiteral(prPassword)}`,
+      );
+    } else {
+      await maintenanceKnex.raw(
+        `CREATE ROLE ${quoteSqlIdentifier(
+          prRole,
+        )} LOGIN PASSWORD ${quoteSqlLiteral(prPassword)}`,
+      );
+    }
+  } finally {
+    await maintenanceKnex.destroy();
+  }
+
+  const connection = await getDatabaseConnection();
+  const dbKnex = Knex({
+    client: "pg",
+    connection,
+    pool: { min: 0, max: 1, acquireTimeoutMillis: 10000 },
+  });
+
+  try {
+    await dbKnex.raw(`GRANT CONNECT ON DATABASE ?? TO ??`, [dbName, prRole]);
+    await dbKnex.raw(`GRANT USAGE ON SCHEMA public TO ??`, [prRole]);
+    await dbKnex.raw(
+      `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ??`,
+      [prRole],
+    );
+    await dbKnex.raw(
+      `GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO ??`,
+      [prRole],
+    );
+    await dbKnex.raw(
+      `ALTER DEFAULT PRIVILEGES FOR ROLE ?? IN SCHEMA public
+       GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ??`,
+      [connection.user, prRole],
+    );
+    await dbKnex.raw(
+      `ALTER DEFAULT PRIVILEGES FOR ROLE ?? IN SCHEMA public
+       GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO ??`,
+      [connection.user, prRole],
+    );
+  } finally {
+    await dbKnex.destroy();
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      message: `Provisioned role "${prRole}" for database "${dbName}"`,
+    }),
+  };
+};
+
+const deprovisionUser = async (): Promise<MigrationHandlerResult> => {
+  const prUserSecretArn = process.env.PR_USER_SECRET_ARN;
+  if (!prUserSecretArn) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: "Skipping deprovision-user: PR_USER_SECRET_ARN is not set",
+      }),
+    };
+  }
+
+  const { username: prRole } = await getRdsSecret(prUserSecretArn);
+  const connection = await getDatabaseConnection();
+
+  const dbKnex = Knex({
+    client: "pg",
+    connection,
+    pool: { min: 0, max: 1, acquireTimeoutMillis: 10000 },
+  });
+
+  try {
+    // REASSIGN OWNED BY / DROP OWNED BY both error if the role doesn't exist,
+    // which would mask a clean teardown (role was never created, or a previous
+    // deprovision-user already ran). Short-circuit if the role isn't there.
+    const roleExistsResult = await dbKnex.raw<{
+      rows: { exists: boolean }[];
+    }>(`SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = ?) AS exists`, [
+      prRole,
+    ]);
+
+    if (!roleExistsResult.rows[0].exists) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          message: `Role "${prRole}" does not exist; nothing to deprovision`,
+        }),
+      };
+    }
+
+    await dbKnex.raw(
+      `SELECT pg_terminate_backend(pid)
+       FROM pg_stat_activity
+       WHERE usename = ?
+         AND pid <> pg_backend_pid()`,
+      [prRole],
+    );
+    await dbKnex.raw(`REASSIGN OWNED BY ?? TO ??`, [prRole, connection.user]);
+    await dbKnex.raw(`DROP OWNED BY ??`, [prRole]);
+  } finally {
+    await dbKnex.destroy();
+  }
+
+  const maintenanceKnex = await getMaintenanceKnex();
+  try {
+    await maintenanceKnex.raw(`DROP ROLE IF EXISTS ??`, [prRole]);
+  } finally {
+    await maintenanceKnex.destroy();
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ message: `Deprovisioned role "${prRole}"` }),
+  };
+};
+
+const showUsers = async (): Promise<MigrationHandlerResult> => {
+  const knex = await getMaintenanceKnex();
+  try {
+    const result = await knex.raw<{ rows: { username: string }[] }>(
+      `SELECT usename AS username FROM pg_user ORDER BY usename`,
+    );
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ users: result.rows.map((row) => row.username) }),
+    };
+  } finally {
+    await knex.destroy();
+  }
+};
+
+const showDatabases = async (): Promise<MigrationHandlerResult> => {
+  const knex = await getMaintenanceKnex();
+
+  try {
+    const result = await knex.raw<{ rows: { databaseName: string }[] }>(
+      `SELECT datname AS "databaseName"
+       FROM pg_database
+       WHERE datistemplate = false
+       ORDER BY datname`,
+    );
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        databases: result.rows.map((row) => row.databaseName),
+      }),
+    };
+  } finally {
+    await knex.destroy();
+  }
+};
+
 const createDb = async (): Promise<MigrationHandlerResult> => {
   const dbName = process.env.RDS_DB_NAME;
   if (!dbName) throw new Error("RDS_DB_NAME is not set");
@@ -268,6 +461,45 @@ const gcDbs = async (
   return { statusCode: 200, body: JSON.stringify({ dropped }) };
 };
 
+/**
+ * Drops all pr_user_pr_* roles that are not in the provided list of open PR numbers.
+ * Run after gc-dbs in the nightly workflow — the per-PR database is gone by then, so
+ * the role no longer owns anything and DROP ROLE succeeds cleanly. Catches roles that
+ * lingered because deprovision-user failed during PR teardown.
+ */
+const gcRoles = async (
+  openPrNumbers: number[],
+): Promise<MigrationHandlerResult> => {
+  const knex = await getMaintenanceKnex();
+  const dropped: string[] = [];
+  const failed: { rolname: string; error: string }[] = [];
+  try {
+    const result = await knex.raw<{ rows: { rolname: string }[] }>(
+      `SELECT rolname FROM pg_roles WHERE rolname LIKE 'pr_user_pr_%'`,
+    );
+    for (const { rolname } of result.rows) {
+      const match = rolname.match(/^pr_user_pr_(\d+)$/);
+      if (!match) continue;
+      const prNumber = Number(match[1]);
+      if (openPrNumbers.includes(prNumber)) continue;
+      try {
+        await knex.raw(`DROP ROLE IF EXISTS ??`, [rolname]);
+        dropped.push(rolname);
+        console.log(`[migrationHandler] gc-roles: dropped ${rolname}`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        failed.push({ rolname, error: message });
+        console.error(
+          `[migrationHandler] gc-roles: failed to drop ${rolname}: ${message}`,
+        );
+      }
+    }
+  } finally {
+    await knex.destroy();
+  }
+  return { statusCode: 200, body: JSON.stringify({ dropped, failed }) };
+};
+
 // THIS WILL ONLY BE FOR CI/CD USAGE AND SHOULD NOT BE EXPOSED IN API GATEWAY
 // If we ever write integration tests for this Lambda or any of the dashboard endpoints,
 // we will need to setup PR ephemeral environments to spin up a RDS instance, otherwise the tests
@@ -285,6 +517,8 @@ export const migrationHandler = async (
 
   if (command === "create-db") return createDb();
   if (command === "drop-db") return dropDb();
+  if (command === "provision-user") return provisionUser();
+  if (command === "deprovision-user") return deprovisionUser();
   if (command === "gc-dbs") {
     if (!event?.openPrNumbers?.length) {
       throw new Error(
@@ -293,6 +527,16 @@ export const migrationHandler = async (
     }
     return gcDbs(event.openPrNumbers);
   }
+  if (command === "gc-roles") {
+    if (!event?.openPrNumbers?.length) {
+      throw new Error(
+        "gc-roles requires a non-empty openPrNumbers array — omitting it would drop all PR roles",
+      );
+    }
+    return gcRoles(event.openPrNumbers);
+  }
+  if (command === "show-users") return showUsers();
+  if (command === "show-databases") return showDatabases();
 
   const connection = await getDatabaseConnection();
 
