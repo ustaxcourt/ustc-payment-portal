@@ -50,9 +50,7 @@ describe("initPaymentHandler", () => {
 
     const result = await initPaymentHandler(event);
     expect(result.statusCode).toBe(400);
-    expect(JSON.parse(result.body).message).toBe(
-      "Request failed schema validation",
-    );
+    expect(JSON.parse(result.body).message).toBe("Validation error");
   });
 
   it("returns 400 when body is missing", async () => {

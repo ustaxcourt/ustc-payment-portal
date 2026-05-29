@@ -1,5 +1,4 @@
 import { ZodType } from "zod";
-import { InvalidRequestError } from "../errors/invalidRequest";
 import { ParseResult } from "../types/ParseResult";
 import { jsonParse } from "./jsonParse";
 
@@ -15,7 +14,7 @@ export const parseAndValidate = <T>(
 
   const result = schema.safeParse(parsed.value);
   if (!result.success) {
-    throw new InvalidRequestError("Request failed schema validation");
+    throw result.error;
   }
 
   return { ok: true, value: result.data };

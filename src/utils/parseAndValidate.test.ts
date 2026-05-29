@@ -28,13 +28,10 @@ describe("parseAndValidate", () => {
     );
   });
 
-  it("throws InvalidRequestError when schema validation fails", () => {
+  it("throws ZodError when schema validation fails", () => {
     const body = JSON.stringify({ token: "", amount: -1 });
 
-    expect(() => parseAndValidate(body, schema)).toThrow(InvalidRequestError);
-    expect(() => parseAndValidate(body, schema)).toThrow(
-      "Request failed schema validation",
-    );
+    expect(() => parseAndValidate(body, schema)).toThrow(z.ZodError);
   });
 
   it("throws InvalidRequestError when body is missing", () => {

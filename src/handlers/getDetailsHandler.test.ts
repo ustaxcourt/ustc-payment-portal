@@ -61,9 +61,8 @@ describe("getDetailsHandler", () => {
 
     const result = await getDetailsHandler(event);
     expect(result.statusCode).toBe(400);
-    expect(JSON.parse(result.body).message).toBe(
-      "Request failed schema validation",
-    );
+    expect(JSON.parse(result.body).message).toBe("Validation error");
+    expect(JSON.parse(result.body).errors[0].message).toBe("Invalid UUID");
   });
 
   it("returns 400 when pathParameters are missing", async () => {
