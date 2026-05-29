@@ -14,7 +14,6 @@ import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
 import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
 import "./db/knex";
 import { ClientPermission } from "./types/ClientPermission";
-import { logger } from "./utils/logger";
 
 const app = express();
 
@@ -23,7 +22,17 @@ const setupLocalAppContext = (
   res: express.Response,
   next: express.NextFunction,
 ): void => {
-  res.locals.appContext = createAppContext({ localRequest: req });
+  res.locals.appContext = createAppContext({
+    localRequest: {
+      method: req.method,
+      path: req.path,
+      transactionReferenceId: req.query.transactionReferenceId
+        ? String(req.query.transactionReferenceId)
+        : req.body?.transactionReferenceId
+        ? String(req.body.transactionReferenceId)
+        : undefined,
+    },
+  });
   next();
 };
 
@@ -38,7 +47,6 @@ app.use((req, res, next) => {
   jsonBodyParser(req, res, (err) => {
     if (err) {
       const { statusCode, body } = handleError(
-        res.locals.appContext,
         new InvalidRequestError("invalid JSON in request body"),
       );
       res.status(statusCode).json(JSON.parse(body));
@@ -97,13 +105,11 @@ app.get("/openapi.json", (_req, res) => {
 
 // define a route handler for the default home page
 app.post("/init", async (req, res) => {
-  logger.info(
-    {
-      fee: req.body?.fee,
-      transactionReferenceId: req.body?.transactionReferenceId,
-    },
-    "Received /init request",
-  );
+  res.locals.appContext.logger.info("Received /init request", {
+    fee: req.body?.fee,
+    transactionReferenceId: req.body?.transactionReferenceId,
+  });
+
   try {
     const request = parseRequestBody(req, InitPaymentRequestSchema);
     const result = await res.locals.appContext
@@ -111,12 +117,17 @@ app.post("/init", async (req, res) => {
       .initPayment(res.locals.appContext, { client: devClient, request });
     res.json(result);
   } catch (err) {
-    const { statusCode, body } = handleError(res.locals.appContext, err);
+    const { statusCode, body } = handleError(err);
     res.status(statusCode).json(JSON.parse(body));
   }
 });
 
 app.post("/process", async (req, res) => {
+  res.locals.appContext.logger.info("Received /process request", {
+    fee: req.body?.fee,
+    transactionReferenceId: req.body?.transactionReferenceId,
+  });
+
   try {
     const request = parseRequestBody(req, ProcessPaymentRequestSchema);
     const result = await res.locals.appContext
@@ -124,12 +135,16 @@ app.post("/process", async (req, res) => {
       .processPayment(res.locals.appContext, { client: devClient, request });
     res.json(result);
   } catch (err) {
-    const { statusCode, body } = handleError(res.locals.appContext, err);
+    const { statusCode, body } = handleError(err);
     res.status(statusCode).json(JSON.parse(body));
   }
 });
 
 app.get("/details/:transactionReferenceId", async (req, res) => {
+  res.locals.appContext.logger.info("Received /details request", {
+    transactionReferenceId: req.params.transactionReferenceId,
+  });
+
   try {
     const result = await res.locals.appContext
       .getUseCases()
@@ -139,7 +154,7 @@ app.get("/details/:transactionReferenceId", async (req, res) => {
       });
     res.json(result);
   } catch (err) {
-    const { statusCode, body } = handleError(res.locals.appContext, err);
+    const { statusCode, body } = handleError(err);
     res.status(statusCode).json(JSON.parse(body));
   }
 });

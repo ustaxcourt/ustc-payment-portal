@@ -73,8 +73,9 @@ const mockSoapRequest = (token: string) => {
 };
 
 describe("initPayment", () => {
-  beforeEach(() => {
+   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, "error").mockImplementation(jest.fn());
   });
 
   afterEach(() => {
@@ -208,11 +209,7 @@ describe("initPayment", () => {
       request: validPetitionRequest,
     });
 
-    expect(TransactionModel.updateToFailed).toHaveBeenCalledWith(
-      "existing-id",
-      5009,
-      "Existing token expired",
-    );
+    expect(TransactionModel.updateToFailed).toHaveBeenCalledWith("existing-id", 5009, "Existing token expired");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(result.token).toBe(freshPaygovToken);
   });
@@ -245,9 +242,7 @@ describe("initPayment", () => {
     // peer wins the createReceived race and our insert violates the partial unique index.
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
     const uniqueViolation = Object.assign(
-      new Error(
-        'duplicate key value violates unique constraint "idx_transactions_unique_active"',
-      ),
+      new Error('duplicate key value violates unique constraint "idx_transactions_unique_active"'),
       { code: "23505" },
     );
     TransactionModel.createReceived.mockRejectedValueOnce(uniqueViolation);
@@ -263,9 +258,7 @@ describe("initPayment", () => {
   it("wraps non-unique-violation createReceived errors as a generic failure", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
-    TransactionModel.createReceived.mockRejectedValueOnce(
-      new Error("connection refused"),
-    );
+    TransactionModel.createReceived.mockRejectedValueOnce(new Error("connection refused"));
 
     await expect(
       initPayment(appContext, {
@@ -289,53 +282,36 @@ describe("initPayment", () => {
       request: validPetitionRequest,
     }).catch((e) => e);
     expect(err).toBeInstanceOf(PayGovError);
-    expect(err.message).toBe(
-      "There was an error communicating with Pay.gov. Please retry your transaction.",
-    );
+    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
-    expect(appContext.logger.error).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
   });
 
   it("still throws PayGovError if updateToFailed itself rejects when SOAP request fails", async () => {
     jest
-      .spyOn(
-        SoapRequestModule.StartOnlineCollectionRequest.prototype,
-        "makeSoapRequest",
-      )
+      .spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
       .mockRejectedValueOnce(new Error("SOAP error"));
     const TransactionModel = require("../db/TransactionModel").default;
     TransactionModel.updateToFailed.mockRejectedValueOnce(new Error("DB down"));
 
     await expect(
-      initPayment(appContext, {
-        client: mockClient,
-        request: validPetitionRequest,
-      }),
+      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
     ).rejects.toThrow(PayGovError);
-    expect(appContext.logger.error).toHaveBeenCalledTimes(2);
+    expect(console.error).toHaveBeenCalledTimes(2);
   });
 
   it("calls updateToFailed and throws ServerError when updateToInitiated fails", async () => {
     mockSoapRequest("new-token-abc");
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.updateToInitiated.mockRejectedValueOnce(
-      new Error("DB write failed"),
-    );
-    TransactionModel.updateToFailed.mockRejectedValueOnce(
-      new Error("DB also down"),
-    );
+    TransactionModel.updateToInitiated.mockRejectedValueOnce(new Error("DB write failed"));
+    TransactionModel.updateToFailed.mockRejectedValueOnce(new Error("DB also down"));
 
     await expect(
-      initPayment(appContext, {
-        client: mockClient,
-        request: validPetitionRequest,
-      }),
-    ).rejects.toThrow(
-      "Failed to record payment session. Please retry your transaction.",
-    );
+      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
+    ).rejects.toThrow("Failed to record payment session. Please retry your transaction.");
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
-    expect(appContext.logger.error).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
   });
 
   it("throws PayGovError when Pay.gov SOAP request fails with a network error", async () => {
@@ -353,16 +329,12 @@ describe("initPayment", () => {
       request: validPetitionRequest,
     }).catch((e) => e);
     expect(err).toBeInstanceOf(PayGovError);
-    expect(err.message).toBe(
-      "There was an error communicating with Pay.gov. Please retry your transaction.",
-    );
-    expect(appContext.logger.error).toHaveBeenCalled();
+    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
+    expect(console.error).toHaveBeenCalled();
   });
 
   it("throws PayGovError with the generic retry message when Pay.gov returns an unparseable response (ZodError)", async () => {
-    const zodError = new ZodError([
-      { code: "custom", path: [], message: "Required" },
-    ]);
+    const zodError = new ZodError([{ code: "custom", path: [], message: "Required" }]);
     jest
       .spyOn(
         SoapRequestModule.StartOnlineCollectionRequest.prototype,
@@ -375,10 +347,8 @@ describe("initPayment", () => {
       request: validPetitionRequest,
     }).catch((e) => e);
     expect(err).toBeInstanceOf(PayGovError);
-    expect(err.message).toBe(
-      "There was an error communicating with Pay.gov. Please retry your transaction.",
-    );
+    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
-    expect(appContext.logger.error).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
   });
 });

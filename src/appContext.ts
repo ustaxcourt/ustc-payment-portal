@@ -10,7 +10,7 @@ import { getTransactionPaymentStatus } from "./useCases/getTransactionPaymentSta
 import * as https from "https";
 import fetch from "node-fetch";
 import { createRequestLogger } from "./utils/logger";
-import { APIGatewayEvent } from "aws-lambda";
+import type { APIGatewayEvent } from "aws-lambda";
 
 let httpsAgentCache: https.Agent | undefined;
 
@@ -18,18 +18,26 @@ function normalizePem(pem: string): string {
   return pem.replace(/\r\n/g, "\n").trimEnd() + "\n";
 }
 
-export const createAppContext = ({
-  localRequest,
-  lambdaRequest,
-}: {
-  localRequest?: any;
+type LocalRequestContext = {
+  method: string;
+  path: string;
+  transactionReferenceId?: string;
+};
+
+type AppContextContext = {
+  localRequest?: LocalRequestContext;
   lambdaRequest?: APIGatewayEvent;
-}): AppContext => {
-  const context = localRequest
+};
+
+export const createAppContext = (
+  context: AppContextContext = {},
+): AppContext => {
+  const { localRequest, lambdaRequest } = context;
+  const requestContext = localRequest
     ? {
         httpMethod: localRequest.method,
         path: localRequest.path,
-        transactionReferenceId: localRequest.query.transactionReferenceId,
+        transactionReferenceId: localRequest.transactionReferenceId,
       }
     : lambdaRequest
     ? {
@@ -42,7 +50,7 @@ export const createAppContext = ({
       }
     : {};
 
-  const logger = createRequestLogger(context);
+  const logger = createRequestLogger(requestContext);
 
   return {
     getHttpsAgent: async () => {
@@ -128,15 +136,6 @@ export const createAppContext = ({
       getTransactionPaymentStatus,
       getTransactionsByStatus,
     }),
-    logger: {
-      debug: (message: string, additionalFields?: Record<string, any>) =>
-        logger.debug(additionalFields ?? {}, message),
-      error: (message: string, additionalFields?: Record<string, any>) =>
-        logger.error(additionalFields ?? {}, message),
-      info: (message: string, additionalFields?: Record<string, any>) =>
-        logger.info(additionalFields ?? {}, message),
-      warn: (message: string, additionalFields?: Record<string, any>) =>
-        logger.warn(additionalFields ?? {}, message),
-    },
+    logger,
   };
 };
