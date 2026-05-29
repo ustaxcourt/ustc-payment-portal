@@ -16,7 +16,7 @@ describeWithEnv("GET /details/{transactionReferenceId}", () => {
 
     expect(result.status).toBe(400);
     const data = await result.json();
-    expect(data.message).toBe("Request failed schema validation");
+    expect(data.message).toBe("Validation error");
   });
 
   it("returns 404 when transactionReferenceId is a valid UUID but no transaction exists", async () => {
