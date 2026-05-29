@@ -46,4 +46,10 @@ describe("handleError", () => {
     expect(result.statusCode).toBe(504);
     expect(JSON.parse(result.body).message).toBe("Error communicating with Pay.gov");
   });
+
+  it("returns the PayGovError statusCode when overridden (e.g. 500)", () => {
+    const result = handleError(new PayGovError("Please retry", 500));
+    expect(result.statusCode).toBe(500);
+    expect(JSON.parse(result.body).message).toBe("Please retry");
+  });
 });

@@ -1,6 +1,8 @@
+import { ZodError } from "zod";
 import { GetRequestRequest } from "./GetDetailsRequest";
 import { SoapRequest } from "./SoapRequest";
 import { testAppContext as appContext } from "../test/testAppContext";
+import { FailedTransactionError } from "../errors/failedTransaction";
 
 const mockPayGovTrackingId = "test-tracking-id-12345";
 
@@ -27,6 +29,10 @@ const mockResponseSingleTransaction = `<?xml version="1.0" encoding="UTF-8"?>
 `;
 
 describe("GetRequestRequest", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("constructs correctly with required parameters", () => {
     const request = new GetRequestRequest({
       tcsAppId: "test-app-id",
@@ -55,18 +61,9 @@ describe("GetRequestRequest", () => {
     });
 
     it("returns first transaction details for transaction array response", async () => {
-      appContext.postHttpRequest = jest.fn().mockImplementation(async () => {
-        return Promise.resolve(mockResponseSingleTransaction);
-      });
-
-      const request = new GetRequestRequest({
-        tcsAppId: "test-app-id",
-        payGovTrackingId: mockPayGovTrackingId,
-      });
-
-      // Mock the parsed response to have an array structure
-      const originalMakeRequest = SoapRequest.prototype.makeRequest;
-      SoapRequest.prototype.makeRequest = jest.fn().mockResolvedValue({
+      // Bypassing the XML parser by mocking makeRequest's parsed output directly.
+      // fast-xml-parser coerces numeric leaves to numbers, so transaction_amount is a number here.
+      jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({
         "ns2:getDetailsResponse": {
           getDetailsResponse: {
             transactions: [
@@ -74,7 +71,7 @@ describe("GetRequestRequest", () => {
                 transaction: {
                   paygov_tracking_id: mockPayGovTrackingId,
                   agency_tracking_id: "agency-tracking-token",
-                  transaction_amount: "150.00",
+                  transaction_amount: 150,
                   transaction_status: "Success",
                 },
               },
@@ -83,13 +80,15 @@ describe("GetRequestRequest", () => {
         },
       });
 
+      const request = new GetRequestRequest({
+        tcsAppId: "test-app-id",
+        payGovTrackingId: mockPayGovTrackingId,
+      });
+
       const result = await request.makeSoapRequest(appContext);
 
       expect(result.paygov_tracking_id).toBe(mockPayGovTrackingId);
       expect(result.transaction_status).toBe("Success");
-
-      // Restore original
-      SoapRequest.prototype.makeRequest = originalMakeRequest;
     });
 
     it.each([
@@ -132,30 +131,174 @@ describe("GetRequestRequest", () => {
       },
     );
 
-    it("throws error when no transaction details found", async () => {
-      appContext.postHttpRequest = jest.fn().mockResolvedValue("");
+    it("throws a ZodError when Pay.gov returns an empty transactions array", async () => {
+      jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({
+        "ns2:getDetailsResponse": {
+          getDetailsResponse: { transactions: [] },
+        },
+      });
 
       const request = new GetRequestRequest({
         tcsAppId: "test-app-id",
         payGovTrackingId: mockPayGovTrackingId,
       });
 
-      // Mock the parsed response to have an empty array
-      const originalMakeRequest = SoapRequest.prototype.makeRequest;
-      SoapRequest.prototype.makeRequest = jest.fn().mockResolvedValue({
+      await expect(request.makeSoapRequest(appContext)).rejects.toBeInstanceOf(
+        ZodError,
+      );
+    });
+
+    it("throws a ZodError when Pay.gov returns a response missing required fields", async () => {
+      jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({
         "ns2:getDetailsResponse": {
           getDetailsResponse: {
-            transactions: [],
+            transactions: {
+              transaction: { paygov_tracking_id: mockPayGovTrackingId },
+            },
           },
         },
       });
 
-      await expect(request.makeSoapRequest(appContext)).rejects.toThrow(
-        "Could not find any transaction details"
-      );
+      const request = new GetRequestRequest({
+        tcsAppId: "test-app-id",
+        payGovTrackingId: mockPayGovTrackingId,
+      });
 
-      // Restore original
-      SoapRequest.prototype.makeRequest = originalMakeRequest;
+      await expect(request.makeSoapRequest(appContext)).rejects.toBeInstanceOf(
+        ZodError,
+      );
+    });
+
+    it("throws a ZodError when Pay.gov returns an unrecognized transaction_status", async () => {
+      jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({
+        "ns2:getDetailsResponse": {
+          getDetailsResponse: {
+            transactions: {
+              transaction: {
+                paygov_tracking_id: mockPayGovTrackingId,
+                agency_tracking_id: "agency-tracking-token",
+                transaction_amount: 1,
+                transaction_status: "Bogus",
+              },
+            },
+          },
+        },
+      });
+
+      const request = new GetRequestRequest({
+        tcsAppId: "test-app-id",
+        payGovTrackingId: mockPayGovTrackingId,
+      });
+
+      await expect(request.makeSoapRequest(appContext)).rejects.toBeInstanceOf(
+        ZodError,
+      );
+    });
+
+    it("throws FailedTransactionError when the SOAP envelope is missing the ns2:getDetailsResponse key", async () => {
+      // Empty envelope: no success response and no S:Fault — handleFault(undefined)
+      // path. This is the "Pay.gov returned a malformed/empty envelope" case.
+      jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({});
+
+      const request = new GetRequestRequest({
+        tcsAppId: "test-app-id",
+        payGovTrackingId: mockPayGovTrackingId,
+      });
+
+      await expect(request.makeSoapRequest(appContext)).rejects.toBeInstanceOf(
+        FailedTransactionError,
+      );
+    });
+
+    it("throws FailedTransactionError when the envelope has no ns2:getDetailsResponse and carries an S:Fault", async () => {
+      jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({
+        "S:Fault": {
+          faultcode: "S:Server",
+          faultstring: "TCSServiceFault",
+          detail: {
+            "ns2:TCSServiceFault": {
+              return_code: "404",
+              return_detail: "Transaction not found",
+            },
+          },
+        },
+      });
+
+      const request = new GetRequestRequest({
+        tcsAppId: "test-app-id",
+        payGovTrackingId: mockPayGovTrackingId,
+      });
+
+      const promise = request.makeSoapRequest(appContext);
+      await expect(promise).rejects.toBeInstanceOf(FailedTransactionError);
+      await expect(promise).rejects.toMatchObject({
+        message: "Transaction not found",
+        code: 404,
+      });
+    });
+
+    it("logs the raw response and the Zod issues when validation fails", async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(jest.fn());
+      jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({
+        "ns2:getDetailsResponse": {
+          getDetailsResponse: { transactions: [] },
+        },
+      });
+
+      const request = new GetRequestRequest({
+        tcsAppId: "test-app-id",
+        payGovTrackingId: mockPayGovTrackingId,
+      });
+
+      await expect(request.makeSoapRequest(appContext)).rejects.toBeInstanceOf(
+        ZodError,
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "getDetails schema validation failed",
+        expect.stringContaining("errors"),
+      );
+    });
+
+    describe("handleFault", () => {
+      const request = new GetRequestRequest({
+        tcsAppId: "test-app-id",
+        payGovTrackingId: mockPayGovTrackingId,
+      });
+
+      it("returns a FailedTransactionError when fault is undefined", () => {
+        expect(request.handleFault(undefined)).toBeInstanceOf(
+          FailedTransactionError,
+        );
+      });
+
+      it("returns a FailedTransactionError when fault has no detail", () => {
+        const result = request.handleFault({
+          faultcode: "soap:Server",
+          faultstring: "boom",
+        });
+        expect(result).toBeInstanceOf(FailedTransactionError);
+        expect(result.message).toBe(
+          "Pay.gov returned a fault without error details",
+        );
+      });
+
+      it("carries return_code and return_detail when fault is fully populated", () => {
+        const result = request.handleFault({
+          faultcode: "soap:Server",
+          faultstring: "TCS fault",
+          detail: {
+            "ns2:TCSServiceFault": {
+              return_code: "42",
+              return_detail: "Transaction not found",
+            },
+          },
+        });
+        expect(result).toBeInstanceOf(FailedTransactionError);
+        expect(result.message).toBe("Transaction not found");
+        expect(result.code).toBe(42);
+      });
     });
   });
 });

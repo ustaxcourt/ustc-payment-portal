@@ -23,7 +23,7 @@ import {
   ProcessPaymentRequestSchema,
   ProcessPaymentResponseSchema,
   GoneErrorSchema,
-  FeeIdSchema,
+  FeeKeySchema,
   RecentTransactionsResponseSchema,
   TransactionPaymentStatusResponseSchema,
   TransactionsByStatusPathParamsSchema,
@@ -38,7 +38,7 @@ export const registry = new OpenAPIRegistry();
 // ============================================
 // Register Schemas
 // ============================================
-registry.register("FeeId", FeeIdSchema);
+registry.register("FeeKey", FeeKeySchema);
 registry.register("MetadataDawson", MetadataDawsonSchema);
 registry.register("MetadataNonattorneyExam", MetadataNonattorneyExamSchema);
 registry.register("Metadata", MetadataSchema);
@@ -296,6 +296,14 @@ registry.registerPath({
       content: {
         "application/json": {
           schema: ServerErrorSchema,
+        },
+      },
+    },
+    502: {
+      description: "Bad Gateway - Pay.gov returned an invalid or unparseable response",
+      content: {
+        "application/json": {
+          schema: GatewayErrorSchema,
         },
       },
     },

@@ -8,7 +8,7 @@ The Payment Portal is the authoritative system for initiating payment transactio
 
 **Clients provide fee identifiers and business context; the Payment Portal validates authorization and manages Pay.gov integration.**
 
-Clients submit a `fee_id` to specify which fee they want to charge, along with metadata for audit purposes. The Payment Portal validates the fee exists, checks authorization, and constructs the Pay.gov request. The `fee_id` is mapped to a `tcs_app_id` (a Pay.gov-provided identifier) via the fees table, which is used when calling Pay.gov's API.
+Clients submit a `fee_key` (via the `fee` field in the API) to specify which fee they want to charge, along with metadata for audit purposes. The Payment Portal validates the fee exists, checks authorization, and constructs the Pay.gov request. The `fee_key` is resolved to the active fee version, which provides the `tcs_app_id` (a Pay.gov-provided identifier) and the fee amount.
 
 **Fee Amount Determination:**
 - **Fixed fees:** Amount is resolved from the Payment Portal's fees table (e.g., petition filing fee of $60)
@@ -25,13 +25,15 @@ This design ensures:
 
 ## Terminology
 
-- **`fee_id`** — Client-facing identifier for a fee type (e.g., `PETITION_FILING_FEE`, `NONATTORNEY_EXAM_REGISTRATION_FEE`). This is what clients send in API requests
-- **`tcs_app_id`** — Pay.gov application identifier (e.g., `TCSUSTAXCOURTANAEF`). We look this up from the fees table using the `fee_id` provided by the client
+- **`fee_key`** — Stable client-facing identifier for a fee type (e.g., `PETITION_FILING_FEE`). This is what clients send in the `fee` field of API requests. Shared across all versions of a fee.
+- **`fee_id`** — Internal primary key for a specific fee version in the fees table. A new `fee_id` is created when a fee is updated (e.g., a price change). The `fee_id` is stored on each transaction to record exactly which fee version applied.
+- **`tcs_app_id`** — Pay.gov application identifier (e.g., `TCSUSTAXCOURTANAEF`). Resolved from the active fee version using the `fee_key` provided by the client.
+- **`activation_date`** — When a fee version becomes active. The Portal always uses the most recent version whose `activation_date` is in the past.
 - **`is_variable`** — Boolean indicating if fee amount is client-provided (true) or portal-determined (false)
 - **metadata** — Business context provided by clients to identify transaction type
 - **Payment Portal (PP)** — This system
 
-**Note:** Clients send `fee_id` → Portal looks up `tcs_app_id` from database → Portal uses `tcs_app_id` when calling Pay.gov.
+**Note:** Clients send `fee_key` → Portal resolves active fee version → Portal uses `tcs_app_id` and `amount` from that version when calling Pay.gov.
 
 ---
 
@@ -40,19 +42,17 @@ This design ensures:
 ### Request Processing Flow
 
 ```
-1. Client Request (fee_id + metadata)
+1. Client Request (fee_key + metadata)
    ↓
-2. Fee Validation (fee_id exists?)
+2. Authorization Check (IAM role ARN + fee_key)
    ↓
-3. Authorization Check (IAM role ARN + fee_id)
+3. Fee Lookup (fee_key → active fee version → tcs_app_id + is_variable + amount)
    ↓
-4. Fee Lookup (fee_id → tcs_app_id + is_variable + amount)
+4. Amount Resolution (fixed: use table, variable: use client amount)
    ↓
-5. Amount Resolution (fixed: use table, variable: use client amount)
+5. Pay.gov Request Construction (use tcs_app_id from lookup)
    ↓
-6. Pay.gov Request Construction (use tcs_app_id from lookup)
-   ↓
-7. Transaction Initiation
+6. Transaction Initiation (fee_id stored on transaction for audit/amount derivation)
 ```
 
 Each stage is described in detail below.
@@ -65,7 +65,8 @@ Clients initiate payments by submitting:
 
 | Field | Description | Provided By | Required |
 |-------|-------------|-------------|----------|
-| `fee_id` | Fee type identifier | Client | Always |
+| `fee` | Fee key identifying the fee type to charge | Client | Always |
+| `transactionReferenceId` | Client-assigned reference ID for this transaction | Client | Always |
 | `urlSuccess` | Redirect URL after successful payment | Client | Always |
 | `urlCancel` | Redirect URL if payment is cancelled | Client | Always |
 | `metadata` | Business context for audit/reporting | Client | Always |
@@ -77,7 +78,8 @@ Clients initiate payments by submitting:
 
 ```json
 {
-  "fee_id": "PETITION_FILING_FEE",
+  "fee": "PETITION_FILING_FEE",
+  "transactionReferenceId": "TXREF-00001",
   "urlSuccess": "https://dawson.ustaxcourt.gov/payment/success",
   "urlCancel": "https://dawson.ustaxcourt.gov/payment/cancel",
   "metadata": {
@@ -91,7 +93,8 @@ Clients initiate payments by submitting:
 
 ```json
 {
-  "fee_id": "COPY_REQUEST",
+  "fee": "COPY_REQUEST",
+  "transactionReferenceId": "TXREF-00002",
   "urlSuccess": "https://dawson.ustaxcourt.gov/payment/success",
   "urlCancel": "https://dawson.ustaxcourt.gov/payment/cancel",
   "amount": 45.00,
@@ -103,13 +106,13 @@ Clients initiate payments by submitting:
 ```
 
 **Critical Constraints:**
-- Clients must provide `fee_id` to specify which fee to charge
-- The `fee_id` must match a valid fee in the fees table
-- The portal looks up the `tcs_app_id` from the fees table using the client-provided `fee_id`
+- Clients must provide `fee` (the fee key) to specify which fee to charge
+- The fee key must match an active fee version in the fees table
+- The portal resolves the active fee version using the client-provided fee key, then uses its `tcs_app_id` and `amount`
 - Clients provide `amount` only for variable fees; for fixed fees, amount is resolved from the fees table
-- If `amount` is provided for a fixed fee, it is ignored
+- If `amount` is provided for a fixed fee, the request fails with `400 Bad Request`
 - If `amount` is missing for a variable fee, request fails with `400 Bad Request`
-- If `fee_id` is invalid, request fails with `400 Bad Request`
+- If the fee key is invalid, request fails with `400 Bad Request`
 
 ---
 
@@ -119,23 +122,24 @@ The Payment Portal validates that the client-provided `fee_id` corresponds to an
 
 ### Validation Steps
 
-1. **Schema Validation** — Verify `fee_id` is present and non-empty
-2. **Existence Check** — Query fees table to confirm fee exists
-3. **Variable Fee Amount Check** — If fee is variable, validate `amount` field is present and positive
+1. **Schema Validation** — Verify `fee` (fee key) is present and non-empty
+2. **Authorization Check** — Verify the client's IAM role is permitted to charge this fee key
+3. **Existence Check** — Query fees table to confirm an active fee version exists for the key
+4. **Variable Fee Amount Check** — If fee is variable, validate `amount` field is present and positive
 
 ### Implementation Notes
 
 - Logic resides in: `src/useCases/initPayment.ts`
-- Validation occurs before any authorization checks
-- Invalid `fee_id` results in early rejection to avoid unnecessary processing
+- Authorization is checked before the fee lookup
+- Invalid fee key results in early rejection to avoid unnecessary processing
 - Metadata is stored for audit purposes but not used for fee determination
 
 ### Error Handling
 
 | Condition | HTTP Status | Error Code | Message  |
 |-----------|-------------|------------|----------|
-| `fee_id` missing | 400 | `INVALID_REQUEST` | fee_id is required |
-| `fee_id` not found | 400 | `FEE_NOT_FOUND` | Fee type is not available |
+| `fee` missing | 400 | `INVALID_REQUEST` | fee is required |
+| Fee key not found | 400 | `FEE_NOT_FOUND` | Fee type is not available |
 | Variable fee, amount missing | 400 | `AMOUNT_REQUIRED` | Amount is required for variable fees |
 
 ---
@@ -148,12 +152,14 @@ Once `fee_id` is determined, the Payment Portal queries the `fees` table to reso
 
 ```sql
 CREATE TABLE fees (
-  fee_id          VARCHAR(50) PRIMARY KEY,   -- Client-facing fee identifier
+  fee_id          VARCHAR(50) PRIMARY KEY,   -- Version-specific identifier (stored on transactions)
+  fee_key         VARCHAR(100) NOT NULL,      -- Stable client-facing identifier, shared across versions
   name            VARCHAR(100) NOT NULL,      -- Human-readable fee name, useful for finance dashboard
   tcs_app_id      VARCHAR(50) NOT NULL,       -- Pay.gov application identifier
   is_variable     BOOLEAN NOT NULL DEFAULT false,
-  amount          DECIMAL(10,2),  -- Required when is_variable = false, NULL when is_variable = true
+  amount          DECIMAL(10,2),              -- Required when is_variable = false, NULL when is_variable = true
   description     TEXT NOT NULL,
+  activation_date TIMESTAMP NOT NULL,         -- When this fee version becomes active
   created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -161,23 +167,26 @@ CREATE TABLE fees (
 
 **Example Data:**
 
-| fee_id | name | tcs_app_id | is_variable | amount | description |
-|--------|------|------------|-------------|--------|-------------|
-| PETITION_FILING_FEE | Petition Filing | TCSUSTAXCOURTPETITION | false | 60.00 | Petition Filing Fee |
-| COPY_REQUEST | Document Copies | TCSUSTAXCOURTCOPY | true | NULL | Document Copy Request (varies by page count) |
-| NONATTORNEY_EXAM_REGISTRATION_FEE | Admission Exam | TCSUSTAXCOURTANAEF | false | 250.00 | Non-Attorney Exam Registration |
+| fee_id | fee_key | name | tcs_app_id | is_variable | amount | activation_date |
+|--------|---------|------|------------|-------------|--------|-----------------|
+| PETITION_FILING_FEE | PETITION_FILING_FEE | Petition Filing | TCSUSTAXCOURTPETITION | false | 60.00 | 2026-03-05T00:00:00Z |
+| PETITION_FILING_FEE_2026_06_01 | PETITION_FILING_FEE | Petition Filing | TCSUSTAXCOURTPETITION | false | 70.00 | 2026-06-01T00:00:00Z |
+| NONATTORNEY_EXAM_REGISTRATION_FEE | NONATTORNEY_EXAM_REGISTRATION_FEE | Admission Exam | TCSUSTAXCOURTANAEF | false | 250.00 | 2026-03-05T00:00:00Z |
 
-**Note:** The `fee_id` is what clients send in their API requests. The `tcs_app_id` is the Pay.gov identifier that we use when calling Pay.gov's API.
+**Note:** Clients send `fee_key` via the `fee` field. The `fee_id` stored on a transaction identifies the exact fee version that was active at initiation — this is how `transactionAmount` is derived for the dashboard without storing it per transaction.
 
 ### Lookup Query
 
 ```sql
-SELECT fee_id, name, tcs_app_id, is_variable, amount, description
+SELECT fee_id, fee_key, name, tcs_app_id, is_variable, amount
 FROM fees
-WHERE fee_id = :fee_id;
+WHERE fee_key = :fee_key
+  AND activation_date <= NOW()
+ORDER BY activation_date DESC
+LIMIT 1;
 ```
 
-**Note:** The `tcs_app_id` from this query is used when constructing the Pay.gov API request.
+**Note:** The `tcs_app_id` and `amount` from this query are used when constructing the Pay.gov API request. The `fee_id` is stored on the transaction record.
 
 ### Amount Resolution Logic
 
@@ -211,7 +220,7 @@ Client permissions are stored in the `ustc/pay-gov/{env}/client-permissions` sec
   {
     "clientName": "DAWSON",
     "clientRoleArn": "arn:aws:iam::111111111111:role/dawson-client",
-    "allowedFeeIds": ["PETITION_FILING_FEE"]
+    "allowedFeeKeys": ["PETITION_FILING_FEE"]
   }
 ]
 ```
@@ -222,8 +231,8 @@ The Lambda checks the caller's IAM role ARN (extracted from the API Gateway requ
 
 | Condition | Result | HTTP Response |
 | --------- | ------ | ------------- |
-| Role ARN found, fee ID in `allowedFeeIds` | Authorized | Continue processing |
-| Role ARN found, fee ID not in `allowedFeeIds` | Not authorized | `403 Forbidden` — `"Client not authorized for feeId"` |
+| Role ARN found, fee key in `allowedFeeKeys` | Authorized | Continue processing |
+| Role ARN found, fee key not in `allowedFeeKeys` | Not authorized | `403 Forbidden` — `"Client not authorized for fee key"` |
 | Role ARN not found | Not registered | `403 Forbidden` — `"Client not registered"` |
 
 ---
@@ -254,26 +263,28 @@ After authorization is confirmed, the Payment Portal constructs the SOAP request
 
 **Fixed Fee Flow:**
 ```
-Client Provides:    fee_id, metadata, redirects
+Client Provides:    fee_key, transactionReferenceId, metadata, redirects
       ↓
-PP Validates:       fee_id exists
+PP Authorizes:      (IAM role ARN, fee_key) relationship
       ↓
-PP Authorizes:      (IAM role ARN, fee_id) relationship
+PP Looks Up:        active fee version by fee_key → tcs_app_id, is_variable=false, amount
       ↓
-PP Looks Up:        tcs_app_id, is_variable=false, amount (from fees table)
+PP Records:         transaction with fee_id (version) for audit/amount derivation
       ↓
-PP Sends to Pay.gov: tcs_app_id (from lookup), amount (from table), redirects
+PP Sends to Pay.gov: tcs_app_id (from lookup), amount (from fee version), redirects
 ```
 
 **Variable Fee Flow:**
 ```
-Client Provides:    fee_id, amount, metadata, redirects
+Client Provides:    fee_key, transactionReferenceId, amount, metadata, redirects
       ↓
-PP Validates:       fee_id exists, amount > 0
+PP Authorizes:      (IAM role ARN, fee_key) relationship
       ↓
-PP Authorizes:      (IAM role ARN, fee_id) relationship
+PP Validates:       amount > 0
       ↓
-PP Looks Up:        tcs_app_id, is_variable=true (from fees table)
+PP Looks Up:        active fee version by fee_key → tcs_app_id, is_variable=true
+      ↓
+PP Records:         transaction with fee_id (version) for audit
       ↓
 PP Sends to Pay.gov: tcs_app_id (from lookup), amount (from client), redirects
 ```
@@ -309,7 +320,7 @@ For **local development** (acceptable for testing):
 - Prevents configuration drift
 
 **Versioning Strategy:**
-- Fee amounts are not currently versioned
+- Fee amounts are versioned via the `fee_key` / `fee_id` split. A new fee row is inserted with a new `fee_id`, the same `fee_key`, and a future `activation_date`. The Portal always resolves the most recent active version. Transactions store the `fee_id` of the version that was active at initiation, so the dashboard can derive the correct `transactionAmount` via a join without storing it per transaction.
 
 ### Authorization Management
 
@@ -319,7 +330,7 @@ For **local development** (acceptable for testing):
 
 **Adding Client Authorization:**
 
-Update the secret to add the client's IAM role ARN and allowed fee IDs. No deployment required — Lambda picks up changes after the 5-minute cache TTL. See [client-onboarding.md](../../client-onboarding.md#permitting-apps-to-charge-specific-fees) for the full runbook.
+Update the secret to add the client's IAM role ARN and allowed fee keys. No deployment required — Lambda picks up changes after the 5-minute cache TTL. See [client-onboarding.md](../../client-onboarding.md#permitting-apps-to-charge-specific-fees) for the full runbook.
 
 ---
 
@@ -329,15 +340,23 @@ Update the secret to add the client's IAM role ARN and allowed fee IDs. No deplo
 
 **1. Create Fee Definition**
 
-```sql
--- Fixed fee example
-INSERT INTO fees (fee_id, name, tcs_app_id, is_variable, amount, description)
-VALUES ('NEW_FIXED_FEE', 'New Application Fee', 'TCSUSTAXCOURTNEWAPP', false, 100.00, 'New Fixed Fee Description');
+Add the new fee to `db/seeds/data/fees.ts` and re-run the seed, or write a migration for production:
 
--- Variable fee example
-INSERT INTO fees (fee_id, name, tcs_app_id, is_variable, amount, description)
-VALUES ('NEW_VARIABLE_FEE', 'Variable Service Fee', 'TCSUSTAXCOURTVARAPP', true, NULL, 'New Variable Fee Description');
+```typescript
+// In db/seeds/data/fees.ts — add to the fees array:
+{
+  fee_id: 'NEW_FIXED_FEE_V1',          // unique version identifier
+  fee_key: 'NEW_FIXED_FEE',            // stable client-facing key
+  name: 'New Application Fee',
+  tcs_app_id: 'TCSUSTAXCOURTNEWAPP',
+  is_variable: false,
+  amount: 100.00,
+  description: 'New Fixed Fee Description',
+  activation_date: '2026-06-01T00:00:00Z',
+}
 ```
+
+To update an existing fee's amount, insert a new row with the same `fee_key`, a new `fee_id`, and a future `activation_date` — do not update the existing row.
 
 **Important:** The `tcs_app_id` value must match the TCS application configured in Pay.gov.
 
@@ -347,7 +366,7 @@ Add the new `fee_id` to your API documentation and client SDKs so clients know i
 
 **3. Configure Client Authorization**
 
-Update the `ustc/pay-gov/{env}/client-permissions` secret in Secrets Manager to add the new `fee_id` to each client's `allowedFeeIds` that needs access. No deployment required — Lambda picks up the change after the 5-minute cache TTL. See [client-onboarding.md](../../client-onboarding.md#permitting-apps-to-charge-specific-fees) for the full runbook.
+Update the `ustc/pay-gov/{env}/client-permissions` secret in Secrets Manager to add the new fee key to each client's `allowedFeeKeys` that needs access. No deployment required — Lambda picks up the change after the 5-minute cache TTL. See [client-onboarding.md](../../client-onboarding.md#permitting-apps-to-charge-specific-fees) for the full runbook.
 
 **4. Configure Pay.gov**
 
@@ -371,12 +390,12 @@ This design provides the following guarantees:
 
 | Guarantee | Enforcement Mechanism |
 |-----------|----------------------|
-| Clients cannot manipulate fixed fee amounts | Fixed amounts resolved from fees table only |
+| Clients cannot manipulate fixed fee amounts | Fixed amounts resolved from active fee version only; not stored per transaction |
 | Variable fee amounts are validated | Amount presence and positivity checks for variable fees |
-| Clients cannot select unauthorized fees | Secrets Manager `client-permissions` enforces IAM role ARN → allowed fee ID relationship |
-| Fee identifiers are validated | fee_id must exist in fees table |
-| Pay.gov identifiers are abstracted | Clients use fee_id; portal looks up tcs_app_id from database |
-| Authorization is auditable | All checks logged with context including amounts |
+| Clients cannot select unauthorized fees | Secrets Manager `client-permissions` enforces IAM role ARN → allowed fee key relationship |
+| Fee keys are validated | fee_key must match an active fee version in the fees table |
+| Pay.gov identifiers are abstracted | Clients use fee_key; portal looks up tcs_app_id from active fee version |
+| Historical amounts are auditable | Transactions store fee_id (version); amount derivable at any time via join |
 
 ---
 
@@ -384,13 +403,11 @@ This design provides the following guarantees:
 
 | Error Code | HTTP Status | Description | Client Action |
 |------------|-------------|-------------|---------------|
-| `FEE_NOT_FOUND` | 400 | Fee does not exist | Verify fee_id is correct |
-| `AMOUNT_REQUIRED` | 400 | Variable fee requires amount in request | Add amount field to request |
+| `FEE_NOT_FOUND` | 400 | No active fee version exists for the supplied fee key | Verify the `fee` field value is correct |
+| `AMOUNT_REQUIRED` | 400 | Variable fee requires amount in request | Add `amount` field to request |
 | `INVALID_AMOUNT` | 400 | Amount is zero, negative, or invalid format | Provide positive decimal amount |
-| `UNAUTHORIZED_FEE` | 403 | Client not authorized for this fee | Request authorization |
+| `UNAUTHORIZED_FEE` | 403 | Client not authorized for this fee key | Request authorization via onboarding |
 | `INVALID_REQUEST` | 400 | Schema validation failure | Fix request format |
-| `PAY_GOV_ERROR` | 502 | Pay.gov integration failure | Retry later |
-
----
-
-
+| `PAY_GOV_ERROR` | 500 | Pay.gov responded but result could not be processed | Retry later |
+| `PAY_GOV_ERROR` | 502 | Pay.gov's response was invalid or malformed | Retry later |
+| `PAY_GOV_ERROR` | 504 | Could not reach Pay.gov | Retry later |

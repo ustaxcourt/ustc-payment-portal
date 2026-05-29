@@ -56,12 +56,11 @@ describeIfDeployed("database migration and seed verification", () => {
     it("should return transactions with the correct schema shape", () => {
       const row = body.data[0];
 
-      // Columns from 20260305195503_init_db migration
       expect(row).toHaveProperty("agencyTrackingId");
       expect(row).toHaveProperty("transactionReferenceId");
       expect(row).toHaveProperty("feeName");
       expect(row).toHaveProperty("feeId");
-      expect(row).toHaveProperty("transactionAmount");
+      expect(row).toHaveProperty("transactionAmount"); // derived from fees.amount via join
       expect(row).toHaveProperty("clientName");
       expect(row).toHaveProperty("paymentStatus");
       expect(row).toHaveProperty("transactionStatus");
@@ -98,6 +97,20 @@ describeIfDeployed("database migration and seed verification", () => {
       for (const row of body.data) {
         expect(Number(row.transactionAmount)).toBeGreaterThanOrEqual(0);
       }
+    });
+
+    it("reports the same transactionAmount for every row with the same feeId", () => {
+      const amountByFeeId = new Map<string, number>();
+      for (const row of body.data) {
+        const feeId = row.feeId as string;
+        const amount = Number(row.transactionAmount);
+        if (amountByFeeId.has(feeId)) {
+          expect(amount).toBe(amountByFeeId.get(feeId));
+        } else {
+          amountByFeeId.set(feeId, amount);
+        }
+      }
+      expect(amountByFeeId.size).toBeGreaterThan(0);
     });
   });
 

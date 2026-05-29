@@ -13,6 +13,7 @@ import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
 import { ClientPermission } from "../types/ClientPermission";
+import { safeUpdateToFailed } from "../utils/safeUpdateToFailed";
 import { authorizeClient } from "../authorizeClient";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
@@ -30,25 +31,25 @@ export const initPayment: InitPayment = async (
   appContext,
   { client, request },
 ) => {
-  const { feeId, amount, transactionReferenceId, urlSuccess, urlCancel } =
+  const { fee: feeKey, amount, transactionReferenceId, urlSuccess, urlCancel } =
     request;
   const { clientName } = client;
 
-  authorizeClient(client, feeId);
+  authorizeClient(client, feeKey);
 
-  const fee = await FeesModel.getFeeById(feeId);
+  const fee = await FeesModel.getActiveFeeByKey(feeKey);
   if (!fee || !fee.tcsAppId) {
-    throw new InvalidRequestError(`Unknown feeId: ${feeId}`);
+    throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
   }
 
   if (amount !== undefined && !fee.isVariable) {
     throw new InvalidRequestError(
-      `Fee ${feeId} does not allow variable amounts`,
+      `Fee ${feeKey} does not allow variable amounts`,
     );
   }
 
   if (amount === undefined && fee.isVariable) {
-    throw new InvalidRequestError(`Fee ${feeId} requires an amount`);
+    throw new InvalidRequestError(`Fee ${feeKey} requires an amount`);
   }
 
   const existingInFlightTransaction =
@@ -90,8 +91,7 @@ export const initPayment: InitPayment = async (
   try {
     await TransactionModel.createReceived({
       agencyTrackingId,
-      feeId,
-      transactionAmount,
+      feeId: fee.feeId,
       clientName,
       transactionReferenceId,
       metadata: request.metadata,
@@ -106,8 +106,7 @@ export const initPayment: InitPayment = async (
       );
     }
     throw new Error(
-      `Failed to record received transaction: ${
-        err instanceof Error ? err.message : String(err)
+      `Failed to record received transaction: ${err instanceof Error ? err.message : String(err)
       }`,
     );
   }
@@ -116,28 +115,16 @@ export const initPayment: InitPayment = async (
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
     console.error("Error making SOAP request to Pay.gov", err);
-    await TransactionModel.updateToFailed(
-      agencyTrackingId,
-      EXISTING_TOKEN_ERROR_CODE,
-      "Existing token expired",
-    ).catch((dbErr) =>
-      console.error("Failed to mark transaction as failed", dbErr),
-    );
-    throw new PayGovError(
-      "There was an error communicating with Pay.gov. Please retry your transaction.",
-    );
+    await safeUpdateToFailed(agencyTrackingId, undefined, "Error communicating with Pay.gov");
+    throw new PayGovError("There was an error communicating with Pay.gov. Please retry your transaction.");
   }
 
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
     console.error("Failed to mark transaction as initiated", err);
-    await TransactionModel.updateToFailed(agencyTrackingId).catch((dbErr) =>
-      console.error("Failed to mark transaction as failed", dbErr),
-    );
-    throw new ServerError(
-      "Failed to record payment session. Please retry your transaction.",
-    );
+    await safeUpdateToFailed(agencyTrackingId);
+    throw new ServerError("Failed to record payment session. Please retry your transaction.");
   }
 
   return {

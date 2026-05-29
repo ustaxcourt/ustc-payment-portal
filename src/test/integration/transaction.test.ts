@@ -197,7 +197,7 @@ describe("make a transaction", () => {
 
     const request: InitPaymentRequest = {
       transactionReferenceId,
-      feeId: "PETITION_FILING_FEE",
+      fee: "PETITION_FILING_FEE",
       urlSuccess: "http://example.com/success",
       urlCancel: "http://example.com/cancel",
       metadata: { docketNumber: `${randomNumber}-26` },
