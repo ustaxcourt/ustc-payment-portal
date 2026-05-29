@@ -1,6 +1,6 @@
 import { StartOnlineCollectionResponseSchema } from "./StartOnlineCollectionResponse.schema";
 
-const validToken = crypto.randomUUID().replace(/-/g, ""); // 32 chars — mirrors the shape Pay.gov actually returns.
+const validToken = crypto.randomUUID().replace(/-/g, "");
 
 describe("StartOnlineCollectionResponseSchema", () => {
   it("accepts a valid 32-character Pay.gov token", () => {
@@ -22,14 +22,14 @@ describe("StartOnlineCollectionResponseSchema", () => {
 
   it("rejects a token shorter than 32 characters", () => {
     const result = StartOnlineCollectionResponseSchema.safeParse({
-      token: "a".repeat(31),
+      token: validToken.slice(0, 31),
     });
     expect(result.success).toBe(false);
   });
 
   it("rejects a token longer than 32 characters", () => {
     const result = StartOnlineCollectionResponseSchema.safeParse({
-      token: "a".repeat(33),
+      token: validToken + "x",
     });
     expect(result.success).toBe(false);
   });
@@ -59,9 +59,9 @@ describe("StartOnlineCollectionResponseSchema", () => {
   // Whitespace is preserved — Pay.gov-issued IDs have historically carried
   // embedded spaces; do not trim or reject them.
   it.each([
-    [" " + "a".repeat(31), "leading space"],
-    ["a".repeat(31) + " ", "trailing space"],
-    ["a".repeat(15) + " " + "a".repeat(16), "internal space"],
+    [" " + validToken.slice(0, 31), "leading space"],
+    [validToken.slice(0, 31) + " ", "trailing space"],
+    [validToken.slice(0, 15) + " " + validToken.slice(16), "internal space"],
     [" ".repeat(32), "all spaces"],
   ])("accepts a 32-character token containing whitespace (%s)", (token) => {
     const result = StartOnlineCollectionResponseSchema.safeParse({ token });

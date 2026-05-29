@@ -4,7 +4,7 @@ import { SoapRequest } from "./SoapRequest";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { FailedTransactionError } from "../errors/failedTransaction";
 
-const validToken = "a".repeat(32);
+const validToken = crypto.randomUUID().replace(/-/g, "");
 
 const baseRequest = {
   tcsAppId: "test-app-id",
@@ -82,7 +82,7 @@ describe("StartOnlineCollectionRequest", () => {
     it("throws a ZodError when Pay.gov returns a token of the wrong length", async () => {
       jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({
         "ns2:startOnlineCollectionResponse": {
-          startOnlineCollectionResponse: { token: "a".repeat(31) },
+          startOnlineCollectionResponse: { token: validToken.slice(0, 31) },
         },
       });
 
