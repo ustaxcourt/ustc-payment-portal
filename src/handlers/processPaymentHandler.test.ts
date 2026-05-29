@@ -87,7 +87,7 @@ describe("processPaymentHandler", () => {
     const result = await processPaymentHandler(event);
     expect(result.statusCode).toBe(400);
     expect(JSON.parse(result.body).message).toBe(
-      "Request body failed schema validation",
+      "Request failed schema validation",
     );
   });
 

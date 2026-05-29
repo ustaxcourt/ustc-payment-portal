@@ -15,7 +15,7 @@ export const parseAndValidate = <T>(
 
   const result = schema.safeParse(parsed.value);
   if (!result.success) {
-    throw new InvalidRequestError("Request body failed schema validation");
+    throw new InvalidRequestError("Request failed schema validation");
   }
 
   return { ok: true, value: result.data };

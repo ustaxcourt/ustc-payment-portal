@@ -33,7 +33,7 @@ describe("parseAndValidate", () => {
 
     expect(() => parseAndValidate(body, schema)).toThrow(InvalidRequestError);
     expect(() => parseAndValidate(body, schema)).toThrow(
-      "Request body failed schema validation",
+      "Request failed schema validation",
     );
   });
 
