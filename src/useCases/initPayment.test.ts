@@ -73,7 +73,7 @@ const mockSoapRequest = (token: string) => {
 };
 
 describe("initPayment", () => {
-   beforeEach(() => {
+  beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(console, "error").mockImplementation(jest.fn());
   });
@@ -190,7 +190,7 @@ describe("initPayment", () => {
   });
 
   it("marks expired in-flight transaction as failed and creates a new one when token age >= 3 hours", async () => {
-    const expiredPaygovToken = crypto.randomUUID().replace(/-/g, ""); // 32 chars with the dashes removed.
+    const expiredPaygovToken = crypto.randomUUID().replace(/-/g, "");
     const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
 
     mockSoapRequest(freshPaygovToken);
@@ -209,7 +209,11 @@ describe("initPayment", () => {
       request: validPetitionRequest,
     });
 
-    expect(TransactionModel.updateToFailed).toHaveBeenCalledWith("existing-id", 5009, "Existing token expired");
+    expect(TransactionModel.updateToFailed).toHaveBeenCalledWith(
+      "existing-id",
+      5009,
+      "Existing token expired",
+    );
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(result.token).toBe(freshPaygovToken);
   });
@@ -242,7 +246,9 @@ describe("initPayment", () => {
     // peer wins the createReceived race and our insert violates the partial unique index.
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
     const uniqueViolation = Object.assign(
-      new Error('duplicate key value violates unique constraint "idx_transactions_unique_active"'),
+      new Error(
+        'duplicate key value violates unique constraint "idx_transactions_unique_active"',
+      ),
       { code: "23505" },
     );
     TransactionModel.createReceived.mockRejectedValueOnce(uniqueViolation);
@@ -258,7 +264,9 @@ describe("initPayment", () => {
   it("wraps non-unique-violation createReceived errors as a generic failure", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
-    TransactionModel.createReceived.mockRejectedValueOnce(new Error("connection refused"));
+    TransactionModel.createReceived.mockRejectedValueOnce(
+      new Error("connection refused"),
+    );
 
     await expect(
       initPayment(appContext, {
@@ -282,7 +290,9 @@ describe("initPayment", () => {
       request: validPetitionRequest,
     }).catch((e) => e);
     expect(err).toBeInstanceOf(PayGovError);
-    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
+    expect(err.message).toBe(
+      "There was an error communicating with Pay.gov. Please retry your transaction.",
+    );
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
     expect(console.error).toHaveBeenCalled();
@@ -290,13 +300,19 @@ describe("initPayment", () => {
 
   it("still throws PayGovError if updateToFailed itself rejects when SOAP request fails", async () => {
     jest
-      .spyOn(SoapRequestModule.StartOnlineCollectionRequest.prototype, "makeSoapRequest")
+      .spyOn(
+        SoapRequestModule.StartOnlineCollectionRequest.prototype,
+        "makeSoapRequest",
+      )
       .mockRejectedValueOnce(new Error("SOAP error"));
     const TransactionModel = require("../db/TransactionModel").default;
     TransactionModel.updateToFailed.mockRejectedValueOnce(new Error("DB down"));
 
     await expect(
-      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
     ).rejects.toThrow(PayGovError);
     expect(console.error).toHaveBeenCalledTimes(2);
   });
@@ -304,12 +320,21 @@ describe("initPayment", () => {
   it("calls updateToFailed and throws ServerError when updateToInitiated fails", async () => {
     mockSoapRequest("new-token-abc");
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.updateToInitiated.mockRejectedValueOnce(new Error("DB write failed"));
-    TransactionModel.updateToFailed.mockRejectedValueOnce(new Error("DB also down"));
+    TransactionModel.updateToInitiated.mockRejectedValueOnce(
+      new Error("DB write failed"),
+    );
+    TransactionModel.updateToFailed.mockRejectedValueOnce(
+      new Error("DB also down"),
+    );
 
     await expect(
-      initPayment(appContext, { client: mockClient, request: validPetitionRequest }),
-    ).rejects.toThrow("Failed to record payment session. Please retry your transaction.");
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toThrow(
+      "Failed to record payment session. Please retry your transaction.",
+    );
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
     expect(console.error).toHaveBeenCalled();
   });
@@ -329,12 +354,16 @@ describe("initPayment", () => {
       request: validPetitionRequest,
     }).catch((e) => e);
     expect(err).toBeInstanceOf(PayGovError);
-    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
+    expect(err.message).toBe(
+      "There was an error communicating with Pay.gov. Please retry your transaction.",
+    );
     expect(console.error).toHaveBeenCalled();
   });
 
-  it("throws PayGovError with the generic retry message when Pay.gov returns an unparseable response (ZodError)", async () => {
-    const zodError = new ZodError([{ code: "custom", path: [], message: "Required" }]);
+  it("wraps a ZodError thrown from makeSoapRequest as PayGovError (use-case catch-block contract)", async () => {
+    const zodError = new ZodError([
+      { code: "custom", path: [], message: "Required" },
+    ]);
     jest
       .spyOn(
         SoapRequestModule.StartOnlineCollectionRequest.prototype,
@@ -347,7 +376,72 @@ describe("initPayment", () => {
       request: validPetitionRequest,
     }).catch((e) => e);
     expect(err).toBeInstanceOf(PayGovError);
-    expect(err.message).toBe("There was an error communicating with Pay.gov. Please retry your transaction.");
+    expect(err.message).toBe(
+      "There was an error communicating with Pay.gov. Please retry your transaction.",
+    );
+    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
+  });
+
+  it("wraps a real malformed Pay.gov XML response as PayGovError (drives safeParse end-to-end)", async () => {
+    // Empty <token/> → safeParse rejects → ZodError caught by initPayment as PayGovError.
+    const malformedXml = `<?xml version="1.0" encoding="UTF-8"?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Body>
+    <ns2:startOnlineCollectionResponse xmlns:ns2="http://fms.treas.gov/services/tcsonline_3_1">
+      <startOnlineCollectionResponse>
+        <token></token>
+      </startOnlineCollectionResponse>
+    </ns2:startOnlineCollectionResponse>
+  </S:Body>
+</S:Envelope>`;
+    (appContext.postHttpRequest as jest.Mock).mockResolvedValueOnce(
+      malformedXml,
+    );
+    const TransactionModel = require("../db/TransactionModel").default;
+
+    const err = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(PayGovError);
+    expect(err.message).toBe(
+      "There was an error communicating with Pay.gov. Please retry your transaction.",
+    );
+    expect(TransactionModel.updateToFailed).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalled();
+  });
+
+  it("wraps a Pay.gov S:Fault envelope as PayGovError (drives handleFault end-to-end)", async () => {
+    // Drives the handleFault path end-to-end. 5009 = existing-token return code.
+    const faultXml = `<?xml version="1.0" encoding="UTF-8"?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Body>
+    <S:Fault>
+      <faultcode>S:Server</faultcode>
+      <faultstring>TCSServiceFault</faultstring>
+      <detail>
+        <ns2:TCSServiceFault xmlns:ns2="http://fms.treas.gov/services/tcsonline_3_1">
+          <return_code>5009</return_code>
+          <return_detail>Existing token for this agency tracking id</return_detail>
+        </ns2:TCSServiceFault>
+      </detail>
+    </S:Fault>
+  </S:Body>
+</S:Envelope>`;
+    (appContext.postHttpRequest as jest.Mock).mockResolvedValueOnce(faultXml);
+    const TransactionModel = require("../db/TransactionModel").default;
+
+    const err = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(PayGovError);
+    expect(err.message).toBe(
+      "There was an error communicating with Pay.gov. Please retry your transaction.",
+    );
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
     expect(console.error).toHaveBeenCalled();
   });

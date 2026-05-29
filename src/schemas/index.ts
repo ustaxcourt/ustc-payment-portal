@@ -8,7 +8,6 @@ export * from "./PaymentMethod.schema";
 export * from "./TransactionRecord.schema";
 export * from "./GetDetails.schema";
 export * from "./ProcessPayment.schema";
-export * from "./StartOnlineCollection.schema";
 export * from "./Error.schema";
 export * from "./TransactionDashboard.schema";
 export * from "./RecentTransactions.schema";
