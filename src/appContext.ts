@@ -21,9 +21,7 @@ function normalizePem(pem: string): string {
 type LocalRequestContext = {
   method: string;
   path: string;
-  query: {
-    transactionReferenceId?: string;
-  };
+  transactionReferenceId?: string;
 };
 
 type AppContextContext = {
@@ -39,7 +37,7 @@ export const createAppContext = (
     ? {
         httpMethod: localRequest.method,
         path: localRequest.path,
-        transactionReferenceId: localRequest.query.transactionReferenceId,
+        transactionReferenceId: localRequest.transactionReferenceId,
       }
     : lambdaRequest
     ? {
