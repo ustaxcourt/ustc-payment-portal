@@ -74,7 +74,10 @@ describe("getDetailsHandler", () => {
 
     const result = await getDetailsHandler(event);
     expect(result.statusCode).toBe(400);
-    expect(JSON.parse(result.body).message).toBe("missing body");
+    expect(JSON.parse(result.body).message).toBe("Validation error");
+    expect(JSON.parse(result.body).errors[0].message).toBe(
+      "Invalid input: expected string, received null",
+    );
   });
 
   it("returns 404 when use case throws NotFoundError", async () => {

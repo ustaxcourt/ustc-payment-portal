@@ -5,10 +5,16 @@ import { getDetails } from "../useCases/getDetails";
 
 export const getDetailsHandler = (
   event: APIGatewayEvent,
-): Promise<APIGatewayProxyResult> =>
-  lambdaHandler({
+): Promise<APIGatewayProxyResult> => {
+  const transactionReferenceId = event.pathParameters?.transactionReferenceId;
+  const rawRequest = JSON.stringify({
+    transactionReferenceId: transactionReferenceId || null,
+  });
+
+  return lambdaHandler({
     schema: GetDetailsPathParamsSchema,
     event,
-    rawRequest: JSON.stringify(event.pathParameters),
+    rawRequest,
     callback: getDetails,
   });
+};
