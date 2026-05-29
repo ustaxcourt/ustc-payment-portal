@@ -1,16 +1,16 @@
 locals {
   lambda_functions = {
     initPayment = {
-      handler     = "lambdaHandler.initPaymentHandler"
-      timeout     = 10
+      handler = "lambdaHandler.initPaymentHandler"
+      timeout = 10
     }
     processPayment = {
-      handler     = "lambdaHandler.processPaymentHandler"
-      timeout     = 10
+      handler = "lambdaHandler.processPaymentHandler"
+      timeout = 10
     }
     getDetails = {
-      handler     = "lambdaHandler.getDetailsHandler"
-      timeout     = 10
+      handler = "lambdaHandler.getDetailsHandler"
+      timeout = 10
     }
     testCert = {
       handler = "lambdaHandler.handler"
@@ -43,7 +43,7 @@ resource "aws_lambda_function" "functions" {
   role          = var.lambda_execution_role_arn
   handler       = local.lambda_functions[each.key].handler
 
-  timeout     = try(local.lambda_functions[each.key].timeout, null)
+  timeout = try(local.lambda_functions[each.key].timeout, null)
 
   runtime = var.runtime
 

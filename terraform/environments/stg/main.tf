@@ -9,11 +9,11 @@ data "terraform_remote_state" "foundation" {
 }
 
 module "lambda" {
-  source                    = "../../modules/lambda"
-  function_name_prefix      = local.name_prefix
-  lambda_execution_role_arn = data.terraform_remote_state.foundation.outputs.lambda_role_arn
-  subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
-  security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
+  source                            = "../../modules/lambda"
+  function_name_prefix              = local.name_prefix
+  lambda_execution_role_arn         = data.terraform_remote_state.foundation.outputs.lambda_role_arn
+  subnet_ids                        = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
+  security_group_ids                = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
   environment_variables_by_function = local.lambda_env_by_function
 
   # Consume dev artifacts by SHA (keys and optional hashes passed from workflow)
@@ -127,6 +127,13 @@ data "aws_secretsmanager_secret_version" "allowed_account_ids" {
   depends_on = [module.secrets]
 }
 
+# Read alerts subscriber list from Secrets Manager. Updated via AWS CLI/Console
+# without redeploying. See docs/runbooks/lambda-errors.md for the JSON shape.
+data "aws_secretsmanager_secret_version" "monitoring_subscribers" {
+  secret_id  = module.secrets.monitoring_subscribers_secret_id
+  depends_on = [module.secrets]
+}
+
 module "iam_cicd" {
   source = "../../modules/iam"
 
@@ -139,6 +146,27 @@ module "iam_cicd" {
   state_bucket_name        = local.state_bucket_name
   state_object_keys        = local.state_object_keys
   lambda_exec_role_arn     = local.lambda_exec_role_arn
-  lambda_name_prefix      = local.name_prefix
-  create_lambda_exec_role = false
+  lambda_name_prefix       = local.name_prefix
+  create_lambda_exec_role  = false
+}
+
+# PAY-208 Phase 2: first alarm on processPayment, subscribers read from Secrets Manager.
+# Subscriber list is updated at runtime via AWS CLI/Console without redeploying.
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  env         = local.environment
+  name_prefix = local.name_prefix
+  subscribers = local.monitoring_subscribers
+  runbook_url = local.runbook_url
+
+  # Phase 2: processPayment only. Phase 4 expands to all Lambdas via module.lambda.function_names.
+  lambda_functions = {
+    processPayment = module.lambda.function_names["processPayment"]
+  }
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
 }

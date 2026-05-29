@@ -81,6 +81,12 @@ variable "allowed_account_ids_name" {
   default     = "allowed-account-ids"
 }
 
+variable "monitoring_subscribers_name" {
+  description = "Name of the Secrets Manager secret that stores the alerts SNS topic subscriber list (JSON array of {protocol, endpoint})"
+  type        = string
+  default     = "monitoring-subscribers"
+}
+
 variable "recovery_window_in_days" {
   description = "Days to retain deleted secrets before permanent removal (0=immediate, 7-30 for recoverability)"
   type        = number

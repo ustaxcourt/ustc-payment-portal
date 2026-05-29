@@ -83,6 +83,26 @@ resource "aws_secretsmanager_secret_version" "allowed_account_ids_initial" {
   }
 }
 
+# Subscribers to the payment-portal alerts SNS topic.
+# JSON array of objects: [{ "protocol": "email|sms|https", "endpoint": "..." }, ...]
+# Updated via AWS CLI/Console to satisfy "subscribable without a deployment" AC.
+# Terraform reads via data source and creates aws_sns_topic_subscription resources.
+resource "aws_secretsmanager_secret" "monitoring_subscribers" {
+  name                    = "${local.basepath}/${var.monitoring_subscribers_name}"
+  description             = "JSON array of alert SNS topic subscribers: [{protocol, endpoint}, ...] (${local.env})"
+  recovery_window_in_days = var.recovery_window_in_days
+  tags                    = local.tags
+}
+
+resource "aws_secretsmanager_secret_version" "monitoring_subscribers_initial" {
+  secret_id     = aws_secretsmanager_secret.monitoring_subscribers.id
+  secret_string = "[]"
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
 # IAM for Lambda to read these secrets
 data "aws_iam_policy_document" "lambda_secrets_read" {
   statement {
