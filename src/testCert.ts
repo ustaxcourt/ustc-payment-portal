@@ -7,7 +7,7 @@ import { getSecretString } from "./clients/secretsClient";
 // This is the handler for the /test endpoint.
 export const handler = async (): Promise<APIGatewayProxyResult> => {
   try {
-    const appContext = createAppContext({});
+    const appContext = createAppContext();
     const httpsAgent = await appContext.getHttpsAgent();
 
     const headers: { Authorization?: string; Authentication?: string } = {};
