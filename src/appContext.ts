@@ -10,7 +10,7 @@ import { getTransactionPaymentStatus } from "./useCases/getTransactionPaymentSta
 import * as https from "https";
 import fetch from "node-fetch";
 import { createRequestLogger } from "./utils/logger";
-import { APIGatewayEvent } from "aws-lambda";
+import type { APIGatewayEvent } from "aws-lambda";
 
 let httpsAgentCache: https.Agent | undefined;
 
