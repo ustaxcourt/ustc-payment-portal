@@ -38,6 +38,6 @@ export const lambdaHandler = async <T>({
       body: JSON.stringify(result),
     };
   } catch (err) {
-    return handleError(appContext, err);
+    return handleError(err);
   }
 };

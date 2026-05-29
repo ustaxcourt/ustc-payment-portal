@@ -10,7 +10,7 @@ describe("handleError", () => {
     },
   } as any;
   it("returns the statusCode and message for known client errors (< 500)", () => {
-    const result = handleError(appContext, {
+    const result = handleError({
       statusCode: 403,
       message: "Forbidden",
     });
@@ -19,7 +19,7 @@ describe("handleError", () => {
   });
 
   it("returns 500 with a generic message for known server errors (>= 500, no custom message provided)", () => {
-    const result = handleError(appContext, { statusCode: 500 });
+    const result = handleError({ statusCode: 500 });
     expect(result.statusCode).toBe(500);
     expect(JSON.parse(result.body).message).toBe(
       "An unexpected error occurred while processing the request",
@@ -28,7 +28,6 @@ describe("handleError", () => {
 
   it("returns 500 with the ServerError message when a ServerError is thrown", () => {
     const result = handleError(
-      appContext,
       new ServerError(
         "Failed to record payment session. Please retry your transaction.",
       ),
@@ -40,7 +39,7 @@ describe("handleError", () => {
   });
 
   it("returns 500 with the generic fallback message for unrecognized errors, not leaking internal details", () => {
-    const result = handleError(appContext, new Error("internal knex detail"));
+    const result = handleError(new Error("internal knex detail"));
     expect(result.statusCode).toBe(500);
     expect(JSON.parse(result.body).message).toBe(
       "An unexpected error occurred while processing the request",
@@ -51,7 +50,7 @@ describe("handleError", () => {
     const schema = z.object({ trackingId: z.string() });
     const { error } = schema.safeParse({});
 
-    const result = handleError(appContext, error!);
+    const result = handleError(error!);
     expect(result.statusCode).toBe(400);
 
     const body = JSON.parse(result.body);
@@ -61,7 +60,7 @@ describe("handleError", () => {
   });
 
   it("returns 504 with Pay.gov error message for PayGovError", () => {
-    const result = handleError(appContext, new PayGovError());
+    const result = handleError(new PayGovError());
     expect(result.statusCode).toBe(504);
     expect(JSON.parse(result.body).message).toBe(
       "Error communicating with Pay.gov",
@@ -69,10 +68,7 @@ describe("handleError", () => {
   });
 
   it("returns the PayGovError statusCode when overridden (e.g. 500)", () => {
-    const result = handleError(
-      appContext,
-      new PayGovError("Please retry", 500),
-    );
+    const result = handleError(new PayGovError("Please retry", 500));
     expect(result.statusCode).toBe(500);
     expect(JSON.parse(result.body).message).toBe("Please retry");
   });
