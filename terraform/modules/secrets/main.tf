@@ -83,10 +83,7 @@ resource "aws_secretsmanager_secret_version" "allowed_account_ids_initial" {
   }
 }
 
-# Subscribers to the payment-portal alerts SNS topic.
-# JSON array of objects: [{ "protocol": "email|sms|https", "endpoint": "..." }, ...]
-# Updated via AWS CLI/Console to satisfy "subscribable without a deployment" AC.
-# Terraform reads via data source and creates aws_sns_topic_subscription resources.
+# JSON array of {protocol, endpoint}. Updated via AWS CLI without redeploying.
 resource "aws_secretsmanager_secret" "monitoring_subscribers" {
   name                    = "${local.basepath}/${var.monitoring_subscribers_name}"
   description             = "JSON array of alert SNS topic subscribers: [{protocol, endpoint}, ...] (${local.env})"

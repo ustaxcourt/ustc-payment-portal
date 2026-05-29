@@ -127,8 +127,6 @@ data "aws_secretsmanager_secret_version" "allowed_account_ids" {
   depends_on = [module.secrets]
 }
 
-# Read alerts subscriber list from Secrets Manager. Updated via AWS CLI/Console
-# without redeploying. See docs/runbooks/lambda-errors.md for the JSON shape.
 data "aws_secretsmanager_secret_version" "monitoring_subscribers" {
   secret_id  = module.secrets.monitoring_subscribers_secret_id
   depends_on = [module.secrets]
@@ -150,8 +148,6 @@ module "iam_cicd" {
   create_lambda_exec_role  = false
 }
 
-# PAY-208 Phase 2: first alarm on processPayment, subscribers read from Secrets Manager.
-# Subscriber list is updated at runtime via AWS CLI/Console without redeploying.
 module "monitoring" {
   source = "../../modules/monitoring"
 
@@ -160,7 +156,6 @@ module "monitoring" {
   subscribers = local.monitoring_subscribers
   runbook_url = local.runbook_url
 
-  # Phase 2: processPayment only. Phase 4 expands to all Lambdas via module.lambda.function_names.
   lambda_functions = {
     processPayment = module.lambda.function_names["processPayment"]
   }

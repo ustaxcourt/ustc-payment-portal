@@ -9,19 +9,19 @@ variable "name_prefix" {
 }
 
 variable "service_name" {
-  description = "Service name applied to tags. Used by future dashboards and cross-service filtering."
+  description = "Service name applied to tags."
   type        = string
   default     = "payment-portal"
 }
 
 variable "owner" {
-  description = "Team or individual accountable for these alerts. Used in tags."
+  description = "Team or individual accountable for these alerts."
   type        = string
   default     = "payments-team"
 }
 
 variable "subscribers" {
-  description = "Subscribers to the alerts SNS topic. Wired in Phase 2; empty until then."
+  description = "SNS topic subscribers."
   type = list(object({
     protocol = string
     endpoint = string
@@ -30,25 +30,25 @@ variable "subscribers" {
 }
 
 variable "lambda_functions" {
-  description = "Map of Lambda function key (e.g., \"processPayment\") to deployed function name (e.g., \"ustc-payment-portal-stg-processPayment\"). The key drives alarm naming; the value drives the CloudWatch dimension."
+  description = "Map of function key to deployed function name. Key drives alarm naming, value drives the CloudWatch dimension."
   type        = map(string)
   default     = {}
 }
 
 variable "lambda_log_group_names" {
-  description = "Map of Lambda function key to CloudWatch log group name. Wired in Phase 3 for log-based metric filters; empty until then."
+  description = "Map of function key to log group name. Used by Phase 3 log filters."
   type        = map(string)
   default     = {}
 }
 
 variable "runbook_url" {
-  description = "URL to the runbook included in alarm descriptions so the SNS message body links to it."
+  description = "Runbook URL included in alarm descriptions."
   type        = string
   default     = ""
 }
 
 variable "tags" {
-  description = "Additional tags applied to all resources alongside the module defaults."
+  description = "Additional tags applied to all resources."
   type        = map(string)
   default     = {}
 }

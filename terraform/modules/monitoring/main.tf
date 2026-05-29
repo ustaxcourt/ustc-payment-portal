@@ -10,18 +10,13 @@ locals {
   )
 }
 
-# SNS topic that all alarms publish to. Subscribers come from var.subscribers
-# (read by the caller from Secrets Manager). Additional subscribers can be
-# added at runtime via console/CLI without redeploying — satisfies the
-# "subscribable without a deployment" AC.
 resource "aws_sns_topic" "alerts" {
   name = "${var.name_prefix}-alerts"
 
   tags = local.default_tags
 }
 
-# Subscriptions keyed by protocol+endpoint so adding/removing one doesn't
-# force-recreate the others.
+# Keyed by protocol+endpoint so individual edits don't recreate the whole set.
 resource "aws_sns_topic_subscription" "subs" {
   for_each = {
     for s in var.subscribers : "${s.protocol}-${s.endpoint}" => s
@@ -32,14 +27,7 @@ resource "aws_sns_topic_subscription" "subs" {
   endpoint  = each.value.endpoint
 }
 
-# Alarm on AWS/Lambda Errors (uncaught exceptions that escape the handler).
-# Note: in this codebase handleError catches almost everything and returns a
-# 500 response, so this metric will rarely fire on its own. The Phase 3
-# log-based metric filter is the primary detection path; this alarm catches
-# the rare cases where something genuinely throws.
-#
-# Window: 30 min (1 evaluation period x 1800s) per ticket AC.
-# treat_missing_data="notBreaching": quiet periods are healthy, not unknown.
+# Built-in metric only catches thrown errors; Phase 3 log filter covers caught 500s.
 resource "aws_cloudwatch_metric_alarm" "lambda_uncaught" {
   for_each = var.lambda_functions
 

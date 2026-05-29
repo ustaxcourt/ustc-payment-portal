@@ -45,10 +45,6 @@ locals {
     []
   )
 
-  # Subscribers to the alerts SNS topic, read from Secrets Manager so the list
-  # can be updated at runtime via AWS CLI/Console without redeploying.
-  # JSON shape: [{ "protocol": "email|sms|https", "endpoint": "..." }, ...]
-  # Falls back to empty list on first apply (before the secret is seeded).
   monitoring_subscribers = try(
     jsondecode(data.aws_secretsmanager_secret_version.monitoring_subscribers.secret_string),
     []
