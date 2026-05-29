@@ -1,5 +1,6 @@
 import pino from "pino";
 import { getAppEnv, isLocal } from "../config/appEnv";
+import { AppContextLogger } from "../types/AppContext";
 
 type RuntimeEnv = "test" | "development" | "production";
 
@@ -166,7 +167,7 @@ export function createRequestLogger(context: {
   httpMethod?: string;
   clientArn?: string;
   transactionReferenceId?: string;
-}) {
+}): AppContextLogger {
   const requestLogger = logger.child(context);
 
   return {

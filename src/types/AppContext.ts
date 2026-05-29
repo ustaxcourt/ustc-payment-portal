@@ -6,6 +6,13 @@ import { GetRecentTransactions } from "../useCases/getRecentTransactions";
 import { GetTransactionPaymentStatus } from "../useCases/getTransactionPaymentStatus";
 import { GetTransactionsByStatus } from "../useCases/getTransactionsByStatus";
 
+export type AppContextLogger = {
+  debug: (message: string, additionalFields?: Record<string, unknown>) => void;
+  error: (message: string, additionalFields?: Record<string, unknown>) => void;
+  info: (message: string, additionalFields?: Record<string, unknown>) => void;
+  warn: (message: string, additionalFields?: Record<string, unknown>) => void;
+};
+
 export type AppContext = {
   getHttpsAgent: () => Promise<https.Agent | undefined>;
   postHttpRequest: (appContext: AppContext, body: string) => Promise<string>;
@@ -17,10 +24,5 @@ export type AppContext = {
     getTransactionPaymentStatus: GetTransactionPaymentStatus;
     getTransactionsByStatus: GetTransactionsByStatus;
   };
-  logger: {
-    debug: (message: string, additionalFields?: Record<string, any>) => void;
-    error: (message: string, additionalFields?: Record<string, any>) => void;
-    info: (message: string, additionalFields?: Record<string, any>) => void;
-    warn: (message: string, additionalFields?: Record<string, any>) => void;
-  };
+  logger: AppContextLogger;
 };

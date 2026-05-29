@@ -18,14 +18,24 @@ function normalizePem(pem: string): string {
   return pem.replace(/\r\n/g, "\n").trimEnd() + "\n";
 }
 
-export const createAppContext = ({
-  localRequest,
-  lambdaRequest,
-}: {
-  localRequest?: any;
+type LocalRequestContext = {
+  method: string;
+  path: string;
+  query: {
+    transactionReferenceId?: string;
+  };
+};
+
+type AppContextContext = {
+  localRequest?: LocalRequestContext;
   lambdaRequest?: APIGatewayEvent;
-}): AppContext => {
-  const context = localRequest
+};
+
+export const createAppContext = (
+  context: AppContextContext = {},
+): AppContext => {
+  const { localRequest, lambdaRequest } = context;
+  const requestContext = localRequest
     ? {
         httpMethod: localRequest.method,
         path: localRequest.path,
@@ -42,7 +52,7 @@ export const createAppContext = ({
       }
     : {};
 
-  const logger = createRequestLogger(context);
+  const logger = createRequestLogger(requestContext);
 
   return {
     getHttpsAgent: async () => {
