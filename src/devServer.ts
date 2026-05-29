@@ -26,9 +26,7 @@ const setupLocalAppContext = (
     localRequest: {
       method: req.method,
       path: req.path,
-      transactionReferenceId: req.query.transactionReferenceId
-        ? String(req.query.transactionReferenceId)
-        : req.body?.transactionReferenceId
+      transactionReferenceId: req.body?.transactionReferenceId
         ? String(req.body.transactionReferenceId)
         : undefined,
     },
