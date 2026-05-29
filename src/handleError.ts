@@ -1,10 +1,9 @@
 import { ZodError } from "zod";
 import { PayGovError } from "./errors/payGovError";
 import { ServerError } from "./errors/serverError";
-import { AppContext } from "./types/AppContext";
 
-export const handleError = (appContext: AppContext, err: any) => {
-  appContext.logger.error(`responding with an error`, err);
+export const handleError = (err: any) => {
+  console.error(`responding with an error`, err);
   if (err.statusCode && err.statusCode < 500) {
     return {
       statusCode: err.statusCode,

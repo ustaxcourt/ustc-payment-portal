@@ -26,8 +26,7 @@ export type ProcessPayment = (
   },
 ) => Promise<ProcessPaymentResponse>;
 
-const PAYGOV_RETRY_MESSAGE =
-  "We could not complete this transaction with Pay.gov. Please retry the request.";
+const PAYGOV_RETRY_MESSAGE = "We could not complete this transaction with Pay.gov. Please retry the request.";
 
 export const processPayment: ProcessPayment = async (
   appContext: AppContext,
@@ -99,7 +98,6 @@ export const processPayment: ProcessPayment = async (
         err,
       );
       await safeUpdateToFailed(
-        appContext,
         transaction.agencyTrackingId,
         undefined,
         "Pay.gov returned a response that failed schema validation",
@@ -112,7 +110,6 @@ export const processPayment: ProcessPayment = async (
       err,
     );
     await safeUpdateToFailed(
-      appContext,
       transaction.agencyTrackingId,
       undefined,
       "Error communicating with Pay.gov",
@@ -141,13 +138,12 @@ export const processPayment: ProcessPayment = async (
       err,
     );
     await safeUpdateToFailed(
-      appContext,
       transaction.agencyTrackingId,
       undefined,
       "Failed to persist Pay.gov response",
     );
     throw new ServerError(
-      "Failed to record the payment result. Please retry the request.",
+      "Failed to record the payment result. Please retry the request."
     );
   }
 
