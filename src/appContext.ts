@@ -128,15 +128,6 @@ export const createAppContext = ({
       getTransactionPaymentStatus,
       getTransactionsByStatus,
     }),
-    logger: {
-      debug: (message: string, additionalFields?: Record<string, any>) =>
-        logger.debug(additionalFields ?? {}, message),
-      error: (message: string, additionalFields?: Record<string, any>) =>
-        logger.error(additionalFields ?? {}, message),
-      info: (message: string, additionalFields?: Record<string, any>) =>
-        logger.info(additionalFields ?? {}, message),
-      warn: (message: string, additionalFields?: Record<string, any>) =>
-        logger.warn(additionalFields ?? {}, message),
-    },
+    logger,
   };
 };
