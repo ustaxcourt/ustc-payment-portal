@@ -12,7 +12,6 @@ const TransactionModelMock = TransactionModel as jest.Mocked<
 
 describe("safeUpdateToFailed", () => {
   beforeEach(() => jest.clearAllMocks());
-  jest.spyOn(console, "error").mockImplementation(jest.fn());
 
   it("calls updateToFailed with the provided args", async () => {
     await safeUpdateToFailed("agency-123", 5009, "some detail");
@@ -43,14 +42,16 @@ describe("safeUpdateToFailed", () => {
   });
 
   it("logs the agencyTrackingId and error when updateToFailed rejects", async () => {
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
     const dbError = new Error("db down");
     TransactionModelMock.updateToFailed.mockRejectedValueOnce(dbError);
 
     await safeUpdateToFailed("agency-123");
 
-    expect(console.error).toHaveBeenCalledWith(
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
       "Failed to mark transaction 'agency-123' as failed during error recovery:",
       dbError,
     );
+    consoleErrorSpy.mockRestore();
   });
 });

@@ -4,16 +4,8 @@ import { PayGovError } from "./errors/payGovError";
 import { ServerError } from "./errors/serverError";
 
 describe("handleError", () => {
-  const appContext = {
-    logger: {
-      error: jest.fn(),
-    },
-  } as any;
   it("returns the statusCode and message for known client errors (< 500)", () => {
-    const result = handleError({
-      statusCode: 403,
-      message: "Forbidden",
-    });
+    const result = handleError({ statusCode: 403, message: "Forbidden" });
     expect(result.statusCode).toBe(403);
     expect(JSON.parse(result.body).message).toBe("Forbidden");
   });
@@ -21,29 +13,19 @@ describe("handleError", () => {
   it("returns 500 with a generic message for known server errors (>= 500, no custom message provided)", () => {
     const result = handleError({ statusCode: 500 });
     expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).message).toBe(
-      "An unexpected error occurred while processing the request",
-    );
+    expect(JSON.parse(result.body).message).toBe("An unexpected error occurred while processing the request");
   });
 
   it("returns 500 with the ServerError message when a ServerError is thrown", () => {
-    const result = handleError(
-      new ServerError(
-        "Failed to record payment session. Please retry your transaction.",
-      ),
-    );
+    const result = handleError(new ServerError("Failed to record payment session. Please retry your transaction."));
     expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).message).toBe(
-      "Failed to record payment session. Please retry your transaction.",
-    );
+    expect(JSON.parse(result.body).message).toBe("Failed to record payment session. Please retry your transaction.");
   });
 
   it("returns 500 with the generic fallback message for unrecognized errors, not leaking internal details", () => {
     const result = handleError(new Error("internal knex detail"));
     expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).message).toBe(
-      "An unexpected error occurred while processing the request",
-    );
+    expect(JSON.parse(result.body).message).toBe("An unexpected error occurred while processing the request");
   });
 
   it("returns 400 with validation details for ZodErrors", () => {
@@ -62,9 +44,7 @@ describe("handleError", () => {
   it("returns 504 with Pay.gov error message for PayGovError", () => {
     const result = handleError(new PayGovError());
     expect(result.statusCode).toBe(504);
-    expect(JSON.parse(result.body).message).toBe(
-      "Error communicating with Pay.gov",
-    );
+    expect(JSON.parse(result.body).message).toBe("Error communicating with Pay.gov");
   });
 
   it("returns the PayGovError statusCode when overridden (e.g. 500)", () => {
