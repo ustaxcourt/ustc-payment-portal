@@ -1,4 +1,4 @@
-name: GC - Orphaned PR Databases
+name: GC - Orphaned PR Databases and Roles
 
 on:
   schedule:
@@ -15,8 +15,8 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION }}
 
 jobs:
-  gc_pr_databases:
-    name: Drop orphaned PR databases
+  gc_pr_databases_and_roles:
+    name: Drop orphaned PR databases and roles
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -26,7 +26,7 @@ jobs:
           role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Drop stale PR databases via dev migrationRunner
+      - name: Drop stale PR databases and roles via dev migrationRunner
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -42,12 +42,25 @@ jobs:
 
           echo "Open PRs: $OPEN_PRS"
 
-          PAYLOAD=$(jq -n --argjson prs "$OPEN_PRS" '{"command":"gc-dbs","openPrNumbers":$prs}')
+          # Drop databases first. Roles cannot be cleanly dropped while they own
+          # objects, so removing the per-PR database removes any lingering grants
+          # and ownership before we try to drop the role itself.
+          DB_PAYLOAD=$(jq -n --argjson prs "$OPEN_PRS" '{"command":"gc-dbs","openPrNumbers":$prs}')
 
           echo "Invoking dev migrationRunner with gc-dbs..."
           aws lambda invoke \
             --function-name ustc-payment-processor-migrationRunner \
-            --payload "$PAYLOAD" \
+            --payload "$DB_PAYLOAD" \
             --cli-binary-format raw-in-base64-out \
-            response.json
-          cat response.json
+            response-dbs.json
+          cat response-dbs.json
+
+          ROLE_PAYLOAD=$(jq -n --argjson prs "$OPEN_PRS" '{"command":"gc-roles","openPrNumbers":$prs}')
+
+          echo "Invoking dev migrationRunner with gc-roles..."
+          aws lambda invoke \
+            --function-name ustc-payment-processor-migrationRunner \
+            --payload "$ROLE_PAYLOAD" \
+            --cli-binary-format raw-in-base64-out \
+            response-roles.json
+          cat response-roles.json

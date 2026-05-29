@@ -1,5 +1,6 @@
 import pino from "pino";
 import { getAppEnv, isLocal } from "../config/appEnv";
+import type { AppContextLogger } from "../types/AppContext";
 
 type RuntimeEnv = "test" | "development" | "production";
 
@@ -179,6 +180,17 @@ export function createRequestLogger(context: {
   httpMethod?: string;
   clientArn?: string;
   transactionReferenceId?: string;
-}) {
-  return logger.child(context);
+}): AppContextLogger {
+  const requestLogger = logger.child(context);
+
+  return {
+    debug: (message: string, additionalFields?: Record<string, unknown>) =>
+      requestLogger.debug(additionalFields ?? {}, message),
+    error: (message: string, additionalFields?: Record<string, unknown>) =>
+      requestLogger.error(additionalFields ?? {}, message),
+    info: (message: string, additionalFields?: Record<string, unknown>) =>
+      requestLogger.info(additionalFields ?? {}, message),
+    warn: (message: string, additionalFields?: Record<string, unknown>) =>
+      requestLogger.warn(additionalFields ?? {}, message),
+  };
 }
