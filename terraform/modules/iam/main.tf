@@ -125,12 +125,12 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "lambda:TagResource",
           "lambda:UntagResource"
         ],
-        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor*"
+        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.lambda_name_prefix}*"
       },
       {
         Effect   = "Allow",
         Action   = ["lambda:InvokeFunction"]
-        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor*-migrationRunner"
+        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.lambda_name_prefix}*-migrationRunner"
       },
       {
         Effect   = "Allow",
@@ -285,7 +285,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "iam:UntagRole"
         ],
         Resource = [
-          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/ustc-payment-processor-*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.lambda_name_prefix}-*",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*lambda*"
         ]
       },
@@ -304,7 +304,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         ],
         Resource = [
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/build-artifacts-access-policy",
-          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/ustc-payment-processor-*"
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${var.lambda_name_prefix}-*"
         ]
       },
       {
@@ -351,11 +351,11 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "rds:ModifyDBParameterGroup"
         ],
         Resource = [
-          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:ustc-payment-processor-*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:${var.lambda_name_prefix}-*",
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:*-pr-*-db",
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:subgrp:*",
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:snapshot:*",
-          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:pg:ustc-payment-processor-*"
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:pg:${var.lambda_name_prefix}-*"
         ]
       },
       {
