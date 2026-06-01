@@ -31,11 +31,27 @@ export const initPayment: InitPayment = async (
   appContext,
   { client, request },
 ) => {
-  const { fee: feeKey, amount, transactionReferenceId, urlSuccess, urlCancel } =
-    request;
+  const {
+    fee: feeKey,
+    amount,
+    transactionReferenceId,
+    urlSuccess,
+    urlCancel,
+  } = request;
   const { clientName } = client;
 
+  appContext.logger.debug("Received initPayment request", {
+    feeKey,
+    clientName,
+    hasAmount: amount !== undefined,
+    metadataKeys: request.metadata ? Object.keys(request.metadata) : [],
+  });
+
   authorizeClient(client, feeKey);
+  appContext.logger.info("Authorized client for initPayment", {
+    clientName,
+    feeKey,
+  });
 
   const fee = await FeesModel.getActiveFeeByKey(feeKey);
   if (!fee || !fee.tcsAppId) {
@@ -63,11 +79,19 @@ export const initPayment: InitPayment = async (
       existingInFlightTransaction.paygovToken &&
       tokenAgeMs < MAX_TOKEN_AGE_MS
     ) {
+      appContext.logger.info("Returning existing in-flight transaction", {
+        agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
+        tokenAgeMs,
+      });
       return {
         token: existingInFlightTransaction.paygovToken,
         paymentRedirect: `${process.env.PAYMENT_URL}?token=${existingInFlightTransaction.paygovToken}&tcsAppID=${fee.tcsAppId}`,
       };
     } else {
+      appContext.logger.info("Existing in-flight transaction token expired", {
+        agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
+        tokenAgeMs,
+      });
       await TransactionModel.updateToFailed(
         existingInFlightTransaction.agencyTrackingId,
         EXISTING_TOKEN_ERROR_CODE,
@@ -87,6 +111,13 @@ export const initPayment: InitPayment = async (
     urlCancel,
   });
 
+  appContext.logger.info("Initiating new transaction", {
+    agencyTrackingId,
+    transactionAmount,
+    feeId: fee.feeId,
+    clientName,
+  });
+
   let result: Awaited<ReturnType<typeof req.makeSoapRequest>>;
   try {
     await TransactionModel.createReceived({
@@ -101,31 +132,80 @@ export const initPayment: InitPayment = async (
       // Concurrent initPayment lost the createReceived race — the partial unique index
       // `idx_transactions_unique_active` ensures at most one in-flight attempt per
       // (clientName, transactionReferenceId). Report the same 409 as the app-level check.
-      throw new ConflictError(
-        "A payment session is already in-flight for this transactionReferenceId",
-      );
+      const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
+        "A payment session is already in-flight for this transactionReferenceId";
+      appContext.logger.error(EXISTING_IN_FLIGHT_TRANSACTION_ERROR, {
+        agencyTrackingId,
+        clientName,
+      });
+      throw new ConflictError(EXISTING_IN_FLIGHT_TRANSACTION_ERROR);
     }
+
+    appContext.logger.error("Failed to record received transaction", {
+      agencyTrackingId,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+
     throw new Error(
       `Failed to record received transaction: ${err instanceof Error ? err.message : String(err)
       }`,
     );
   }
 
+  appContext.logger.info("Transaction received and recorded", {
+    agencyTrackingId,
+    transactionAmount,
+    feeId: fee.feeId,
+    clientName,
+    ...(request.metadata
+      ? Object.fromEntries(
+          Object.entries(request.metadata).map(([k, v]) => [
+            `metadata_${k}`,
+            v,
+          ]),
+        )
+      : {}),
+  });
+
   try {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
-    console.error("Error making SOAP request to Pay.gov", err);
-    await safeUpdateToFailed(agencyTrackingId, undefined, "Error communicating with Pay.gov");
-    throw new PayGovError("There was an error communicating with Pay.gov. Please retry your transaction.");
+    appContext.logger.error("Error making SOAP request to Pay.gov", {
+      agencyTrackingId,
+      clientName,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    await safeUpdateToFailed(
+      appContext,
+      agencyTrackingId,
+      undefined,
+      "Error communicating with Pay.gov",
+    );
+    throw new PayGovError(
+      "There was an error communicating with Pay.gov. Please retry your transaction.",
+    );
   }
 
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
-    console.error("Failed to mark transaction as initiated", err);
-    await safeUpdateToFailed(agencyTrackingId);
-    throw new ServerError("Failed to record payment session. Please retry your transaction.");
+    appContext.logger.error("Failed to mark transaction as initiated", {
+      agencyTrackingId,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    await safeUpdateToFailed(appContext, agencyTrackingId);
+    throw new ServerError(
+      "Failed to record payment session. Please retry your transaction.",
+    );
   }
+
+  appContext.logger.info("Successfully initiated transaction", {
+    agencyTrackingId,
+    token: result.token,
+  });
 
   return {
     token: result.token,
