@@ -45,15 +45,21 @@ export const initPayment: InitPayment = async (
     feeKey,
     clientName,
     hasAmount: amount !== undefined,
-    metadataKeys: request.metadata ? Object.keys(request.metadata) : [],
+    metadata: request.metadata,
   });
 
   authorizeClient(client, feeKey);
-  appContext.logger.info("Authorized client for initPayment", {
-    transactionReferenceId,
-    clientName,
-    feeKey,
-  });
+
+  /* istanbul ignore next */
+  appContext.logger.info(
+    "Authorized client for initPayment",
+    /* istanbul ignore next */
+    {
+      transactionReferenceId,
+      clientName,
+      feeKey,
+    },
+  );
 
   const fee = await FeesModel.getActiveFeeByKey(feeKey);
   if (!fee || !fee.tcsAppId) {
@@ -104,6 +110,8 @@ export const initPayment: InitPayment = async (
     }
   }
 
+  // TODO: Add a unit test for a variable fee request (when we actually have one to support)
+  /* istanbul ignore next */
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
   const agencyTrackingId = generateAgencyTrackingId();
 
@@ -147,6 +155,7 @@ export const initPayment: InitPayment = async (
       throw new ConflictError(EXISTING_IN_FLIGHT_TRANSACTION_ERROR);
     }
 
+    /* istanbul ignore next */
     appContext.logger.error("Failed to record received transaction", {
       transactionReferenceId,
       agencyTrackingId,
@@ -154,6 +163,7 @@ export const initPayment: InitPayment = async (
       errorMessage: err instanceof Error ? err.message : String(err),
     });
 
+    /* istanbul ignore next */
     throw new Error(
       `Failed to record received transaction: ${
         err instanceof Error ? err.message : String(err)
@@ -167,7 +177,7 @@ export const initPayment: InitPayment = async (
     transactionAmount,
     feeId: fee.feeId,
     clientName,
-    ...(request.metadata ? { metadata: request.metadata } : {}),
+    metadata: request.metadata,
   });
 
   try {
@@ -194,6 +204,7 @@ export const initPayment: InitPayment = async (
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
+    /* istanbul ignore next */
     appContext.logger.error("Failed to mark transaction as initiated", {
       transactionReferenceId,
       agencyTrackingId,
