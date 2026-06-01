@@ -41,6 +41,7 @@ export const initPayment: InitPayment = async (
   const { clientName } = client;
 
   appContext.logger.debug("Received initPayment request", {
+    transactionReferenceId,
     feeKey,
     clientName,
     hasAmount: amount !== undefined,
@@ -49,6 +50,7 @@ export const initPayment: InitPayment = async (
 
   authorizeClient(client, feeKey);
   appContext.logger.info("Authorized client for initPayment", {
+    transactionReferenceId,
     clientName,
     feeKey,
   });
@@ -80,6 +82,7 @@ export const initPayment: InitPayment = async (
       tokenAgeMs < MAX_TOKEN_AGE_MS
     ) {
       appContext.logger.info("Returning existing in-flight transaction", {
+        transactionReferenceId,
         agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
         tokenAgeMs,
       });
@@ -89,6 +92,7 @@ export const initPayment: InitPayment = async (
       };
     } else {
       appContext.logger.info("Existing in-flight transaction token expired", {
+        transactionReferenceId,
         agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
         tokenAgeMs,
       });
@@ -112,6 +116,7 @@ export const initPayment: InitPayment = async (
   });
 
   appContext.logger.info("Initiating new transaction", {
+    transactionReferenceId,
     agencyTrackingId,
     transactionAmount,
     feeId: fee.feeId,
@@ -135,6 +140,7 @@ export const initPayment: InitPayment = async (
       const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
         "A payment session is already in-flight for this transactionReferenceId";
       appContext.logger.error(EXISTING_IN_FLIGHT_TRANSACTION_ERROR, {
+        transactionReferenceId,
         agencyTrackingId,
         clientName,
       });
@@ -142,6 +148,7 @@ export const initPayment: InitPayment = async (
     }
 
     appContext.logger.error("Failed to record received transaction", {
+      transactionReferenceId,
       agencyTrackingId,
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
@@ -155,6 +162,7 @@ export const initPayment: InitPayment = async (
   }
 
   appContext.logger.info("Transaction received and recorded", {
+    transactionReferenceId,
     agencyTrackingId,
     transactionAmount,
     feeId: fee.feeId,
@@ -166,6 +174,7 @@ export const initPayment: InitPayment = async (
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
     appContext.logger.error("Error making SOAP request to Pay.gov", {
+      transactionReferenceId,
       agencyTrackingId,
       clientName,
       errorName: err instanceof Error ? err.name : undefined,
@@ -186,6 +195,7 @@ export const initPayment: InitPayment = async (
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
     appContext.logger.error("Failed to mark transaction as initiated", {
+      transactionReferenceId,
       agencyTrackingId,
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
@@ -197,6 +207,7 @@ export const initPayment: InitPayment = async (
   }
 
   appContext.logger.info("Successfully initiated transaction", {
+    transactionReferenceId,
     agencyTrackingId,
     token: result.token,
   });
