@@ -45,10 +45,10 @@ locals {
     []
   )
 
-  monitoring_subscribers = try(
+  monitoring_subscribers = nonsensitive(try(
     jsondecode(data.aws_secretsmanager_secret_version.monitoring_subscribers.secret_string),
     []
-  )
+  ))
 
   runbook_url = "https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/runbooks/lambda-errors.md"
 }
