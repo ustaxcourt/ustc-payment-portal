@@ -37,7 +37,7 @@ All three env `variables.tf` files declare ~14 `TF_VAR_*_s3_key` / `*_source_cod
 1. Rely on the `default = ""` values in dev (`dev/variables.tf` has defaults; stg/prod do not — see diff below).
 2. Pass placeholder values that match what's currently deployed (read from the state's outputs or set to `placeholder`).
 
-Without artifact paths, the plan output for each env will show diffs for every Lambda function (current artifact key vs `""`). That's noise reviewers must learn to ignore — but it's a known limitation, not a bug.
+Without artifact paths, the plan output for each env will show diffs for every Lambda function (current artifact key vs `""`). That's noise reviewers must learn to ignore — but it's a known limitation, not a bug. --- **??
 
 **Recommended approach**: pass a stable placeholder (`"plan-only-no-artifact"`) for all artifact vars. Document the noise in the PR comment template so reviewers ignore Lambda diffs. Real Lambda changes are caught by the existing deploy workflows.
 

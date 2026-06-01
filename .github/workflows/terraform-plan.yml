@@ -29,7 +29,23 @@ env:
   TF_VAR_testCert_s3_key: "plan-only-no-artifact"
 
 jobs:
+  check_actor:
+    name: Check if Dependabot
+    runs-on: ubuntu-latest
+    outputs:
+      is_dependabot: ${{ steps.check.outputs.is_dependabot }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ github.actor }}" == "dependabot[bot]" ]] || [[ "${{ github.head_ref }}" == dependabot/* ]]; then
+            echo "is_dependabot=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_dependabot=false" >> $GITHUB_OUTPUT
+          fi
+
   plan:
+    needs: check_actor
+    if: needs.check_actor.outputs.is_dependabot != 'true'
     name: Plan (${{ matrix.env }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -139,8 +155,8 @@ jobs:
 
   comment:
     name: Post unified plan comment
-    needs: plan
-    if: ${{ always() && github.event.pull_request.number }}
+    needs: [check_actor, plan]
+    if: ${{ always() && github.event.pull_request.number && needs.check_actor.outputs.is_dependabot != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -197,14 +213,22 @@ jobs:
           truncate_plan() {
             local env="$1"
             local file="artifacts/${env}/tfplan.txt"
+            local line_cap=200
+            local byte_cap=18000
             if [ ! -f "$file" ]; then
               echo "(no plan output available)"
               return
             fi
-            head -n 200 "$file"
-            local total
-            total=$(wc -l < "$file")
-            if [ "$total" -gt 200 ]; then
+            local snippet
+            snippet=$(head -n "$line_cap" "$file")
+            if [ "${#snippet}" -gt "$byte_cap" ]; then
+              snippet="${snippet:0:$byte_cap}"
+            fi
+            printf '%s\n' "$snippet"
+            local total_lines total_bytes
+            total_lines=$(wc -l < "$file")
+            total_bytes=$(wc -c < "$file")
+            if [ "$total_lines" -gt "$line_cap" ] || [ "$total_bytes" -gt "$byte_cap" ]; then
               echo ""
               echo "... (truncated; full plan in artifact tfplan-${env}) ..."
             fi
@@ -228,7 +252,7 @@ jobs:
               SUMMARY=$(read_field "$env" summary "no output")
               echo "<details><summary>${env} plan — ${SUMMARY}</summary>"
               echo ""
-              echo '```diff'
+              echo '```terraform'
               truncate_plan "$env"
               echo '```'
               echo ""
