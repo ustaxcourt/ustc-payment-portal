@@ -15,6 +15,12 @@ provider "aws" {
   region = "us-east-1"
 }
 
+data "aws_caller_identity" "current" {}
+
+data "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
+}
+
 module "networking" {
   source                = "../../../modules/networking"
   vpc_cidr              = "10.40.0.0/25"
@@ -30,3 +36,25 @@ module "networking" {
   }
 }
 
+module "iam" {
+  source = "../../../modules/iam"
+
+  aws_region               = "us-east-1"
+  environment              = "prod"
+  name_prefix              = "ustc-payment-portal-prod"
+  deploy_role_name         = "ustc-payment-processor-prod-cicd-deployer-role"
+  github_oidc_provider_arn = data.aws_iam_openid_connect_provider.github.arn
+  github_org               = "ustaxcourt"
+  github_repo              = "ustc-payment-portal"
+  state_bucket_name        = "ustc-payment-portal-terraform-state-prod"
+  state_object_keys        = ["ustc-payment-portal/prod/*"]
+  lambda_exec_role_arn     = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/ustc-payment-portal-prod-lambda-exec"
+  lambda_name_prefix       = "ustc-payment-portal-prod"
+  create_lambda_exec_role  = true
+  create_deployer_role     = true
+
+  tags = {
+    Env     = "prod"
+    Project = "ustc-payment-portal"
+  }
+}

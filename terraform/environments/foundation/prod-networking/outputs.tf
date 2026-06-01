@@ -27,3 +27,23 @@ output "rds_security_group_id" {
   value       = module.networking.rds_security_group_id
   description = "RDS security group ID"
 }
+
+output "github_oidc_provider_arn" {
+  value       = data.aws_iam_openid_connect_provider.github.arn
+  description = "GitHub Actions OIDC provider ARN"
+}
+
+output "cicd_role_arn" {
+  value       = module.iam.role_arn
+  description = "ARN of the GitHub OIDC CI/CD deployer role"
+}
+
+output "cicd_role_name" {
+  value       = module.iam.role_name
+  description = "Name of the GitHub OIDC CI/CD deployer role"
+}
+
+output "lambda_role_arn" {
+  value       = module.iam.lambda_role_arn
+  description = "ARN of the Lambda execution role"
+}
