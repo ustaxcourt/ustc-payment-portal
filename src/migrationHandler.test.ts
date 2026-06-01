@@ -37,6 +37,10 @@ const MASTER_SECRET = JSON.stringify({
   username: "master_user",
   password: "master_password",
 });
+const PR_USER_SECRET = JSON.stringify({
+  username: "pr_user_pr_99",
+  password: "pr_password",
+});
 
 describe("migrationHandler", () => {
   let mockSend: jest.Mock;
@@ -55,6 +59,8 @@ describe("migrationHandler", () => {
       "arn:aws:secretsmanager:us-east-1:123:secret:rds-master";
     process.env.RDS_ENDPOINT = "db.example.us-east-1.rds.amazonaws.com:5432";
     process.env.RDS_DB_NAME = "paymentportal_pr_99";
+    process.env.PR_USER_SECRET_ARN =
+      "arn:aws:secretsmanager:us-east-1:123:secret:pr-user";
     process.env.DB_HOST = "localhost";
     process.env.DB_PORT = "5433";
     process.env.DB_USER = "local_user";
@@ -85,6 +91,7 @@ describe("migrationHandler", () => {
     delete process.env.RDS_MASTER_SECRET_ARN;
     delete process.env.RDS_ENDPOINT;
     delete process.env.RDS_DB_NAME;
+    delete process.env.PR_USER_SECRET_ARN;
     delete process.env.DB_HOST;
     delete process.env.DB_PORT;
     delete process.env.DB_USER;
@@ -272,6 +279,257 @@ describe("migrationHandler", () => {
     expect(mockRaw).not.toHaveBeenCalled();
   });
 
+  describe("provision-user", () => {
+    it("returns a no-op response when PR_USER_SECRET_ARN is not set", async () => {
+      delete process.env.PR_USER_SECRET_ARN;
+
+      const result = await migrationHandler({ command: "provision-user" });
+
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          message: "Skipping provision-user: PR_USER_SECRET_ARN is not set",
+        }),
+      });
+      expect(mockRaw).not.toHaveBeenCalled();
+      expect(mockKnex).not.toHaveBeenCalled();
+    });
+
+    it("creates role and grants PR database permissions when role is missing", async () => {
+      mockSend.mockImplementation(({ SecretId }: { SecretId: string }) => {
+        if (SecretId === process.env.PR_USER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: PR_USER_SECRET });
+        }
+
+        if (SecretId === process.env.RDS_MASTER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: MASTER_SECRET });
+        }
+
+        return Promise.resolve({ SecretString: RDS_SECRET });
+      });
+      mockRaw
+        .mockResolvedValueOnce({ rows: [{ exists: false }] })
+        .mockResolvedValue(undefined);
+
+      const result = await migrationHandler({ command: "provision-user" });
+
+      expect(mockRaw).toHaveBeenCalledWith(
+        "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = ?) AS exists",
+        ["pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenCalledWith(
+        "CREATE ROLE \"pr_user_pr_99\" LOGIN PASSWORD 'pr_password'",
+      );
+      expect(mockRaw).not.toHaveBeenCalledWith(
+        "ALTER ROLE \"pr_user_pr_99\" WITH LOGIN PASSWORD 'pr_password'",
+      );
+      expect(mockRaw).toHaveBeenCalledWith(
+        "GRANT CONNECT ON DATABASE ?? TO ??",
+        ["paymentportal_pr_99", "pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenCalledWith(
+        "GRANT USAGE ON SCHEMA public TO ??",
+        ["pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenCalledWith(
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ??",
+        ["pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenCalledWith(
+        "GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO ??",
+        ["pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "ALTER DEFAULT PRIVILEGES FOR ROLE ?? IN SCHEMA public",
+        ),
+        ["db_user", "pr_user_pr_99"],
+      );
+      expect(mockDestroy).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          message:
+            'Provisioned role "pr_user_pr_99" for database "paymentportal_pr_99"',
+        }),
+      });
+    });
+
+    it("alters role password when role already exists", async () => {
+      mockSend.mockImplementation(({ SecretId }: { SecretId: string }) => {
+        if (SecretId === process.env.PR_USER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: PR_USER_SECRET });
+        }
+
+        if (SecretId === process.env.RDS_MASTER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: MASTER_SECRET });
+        }
+
+        return Promise.resolve({ SecretString: RDS_SECRET });
+      });
+      mockRaw
+        .mockResolvedValueOnce({ rows: [{ exists: true }] })
+        .mockResolvedValue(undefined);
+
+      await migrationHandler({ command: "provision-user" });
+
+      expect(mockRaw).toHaveBeenCalledWith(
+        "ALTER ROLE \"pr_user_pr_99\" WITH LOGIN PASSWORD 'pr_password'",
+      );
+      expect(mockRaw).not.toHaveBeenCalledWith(
+        "CREATE ROLE \"pr_user_pr_99\" LOGIN PASSWORD 'pr_password'",
+      );
+    });
+  });
+
+  describe("deprovision-user", () => {
+    it("returns a no-op response when PR_USER_SECRET_ARN is not set", async () => {
+      delete process.env.PR_USER_SECRET_ARN;
+
+      const result = await migrationHandler({ command: "deprovision-user" });
+
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          message: "Skipping deprovision-user: PR_USER_SECRET_ARN is not set",
+        }),
+      });
+      expect(mockRaw).not.toHaveBeenCalled();
+      expect(mockKnex).not.toHaveBeenCalled();
+    });
+
+    it("drops role access in the expected order and then drops role", async () => {
+      mockSend.mockImplementation(({ SecretId }: { SecretId: string }) => {
+        if (SecretId === process.env.PR_USER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: PR_USER_SECRET });
+        }
+
+        if (SecretId === process.env.RDS_MASTER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: MASTER_SECRET });
+        }
+
+        return Promise.resolve({ SecretString: RDS_SECRET });
+      });
+      // First call is the existence check; subsequent destructive calls return undefined.
+      mockRaw
+        .mockResolvedValueOnce({ rows: [{ exists: true }] })
+        .mockResolvedValue(undefined);
+
+      const result = await migrationHandler({ command: "deprovision-user" });
+
+      expect(mockRaw).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining("SELECT EXISTS"),
+        ["pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("SELECT pg_terminate_backend(pid)"),
+        ["pr_user_pr_99"],
+      );
+      expect(mockRaw).toHaveBeenNthCalledWith(3, "REASSIGN OWNED BY ?? TO ??", [
+        "pr_user_pr_99",
+        "db_user",
+      ]);
+      expect(mockRaw).toHaveBeenNthCalledWith(4, "DROP OWNED BY ??", [
+        "pr_user_pr_99",
+      ]);
+      expect(mockRaw).toHaveBeenNthCalledWith(5, "DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_99",
+      ]);
+      expect(mockDestroy).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({ message: 'Deprovisioned role "pr_user_pr_99"' }),
+      });
+    });
+
+    it("is a no-op when the role does not exist", async () => {
+      mockSend.mockImplementation(({ SecretId }: { SecretId: string }) => {
+        if (SecretId === process.env.PR_USER_SECRET_ARN) {
+          return Promise.resolve({ SecretString: PR_USER_SECRET });
+        }
+        return Promise.resolve({ SecretString: RDS_SECRET });
+      });
+      // Existence check returns false — destructive SQL must not run.
+      mockRaw.mockResolvedValueOnce({ rows: [{ exists: false }] });
+
+      const result = await migrationHandler({ command: "deprovision-user" });
+
+      expect(mockRaw).toHaveBeenCalledTimes(1);
+      expect(mockRaw).toHaveBeenCalledWith(
+        expect.stringContaining("SELECT EXISTS"),
+        ["pr_user_pr_99"],
+      );
+      // Only the PR-DB knex was opened; maintenance knex (for DROP ROLE) was not.
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          message: 'Role "pr_user_pr_99" does not exist; nothing to deprovision',
+        }),
+      });
+    });
+  });
+
+  describe("show-users", () => {
+    it("returns database users from pg_user", async () => {
+      mockSend.mockResolvedValue({ SecretString: MASTER_SECRET });
+      mockRaw.mockResolvedValueOnce({
+        rows: [{ username: "master_user" }, { username: "pr_user_pr_99" }],
+      });
+
+      const result = await migrationHandler({ command: "show-users" });
+
+      expect(mockRaw).toHaveBeenCalledWith(
+        "SELECT usename AS username FROM pg_user ORDER BY usename",
+      );
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({ users: ["master_user", "pr_user_pr_99"] }),
+      });
+    });
+  });
+
+  describe("show-databases", () => {
+    it("returns non-template database names", async () => {
+      mockSend.mockResolvedValue({ SecretString: MASTER_SECRET });
+      mockRaw.mockResolvedValueOnce({
+        rows: [
+          { databaseName: "paymentportal" },
+          { databaseName: "paymentportal_pr_99" },
+        ],
+      });
+
+      const result = await migrationHandler({ command: "show-databases" });
+
+      expect(mockRaw).toHaveBeenCalledWith(
+        `SELECT datname AS "databaseName"
+       FROM pg_database
+       WHERE datistemplate = false
+       ORDER BY datname`,
+      );
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          databases: ["paymentportal", "paymentportal_pr_99"],
+        }),
+      });
+    });
+
+    it("destroys the knex connection when listing databases fails", async () => {
+      mockSend.mockResolvedValue({ SecretString: MASTER_SECRET });
+      mockRaw.mockRejectedValueOnce(new Error("list databases failed"));
+
+      await expect(
+        migrationHandler({ command: "show-databases" }),
+      ).rejects.toThrow("list databases failed");
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("gc-dbs", () => {
     beforeEach(() => {
       mockSend.mockResolvedValue({ SecretString: MASTER_SECRET });
@@ -369,10 +627,9 @@ describe("migrationHandler", () => {
         "DROP DATABASE IF EXISTS ?? WITH (FORCE)",
         ["paymentportal_pr_10"],
       );
-      expect(mockRaw).not.toHaveBeenCalledWith(
-        expect.anything(),
-        ["paymentportal_pr_unexpected_name"],
-      );
+      expect(mockRaw).not.toHaveBeenCalledWith(expect.anything(), [
+        "paymentportal_pr_unexpected_name",
+      ]);
       expect(result).toEqual({
         statusCode: 200,
         body: JSON.stringify({ dropped: ["paymentportal_pr_10"] }),
@@ -390,6 +647,146 @@ describe("migrationHandler", () => {
         migrationHandler({ command: "gc-dbs", openPrNumbers: [99] }),
       ).rejects.toThrow("drop failed");
       expect(mockDestroy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("gc-roles", () => {
+    beforeEach(() => {
+      mockSend.mockResolvedValue({ SecretString: MASTER_SECRET });
+    });
+
+    it("throws when openPrNumbers is not provided", async () => {
+      await expect(migrationHandler({ command: "gc-roles" })).rejects.toThrow(
+        "gc-roles requires a non-empty openPrNumbers array",
+      );
+      expect(mockRaw).not.toHaveBeenCalled();
+    });
+
+    it("throws when openPrNumbers is an empty array", async () => {
+      await expect(
+        migrationHandler({ command: "gc-roles", openPrNumbers: [] }),
+      ).rejects.toThrow("gc-roles requires a non-empty openPrNumbers array");
+      expect(mockRaw).not.toHaveBeenCalled();
+    });
+
+    it("drops roles for closed PRs and keeps open ones", async () => {
+      mockRaw.mockResolvedValueOnce({
+        rows: [
+          { rolname: "pr_user_pr_10" },
+          { rolname: "pr_user_pr_20" },
+          { rolname: "pr_user_pr_30" },
+        ],
+      });
+      mockRaw.mockResolvedValue(undefined);
+
+      const result = await migrationHandler({
+        command: "gc-roles",
+        openPrNumbers: [20],
+      });
+
+      expect(mockRaw).toHaveBeenCalledWith("DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_10",
+      ]);
+      expect(mockRaw).toHaveBeenCalledWith("DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_30",
+      ]);
+      // pr_20 is open — must NOT be dropped
+      expect(mockRaw).not.toHaveBeenCalledWith("DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_20",
+      ]);
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          dropped: ["pr_user_pr_10", "pr_user_pr_30"],
+          failed: [],
+        }),
+      });
+    });
+
+    it("drops nothing when all PR roles are still open", async () => {
+      mockRaw.mockResolvedValueOnce({
+        rows: [{ rolname: "pr_user_pr_10" }, { rolname: "pr_user_pr_20" }],
+      });
+
+      const result = await migrationHandler({
+        command: "gc-roles",
+        openPrNumbers: [10, 20],
+      });
+
+      expect(mockRaw).toHaveBeenCalledTimes(1); // only the SELECT
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({ dropped: [], failed: [] }),
+      });
+    });
+
+    it("skips role names that do not match the expected pattern", async () => {
+      mockRaw.mockResolvedValueOnce({
+        rows: [
+          { rolname: "pr_user_pr_10" },
+          { rolname: "pr_user_pr_unexpected" },
+        ],
+      });
+      mockRaw.mockResolvedValue(undefined);
+
+      const result = await migrationHandler({
+        command: "gc-roles",
+        openPrNumbers: [99],
+      });
+
+      expect(mockRaw).toHaveBeenCalledWith("DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_10",
+      ]);
+      expect(mockRaw).not.toHaveBeenCalledWith(expect.anything(), [
+        "pr_user_pr_unexpected",
+      ]);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          dropped: ["pr_user_pr_10"],
+          failed: [],
+        }),
+      });
+    });
+
+    it("continues past individual drop failures and reports them", async () => {
+      mockRaw
+        .mockResolvedValueOnce({
+          rows: [
+            { rolname: "pr_user_pr_10" },
+            { rolname: "pr_user_pr_20" },
+          ],
+        })
+        .mockRejectedValueOnce(new Error("role pr_user_pr_10 cannot be dropped"))
+        .mockResolvedValueOnce(undefined);
+
+      const result = await migrationHandler({
+        command: "gc-roles",
+        openPrNumbers: [99],
+      });
+
+      // Both drops were attempted; one failed, one succeeded
+      expect(mockRaw).toHaveBeenCalledWith("DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_10",
+      ]);
+      expect(mockRaw).toHaveBeenCalledWith("DROP ROLE IF EXISTS ??", [
+        "pr_user_pr_20",
+      ]);
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify({
+          dropped: ["pr_user_pr_20"],
+          failed: [
+            {
+              rolname: "pr_user_pr_10",
+              error: "role pr_user_pr_10 cannot be dropped",
+            },
+          ],
+        }),
+      });
     });
   });
 });

@@ -486,25 +486,69 @@ describe("src/utils/logger.ts", () => {
     describe.each(["test", "development", "production"] as const)(
       "NODE_ENV=%s",
       (nodeEnv) => {
-        it("binds request context fields", async () => {
+        it("passes request context to the child logger", async () => {
           process.env.NODE_ENV = nodeEnv;
           mutableEnv().APP_ENV = "dev";
 
-          const { createRequestLogger } = await loadLoggerModule();
+          const requestLogger = {
+            debug: jest.fn(),
+            error: jest.fn(),
+            info: jest.fn(),
+            warn: jest.fn(),
+          };
 
-          const child = createRequestLogger({
-            awsRequestId: "req-123",
-            path: "/payments/init",
-            httpMethod: "POST",
-          });
+          const fakeLogger = {
+            child: jest.fn(() => requestLogger),
+            trace: jest.fn(),
+            debug: jest.fn(),
+            info: jest.fn(),
+            warn: jest.fn(),
+            error: jest.fn(),
+            fatal: jest.fn(),
+            bindings: jest.fn(() => ({})),
+            flush: jest.fn(),
+          };
 
-          expect(child.bindings()).toEqual(
-            expect.objectContaining({
+          const pinoFactory = Object.assign(
+            jest.fn(() => fakeLogger),
+            {
+              stdTimeFunctions: { isoTime: jest.fn() },
+            },
+          );
+
+          jest.resetModules();
+          jest.doMock("pino", () => ({
+            __esModule: true,
+            default: pinoFactory,
+          }));
+
+          try {
+            const { createRequestLogger } = await import("./logger");
+
+            const logger = createRequestLogger({
               awsRequestId: "req-123",
               path: "/payments/init",
               httpMethod: "POST",
-            }),
-          );
+            });
+
+            expect(fakeLogger.child).toHaveBeenCalledWith(
+              expect.objectContaining({
+                awsRequestId: "req-123",
+                path: "/payments/init",
+                httpMethod: "POST",
+              }),
+            );
+
+            logger.info("request logged", { statusCode: 200 });
+
+            expect(requestLogger.info).toHaveBeenCalledWith(
+              { statusCode: 200 },
+              "request logged",
+            );
+          } finally {
+            jest.dontMock("pino");
+            jest.resetModules();
+          }
         });
       },
     );
