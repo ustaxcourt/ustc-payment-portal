@@ -49,7 +49,7 @@ describe("safeUpdateToFailed", () => {
     await safeUpdateToFailed("agency-123");
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("agency-123"),
+      "Failed to mark transaction 'agency-123' as failed during error recovery:",
       dbError,
     );
     consoleErrorSpy.mockRestore();
