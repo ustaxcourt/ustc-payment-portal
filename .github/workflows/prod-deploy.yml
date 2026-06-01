@@ -34,12 +34,12 @@ jobs:
       tag: ${{ steps.select.outputs.tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Configure AWS Credentials (read dev artifacts)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -79,7 +79,7 @@ jobs:
       name: production
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.promote.outputs.tag }}
           fetch-depth: 0
@@ -96,7 +96,7 @@ jobs:
           echo "Ref: ${{ github.ref }}"
 
       - name: Configure AWS Credentials (OIDC - Prd)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.PROD_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}

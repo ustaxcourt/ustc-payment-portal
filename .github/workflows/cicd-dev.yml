@@ -48,10 +48,10 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -69,7 +69,7 @@ jobs:
         run: npm run build:lambda
 
       - name: Configure AWS Credentials (OIDC - Dev)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -363,7 +363,7 @@ jobs:
 
       - name: Upload SigV4 coverage (PR environment)
         if: ${{ always() && steps.tf_outputs.outputs.has_outputs == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: sigv4-coverage-pr-${{ github.run_id }}
           path: coverage/
@@ -378,7 +378,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
@@ -387,7 +387,7 @@ jobs:
           terraform_wrapper: false
 
       - name: Configure AWS Credentials (OIDC - Dev)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -453,7 +453,7 @@ jobs:
 
       - name: Upload destroy plan (text)
         if: ${{ steps.ws.outputs.no_ws != 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: tfplan-destroy-text-${{ github.run_id }}
           path: terraform/environments/dev/tfplan-destroy.txt
@@ -491,12 +491,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2 # Need history to find merge commit
 
       - name: Configure AWS Credentials (OIDC - Dev)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -599,7 +599,7 @@ jobs:
 
       - name: Upload Terraform plan
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: tfplan-text-${{ github.run_id }}
           path: terraform/environments/dev/tfplan.txt
@@ -663,7 +663,7 @@ jobs:
           echo "Test Unauthorized Role ARN: $TEST_UNAUTHORIZED_ROLE_ARN"
 
       - name: Setup Node (for smoke test)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -684,7 +684,7 @@ jobs:
 
       - name: Upload SigV4 coverage (dev)
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: sigv4-coverage-dev-${{ github.run_id }}
           path: coverage/
