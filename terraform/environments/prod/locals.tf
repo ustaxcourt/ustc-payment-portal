@@ -26,13 +26,6 @@ locals {
     getDetails     = local.lambda_env_payment
     testCert       = local.lambda_env_payment
   }
-  github_oidc_provider_arn = "arn:aws:iam::802939326821:oidc-provider/token.actions.githubusercontent.com"
-  github_org               = "ustaxcourt"
-  github_repo              = "ustc-payment-portal"
-  state_bucket_name        = "ustc-payment-portal-terraform-state-prod"
-  state_object_keys = [
-    "ustc-payment-portal/prod/*"
-  ]
   name_prefix = "ustc-payment-portal-prod"
   payment_url = "https://www.pay.gov/tcsonline/payment.do"
   soap_url    = "https://tcs.pay.gov/services/TCSOnlineService/3.3/"

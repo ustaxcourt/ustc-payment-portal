@@ -8,14 +8,12 @@ data "terraform_remote_state" "foundation" {
   }
 }
 
-data "aws_caller_identity" "current" {}
-
 module "lambda" {
-  source                    = "../../modules/lambda"
-  function_name_prefix      = local.name_prefix
-  lambda_execution_role_arn = module.iam_cicd.lambda_role_arn
-  subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
-  security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
+  source                            = "../../modules/lambda"
+  function_name_prefix              = local.name_prefix
+  lambda_execution_role_arn         = data.terraform_remote_state.foundation.outputs.lambda_role_arn
+  subnet_ids                        = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
+  security_group_ids                = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
   environment_variables_by_function = local.lambda_env_by_function
 
   # Consume dev artifacts by SHA (keys and optional hashes passed from workflow)
@@ -74,8 +72,6 @@ resource "aws_route53_zone" "this" {
     Env     = local.environment
     Project = "ustc-payment-portal"
   }
-
-  depends_on = [module.iam_cicd]
 }
 
 resource "aws_acm_certificate" "this" {
@@ -90,8 +86,6 @@ resource "aws_acm_certificate" "this" {
   lifecycle {
     create_before_destroy = true
   }
-
-  depends_on = [module.iam_cicd]
 }
 
 resource "aws_route53_record" "cert_validation" {
@@ -130,22 +124,5 @@ module "api" {
 data "aws_secretsmanager_secret_version" "allowed_account_ids" {
   secret_id  = module.secrets.allowed_account_ids_secret_id
   depends_on = [module.secrets]
-}
-
-module "iam_cicd" {
-  source = "../../modules/iam"
-
-  aws_region               = local.aws_region
-  environment              = local.environment
-  name_prefix              = local.name_prefix
-  deploy_role_name         = "ustc-payment-processor-prod-cicd-deployer-role"
-  github_oidc_provider_arn = local.github_oidc_provider_arn
-  github_org               = local.github_org
-  github_repo              = local.github_repo
-  state_bucket_name        = local.state_bucket_name
-  state_object_keys        = local.state_object_keys
-  lambda_exec_role_arn     = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.name_prefix}-lambda-exec"
-  lambda_name_prefix      = local.name_prefix
-  create_lambda_exec_role = true
 }
 

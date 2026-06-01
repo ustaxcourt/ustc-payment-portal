@@ -14,7 +14,7 @@ output "lambda_function_invoke_arns" {
 }
 
 output "cicd_role_arn" {
-  value       = module.iam_cicd.role_arn
+  value       = data.terraform_remote_state.foundation.outputs.cicd_role_arn
   description = "ARN of the GitHub OIDC CI/CD deployer role"
 }
 
