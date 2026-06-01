@@ -148,7 +148,8 @@ export const initPayment: InitPayment = async (
     });
 
     throw new Error(
-      `Failed to record received transaction: ${err instanceof Error ? err.message : String(err)
+      `Failed to record received transaction: ${
+        err instanceof Error ? err.message : String(err)
       }`,
     );
   }
@@ -158,14 +159,7 @@ export const initPayment: InitPayment = async (
     transactionAmount,
     feeId: fee.feeId,
     clientName,
-    ...(request.metadata
-      ? Object.fromEntries(
-          Object.entries(request.metadata).map(([k, v]) => [
-            `metadata_${k}`,
-            v,
-          ]),
-        )
-      : {}),
+    ...(request.metadata ? { metadata: request.metadata } : {}),
   });
 
   try {
