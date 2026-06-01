@@ -168,6 +168,7 @@ resource "aws_api_gateway_integration_response" "transactions_by_status_options_
   resource_id = aws_api_gateway_resource.transactions_by_status[0].id
   http_method = aws_api_gateway_method.transactions_by_status_options[0].http_method
   status_code = aws_api_gateway_method_response.transactions_by_status_options_200[0].status_code
+  depends_on  = [aws_api_gateway_integration.transactions_by_status_options_integration[0]]
 }
 
 # transaction_payment_status
@@ -202,6 +203,7 @@ resource "aws_api_gateway_integration_response" "transaction_payment_status_opti
   resource_id = aws_api_gateway_resource.transaction_payment_status[0].id
   http_method = aws_api_gateway_method.transaction_payment_status_options[0].http_method
   status_code = aws_api_gateway_method_response.transaction_payment_status_options_200[0].status_code
+  depends_on  = [aws_api_gateway_integration.transaction_payment_status_options_integration[0]]
 }
 
 ###################
