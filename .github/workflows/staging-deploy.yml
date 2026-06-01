@@ -231,10 +231,11 @@ jobs:
           trap 'echo "Smoke test FAILED"; [ -f init.json ] && { echo "--- init.json ---"; cat init.json; echo "-----------------"; } || true' ERR
           echo "Running smoke test against: $API_URL"
 
-          TRACKING="stg-smoke-$(date +%s)"
+          TRANSACTION_REFERENCE_ID=$(uuidgen | tr 'A-Z' 'a-z')
+          DOCKET_NUMBER="999-99"
 
-          echo "Using TRACKING_ID=$TRACKING"
-          printf '{"trackingId":"%s","fee":"PETITION_FILING_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com"}' "$TRACKING" > body.json
+          echo "Using transactionReferenceId=$TRANSACTION_REFERENCE_ID docketNumber=$DOCKET_NUMBER"
+          printf '{"transactionReferenceId":"%s","fee":"PETITION_FILING_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com","metadata":{"docketNumber":"%s"}}' "$TRANSACTION_REFERENCE_ID" "$DOCKET_NUMBER" > body.json
 
           # POST to /init — signed with AWS SigV4 (IAM auth replaced the old Bearer token)
           INIT_STATUS=$(curl -s -o init.json -w '%{http_code}' -X POST "$API_URL/init" \
