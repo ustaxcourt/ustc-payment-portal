@@ -374,7 +374,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*"
       },
       {
-        Effect = "Allow", # SNS topics + subscriptions for the monitoring module
+        Effect = "Allow", # SNS topics — scoped to project-prefixed alert topics
         Action = [
           "sns:CreateTopic",
           "sns:DeleteTopic",
@@ -384,24 +384,34 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "sns:TagResource",
           "sns:UntagResource",
           "sns:Subscribe",
-          "sns:Unsubscribe",
           "sns:ConfirmSubscription",
-          "sns:GetSubscriptionAttributes",
-          "sns:SetSubscriptionAttributes",
           "sns:ListSubscriptionsByTopic"
         ],
-        Resource = "*"
+        Resource = "arn:aws:sns:${local.aws_region}:${data.aws_caller_identity.current.account_id}:${var.lambda_name_prefix}-*"
       },
       {
-        Effect = "Allow", # CloudWatch alarms for the monitoring module
+        Effect = "Allow",
+        Action = [
+          "sns:Unsubscribe",
+          "sns:GetSubscriptionAttributes",
+          "sns:SetSubscriptionAttributes"
+        ],
+        Resource = "arn:aws:sns:${local.aws_region}:${data.aws_caller_identity.current.account_id}:${var.lambda_name_prefix}-*:*"
+      },
+      {
+        Effect = "Allow", # CloudWatch alarms — scoped to project-prefixed alarms
         Action = [
           "cloudwatch:PutMetricAlarm",
           "cloudwatch:DeleteAlarms",
-          "cloudwatch:DescribeAlarms",
           "cloudwatch:ListTagsForResource",
           "cloudwatch:TagResource",
           "cloudwatch:UntagResource"
         ],
+        Resource = "arn:aws:cloudwatch:${local.aws_region}:${data.aws_caller_identity.current.account_id}:alarm:${var.lambda_name_prefix}-*"
+      },
+      {
+        Effect   = "Allow",
+        Action   = ["cloudwatch:DescribeAlarms"],
         Resource = "*"
       },
       {
