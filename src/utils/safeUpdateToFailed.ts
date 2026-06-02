@@ -1,6 +1,8 @@
 import TransactionModel from "../db/TransactionModel";
+import type { AppContext } from "../types/AppContext";
 
 export const safeUpdateToFailed = async (
+  appContext: AppContext,
   agencyTrackingId: string,
   code?: number,
   detail?: string,
@@ -8,9 +10,12 @@ export const safeUpdateToFailed = async (
   try {
     await TransactionModel.updateToFailed(agencyTrackingId, code, detail);
   } catch (err) {
-    console.error(
+    appContext.logger.error(
       `Failed to mark transaction '${agencyTrackingId}' as failed during error recovery:`,
-      err,
+      {
+        errorName: err instanceof Error ? err.name : undefined,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      },
     );
   }
 };

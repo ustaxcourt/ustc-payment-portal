@@ -31,11 +31,35 @@ export const initPayment: InitPayment = async (
   appContext,
   { client, request },
 ) => {
-  const { fee: feeKey, amount, transactionReferenceId, urlSuccess, urlCancel } =
-    request;
+  const {
+    fee: feeKey,
+    amount,
+    transactionReferenceId,
+    urlSuccess,
+    urlCancel,
+  } = request;
   const { clientName } = client;
 
+  appContext.logger.debug("Received initPayment request", {
+    transactionReferenceId,
+    feeKey,
+    clientName,
+    hasAmount: amount !== undefined,
+    metadata: request.metadata,
+  });
+
   authorizeClient(client, feeKey);
+
+  /* istanbul ignore next */
+  appContext.logger.info(
+    "Authorized client for initPayment",
+    /* istanbul ignore next */
+    {
+      transactionReferenceId,
+      clientName,
+      feeKey,
+    },
+  );
 
   const fee = await FeesModel.getActiveFeeByKey(feeKey);
   if (!fee || !fee.tcsAppId) {
@@ -63,11 +87,21 @@ export const initPayment: InitPayment = async (
       existingInFlightTransaction.paygovToken &&
       tokenAgeMs < MAX_TOKEN_AGE_MS
     ) {
+      appContext.logger.info("Returning existing in-flight transaction", {
+        transactionReferenceId,
+        agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
+        tokenAgeMs,
+      });
       return {
         token: existingInFlightTransaction.paygovToken,
         paymentRedirect: `${process.env.PAYMENT_URL}?token=${existingInFlightTransaction.paygovToken}&tcsAppID=${fee.tcsAppId}`,
       };
     } else {
+      appContext.logger.info("Existing in-flight transaction token expired", {
+        transactionReferenceId,
+        agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
+        tokenAgeMs,
+      });
       await TransactionModel.updateToFailed(
         existingInFlightTransaction.agencyTrackingId,
         EXISTING_TOKEN_ERROR_CODE,
@@ -76,6 +110,8 @@ export const initPayment: InitPayment = async (
     }
   }
 
+  // TODO: Add a unit test for a variable fee request (when we actually have one to support)
+  /* istanbul ignore next */
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
   const agencyTrackingId = generateAgencyTrackingId();
 
@@ -85,6 +121,14 @@ export const initPayment: InitPayment = async (
     transactionAmount,
     urlSuccess,
     urlCancel,
+  });
+
+  appContext.logger.info("Initiating new transaction", {
+    transactionReferenceId,
+    agencyTrackingId,
+    transactionAmount,
+    feeId: fee.feeId,
+    clientName,
   });
 
   let result: Awaited<ReturnType<typeof req.makeSoapRequest>>;
@@ -101,31 +145,83 @@ export const initPayment: InitPayment = async (
       // Concurrent initPayment lost the createReceived race — the partial unique index
       // `idx_transactions_unique_active` ensures at most one in-flight attempt per
       // (clientName, transactionReferenceId). Report the same 409 as the app-level check.
-      throw new ConflictError(
-        "A payment session is already in-flight for this transactionReferenceId",
-      );
+      const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
+        "A payment session is already in-flight for this transactionReferenceId";
+      appContext.logger.error(EXISTING_IN_FLIGHT_TRANSACTION_ERROR, {
+        transactionReferenceId,
+        agencyTrackingId,
+        clientName,
+      });
+      throw new ConflictError(EXISTING_IN_FLIGHT_TRANSACTION_ERROR);
     }
+
+    /* istanbul ignore next */
+    appContext.logger.error("Failed to record received transaction", {
+      transactionReferenceId,
+      agencyTrackingId,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+
+    /* istanbul ignore next */
     throw new Error(
-      `Failed to record received transaction: ${err instanceof Error ? err.message : String(err)
+      `Failed to record received transaction: ${
+        err instanceof Error ? err.message : String(err)
       }`,
     );
   }
 
+  appContext.logger.info("Transaction received and recorded", {
+    transactionReferenceId,
+    agencyTrackingId,
+    transactionAmount,
+    feeId: fee.feeId,
+    clientName,
+    metadata: request.metadata,
+  });
+
   try {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
-    console.error("Error making SOAP request to Pay.gov", err);
-    await safeUpdateToFailed(agencyTrackingId, undefined, "Error communicating with Pay.gov");
-    throw new PayGovError("There was an error communicating with Pay.gov. Please retry your transaction.");
+    appContext.logger.error("Error making SOAP request to Pay.gov", {
+      transactionReferenceId,
+      agencyTrackingId,
+      clientName,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    await safeUpdateToFailed(
+      appContext,
+      agencyTrackingId,
+      undefined,
+      "Error communicating with Pay.gov",
+    );
+    throw new PayGovError(
+      "There was an error communicating with Pay.gov. Please retry your transaction.",
+    );
   }
 
   try {
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
-    console.error("Failed to mark transaction as initiated", err);
-    await safeUpdateToFailed(agencyTrackingId);
-    throw new ServerError("Failed to record payment session. Please retry your transaction.");
+    /* istanbul ignore next */
+    appContext.logger.error("Failed to mark transaction as initiated", {
+      transactionReferenceId,
+      agencyTrackingId,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    await safeUpdateToFailed(appContext, agencyTrackingId);
+    throw new ServerError(
+      "Failed to record payment session. Please retry your transaction.",
+    );
   }
+
+  appContext.logger.info("Successfully initiated transaction", {
+    transactionReferenceId,
+    agencyTrackingId,
+    token: result.token,
+  });
 
   return {
     token: result.token,
