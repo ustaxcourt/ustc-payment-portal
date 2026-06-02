@@ -544,8 +544,7 @@ resource "aws_iam_role_policy" "github_actions_read_only" {
         Action = [
           "secretsmanager:DescribeSecret",
           "secretsmanager:GetResourcePolicy",
-          "secretsmanager:ListSecretVersionIds",
-          "secretsmanager:ListSecrets"
+          "secretsmanager:ListSecretVersionIds"
         ],
         Resource = "*"
       },

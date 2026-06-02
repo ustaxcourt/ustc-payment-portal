@@ -78,6 +78,11 @@ variable "read_only_role_name" {
   type        = string
   description = "IAM role name for the read-only CI role (used by the terraform-plan workflow today; general-purpose). Required if create_deployer_role=true."
   default     = ""
+
+  validation {
+    condition     = !var.create_deployer_role || length(var.read_only_role_name) > 0
+    error_message = "read_only_role_name must be set when create_deployer_role=true."
+  }
 }
 
 variable "github_oidc_provider_arn" {
