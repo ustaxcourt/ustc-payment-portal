@@ -240,8 +240,8 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "logs:DeleteLogGroup"
         ],
         Resource = [
-          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/ustc-payment-processor-pr-*",
-          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/ustc-payment-processor-pr-*:*"
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-pr-*",
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-pr-*:*"
         ]
       },
       {
@@ -389,7 +389,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "ssm:AddTagsToResource",
           "ssm:ListTagsForResource"
         ],
-        Resource = "arn:aws:ssm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/ustc/pay-gov/dev/rds-*"
+        Resource = "arn:aws:ssm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/ustc/pay-gov/${local.environment}/rds-*"
       }
     ]
   })
