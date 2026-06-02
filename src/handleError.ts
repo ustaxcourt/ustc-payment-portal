@@ -1,9 +1,9 @@
 import { ZodError } from "zod";
 import { PayGovError } from "./errors/payGovError";
 import { ServerError } from "./errors/serverError";
+import { logger } from "./utils/logger";
 
-export const handleError = (err: any) => {
-  console.error(`responding with an error`, err);
+const computeResponse = (err: any) => {
   if (err.statusCode && err.statusCode < 500) {
     return {
       statusCode: err.statusCode,
@@ -37,7 +37,6 @@ export const handleError = (err: any) => {
       }),
     };
   }
-  // DEFAULT: Handles the generic Error type.
   return {
     statusCode: 500,
     body: JSON.stringify({
@@ -45,4 +44,21 @@ export const handleError = (err: any) => {
       errors: [],
     }),
   };
+};
+
+export const handleError = (err: any) => {
+  const response = computeResponse(err);
+  const logPayload = {
+    statusCode: response.statusCode,
+    errorName: err instanceof Error ? err.name : undefined,
+    errorMessage: err instanceof Error ? err.message : String(err),
+  };
+
+  // 5xx → error level fires the lambda_5xx alarm. 4xx → warn keeps logs without alerting.
+  if (response.statusCode >= 500) {
+    logger.error(logPayload, "Lambda handler returned a server error");
+  } else {
+    logger.warn(logPayload, "Lambda handler returned a client error");
+  }
+  return response;
 };

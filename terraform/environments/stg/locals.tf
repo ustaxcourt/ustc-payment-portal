@@ -50,6 +50,6 @@ locals {
     []
   ))
 
-  runbook_url = "https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/runbooks/lambda-errors.md"
+  runbook_url = "https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/runbooks/lambda-error-alerts.md"
 }
 

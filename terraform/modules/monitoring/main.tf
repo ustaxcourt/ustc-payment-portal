@@ -27,7 +27,7 @@ resource "aws_sns_topic_subscription" "subs" {
   endpoint  = each.value.endpoint
 }
 
-# Built-in metric only catches thrown errors; Phase 3 log filter covers caught 500s.
+# Catches runtime errors that escape handleError (handler crash, OOM, init failure).
 resource "aws_cloudwatch_metric_alarm" "lambda_uncaught" {
   for_each = var.lambda_functions
 
@@ -55,4 +55,48 @@ resource "aws_cloudwatch_metric_alarm" "lambda_uncaught" {
     Lambda   = each.key
     Runbook  = var.runbook_url
   })
+}
+
+# 5xx responses go through handleError (return, not throw), so AWS/Lambda Errors stays
+# zero — we filter logs at level=error instead. See docs/runbooks/lambda-error-alerts.md.
+resource "aws_cloudwatch_log_metric_filter" "lambda_5xx" {
+  for_each = var.lambda_log_group_names
+
+  name           = "${var.name_prefix}-${each.key}-5xx"
+  log_group_name = each.value
+  pattern        = "{ $.level = \"error\" }"
+
+  metric_transformation {
+    namespace     = "${var.name_prefix}/errors"
+    name          = "${each.key}-5xx"
+    value         = "1"
+    default_value = "0"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "lambda_5xx" {
+  for_each = var.lambda_log_group_names
+
+  alarm_name          = "${var.name_prefix}-${each.key}-5xx-critical"
+  alarm_description   = "5xx response from ${each.key}. Runbook: ${var.runbook_url}"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  period              = 1800
+  threshold           = 1
+  statistic           = "Sum"
+  metric_name         = "${each.key}-5xx"
+  namespace           = "${var.name_prefix}/errors"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = merge(local.default_tags, {
+    Severity = "critical"
+    Metric   = "5xx"
+    Lambda   = each.key
+    Runbook  = var.runbook_url
+  })
+
+  depends_on = [aws_cloudwatch_log_metric_filter.lambda_5xx]
 }
