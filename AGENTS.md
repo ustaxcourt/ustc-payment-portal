@@ -1,5 +1,7 @@
 # USTC Payment Portal
 
+**Instructions here should only be updated through `AGENTS.md`. `copilot-instructions.md` and `CLAUDE.md` are symlinks to `AGENTS.md`**
+
 This is the United States Tax Court's payment portal — a TypeScript Node.js package and AWS Lambda-based service for integrating with Pay.gov for electronic payment processing.
 
 ## Project Assumptions
@@ -18,7 +20,7 @@ Data flow: Client → API Gateway (AWS SigV4) → Lambda handler (`src/handlers/
 ### Running, Linting, and Testing the Application
 
 - **Local stack** (recommended one-command start): `npm run start:all`. This starts Docker/Postgres, the mock Pay.gov test server, and the Express dev server. See [running-locally.md](running-locally.md) for full details, port configuration, and advanced options.
-- **Lint**: `npm run lint` (currently TSLint; a migration to Biome is planned).
+- **Lint**: `npm run lint` (currently TSLint; do not begin the Biome migration unless explicitly instructed).
 - **Type-check**: `npm run tsc`
 - **Build**: `npm run build`
 - **Unit tests** (Jest, Node): `npm test`
@@ -40,9 +42,7 @@ Data flow: Client → API Gateway (AWS SigV4) → Lambda handler (`src/handlers/
 - Request/response shapes are validated with Zod schemas in `src/schemas/`. Add a new schema file there for any new API surface.
 - Database access always goes through the model layer in `src/db/` (`TransactionModel`, `FeesModel`). Do not query Knex/Objection directly from use cases.
 - TypeScript strict mode is enabled (`"strict": true` in [`tsconfig.json`](tsconfig.json)). All code must pass `npm run tsc` without errors.
-- Client authorization (`authorizeClient`) must be called in every handler/use case before accessing fee-specific data. `ClientPermission.allowedFeeIds` supports the wildcard `"*"` to authorize access to all fee IDs.
-- `TransactionModel.createReceived` always sets `paymentStatus='pending'` and `transactionStatus='received'` regardless of input — do not pass those fields explicitly.
-- Logger redaction covers `authorization`, `token`, `password`, `secret`, and `certPassphrase`. Do not rely on it to redact `email`, `fullName`, or `accessCode`.
+- `TransactionModel.createReceived` always enforces `paymentStatus='pending'` and `transactionStatus='received'` internally. Do not pass these fields in the call — they will be ignored, and doing so signals a misunderstanding of the model contract.
 
 ### Sources of Truth
 
@@ -53,50 +53,54 @@ Data flow: Client → API Gateway (AWS SigV4) → Lambda handler (`src/handlers/
 - **OpenAPI spec**: generated via `npm run generate:openapi` from [`src/openapi/registry.ts`](src/openapi/registry.ts).
 - **Logger**: [`src/utils/logger.ts`](src/utils/logger.ts) — use `AppContext.logger` rather than `console` in production code paths.
 
+## Security Requirements
+
+- `authorizeClient` MUST be called in every handler/use case that operates on the payment workflow — i.e. anything that reads or mutates fee-scoped data (`initPayment`, `processPayment`, `getDetails`, and any future payment-flow operations). These endpoints are also SigV4-protected at API Gateway as a matter of SOP, so the two signals correlate: if the route is behind SigV4, it needs `authorizeClient`. Read-only dashboard endpoints do not.
+- Pino's redaction config is the source of truth for what gets stripped from logs — see `redact.paths` in [`src/utils/logger.ts`](src/utils/logger.ts). Before logging a field that could plausibly carry PII or secrets (emails, names, access codes, payment data, anything signed/authenticated), check that list. If a sensitive field is not covered and you believe it should be, STOP — do not add the log line. Ask the developer whether to add it to `redact.paths` first, using `AskUserQuestion` (or the equivalent prompt mechanism for your agent) before proceeding.
+
 ## Testing Conventions
 
-- Unit tests live alongside source files; integration tests go in `src/test/integration/`
-- Test behavior and outcomes, not implementation details
-- Every conditional branch needs a corresponding test case
-- All error paths must be covered -- especially the typed errors in `src/errors/`
-- Do NOT write tests for functions that only return hardcoded constants or trivial passthroughs
-- Use specific assertions: prefer `expect(result.status).toBe('pending')` over `expect(result).toBeTruthy()`
-- Do not mock the database layer in integration tests -- use the local stack
-- Coverage must stay at or above 90% (`npm run test:coverage`)
+- Unit tests live alongside source files; integration tests go in `src/test/integration/`.
+- Test behavior and outcomes, not implementation details.
+- Every conditional branch needs a corresponding test case.
+- All error paths must be covered — especially the typed errors in `src/errors/`.
+- Do NOT write tests for functions that only return hardcoded constants or trivial passthroughs.
+- Use specific assertions: prefer `expect(result.status).toBe('pending')` over `expect(result).toBeTruthy()`.
+- Do not mock the database layer in integration tests — use the local stack.
+- Coverage must stay at or above 90% (`npm run test:coverage`).
 
 ## Coverage Decisions
 
-Before writing a new test or adding an `// istanbul ignore` comment, you MUST
-stop and ask the developer which is preferred. Do not make this decision yourself.
+Before writing a new test or adding an `// istanbul ignore` comment, use the following to determine the right path. Do not make this decision yourself without checking here first.
 
-Use this checklist to determine if a coverage decision is needed:
+### Clear cases — add `// istanbul ignore` without asking:
 
-- The function only returns a hardcoded value
-- The function is a trivial passthrough with no branching logic
-- The only uncovered lines are defensive error handlers that cannot
-  realistically be triggered (e.g. a catch block around infallible code)
-- The code is auto-generated or vendored
+- Auto-generated or vendored code.
+- A function body that is a single hardcoded `return` with no logic whatsoever.
 
-If any of the above apply, ask:
-"This code may not warrant a test -- should I write one anyway, or add an
-`// istanbul ignore` comment here? Here's why I'm asking: [reason]"
+### Ambiguous cases — STOP and ask the developer before proceeding:
+
+- Defensive `catch` blocks around code that is unlikely to throw in practice.
+- Trivial passthroughs where it is unclear if the call site already has meaningful test coverage.
+- Type guard functions (e.g. `isX(val): val is X`) where a branch may be unreachable given TypeScript's narrowing at the call site — this is common given strict mode and heavy Zod usage in this codebase.
+- Any case where you are unsure whether a test would catch a real bug.
+
+When asking, use this format:
+
+> "This code may not warrant a test — should I write one anyway, or add an `// istanbul ignore` comment here? Here's why I'm asking: [reason]"
 
 Do not proceed until the developer responds.
 
-### Outdated Files
-
-- **`COVERAGE.md`**: This file is outdated and should not be relied upon for current coverage guidance.
-
 ## Git Safety Rules
 
-- Never execute `git commit`, `git push`, `git merge`, `git rebase`, `git reset`, `git clean`, `git revert`, `git cherry-pick`, `git tag`, or `git stash` commands
-- You may remind the developer of the appropriate git commands, but never run them
-- Only execute read-only git commands like `git status`, `git diff`, `git log`, `git branch`, `git show`
-- The developer is responsible for reviewing and committing all code generated by Copilot
+- Never execute `git commit`, `git push`, `git merge`, `git rebase`, `git reset`, `git clean`, `git revert`, `git cherry-pick`, `git tag`, or `git stash` commands.
+- You may remind the developer of the appropriate git commands, but never run them.
+- Only execute read-only git commands like `git status`, `git diff`, `git log`, `git branch`, `git show`.
+- The developer is responsible for reviewing and committing all code generated by the agent.
 
 ## Terminal Safety Rules
 
-- Never execute destructive file operations like `rm`, `rmdir`, or `del`
-- Never use `sudo`, `chmod`, `chown`, `kill`, or `killall`
-- Never use `curl`, `wget`, or `eval`
-- If a task requires any of these commands, provide the command for the developer to run manually
+- Never execute destructive file operations like `rm`, `rmdir`, or `del`.
+- Never use `sudo`, `chmod`, `chown`, `kill`, or `killall`.
+- Never use `curl`, `wget`, or `eval`.
+- If a task requires any of these commands, provide the command for the developer to run manually.
