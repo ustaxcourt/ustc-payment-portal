@@ -374,6 +374,37 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*"
       },
       {
+        Effect = "Allow", # SNS topics + subscriptions for the monitoring module
+        Action = [
+          "sns:CreateTopic",
+          "sns:DeleteTopic",
+          "sns:GetTopicAttributes",
+          "sns:SetTopicAttributes",
+          "sns:ListTagsForResource",
+          "sns:TagResource",
+          "sns:UntagResource",
+          "sns:Subscribe",
+          "sns:Unsubscribe",
+          "sns:ConfirmSubscription",
+          "sns:GetSubscriptionAttributes",
+          "sns:SetSubscriptionAttributes",
+          "sns:ListSubscriptionsByTopic"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow", # CloudWatch alarms for the monitoring module
+        Action = [
+          "cloudwatch:PutMetricAlarm",
+          "cloudwatch:DeleteAlarms",
+          "cloudwatch:DescribeAlarms",
+          "cloudwatch:ListTagsForResource",
+          "cloudwatch:TagResource",
+          "cloudwatch:UntagResource"
+        ],
+        Resource = "*"
+      },
+      {
         # DescribeParameters cannot be scoped to a specific resource — AWS requires "*"
         Effect   = "Allow",
         Action   = ["ssm:DescribeParameters"],
