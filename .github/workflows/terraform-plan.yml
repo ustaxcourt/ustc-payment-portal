@@ -245,7 +245,7 @@ jobs:
             for env in dev stg prod; do
               STATUS=$(read_field "$env" status "error")
               SUMMARY=$(read_field "$env" summary "job did not produce output")
-              echo "| ${env} | $(icon_for "$STATUS") | ${SUMMARY} |"
+              echo "| ${env} | $(icon_for "$STATUS") | [${SUMMARY}](${RUN_URL}) |"
             done
             echo ""
             for env in dev stg prod; do
