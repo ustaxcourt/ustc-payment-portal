@@ -222,9 +222,6 @@ of truth.
 
 ## Risks & Open Questions
 
-- **AWS-bound code paths at startup.** `appContext` likely pulls secrets/KMS
-  in non-local envs. We need a hard guarantee these paths are skipped when
-  running as a dev dependency. Audit needed.
 - **Shipping migrations.** Compiling `.ts` migrations to `.js` requires care
   with knex's migration runner (`loadExtensions: ['.js']` in the shipped
   knexfile).
@@ -236,7 +233,7 @@ of truth.
 - **Volume cleanup on ungraceful exit.** SIGKILL bypasses our shutdown hook.
   The startup-time schema reset is the safety net.
 - **CLI shape.** `bin` name `payment-portal` vs. something more specific
-  (`ustc-payment-portal`)? Pick one and commit.
+  (`ustc-payment-portal`)? Pick one and commit. (Lets go with ustc-payment-portal)
 
 ## What to Salvage from the POC Branch
 
