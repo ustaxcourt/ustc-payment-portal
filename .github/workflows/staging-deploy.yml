@@ -27,12 +27,12 @@ jobs:
       sha: ${{ steps.resolve.outputs.sha }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Configure AWS Credentials (read dev artifacts)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -130,7 +130,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
@@ -147,7 +147,7 @@ jobs:
           echo "Ref: ${{ github.ref }}"
 
       - name: Configure AWS Credentials (OIDC - Stg)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.STAGING_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
