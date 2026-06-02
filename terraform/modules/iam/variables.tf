@@ -74,6 +74,12 @@ variable "deploy_role_name" {
   default     = ""
 }
 
+variable "read_only_role_name" {
+  type        = string
+  description = "IAM role name for the read-only CI role (used by the terraform-plan workflow today; general-purpose). Required if create_deployer_role=true."
+  default     = ""
+}
+
 variable "github_oidc_provider_arn" {
   type        = string
   description = "GitHub OIDC provider ARN in the account (required if create_deployer_role=true)"
