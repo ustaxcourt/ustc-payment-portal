@@ -466,7 +466,7 @@ resource "aws_iam_role_policy" "github_actions_read_only" {
           "lambda:Get*",
           "lambda:List*"
         ],
-        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor*"
+        Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.lambda_name_prefix}*"
       },
       {
         Effect = "Allow",
@@ -483,10 +483,10 @@ resource "aws_iam_role_policy" "github_actions_read_only" {
         Resource = [
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.deploy_role_name}",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.read_only_role_name}",
-          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/ustc-payment-processor-*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.lambda_name_prefix}-*",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*lambda*",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/build-artifacts-access-policy",
-          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/ustc-payment-processor-*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${var.lambda_name_prefix}-*",
           local.lambda_exec_role_arn
         ]
       },
