@@ -4,6 +4,12 @@ This package makes SOAP requests to the pay.gov hosted collection pages service.
 
 The application is intended to handle API requests from USTC applications and then make requests to Pay.gov on its behalf.
 
+## Using as a dev dependency
+
+See **[docs/using-as-dev-dependency.md](docs/using-as-dev-dependency.md)** for
+the complete guide: install, single-command startup, port configuration,
+type imports, and troubleshooting.
+
 ## Workflow
 
 ### Current workflow (v1)

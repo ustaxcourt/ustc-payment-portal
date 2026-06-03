@@ -3,6 +3,12 @@ const { parsePort } = require("./lib/parsePort");
 const { ensurePortsAvailable } = require("./lib/ports");
 const { startDockerStack, stopDockerStack } = require("./lib/docker");
 const { createLogger } = require("./lib/log");
+const { setupConsumerDb } = require("./lib/dbSetup");
+
+// When true, docker-compose.consumer.yml (postgres-only) is used and the CLI
+// runs schema-reset + migrations + seeds programmatically before starting the
+// portal. Set by bin/ustc-payment-portal.js for consumer (dev-dependency) mode.
+const CONSUMER_MODE = process.env.CONSUMER_MODE === "true";
 
 const log = createLogger(process.env.npm_lifecycle_event || "start");
 const IS_WINDOWS = process.platform === "win32";
@@ -95,6 +101,17 @@ async function main() {
     log.error(error.message);
     process.exit(1);
     return;
+  }
+
+  if (CONSUMER_MODE) {
+    try {
+      await setupConsumerDb();
+    } catch (error) {
+      log.error("Database setup failed:", error.message);
+      stopDockerStack();
+      process.exit(1);
+      return;
+    }
   }
 
   for (const item of longRunningProcesses) {

@@ -16,14 +16,11 @@ const port = parsePort(
   3366,
   "PAY_GOV_TEST_SERVER_PORT",
 );
-const token = process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN;
+// Default to "local-dev-token" in zero-config mode. The CLI sets both this
+// and PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID to the same value so the portal
+// authenticates without any consumer-side configuration.
+const token = process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN || "local-dev-token";
 const payGovNodeEnv = process.env.PAY_GOV_NODE_ENV || "local";
-
-if (!token) {
-  throw new Error(
-    "Missing PAY_GOV_TEST_SERVER_ACCESS_TOKEN in environment (set it in .env).",
-  );
-}
 
 const entry = resolveTestServerEntry();
 const packageDir = path.dirname(

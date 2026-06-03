@@ -6,3 +6,16 @@ export * from "./errors/failedTransaction";
 export { getAllTransactionsHandler } from "./handlers/getAllTransactionsHandler";
 export { getTransactionsByStatusHandler } from "./handlers/getTransactionsByStatusHandler";
 export { getTransactionPaymentStatusHandler } from "./handlers/getTransactionPaymentStatusHandler";
+
+export type {
+  InitPaymentRequest,
+  InitPaymentResponse,
+} from "./schemas/InitPayment.schema";
+export type {
+  ProcessPaymentRequest,
+  ProcessPaymentResponse,
+} from "./schemas/ProcessPayment.schema";
+export type {
+  GetDetailsPathParams,
+  GetDetailsResponse,
+} from "./schemas/GetDetails.schema";
