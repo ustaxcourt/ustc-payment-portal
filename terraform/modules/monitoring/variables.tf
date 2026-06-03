@@ -72,9 +72,3 @@ variable "teams_channel_id" {
   type        = string
   default     = null
 }
-
-variable "sms_monthly_spend_limit" {
-  description = "Max USD AWS will spend on SMS per month before throttling. Account-wide."
-  type        = number
-  default     = 25
-}
