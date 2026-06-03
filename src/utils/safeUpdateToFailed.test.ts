@@ -1,5 +1,6 @@
 import { safeUpdateToFailed } from "./safeUpdateToFailed";
 import TransactionModel from "../db/TransactionModel";
+import { testAppContext as appContext } from "../test/testAppContext";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -14,7 +15,7 @@ describe("safeUpdateToFailed", () => {
   beforeEach(() => jest.clearAllMocks());
 
   it("calls updateToFailed with the provided args", async () => {
-    await safeUpdateToFailed("agency-123", 5009, "some detail");
+    await safeUpdateToFailed(appContext, "agency-123", 5009, "some detail");
 
     expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
       "agency-123",
@@ -24,7 +25,7 @@ describe("safeUpdateToFailed", () => {
   });
 
   it("forwards undefined for optional args when omitted", async () => {
-    await safeUpdateToFailed("agency-123");
+    await safeUpdateToFailed(appContext, "agency-123");
 
     expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
       "agency-123",
@@ -38,20 +39,23 @@ describe("safeUpdateToFailed", () => {
       new Error("db down"),
     );
 
-    await expect(safeUpdateToFailed("agency-123")).resolves.toBeUndefined();
+    await expect(
+      safeUpdateToFailed(appContext, "agency-123"),
+    ).resolves.toBeUndefined();
   });
 
   it("logs the agencyTrackingId and error when updateToFailed rejects", async () => {
-    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
     const dbError = new Error("db down");
     TransactionModelMock.updateToFailed.mockRejectedValueOnce(dbError);
 
-    await safeUpdateToFailed("agency-123");
+    await safeUpdateToFailed(appContext, "agency-123");
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(appContext.logger.error).toHaveBeenCalledWith(
       "Failed to mark transaction 'agency-123' as failed during error recovery:",
-      dbError,
+      {
+        errorName: dbError.name,
+        errorMessage: dbError.message,
+      },
     );
-    consoleErrorSpy.mockRestore();
   });
 });
