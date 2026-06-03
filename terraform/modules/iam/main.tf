@@ -100,9 +100,12 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       },
       # Read access to build artifacts used for Lambda code updates
       {
-        Effect   = "Allow",
-        Action   = ["s3:GetObject", "s3:HeadObject"],
-        Resource = "arn:aws:s3:::ustc-payment-portal-build-artifacts/artifacts/dev/*"
+        Effect = "Allow",
+        Action = ["s3:GetObject", "s3:HeadObject"],
+        Resource = [
+          for prefix in local.artifact_prefixes :
+          "arn:aws:s3:::ustc-payment-portal-build-artifacts/artifacts/${prefix}/*"
+        ]
       },
       {
         Effect   = "Allow",

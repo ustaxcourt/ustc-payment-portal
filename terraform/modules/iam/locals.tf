@@ -15,5 +15,9 @@ locals {
   project_name     = var.project_name
   environment      = var.environment
   deploy_role_name = var.deploy_role_name
+
+  # Keep access to dev artifacts for promotion-based deploys, and allow
+  # environment-scoped prefixes when used by env-specific pipelines.
+  artifact_prefixes = distinct(["dev", var.environment])
 }
 
