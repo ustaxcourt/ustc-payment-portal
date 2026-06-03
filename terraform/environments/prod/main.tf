@@ -41,7 +41,7 @@ module "rds" {
   source = "../../modules/rds"
 
   identifier = "${local.name_prefix}-db"
-  db_name    = "paymentportal"
+  db_name    = local.rds_db_name
   username   = "payment_portal_admin"
 
   manage_master_user_password = true
@@ -125,4 +125,3 @@ data "aws_secretsmanager_secret_version" "allowed_account_ids" {
   secret_id  = module.secrets.allowed_account_ids_secret_id
   depends_on = [module.secrets]
 }
-

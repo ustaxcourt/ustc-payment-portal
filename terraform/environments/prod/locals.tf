@@ -5,6 +5,7 @@ locals {
   app_env       = "prod"
   mtls_enabled  = true
   custom_domain = "payments.ustaxcourt.gov"
+  rds_db_name   = "paymentportal"
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
     APP_ENV                            = local.app_env
@@ -15,6 +16,7 @@ locals {
     CLIENT_PERMISSIONS_SECRET_ID       = module.secrets.client_permissions_secret_id
     RDS_ENDPOINT                       = module.rds.endpoint
     RDS_SECRET_ARN                     = module.rds.master_user_secret_arn
+    RDS_DB_NAME                        = local.rds_db_name
     }, local.mtls_enabled ? {
     PRIVATE_KEY_SECRET_ID = module.secrets.private_key_secret_id
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
