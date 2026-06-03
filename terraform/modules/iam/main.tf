@@ -229,22 +229,6 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "*"
       },
       {
-        Effect = "Allow", # delete/manage PR Lambda log groups
-        Action = [
-          "logs:DescribeLogGroups",
-          "logs:DescribeLogStreams",
-          "logs:PutRetentionPolicy",
-          "logs:DeleteRetentionPolicy",
-          "logs:PutSubscriptionFilter",
-          "logs:DeleteSubscriptionFilter",
-          "logs:DeleteLogGroup"
-        ],
-        Resource = [
-          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-pr-*",
-          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-pr-*:*"
-        ]
-      },
-      {
         Effect = "Allow", #secrets manager
         Action = [
           "secretsmanager:CreateSecret",
@@ -390,6 +374,34 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "ssm:ListTagsForResource"
         ],
         Resource = "arn:aws:ssm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/ustc/pay-gov/${local.environment}/rds-*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "github_actions_pr_log_cleanup" {
+  count = var.create_deployer_role && local.environment != "prod" ? 1 : 0
+  name  = "${local.project_name}-${local.environment}-ci-pr-log-cleanup"
+  role  = aws_iam_role.github_actions_deployer[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:PutRetentionPolicy",
+          "logs:DeleteRetentionPolicy",
+          "logs:PutSubscriptionFilter",
+          "logs:DeleteSubscriptionFilter",
+          "logs:DeleteLogGroup"
+        ]
+        Resource = [
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-pr-*",
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-pr-*:*"
+        ]
       }
     ]
   })
