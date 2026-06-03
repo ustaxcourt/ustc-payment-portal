@@ -112,6 +112,15 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       {
         Effect = "Allow",
         Action = [
+          "s3:PutBucketPolicy",
+          "s3:GetBucketPolicy",
+          "s3:DeleteBucketPolicy"
+        ],
+        Resource = "arn:aws:s3:::ustc-payment-portal-build-artifacts"
+      },
+      {
+        Effect = "Allow",
+        Action = [
           "lambda:CreateFunction",
           "lambda:UpdateFunctionCode",
           "lambda:UpdateFunctionConfiguration",
