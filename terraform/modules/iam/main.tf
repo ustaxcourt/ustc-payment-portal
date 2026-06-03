@@ -424,6 +424,12 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "*"
       },
       {
+        # SNS SMS attributes are account-wide; AWS does not support resource-level scoping.
+        Effect   = "Allow",
+        Action   = ["sns:SetSMSAttributes", "sns:GetSMSAttributes"],
+        Resource = "*"
+      },
+      {
         # DescribeParameters cannot be scoped to a specific resource — AWS requires "*"
         Effect   = "Allow",
         Action   = ["ssm:DescribeParameters"],
