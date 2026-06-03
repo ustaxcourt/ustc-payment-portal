@@ -81,10 +81,40 @@ describe("handleError", () => {
     it("emits logger.warn (not error) for 4xx responses to keep alarms quiet", () => {
       handleError({ statusCode: 403, message: "Forbidden" });
       expect(logger.warn).toHaveBeenCalledWith(
-        expect.objectContaining({ statusCode: 403 }),
+        expect.objectContaining({
+          statusCode: 403,
+          errorMessage: "Forbidden",
+        }),
         "Lambda handler returned a client error",
       );
       expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it("extracts errorMessage from plain object shapes (e.g. {statusCode, message})", () => {
+      handleError({ statusCode: 502, message: "Upstream timeout" });
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ errorMessage: "Upstream timeout" }),
+        "Lambda handler returned a server error",
+      );
+    });
+
+    it("includes errorStack for Error instances to aid CloudWatch triage", () => {
+      handleError(new Error("boom"));
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errorMessage: "boom",
+          errorStack: expect.stringContaining("Error: boom"),
+        }),
+        "Lambda handler returned a server error",
+      );
+    });
+
+    it("falls back to String() for primitives without a .message field", () => {
+      handleError("a string error");
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ errorMessage: "a string error" }),
+        "Lambda handler returned a server error",
+      );
     });
 
     it("emits logger.warn for ZodError (validation = 4xx)", () => {

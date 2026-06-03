@@ -51,7 +51,9 @@ export const handleError = (err: any) => {
   const logPayload = {
     statusCode: response.statusCode,
     errorName: err instanceof Error ? err.name : undefined,
-    errorMessage: err instanceof Error ? err.message : String(err),
+    errorMessage:
+      err && typeof err.message === "string" ? err.message : String(err),
+    errorStack: err instanceof Error ? err.stack : undefined,
   };
 
   // 5xx → error level fires the lambda_5xx alarm. 4xx → warn keeps logs without alerting.
