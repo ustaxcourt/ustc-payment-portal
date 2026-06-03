@@ -52,7 +52,7 @@ async function setupConsumerDb() {
     await knex.migrate.latest();
 
     log.info("Running seeds...");
-    await knex.seed.run();
+    await knex.seed.run({ specific: "01_reference_data.js" });
 
     log.info("Database ready.");
   } finally {
