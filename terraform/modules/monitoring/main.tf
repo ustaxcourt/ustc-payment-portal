@@ -33,6 +33,12 @@ resource "aws_sns_topic_subscription" "subs" {
   endpoint  = each.value.endpoint
 }
 
+# Account-wide SMS settings — caps monthly spend, classifies alerts as transactional.
+resource "aws_sns_sms_preferences" "default" {
+  monthly_spend_limit = var.sms_monthly_spend_limit
+  default_sms_type    = "Transactional"
+}
+
 # Catches runtime errors that escape handleError (handler crash, OOM, init failure).
 resource "aws_cloudwatch_metric_alarm" "lambda_uncaught" {
   for_each = var.lambda_functions
