@@ -9,26 +9,28 @@ data "terraform_remote_state" "foundation" {
 }
 
 module "lambda" {
-  source                    = "../../modules/lambda"
-  function_name_prefix      = local.name_prefix
-  lambda_execution_role_arn = data.terraform_remote_state.foundation.outputs.lambda_role_arn
-  subnet_ids                = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
-  security_group_ids        = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
+  source                            = "../../modules/lambda"
+  function_name_prefix              = local.name_prefix
+  lambda_execution_role_arn         = data.terraform_remote_state.foundation.outputs.lambda_role_arn
+  subnet_ids                        = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
+  security_group_ids                = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
   environment_variables_by_function = local.lambda_env_by_function
 
   # Consume dev artifacts by SHA (keys and optional hashes passed from workflow)
   artifact_bucket = var.artifact_bucket
   artifact_s3_keys = {
-    initPayment    = var.initPayment_s3_key
-    processPayment = var.processPayment_s3_key
-    getDetails     = var.getDetails_s3_key
-    testCert       = var.testCert_s3_key
+    initPayment     = var.initPayment_s3_key
+    processPayment  = var.processPayment_s3_key
+    getDetails      = var.getDetails_s3_key
+    testCert        = var.testCert_s3_key
+    migrationRunner = var.migrationRunner_s3_key
   }
   source_code_hashes = {
-    initPayment    = var.initPayment_source_code_hash
-    processPayment = var.processPayment_source_code_hash
-    getDetails     = var.getDetails_source_code_hash
-    testCert       = var.testCert_source_code_hash
+    initPayment     = var.initPayment_source_code_hash
+    processPayment  = var.processPayment_source_code_hash
+    getDetails      = var.getDetails_source_code_hash
+    testCert        = var.testCert_source_code_hash
+    migrationRunner = var.migrationRunner_source_code_hash
   }
 
   tags = {
@@ -41,7 +43,7 @@ module "rds" {
   source = "../../modules/rds"
 
   identifier = "${local.name_prefix}-db"
-  db_name    = "paymentportal"
+  db_name    = local.rds_db_name
   username   = "payment_portal_admin"
 
   manage_master_user_password = true
@@ -144,8 +146,8 @@ module "iam_cicd" {
   state_bucket_name        = local.state_bucket_name
   state_object_keys        = local.state_object_keys
   lambda_exec_role_arn     = local.lambda_exec_role_arn
-  lambda_name_prefix      = local.name_prefix
-  create_lambda_exec_role = false
+  lambda_name_prefix       = local.name_prefix
+  create_lambda_exec_role  = false
 }
 
 module "monitoring" {
