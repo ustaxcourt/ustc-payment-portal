@@ -54,13 +54,13 @@ jobs:
       matrix:
         include:
           - env: dev
-            role_arn_secret: DEV_AWS_DEPLOYER_ROLE_ARN
+            role_arn_secret: DEV_AWS_READ_ONLY_ROLE_ARN
             backend_config: backend.hcl
           - env: stg
-            role_arn_secret: STAGING_AWS_DEPLOYER_ROLE_ARN
+            role_arn_secret: STAGING_AWS_READ_ONLY_ROLE_ARN
             backend_config: backend.hcl
           - env: prod
-            role_arn_secret: PROD_AWS_DEPLOYER_ROLE_ARN
+            role_arn_secret: PROD_AWS_READ_ONLY_ROLE_ARN
             backend_config: backend.hcl
 
     steps:
@@ -86,7 +86,7 @@ jobs:
         working-directory: terraform/environments/${{ matrix.env }}
         run: |
           set +e
-          terraform init -input=false -backend-config=${{ matrix.backend_config }} -reconfigure
+          terraform init -input=false -lock=false -backend-config=${{ matrix.backend_config }} -reconfigure
           code=$?
           echo "exitcode=$code" >> $GITHUB_OUTPUT
           set -e
@@ -103,7 +103,7 @@ jobs:
         working-directory: terraform/environments/${{ matrix.env }}
         run: |
           set +e
-          terraform plan -input=false -lock-timeout=2m -detailed-exitcode -no-color -out=tfplan
+          terraform plan -input=false -lock=false -detailed-exitcode -no-color -out=tfplan
           code=$?
           echo "exitcode=$code" >> $GITHUB_OUTPUT
           terraform show -no-color tfplan > tfplan.txt 2>&1 || true
