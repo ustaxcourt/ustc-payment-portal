@@ -153,10 +153,13 @@ module "iam_cicd" {
 module "monitoring" {
   source = "../../modules/monitoring"
 
-  env         = local.environment
-  name_prefix = local.name_prefix
-  subscribers = local.monitoring_subscribers
-  runbook_url = local.runbook_url
+  env              = local.environment
+  name_prefix      = local.name_prefix
+  subscribers      = local.monitoring_subscribers
+  runbook_url      = local.runbook_url
+  teams_tenant_id  = local.teams_tenant_id
+  teams_team_id    = local.teams_team_id
+  teams_channel_id = local.teams_channel_id
 
   lambda_functions = {
     initPayment    = module.lambda.function_names["initPayment"]

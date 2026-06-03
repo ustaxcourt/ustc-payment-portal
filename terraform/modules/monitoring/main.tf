@@ -8,6 +8,12 @@ locals {
     },
     var.tags,
   )
+
+  enable_teams = (
+    var.teams_tenant_id != null &&
+    var.teams_team_id != null &&
+    var.teams_channel_id != null
+  )
 }
 
 resource "aws_sns_topic" "alerts" {
@@ -99,4 +105,42 @@ resource "aws_cloudwatch_metric_alarm" "lambda_5xx" {
   })
 
   depends_on = [aws_cloudwatch_log_metric_filter.lambda_5xx]
+}
+
+# Chatbot routes the SNS topic to a Teams channel. Inert until all teams_* vars set.
+resource "aws_iam_role" "chatbot" {
+  count = local.enable_teams ? 1 : 0
+
+  name = "${var.name_prefix}-chatbot-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "chatbot.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+
+  tags = local.default_tags
+}
+
+resource "aws_iam_role_policy_attachment" "chatbot_cloudwatch_read" {
+  count      = local.enable_teams ? 1 : 0
+  role       = aws_iam_role.chatbot[0].name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess"
+}
+
+resource "aws_chatbot_teams_channel_configuration" "alerts" {
+  count = local.enable_teams ? 1 : 0
+
+  configuration_name = "${var.name_prefix}-alerts"
+  iam_role_arn       = aws_iam_role.chatbot[0].arn
+  team_id            = var.teams_team_id
+  tenant_id          = var.teams_tenant_id
+  channel_id         = var.teams_channel_id
+  sns_topic_arns     = [aws_sns_topic.alerts.arn]
+  logging_level      = "ERROR"
+
+  tags = local.default_tags
 }

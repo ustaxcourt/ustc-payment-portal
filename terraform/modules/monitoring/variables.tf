@@ -36,7 +36,7 @@ variable "lambda_functions" {
 }
 
 variable "lambda_log_group_names" {
-  description = "Map of function key to log group name. Used by Phase 3 log filters."
+  description = "Map of function key to log group name. Used by the 5xx log metric filters."
   type        = map(string)
   default     = {}
 }
@@ -51,4 +51,24 @@ variable "tags" {
   description = "Additional tags applied to all resources."
   type        = map(string)
   default     = {}
+}
+
+# Teams routing. All three must be set together or Teams resources are skipped.
+# AWS Chatbot app must be consented in the M365 tenant before messages route.
+variable "teams_tenant_id" {
+  description = "Microsoft 365 tenant ID."
+  type        = string
+  default     = null
+}
+
+variable "teams_team_id" {
+  description = "Microsoft Teams team ID."
+  type        = string
+  default     = null
+}
+
+variable "teams_channel_id" {
+  description = "Microsoft Teams channel ID where alerts are posted."
+  type        = string
+  default     = null
 }

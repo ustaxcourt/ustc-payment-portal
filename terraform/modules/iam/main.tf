@@ -143,6 +143,37 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         }
       },
       {
+        Effect   = "Allow", # Pass the Chatbot service role created by the monitoring module
+        Action   = ["iam:PassRole"],
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.lambda_name_prefix}-chatbot-role",
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "chatbot.amazonaws.com"
+          }
+        }
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "chatbot:UpdateMicrosoftTeamsChannelConfiguration",
+          "chatbot:DeleteMicrosoftTeamsChannelConfiguration",
+          "chatbot:GetMicrosoftTeamsChannelConfiguration",
+          "chatbot:TagResource",
+          "chatbot:UntagResource",
+          "chatbot:ListTagsForResource"
+        ],
+        Resource = "arn:aws:chatbot::${data.aws_caller_identity.current.account_id}:chat-configuration/microsoft-teams-channel/${var.lambda_name_prefix}-*"
+      },
+      {
+        # Create + List don't support resource-level permissions per AWS.
+        Effect = "Allow",
+        Action = [
+          "chatbot:CreateMicrosoftTeamsChannelConfiguration",
+          "chatbot:ListMicrosoftTeamsChannelConfigurations"
+        ],
+        Resource = "*"
+      },
+      {
         Effect = "Allow",
         Action = ["iam:GetRole", "iam:ListRolePolicies", "iam:GetRolePolicy", "iam:ListAttachedRolePolicies"],
         Resource = [
@@ -227,6 +258,15 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "logs:PutRetentionPolicy"
         ],
         Resource = "*"
+      },
+      {
+        Effect = "Allow", # Log metric filters for the monitoring module's 5xx detection
+        Action = [
+          "logs:PutMetricFilter",
+          "logs:DeleteMetricFilter",
+          "logs:DescribeMetricFilters"
+        ],
+        Resource = "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-*:*"
       },
       {
         Effect = "Allow", # delete/manage PR Lambda log groups
