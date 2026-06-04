@@ -176,6 +176,7 @@ module "iam_cicd" {
   lambda_name_prefix       = local.name_prefix
   create_lambda_exec_role  = false
   create_deployer_role     = true
+}
 
 resource "aws_iam_role_policy" "shared_lambda_secrets_access" {
   count = local.environment == "dev" ? 1 : 0
