@@ -11,10 +11,11 @@ locals {
   name_prefix          = var.name_prefix
   lambda_name_prefix   = var.create_deployer_role ? "${var.project_name}-${var.environment}" : ""
 
-  aws_region       = var.aws_region
-  project_name     = var.project_name
-  environment      = var.environment
-  deploy_role_name = var.deploy_role_name
+  aws_region          = var.aws_region
+  project_name        = var.project_name
+  environment         = var.environment
+  deploy_role_name    = var.deploy_role_name
+  read_only_role_name = var.read_only_role_name
 
   # Keep access to dev artifacts for promotion-based deploys, and allow
   # environment-scoped prefixes when used by env-specific pipelines.
