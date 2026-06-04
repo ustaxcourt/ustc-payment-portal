@@ -108,7 +108,7 @@
     "scripts/lib/ports.js",
     "docker-compose.consumer.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE.md"
   ],
   "repository": {
     "type": "git",
