@@ -23,7 +23,7 @@ async function setupConsumerDb() {
     DB_NAME = "mydb",
   } = process.env;
 
-  const knex = Knex.knex({
+  const knex = Knex({
     client: "pg",
     connection: {
       host: DB_HOST,
