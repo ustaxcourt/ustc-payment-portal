@@ -67,7 +67,7 @@ Data flow: Client → API Gateway (AWS SigV4) → Lambda handler (`src/handlers/
 - Do NOT write tests for functions that only return hardcoded constants or trivial passthroughs.
 - Use specific assertions: prefer `expect(result.status).toBe('pending')` over `expect(result).toBeTruthy()`.
 - Do not mock the database layer in integration tests — use the local stack.
-- Coverage must stay at or above 90% (`npm run test:coverage`).
+- Coverage target is at or above 90% (`npm run test:coverage`).
 
 ## Coverage Decisions
 
