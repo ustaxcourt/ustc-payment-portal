@@ -39,4 +39,13 @@ variable "testCert_source_code_hash" {
   default = ""
 }
 
+variable "migrationRunner_s3_key" {
+  type = string
+}
+
+variable "migrationRunner_source_code_hash" {
+  type    = string
+  default = ""
+}
+
 
