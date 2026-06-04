@@ -69,14 +69,14 @@ resource "aws_cloudwatch_metric_alarm" "lambda_uncaught" {
   })
 }
 
-# 5xx responses go through handleError (return, not throw), so AWS/Lambda Errors stays
-# zero — we filter logs at level=error instead. See docs/runbooks/lambda-error-alerts.md.
+# Matches handleError's 5xx log only (level=error + statusCode >= 500) so use-case
+# .error logs that precede 4xx throws don't false-positive the alarm.
 resource "aws_cloudwatch_log_metric_filter" "lambda_5xx" {
   for_each = var.lambda_log_group_names
 
   name           = "${var.name_prefix}-${each.key}-5xx"
   log_group_name = each.value
-  pattern        = "{ $.level = \"error\" }"
+  pattern        = "{ ($.level = \"error\") && ($.statusCode >= 500) }"
 
   metric_transformation {
     namespace     = "${var.name_prefix}/errors"

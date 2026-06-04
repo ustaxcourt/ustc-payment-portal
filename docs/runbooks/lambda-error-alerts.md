@@ -99,13 +99,14 @@ Re-enable with `enable-alarm-actions`. Always file a ticket to track *why* the a
 
 ## How the 5xx detection works
 
-The `*-5xx-critical` alarm uses a CloudWatch log metric filter: `{ $.level = "error" }`. It matches any structured log emitted at error level by pino.
+The `*-5xx-critical` alarm uses a CloudWatch log metric filter that requires **both**:
 
-Two log sources contribute:
+```text
+{ ($.level = "error") && ($.statusCode >= 500) }
+```
 
-1. **Use-case-level logs** — when a use case catches an internal error and decides to throw a 5xx, it calls `appContext.logger.error(...)` first with use-case context (transaction ID, client name, etc.). Useful for triage.
-2. **`handleError` itself** — every 5xx response goes through `handleError`, which emits a structured `logger.error` call with the response `statusCode` and the underlying error name/message. This is the catch-all: every 5xx response fires the alarm, even if a use case forgot to log.
+Only `handleError`'s structured log emits `statusCode` — it's the single source of truth for "this response was a 5xx." Every 5xx response goes through `handleError`, which emits `{"level":"error","statusCode":<5xx>,...}`; every 4xx response also goes through `handleError` but at `warn` level with `statusCode < 500`. Neither matches the filter for the wrong reason.
 
-4xx responses go through `handleError` too, but at `warn` level — visible in logs, never fires the alarm.
+Use-case-level `appContext.logger.error(...)` calls (without `statusCode`) stay in CloudWatch Logs for triage context but **do not trigger the alarm** — the filter ignores them because the `statusCode` condition can't match a missing field.
 
-Code review convention: use `.error` only for unexpected/server-side errors. Client-facing 4xx responses (validation, conflict, not found) should use `.warn` or `.info`. `handleError` enforces this at the chokepoint, but use cases doing their own logging should follow the same convention.
+This means the alarm only fires for real 5xx responses, even if a use case logs at error level on a 4xx path (e.g., `initPayment` logging before throwing a `ConflictError`/409).

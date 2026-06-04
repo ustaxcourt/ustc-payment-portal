@@ -1,6 +1,13 @@
 # Subscribing to alerts
 
-How to add yourself (or someone else) to the Payment Portal alert distribution list. **No PR or deployment required** — this is by design so that the on-call rotation can change in minutes, not hours.
+How to add yourself (or someone else) to the Payment Portal alert distribution list. **No code deployment required** — by design, so the on-call rotation can change in minutes.
+
+There are two paths. Pick by intent:
+
+- **Ad-hoc / immediate** (CLI direct subscribe) — adds a subscription to the SNS topic right now, no terraform involved. Use for temporary coverage, on-call backups, or quick personal subscriptions.
+- **Canonical / declarative** (Secrets Manager + targeted apply) — adds your entry to the source-of-truth subscriber list. Use for permanent team additions, audit trail, and config that survives a stack rebuild.
+
+Both satisfy the AC "subscribable without a deployment" (no PR, no merge, no CI release). The difference is whether the subscription is tracked by terraform's canonical list.
 
 ## Who should subscribe
 
@@ -10,13 +17,51 @@ How to add yourself (or someone else) to the Payment Portal alert distribution l
 
 When you leave the rotation, **remove yourself** — stale subscribers means the actual on-call person doesn't realize they're not the one being paged.
 
-## How it works (one paragraph)
+---
 
-Each env has an SNS topic named `ustc-payment-portal-{env}-alerts`. The subscribers list is stored in AWS Secrets Manager (`ustc/pay-gov/{env}/monitoring-subscribers`) as a JSON array. Terraform reads the secret and creates one `aws_sns_topic_subscription` per entry. Updating the secret + re-running `terraform apply` adds or removes subscriptions. The secret has `lifecycle.ignore_changes` on its content, so updates outside terraform are not overwritten.
+## Path A — CLI direct subscribe (instant, no terraform)
 
-For SMS, AWS sends a confirmation to the phone number. For email, AWS sends a confirmation link to the inbox. **Subscriptions don't deliver alerts until you confirm.**
+This is the literal "subscribable without a deployment" path. The subscription is created immediately in AWS, with no infrastructure change required.
 
-## Add yourself — AWS CLI
+### 1. Subscribe via CLI
+
+For email:
+
+```bash
+# Replace {env} with stg or prod and your address
+aws sns subscribe \
+  --topic-arn arn:aws:sns:us-east-1:747103385969:ustc-payment-portal-{env}-alerts \
+  --protocol email \
+  --notification-endpoint you@ustaxcourt.gov
+```
+
+For SMS (E.164 format, leading `+` and country code required):
+
+```bash
+aws sns subscribe \
+  --topic-arn arn:aws:sns:us-east-1:747103385969:ustc-payment-portal-{env}-alerts \
+  --protocol sms \
+  --notification-endpoint +15555551234
+```
+
+### 2. Confirm the subscription
+
+- **Email:** click the confirmation link AWS sends to your inbox.
+- **SMS:** reply `YES` to the AWS confirmation text.
+
+Until confirmed, the subscription is in `PendingConfirmation` and won't deliver alerts.
+
+### Caveat
+
+These subscriptions exist in AWS but **not in the canonical subscriber list** stored in Secrets Manager. They survive across terraform applies (terraform only manages subscriptions it created), but they're invisible to anyone auditing "who's subscribed?" by reading the secret.
+
+For temporary or personal additions, this is fine. For permanent on-call rotation membership, use Path B so future engineers can find the entry by reading the secret.
+
+---
+
+## Path B — Secrets Manager + targeted apply (canonical, declarative)
+
+Use this for permanent team additions. The subscriber appears in the auditable list, survives stack rebuilds, and gets removed cleanly when you remove their entry from the secret.
 
 ### 1. Find the current subscribers
 
@@ -35,27 +80,9 @@ You'll see something like:
 ]
 ```
 
-### 2. Build the new list
+### 2. Build the new list and write it back
 
-Append your entry. For email:
-
-```json
-[
-  {"protocol":"email","endpoint":"someone@ustaxcourt.gov"},
-  {"protocol":"email","endpoint":"you@ustaxcourt.gov"}
-]
-```
-
-For SMS (E.164 format, leading `+` and country code required):
-
-```json
-[
-  {"protocol":"email","endpoint":"someone@ustaxcourt.gov"},
-  {"protocol":"sms","endpoint":"+15555551234"}
-]
-```
-
-### 3. Write the new list back
+Append your entry:
 
 ```bash
 aws secretsmanager update-secret \
@@ -63,47 +90,55 @@ aws secretsmanager update-secret \
   --secret-string '[{"protocol":"email","endpoint":"someone@ustaxcourt.gov"},{"protocol":"email","endpoint":"you@ustaxcourt.gov"}]'
 ```
 
-### 4. Re-apply terraform to materialize the subscription
+### 3. Targeted terraform apply
 
-The secret holds the desired state, but the `aws_sns_topic_subscription` resources only exist after `terraform apply`. In CI this happens on the next deploy automatically. If you want it sooner, run apply manually from `terraform/environments/{env}/`:
+The secret holds the desired state, but the `aws_sns_topic_subscription` resources only exist after terraform creates them. Run a targeted apply (not a full deploy):
 
 ```bash
 cd terraform/environments/{env}
-terraform apply -target=module.monitoring
+terraform apply -target='module.monitoring.aws_sns_topic_subscription.subs'
 ```
 
-### 5. Confirm the subscription
+This applies only the subscriptions resource, not the rest of the stack. No code release; no CI deploy.
 
-- **Email:** click the confirmation link AWS sends to your inbox.
-- **SMS:** reply `YES` to the AWS confirmation text.
+### 4. Confirm the subscription
 
-Until confirmed, the subscription is in `PendingConfirmation` state and won't deliver alerts.
+Same as Path A — click the email link or reply `YES` to the SMS.
 
-## Add yourself — AWS Console
-
-1. AWS Console → Secrets Manager → `ustc/pay-gov/{env}/monitoring-subscribers`
-2. **Retrieve secret value** → **Edit** → modify the JSON, **Save**
-3. Wait for next CI deploy, or trigger one manually
-4. Confirm via the email/SMS that AWS sends
+---
 
 ## Remove yourself
 
-Same flow — fetch the current list, drop your entry, write it back, re-apply.
+**If subscribed via Path A (CLI):** unsubscribe via the link in any alert email (AWS adds an unsubscribe footer), or:
 
-You can also unsubscribe directly via the link in any alert email (AWS adds an unsubscribe footer automatically). But the secret will still contain your entry, so the next `terraform apply` will re-create the subscription and you'll get another confirmation email. The secret is the source of truth.
+```bash
+# Find your subscription ARN
+aws sns list-subscriptions-by-topic \
+  --topic-arn arn:aws:sns:us-east-1:747103385969:ustc-payment-portal-{env}-alerts
+
+# Unsubscribe by ARN
+aws sns unsubscribe --subscription-arn <subscription-arn>
+```
+
+**If subscribed via Path B (secret):** fetch the current list, drop your entry, write it back, re-apply targeted. The terraform state will tear down your subscription.
+
+Don't mix the two — if you're in the secret, unsubscribing via the email link only mutes you temporarily; the next terraform apply will recreate the subscription. The secret is the source of truth for Path B entries.
+
+---
 
 ## SMS-specific notes
 
-- **Cost:** SMS costs roughly $0.0075 per message in `us-east-1`. At 50 alerts/month, ~$0.40. Not a blocker.
-- **Sandbox status:** if the AWS account is in SMS sandbox mode, only pre-verified phone numbers can receive SMS. Check status:
+- **Cost:** ~$0.0075/message in `us-east-1`. At 50 alerts/month, ~$0.40.
+- **Sandbox status:** check first:
 
-```bash
-aws sns get-sms-sandbox-account-status
-```
+  ```bash
+  aws sns get-sms-sandbox-account-status
+  ```
 
-If sandboxed, contact AWS Support to request production access. This is a multi-day process.
+  If sandboxed, AWS Support has to provision a toll-free origination number and exit the sandbox before SMS sends work. Multi-day process.
+- **Format:** E.164 only (`+1` prefix for US, no dashes/spaces/parens).
 
-- **Format:** E.164 only (`+1` prefix for US, country code required, no dashes/spaces/parens).
+---
 
 ## Verification — make sure alerts actually reach you
 
@@ -116,7 +151,7 @@ aws cloudwatch set-alarm-state \
   --state-reason "Subscription test by {your-name}"
 ```
 
-You should receive an email/SMS within ~1 minute. After verifying, flip back:
+You should receive an email/SMS within ~1 minute. Flip back:
 
 ```bash
 aws cloudwatch set-alarm-state \
@@ -127,4 +162,4 @@ aws cloudwatch set-alarm-state \
 
 You should receive a recovery email/SMS within ~1 minute.
 
-If neither arrives, the subscription is either unconfirmed (re-click the confirmation link), or there's an account-level issue (open a ticket).
+If neither arrives, the subscription is either unconfirmed (re-click the confirmation link) or there's an account-level issue (open a ticket).
