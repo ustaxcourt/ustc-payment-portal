@@ -51,14 +51,16 @@ describe("start-pay-gov-test-server", () => {
     process.removeAllListeners("SIGTERM");
   });
 
-  it("throws synchronously when PAY_GOV_TEST_SERVER_ACCESS_TOKEN is not set", () => {
+  it("falls back to 'asdf123' when PAY_GOV_TEST_SERVER_ACCESS_TOKEN is not set", () => {
     delete process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN;
+    mockSpawn.mockReturnValue(makeChildProcess());
 
-    expect(() => {
-      jest.isolateModules(() => {
-        require("./start-pay-gov-test-server");
-      });
-    }).toThrow("Missing PAY_GOV_TEST_SERVER_ACCESS_TOKEN");
+    jest.isolateModules(() => {
+      require("./start-pay-gov-test-server");
+    });
+
+    const spawnEnv = mockSpawn.mock.calls[0][2].env;
+    expect(spawnEnv.ACCESS_TOKEN).toBe("asdf123");
   });
 
   it("spawns the server using process.execPath with the resolved entry point", () => {
