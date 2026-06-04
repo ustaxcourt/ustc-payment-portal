@@ -175,6 +175,7 @@ module "iam_cicd" {
   lambda_exec_role_arn     = data.terraform_remote_state.foundation.outputs.lambda_role_arn
   lambda_name_prefix       = local.name_prefix
   create_lambda_exec_role  = false
+  create_deployer_role     = local.environment == "dev"
 }
 
 resource "aws_iam_role_policy" "shared_lambda_secrets_access" {
