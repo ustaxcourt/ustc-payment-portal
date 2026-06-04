@@ -51,7 +51,7 @@ Data flow: Client → API Gateway (AWS SigV4) → Lambda handler (`src/handlers/
 - **Database models**: [`src/db/TransactionModel.ts`](src/db/TransactionModel.ts) and [`src/db/FeesModel.ts`](src/db/FeesModel.ts).
 - **Database migrations**: [`db/migrations/`](db/migrations/) managed by Knex (`knexfile.ts`).
 - **OpenAPI spec**: generated via `npm run generate:openapi` from [`src/openapi/registry.ts`](src/openapi/registry.ts).
-- **Logger**: [`src/utils/logger.ts`](src/utils/logger.ts) — use `AppContext.logger` rather than `console` in production code paths.
+- **Logger**: [`src/utils/logger.ts`](src/utils/logger.ts) — prefer `AppContext.logger` over `console` in production code paths (avoid adding new `console.*` calls).
 
 ## Security Requirements
 
