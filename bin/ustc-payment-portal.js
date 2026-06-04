@@ -14,8 +14,10 @@ const packageRoot = path.join(__dirname, "..");
 
 // 1. Apply zero-config defaults before loading any env file.
 //    Only set values that are not already in the environment.
-//    Ports are intentionally omitted — they have defaults in parsePort() and
-//    consumers may override them via .env.payment-portal (step 2 below).
+//    API_PORT, PAY_GOV_TEST_SERVER_PORT, and DB_PORT are omitted — start-local-stack.js,
+//    docker-compose.consumer.yml, dbSetup.js, and knexConfig.ts all fall back to their
+//    own defaults (8080, 3366, 5433). Consumers may override them via .env.payment-portal
+//    (step 2 below).
 const DEV_DEFAULTS = {
   APP_ENV: "local",
   NODE_ENV: "development",
