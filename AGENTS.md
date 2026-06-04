@@ -24,7 +24,7 @@ Data flow: Client → API Gateway (AWS SigV4) → Lambda handler (`src/handlers/
 - **Type-check**: `npm run tsc`
 - **Build**: `npm run build`
 - **Unit tests** (Jest, Node): `npm test`
-  - With coverage: `npm run test:coverage` — coverage must remain at or above 90%.
+  - With coverage: `npm run test:coverage` — coverage target is at or above 90%.
   - Single file: `npx jest --config jest-unit.config.ts path/to/file.test.ts`
   - Unit tests exclude `src/test/integration/` — see [`jest-unit.config.ts`](jest-unit.config.ts).
 - **Integration tests**: when running locally, start the local stack in a separate terminal (`npm run start:all`).
