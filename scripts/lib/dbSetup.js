@@ -15,22 +15,19 @@ const migrationsDir = path.join(packageRoot, "dist", "db", "migrations");
 const seedsDir = path.join(packageRoot, "dist", "db", "seeds");
 
 async function setupConsumerDb() {
-  const {
-    DB_HOST = "localhost",
-    DB_PORT = "5433",
-    DB_USER = "user",
-    DB_PASSWORD = "password",
-    DB_NAME = "mydb",
-  } = process.env;
+  // DB_PORT is the only connection setting consumers can override via .env.payment-portal.
+  // All other values are fixed — reading them from process.env would let a consumer's
+  // shell environment silently break the local stack.
+  const port = Number(process.env.DB_PORT || "5433");
 
   const knex = Knex({
     client: "pg",
     connection: {
-      host: DB_HOST,
-      port: Number(DB_PORT),
-      user: DB_USER,
-      password: DB_PASSWORD,
-      database: DB_NAME,
+      host: "localhost",
+      port,
+      user: "user",
+      password: "password",
+      database: "mydb",
     },
     migrations: {
       tableName: "knex_migrations",
