@@ -18,3 +18,13 @@ output "role_arn" {
   description = "CI/CD deployer role ARN"
 }
 
+output "read_only_role_name" {
+  value       = var.create_deployer_role ? aws_iam_role.github_actions_read_only[0].name : null
+  description = "Read-only CI role name (used by terraform-plan workflow today)"
+}
+
+output "read_only_role_arn" {
+  value       = var.create_deployer_role ? aws_iam_role.github_actions_read_only[0].arn : null
+  description = "Read-only CI role ARN (used by terraform-plan workflow today)"
+}
+
