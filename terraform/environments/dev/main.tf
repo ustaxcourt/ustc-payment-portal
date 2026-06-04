@@ -166,6 +166,7 @@ module "iam_cicd" {
   aws_region               = local.aws_region
   environment              = local.environment
   deploy_role_name         = local.environment == "dev" ? "ustc-payment-processor-dev-cicd-deployer-role" : "${local.name_prefix}-cicd-deployer-role"
+  create_read_only_role    = local.environment == "dev"
   read_only_role_name      = "ustc-payment-processor-dev-read-only-role"
   github_oidc_provider_arn = local.github_oidc_provider_arn
   github_org               = local.github_org

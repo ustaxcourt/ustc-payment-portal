@@ -439,7 +439,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
 # General-purpose read-only CI role. Currently assumed by the terraform-plan workflow on PRs;
 # safe for any future CI use case that only needs to inspect AWS state.
 resource "aws_iam_role" "github_actions_read_only" {
-  count = var.create_deployer_role ? 1 : 0
+  count = var.create_deployer_role && var.create_read_only_role ? 1 : 0
   name  = local.read_only_role_name
 
   assume_role_policy = jsonencode({
@@ -466,7 +466,7 @@ resource "aws_iam_role" "github_actions_read_only" {
 }
 
 resource "aws_iam_role_policy" "github_actions_read_only" {
-  count = var.create_deployer_role ? 1 : 0
+  count = var.create_deployer_role && var.create_read_only_role ? 1 : 0
   name  = "${local.project_name}-${local.environment}-read-only"
   role  = aws_iam_role.github_actions_read_only[0].id
 

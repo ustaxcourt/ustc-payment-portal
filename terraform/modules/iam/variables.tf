@@ -40,6 +40,12 @@ variable "create_deployer_role" {
   default     = true
 }
 
+variable "create_read_only_role" {
+  description = "Whether to create the GitHub Actions read-only CI role. Should be false in PR ephemeral workspaces, which share the base env's role rather than creating their own."
+  type        = bool
+  default     = true
+}
+
 variable "aws_region" {
   type    = string
   default = "us-east-1"
@@ -76,12 +82,12 @@ variable "deploy_role_name" {
 
 variable "read_only_role_name" {
   type        = string
-  description = "IAM role name for the read-only CI role (used by the terraform-plan workflow today; general-purpose). Required if create_deployer_role=true."
+  description = "IAM role name for the read-only CI role (used by the terraform-plan workflow today; general-purpose). Required if create_read_only_role=true."
   default     = ""
 
   validation {
-    condition     = !var.create_deployer_role || length(var.read_only_role_name) > 0
-    error_message = "read_only_role_name must be set when create_deployer_role=true."
+    condition     = !var.create_read_only_role || length(var.read_only_role_name) > 0
+    error_message = "read_only_role_name must be set when create_read_only_role=true."
   }
 }
 
