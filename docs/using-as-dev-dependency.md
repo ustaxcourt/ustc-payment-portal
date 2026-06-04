@@ -78,9 +78,6 @@ the API contract.
 ## Other commands
 
 ```sh
-# Start without the Pay.gov Test Server (portal + Postgres only)
-npx ustc-payment-portal start --no-pay-gov
-
 # Tear down the Docker stack
 npx ustc-payment-portal stop
 ```
