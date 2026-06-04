@@ -139,6 +139,7 @@ module "iam_cicd" {
   environment              = local.environment
   name_prefix              = local.name_prefix
   deploy_role_name         = "ustc-payment-processor-prod-cicd-deployer-role"
+  read_only_role_name      = "ustc-payment-processor-prod-read-only-role"
   github_oidc_provider_arn = local.github_oidc_provider_arn
   github_org               = local.github_org
   github_repo              = local.github_repo
