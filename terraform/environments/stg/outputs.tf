@@ -18,6 +18,11 @@ output "cicd_role_arn" {
   description = "ARN of the GitHub OIDC CI/CD deployer role"
 }
 
+output "read_only_role_arn" {
+  value       = module.iam_cicd.read_only_role_arn
+  description = "ARN of the GitHub OIDC read-only CI role"
+}
+
 output "api_gateway_url" {
   value       = module.api.api_gateway_url
   description = "Base URL of the API Gateway for integration tests"
@@ -51,5 +56,10 @@ output "rds_endpoint" {
 output "rds_master_secret_arn" {
   value       = module.rds.master_user_secret_arn
   description = "ARN of AWS-managed Secrets Manager secret containing RDS master credentials"
+}
+
+output "migration_runner_function_name" {
+  description = "Name of the migration runner Lambda function"
+  value       = module.lambda.function_names["migrationRunner"]
 }
 

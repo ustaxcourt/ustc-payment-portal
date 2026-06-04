@@ -5,6 +5,7 @@ locals {
   app_env       = "stg"
   mtls_enabled  = true
   custom_domain = "stg-payments.ustaxcourt.gov"
+  rds_db_name   = "paymentportal"
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
     APP_ENV                            = local.app_env
@@ -15,16 +16,30 @@ locals {
     CLIENT_PERMISSIONS_SECRET_ID       = module.secrets.client_permissions_secret_id
     RDS_ENDPOINT                       = module.rds.endpoint
     RDS_SECRET_ARN                     = module.rds.master_user_secret_arn
+    RDS_DB_NAME                        = local.rds_db_name
     }, local.mtls_enabled ? {
     PRIVATE_KEY_SECRET_ID = module.secrets.private_key_secret_id
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
   } : {})
 
+  # Migration Lambda: migrationRunner
+  # Needs RDS only — no payment secrets. RDS_MASTER_SECRET_ARN must be the admin
+  # creds for CREATE/DROP DATABASE during knex migrations.
+  lambda_env_migration = {
+    NODE_ENV              = local.node_env
+    APP_ENV               = local.app_env
+    RDS_ENDPOINT          = module.rds.endpoint
+    RDS_SECRET_ARN        = module.rds.master_user_secret_arn
+    RDS_MASTER_SECRET_ARN = module.rds.master_user_secret_arn
+    RDS_DB_NAME           = local.rds_db_name
+  }
+
   lambda_env_by_function = {
-    initPayment    = local.lambda_env_payment
-    processPayment = local.lambda_env_payment
-    getDetails     = local.lambda_env_payment
-    testCert       = local.lambda_env_payment
+    initPayment     = local.lambda_env_payment
+    processPayment  = local.lambda_env_payment
+    getDetails      = local.lambda_env_payment
+    testCert        = local.lambda_env_payment
+    migrationRunner = local.lambda_env_migration
   }
   github_oidc_provider_arn = "arn:aws:iam::747103385969:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"
