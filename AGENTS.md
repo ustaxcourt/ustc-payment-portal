@@ -27,7 +27,7 @@ Data flow: Client → API Gateway (AWS SigV4) → Lambda handler (`src/handlers/
   - With coverage: `npm run test:coverage` — coverage must remain at or above 90%.
   - Single file: `npx jest --config jest-unit.config.ts path/to/file.test.ts`
   - Unit tests exclude `src/test/integration/` — see [`jest-unit.config.ts`](jest-unit.config.ts).
-- **Integration tests**: requires the local stack running in a separate terminal (`npm run start:all`).
+- **Integration tests**: when running locally, start the local stack in a separate terminal (`npm run start:all`).
   - Local (no SigV4): `npm run test:integration:dev`
   - CI (SigV4-signed, against a deployed API Gateway): `npm run test:integration`
   - SigV4 smoke only: `BASE_URL=$BASE_URL npm run test:integration:sigv4`
