@@ -26,16 +26,29 @@ export type ProcessPayment = (
   },
 ) => Promise<ProcessPaymentResponse>;
 
-const PAYGOV_RETRY_MESSAGE = "We could not complete this transaction with Pay.gov. Please retry the request.";
+const PAYGOV_RETRY_MESSAGE =
+  "We could not complete this transaction with Pay.gov. Please retry the request.";
 
 export const processPayment: ProcessPayment = async (
   appContext: AppContext,
   { client, request },
 ) => {
+  appContext.logger.debug("Received processPayment request", {
+    token: request.token,
+  });
+
   const transaction = await TransactionModel.findByPaygovToken(request.token);
   if (!transaction) {
     throw new NotFoundError("Transaction could not be found");
   }
+
+  const baseLogFields = {
+    token: request.token,
+    agencyTrackingId: transaction.agencyTrackingId,
+    transactionReferenceId: transaction.transactionReferenceId,
+    clientName: transaction.clientName,
+    metadata: transaction.metadata,
+  };
 
   const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
     transaction.clientName,
@@ -55,13 +68,29 @@ export const processPayment: ProcessPayment = async (
 
   const fee = await FeesModel.getFeeById(transaction.feeId);
   if (!fee) {
-    console.error(`Fee not found for feeId: ${transaction.feeId}`);
+    appContext.logger.error("Fee not found for transaction", {
+      ...baseLogFields,
+      feeId: transaction.feeId,
+    });
     throw new NotFoundError("Fee configuration not found for this transaction");
   }
   if (!fee.tcsAppId) {
-    console.error(`Fee ${transaction.feeId} is missing tcsAppId configuration`);
+    appContext.logger.error("Fee is missing tcsAppId configuration", {
+      ...baseLogFields,
+      feeId: transaction.feeId,
+      feeKey: fee.feeKey,
+    });
     throw new ServerError();
   }
+
+  appContext.logger.info("Loaded processPayment request context", {
+    ...baseLogFields,
+    feeId: transaction.feeId,
+    feeKey: fee.feeKey,
+    requestParameters: {
+      token: request.token,
+    },
+  });
 
   authorizeClient(client, fee.feeKey);
 
@@ -69,13 +98,28 @@ export const processPayment: ProcessPayment = async (
     tcsAppId: fee.tcsAppId,
     token: request.token,
   });
-  console.log("processPayment request", req);
+
+  appContext.logger.info(
+    "Calling Pay.gov completeOnlineCollectionWithDetails",
+    {
+      ...baseLogFields,
+      feeKey: fee.feeKey,
+      tcsAppId: fee.tcsAppId,
+    },
+  );
 
   let result: Awaited<ReturnType<typeof req.makeSoapRequest>>;
   try {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
     if (err instanceof FailedTransactionError) {
+      appContext.logger.error("Pay.gov returned failed transaction", {
+        ...baseLogFields,
+        feeKey: fee.feeKey,
+        returnCode: err.code,
+        returnDetail: err.message,
+      });
+
       await TransactionModel.updateToFailed(
         transaction.agencyTrackingId,
         err.code,
@@ -93,10 +137,13 @@ export const processPayment: ProcessPayment = async (
     }
 
     if (err instanceof ZodError) {
-      console.error(
-        `Pay.gov response failed schema validation for agencyTrackingId '${transaction.agencyTrackingId}'`,
-        err,
-      );
+      appContext.logger.error("Pay.gov response failed schema validation", {
+        ...baseLogFields,
+        feeKey: fee.feeKey,
+        errorName: err.name,
+        errorMessage: err.message,
+      });
+
       await safeUpdateToFailed(
         appContext,
         transaction.agencyTrackingId,
@@ -106,10 +153,13 @@ export const processPayment: ProcessPayment = async (
       throw new PayGovError(PAYGOV_RETRY_MESSAGE, 502);
     }
 
-    console.error(
-      `Error communicating with Pay.gov for agencyTrackingId '${transaction.agencyTrackingId}'`,
-      err,
-    );
+    appContext.logger.error("Error communicating with Pay.gov", {
+      ...baseLogFields,
+      feeKey: fee.feeKey,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+
     await safeUpdateToFailed(
       appContext,
       transaction.agencyTrackingId,
@@ -119,7 +169,11 @@ export const processPayment: ProcessPayment = async (
     throw new PayGovError(PAYGOV_RETRY_MESSAGE);
   }
 
-  console.log("processPayment result", result);
+  appContext.logger.info("Received Pay.gov response", {
+    ...baseLogFields,
+    feeKey: fee.feeKey,
+    payGovResponse: result,
+  });
 
   const parsedStatus = parseTransactionStatus(result.transaction_status);
   const paymentStatus = derivePaymentStatusFromSingleTransaction(parsedStatus);
@@ -135,10 +189,16 @@ export const processPayment: ProcessPayment = async (
       result.payment_date,
     );
   } catch (err) {
-    console.error(
-      `Failed to persist Pay.gov response for agencyTrackingId '${transaction.agencyTrackingId}'`,
-      err,
-    );
+    appContext.logger.error("Failed to persist Pay.gov response", {
+      ...baseLogFields,
+      feeKey: fee.feeKey,
+      paygovTrackingId: result.paygov_tracking_id,
+      parsedStatus,
+      paymentStatus,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+
     await safeUpdateToFailed(
       appContext,
       transaction.agencyTrackingId,
@@ -146,13 +206,22 @@ export const processPayment: ProcessPayment = async (
       "Failed to persist Pay.gov response",
     );
     throw new ServerError(
-      "Failed to record the payment result. Please retry the request."
+      "Failed to record the payment result. Please retry the request.",
     );
   }
 
   const allRows = await TransactionModel.findByReferenceId(
     transaction.transactionReferenceId,
   );
+
+  appContext.logger.info("Completed processPayment", {
+    ...baseLogFields,
+    feeKey: fee.feeKey,
+    paygovTrackingId: result.paygov_tracking_id,
+    parsedStatus,
+    paymentStatus,
+    transactionCount: allRows.length,
+  });
 
   return {
     paymentStatus,
