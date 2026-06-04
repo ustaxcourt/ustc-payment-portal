@@ -70,14 +70,12 @@ export const processPayment: ProcessPayment = async (
   if (!fee) {
     appContext.logger.error("Fee not found for transaction", {
       ...baseLogFields,
-      feeId: transaction.feeId,
     });
     throw new NotFoundError("Fee configuration not found for this transaction");
   }
   if (!fee.tcsAppId) {
     appContext.logger.error("Fee is missing tcsAppId configuration", {
       ...baseLogFields,
-      feeId: transaction.feeId,
       feeKey: fee.feeKey,
     });
     throw new ServerError();
@@ -85,7 +83,6 @@ export const processPayment: ProcessPayment = async (
 
   appContext.logger.info("Loaded processPayment request context", {
     ...baseLogFields,
-    feeId: transaction.feeId,
     feeKey: fee.feeKey,
     requestParameters: {
       token: request.token,
