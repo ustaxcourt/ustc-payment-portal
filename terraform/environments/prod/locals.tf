@@ -45,4 +45,15 @@ locals {
     jsondecode(data.aws_secretsmanager_secret_version.allowed_account_ids.secret_string),
     []
   )
+
+  monitoring_subscribers = nonsensitive(try(
+    jsondecode(data.aws_secretsmanager_secret_version.monitoring_subscribers.secret_string),
+    []
+  ))
+
+  runbook_url = "https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/runbooks/lambda-error-alerts.md"
+
+  teams_tenant_id  = "REDACTED-TENANT-ID"
+  teams_team_id    = "REDACTED-TEAM-ID"
+  teams_channel_id = "REDACTED-CHANNEL-ID"
 }

@@ -162,11 +162,13 @@ module "monitoring" {
   teams_team_id    = local.teams_team_id
   teams_channel_id = local.teams_channel_id
 
+  # migrationRunner gets the uncaught-error alarm only (no HTTP response = no 5xx concept).
   lambda_functions = {
-    initPayment    = module.lambda.function_names["initPayment"]
-    processPayment = module.lambda.function_names["processPayment"]
-    getDetails     = module.lambda.function_names["getDetails"]
-    testCert       = module.lambda.function_names["testCert"]
+    initPayment     = module.lambda.function_names["initPayment"]
+    processPayment  = module.lambda.function_names["processPayment"]
+    getDetails      = module.lambda.function_names["getDetails"]
+    testCert        = module.lambda.function_names["testCert"]
+    migrationRunner = module.lambda.function_names["migrationRunner"]
   }
 
   lambda_log_group_names = {

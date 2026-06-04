@@ -132,6 +132,11 @@ data "aws_secretsmanager_secret_version" "allowed_account_ids" {
   depends_on = [module.secrets]
 }
 
+data "aws_secretsmanager_secret_version" "monitoring_subscribers" {
+  secret_id  = module.secrets.monitoring_subscribers_secret_id
+  depends_on = [module.secrets]
+}
+
 module "iam_cicd" {
   source = "../../modules/iam"
 
@@ -148,5 +153,36 @@ module "iam_cicd" {
   lambda_exec_role_arn     = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.name_prefix}-lambda-exec"
   lambda_name_prefix       = local.name_prefix
   create_lambda_exec_role  = true
+}
+
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  env              = local.environment
+  name_prefix      = local.name_prefix
+  subscribers      = local.monitoring_subscribers
+  runbook_url      = local.runbook_url
+  teams_tenant_id  = local.teams_tenant_id
+  teams_team_id    = local.teams_team_id
+  teams_channel_id = local.teams_channel_id
+
+  lambda_functions = {
+    initPayment    = module.lambda.function_names["initPayment"]
+    processPayment = module.lambda.function_names["processPayment"]
+    getDetails     = module.lambda.function_names["getDetails"]
+    testCert       = module.lambda.function_names["testCert"]
+  }
+
+  lambda_log_group_names = {
+    initPayment    = module.lambda.log_group_names["initPayment"]
+    processPayment = module.lambda.log_group_names["processPayment"]
+    getDetails     = module.lambda.log_group_names["getDetails"]
+    testCert       = module.lambda.log_group_names["testCert"]
+  }
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
 }
 
