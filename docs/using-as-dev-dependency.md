@@ -82,11 +82,9 @@ the API contract.
 npx ustc-payment-portal stop
 ```
 
-## Ports used by DAWSON
+## Ports used by Payment Portal
 
-DAWSON's local stack uses several ports. Before your first run, confirm that
-`8080`, `3366`, and `5433` are not already in use. If any conflict, add a
-`.env.payment-portal` to your project root with the replacement port(s).
+Before your first run, confirm that `8080`, `3366`, and `5433` are not already in use. If any conflict, add a `.env.payment-portal` to your project root with the replacement port(s).
 
 ## Troubleshooting
 
