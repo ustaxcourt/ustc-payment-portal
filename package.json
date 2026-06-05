@@ -12,10 +12,7 @@
   "scripts": {
     "clean": "rimraf dist/*",
     "lint": "tslint -c tslint.json -p tsconfig.json",
-    "build": "npm-run-all -s build:index build:dev-server build:db",
-    "build:index": "tsup src/index.ts --format cjs,esm --dts",
-    "build:dev-server": "tsup src/devServer.ts --format cjs",
-    "build:db": "node scripts/build-db.js",
+    "build": "tsup src/index.ts --format cjs,esm --dts && tsup src/devServer.ts --format cjs && node scripts/build-db.js",
     "build:lambda": "terraform/scripts/build-lambda.sh",
     "prepack": "npm-run-all clean build",
     "dev:start": "npm-run-all build start",
