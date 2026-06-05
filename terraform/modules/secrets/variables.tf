@@ -82,7 +82,7 @@ variable "allowed_account_ids_name" {
 }
 
 variable "monitoring_subscribers_name" {
-  description = "Name of the Secrets Manager secret that stores the alerts SNS topic subscriber list"
+  description = "SSM Parameter Store name suffix for the alerts SNS topic subscriber list (SecureString)"
   type        = string
   default     = "monitoring-subscribers"
 }

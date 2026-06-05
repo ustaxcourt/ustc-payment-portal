@@ -129,8 +129,8 @@ data "aws_secretsmanager_secret_version" "allowed_account_ids" {
   depends_on = [module.secrets]
 }
 
-data "aws_secretsmanager_secret_version" "monitoring_subscribers" {
-  secret_id  = module.secrets.monitoring_subscribers_secret_id
+data "aws_ssm_parameter" "monitoring_subscribers" {
+  name       = module.secrets.monitoring_subscribers_parameter_name
   depends_on = [module.secrets]
 }
 

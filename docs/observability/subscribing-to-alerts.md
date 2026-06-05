@@ -59,17 +59,20 @@ For temporary or personal additions, this is fine. For permanent on-call rotatio
 
 ---
 
-## Path B — Secrets Manager + targeted apply (canonical, declarative)
+## Path B — SSM Parameter Store + targeted apply (canonical, declarative)
 
-Use this for permanent team additions. The subscriber appears in the auditable list, survives stack rebuilds, and gets removed cleanly when you remove their entry from the secret.
+Use this for permanent team additions. The subscriber appears in the auditable list, survives stack rebuilds, and gets removed cleanly when you remove their entry from the parameter.
+
+The list lives in an SSM Parameter Store **SecureString** (KMS-encrypted at rest with the AWS-managed key) at `/ustc/pay-gov/{env}/monitoring-subscribers`.
 
 ### 1. Find the current subscribers
 
 ```bash
 # Replace {env} with stg or prod
-aws secretsmanager get-secret-value \
-  --secret-id "ustc/pay-gov/{env}/monitoring-subscribers" \
-  --query SecretString --output text | jq .
+aws ssm get-parameter \
+  --name "/ustc/pay-gov/{env}/monitoring-subscribers" \
+  --with-decryption \
+  --query 'Parameter.Value' --output text | jq .
 ```
 
 You'll see something like:
@@ -85,14 +88,16 @@ You'll see something like:
 Append your entry:
 
 ```bash
-aws secretsmanager update-secret \
-  --secret-id "ustc/pay-gov/{env}/monitoring-subscribers" \
-  --secret-string '[{"protocol":"email","endpoint":"someone@ustaxcourt.gov"},{"protocol":"email","endpoint":"you@ustaxcourt.gov"}]'
+aws ssm put-parameter \
+  --name "/ustc/pay-gov/{env}/monitoring-subscribers" \
+  --type SecureString \
+  --overwrite \
+  --value '[{"protocol":"email","endpoint":"someone@ustaxcourt.gov"},{"protocol":"email","endpoint":"you@ustaxcourt.gov"}]'
 ```
 
 ### 3. Targeted terraform apply
 
-The secret holds the desired state, but the `aws_sns_topic_subscription` resources only exist after terraform creates them. Run a targeted apply (not a full deploy):
+The parameter holds the desired state, but the `aws_sns_topic_subscription` resources only exist after terraform creates them. Run a targeted apply (not a full deploy):
 
 ```bash
 cd terraform/environments/{env}
@@ -120,15 +125,15 @@ aws sns list-subscriptions-by-topic \
 aws sns unsubscribe --subscription-arn <subscription-arn>
 ```
 
-**If subscribed via Path B (secret):** fetch the current list, drop your entry, write it back, re-apply targeted. The terraform state will tear down your subscription.
+**If subscribed via Path B (SSM parameter):** fetch the current list, drop your entry, write it back, re-apply targeted. The terraform state will tear down your subscription.
 
-Don't mix the two — if you're in the secret, unsubscribing via the email link only mutes you temporarily; the next terraform apply will recreate the subscription. The secret is the source of truth for Path B entries.
+Don't mix the two — if you're in the parameter, unsubscribing via the email link only mutes you temporarily; the next terraform apply will recreate the subscription. The SSM parameter is the source of truth for Path B entries.
 
 ---
 
 ## Quarterly subscriber audit
 
-AWS auto-deletes `PendingConfirmation` subscriptions after **3 days** — so a teammate who runs `aws sns subscribe` and forgets to confirm leaves no lasting residue. The audit catches the other failure mode: confirmed subscribers who've left the rotation (or the team) and are still being paged, plus Path A entries that aren't in the canonical secret.
+AWS auto-deletes `PendingConfirmation` subscriptions after **3 days** — so a teammate who runs `aws sns subscribe` and forgets to confirm leaves no lasting residue. The audit catches the other failure mode: confirmed subscribers who've left the rotation (or the team) and are still being paged, plus Path A entries that aren't in the canonical SSM parameter.
 
 Run once a quarter (calendar reminder owned by the on-call lead).
 
@@ -144,22 +149,23 @@ aws sns list-subscriptions-by-topic \
 
 Anything with `SubscriptionArn` of `PendingConfirmation` has been waiting < 3 days (anything older is already gone). If you see one, ping the person to confirm or unsubscribe.
 
-### 2. Cross-reference against the canonical secret
+### 2. Cross-reference against the canonical SSM parameter
 
 ```bash
-aws secretsmanager get-secret-value \
-  --secret-id "ustc/pay-gov/{env}/monitoring-subscribers" \
-  --query SecretString --output text | jq .
+aws ssm get-parameter \
+  --name "/ustc/pay-gov/{env}/monitoring-subscribers" \
+  --with-decryption \
+  --query 'Parameter.Value' --output text | jq .
 ```
 
 For each confirmed subscription on the topic:
 
-- **In the secret → keep.** It's tracked. Confirm the person is still on rotation.
-- **Not in the secret → it's a Path A (CLI direct) subscription.** Decide: is it intentional (temp on-call backup, personal subscription) or stale? If stale, unsubscribe via ARN.
+- **In the parameter → keep.** It's tracked. Confirm the person is still on rotation.
+- **Not in the parameter → it's a Path A (CLI direct) subscription.** Decide: is it intentional (temp on-call backup, personal subscription) or stale? If stale, unsubscribe via ARN.
 
 ### 3. Remove anyone who's left rotation
 
-For canonical (secret) entries: drop their JSON entry, `update-secret`, then `terraform apply -target='module.monitoring.aws_sns_topic_subscription.subs'` in the env dir.
+For canonical (SSM) entries: drop their JSON entry, `aws ssm put-parameter --overwrite`, then `terraform apply -target='module.monitoring.aws_sns_topic_subscription.subs'` in the env dir.
 
 For Path A entries: `aws sns unsubscribe --subscription-arn <arn>`.
 

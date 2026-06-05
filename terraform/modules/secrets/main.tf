@@ -83,20 +83,17 @@ resource "aws_secretsmanager_secret_version" "allowed_account_ids_initial" {
   }
 }
 
-# JSON array of {protocol, endpoint}. Updated via AWS CLI without redeploying.
-resource "aws_secretsmanager_secret" "monitoring_subscribers" {
-  name                    = "${local.basepath}/${var.monitoring_subscribers_name}"
-  description             = "JSON array of alert SNS topic subscribers: [{protocol, endpoint}, ...] (${local.env})"
-  recovery_window_in_days = var.recovery_window_in_days
-  tags                    = local.tags
-}
-
-resource "aws_secretsmanager_secret_version" "monitoring_subscribers_initial" {
-  secret_id     = aws_secretsmanager_secret.monitoring_subscribers.id
-  secret_string = "[]"
+# JSON array of {protocol, endpoint}. SecureString since phone numbers are PII;
+# updated via `aws ssm put-parameter` without redeploying.
+resource "aws_ssm_parameter" "monitoring_subscribers" {
+  name        = "/${local.basepath}/${var.monitoring_subscribers_name}"
+  description = "JSON array of alert SNS topic subscribers: [{protocol, endpoint}, ...] (${local.env})"
+  type        = "SecureString"
+  value       = "[]"
+  tags        = local.tags
 
   lifecycle {
-    ignore_changes = [secret_string]
+    ignore_changes = [value]
   }
 }
 

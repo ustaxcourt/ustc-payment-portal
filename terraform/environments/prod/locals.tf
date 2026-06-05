@@ -47,7 +47,7 @@ locals {
   )
 
   monitoring_subscribers = nonsensitive(try(
-    jsondecode(data.aws_secretsmanager_secret_version.monitoring_subscribers.secret_string),
+    jsondecode(data.aws_ssm_parameter.monitoring_subscribers.value),
     []
   ))
 

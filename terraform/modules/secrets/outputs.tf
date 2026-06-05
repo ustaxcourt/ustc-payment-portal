@@ -32,9 +32,9 @@ output "allowed_account_ids_secret_id" {
   description = "SecretId (name) for allowed account IDs (cross-account API Gateway access)"
 }
 
-output "monitoring_subscribers_secret_id" {
-  value       = aws_secretsmanager_secret.monitoring_subscribers.name
-  description = "SecretId (name) for monitoring SNS topic subscribers"
+output "monitoring_subscribers_parameter_name" {
+  value       = aws_ssm_parameter.monitoring_subscribers.name
+  description = "SSM Parameter Store name for monitoring SNS topic subscribers (SecureString)"
 }
 
 output "rds_credentials_secret_id" {

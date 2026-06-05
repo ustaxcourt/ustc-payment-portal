@@ -76,10 +76,12 @@ If you've confirmed an alert is firing on a known harmless cause and you want to
 **Temporary mute (preferred — auto-reverts on next deploy):**
 
 ```bash
-# Empty the subscribers secret. Existing subscriptions remain but no new ones are created.
-aws secretsmanager update-secret \
-  --secret-id "ustc/pay-gov/stg/monitoring-subscribers" \
-  --secret-string "[]"
+# Empty the subscribers parameter. Existing subscriptions remain but no new ones are created.
+aws ssm put-parameter \
+  --name "/ustc/pay-gov/stg/monitoring-subscribers" \
+  --type SecureString \
+  --overwrite \
+  --value "[]"
 
 # Unsubscribe specific subscription
 aws sns list-subscriptions-by-topic \
