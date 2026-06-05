@@ -18,6 +18,16 @@ output "lambda_security_group_id" {
   description = "Lambda Security Group ID"
 }
 
+output "lambda_role_arn" {
+  value       = module.iam.lambda_role_arn
+  description = "Lambda Role ARN"
+}
+
+output "lambda_role_name" {
+  value       = module.iam.lambda_role_name
+  description = "Lambda Role Name"
+}
+
 output "db_subnet_group_name" {
   value       = module.networking.db_subnet_group_name
   description = "RDS DB subnet group name"
@@ -26,9 +36,4 @@ output "db_subnet_group_name" {
 output "rds_security_group_id" {
   value       = module.networking.rds_security_group_id
   description = "RDS security group ID"
-}
-
-output "lambda_execution_role_arn" {
-  value       = module.iam.lambda_execution_role_arn
-  description = "ARN of the Lambda execution role from IAM module"
 }

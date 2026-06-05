@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 data "terraform_remote_state" "foundation" {
   backend = "s3"
   config = {
@@ -7,8 +9,6 @@ data "terraform_remote_state" "foundation" {
     encrypt = true
   }
 }
-
-data "aws_caller_identity" "current" {}
 
 module "lambda" {
   source                            = "../../modules/lambda"

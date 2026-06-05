@@ -16,14 +16,15 @@ provider "aws" {
 }
 
 locals {
-  aws_region               = "us-east-1"
+  name_prefix              = "ustc-payment-portal-prod"
   environment              = "prod"
+  aws_region               = "us-east-1"
   node_env                 = "production"
   app_env                  = "prod"
-  name_prefix              = "ustc-payment-portal-prod"
-  github_oidc_provider_arn = "arn:aws:iam::802939326821:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"
   github_repo              = "ustc-payment-portal"
+  github_oidc_provider_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
+  state_bucket_name        = "ustc-payment-portal-terraform-state-prod"
 }
 
 module "networking" {
@@ -42,7 +43,7 @@ module "networking" {
 }
 
 module "iam" {
-  source                    = "../../../modules/iam"
+  source                   = "../../../modules/iam"
   aws_region               = local.aws_region
   environment              = local.environment
   name_prefix              = local.name_prefix
