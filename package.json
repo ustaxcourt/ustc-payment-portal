@@ -106,6 +106,7 @@
     "scripts/lib/log.js",
     "scripts/lib/parsePort.js",
     "scripts/lib/ports.js",
+    "scripts/lib/wireChild.js",
     "docker-compose.consumer.yml",
     "README.md",
     "LICENSE.md"
