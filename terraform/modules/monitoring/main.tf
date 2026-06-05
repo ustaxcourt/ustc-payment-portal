@@ -150,8 +150,7 @@ resource "aws_chatbot_teams_channel_configuration" "alerts" {
   iam_role_arn       = aws_iam_role.chatbot[0].arn
   team_id            = var.teams_team_id
   tenant_id          = var.teams_tenant_id
-  # AWS Chatbot's API rejects the raw "19:abc@thread.tacv2" form despite docs
-  # listing it as valid — the URL-encoded form is what the server accepts.
+  # AWS Chatbot's ChannelId pattern requires URL-encoded `:` → %3A and `@` → %40.
   channel_id     = replace(replace(var.teams_channel_id, ":", "%3A"), "@", "%40")
   sns_topic_arns = [aws_sns_topic.alerts.arn]
   logging_level  = "ERROR"
