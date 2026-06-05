@@ -15,6 +15,8 @@ provider "aws" {
   region = "us-east-1"
 }
 
+data "aws_caller_identity" "current" {}
+
 locals {
   name_prefix              = "ustc-payment-portal-prod"
   environment              = "prod"
