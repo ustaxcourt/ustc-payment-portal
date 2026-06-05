@@ -34,13 +34,19 @@ if (entryPoints.length === 0) {
 
 console.log(`[build:db] Compiling ${entryPoints.length} file(s)...`);
 
-esbuild.buildSync({
-  entryPoints,
-  outdir: "dist",
-  outbase: ".",
-  format: "cjs",
-  platform: "node",
-  bundle: false,
-});
+try {
+  esbuild.buildSync({
+    entryPoints,
+    outdir: "dist",
+    outbase: ".",
+    format: "cjs",
+    platform: "node",
+    bundle: false,
+    tsconfig: "tsconfig.json",
+  });
+} catch (err) {
+  console.error("[build:db] Compile failed:", err.message);
+  process.exit(1);
+}
 
 console.log("[build:db] Done.");
