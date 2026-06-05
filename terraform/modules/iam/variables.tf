@@ -28,17 +28,6 @@ variable "attach_vpc_access" {
   default     = true
 }
 
-variable "create_lambda_exec_role" {
-  description = "Whether to create a Lambda execution role in this module"
-  type        = bool
-  default     = true
-}
-
-variable "create_deployer_role" {
-  description = "Whether to create the GitHub Actions deployer role"
-  type        = bool
-  default     = true
-}
 
 variable "aws_region" {
   type    = string
@@ -107,10 +96,4 @@ variable "state_bucket_name" {
   type        = string
   description = "Terraform backend S3 bucket (required if create_deployer_role=true)"
   default     = ""
-}
-
-variable "state_object_keys" {
-  type        = list(string)
-  description = "Exact state S3 object keys the role must manage (required if create_deployer_role=true)"
-  default     = []
 }

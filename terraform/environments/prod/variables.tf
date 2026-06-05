@@ -39,4 +39,7 @@ variable "testCert_source_code_hash" {
   default = ""
 }
 
-
+variable "lambda_role_arn" {
+  description = "ARN of the Lambda execution role from IAM module"
+  type        = string
+}

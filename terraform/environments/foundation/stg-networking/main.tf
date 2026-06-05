@@ -30,13 +30,25 @@ module "networking" {
   }
 }
 
-module "iam" {
-  source               = "../../../modules/iam"
-  name_prefix          = "ustc-payment-portal-stg"
-  create_deployer_role = false # Foundation only needs Lambda exec role, not CI/CD deployer
-  tags = {
-    Env     = "stg"
-    Project = "ustc-payment-portal"
-  }
+locals {
+  name_prefix = "ustc-payment-portal-stg"
+  environment = "stg"
+  aws_region  = "us-east-1"
+  github_org  = "ustaxcourt"
+  github_repo = "ustc-payment-portal"
+  github_oidc_provider_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
+  state_bucket_name = "ustc-payment-portal-terraform-state-stg"
 }
 
+module "iam" {
+  source = "../../../modules/iam"
+
+  aws_region               = local.aws_region
+  environment              = local.environment
+  name_prefix              = local.name_prefix
+  deploy_role_name         = "ustc-payment-processor-${local.environment}-cicd-deployer-role"
+  read_only_role_name      = "ustc-payment-processor-${local.environment}-read-only-role"
+  github_oidc_provider_arn = local.github_oidc_provider_arn
+  github_org               = local.github_org
+  github_repo              = local.github_repo
+}
