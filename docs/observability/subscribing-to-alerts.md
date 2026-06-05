@@ -126,6 +126,49 @@ Don't mix the two — if you're in the secret, unsubscribing via the email link 
 
 ---
 
+## Quarterly subscriber audit
+
+AWS auto-deletes `PendingConfirmation` subscriptions after **3 days** — so a teammate who runs `aws sns subscribe` and forgets to confirm leaves no lasting residue. The audit catches the other failure mode: confirmed subscribers who've left the rotation (or the team) and are still being paged, plus Path A entries that aren't in the canonical secret.
+
+Run once a quarter (calendar reminder owned by the on-call lead).
+
+### 1. List all subscriptions on the topic
+
+```bash
+# Repeat for {env} = stg and prod
+aws sns list-subscriptions-by-topic \
+  --topic-arn arn:aws:sns:us-east-1:747103385969:ustc-payment-portal-{env}-alerts \
+  --query 'Subscriptions[].{Protocol:Protocol,Endpoint:Endpoint,Arn:SubscriptionArn}' \
+  --output table
+```
+
+Anything with `SubscriptionArn` of `PendingConfirmation` has been waiting < 3 days (anything older is already gone). If you see one, ping the person to confirm or unsubscribe.
+
+### 2. Cross-reference against the canonical secret
+
+```bash
+aws secretsmanager get-secret-value \
+  --secret-id "ustc/pay-gov/{env}/monitoring-subscribers" \
+  --query SecretString --output text | jq .
+```
+
+For each confirmed subscription on the topic:
+
+- **In the secret → keep.** It's tracked. Confirm the person is still on rotation.
+- **Not in the secret → it's a Path A (CLI direct) subscription.** Decide: is it intentional (temp on-call backup, personal subscription) or stale? If stale, unsubscribe via ARN.
+
+### 3. Remove anyone who's left rotation
+
+For canonical (secret) entries: drop their JSON entry, `update-secret`, then `terraform apply -target='module.monitoring.aws_sns_topic_subscription.subs'` in the env dir.
+
+For Path A entries: `aws sns unsubscribe --subscription-arn <arn>`.
+
+### 4. Note the audit in the team log
+
+One-liner in the team's ops log (or a comment on the PAY epic): date, who audited, what was removed. Keeps drift visible across quarters.
+
+---
+
 ## SMS-specific notes
 
 - **Cost:** ~$0.0075/message in `us-east-1`. At 50 alerts/month, ~$0.40.
@@ -135,7 +178,22 @@ Don't mix the two — if you're in the secret, unsubscribing via the email link 
   aws sns get-sms-sandbox-account-status
   ```
 
-  If sandboxed, AWS Support has to provision a toll-free origination number and exit the sandbox before SMS sends work. Multi-day process.
+  If `IsInSandbox: true`, **AWS only sends SMS to phone numbers that have been pre-verified in the sandbox.** This includes the SNS subscription confirmation SMS itself — so a new subscriber whose number isn't on the verified list will *never receive the confirmation prompt*, the subscription will sit in `PendingConfirmation` for 3 days, and AWS will then auto-delete it. Subscribing an unverified number while sandboxed silently produces no alerts at all.
+
+  Workaround until we exit sandbox (Mike is driving the AWS Support case): add the number to the sandbox verified list **before** subscribing.
+
+  ```bash
+  # 1. Add the number to the sandbox allowlist. AWS sends a one-time verification SMS.
+  aws sns create-sms-sandbox-phone-number --phone-number +15555551234 --language-code en-US
+
+  # 2. Recipient receives a code via SMS. Pass it back to confirm.
+  aws sns verify-sms-sandbox-phone-number --phone-number +15555551234 --one-time-password 123456
+
+  # 3. Confirm it landed.
+  aws sns list-sms-sandbox-phone-numbers
+  ```
+
+  Only after the number shows `Verified` should you run `aws sns subscribe ... --protocol sms`. Once we exit sandbox, this dance goes away — any E.164 number can subscribe directly.
 - **Format:** E.164 only (`+1` prefix for US, no dashes/spaces/parens).
 
 ---

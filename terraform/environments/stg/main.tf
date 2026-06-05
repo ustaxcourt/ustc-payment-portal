@@ -162,12 +162,12 @@ module "monitoring" {
   teams_team_id    = local.teams_team_id
   teams_channel_id = local.teams_channel_id
 
-  # migrationRunner gets the uncaught-error alarm only (no HTTP response = no 5xx concept).
+  # migrationRunner: uncaught-error alarm only (no HTTP response = no 5xx concept).
+  # testCert: excluded — test-only endpoint, no user impact when it fails.
   lambda_functions = {
     initPayment     = module.lambda.function_names["initPayment"]
     processPayment  = module.lambda.function_names["processPayment"]
     getDetails      = module.lambda.function_names["getDetails"]
-    testCert        = module.lambda.function_names["testCert"]
     migrationRunner = module.lambda.function_names["migrationRunner"]
   }
 
@@ -175,7 +175,6 @@ module "monitoring" {
     initPayment    = module.lambda.log_group_names["initPayment"]
     processPayment = module.lambda.log_group_names["processPayment"]
     getDetails     = module.lambda.log_group_names["getDetails"]
-    testCert       = module.lambda.log_group_names["testCert"]
   }
 
   tags = {

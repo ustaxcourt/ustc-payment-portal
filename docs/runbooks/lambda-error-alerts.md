@@ -18,7 +18,6 @@ Both alerts also fire a recovery (`OK`) event when the metric returns to zero â€
 | `initPayment` 5xx | Cannot start a new payment session. Pay.gov redirect URL is never returned. |
 | `processPayment` 5xx | Pay.gov callback fails. Transaction status may be inconsistent. |
 | `getDetails` 5xx | Polling for payment status fails. Front end sees stale data. |
-| `testCert` 5xx | Test endpoint only â€” no real user impact. Still worth investigating. |
 | Any `*-uncaught` | The Lambda is failing to invoke at all. Symptoms look like a hard outage for that endpoint. |
 
 ## First three things to check

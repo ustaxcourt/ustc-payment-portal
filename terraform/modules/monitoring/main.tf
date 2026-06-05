@@ -46,8 +46,9 @@ resource "aws_cloudwatch_metric_alarm" "lambda_uncaught" {
     Runbook: ${var.runbook_url}
   EOT
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 1
-  period              = 1800
+  period              = 300
+  evaluation_periods  = 6
+  datapoints_to_alarm = 1
   threshold           = 1
   statistic           = "Sum"
   metric_name         = "Errors"
@@ -91,15 +92,16 @@ resource "aws_cloudwatch_metric_alarm" "lambda_5xx" {
 
   alarm_name          = "${var.name_prefix}-${each.key}-5xx-critical"
   alarm_description = <<-EOT
-    5xx response from ${each.key} (threshold crossed in 30-min window).
+    5xx response from ${each.key} (≥1 in any 5-min bucket over 30-min window).
     Service: payment-portal (${var.env})
     Severity: critical
     Logs: https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/$252Faws$252Flambda$252F${var.name_prefix}-${each.key}
     Runbook: ${var.runbook_url}
   EOT
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 1
-  period              = 1800
+  period              = 300
+  evaluation_periods  = 6
+  datapoints_to_alarm = 1
   threshold           = 1
   statistic           = "Sum"
   metric_name         = "${each.key}-5xx"
