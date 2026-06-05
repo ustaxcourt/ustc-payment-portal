@@ -2,6 +2,7 @@ const { spawn } = require("node:child_process");
 const path = require("node:path");
 const { parsePort } = require("./lib/parsePort");
 const { createLogger } = require("./lib/log");
+const { wireChild } = require("./lib/wireChild");
 
 const log = createLogger("start:pay-gov-test-server");
 const PACKAGE_NAME = "@ustaxcourt/ustc-pay-gov-test-server";
@@ -37,26 +38,7 @@ const child = spawn(process.execPath, [entry], {
   },
 });
 
-const forward = (signal) => () => {
-  if (!child.killed) {
-    child.kill(signal);
-  }
-};
-process.on("SIGINT", forward("SIGINT"));
-process.on("SIGTERM", forward("SIGTERM"));
-
-child.on("exit", (code, signal) => {
-  if (signal) {
-    // Remove our own SIGINT/SIGTERM listeners before re-raising, otherwise the
-    // handlers would just no-op (child is already dead) and the wrapper would
-    // hang forever — blocking `start:all` shutdown.
-    process.removeAllListeners("SIGINT");
-    process.removeAllListeners("SIGTERM");
-    process.kill(process.pid, signal);
-    return;
-  }
-  process.exit(code ?? 1);
-});
+wireChild(child);
 
 child.on("error", (error) => {
   log.error("failed to spawn:", error);

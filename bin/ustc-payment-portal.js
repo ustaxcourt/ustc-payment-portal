@@ -8,6 +8,7 @@
 const path = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
+const { wireChild } = require("../scripts/lib/wireChild");
 
 // The package root — where this package is installed (e.g. node_modules/@ustaxcourt/payment-portal/).
 const packageRoot = path.join(__dirname, "..");
@@ -102,23 +103,7 @@ const child = spawn(process.execPath, [stackScript], {
   env: process.env,
 });
 
-const forward = (signal) => () => {
-  if (!child.killed) {
-    child.kill(signal);
-  }
-};
-process.on("SIGINT", forward("SIGINT"));
-process.on("SIGTERM", forward("SIGTERM"));
-
-child.on("exit", (code, signal) => {
-  process.removeAllListeners("SIGINT");
-  process.removeAllListeners("SIGTERM");
-  if (signal) {
-    process.kill(process.pid, signal);
-    return;
-  }
-  process.exit(code ?? 1);
-});
+wireChild(child);
 
 child.on("error", (err) => {
   console.error("[ustc-payment-portal] Failed to start:", err.message);
