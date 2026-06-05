@@ -98,8 +98,6 @@ resource "aws_route53_zone" "this" {
     Env     = local.environment
     Project = "ustc-payment-portal"
   }
-
-  depends_on = [module.iam_cicd]
 }
 
 resource "aws_acm_certificate" "this" {
@@ -115,8 +113,6 @@ resource "aws_acm_certificate" "this" {
   lifecycle {
     create_before_destroy = true
   }
-
-  depends_on = [module.iam_cicd]
 }
 
 resource "aws_route53_record" "cert_validation" {
@@ -185,7 +181,7 @@ module "artifacts_bucket" {
   source = "../../modules/artifacts_bucket"
 
   build_artifacts_bucket_name = "ustc-payment-portal-build-artifacts"
-  deployer_role_arn           = module.iam_cicd.role_arn
+  deployer_role_arn           = data.terraform_remote_state.foundation.outputs.lambda_role_arn
   manage_bucket_policy        = true
   staging_deployer_role_arn   = "arn:aws:iam::747103385969:role/ustc-payment-processor-stg-cicd-deployer-role"
   prod_deployer_role_arn      = "arn:aws:iam::802939326821:role/ustc-payment-processor-prod-cicd-deployer-role"
@@ -233,7 +229,7 @@ data "aws_s3_bucket" "existing_artifacts" {
 
 # Attach artifact bucket policy to deployer role (GitHub Actions --> AWS deployment)
 resource "aws_iam_role_policy_attachment" "ci_build_artifacts" {
-  role       = module.iam_cicd.role_name
+  role       = data.terraform_remote_state.foundation.outputs.lambda_role_name
   policy_arn = local.environment == "dev" ? module.artifacts_bucket[0].build_artifacts_access_policy_arn : local.artifacts_bucket_policy_arn
 }
 
