@@ -38,29 +38,14 @@ describe("start-pay-gov-test-server", () => {
       parsePort: jest.fn((value, fallback) => fallback),
     }));
 
-    // Default required env var
-    process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN = "test-access-token";
   });
 
   afterEach(() => {
-    delete process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN;
     delete process.env.PAY_GOV_TEST_SERVER_PORT;
     delete process.env.PAY_GOV_NODE_ENV;
     jest.restoreAllMocks();
     process.removeAllListeners("SIGINT");
     process.removeAllListeners("SIGTERM");
-  });
-
-  it("falls back to 'asdf123' when PAY_GOV_TEST_SERVER_ACCESS_TOKEN is not set", () => {
-    delete process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN;
-    mockSpawn.mockReturnValue(makeChildProcess());
-
-    jest.isolateModules(() => {
-      require("./start-pay-gov-test-server");
-    });
-
-    const spawnEnv = mockSpawn.mock.calls[0][2].env;
-    expect(spawnEnv.ACCESS_TOKEN).toBe("asdf123");
   });
 
   it("spawns the server using process.execPath with the resolved entry point", () => {
@@ -74,7 +59,7 @@ describe("start-pay-gov-test-server", () => {
       expect.objectContaining({
         stdio: "inherit",
         env: expect.objectContaining({
-          ACCESS_TOKEN: "test-access-token",
+          ACCESS_TOKEN: "asdf123",
         }),
       }),
     );
