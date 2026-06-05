@@ -13,13 +13,13 @@ const { wireChild } = require("../scripts/lib/wireChild");
 // The package root — where this package is installed (e.g. node_modules/@ustaxcourt/payment-portal/).
 const packageRoot = path.join(__dirname, "..");
 
-// 1. Apply zero-config defaults before loading any env file.
-//    Only set values that are not already in the environment.
-//    API_PORT, PAY_GOV_TEST_SERVER_PORT, and DB_PORT are omitted — start-local-stack.js,
-//    docker-compose.consumer.yml, dbSetup.js, and knexConfig.ts all fall back to their
-//    own defaults (8080, 3366, 5433). Consumers may override them via .env.payment-portal
-//    (step 2 below).
-const DEV_DEFAULTS = {
+// 1. The portal's own runtime config — applied on top of process.env so the
+//    child always gets these values regardless of what the consumer's shell has
+//    set. This keeps the portal's DB, app env, and token config isolated from
+//    consumer tools (e.g. DAWSON) that export their own DB_USER, DB_PASSWORD, etc.
+//    API_PORT, PAY_GOV_TEST_SERVER_PORT, and DB_PORT are intentionally absent —
+//    consumers may override those via .env.payment-portal (step 2 below).
+const PORTAL_ENV = {
   APP_ENV: "local",
   NODE_ENV: "development",
   DB_HOST: "localhost",
@@ -27,47 +27,34 @@ const DEV_DEFAULTS = {
   DB_PASSWORD: "password",
   DB_NAME: "mydb",
   PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID: "asdf123",
-  PAY_GOV_TEST_SERVER_ACCESS_TOKEN: "asdf123",
   PAY_GOV_NODE_ENV: "local",
   LOG_LEVEL: "info",
 };
-for (const [key, value] of Object.entries(DEV_DEFAULTS)) {
-  if (!(key in process.env)) {
-    process.env[key] = value;
-  }
-}
 
-// 2. Load .env.payment-portal from the consumer's CWD.
-//    Only API_PORT, PAY_GOV_TEST_SERVER_PORT, and DB_PORT are honoured —
-//    nothing else is read from this file.
+// 2. Load port overrides from .env.payment-portal in the consumer's CWD.
+//    Only API_PORT, PAY_GOV_TEST_SERVER_PORT, and DB_PORT are honoured.
+//    Read into a separate object — never from process.env — so the consumer's
+//    shell environment cannot influence the portal's port config.
 const PORT_KEYS = ["API_PORT", "PAY_GOV_TEST_SERVER_PORT", "DB_PORT"];
+const portOverrides = {};
 const consumerEnvFile = path.join(process.cwd(), ".env.payment-portal");
 if (fs.existsSync(consumerEnvFile)) {
   const parsed = require("dotenv").parse(fs.readFileSync(consumerEnvFile));
   for (const key of PORT_KEYS) {
     if (parsed[key] != null) {
-      process.env[key] = parsed[key];
+      portOverrides[key] = parsed[key];
     }
   }
 }
 
-// 3. Derive SOAP_URL / PAYMENT_URL from the (possibly overridden) port.
-//    Fall back to 3366, matching the parsePort default in start-local-stack.js.
-const payGovPort = process.env.PAY_GOV_TEST_SERVER_PORT || "3366";
-if (!process.env.SOAP_URL) {
-  process.env.SOAP_URL = `http://localhost:${payGovPort}/wsdl`;
-}
-if (!process.env.PAYMENT_URL) {
-  process.env.PAYMENT_URL = `http://localhost:${payGovPort}/pay`;
-}
+// 3. Derive SOAP_URL / PAYMENT_URL from the (possibly overridden) pay-gov port.
+const payGovPort = portOverrides.PAY_GOV_TEST_SERVER_PORT || "3366";
+const SOAP_URL = `http://localhost:${payGovPort}/wsdl`;
+const PAYMENT_URL = `http://localhost:${payGovPort}/pay`;
 
-// 4. Point docker compose at the consumer-mode compose file (postgres-only).
-//    The docker commands in scripts/lib/docker.js inherit this env var.
-process.env.COMPOSE_FILE = path.join(packageRoot, "docker-compose.consumer.yml");
-
-// 5. Signal consumer mode so start-local-stack.js runs the programmatic DB setup
-//    instead of relying on the db-init service in docker-compose.yml.
-process.env.CONSUMER_MODE = "true";
+// 4. Fixed infrastructure vars — not from process.env, always portal-owned.
+const COMPOSE_FILE = path.join(packageRoot, "docker-compose.consumer.yml");
+const CONSUMER_MODE = "true";
 
 // ── Parse subcommand ──────────────────────────────────────────────────────────
 
@@ -78,7 +65,7 @@ if (subcommand === "stop") {
   const result = spawnSync("docker", ["compose", "stop"], {
     stdio: "inherit",
     cwd: packageRoot,
-    env: process.env,
+    env: { ...process.env, COMPOSE_FILE: path.join(packageRoot, "docker-compose.consumer.yml") },
   });
   process.exit(result.status ?? 0);
 }
@@ -100,7 +87,17 @@ const stackScript = path.join(packageRoot, "scripts", "start-local-stack.js");
 const child = spawn(process.execPath, [stackScript], {
   stdio: "inherit",
   cwd: packageRoot,
-  env: process.env,
+  env: {
+    ...process.env,
+    ...PORTAL_ENV,
+    DB_PORT: portOverrides.DB_PORT || "5433",
+    API_PORT: portOverrides.API_PORT || "8080",
+    PAY_GOV_TEST_SERVER_PORT: portOverrides.PAY_GOV_TEST_SERVER_PORT || "3366",
+    SOAP_URL,
+    PAYMENT_URL,
+    COMPOSE_FILE,
+    CONSUMER_MODE,
+  },
 });
 
 wireChild(child);
