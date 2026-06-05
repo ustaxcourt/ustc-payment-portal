@@ -1,6 +1,6 @@
 locals {
-  # Deployer role locals - only meaningful when create_deployer_role = true
-  github_sub = "repo:${var.github_org}/${var.github_repo}:*"
+  # Values used by deployer/read-only role definitions.
+  github_sub               = "repo:${var.github_org}/${var.github_repo}:*"
   github_oidc_provider_arn = var.github_oidc_provider_arn
 
   tf_state_bucket_name = var.state_bucket_name

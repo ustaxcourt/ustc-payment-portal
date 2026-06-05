@@ -1,5 +1,5 @@
 variable "name_prefix" {
-  description = "Prefix to use for IAM role names (used only if create_lambda_exec_role=true)"
+  description = "Prefix to use for IAM role names"
   type        = string
   default     = ""
 }
@@ -41,59 +41,54 @@ variable "project_name" {
 
 variable "lambda_name_prefix" {
   type        = string
-  description = "Lambda name prefix to scope permissions (required if create_deployer_role=true)"
+  description = "Lambda name prefix to scope permissions"
   default     = ""
 }
 
 variable "lambda_exec_role_arn" {
   type        = string
-  description = "Exact Lambda execution role ARN the CI role may pass to functions (required if create_deployer_role=true)"
+  description = "Exact Lambda execution role ARN the CI role may pass to functions"
   default     = ""
 }
 
 variable "environment" {
-  description = "Environment (e.g., dev, staging, prod) (required if create_deployer_role=true)"
+  description = "Environment (e.g., dev, staging, prod)"
   type        = string
   default     = ""
 }
 
 variable "deploy_role_name" {
   type        = string
-  description = "IAM role name for CI/CD (required if create_deployer_role=true)"
+  description = "IAM role name for CI/CD"
   default     = ""
 }
 
 variable "read_only_role_name" {
   type        = string
-  description = "IAM role name for the read-only CI role (used by the terraform-plan workflow today; general-purpose). Required if create_deployer_role=true."
+  description = "IAM role name for the read-only CI role (used by the terraform-plan workflow today; general-purpose)."
   default     = ""
-
-  validation {
-    condition     = !var.create_deployer_role || length(var.read_only_role_name) > 0
-    error_message = "read_only_role_name must be set when create_deployer_role=true."
-  }
 }
 
 variable "github_oidc_provider_arn" {
   type        = string
-  description = "GitHub OIDC provider ARN in the account (required if create_deployer_role=true)"
+  description = "GitHub OIDC provider ARN in the account"
   default     = ""
 }
 
 variable "github_org" {
   type        = string
-  description = "GitHub org (required if create_deployer_role=true)"
+  description = "GitHub org"
   default     = ""
 }
 
 variable "github_repo" {
   type        = string
-  description = "GitHub repo (required if create_deployer_role=true)"
+  description = "GitHub repo"
   default     = ""
 }
 
 variable "state_bucket_name" {
   type        = string
-  description = "Terraform backend S3 bucket (required if create_deployer_role=true)"
+  description = "Terraform backend S3 bucket"
   default     = ""
 }
