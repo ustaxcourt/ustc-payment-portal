@@ -16,8 +16,8 @@ resource "aws_iam_role_policy_attachment" "vpc_access" {
 }
 
 resource "aws_iam_role_policy" "lambda_secrets_access" {
-  name  = "${var.name_prefix}-lambda-secrets-access"
-  role  = aws_iam_role.lambda_exec.id
+  name = "${var.name_prefix}-lambda-secrets-access"
+  role = aws_iam_role.lambda_exec.id
 
   policy = jsonencode({
     Version = "2012-10-17"
