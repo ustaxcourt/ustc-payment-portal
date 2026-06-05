@@ -15,21 +15,6 @@ provider "aws" {
   region = "us-east-1"
 }
 
-module "networking" {
-  source                = "../../../modules/networking"
-  vpc_cidr              = "10.30.0.0/25"
-  public_subnet_cidr    = "10.30.0.0/28"
-  private_subnet_cidr   = "10.30.0.32/28"
-  private_subnet_cidr_2 = "10.30.0.48/28"
-  availability_zone     = "us-east-1a"
-  availability_zone_2   = "us-east-1b"
-  name_prefix           = "ustc-payment-portal-stg"
-  tags = {
-    Env     = "stg"
-    Project = "ustc-payment-portal"
-  }
-}
-
 locals {
   name_prefix = "ustc-payment-portal-stg"
   environment = "stg"
@@ -38,6 +23,21 @@ locals {
   github_repo = "ustc-payment-portal"
   github_oidc_provider_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
   state_bucket_name = "ustc-payment-portal-terraform-state-stg"
+}
+
+module "networking" {
+  source                = "../../../modules/networking"
+  vpc_cidr              = "10.30.0.0/25"
+  public_subnet_cidr    = "10.30.0.0/28"
+  private_subnet_cidr   = "10.30.0.32/28"
+  private_subnet_cidr_2 = "10.30.0.48/28"
+  availability_zone     = "us-east-1a"
+  availability_zone_2   = "us-east-1b"
+  name_prefix           = local.name_prefix
+  tags = {
+    Env     = "stg"
+    Project = "ustc-payment-portal"
+  }
 }
 
 module "iam" {
