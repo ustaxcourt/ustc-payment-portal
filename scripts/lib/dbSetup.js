@@ -18,7 +18,7 @@ async function setupConsumerDb() {
   // DB_PORT is the only connection setting consumers can override via .env.payment-portal.
   // All other values are fixed — reading them from process.env would let a consumer's
   // shell environment silently break the local stack.
-  const port = Number(process.env.DB_PORT || "5433");
+  const port = Number(process.env.DB_PORT) || 5433;
 
   const knex = Knex({
     client: "pg",
