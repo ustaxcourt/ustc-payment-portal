@@ -6,9 +6,13 @@ The application is intended to handle API requests from USTC applications and th
 
 ## Using as a dev dependency
 
+```sh
+npm install --save-dev @ustaxcourt/payment-portal
+npx payment-portal start
+```
+
 See **[docs/using-as-dev-dependency.md](docs/using-as-dev-dependency.md)** for
-the complete guide: install, single-command startup, port configuration,
-type imports, and troubleshooting.
+the complete guide: port configuration, type imports, and troubleshooting.
 
 ## Workflow
 
@@ -30,8 +34,8 @@ type imports, and troubleshooting.
 1. The token and URL are returned to the original App, which stores the token and forwards the user to the redirect URL.
 1. The user enters their payment information on Pay.gov and either submits or cancels, which sends them back to the corresonding success or cancel URL specified in the original request.
 
-![Initiate Transaction Flow](./docs/diagrams/init-payment-flow.png)
-[init-payment-flow.drawio](./docs/diagrams/init-payment-flow.drawio)
+![Initiate Transaction Flow](https://raw.githubusercontent.com/ustaxcourt/ustc-payment-portal/main/docs/diagrams/init-payment-flow.png)
+[init-payment-flow.drawio](https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/diagrams/init-payment-flow.drawio)
 
 #### Process Payment on a Transaction
 
@@ -42,8 +46,8 @@ type imports, and troubleshooting.
 1. The Portal updates the transaction information in the database
 1. The Portal responds to the Application the derived Payment Status as well as any transactions that share the transaction's `transactionReferenceId`.
 
-![Process Payment Flow](./docs/diagrams/process-payment-flow.png)
-[process-payment-flow.drawio](./docs/diagrams/process-payment-flow.png)
+![Process Payment Flow](https://raw.githubusercontent.com/ustaxcourt/ustc-payment-portal/main/docs/diagrams/process-payment-flow.png)
+[process-payment-flow.drawio](https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/diagrams/process-payment-flow.drawio)
 
 #### Get Details about a Payment
 
@@ -52,8 +56,8 @@ type imports, and troubleshooting.
 1. And once authorized, the Portal checks to see if there is a transaction with a `Pending` status. If so, the Portal will call Pay.gov with `getDetails` to see if the transaction status has resolved, updating its database accordingly.
 1. Then the Portal will respond with the most up-to-date Payment Status as well as any transactions that share the transaction's `transactionReferenceId`.
 
-![Get Details Flow](./docs/diagrams/get-details-flow.png)
-[get-details-flow.drawio](./docs/diagrams/get-details-flow.png)
+![Get Details Flow](https://raw.githubusercontent.com/ustaxcourt/ustc-payment-portal/main/docs/diagrams/get-details-flow.png)
+[get-details-flow.drawio](https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/diagrams/get-details-flow.drawio)
 
 ## Environment Variables
 
@@ -80,10 +84,9 @@ See the `terraform/` directory for deployment configuration and instructions.
 
 ## Testing
 
-Right now there aren't many unit tests, but there are some integration tests that test the deployed application at the base url specified in `.env`:
-
 ```bash
-npm run test
+npm run test            # unit tests
+npm run test:integration # integration tests against a running local stack
 ```
 
 ## Publishing to npmjs.org
