@@ -1,6 +1,3 @@
-// Starts the portal dev server, preferring the pre-compiled dist/devServer.js
-// when it exists (consumer / post-build), falling back to ts-node for in-repo
-// development where the dist/ hasn't been built yet.
 "use strict";
 
 const path = require("node:path");
@@ -15,20 +12,16 @@ const srcServerPath = path.join(packageRoot, "src", "devServer.ts");
 let child;
 
 if (fs.existsSync(distServerPath)) {
+  // Handles running the built dev server (`npx @ustaxcourt/payment-portal`) )
   child = spawn(process.execPath, [distServerPath], {
     stdio: "inherit",
     env: process.env,
     cwd: packageRoot,
   });
 } else {
-  const tsNodeBin = path.join(
-    packageRoot,
-    "node_modules",
-    "ts-node",
-    "dist",
-    "bin.js",
-  );
-  child = spawn(process.execPath, [tsNodeBin, srcServerPath], {
+  // Local dev fallback: dist hasn't been built yet, run source via tsx.
+  const tsxCli = require.resolve("tsx/cli");
+  child = spawn(process.execPath, [tsxCli, srcServerPath], {
     stdio: "inherit",
     env: process.env,
     cwd: packageRoot,

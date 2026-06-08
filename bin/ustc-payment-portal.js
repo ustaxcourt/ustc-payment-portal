@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // CLI entry point for @ustaxcourt/payment-portal used as a dev dependency.
 // Usage:
-//   ustc-payment-portal start  (portal + pay-gov + db)
-//   ustc-payment-portal stop   (tear down docker)
+//   payment-portal start  (portal + pay-gov + db)
+//   payment-portal stop   (tear down docker)
 "use strict";
 
 const path = require("node:path");
@@ -72,8 +72,8 @@ if (subcommand === "stop") {
 
 if (subcommand !== "start") {
   console.error(`[ustc-payment-portal] Unknown subcommand: ${subcommand}`);
-  console.error("Usage: ustc-payment-portal start");
-  console.error("       ustc-payment-portal stop");
+  console.error("Usage: payment-portal start");
+  console.error("       payment-portal stop");
   process.exit(1);
 }
 

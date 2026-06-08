@@ -22,7 +22,7 @@ need to install it separately.
 ## Start
 
 ```sh
-npx ustc-payment-portal start
+npx payment-portal start
 ```
 
 That's it. No `.env` file required.
@@ -79,7 +79,7 @@ the API contract.
 
 ```sh
 # Tear down the Docker stack
-npx ustc-payment-portal stop
+npx payment-portal stop
 ```
 
 ## Ports used by Payment Portal
@@ -110,6 +110,6 @@ Postgres is healthy (`docker ps`).
 
 ### `dist/devServer.js` not found
 
-Run `npm run build` inside the package (or `npx ustc-payment-portal` will use
+Run `npm run build` inside the package (or `npx payment-portal` will use
 the pre-compiled dist shipped in the package). This error should only appear
 if you cloned the repo and skipped the build step.

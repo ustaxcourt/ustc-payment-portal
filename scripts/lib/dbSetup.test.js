@@ -126,7 +126,7 @@ describe("dbSetup", () => {
     await setupConsumerDb();
 
     expect(mockKnexInstance.seed.run).toHaveBeenCalledWith({
-      specific: "01_reference_data.js",
+      specific: "01_reference_data.ts",
     });
   });
 
