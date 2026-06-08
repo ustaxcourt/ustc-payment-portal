@@ -209,8 +209,9 @@ data "aws_s3_bucket" "existing_artifacts" {
 
 # Attach artifact bucket policy to deployer role (GitHub Actions --> AWS deployment)
 resource "aws_iam_role_policy_attachment" "ci_build_artifacts" {
+  count      = local.environment == "dev" ? 1 : 0
   role       = data.terraform_remote_state.foundation.outputs.ci_deployer_role_name
-  policy_arn = local.environment == "dev" ? module.artifacts_bucket[0].build_artifacts_access_policy_arn : local.artifacts_bucket_policy_arn
+  policy_arn = module.artifacts_bucket[0].build_artifacts_access_policy_arn
 }
 
 # =============================================================================
