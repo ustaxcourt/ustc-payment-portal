@@ -1,5 +1,5 @@
 resource "aws_iam_role" "github_actions_deployer" {
-  name  = local.deploy_role_name
+  name = local.deploy_role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -26,8 +26,8 @@ resource "aws_iam_role" "github_actions_deployer" {
 
 
 resource "aws_iam_role_policy" "github_actions_permissions" {
-  name  = "${local.project_name}-${local.environment}-ci-deployer"
-  role  = aws_iam_role.github_actions_deployer.id
+  name = "${local.project_name}-${local.environment}-ci-deployer"
+  role = aws_iam_role.github_actions_deployer.id
 
   policy = jsonencode({
     Version = "2012-10-17",
@@ -81,7 +81,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       {
         Effect   = "Allow",
         Action   = ["iam:PassRole"],
-        Resource = local.lambda_exec_role_arn,
+        Resource = aws_iam_role.lambda_exec.arn,
         Condition = {
           StringEquals = {
             "iam:PassedToService" = "lambda.amazonaws.com"
@@ -93,7 +93,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Action = ["iam:GetRole", "iam:ListRolePolicies", "iam:GetRolePolicy", "iam:ListAttachedRolePolicies"],
         Resource = [
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.deploy_role_name}",
-          local.lambda_exec_role_arn
+          aws_iam_role.lambda_exec.arn
         ]
       },
       {
@@ -386,8 +386,8 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
 # safe for any future CI use case that only needs to inspect AWS state.
 
 resource "aws_iam_role_policy" "github_actions_read_only" {
-  name  = "${local.project_name}-${local.environment}-read-only"
-  role  = aws_iam_role.github_actions_read_only.id
+  name = "${local.project_name}-${local.environment}-read-only"
+  role = aws_iam_role.github_actions_read_only.id
 
   policy = jsonencode({
     Version = "2012-10-17",
@@ -447,7 +447,7 @@ resource "aws_iam_role_policy" "github_actions_read_only" {
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*lambda*",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/build-artifacts-access-policy",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${var.lambda_name_prefix}-*",
-          local.lambda_exec_role_arn
+          aws_iam_role.lambda_exec.arn
         ]
       },
       {

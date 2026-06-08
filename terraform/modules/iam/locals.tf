@@ -5,9 +5,8 @@ locals {
 
   tf_state_bucket_name = var.state_bucket_name
 
-  lambda_exec_role_arn = var.lambda_exec_role_arn
-  name_prefix          = var.name_prefix
-  lambda_name_prefix   = "${var.project_name}-${var.environment}"
+  name_prefix        = var.name_prefix
+  lambda_name_prefix = "${var.project_name}-${var.environment}"
 
   aws_region          = var.aws_region
   project_name        = var.project_name
