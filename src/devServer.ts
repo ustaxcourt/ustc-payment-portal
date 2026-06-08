@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import path from "path";
+import path from "node:path";
 import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { isLocal } from "./config/appEnv";
