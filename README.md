@@ -12,23 +12,6 @@ type imports, and troubleshooting.
 
 ## Workflow
 
-### Current workflow (v1)
-
-**NOTE:** This workflow will be deprecated as we work towards a new version that will better serve Apps that rely on payments that are paid via Pay.gov, and therefore will need to rely on the Payment Portal. See below for the workflow that we are building for the future.
-
-1. An application makes a request to initiate a transaction the Payment Portal.
-2. The portal then performs a `startOnlineCollection` request to Pay.gov with the transaction information.
-3. Pay.gov responds with a token, which the portal uses to generate a redirect URL to Pay.gov to enter in payment information.
-4. The token and URL are returned to the original App, which stores the token and forwards the user to the redirect URL.
-5. The user enters their payment information or cancels, which sends them back to the success or cancel URL specified in the original request.
-6. Once back on the originating app, the app makes another request to the Payment Portal to process the transaction.
-7. The payment portal calls Pay.gov to perform a `completeOnlineCollection` with the token.
-8. Pay.gov responds with a Tracking ID, which is relayed back to the App via the Portal.
-
-### Future workflow (v2)
-
-This workflow is currently a work-in-progress and not operational yet. We'll post more information to this documentation as we work towards getting it ready to use.
-
 #### Initiate a Transaction
 
 1. An application makes a request to initiate a transaction to the Payment Portal. This request includes some key information:
