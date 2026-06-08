@@ -61,3 +61,18 @@ module "iam" {
     Project = "ustc-payment-portal"
   }
 }
+
+module "artifacts_bucket" {
+  source = "../../../modules/artifacts_bucket"
+
+  build_artifacts_bucket_name = "ustc-payment-portal-build-artifacts"
+  deployer_role_arn           = module.iam.deployer_role_arn
+  staging_deployer_role_arn   = "arn:aws:iam::747103385969:role/ustc-payment-processor-stg-cicd-deployer-role"
+  prod_deployer_role_arn      = "arn:aws:iam::802939326821:role/ustc-payment-processor-prod-cicd-deployer-role"
+}
+
+# Attach artifact bucket policy to deployer role (GitHub Actions --> AWS deployment)
+resource "aws_iam_role_policy_attachment" "ci_build_artifacts" {
+  role       = module.iam.deployer_role_name
+  policy_arn = module.artifacts_bucket.build_artifacts_access_policy_arn
+}

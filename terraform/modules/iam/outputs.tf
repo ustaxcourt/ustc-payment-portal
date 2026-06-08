@@ -8,12 +8,12 @@ output "lambda_role_name" {
   value       = aws_iam_role.lambda_exec.name
 }
 
-output "role_name" {
+output "deployer_role_name" {
   value       = aws_iam_role.github_actions_deployer.name
   description = "CI/CD deployer role name"
 }
 
-output "role_arn" {
+output "deployer_role_arn" {
   value       = aws_iam_role.github_actions_deployer.arn
   description = "CI/CD deployer role ARN"
 }
@@ -27,4 +27,3 @@ output "read_only_role_arn" {
   value       = aws_iam_role.github_actions_read_only.arn
   description = "Read-only CI role ARN (used by terraform-plan workflow today)"
 }
-
