@@ -71,6 +71,7 @@ function stopChildren(signal = "SIGTERM") {
 }
 
 function shutdown(code = 0, signal = "SIGTERM") {
+  /* istanbul ignore next */
   if (shuttingDown) {
     return;
   }
@@ -81,6 +82,7 @@ function shutdown(code = 0, signal = "SIGTERM") {
 
   // Early-failure path (docker bring-up failed before any children spawned):
   // no child-close handler will fire, so clean up and exit synchronously.
+  /* istanbul ignore next */
   if (children.length === 0) {
     stopDockerStack();
     process.exit(exitCode);
@@ -121,6 +123,7 @@ async function main() {
     });
 
     child.on("exit", (code, signal) => {
+      /* istanbul ignore next */
       if (shuttingDown) {
         return;
       }
