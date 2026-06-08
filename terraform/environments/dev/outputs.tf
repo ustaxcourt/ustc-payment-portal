@@ -55,15 +55,6 @@ output "rds_endpoint" {
   description = "RDS database endpoint (host:port)"
 }
 
-output "build_artifacts_bucket_name" {
-  value       = local.environment == "dev" ? module.artifacts_bucket[0].bucket_name : data.aws_s3_bucket.existing_artifacts[0].bucket
-  description = "Name for build artifacts bucket"
-}
-
-output "build_artifacts_bucket_arn" {
-  value       = local.environment == "dev" ? module.artifacts_bucket[0].bucket_arn : data.aws_s3_bucket.existing_artifacts[0].arn
-  description = "ARN for build artifacts bucket"
-}
 
 output "test_unauthorized_role_arn" {
   value       = aws_iam_role.test_unauthorized.arn
