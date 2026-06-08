@@ -8,7 +8,8 @@
   },
   "scripts": {
     "clean": "rimraf dist/*",
-    "lint": "biome lint . || true",
+    "lint": "biome lint .",
+    "lint:ci": "biome lint --reporter=github .",
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "build:lambda": "terraform/scripts/build-lambda.sh",
     "dev:start": "npm-run-all build start",
@@ -70,7 +71,6 @@
     "rimraf": "^6.1.3",
     "ts-jest": "^29.4.3",
     "ts-node": "^10.9.2",
-    "tslint": "^6.1.3",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "uuid": "^14.0.0"
