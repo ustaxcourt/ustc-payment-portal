@@ -39,11 +39,11 @@ output "rds_security_group_id" {
 }
 
 output "ci_deployer_role_name" {
-  value       = module.iam.role_name
+  value       = module.iam.deployer_role_name
   description = "CI/CD deployer role name (for GitHub Actions OIDC)"
 }
 
 output "ci_deployer_role_arn" {
-  value       = module.iam.role_arn
+  value       = module.iam.deployer_role_arn
   description = "CI/CD deployer role ARN (for GitHub Actions OIDC)"
 }
