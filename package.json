@@ -100,7 +100,6 @@
     "bin",
     "db",
     "dist",
-    "src",
     "scripts/start-local-stack.js",
     "scripts/start-dev-server-runtime.js",
     "scripts/start-pay-gov-test-server.js",
