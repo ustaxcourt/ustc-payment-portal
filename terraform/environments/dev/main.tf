@@ -98,8 +98,6 @@ resource "aws_route53_zone" "this" {
     Env     = local.environment
     Project = "ustc-payment-portal"
   }
-
-  depends_on = [module.iam_cicd]
 }
 
 resource "aws_acm_certificate" "this" {
@@ -115,8 +113,6 @@ resource "aws_acm_certificate" "this" {
   lifecycle {
     create_before_destroy = true
   }
-
-  depends_on = [module.iam_cicd]
 }
 
 resource "aws_route53_record" "cert_validation" {
@@ -160,54 +156,6 @@ data "aws_secretsmanager_secret_version" "allowed_account_ids" {
   depends_on = [module.secrets]
 }
 
-module "iam_cicd" {
-  source = "../../modules/iam"
-
-  aws_region               = local.aws_region
-  environment              = local.environment
-  deploy_role_name         = local.environment == "dev" ? "ustc-payment-processor-dev-cicd-deployer-role" : "${local.name_prefix}-cicd-deployer-role"
-  read_only_role_name      = "ustc-payment-processor-dev-read-only-role"
-  github_oidc_provider_arn = local.github_oidc_provider_arn
-  github_org               = local.github_org
-  github_repo              = local.github_repo
-  state_bucket_name        = local.state_bucket_name
-  state_object_keys        = local.state_object_keys
-  lambda_exec_role_arn     = data.terraform_remote_state.foundation.outputs.lambda_role_arn
-  lambda_name_prefix       = local.name_prefix
-  create_lambda_exec_role  = false
-}
-
-resource "aws_iam_role_policy" "shared_lambda_secrets_access" {
-  count = local.environment == "dev" ? 1 : 0
-  name  = "ustc-payment-portal-shared-lambda-secrets-access"
-  role  = element(reverse(split("/", data.terraform_remote_state.foundation.outputs.lambda_role_arn)), 0)
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = ["secretsmanager:GetSecretValue"]
-        Resource = [
-          "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*",
-          "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
-        ]
-      }
-    ]
-  })
-}
-
-module "artifacts_bucket" {
-  count  = local.environment == "dev" ? 1 : 0
-  source = "../../modules/artifacts_bucket"
-
-  build_artifacts_bucket_name = "ustc-payment-portal-build-artifacts"
-  deployer_role_arn           = module.iam_cicd.role_arn
-  manage_bucket_policy        = true
-  staging_deployer_role_arn   = "arn:aws:iam::747103385969:role/ustc-payment-processor-stg-cicd-deployer-role"
-  prod_deployer_role_arn      = "arn:aws:iam::802939326821:role/ustc-payment-processor-prod-cicd-deployer-role"
-}
-
 resource "aws_ssm_parameter" "dev_rds_endpoint" {
   count = local.environment == "dev" ? 1 : 0
   name  = "/ustc/pay-gov/dev/rds-endpoint"
@@ -248,11 +196,7 @@ data "aws_s3_bucket" "existing_artifacts" {
   bucket = "ustc-payment-portal-build-artifacts"
 }
 
-# Attach artifact bucket policy to deployer role (GitHub Actions --> AWS deployment)
-resource "aws_iam_role_policy_attachment" "ci_build_artifacts" {
-  role       = module.iam_cicd.role_name
-  policy_arn = local.environment == "dev" ? module.artifacts_bucket[0].build_artifacts_access_policy_arn : local.artifacts_bucket_policy_arn
-}
+
 
 # =============================================================================
 # Unauthorized Test Role (for Lambda-level authorization testing)
