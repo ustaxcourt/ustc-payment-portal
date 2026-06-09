@@ -1,64 +1,53 @@
 # Foundation (Networking) Stack
 
-This directory contains the environment-specific roots for the "foundation" layer: primarily VPC networking (VPC, subnets, IGW, NAT, route tables, and security groups). Each environment keeps networking in a separate Terraform state key from the application/workloads.
+This directory is the shared Terraform root for the foundation layer (networking + base IAM) across `dev`, `stg`, and `prod`.
 
-## Why a separate foundation directory and state key?
+Environment-specific configuration is split into:
 
-- **Blast radius reduction**
-  Networking changes are rare but risky. Keeping VPC/NAT/Routes in their own state means day-to-day app/API changes won’t touch critical networking state.
+- `backend/{dev,stg,prod}.hcl` for backend state key/bucket
+- `vars/{dev,stg,prod}.vars.hcl` for Terraform variables
 
-- **Faster plans and applies**
-  App (Lambdas/API Gateway) iterates frequently. Separating state keeps those plans small and fast.
+## Why keep foundation separate from app state?
 
-- **Safer rollbacks**
-  App rollbacks (workloads) don’t affect VPC. Conversely, networking maintenance doesn’t disturb app state.
+- Blast radius reduction for VPC/networking resources
+- Smaller/faster app plans and applies
+- Safer operational boundaries when rolling back workloads
 
-## State layout (per environment)
+## State layout
 
-- Bucket (dev): `ustc-payment-portal-terraform-state-dev`
-- Key (foundation/networking): `ustc-payment-portal/dev/networking.tfstate`
-- Lock table: `ustc-payment-portal-terraform-locks-dev`
+Foundation state keys remain environment-specific:
 
-You will use analogous buckets/keys for `stg` and `prod`.
+- `ustc-payment-portal/dev/networking.tfstate`
+- `ustc-payment-portal/stg/networking.tfstate`
+- `ustc-payment-portal/prod/networking.tfstate`
 
-## Directory structure here
+## Local execution (recommended)
 
-- `foundation/dev-networking/`
-  - `backend.hcl` — points to the dev networking state key
-  - `main.tf` — composes the networking module with explicit values for dev
-  - `outputs.tf` — re-exports module outputs for easy consumption by CI or other stacks
-
-> The reusable module code lives at `terraform/modules/networking/`.
-
-## Using foundation/dev-networking (dev)
-
-Prerequisites:
-- Terraform initialized with the backend bootstrap (S3 bucket + DynamoDB table created)
-- Authenticated to the dev AWS account (e.g., SSO profile)
-
-Steps:
+Use package scripts with explicit environment selection:
 
 ```bash
-# Authenticate (example with AWS SSO)
-aws sso login --profile ent-apps-payment-portal-workloads-dev
-export AWS_PROFILE=ent-apps-payment-portal-workloads-dev
+npm run tf:foundation:init -- --env=dev
+npm run tf:foundation:plan -- --env=stg
+npm run tf:foundation:apply -- --env=prod
+```
 
-# Navigate to the dev networking root
-cd terraform/environments/foundation/dev-networking
+The script enforces standardized local profile names:
 
-# Initialize the backend (uses backend.hcl)
-terraform init -backend-config=backend.hcl -reconfigure 
+- `ustcpp-dev`
+- `ustcpp-stg`
+- `ustcpp-prod`
 
-## What this creates (dev)
+It also:
 
-- VPC with CIDR `10.20.0.0/25`
-- Subnets: public `10.20.0.0/28`, private `10.20.0.32/28` (in `us-east-1a`)
-- Internet Gateway, EIP, NAT Gateway (in the public subnet)
-- Route Tables: public route to IGW; private route to NAT
-- Lambda Security Group (permissive for parity; harden later)
+1. Verifies caller identity via `aws sts get-caller-identity`
+2. Triggers `aws sso login --profile <profile>` if the session is expired
+3. Runs Terraform with the matching backend/tfvars for the selected environment
 
-## IAM Module
- This is needed to grant Lambda permissions to create CloudWatch logs and Permissions to manage ENIs in VPCs. Lambdas in VPC will need these permissions.
+Optional: enforce dev account id too by setting `USTCPP_DEV_ACCOUNT_ID`.
 
-These will be used later by the workloads stack (Lambdas/API).
+## What this layer creates
 
+- VPC, subnets, internet gateway, NAT, route tables
+- Lambda and RDS security groups
+- Base IAM roles used by workload deployment
+- Dev-only shared artifacts bucket policy attachment (via `vars/dev.tfvars`)

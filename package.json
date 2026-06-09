@@ -47,7 +47,10 @@
     "seed:make": "npm run knex -- seed:make $1",
     "seed:run": "npm run knex -- seed:run",
     "docker": "docker compose up",
-    "docker:migration": "MIGRATION_MODE=1 docker compose up"
+    "docker:migration": "MIGRATION_MODE=1 docker compose up",
+    "tf:foundation:init": "node scripts/terraform-foundation.js init",
+    "tf:foundation:plan": "node scripts/terraform-foundation.js plan",
+    "tf:foundation:apply": "node scripts/terraform-foundation.js apply"
   },
   "keywords": [],
   "author": "",

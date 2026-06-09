@@ -18,8 +18,8 @@ As of March 2026, this project uses **S3 native locking** (`use_lockfile = true`
   - Creates the S3 backend bucket used by Terraform remote state in each account.
   - **Note:** The DynamoDB lock tables are legacy and can be decommissioned (see [DynamoDB Cleanup](#dynamodb-cleanup-legacy) below).
 - **`terraform/environments/foundation/`**
-  - Environment networking and base IAM (per environment/account).
-  - `dev-networking/`, `stg-networking/`: VPC, subnets, security groups, IAM base.
+  - Shared foundation root for networking and base IAM.
+  - Environment-specific configuration via `backend/{dev,stg,prod}.hcl` and `vars/{dev,stg,prod}.vars.hcl`.
 - **`terraform/environments/dev/`**, **`terraform/environments/stg/`**, **`terraform/environments/prod/`**
   - Application stack (Lambda, API Gateway, CI/CD IAM, etc.).
   - Uses `data.terraform_remote_state` to read the foundation outputs.
@@ -80,39 +80,21 @@ Replace `<env>` with `dev`, `stg`, or `prod` depending on the target account.
 
 ## Foundation (networking) layer
 
-Initialize with the environment-specific backend. This writes/reads `networking.tfstate` in the environment bucket.
-
-- Dev foundation (`terraform/environments/foundation/dev-networking/`):
+Run foundation from the shared root through package scripts with an explicit `--env` parameter:
 
 ```bash
-cd terraform/environments/foundation/dev-networking
-
-terraform init \
-  -backend-config="bucket=ustc-payment-portal-terraform-state-dev" \
-  -backend-config="key=ustc-payment-portal/dev/networking.tfstate" \
-  -backend-config="region=us-east-1" \
-  -backend-config="use_lockfile=true" \
-  -backend-config="encrypt=true"
-
-terraform plan
-terraform apply
+npm run tf:foundation:init -- --env=dev
+npm run tf:foundation:plan -- --env=stg
+npm run tf:foundation:apply -- --env=prod
 ```
 
-- Stg foundation (`terraform/environments/foundation/stg-networking/`):
+The script maps environment to:
 
-```bash
-cd terraform/environments/foundation/stg-networking
+- profile: `ustcpp-dev|ustcpp-stg|ustcpp-prod`
+- backend config: `terraform/environments/foundation/backend/<env>.hcl`
+- var file: `terraform/environments/foundation/vars/<env>.vars.hcl`
 
-terraform init \
-  -backend-config="bucket=ustc-payment-portal-terraform-state-stg" \
-  -backend-config="key=ustc-payment-portal/stg/networking.tfstate" \
-  -backend-config="region=us-east-1" \
-  -backend-config="use_lockfile=true" \
-  -backend-config="encrypt=true"
-
-terraform plan
-terraform apply
-```
+It verifies caller identity and runs `aws sso login --profile <profile>` automatically when needed.
 
 ## Application (Lambda, API Gateway, CI IAM) layer
 
@@ -202,22 +184,20 @@ This section documents the process for upgrading Terraform to a new version.
 
 When upgrading Terraform, update the version constraint in **all** of these locations:
 
-| File                                                        | Purpose                 |
-| ----------------------------------------------------------- | ----------------------- |
-| `terraform/versions.tf`                                     | Root module             |
-| `terraform/bootstrap/main.tf`                               | Bootstrap module        |
-| `terraform/environments/dev/versions.tf`                    | Dev environment         |
-| `terraform/environments/stg/versions.tf`                    | Staging environment     |
-| `terraform/environments/prod/versions.tf`                   | Production environment  |
-| `terraform/environments/foundation/dev-networking/main.tf`  | Dev networking          |
-| `terraform/environments/foundation/stg-networking/main.tf`  | Staging networking      |
-| `terraform/environments/foundation/prod-networking/main.tf` | Production networking   |
-| `terraform/modules/api-gateway/versions.tf`                 | API Gateway module      |
-| `terraform/modules/artifacts_bucket/versions.tf`            | Artifacts bucket module |
-| `terraform/modules/iam/versions.tf`                         | IAM module              |
-| `terraform/modules/lambda/versions.tf`                      | Lambda module           |
-| `terraform/modules/networking/versions.tf`                  | Networking module       |
-| `terraform/modules/rds/versions.tf`                         | RDS module              |
+| File                                             | Purpose                 |
+| ------------------------------------------------ | ----------------------- |
+| `terraform/versions.tf`                          | Root module             |
+| `terraform/bootstrap/main.tf`                    | Bootstrap module        |
+| `terraform/environments/dev/versions.tf`         | Dev environment         |
+| `terraform/environments/stg/versions.tf`         | Staging environment     |
+| `terraform/environments/prod/versions.tf`        | Production environment  |
+| `terraform/environments/foundation/versions.tf`  | Shared foundation root  |
+| `terraform/modules/api-gateway/versions.tf`      | API Gateway module      |
+| `terraform/modules/artifacts_bucket/versions.tf` | Artifacts bucket module |
+| `terraform/modules/iam/versions.tf`              | IAM module              |
+| `terraform/modules/lambda/versions.tf`           | Lambda module           |
+| `terraform/modules/networking/versions.tf`       | Networking module       |
+| `terraform/modules/rds/versions.tf`              | RDS module              |
 
 ### CI/CD Workflow Updates
 
