@@ -55,7 +55,7 @@ module "iam" {
   github_org               = local.github_org
   github_repo              = local.github_repo
   tags = {
-    Env     = local.environment
+    Env     = "prod"
     Project = "ustc-payment-portal"
   }
 }
