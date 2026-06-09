@@ -9,11 +9,11 @@ const log = createLogger('check:local-flow');
 // (not inline below) if the schema for /init metadata ever changes.
 const TEST_DATA = {
   petitionFiling: {
-    feeId: 'PETITION_FILING_FEE',
+    fee: 'PETITION_FILING_FEE',
     metadata: { docketNumber: '123-26' },
   },
   nonattorneyExam: {
-    feeId: 'NONATTORNEY_EXAM_REGISTRATION_FEE',
+    fee: 'NONATTORNEY_EXAM_REGISTRATION_FEE',
     metadata: {
       email: 'applicant@example.com',
       fullName: 'Local Flow Check',
@@ -55,11 +55,11 @@ function parseToken(initResponseBody) {
   throw new Error('Could not determine token from /init response');
 }
 
-function selectScenario(feeId) {
-  const match = Object.values(TEST_DATA).find((s) => s.feeId === feeId);
+function selectScenario(fee) {
+  const match = Object.values(TEST_DATA).find((s) => s.fee === fee);
   if (!match) {
     throw new Error(
-      `Unknown FEE_ID: ${feeId}. Supported: ${Object.values(TEST_DATA).map((s) => s.feeId).join(', ')}`,
+      `Unknown FEE: ${fee}. Supported: ${Object.values(TEST_DATA).map((s) => s.fee).join(', ')}`,
     );
   }
   return match;
@@ -74,12 +74,12 @@ async function main() {
   );
   const baseUrl = process.env.BASE_URL || `http://localhost:${apiPort}`;
   const paymentBase = process.env.PAYMENT_URL || `http://localhost:${paymentPort}/pay`;
-  const scenario = selectScenario(process.env.FEE_ID || TEST_DATA.petitionFiling.feeId);
+  const scenario = selectScenario(process.env.FEE || TEST_DATA.petitionFiling.fee);
   const initUrl = new URL('/init', baseUrl).toString();
 
   const initPayload = {
     transactionReferenceId: crypto.randomUUID(),
-    feeId: scenario.feeId,
+    fee: scenario.fee,
     urlSuccess: 'https://client.app/success',
     urlCancel: 'https://client.app/cancel',
     metadata: scenario.metadata,
