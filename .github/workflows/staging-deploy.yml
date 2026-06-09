@@ -211,9 +211,19 @@ jobs:
           terraform show -no-color tfplan > tfplan.txt || true
           set -e
 
+      - name: Debug plan exit code
+        run: echo "plan exitcode=${{ steps.plan.outputs.exitcode }}"
+
       - name: Terraform Apply (if required)
         if: ${{ steps.plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/stg
+        env:
+          TF_VAR_artifact_bucket: ${{ env.DEV_ARTIFACT_BUCKET }}
+          TF_VAR_initPayment_s3_key: ${{ steps.artifacts.outputs.initPayment }}
+          TF_VAR_processPayment_s3_key: ${{ steps.artifacts.outputs.processPayment }}
+          TF_VAR_getDetails_s3_key: ${{ steps.artifacts.outputs.getDetails }}
+          TF_VAR_testCert_s3_key: ${{ steps.artifacts.outputs.testCert }}
+          TF_VAR_migrationRunner_s3_key: ${{ steps.artifacts.outputs.migrationRunner }}
         run: terraform apply -auto-approve tfplan
 
       - name: Get Terraform Outputs (for integration tests)
