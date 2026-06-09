@@ -1,5 +1,3 @@
-data "aws_caller_identity" "current" {}
-
 data "terraform_remote_state" "foundation" {
   backend = "s3"
   config = {
@@ -73,8 +71,6 @@ resource "aws_route53_zone" "this" {
     Env     = local.environment
     Project = "ustc-payment-portal"
   }
-
-  depends_on = [module.iam_cicd]
 }
 
 resource "aws_acm_certificate" "this" {
@@ -89,8 +85,6 @@ resource "aws_acm_certificate" "this" {
   lifecycle {
     create_before_destroy = true
   }
-
-  depends_on = [module.iam_cicd]
 }
 
 resource "aws_route53_record" "cert_validation" {
