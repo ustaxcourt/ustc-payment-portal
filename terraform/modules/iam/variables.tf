@@ -16,19 +16,6 @@ variable "assume_role_services" {
   default     = ["lambda.amazonaws.com"]
 }
 
-variable "attach_basic_execution" {
-  description = "Attach AWSLambdaBasicExecutionRole managed policy"
-  type        = bool
-  default     = true
-}
-
-variable "attach_vpc_access" {
-  description = "Attach AWSLambdaVPCAccessExecutionRole managed policy"
-  type        = bool
-  default     = true
-}
-
-
 variable "aws_region" {
   type    = string
   default = "us-east-1"
@@ -42,12 +29,6 @@ variable "project_name" {
 variable "lambda_name_prefix" {
   type        = string
   description = "Lambda name prefix to scope permissions"
-  default     = ""
-}
-
-variable "lambda_exec_role_arn" {
-  type        = string
-  description = "Exact Lambda execution role ARN the CI role may pass to functions"
   default     = ""
 }
 
