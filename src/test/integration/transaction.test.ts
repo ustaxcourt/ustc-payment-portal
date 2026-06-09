@@ -22,6 +22,11 @@ type Scenario = {
   expectPendingDuringResolution?: boolean;
 };
 
+type ExpectedState = {
+  paymentStatus: PaymentStatus;
+  transactionStatus: TransactionStatus;
+};
+
 const ACH_RESOLUTION_TIMEOUT_MS = 30_000;
 const POLL_INTERVAL_MS = 1_000;
 
@@ -109,13 +114,26 @@ describe("make a transaction", () => {
     );
 
     const processResponse = await processTransaction(initialized.token);
-    assertSingleTransaction(
+    const expectedInitialStates: ExpectedState[] =
+      scenario.expectPendingDuringResolution
+        ? [
+            { paymentStatus: "pending", transactionStatus: "pending" },
+            {
+              paymentStatus: scenario.expectedFinalPaymentStatus,
+              transactionStatus: scenario.expectedFinalTransactionStatus,
+            },
+          ]
+        : [
+            {
+              paymentStatus: scenario.expectedProcessPaymentStatus,
+              transactionStatus: scenario.expectedFinalTransactionStatus,
+            },
+          ];
+
+    assertSingleTransactionInExpectedStates(
       processResponse,
       scenario,
-      scenario.expectedProcessPaymentStatus,
-      scenario.expectPendingDuringResolution
-        ? "pending"
-        : scenario.expectedFinalTransactionStatus,
+      expectedInitialStates,
     );
 
     const detailsResponse = await getDetails(
@@ -123,7 +141,20 @@ describe("make a transaction", () => {
     );
 
     if (scenario.expectPendingDuringResolution) {
-      assertSingleTransaction(detailsResponse, scenario, "pending", "pending");
+      assertSingleTransactionInExpectedStates(
+        detailsResponse,
+        scenario,
+        expectedInitialStates,
+      );
+
+      if (
+        detailsResponse.paymentStatus === scenario.expectedFinalPaymentStatus &&
+        detailsResponse.transactions[0]?.transactionStatus ===
+          scenario.expectedFinalTransactionStatus
+      ) {
+        expect(detailsResponse.transactions[0].payGovTrackingId).toBeTruthy();
+        return;
+      }
 
       const resolvedDetails = await waitForResolvedDetails(
         initialized.transactionReferenceId,
@@ -315,6 +346,36 @@ describe("make a transaction", () => {
     );
   };
 
+  const assertSingleTransactionInExpectedStates = (
+    response: ProcessPaymentResponse | GetDetailsResponse,
+    scenario: Scenario,
+    expectedStates: ExpectedState[],
+  ) => {
+    const matchedState = expectedStates.find(
+      ({ paymentStatus, transactionStatus }) =>
+        response.paymentStatus === paymentStatus &&
+        response.transactions[0]?.transactionStatus === transactionStatus,
+    );
+
+    if (!matchedState) {
+      const expected = expectedStates
+        .map(
+          ({ paymentStatus, transactionStatus }) =>
+            `${paymentStatus}/${transactionStatus}`,
+        )
+        .join(" or ");
+      const received = `${response.paymentStatus}/${response.transactions[0]?.transactionStatus}`;
+      throw new Error(
+        `Unexpected transaction state for scenario '${scenario.name}'. Expected ${expected}. Received ${received}.`,
+      );
+    }
+
+    expect(response.transactions).toHaveLength(1);
+    expect(response.transactions[0].paymentMethod).toBe(
+      scenario.expectedApiPaymentMethod,
+    );
+  };
+
   const waitForResolvedDetails = async (
     referenceId: string,
     scenario: Scenario,
@@ -327,7 +388,11 @@ describe("make a transaction", () => {
     let current = initialDetails;
 
     while (Date.now() < deadline) {
-      if (current.paymentStatus === scenario.expectedFinalPaymentStatus) {
+      if (
+        current.paymentStatus === scenario.expectedFinalPaymentStatus &&
+        current.transactions[0]?.transactionStatus ===
+          scenario.expectedFinalTransactionStatus
+      ) {
         return current;
       }
 
