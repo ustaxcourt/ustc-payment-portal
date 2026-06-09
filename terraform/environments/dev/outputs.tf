@@ -13,16 +13,6 @@ output "lambda_function_invoke_arns" {
   value       = module.lambda.function_invoke_arns
 }
 
-output "cicd_role_arn" {
-  value       = module.iam_cicd.role_arn
-  description = "ARN of the GitHub OIDC CI/CD deployer role"
-}
-
-output "read_only_role_arn" {
-  value       = module.iam_cicd.read_only_role_arn
-  description = "ARN of the GitHub OIDC read-only CI role"
-}
-
 output "api_gateway_url" {
   value       = module.api.api_gateway_url
   description = "Base URL of the API Gateway for integration tests"
@@ -65,15 +55,6 @@ output "rds_endpoint" {
   description = "RDS database endpoint (host:port)"
 }
 
-output "build_artifacts_bucket_name" {
-  value       = local.environment == "dev" ? module.artifacts_bucket[0].bucket_name : data.aws_s3_bucket.existing_artifacts[0].bucket
-  description = "Name for build artifacts bucket"
-}
-
-output "build_artifacts_bucket_arn" {
-  value       = local.environment == "dev" ? module.artifacts_bucket[0].bucket_arn : data.aws_s3_bucket.existing_artifacts[0].arn
-  description = "ARN for build artifacts bucket"
-}
 
 output "test_unauthorized_role_arn" {
   value       = aws_iam_role.test_unauthorized.arn

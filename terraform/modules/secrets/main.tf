@@ -96,21 +96,3 @@ resource "aws_ssm_parameter" "monitoring_subscribers" {
     ignore_changes = [value]
   }
 }
-
-# IAM for Lambda to read these secrets
-data "aws_iam_policy_document" "lambda_secrets_read" {
-  statement {
-    sid       = "ReadSpecificSecrets"
-    effect    = "Allow"
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = local.secret_arns
-  }
-}
-
-resource "aws_iam_role_policy" "lambda_secrets_read" {
-  name   = "${var.project}-${local.env}-lambda-secrets-read"
-  role   = local.lambda_exec_role_name
-  policy = data.aws_iam_policy_document.lambda_secrets_read.json
-}
-
-

@@ -71,8 +71,6 @@ resource "aws_route53_zone" "this" {
     Env     = local.environment
     Project = "ustc-payment-portal"
   }
-
-  depends_on = [module.iam_cicd]
 }
 
 resource "aws_acm_certificate" "this" {
@@ -87,8 +85,6 @@ resource "aws_acm_certificate" "this" {
   lifecycle {
     create_before_destroy = true
   }
-
-  depends_on = [module.iam_cicd]
 }
 
 resource "aws_route53_record" "cert_validation" {
@@ -132,23 +128,6 @@ data "aws_secretsmanager_secret_version" "allowed_account_ids" {
 data "aws_ssm_parameter" "monitoring_subscribers" {
   name       = module.secrets.monitoring_subscribers_parameter_name
   depends_on = [module.secrets]
-}
-
-module "iam_cicd" {
-  source = "../../modules/iam"
-
-  aws_region               = local.aws_region
-  environment              = local.environment
-  deploy_role_name         = "ustc-payment-processor-stg-cicd-deployer-role"
-  read_only_role_name      = "ustc-payment-processor-stg-read-only-role"
-  github_oidc_provider_arn = local.github_oidc_provider_arn
-  github_org               = local.github_org
-  github_repo              = local.github_repo
-  state_bucket_name        = local.state_bucket_name
-  state_object_keys        = local.state_object_keys
-  lambda_exec_role_arn     = local.lambda_exec_role_arn
-  lambda_name_prefix       = local.name_prefix
-  create_lambda_exec_role  = false
 }
 
 module "monitoring" {

@@ -122,6 +122,8 @@ resource "aws_cloudwatch_metric_alarm" "lambda_5xx" {
 }
 
 # Chatbot routes the SNS topic to a Teams channel. Inert until all teams_* vars set.
+# Role lives in this module (not foundation) because it's feature-local and gated by
+# enable_teams — only created when Teams routing is actually configured.
 resource "aws_iam_role" "chatbot" {
   count = local.enable_teams ? 1 : 0
 
