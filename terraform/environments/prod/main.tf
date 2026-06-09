@@ -13,7 +13,7 @@ data "terraform_remote_state" "foundation" {
 module "lambda" {
   source                            = "../../modules/lambda"
   function_name_prefix              = local.name_prefix
-  lambda_execution_role_arn         = data.terraform_remote_state.foundation.outputs.lambda_execution_role_arn
+  lambda_execution_role_arn         = data.terraform_remote_state.foundation.outputs.lambda_role_arn
   subnet_ids                        = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
   security_group_ids                = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
   environment_variables_by_function = local.lambda_env_by_function
