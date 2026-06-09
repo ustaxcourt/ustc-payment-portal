@@ -88,8 +88,6 @@ locals {
   payment_url = "https://pay-gov-dev.ustaxcourt.gov/pay"
   soap_url    = "https://pay-gov-dev.ustaxcourt.gov/wsdl"
 
-  # Artifacts bucket policy ARN (constructed dynamically for PR workspaces)
-  artifacts_bucket_policy_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/build-artifacts-access-policy"
 
   # Origin allowed to call dashboard endpoints from the browser.
   # then lock back to the custom domain once confirmed working.
@@ -102,4 +100,3 @@ locals {
     []
   )
 }
-

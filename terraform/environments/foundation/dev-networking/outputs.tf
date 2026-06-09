@@ -37,3 +37,13 @@ output "rds_security_group_id" {
   value       = module.networking.rds_security_group_id
   description = "RDS Security Group ID (if private_subnet_cidr_2 is provided)"
 }
+
+output "ci_deployer_role_arn" {
+  value       = module.iam.deployer_role_arn
+  description = "CI/CD deployer role ARN (for GitHub Actions OIDC)"
+}
+
+output "ci_read_only_role_arn" {
+  value       = module.iam.read_only_role_arn
+  description = "Read-only CI role ARN (used by terraform-plan workflow today)"
+}

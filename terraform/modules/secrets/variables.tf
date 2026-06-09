@@ -7,10 +7,6 @@ variable "project" {
   default = "ustc-payment-portal"
 }
 
-variable "lambda_exec_role_arn" {
-  type = string
-}
-
 variable "enable_mtls" {
   type    = bool
   default = true
@@ -61,12 +57,6 @@ variable "create_rds_secret" {
   description = "Whether to create the RDS credentials secret (false for prod/stg which use AWS-managed RDS password)"
   type        = bool
   default     = true
-}
-
-variable "additional_secret_arns" {
-  description = "Additional secret ARNs to include in Lambda IAM policy (e.g., AWS-managed RDS secret)"
-  type        = list(string)
-  default     = []
 }
 
 variable "client_permissions_name" {
