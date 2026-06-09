@@ -168,6 +168,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "logs:PutLogEvents",
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams",
+          "logs:DescribeMetricFilters",
           "logs:ListTagsForResource",
           "logs:TagResource",
           "logs:PutRetentionPolicy"
@@ -309,6 +310,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "sns:CreateTopic",
           "sns:DeleteTopic",
           "sns:GetTopicAttributes",
+          "sns:GetSubscriptionAttributes",
           "sns:SetTopicAttributes",
           "sns:ListTagsForResource",
           "sns:TagResource",
@@ -345,6 +347,14 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "*"
       },
       {
+        # Chatbot List* APIs are account-scoped and used by terraform refresh for monitoring resources.
+        Effect = "Allow",
+        Action = [
+          "chatbot:ListMicrosoftTeamsChannelConfigurations"
+        ],
+        Resource = "*"
+      },
+      {
         # DescribeParameters cannot be scoped to a specific resource — AWS requires "*"
         Effect   = "Allow",
         Action   = ["ssm:DescribeParameters"],
@@ -360,7 +370,10 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "ssm:AddTagsToResource",
           "ssm:ListTagsForResource"
         ],
-        Resource = "arn:aws:ssm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/ustc/pay-gov/${local.environment}/rds-*"
+        Resource = [
+          "arn:aws:ssm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/ustc/pay-gov/${local.environment}/rds-*",
+          "arn:aws:ssm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/ustc/pay-gov/${local.environment}/monitoring-*"
+        ]
       }
     ]
   })
