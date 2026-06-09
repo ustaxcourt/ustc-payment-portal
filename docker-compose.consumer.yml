@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:14
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_DB: ${DB_NAME:-mydb}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-user} -d ${DB_NAME:-mydb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - payment_portal_dev_db:/var/lib/postgresql/data
+
+volumes:
+  payment_portal_dev_db:
