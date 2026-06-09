@@ -60,6 +60,7 @@ The portal is published as `@ustaxcourt/payment-portal` and serves two purposes:
 ### Project-specific Conventions
 
 - Use `import type` for type-only imports throughout the codebase.
+- Handlers are thin entry points — validate the request and delegate to a use case. Business logic belongs in `src/useCases/`, not in handlers.
 - Use case functions always accept `AppContext` as their first argument.
 - All public-facing errors are typed classes under `src/errors/` (e.g., `NotFoundError`, `ServerError`, `ForbiddenError`). Use these rather than raw `Error` throws. Unhandled errors bubble up to `handleError` ([`src/handleError.ts`](src/handleError.ts)), which formats them into an API Gateway response: 4xx typed errors (those with a `statusCode < 500`) and `ServerError` pass their `.message` directly to the client, so be deliberate about message content; raw `Error` throws produce a safe hardcoded "An unexpected error occurred while processing the request" message with a 500 status; `ZodError` returns 400 with the full validation issues array.
 - Add a new schema file in `src/schemas/` for any new API surface.
