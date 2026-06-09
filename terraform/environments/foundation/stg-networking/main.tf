@@ -54,4 +54,8 @@ module "iam" {
   github_oidc_provider_arn = local.github_oidc_provider_arn
   github_org               = local.github_org
   github_repo              = local.github_repo
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
 }
