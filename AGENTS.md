@@ -31,6 +31,15 @@ The portal is published as `@ustaxcourt/payment-portal` and serves two purposes:
 1. **NPM package** — when installed as a dependency, spins up two local Express servers: `devServer` (hosts Payment Portal for local development) and `Pay.gov Test Server` (simulates the SOAP endpoints that Production hits against the real Pay.gov). The package also exports the TypeScript request/response types that define the API contract, intended for downstream client app developers — currently other tax court apps — who integrate against our hosted endpoints to process payments.
 2. **Lambda handlers** — AWS Lambda entrypoints that receive API Gateway requests, validate them, call Pay.gov's SOAP API, and persist results to PostgreSQL via Knex/Objection.
 
+### Deployment & Infrastructure
+
+[terraform/](terraform/) — see [terraform/README.md](terraform/README.md).
+
+- Environments: `dev`, `stg`, `prod`, plus shared `foundation` (`terraform/environments/`).
+- **Prod is a separate, dedicated AWS account.** Never run deploy/Terraform
+  apply commands — provide them to the developer to run. (See Safety Rules.)
+- Build the deploy artifact with `npm run build:lambda`.
+
 ### Running, Linting, and Testing the Application
 
 - **Local stack** (recommended one-command start): `npm run start:all`. This starts Docker/Postgres, the mock Pay.gov test server, and the Express dev server. See [running-locally.md](running-locally.md) for full details, port configuration, and advanced options.
@@ -55,9 +64,11 @@ The portal is published as `@ustaxcourt/payment-portal` and serves two purposes:
 - All public-facing errors are typed classes under `src/errors/` (e.g., `NotFoundError`, `ServerError`, `ForbiddenError`). Use these rather than raw `Error` throws. Unhandled errors bubble up to `handleError` ([`src/handleError.ts`](src/handleError.ts)), which formats them into an API Gateway response: 4xx typed errors (those with a `statusCode < 500`) and `ServerError` pass their `.message` directly to the client, so be deliberate about message content; raw `Error` throws produce a safe hardcoded "An unexpected error occurred while processing the request" message with a 500 status; `ZodError` returns 400 with the full validation issues array.
 - Add a new schema file in `src/schemas/` for any new API surface.
 - Database access always goes through the model layer in `src/db/` (`TransactionModel`, `FeesModel`). Do not query Knex/Objection directly from use cases.
+- `transactionStatus` and `paymentStatus` are distinct fields. `transactionStatus` is the technical workflow state of a single Pay.gov API call (`received` → `initiated` → `processed` / `failed`); `paymentStatus` is the business-level outcome visible to clients (`pending` → `success` / `failed`). `transactionStatus` uses `processed` rather than `success` intentionally — to avoid conflation with `paymentStatus`. A single payment obligation can produce multiple transaction rows (one per attempt), each with its own `transactionStatus`.
 - `TransactionModel.createReceived` always enforces `paymentStatus='pending'` and `transactionStatus='received'` internally. Do not pass these fields in the call — they will be ignored, and doing so signals a misunderstanding of the model contract.
 - **OpenAPI spec**: generated via `npm run generate:openapi` from [`src/openapi/registry.ts`](src/openapi/registry.ts).
 - **Logger**: [`src/utils/logger.ts`](src/utils/logger.ts) — prefer `AppContext.logger` over `console` in production code paths (avoid adding new `console.*` calls).
+
 
 ## Security Requirements
 
