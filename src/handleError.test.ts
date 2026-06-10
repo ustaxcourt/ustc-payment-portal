@@ -117,6 +117,16 @@ describe("handleError", () => {
       );
     });
 
+    it("JSON-stringifies plain objects without a .message so triage isn't '[object Object]'", () => {
+      handleError({ statusCode: 500, code: "DB_UNREACHABLE" });
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errorMessage: '{"statusCode":500,"code":"DB_UNREACHABLE"}',
+        }),
+        "Lambda handler returned a server error",
+      );
+    });
+
     it("emits logger.warn for ZodError (validation = 4xx)", () => {
       const schema = z.object({ trackingId: z.string() });
       const { error } = schema.safeParse({});

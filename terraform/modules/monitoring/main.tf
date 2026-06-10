@@ -9,10 +9,12 @@ locals {
     var.tags,
   )
 
+  # GitHub Actions passes unset secrets as empty strings (not null), so treat
+  # null, "", and whitespace-only inputs as "Teams routing disabled."
   enable_teams = (
-    var.teams_tenant_id != null &&
-    var.teams_team_id != null &&
-    var.teams_channel_id != null
+    trimspace(coalesce(var.teams_tenant_id, "")) != "" &&
+    trimspace(coalesce(var.teams_team_id, "")) != "" &&
+    trimspace(coalesce(var.teams_channel_id, "")) != ""
   )
 }
 

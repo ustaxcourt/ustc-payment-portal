@@ -7,7 +7,7 @@ You were sent here by an alert. This runbook tells you what to check, in what or
 The alert subject names the Lambda and one of two metric types:
 
 - **`*-uncaught-critical`** — AWS Lambda's built-in `Errors` metric crossed threshold. This means a Lambda invocation threw an error past `handleError` and the Lambda runtime caught it. In normal operation this stays at zero because `handleError` catches everything. A non-zero value here usually means a handler crash, OOM, init-time failure, or a bug in `handleError` itself.
-- **`*-5xx-critical`** — log-based metric. A use case called `appContext.logger.error(...)` before throwing on a 5xx path. This is the normal signal when the payment portal returns a 500-level response to a client.
+- **`*-5xx-critical`** — log-based metric. `handleError` emitted a structured log line at `error` level with `statusCode >= 500`, which is the single source of truth for "this response was a 5xx." This is the normal signal when the payment portal returns a 500-level response to a client. See "How the 5xx detection works" near the bottom for the exact filter.
 
 Both alerts also fire a recovery (`OK`) event when the metric returns to zero — you should see a second email/SMS when service is restored.
 

@@ -148,14 +148,12 @@ module "monitoring" {
     initPayment    = module.lambda.function_names["initPayment"]
     processPayment = module.lambda.function_names["processPayment"]
     getDetails     = module.lambda.function_names["getDetails"]
-    testCert       = module.lambda.function_names["testCert"]
   }
 
   lambda_log_group_names = {
     initPayment    = module.lambda.log_group_names["initPayment"]
     processPayment = module.lambda.log_group_names["processPayment"]
     getDetails     = module.lambda.log_group_names["getDetails"]
-    testCert       = module.lambda.log_group_names["testCert"]
   }
 
   tags = {

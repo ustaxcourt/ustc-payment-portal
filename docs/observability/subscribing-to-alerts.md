@@ -5,7 +5,7 @@ How to add yourself (or someone else) to the Payment Portal alert distribution l
 There are two paths. Pick by intent:
 
 - **Ad-hoc / immediate** (CLI direct subscribe) — adds a subscription to the SNS topic right now, no terraform involved. Use for temporary coverage, on-call backups, or quick personal subscriptions.
-- **Canonical / declarative** (Secrets Manager + targeted apply) — adds your entry to the source-of-truth subscriber list. Use for permanent team additions, audit trail, and config that survives a stack rebuild.
+- **Canonical / declarative** (SSM Parameter Store + targeted apply) — adds your entry to the source-of-truth subscriber list. Use for permanent team additions, audit trail, and config that survives a stack rebuild.
 
 Both satisfy the AC "subscribable without a deployment" (no PR, no merge, no CI release). The difference is whether the subscription is tracked by terraform's canonical list.
 
@@ -53,9 +53,9 @@ Until confirmed, the subscription is in `PendingConfirmation` and won't deliver 
 
 ### Caveat
 
-These subscriptions exist in AWS but **not in the canonical subscriber list** stored in Secrets Manager. They survive across terraform applies (terraform only manages subscriptions it created), but they're invisible to anyone auditing "who's subscribed?" by reading the secret.
+These subscriptions exist in AWS but **not in the canonical subscriber list** stored in the SSM parameter. They survive across terraform applies (terraform only manages subscriptions it created), but they're invisible to anyone auditing "who's subscribed?" by reading the parameter.
 
-For temporary or personal additions, this is fine. For permanent on-call rotation membership, use Path B so future engineers can find the entry by reading the secret.
+For temporary or personal additions, this is fine. For permanent on-call rotation membership, use Path B so future engineers can find the entry by reading the SSM parameter.
 
 ---
 
@@ -97,7 +97,27 @@ aws ssm put-parameter \
 
 ### 3. Targeted terraform apply
 
-The parameter holds the desired state, but the `aws_sns_topic_subscription` resources only exist after terraform creates them. Run a targeted apply (not a full deploy):
+The parameter holds the desired state, but the `aws_sns_topic_subscription` resources only exist after terraform creates them. Run a targeted apply (not a full deploy).
+
+**Before applying**, set the same TF_VAR_* values that CI passes — terraform will prompt for them otherwise and you'll be stuck typing each one. Quick way: pull them from the env's most recent successful deploy log, or hardcode placeholders for Lambda artifacts (we're targeting the monitoring subscription, so `module.lambda` isn't being mutated by this apply — only parsed):
+
+```bash
+export AWS_PROFILE=ent-apps-payment-portal-workloads-{env}
+export TF_VAR_artifact_bucket=ustc-payment-portal-build-artifacts
+export TF_VAR_initPayment_s3_key=$(terraform state show 'module.lambda.aws_lambda_function.functions["initPayment"]' | awk '/s3_key/ {print $3; exit}' | tr -d '"')
+export TF_VAR_processPayment_s3_key=$(terraform state show 'module.lambda.aws_lambda_function.functions["processPayment"]' | awk '/s3_key/ {print $3; exit}' | tr -d '"')
+export TF_VAR_getDetails_s3_key=$(terraform state show 'module.lambda.aws_lambda_function.functions["getDetails"]' | awk '/s3_key/ {print $3; exit}' | tr -d '"')
+export TF_VAR_testCert_s3_key=$(terraform state show 'module.lambda.aws_lambda_function.functions["testCert"]' | awk '/s3_key/ {print $3; exit}' | tr -d '"')
+# stg only — migrationRunner doesn't exist in prod
+[ "{env}" = "stg" ] && export TF_VAR_migrationRunner_s3_key=$(terraform state show 'module.lambda.aws_lambda_function.functions["migrationRunner"]' | awk '/s3_key/ {print $3; exit}' | tr -d '"')
+
+# Teams routing IDs — sourced from the same values used by CI (STAGING_/PROD_ TEAMS_* GitHub secrets)
+export TF_VAR_teams_tenant_id="<from STAGING_TEAMS_TENANT_ID or PROD_TEAMS_TENANT_ID secret>"
+export TF_VAR_teams_team_id="<from STAGING_TEAMS_TEAM_ID or PROD_TEAMS_TEAM_ID secret>"
+export TF_VAR_teams_channel_id="<from STAGING_TEAMS_CHANNEL_ID or PROD_TEAMS_CHANNEL_ID secret>"
+```
+
+Then the targeted apply:
 
 ```bash
 cd terraform/environments/{env}

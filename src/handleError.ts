@@ -46,13 +46,24 @@ const computeResponse = (err: any) => {
   };
 };
 
+const formatErrorMessage = (err: any): string => {
+  if (err && typeof err.message === "string") return err.message;
+  if (err !== null && typeof err === "object") {
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return String(err);
+    }
+  }
+  return String(err);
+};
+
 export const handleError = (err: any) => {
   const response = computeResponse(err);
   const logPayload = {
     statusCode: response.statusCode,
     errorName: err instanceof Error ? err.name : undefined,
-    errorMessage:
-      err && typeof err.message === "string" ? err.message : String(err),
+    errorMessage: formatErrorMessage(err),
     errorStack: err instanceof Error ? err.stack : undefined,
   };
 
