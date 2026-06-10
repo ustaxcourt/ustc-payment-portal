@@ -27,6 +27,7 @@ env:
   TF_VAR_processPayment_s3_key: "plan-only-no-artifact"
   TF_VAR_getDetails_s3_key: "plan-only-no-artifact"
   TF_VAR_testCert_s3_key: "plan-only-no-artifact"
+  TF_VAR_migrationRunner_s3_key: "plan-only-no-artifact"
 
 jobs:
   check_actor:
