@@ -52,9 +52,8 @@ variable "getTransactionPaymentStatus_s3_key" {
   description = "S3 key for getTransactionPaymentStatus Lambda artifact"
   type        = string
   default     = ""
-
-
 }
+
 variable "getAllTransactions_source_code_hash" {
   description = "Base64-encoded SHA256 hash for getAllTransactions artifact"
   type        = string
