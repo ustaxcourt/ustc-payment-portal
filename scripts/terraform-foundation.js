@@ -207,13 +207,24 @@ function main() {
     },
   });
 
-  process.exit(exitCode);
+  return exitCode;
 }
 
-try {
-  main();
-} catch (err) {
-  const message = err instanceof Error ? err.message : String(err);
-  console.error(`[tf:foundation] ${message}`);
-  process.exit(1);
+if (require.main === module) {
+  try {
+    process.exit(main());
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[tf:foundation] ${message}`);
+    process.exit(1);
+  }
 }
+
+module.exports = {
+  ENV_CONFIG,
+  buildTerraformArgs,
+  ensureSsoSession,
+  main,
+  parseArgs,
+  verifyAccountId,
+};
