@@ -13,6 +13,7 @@ describe("start-local-stack", () => {
   let mockStopDockerStack;
   let mockSpawn;
   let mockLog;
+  let mockSetupConsumerDb;
 
   function makeChildProcess() {
     const handlers = {};
@@ -37,6 +38,7 @@ describe("start-local-stack", () => {
     mockStopDockerStack = jest.fn();
     mockSpawn = jest.fn();
     mockLog = { tag: "[start]", info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+    mockSetupConsumerDb = jest.fn().mockResolvedValue(undefined);
 
     jest.doMock("./lib/ports", () => ({
       ensurePortsAvailable: mockEnsurePortsAvailable,
@@ -50,9 +52,13 @@ describe("start-local-stack", () => {
     jest.doMock("./lib/parsePort", () => ({
       parsePort: jest.fn((value, fallback) => fallback),
     }));
+    jest.doMock("./lib/dbSetup", () => ({
+      setupConsumerDb: mockSetupConsumerDb,
+    }));
 
-    // Default: include pay-gov
+    // Default: include pay-gov, not in consumer mode
     delete process.env.START_PAY_GOV;
+    delete process.env.CONSUMER_MODE;
   });
 
   afterEach(() => {
@@ -157,5 +163,53 @@ describe("start-local-stack", () => {
 
     // Other child should be told to stop
     expect(child2.kill).toHaveBeenCalled();
+  });
+
+  it("logs and shuts down when a child process emits an error event", async () => {
+    const child1 = makeChildProcess();
+    const child2 = makeChildProcess();
+    mockSpawn.mockReturnValueOnce(child1).mockReturnValueOnce(child2);
+
+    require("./start-local-stack");
+    await flushPromises();
+
+    child1.emit("error", new Error("spawn ENOENT"));
+
+    expect(mockLog.error).toHaveBeenCalled();
+    expect(child2.kill).toHaveBeenCalled();
+  });
+
+  it("logs, stops docker, and exits when main() rejects unexpectedly", async () => {
+    mockEnsurePortsAvailable.mockRejectedValue(new Error("unexpected failure"));
+
+    require("./start-local-stack");
+    await flushPromises();
+
+    expect(mockLog.error).toHaveBeenCalled();
+    expect(mockStopDockerStack).toHaveBeenCalled();
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("runs setupConsumerDb before spawning processes in CONSUMER_MODE", async () => {
+    process.env.CONSUMER_MODE = "true";
+    mockSpawn.mockReturnValue(makeChildProcess());
+
+    require("./start-local-stack");
+    await flushPromises();
+
+    expect(mockSetupConsumerDb).toHaveBeenCalled();
+    expect(mockSpawn).toHaveBeenCalled();
+  });
+
+  it("stops docker and exits when setupConsumerDb fails in CONSUMER_MODE", async () => {
+    process.env.CONSUMER_MODE = "true";
+    mockSetupConsumerDb.mockRejectedValue(new Error("migration failed"));
+
+    require("./start-local-stack");
+    await flushPromises();
+
+    expect(mockStopDockerStack).toHaveBeenCalled();
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+    expect(mockSpawn).not.toHaveBeenCalled();
   });
 });

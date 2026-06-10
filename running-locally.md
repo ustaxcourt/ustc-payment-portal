@@ -1,5 +1,11 @@
 # Running Payment Portal locally
 
+This document is for **portal contributors** working directly in this repository.
+
+If you are a **downstream developer** (e.g. DAWSON / `ef-cms`) and want to run the portal as a dev dependency, see **[docs/using-as-dev-dependency.md](docs/using-as-dev-dependency.md)** instead — no clone or `.env` required.
+
+---
+
 This document is split into two parts:
 
 1. **Setting up the App to run locally** — one-time setup (clone, install, configure).
