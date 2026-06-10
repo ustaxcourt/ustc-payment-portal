@@ -43,6 +43,11 @@ output "ci_deployer_role_arn" {
   description = "CI/CD deployer role ARN (for GitHub Actions OIDC)"
 }
 
+output "ci_deployer_role_name" {
+  value       = module.iam.deployer_role_name
+  description = "CI/CD deployer role name"
+}
+
 output "ci_read_only_role_arn" {
   value       = module.iam.read_only_role_arn
   description = "Read-only CI role ARN (used by terraform-plan workflow today)"

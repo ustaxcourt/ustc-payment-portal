@@ -9,7 +9,7 @@ const VALID_ENVS = new Set(["dev", "stg", "prod"]);
 const ENV_CONFIG = {
   dev: {
     profile: "ustcpp-dev",
-    expectedAccountId: process.env.USTCPP_DEV_ACCOUNT_ID || "",
+    expectedAccountId: process.env.USTCPP_DEV_ACCOUNT_ID || "723609007960",
     backendConfig: "backend/dev.hcl",
     varFile: "vars/dev.vars.hcl",
   },

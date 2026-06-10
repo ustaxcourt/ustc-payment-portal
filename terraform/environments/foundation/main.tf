@@ -48,3 +48,15 @@ resource "aws_iam_role_policy_attachment" "ci_build_artifacts" {
   role       = module.iam.deployer_role_name
   policy_arn = module.artifacts_bucket[0].build_artifacts_access_policy_arn
 }
+
+# Migration: these resources previously had no count index in dev-networking/main.tf.
+# The moved blocks tell Terraform to rename them in state rather than destroy and recreate.
+moved {
+  from = module.artifacts_bucket
+  to   = module.artifacts_bucket[0]
+}
+
+moved {
+  from = aws_iam_role_policy_attachment.ci_build_artifacts
+  to   = aws_iam_role_policy_attachment.ci_build_artifacts[0]
+}
