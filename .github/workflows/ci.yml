@@ -23,7 +23,7 @@ jobs:
     needs: build
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:14
+        image: postgres:14
         env:
           POSTGRES_USER: user
           POSTGRES_PASSWORD: password
