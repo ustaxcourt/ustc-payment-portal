@@ -39,3 +39,19 @@ variable "testCert_source_code_hash" {
   default = ""
 }
 
+# Teams routing IDs sourced from PROD_TEAMS_* GitHub secrets via TF_VAR_*; null disables routing.
+variable "teams_tenant_id" {
+  type    = string
+  default = null
+}
+
+variable "teams_team_id" {
+  type    = string
+  default = null
+}
+
+variable "teams_channel_id" {
+  type    = string
+  default = null
+}
+
