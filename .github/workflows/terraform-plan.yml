@@ -134,7 +134,7 @@ jobs:
             echo "ok" > plan-output/status.txt
             echo "$SUMMARY" > plan-output/summary.txt
           else
-            echo "errorr" > plan-output/status.txt
+            echo "error" > plan-output/status.txt
             echo "plan failed (see Actions log)" > plan-output/summary.txt
           fi
 
