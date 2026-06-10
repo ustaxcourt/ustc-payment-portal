@@ -1,4 +1,3 @@
-// 20260610103000_upsert_canonical_fees.ts
 import type { Knex } from "knex";
 
 type CanonicalFeeRow = {
@@ -40,7 +39,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex("fees").insert(CANONICAL_FEES).onConflict("fee_id").merge();
 }
 
-export async function down(knex: Knex): Promise<void> {
+export async function down(): Promise<void> {
   // No-op: canonical reference data is safe to leave in place.
   // Attempting to delete would fail due to FK constraints from transactions
   // referencing these fees. Future fee versions should be added in new migrations,
