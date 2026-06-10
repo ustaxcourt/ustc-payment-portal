@@ -8,6 +8,16 @@ output "function_names" {
   value       = { for k, v in aws_lambda_function.functions : k => v.function_name }
 }
 
+output "log_group_names" {
+  description = "Map of Lambda function key to CloudWatch log group name. Used by monitoring module for log-based metric filters."
+  value       = { for k, v in aws_cloudwatch_log_group.lambda_logs : k => v.name }
+}
+
+output "log_group_arns" {
+  description = "Map of Lambda function key to CloudWatch log group ARN."
+  value       = { for k, v in aws_cloudwatch_log_group.lambda_logs : k => v.arn }
+}
+
 output "function_invoke_arns" {
   description = "Map of Lambda function invoke ARNs"
   value       = { for k, v in aws_lambda_function.functions : k => v.invoke_arn }

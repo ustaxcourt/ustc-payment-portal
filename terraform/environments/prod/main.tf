@@ -127,3 +127,40 @@ data "aws_secretsmanager_secret_version" "allowed_account_ids" {
   secret_id  = module.secrets.allowed_account_ids_secret_id
   depends_on = [module.secrets]
 }
+
+data "aws_ssm_parameter" "monitoring_subscribers" {
+  name       = module.secrets.monitoring_subscribers_parameter_name
+  depends_on = [module.secrets]
+}
+
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  env              = local.environment
+  name_prefix      = local.name_prefix
+  subscribers      = local.monitoring_subscribers
+  runbook_url      = local.runbook_url
+  teams_tenant_id  = var.teams_tenant_id
+  teams_team_id    = var.teams_team_id
+  teams_channel_id = var.teams_channel_id
+
+  lambda_functions = {
+    initPayment    = module.lambda.function_names["initPayment"]
+    processPayment = module.lambda.function_names["processPayment"]
+    getDetails     = module.lambda.function_names["getDetails"]
+    testCert       = module.lambda.function_names["testCert"]
+  }
+
+  lambda_log_group_names = {
+    initPayment    = module.lambda.log_group_names["initPayment"]
+    processPayment = module.lambda.log_group_names["processPayment"]
+    getDetails     = module.lambda.log_group_names["getDetails"]
+    testCert       = module.lambda.log_group_names["testCert"]
+  }
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
