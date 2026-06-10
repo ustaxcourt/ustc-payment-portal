@@ -52,8 +52,4 @@ locals {
   ))
 
   runbook_url = "https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/runbooks/lambda-error-alerts.md"
-
-  teams_tenant_id  = "REDACTED-TENANT-ID"
-  teams_team_id    = "REDACTED-TEAM-ID"
-  teams_channel_id = "REDACTED-CHANNEL-ID"
 }

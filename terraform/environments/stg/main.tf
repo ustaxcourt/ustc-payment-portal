@@ -137,9 +137,9 @@ module "monitoring" {
   name_prefix      = local.name_prefix
   subscribers      = local.monitoring_subscribers
   runbook_url      = local.runbook_url
-  teams_tenant_id  = local.teams_tenant_id
-  teams_team_id    = local.teams_team_id
-  teams_channel_id = local.teams_channel_id
+  teams_tenant_id  = var.teams_tenant_id
+  teams_team_id    = var.teams_team_id
+  teams_channel_id = var.teams_channel_id
 
   # migrationRunner: uncaught-error alarm only (no HTTP response = no 5xx concept).
   # testCert: excluded — test-only endpoint, no user impact when it fails.

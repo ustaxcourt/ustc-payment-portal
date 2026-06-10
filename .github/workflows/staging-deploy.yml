@@ -203,6 +203,10 @@ jobs:
           TF_VAR_getDetails_s3_key: ${{ steps.artifacts.outputs.getDetails }}
           TF_VAR_testCert_s3_key: ${{ steps.artifacts.outputs.testCert }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.artifacts.outputs.migrationRunner }}
+          # AWS Chatbot → Microsoft Teams routing. Missing secrets disable Teams routing (enable_teams=false).
+          TF_VAR_teams_tenant_id: ${{ secrets.STAGING_TEAMS_TENANT_ID }}
+          TF_VAR_teams_team_id: ${{ secrets.STAGING_TEAMS_TEAM_ID }}
+          TF_VAR_teams_channel_id: ${{ secrets.STAGING_TEAMS_CHANNEL_ID }}
         run: |
           set +e
           terraform plan -input=false -detailed-exitcode -out=tfplan
