@@ -82,3 +82,17 @@ resource "aws_secretsmanager_secret_version" "allowed_account_ids_initial" {
     ignore_changes = [secret_string]
   }
 }
+
+# JSON array of {protocol, endpoint}. SecureString since phone numbers are PII;
+# updated via `aws ssm put-parameter` without redeploying.
+resource "aws_ssm_parameter" "monitoring_subscribers" {
+  name        = "/${local.basepath}/${var.monitoring_subscribers_name}"
+  description = "JSON array of alert SNS topic subscribers: [{protocol, endpoint}, ...] (${local.env})"
+  type        = "SecureString"
+  value       = "[]"
+  tags        = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}

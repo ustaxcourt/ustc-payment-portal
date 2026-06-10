@@ -71,6 +71,12 @@ variable "allowed_account_ids_name" {
   default     = "allowed-account-ids"
 }
 
+variable "monitoring_subscribers_name" {
+  description = "SSM Parameter Store name suffix for the alerts SNS topic subscriber list (SecureString)"
+  type        = string
+  default     = "monitoring-subscribers"
+}
+
 variable "recovery_window_in_days" {
   description = "Days to retain deleted secrets before permanent removal (0=immediate, 7-30 for recoverability)"
   type        = number
