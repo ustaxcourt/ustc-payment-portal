@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import path from "path";
+import path from "node:path";
 import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { isLocal } from "./config/appEnv";
@@ -55,7 +55,6 @@ app.use((req, res, next) => {
 });
 app.use(setupLocalAppContext);
 
-// tslint:disable-next-line:no-var-requires
 const { parsePort } = require("../scripts/lib/parsePort");
 const port: number = parsePort(process.env.API_PORT, 8080, "API_PORT");
 const devClient: ClientPermission = {
@@ -211,7 +210,6 @@ app.get("/transaction-payment-status", async (_req, res, next) => {
 
 // start the express server
 app.listen(port, () => {
-  // tslint:disable-next-line:no-console
   console.log(`Payment Portal started at http://localhost:${port}`);
   console.log(`API docs available at http://localhost:${port}/docs`);
 });
