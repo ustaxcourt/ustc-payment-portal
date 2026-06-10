@@ -55,20 +55,24 @@ variable "tags" {
 
 # Teams routing. All three must be set together or Teams resources are skipped.
 # AWS Chatbot app must be consented in the M365 tenant before messages route.
+# sensitive = true keeps the values out of terraform plan/apply output.
 variable "teams_tenant_id" {
   description = "Microsoft 365 tenant ID."
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "teams_team_id" {
   description = "Microsoft Teams team ID."
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "teams_channel_id" {
   description = "Microsoft Teams channel ID where alerts are posted."
   type        = string
   default     = null
+  sensitive   = true
 }
