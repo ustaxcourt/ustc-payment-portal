@@ -59,5 +59,12 @@ locals {
     jsondecode(data.aws_secretsmanager_secret_version.allowed_account_ids.secret_string),
     []
   )
+
+  monitoring_subscribers = nonsensitive(try(
+    jsondecode(data.aws_ssm_parameter.monitoring_subscribers.value),
+    []
+  ))
+
+  runbook_url = "https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/runbooks/lambda-error-alerts.md"
 }
 
