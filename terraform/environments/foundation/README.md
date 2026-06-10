@@ -31,6 +31,23 @@ npm run tf:foundation:plan -- --env=stg
 npm run tf:foundation:apply -- --env=prod
 ```
 
+Manual alternative (when not using npm scripts):
+
+```bash
+# From repository root
+cd terraform/environments/foundation
+
+# Pick one environment profile before running Terraform
+export AWS_PROFILE=ustcpp-dev
+export AWS_SDK_LOAD_CONFIG=1
+
+terraform init -input=false -backend-config=backend/dev.hcl -reconfigure
+terraform plan -input=false -var-file=vars/dev.vars.hcl
+terraform apply -input=false -var-file=vars/dev.vars.hcl
+```
+
+Replace `dev` with `stg` or `prod` as needed. In this shared root, always use `backend/<env>.hcl` and `vars/<env>.vars.hcl` (not a generic `backend.hcl`).
+
 The script enforces standardized local profile names:
 
 - `ustcpp-dev`
@@ -43,11 +60,9 @@ It also:
 2. Triggers `aws sso login --profile <profile>` if the session is expired
 3. Runs Terraform with the matching backend/tfvars for the selected environment
 
-Optional: enforce dev account id too by setting `USTCPP_DEV_ACCOUNT_ID`.
-
 ## What this layer creates
 
 - VPC, subnets, internet gateway, NAT, route tables
 - Lambda and RDS security groups
 - Base IAM roles used by workload deployment
-- Dev-only shared artifacts bucket policy attachment (via `vars/dev.tfvars`)
+- Dev-only shared artifacts bucket policy attachment (via `vars/dev.vars.hcl`)

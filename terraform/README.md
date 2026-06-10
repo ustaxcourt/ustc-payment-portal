@@ -88,6 +88,22 @@ npm run tf:foundation:plan -- --env=stg
 npm run tf:foundation:apply -- --env=prod
 ```
 
+Manual alternative (when not using npm scripts):
+
+```bash
+cd terraform/environments/foundation
+
+# Set the matching local profile first
+export AWS_PROFILE=ustcpp-dev
+export AWS_SDK_LOAD_CONFIG=1
+
+terraform init -input=false -backend-config=backend/dev.hcl -reconfigure
+terraform plan -input=false -var-file=vars/dev.vars.hcl
+terraform apply -input=false -var-file=vars/dev.vars.hcl
+```
+
+Replace `dev` with `stg` or `prod` as needed. In the shared foundation root, use `backend/<env>.hcl` and `vars/<env>.vars.hcl` rather than a generic `backend.hcl`.
+
 The script maps environment to:
 
 - profile: `ustcpp-dev|ustcpp-stg|ustcpp-prod`
