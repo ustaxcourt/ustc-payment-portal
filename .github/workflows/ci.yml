@@ -13,7 +13,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run lint
+      - run: npm run lint:ci
       - run: npm run build
       - run: npm run test:types
       - run: npm test
