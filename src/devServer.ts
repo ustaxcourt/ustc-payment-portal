@@ -44,9 +44,17 @@ const jsonBodyParser = express.json({ strict: false });
 app.use((req, res, next) => {
   jsonBodyParser(req, res, (err) => {
     if (err) {
+      // Parse failures return early and never reach setupLocalAppContext below,
+      // so create a minimal context here solely for contextual error logging.
+      const parseErrorAppContext = createAppContext({
+        localRequest: {
+          method: req.method,
+          path: req.path,
+        },
+      });
       const { statusCode, body } = handleError(
         new InvalidRequestError("invalid JSON in request body"),
-        res.locals.appContext.logger,
+        parseErrorAppContext.logger,
       );
       res.status(statusCode).json(JSON.parse(body));
       return;

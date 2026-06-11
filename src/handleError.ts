@@ -1,7 +1,7 @@
 import { ZodError } from "zod";
 import { PayGovError } from "./errors/payGovError";
 import { ServerError } from "./errors/serverError";
-import { AppContextLogger } from "./types/AppContext";
+import type { AppContextLogger } from "./types/AppContext";
 
 const computeResponse = (err: any) => {
   if (err.statusCode && err.statusCode < 500) {
