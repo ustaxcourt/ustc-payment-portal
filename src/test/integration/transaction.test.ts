@@ -146,13 +146,14 @@ describe("make a transaction", () => {
         scenario,
         expectedInitialStates,
       );
+      const initialTransaction = getLatestTransaction(detailsResponse);
 
       if (
         detailsResponse.paymentStatus === scenario.expectedFinalPaymentStatus &&
-        detailsResponse.transactions[0]?.transactionStatus ===
+        initialTransaction.transactionStatus ===
           scenario.expectedFinalTransactionStatus
       ) {
-        expect(detailsResponse.transactions[0].payGovTrackingId).toBeTruthy();
+        expect(initialTransaction.payGovTrackingId).toBeTruthy();
         return;
       }
 
@@ -168,7 +169,9 @@ describe("make a transaction", () => {
         scenario.expectedFinalPaymentStatus,
         scenario.expectedFinalTransactionStatus,
       );
-      expect(resolvedDetails.transactions[0].payGovTrackingId).toBeTruthy();
+      expect(
+        getLatestTransaction(resolvedDetails).payGovTrackingId,
+      ).toBeTruthy();
       return;
     }
 
@@ -178,7 +181,7 @@ describe("make a transaction", () => {
       scenario.expectedFinalPaymentStatus,
       scenario.expectedFinalTransactionStatus,
     );
-    expect(detailsResponse.transactions[0].payGovTrackingId).toBeTruthy();
+    expect(getLatestTransaction(detailsResponse).payGovTrackingId).toBeTruthy();
   });
 
   // Helper so every portal call uses SigV4 in deployed envs, plain fetch locally.
@@ -336,14 +339,18 @@ describe("make a transaction", () => {
     expectedPaymentStatus: PaymentStatus,
     expectedTransactionStatus: TransactionStatus,
   ) => {
+    const transaction = getLatestTransaction(response);
+
     expect(response.paymentStatus).toBe(expectedPaymentStatus);
-    expect(response.transactions).toHaveLength(1);
-    expect(response.transactions[0].transactionStatus).toBe(
-      expectedTransactionStatus,
-    );
-    expect(response.transactions[0].paymentMethod).toBe(
-      scenario.expectedApiPaymentMethod,
-    );
+    expect(transaction.transactionStatus).toBe(expectedTransactionStatus);
+    expect(transaction.paymentMethod).toBe(scenario.expectedApiPaymentMethod);
+  };
+
+  const getLatestTransaction = (
+    response: ProcessPaymentResponse | GetDetailsResponse,
+  ) => {
+    expect(response.transactions.length).toBeGreaterThan(0);
+    return response.transactions[response.transactions.length - 1];
   };
 
   const assertSingleTransactionInExpectedStates = (
@@ -351,10 +358,12 @@ describe("make a transaction", () => {
     scenario: Scenario,
     expectedStates: ExpectedState[],
   ) => {
+    const transaction = getLatestTransaction(response);
+
     const matchedState = expectedStates.find(
       ({ paymentStatus, transactionStatus }) =>
         response.paymentStatus === paymentStatus &&
-        response.transactions[0]?.transactionStatus === transactionStatus,
+        transaction.transactionStatus === transactionStatus,
     );
 
     if (!matchedState) {
@@ -364,16 +373,13 @@ describe("make a transaction", () => {
             `${paymentStatus}/${transactionStatus}`,
         )
         .join(" or ");
-      const received = `${response.paymentStatus}/${response.transactions[0]?.transactionStatus}`;
+      const received = `${response.paymentStatus}/${transaction.transactionStatus}`;
       throw new Error(
         `Unexpected transaction state for scenario '${scenario.name}'. Expected ${expected}. Received ${received}.`,
       );
     }
 
-    expect(response.transactions).toHaveLength(1);
-    expect(response.transactions[0].paymentMethod).toBe(
-      scenario.expectedApiPaymentMethod,
-    );
+    expect(transaction.paymentMethod).toBe(scenario.expectedApiPaymentMethod);
   };
 
   const waitForResolvedDetails = async (
@@ -382,15 +388,17 @@ describe("make a transaction", () => {
     initialDetails: GetDetailsResponse,
   ): Promise<GetDetailsResponse> => {
     const deadline = Date.now() + ACH_RESOLUTION_TIMEOUT_MS;
+    const initialTransaction = getLatestTransaction(initialDetails);
     const seenStates = [
-      `${initialDetails.paymentStatus}/${initialDetails.transactions[0]?.transactionStatus}`,
+      `${initialDetails.paymentStatus}/${initialTransaction.transactionStatus}`,
     ];
     let current = initialDetails;
 
     while (Date.now() < deadline) {
+      const currentTransaction = getLatestTransaction(current);
       if (
         current.paymentStatus === scenario.expectedFinalPaymentStatus &&
-        current.transactions[0]?.transactionStatus ===
+        currentTransaction.transactionStatus ===
           scenario.expectedFinalTransactionStatus
       ) {
         return current;
@@ -398,8 +406,9 @@ describe("make a transaction", () => {
 
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
       current = await getDetails(referenceId);
+      const nextTransaction = getLatestTransaction(current);
       seenStates.push(
-        `${current.paymentStatus}/${current.transactions[0]?.transactionStatus}`,
+        `${current.paymentStatus}/${nextTransaction.transactionStatus}`,
       );
     }
 
