@@ -3,10 +3,9 @@ set -euo pipefail
 #
 # PAY-332 — verify the dedicated prod account is functional BEFORE cutover/teardown.
 #
-# READ-ONLY by default. Proves the dedicated account (802939326821,
-# ent-apps-payment-portal-workloads-prod) is genuinely ready to BE prod — not just
-# that the infrastructure exists. This is the gate before the irreversible steps
-# (DNS cutover, isd-prod teardown).
+# READ-ONLY by default. Proves the target account (passed as an arg) is genuinely
+# ready to BE prod — not just that the infrastructure exists. This is the gate
+# before the irreversible steps (DNS cutover, old-account teardown).
 #
 # Checks:
 #   1. We're in the dedicated account.
@@ -102,23 +101,29 @@ if [ "$SMOKE" != "1" ]; then
 elif [ -z "$API_URL" ]; then
   bad "Cannot smoke test — no API URL"
 else
-  creds=$(aws configure export-credentials --format env 2>/dev/null || true)
+  # Default (process) format is JSON — parse the specific fields with jq rather
+  # than eval'ing the CLI output (don't execute whatever the command prints).
+  creds=$(aws configure export-credentials 2>/dev/null || true)
   if [ -z "$creds" ]; then
     warn "Could not export credentials for SigV4 signing — skipping smoke test"
   else
-    eval "$creds"
+    AWS_ACCESS_KEY_ID=$(printf '%s' "$creds" | jq -r '.AccessKeyId')
+    AWS_SECRET_ACCESS_KEY=$(printf '%s' "$creds" | jq -r '.SecretAccessKey')
+    AWS_SESSION_TOKEN=$(printf '%s' "$creds" | jq -r '.SessionToken')
+    export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+    init_out=$(mktemp)   # unique per run — never clobber a fixed /tmp path
     ref=$(uuidgen | tr 'A-Z' 'a-z')
     body=$(printf '{"transactionReferenceId":"%s","fee":"PETITION_FILING_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com","metadata":{"docketNumber":"999-99"}}' "$ref")
-    resp=$(curl -s -o /tmp/pay332-init.json -w '%{http_code}' -X POST "${API_URL}/init" \
+    resp=$(curl -s -o "$init_out" -w '%{http_code}' -X POST "${API_URL}/init" \
       -H 'Content-Type: application/json' \
       --aws-sigv4 "aws:amz:${AWS_REGION}:execute-api" \
       --user "${AWS_ACCESS_KEY_ID}:${AWS_SECRET_ACCESS_KEY}" \
       -H "x-amz-security-token: ${AWS_SESSION_TOKEN}" \
       --data-binary "$body" 2>/dev/null || echo "000")
-    if [ "$resp" = "200" ] && jq -e '.token and .paymentRedirect' /tmp/pay332-init.json >/dev/null 2>&1; then
+    if [ "$resp" = "200" ] && jq -e '.token and .paymentRedirect' "$init_out" >/dev/null 2>&1; then
       ok "/init returned 200 with token + paymentRedirect — mTLS path to Pay.gov works"
     else
-      bad "/init returned HTTP $resp (see /tmp/pay332-init.json) — investigate before cutover"
+      bad "/init returned HTTP $resp (see $init_out) — investigate before cutover"
     fi
   fi
 fi

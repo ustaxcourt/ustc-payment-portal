@@ -66,7 +66,10 @@ resource "aws_db_instance" "main" {
   })
 
   lifecycle {
-    # RDS auto-upgrades minor versions; don't let TF try to downgrade engine_version back.
+    # RDS auto-upgrades minor versions, so the live engine_version drifts ahead of
+    # the configured value; ignoring it stops TF from trying to "downgrade" it back.
+    # Trade-off: TF ignores engine_version entirely, so a *deliberate* version
+    # upgrade requires temporarily removing this rule (otherwise the bump no-ops).
     ignore_changes = [engine_version]
   }
 }

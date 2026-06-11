@@ -104,7 +104,9 @@ fi
 
 # --- 6. Empty the stack's S3 buckets (incl. all versions) --------------------
 empty_bucket() {
-  local b="$1"
+  local b="$1" delfile
+  delfile=$(mktemp)   # unique per run — never clobber a fixed /tmp path
+  trap 'rm -f "$delfile"' RETURN
   while :; do
     local v n
     v=$(aws s3api list-object-versions --bucket "$b" --max-items 500 \
@@ -112,8 +114,8 @@ empty_bucket() {
       --output json 2>/dev/null || echo '{"Objects":null}')
     n=$(printf '%s' "$v" | jq '(.Objects // []) | length')
     [ "$n" -eq 0 ] && break
-    printf '%s' "$v" | jq '{Objects: (.Objects // []), Quiet: true}' > /tmp/pay332-del.json
-    aws s3api delete-objects --bucket "$b" --delete file:///tmp/pay332-del.json >/dev/null
+    printf '%s' "$v" | jq '{Objects: (.Objects // []), Quiet: true}' > "$delfile"
+    aws s3api delete-objects --bucket "$b" --delete "file://$delfile" >/dev/null
   done
 }
 if [ -n "$buckets" ]; then

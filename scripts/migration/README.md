@@ -60,10 +60,10 @@ Common env overrides: `AWS_REGION` (all), `SECRET_PREFIX`/`API_NAME`/`STAGE`
 - **Handles `DELETE_FAILED`** on already-gone resources (e.g. a transferred EIP) by
   retrying with `--retain-resources`, so the rest of the stack still deletes.
 
-## Status
+## Status — migration complete
 
 - ✅ isd-prod CloudWatch logs exported and uploaded to SharePoint (AC #2)
 - ✅ DNS delegated; domain resolves with a valid cert and responds (AC #6)
 - ✅ EIP migrated & preserved — original prod IP transferred to the dedicated account (AC #4)
 - ✅ Dedicated account stood up + Terraform drift reconciled → `terraform plan` is **clean**, so CI can deploy (AC #3, AC #5)
-- ⏳ **Teardown** the old `ustc-payment-processor-prod` stack via `teardown-stack.sh` (AC #1) — the last step
+- ✅ Old `ustc-payment-processor-prod` stack torn down from the shared account via `teardown-stack.sh` (AC #1)
