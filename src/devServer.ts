@@ -46,6 +46,7 @@ app.use((req, res, next) => {
     if (err) {
       const { statusCode, body } = handleError(
         new InvalidRequestError("invalid JSON in request body"),
+        res.locals.appContext.logger,
       );
       res.status(statusCode).json(JSON.parse(body));
       return;
@@ -114,7 +115,7 @@ app.post("/init", async (req, res) => {
       .initPayment(res.locals.appContext, { client: devClient, request });
     res.json(result);
   } catch (err) {
-    const { statusCode, body } = handleError(err);
+    const { statusCode, body } = handleError(err, res.locals.appContext.logger);
     res.status(statusCode).json(JSON.parse(body));
   }
 });
@@ -132,7 +133,7 @@ app.post("/process", async (req, res) => {
       .processPayment(res.locals.appContext, { client: devClient, request });
     res.json(result);
   } catch (err) {
-    const { statusCode, body } = handleError(err);
+    const { statusCode, body } = handleError(err, res.locals.appContext.logger);
     res.status(statusCode).json(JSON.parse(body));
   }
 });
@@ -151,7 +152,7 @@ app.get("/details/:transactionReferenceId", async (req, res) => {
       });
     res.json(result);
   } catch (err) {
-    const { statusCode, body } = handleError(err);
+    const { statusCode, body } = handleError(err, res.locals.appContext.logger);
     res.status(statusCode).json(JSON.parse(body));
   }
 });
