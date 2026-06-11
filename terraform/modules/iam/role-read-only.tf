@@ -183,6 +183,33 @@ resource "aws_iam_role_policy" "github_actions_read_only" {
           "rds:ListTagsForResource"
         ],
         Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "sns:GetTopicAttributes",
+          "sns:ListTagsForResource",
+          "sns:ListSubscriptionsByTopic",
+          "sns:GetSubscriptionAttributes"
+        ],
+        Resource = "arn:aws:sns:${local.aws_region}:${data.aws_caller_identity.current.account_id}:${var.lambda_name_prefix}-*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "cloudwatch:DescribeAlarms",
+          "cloudwatch:ListTagsForResource"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "chatbot:GetMicrosoftTeamsChannelConfiguration",
+          "chatbot:ListMicrosoftTeamsChannelConfigurations",
+          "chatbot:ListTagsForResource"
+        ],
+        Resource = "*"
       }
     ]
   })

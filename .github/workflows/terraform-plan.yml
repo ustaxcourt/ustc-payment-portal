@@ -1,0 +1,289 @@
+name: Terraform Validate and Plan
+
+# Runs `terraform validate` + `terraform plan` against dev, stg, and prod on every PR
+# and posts a single unified comment with the result of each. Read-only — never applies.
+# Apply is owned by cicd-dev.yml (dev), staging-deploy.yml (stg), and prod-deploy.yml (prod).
+# See docs/PAY-264-terraform-plan-workflow.md for design rationale.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  id-token: write       # OIDC for AWS role assumption
+  contents: read        # checkout
+  pull-requests: write  # PR comment
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_VAR_artifact_bucket: "plan-only-no-artifact"
+  TF_VAR_initPayment_s3_key: "plan-only-no-artifact"
+  TF_VAR_processPayment_s3_key: "plan-only-no-artifact"
+  TF_VAR_getDetails_s3_key: "plan-only-no-artifact"
+  TF_VAR_testCert_s3_key: "plan-only-no-artifact"
+  TF_VAR_migrationRunner_s3_key: "plan-only-no-artifact"
+
+jobs:
+  check_actor:
+    name: Check if Dependabot
+    runs-on: ubuntu-latest
+    outputs:
+      is_dependabot: ${{ steps.check.outputs.is_dependabot }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ github.actor }}" == "dependabot[bot]" ]] || [[ "${{ github.head_ref }}" == dependabot/* ]]; then
+            echo "is_dependabot=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_dependabot=false" >> $GITHUB_OUTPUT
+          fi
+
+  plan:
+    needs: check_actor
+    if: needs.check_actor.outputs.is_dependabot != 'true'
+    name: Plan (${{ matrix.env }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false  # Surface all three env results even if one fails
+      matrix:
+        include:
+          - env: dev
+            role_arn_secret: DEV_AWS_READ_ONLY_ROLE_ARN
+            backend_config: backend.hcl
+          - env: stg
+            role_arn_secret: STAGING_AWS_READ_ONLY_ROLE_ARN
+            backend_config: backend.hcl
+            teams_tenant_secret: STAGING_TEAMS_TENANT_ID
+            teams_team_secret: STAGING_TEAMS_TEAM_ID
+            teams_channel_secret: STAGING_TEAMS_CHANNEL_ID
+          - env: prod
+            role_arn_secret: PROD_AWS_READ_ONLY_ROLE_ARN
+            backend_config: backend.hcl
+            teams_tenant_secret: PROD_TEAMS_TENANT_ID
+            teams_team_secret: PROD_TEAMS_TEAM_ID
+            teams_channel_secret: PROD_TEAMS_CHANNEL_ID
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Configure AWS Credentials (OIDC - ${{ matrix.env }})
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets[matrix.role_arn_secret] }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.14.6"
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        id: init
+        working-directory: terraform/environments/${{ matrix.env }}
+        run: |
+          set +e
+          terraform init -input=false -lock=false -backend-config=${{ matrix.backend_config }} -reconfigure
+          code=$?
+          echo "exitcode=$code" >> $GITHUB_OUTPUT
+          set -e
+          exit $code
+
+      - name: Terraform Validate
+        if: ${{ steps.init.outputs.exitcode == '0' }}
+        working-directory: terraform/environments/${{ matrix.env }}
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        id: plan
+        if: ${{ steps.init.outputs.exitcode == '0' }}
+        working-directory: terraform/environments/${{ matrix.env }}
+        run: |
+          set +e
+          terraform plan -input=false -lock=false -detailed-exitcode -no-color -out=tfplan
+          code=$?
+          echo "exitcode=$code" >> $GITHUB_OUTPUT
+          terraform show -no-color tfplan > tfplan.txt 2>&1 || true
+          set -e
+          # detailed-exitcode: 0 = clean, 1 = error, 2 = changes pending.
+          # Only `1` fails the job — `0` and `2` are both "plan ran successfully".
+          if [ "$code" = "1" ]; then exit 1; fi
+
+      - name: Summarize plan result
+        if: ${{ always() }}
+        working-directory: terraform/environments/${{ matrix.env }}
+        run: |
+          set -eu
+          mkdir -p plan-output
+          INIT_CODE='${{ steps.init.outputs.exitcode }}'
+          PLAN_CODE='${{ steps.plan.outputs.exitcode }}'
+
+          if [ -z "$INIT_CODE" ] || [ "$INIT_CODE" != "0" ]; then
+            echo "error" > plan-output/status.txt
+            echo "init failed (see Actions log)" > plan-output/summary.txt
+          elif [ "$PLAN_CODE" = "0" ]; then
+            echo "ok" > plan-output/status.txt
+            echo "no changes" > plan-output/summary.txt
+          elif [ "$PLAN_CODE" = "2" ]; then
+            # Pull the "Plan: X to add, Y to change, Z to destroy" line from the show output.
+            SUMMARY=$(grep -E '^Plan: [0-9]+' tfplan.txt | tail -1 | sed -E 's/^Plan: //' || true)
+            if [ -z "$SUMMARY" ]; then SUMMARY="changes pending"; fi
+            echo "ok" > plan-output/status.txt
+            echo "$SUMMARY" > plan-output/summary.txt
+          else
+            echo "error" > plan-output/status.txt
+            echo "plan failed (see Actions log)" > plan-output/summary.txt
+          fi
+
+          if [ -f tfplan.txt ]; then
+            cp tfplan.txt plan-output/tfplan.txt
+          else
+            echo "(no plan output produced)" > plan-output/tfplan.txt
+          fi
+
+      - name: Upload plan artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ matrix.env }}
+          path: terraform/environments/${{ matrix.env }}/plan-output/
+          if-no-files-found: warn
+          retention-days: 7
+
+  comment:
+    name: Post unified plan comment
+    needs: [check_actor, plan]
+    if: ${{ always() && github.event.pull_request.number && needs.check_actor.outputs.is_dependabot != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download dev plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-dev
+          path: artifacts/dev
+        continue-on-error: true
+
+      - name: Download stg plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-stg
+          path: artifacts/stg
+        continue-on-error: true
+
+      - name: Download prod plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-prod
+          path: artifacts/prod
+        continue-on-error: true
+
+      - name: Build PR comment body
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          read_field() {
+            # Reads a single-line field from an artifact file, defaulting if missing.
+            local env="$1"
+            local field="$2"
+            local default="$3"
+            local path="artifacts/${env}/${field}.txt"
+            if [ -f "$path" ]; then
+              cat "$path"
+            else
+              echo "$default"
+            fi
+          }
+
+          icon_for() {
+            case "$1" in
+              ok) printf '✓ ok' ;;
+              error) printf '✗ error' ;;
+              *) printf '? %s' "$1" ;;
+            esac
+          }
+
+          truncate_plan() {
+            local env="$1"
+            local file="artifacts/${env}/tfplan.txt"
+            local line_cap=200
+            local byte_cap=18000
+            if [ ! -f "$file" ]; then
+              echo "(no plan output available)"
+              return
+            fi
+            local snippet
+            snippet=$(head -n "$line_cap" "$file")
+            if [ "${#snippet}" -gt "$byte_cap" ]; then
+              snippet="${snippet:0:$byte_cap}"
+            fi
+            printf '%s\n' "$snippet"
+            local total_lines total_bytes
+            total_lines=$(wc -l < "$file")
+            total_bytes=$(wc -c < "$file")
+            if [ "$total_lines" -gt "$line_cap" ] || [ "$total_bytes" -gt "$byte_cap" ]; then
+              echo ""
+              echo "... (truncated; full plan in artifact tfplan-${env}) ..."
+            fi
+          }
+
+          SHORT_SHA="${PR_SHA:0:7}"
+
+          {
+            echo "<!-- terraform-plan-bot:PAY-264 -->"
+            echo "## Terraform plan for PR #${PR_NUMBER} (SHA \`${SHORT_SHA}\`)"
+            echo ""
+            echo "| Env | Status | Changes |"
+            echo "|---|---|---|"
+            for env in dev stg prod; do
+              STATUS=$(read_field "$env" status "error")
+              SUMMARY=$(read_field "$env" summary "job did not produce output")
+              echo "| ${env} | $(icon_for "$STATUS") | [${SUMMARY}](${RUN_URL}) |"
+            done
+            echo ""
+            for env in dev stg prod; do
+              SUMMARY=$(read_field "$env" summary "no output")
+              echo "<details><summary>${env} plan — ${SUMMARY}</summary>"
+              echo ""
+              echo '```terraform'
+              truncate_plan "$env"
+              echo '```'
+              echo ""
+              echo "[Full plan artifact for ${env}](${RUN_URL})"
+              echo ""
+              echo "</details>"
+              echo ""
+            done
+            echo "> **Note**: Lambda function diffs (\`*_s3_key\`, \`*_source_code_hash\`) in this plan are artifacts of plan-only mode and do not reflect real changes. Actual Lambda changes ship via \`cicd-dev.yml\`, \`staging-deploy.yml\`, and \`prod-deploy.yml\`."
+          } > comment-body.md
+
+          echo "Comment body size: $(wc -c < comment-body.md) bytes"
+
+      - name: Find existing plan comment
+        id: find_comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: 'terraform-plan-bot:PAY-264'
+
+      - name: Create or update plan comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.find_comment.outputs.comment-id }}
+          edit-mode: replace
+          body-file: comment-body.md
