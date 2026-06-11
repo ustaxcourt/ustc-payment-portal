@@ -130,7 +130,7 @@ describe("make a transaction", () => {
             },
           ];
 
-    assertSingleTransactionInExpectedStates(
+    assertLatestTransactionInExpectedStates(
       processResponse,
       scenario,
       expectedInitialStates,
@@ -141,7 +141,7 @@ describe("make a transaction", () => {
     );
 
     if (scenario.expectPendingDuringResolution) {
-      assertSingleTransactionInExpectedStates(
+      assertLatestTransactionInExpectedStates(
         detailsResponse,
         scenario,
         expectedInitialStates,
@@ -163,7 +163,7 @@ describe("make a transaction", () => {
         detailsResponse,
       );
 
-      assertSingleTransaction(
+      assertLatestTransaction(
         resolvedDetails,
         scenario,
         scenario.expectedFinalPaymentStatus,
@@ -175,7 +175,7 @@ describe("make a transaction", () => {
       return;
     }
 
-    assertSingleTransaction(
+    assertLatestTransaction(
       detailsResponse,
       scenario,
       scenario.expectedFinalPaymentStatus,
@@ -333,7 +333,7 @@ describe("make a transaction", () => {
     );
   };
 
-  const assertSingleTransaction = (
+  const assertLatestTransaction = (
     response: ProcessPaymentResponse | GetDetailsResponse,
     scenario: Scenario,
     expectedPaymentStatus: PaymentStatus,
@@ -353,7 +353,7 @@ describe("make a transaction", () => {
     return response.transactions[response.transactions.length - 1];
   };
 
-  const assertSingleTransactionInExpectedStates = (
+  const assertLatestTransactionInExpectedStates = (
     response: ProcessPaymentResponse | GetDetailsResponse,
     scenario: Scenario,
     expectedStates: ExpectedState[],
