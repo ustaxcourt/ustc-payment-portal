@@ -60,9 +60,15 @@ jobs:
           - env: stg
             role_arn_secret: STAGING_AWS_READ_ONLY_ROLE_ARN
             backend_config: backend.hcl
+            teams_tenant_secret: STAGING_TEAMS_TENANT_ID
+            teams_team_secret: STAGING_TEAMS_TEAM_ID
+            teams_channel_secret: STAGING_TEAMS_CHANNEL_ID
           - env: prod
             role_arn_secret: PROD_AWS_READ_ONLY_ROLE_ARN
             backend_config: backend.hcl
+            teams_tenant_secret: PROD_TEAMS_TENANT_ID
+            teams_team_secret: PROD_TEAMS_TEAM_ID
+            teams_channel_secret: PROD_TEAMS_CHANNEL_ID
 
     steps:
       - name: Checkout
