@@ -1,52 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
 #
-# PAY-332 — export isd-prod CloudWatch logs for the SharePoint backup (AC #2).
+# PAY-332 — export CloudWatch logs for the SharePoint backup (AC #2).
 #
-# READ-ONLY against AWS. Pulls every event from each Payment Portal log group in
-# the shared isd-prod account (402985502068) into a dated local folder, ready to
-# upload to the SharePoint backup folder. For each log group it writes:
+# READ-ONLY against AWS. Pulls every event from each matching log group in the
+# given account into a dated local folder, ready to upload to SharePoint. For
+# each log group it writes:
 #   - <group>.json  — full-fidelity events (timestamp + message + stream)
 #   - <group>.log   — human-readable (UTC time + message)
 # plus a MANIFEST.txt describing the export (source, date, counts, AC reference).
 #
-# Volume is small (~3 MB), so a direct CLI pull is simpler and sufficient — no S3
+# Volume is small, so a direct CLI pull is simpler and sufficient — no S3
 # export-task / bucket-policy plumbing needed.
+#
+# Args (or env): ACCOUNT ($1, id or profile — required), LOG_PREFIX ($2).
 #
 # Usage:
 #   aws sso login --profile ustc-aws-isd-prod
-#   ./scripts/migration/export-isd-logs.sh
+#   ./scripts/migration/export-isd-logs.sh ustc-aws-isd-prod
 #   # then upload the printed folder to the SharePoint backup location.
 #
-# Override via env: AWS_PROFILE, LOG_PREFIX, AWS_REGION, OUT_DIR.
+# Override via env: ACCOUNT, LOG_PREFIX, AWS_REGION, OUT_DIR.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/assume.sh
 . "${SCRIPT_DIR}/lib/assume.sh"
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-ISD_ACCOUNT_ID="${ISD_ACCOUNT_ID:-402985502068}"
-LOG_PREFIX="${LOG_PREFIX:-/aws/lambda/ustc-payment-processor}"
-: "${AWS_PROFILE:=ustc-aws-isd-prod}"
-export AWS_PROFILE AWS_DEFAULT_REGION="$AWS_REGION" AWS_PAGER=""
+ACCOUNT="${1:-${ACCOUNT:-}}"          # required: account id (guard) or profile name
+LOG_PREFIX="${2:-${LOG_PREFIX:-/aws/lambda/ustc-payment-processor}}"
+export AWS_DEFAULT_REGION="$AWS_REGION" AWS_PAGER=""
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-OUT_DIR="${OUT_DIR:-$HOME/isd-prod-log-backup-${STAMP}}"
+OUT_DIR="${OUT_DIR:-$HOME/log-backup-${STAMP}}"
 
-log_section "Export isd-prod CloudWatch logs (AC #2)"
-log_info "Profile:    $AWS_PROFILE"
-log_info "Account:    $ISD_ACCOUNT_ID (expected)"
-log_info "Prefix:     $LOG_PREFIX"
-log_info "Output dir: $OUT_DIR"
+log_section "Export CloudWatch logs (AC #2)"
+log_info "Account arg: ${ACCOUNT:-<required: id or profile>}"
+log_info "Log prefix:  $LOG_PREFIX"
+log_info "Output dir:  $OUT_DIR"
 
-# Guard: right account. Capture both the account and the caller ARN (for the manifest).
-ident=$(aws sts get-caller-identity --query '[Account,Arn]' --output text 2>/dev/null || true)
-acct=$(printf '%s' "$ident" | awk '{print $1}')
-caller_arn=$(printf '%s' "$ident" | awk '{print $2}')
-if [ "$acct" != "$ISD_ACCOUNT_ID" ]; then
-  bad "Authenticated to '${acct:-none}', expected $ISD_ACCOUNT_ID — run: aws sso login --profile $AWS_PROFILE"
-  print_summary; exit 1
-fi
+# Resolve + guard the account (id or profile); grab the caller ARN for the manifest.
+if ! require_account "$ACCOUNT"; then print_summary; exit 1; fi
+acct="$RESOLVED_ACCOUNT"
+caller_arn=$(aws sts get-caller-identity --query 'Arn' --output text 2>/dev/null || echo "$acct")
 ok "Authenticated to $acct"
 
 # Enumerate log groups. Parse via --output json + jq (NOT --output text +
@@ -71,8 +67,8 @@ ok "${#LOG_GROUPS[@]} log group(s) to export"
 mkdir -p "$OUT_DIR"
 MANIFEST="$OUT_DIR/MANIFEST.txt"
 {
-  echo "PAY-332 — isd-prod CloudWatch log backup (AC #2)"
-  echo "Source account : $ISD_ACCOUNT_ID (ustc-aws-isd-prod)"
+  echo "PAY-332 — CloudWatch log backup (AC #2)"
+  echo "Source account : $acct"
   echo "Region         : $AWS_REGION"
   echo "Exported (UTC) : $STAMP"
   echo "Exported by    : ${caller_arn:-$acct}"

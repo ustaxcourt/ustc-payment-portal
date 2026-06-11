@@ -1,66 +1,69 @@
 # PAY-332 — Prod account migration scripts
 
-Read-only helper scripts supporting the move of the Payment Portal prod
-environment off the shared `ustc-aws-isd-prod` account (`402985502068`) onto the
-dedicated `ent-apps-payment-portal-workloads-prod` account (`802939326821`).
+Helper scripts supporting the move of the Payment Portal prod environment off the
+shared `ustc-aws-isd-prod` account onto the dedicated
+`ent-apps-payment-portal-workloads-prod` account.
 
-## Context
+## Convention: no hardcoded accounts
 
-- The dedicated account is **stood up and serving** — `payments.ustaxcourt.gov`
-  is delegated to its Route 53 zone, resolves, and presents a valid TLS cert.
-- The Payment Portal has **never been live** in prod (no data, no real traffic).
-- The source environment in isd-prod was deployed with the **Serverless
-  Framework**, so its resources are owned by the CloudFormation stack
-  `ustc-payment-processor-prod`. Eventual teardown is a stack delete — not
-  `terraform destroy`.
+Every script takes the **target account as an argument** — there are no hardcoded
+account IDs or profile names. The account argument accepts either form:
 
-> ⚠️ **`402985502068` is a shared account.** It also holds `hello-jims-dev`,
-> `amplify-nonattorneydocs-*`, and an AWS Config StackSet owned by other teams.
-> Any teardown must target **only** `ustc-payment-processor-prod`.
+- a **12-digit account ID** → used as a *guard* (you must already be authenticated
+  to it; the script refuses if your active credentials don't match), or
+- an **AWS profile name** → selected via `AWS_PROFILE` for you.
+
+So you always state which account a script runs against, and it can't silently run
+somewhere unexpected.
+
+> ⚠️ **The old account is shared** — it also holds `hello-jims-dev`,
+> `amplify-nonattorneydocs-*`, and an AWS Config StackSet owned by other teams. The
+> teardown only ever touches the one stack name you pass it.
 
 ## Scripts
 
 | Script | Purpose | Mutates? |
 | --- | --- | --- |
-| `lib/assume.sh` | Shared logging + (optional) cross-account role helpers, sourced by the others | No |
-| `verify-dedicated-prod.sh` | Confirm the dedicated account is functional prod — mTLS secrets populated, API resolves; `SMOKE=1` adds a live `/init` test | No (AWS); `SMOKE=1` writes a prod txn row |
-| `export-isd-logs.sh` | Pull every Payment Portal log group from isd-prod to a dated local folder (JSON + readable + manifest) for the SharePoint backup (AC #2) | No (AWS); writes local files |
+| `lib/assume.sh` | Shared logging + account-resolution (`require_account`) helpers, sourced by the others | No |
+| `verify-dedicated-prod.sh` | Confirm an account is functional prod — mTLS secrets populated, API resolves; `SMOKE=1` adds a live `/init` test | No (AWS); `SMOKE=1` writes a prod txn row |
+| `export-isd-logs.sh` | Pull every matching log group to a dated local folder (JSON + readable + manifest) for the SharePoint backup (AC #2) | No (AWS); writes local files |
+| `teardown-stack.sh` | Delete one CloudFormation stack — account-guarded, dry-run by default, `CONFIRM=yes` to delete | Yes (the named stack) |
 
-### `verify-dedicated-prod.sh`
+## Usage
 
 ```bash
+# Verify the dedicated account is functional prod (read-only)
 aws sso login --profile ent-apps-payment-portal-workloads-prod
-./scripts/migration/verify-dedicated-prod.sh
-```
+./scripts/migration/verify-dedicated-prod.sh ent-apps-payment-portal-workloads-prod
+SMOKE=1 ./scripts/migration/verify-dedicated-prod.sh ent-apps-payment-portal-workloads-prod   # also POST /init
 
-Confirms you're in `802939326821`, that the Pay.gov mTLS secrets are populated
-(length only — never prints values), the operational allow-lists, and that the API
-Gateway resolves. `SMOKE=1` additionally POSTs a SigV4-signed `/init` (writes a
-prod transaction row — opt-in). Override via `AWS_PROFILE`, `DED_ACCOUNT_ID`,
-`SECRET_PREFIX`, `API_NAME`, `STAGE`.
-
-### `export-isd-logs.sh`
-
-```bash
+# Export an account's CloudWatch logs for the SharePoint backup (AC #2)
 aws sso login --profile ustc-aws-isd-prod
-./scripts/migration/export-isd-logs.sh
-# then upload the printed folder to the SharePoint backup location (AC #2)
+./scripts/migration/export-isd-logs.sh ustc-aws-isd-prod
+#   optional 2nd arg = log-group prefix (default /aws/lambda/ustc-payment-processor)
+
+# Tear down one stack — DRY RUN first, then CONFIRM=yes
+./scripts/migration/teardown-stack.sh ustc-aws-isd-prod ustc-payment-processor-prod
+CONFIRM=yes ./scripts/migration/teardown-stack.sh ustc-aws-isd-prod ustc-payment-processor-prod
 ```
 
-Exports all log groups under `/aws/lambda/ustc-payment-processor` to
-`~/isd-prod-log-backup-<UTC>/` (per group: full `*.json`, readable `*.log`, plus a
-`MANIFEST.txt`). Volume is small, so a direct CLI pull is sufficient — no S3
-export-task plumbing. Override via `AWS_PROFILE`, `LOG_PREFIX`, `AWS_REGION`,
-`OUT_DIR`.
+Common env overrides: `AWS_REGION` (all), `SECRET_PREFIX`/`API_NAME`/`STAGE`
+(verify), `LOG_PREFIX`/`OUT_DIR` (export).
 
-## Status / remaining work
+## `teardown-stack.sh` safety
+
+- **Dry run by default** — prints the stack's resources, the S3 buckets it will
+  empty, and the *other* stacks it will NOT touch. Real deletion needs `CONFIRM=yes`.
+- **Account guard** — refuses unless your credentials resolve to the account you named.
+- **Exact stack only** — no wildcards; only the stack name you pass.
+- **Empties S3 buckets first** (CFN can't delete a non-empty bucket).
+- **Handles `DELETE_FAILED`** on already-gone resources (e.g. a transferred EIP) by
+  retrying with `--retain-resources`, so the rest of the stack still deletes.
+
+## Status
 
 - ✅ isd-prod CloudWatch logs exported and uploaded to SharePoint (AC #2)
-- ✅ DNS delegated to the dedicated account; alias record added; domain resolves
-- ✅ Dedicated account verified functional (Pay.gov mTLS confirmed)
-- ⏳ **Reconcile Terraform drift** — the live dedicated account diverges from the
-  repo's prod config (it carries leftover Serverless-named Lambdas), so
-  `terraform apply`/CI can't deploy cleanly yet. Required before the "CICD deploys
-  to the dedicated account" criterion is met.
-- ⏳ **Teardown** the `ustc-payment-processor-prod` stack in isd-prod — after the
-  above, and gated/reviewed (it deletes resources in a shared account).
+- ✅ DNS delegated; domain resolves with a valid cert and responds (AC #6)
+- ✅ EIP migrated & preserved — original prod IP transferred to the dedicated account (AC #4)
+- ✅ Dedicated account stood up + Terraform drift reconciled → `terraform plan` is **clean**, so CI can deploy (AC #3, AC #5)
+- ⏳ **Teardown** the old `ustc-payment-processor-prod` stack via `teardown-stack.sh` (AC #1) — the last step

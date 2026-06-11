@@ -19,38 +19,35 @@ set -euo pipefail
 #      a token + paymentRedirect come back — i.e. the mTLS path to Pay.gov works.
 #      NOTE: a smoke /init writes a transaction row to the prod RDS.
 #
+# Args (or env): ACCOUNT ($1, id or profile — required).
+# Env overrides: SECRET_PREFIX, API_NAME, STAGE, AWS_REGION, SMOKE.
+#
 # Usage:
 #   aws sso login --profile ent-apps-payment-portal-workloads-prod
-#   ./scripts/migration/verify-dedicated-prod.sh
-#   SMOKE=1 ./scripts/migration/verify-dedicated-prod.sh   # also run the live /init test
+#   ./scripts/migration/verify-dedicated-prod.sh ent-apps-payment-portal-workloads-prod
+#   SMOKE=1 ./scripts/migration/verify-dedicated-prod.sh <account>   # also run the live /init test
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/assume.sh
 . "${SCRIPT_DIR}/lib/assume.sh"
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-DED_ACCOUNT_ID="${DED_ACCOUNT_ID:-802939326821}"
+ACCOUNT="${1:-${ACCOUNT:-}}"          # required: account id (guard) or profile name
 SECRET_PREFIX="${SECRET_PREFIX:-ustc/pay-gov/prod}"
 API_NAME="${API_NAME:-ustc-payment-portal-prod-api-gateway}"
 STAGE="${STAGE:-prod}"
 SMOKE="${SMOKE:-0}"
-: "${AWS_PROFILE:=ent-apps-payment-portal-workloads-prod}"
-export AWS_PROFILE AWS_DEFAULT_REGION="$AWS_REGION" AWS_PAGER=""
+export AWS_DEFAULT_REGION="$AWS_REGION" AWS_PAGER=""
 
 log_section "Target"
-log_info "Profile:  $AWS_PROFILE"
-log_info "Account:  $DED_ACCOUNT_ID (ent-apps-payment-portal-workloads-prod, expected)"
-log_info "API:      $API_NAME (stage: $STAGE)"
+log_info "Account arg: ${ACCOUNT:-<required: id or profile>}"
+log_info "API:         $API_NAME (stage: $STAGE)"
 
 # 1. Identity --------------------------------------------------------------
 log_section "1. Identity"
-acct=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || true)
-if [ "$acct" = "$DED_ACCOUNT_ID" ]; then
-  ok "Authenticated to $acct"
-else
-  bad "Authenticated to '${acct:-none}', expected $DED_ACCOUNT_ID — run: aws sso login --profile $AWS_PROFILE"
-  print_summary; exit 1
-fi
+if ! require_account "$ACCOUNT"; then print_summary; exit 1; fi
+acct="$RESOLVED_ACCOUNT"
+ok "Authenticated to $acct"
 
 # 2. Critical secrets populated (length only) -----------------------------
 log_section "2. Pay.gov mTLS secrets populated (values never printed)"

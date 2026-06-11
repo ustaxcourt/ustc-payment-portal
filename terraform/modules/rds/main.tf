@@ -64,4 +64,9 @@ resource "aws_db_instance" "main" {
   tags = merge(var.tags, {
     Name = var.identifier
   })
+
+  lifecycle {
+    # RDS auto-upgrades minor versions; don't let TF try to downgrade engine_version back.
+    ignore_changes = [engine_version]
+  }
 }

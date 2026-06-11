@@ -533,6 +533,11 @@ resource "aws_api_gateway_gateway_response" "default_4xx" {
   response_parameters = {
     "gatewayresponse.header.Access-Control-Allow-Origin" = "'${var.dashboard_allowed_origin}'"
   }
+
+  lifecycle {
+    # We don't manage the error body; AWS keeps its built-in template, so ignore it to avoid a perpetual diff.
+    ignore_changes = [response_templates]
+  }
 }
 
 resource "aws_api_gateway_gateway_response" "default_5xx" {
@@ -541,6 +546,11 @@ resource "aws_api_gateway_gateway_response" "default_5xx" {
 
   response_parameters = {
     "gatewayresponse.header.Access-Control-Allow-Origin" = "'${var.dashboard_allowed_origin}'"
+  }
+
+  lifecycle {
+    # We don't manage the error body; AWS keeps its built-in template, so ignore it to avoid a perpetual diff.
+    ignore_changes = [response_templates]
   }
 }
 

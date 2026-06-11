@@ -74,6 +74,36 @@ print_summary() {
 }
 
 # ---------------------------------------------------------------------------
+# Account resolution — no hardcoded accounts
+# ---------------------------------------------------------------------------
+# require_account <id-or-profile>
+#   - a 12-digit account ID  -> used as a GUARD against the active credentials
+#                               (you must already be authenticated to it).
+#   - anything else          -> treated as an AWS profile name and selected via
+#                               AWS_PROFILE.
+#   On success sets the global RESOLVED_ACCOUNT and returns 0; on failure it
+#   prints a bad() line and returns 1 (callers should print_summary; exit 1).
+export RESOLVED_ACCOUNT=""   # set by require_account, consumed by the sourcing scripts
+require_account() {
+  local arg="${1:-}" expected="" acct
+  if [ -z "$arg" ]; then bad "account (12-digit id or profile name) is required"; return 1; fi
+  if printf '%s' "$arg" | grep -qE '^[0-9]{12}$'; then
+    expected="$arg"
+  else
+    export AWS_PROFILE="$arg"
+  fi
+  acct=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || true)
+  if [ -z "$acct" ]; then
+    bad "No valid credentials for '$arg' — run: aws sso login --profile <profile>"; return 1
+  fi
+  if [ -n "$expected" ] && [ "$acct" != "$expected" ]; then
+    bad "Authenticated to $acct but you asked for $expected — refusing."; return 1
+  fi
+  RESOLVED_ACCOUNT="$acct"
+  return 0
+}
+
+# ---------------------------------------------------------------------------
 # Cross-account role assumption
 # ---------------------------------------------------------------------------
 # cache_assume PREFIX ROLE_ARN SESSION_NAME
