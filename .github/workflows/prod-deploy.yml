@@ -101,9 +101,6 @@ jobs:
           role-to-assume: ${{ secrets.PROD_AWS_DEPLOYER_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Verify AWS caller identity (remove later)
-        run: aws sts get-caller-identity
-
       - name: Build artifact key map (dev bucket)
         id: artifacts
         run: |

@@ -138,6 +138,14 @@ else
   elif [ "$st" = "DELETE_FAILED" ]; then
     failed=$(aws cloudformation describe-stack-resources --stack-name "$STACK" \
       --query "StackResources[?ResourceStatus=='DELETE_FAILED'].LogicalResourceId" --output text 2>/dev/null)
+    # --output text yields "None"/empty when nothing matches; normalize whitespace
+    # so we never call delete-stack with an empty/garbage --retain-resources arg.
+    failed=$(printf '%s' "$failed" | tr '\t' ' ' | sed 's/  */ /g; s/^ *//; s/ *$//')
+    [ "$failed" = "None" ] && failed=""
+    if [ -z "$failed" ]; then
+      bad "Stack is DELETE_FAILED but returned no failed resource IDs — investigate/retry manually."
+      print_summary; exit 1
+    fi
     warn "DELETE_FAILED on already-gone/locked resources: $failed — retrying with --retain-resources"
     # shellcheck disable=SC2086
     aws cloudformation delete-stack --stack-name "$STACK" --retain-resources $failed

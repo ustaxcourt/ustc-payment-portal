@@ -105,7 +105,9 @@ else
   # than eval'ing the CLI output (don't execute whatever the command prints).
   creds=$(aws configure export-credentials 2>/dev/null || true)
   if [ -z "$creds" ]; then
-    warn "Could not export credentials for SigV4 signing — skipping smoke test"
+    # SMOKE=1 was explicitly requested, so a missing-creds skip must NOT pass as
+    # green — that would read as "smoke succeeded" when /init never ran. Fail the gate.
+    bad "SMOKE=1 but could not export credentials for SigV4 signing — smoke test did not run"
   else
     AWS_ACCESS_KEY_ID=$(printf '%s' "$creds" | jq -r '.AccessKeyId')
     AWS_SECRET_ACCESS_KEY=$(printf '%s' "$creds" | jq -r '.SecretAccessKey')
