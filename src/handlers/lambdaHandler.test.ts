@@ -122,7 +122,7 @@ describe("lambdaHandler", () => {
       callback,
     });
 
-    expect(mockHandleError).toHaveBeenCalledWith(callbackError);
+    expect(mockHandleError).toHaveBeenCalledWith(testAppContext, callbackError);
     expect(result).toEqual(expectedErrorResponse);
   });
 });
