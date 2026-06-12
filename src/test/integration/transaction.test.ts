@@ -136,9 +136,9 @@ describe("make a transaction", () => {
       expectedInitialStates,
     );
 
-    const detailsResponse = await getDetails(
-      initialized.transactionReferenceId,
-    );
+    const detailsResponse = scenario.expectPendingDuringResolution
+      ? await getDetailsWithTransientRetry(initialized.transactionReferenceId)
+      : await getDetails(initialized.transactionReferenceId);
 
     if (scenario.expectPendingDuringResolution) {
       assertLatestTransactionInExpectedStates(
@@ -322,6 +322,35 @@ describe("make a transaction", () => {
     );
   };
 
+  const sleep = (ms: number): Promise<void> =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+  const isTransientDetailsError = (message: string): boolean =>
+    /GET \/details\/.* failed: 5\d\d /.test(message);
+
+  const getDetailsWithTransientRetry = async (
+    referenceId: string,
+    attempts = 3,
+  ): Promise<GetDetailsResponse> => {
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        return await getDetails(referenceId);
+      } catch (err) {
+        lastError = err;
+        const message = err instanceof Error ? err.message : String(err);
+        if (!isTransientDetailsError(message) || attempt === attempts) {
+          throw err;
+        }
+
+        await sleep(POLL_INTERVAL_MS);
+      }
+    }
+
+    throw lastError;
+  };
+
   const assertLatestTransaction = (
     response: ProcessPaymentResponse | GetDetailsResponse,
     scenario: Scenario,
@@ -393,8 +422,18 @@ describe("make a transaction", () => {
         return current;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-      current = await getDetails(referenceId);
+      await sleep(POLL_INTERVAL_MS);
+      try {
+        current = await getDetails(referenceId);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        seenStates.push(`error:${message}`);
+        if (!isTransientDetailsError(message)) {
+          throw err;
+        }
+
+        continue;
+      }
       const nextTransaction = getLatestTransaction(current);
       seenStates.push(
         `${current.paymentStatus}/${nextTransaction.transactionStatus}`,
