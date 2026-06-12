@@ -1,7 +1,7 @@
 import { ZodError } from "zod";
 import { PayGovError } from "./errors/payGovError";
 import { ServerError } from "./errors/serverError";
-import type { AppContextLogger } from "./types/AppContext";
+import type { AppContext } from "./types/AppContext";
 
 const computeResponse = (err: any) => {
   if (err.statusCode && err.statusCode < 500) {
@@ -46,7 +46,7 @@ const computeResponse = (err: any) => {
   };
 };
 
-export const handleError = (err: any, logger: AppContextLogger) => {
+export const handleError = (appContext: AppContext, err: any) => {
   const response = computeResponse(err);
   const logPayload = {
     statusCode: response.statusCode,
@@ -58,9 +58,15 @@ export const handleError = (err: any, logger: AppContextLogger) => {
 
   // 5xx → error level fires the lambda_5xx alarm. 4xx → warn keeps logs without alerting.
   if (response.statusCode >= 500) {
-    logger.error("Lambda handler returned a server error", logPayload);
+    appContext.logger.error(
+      "Lambda handler returned a server error",
+      logPayload,
+    );
   } else {
-    logger.warn("Lambda handler returned a client error", logPayload);
+    appContext.logger.warn(
+      "Lambda handler returned a client error",
+      logPayload,
+    );
   }
   return response;
 };

@@ -1,15 +1,17 @@
 import { handleError } from "./handleError";
 import { z } from "zod";
-import type { AppContextLogger } from "./types/AppContext";
+import type { AppContext } from "./types/AppContext";
 import { PayGovError } from "./errors/payGovError";
 import { ServerError } from "./errors/serverError";
 
-const mockLogger: jest.Mocked<AppContextLogger> = {
-  debug: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-};
+const mockAppContext = {
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
+} as unknown as AppContext;
 
 describe("handleError", () => {
   beforeEach(() => {
@@ -17,16 +19,16 @@ describe("handleError", () => {
   });
 
   it("returns the statusCode and message for known client errors (< 500)", () => {
-    const result = handleError(
-      { statusCode: 403, message: "Forbidden" },
-      mockLogger,
-    );
+    const result = handleError(mockAppContext, {
+      statusCode: 403,
+      message: "Forbidden",
+    });
     expect(result.statusCode).toBe(403);
     expect(JSON.parse(result.body).message).toBe("Forbidden");
   });
 
   it("returns 500 with a generic message for known server errors (>= 500, no custom message provided)", () => {
-    const result = handleError({ statusCode: 500 }, mockLogger);
+    const result = handleError(mockAppContext, { statusCode: 500 });
     expect(result.statusCode).toBe(500);
     expect(JSON.parse(result.body).message).toBe(
       "An unexpected error occurred while processing the request",
@@ -35,10 +37,10 @@ describe("handleError", () => {
 
   it("returns 500 with the ServerError message when a ServerError is thrown", () => {
     const result = handleError(
+      mockAppContext,
       new ServerError(
         "Failed to record payment session. Please retry your transaction.",
       ),
-      mockLogger,
     );
     expect(result.statusCode).toBe(500);
     expect(JSON.parse(result.body).message).toBe(
@@ -47,7 +49,10 @@ describe("handleError", () => {
   });
 
   it("returns 500 with the generic fallback message for unrecognized errors, not leaking internal details", () => {
-    const result = handleError(new Error("internal knex detail"), mockLogger);
+    const result = handleError(
+      mockAppContext,
+      new Error("internal knex detail"),
+    );
     expect(result.statusCode).toBe(500);
     expect(JSON.parse(result.body).message).toBe(
       "An unexpected error occurred while processing the request",
@@ -58,7 +63,7 @@ describe("handleError", () => {
     const schema = z.object({ trackingId: z.string() });
     const { error } = schema.safeParse({});
 
-    const result = handleError(error!, mockLogger);
+    const result = handleError(mockAppContext, error!);
     expect(result.statusCode).toBe(400);
 
     const body = JSON.parse(result.body);
@@ -68,7 +73,7 @@ describe("handleError", () => {
   });
 
   it("returns 504 with Pay.gov error message for PayGovError", () => {
-    const result = handleError(new PayGovError(), mockLogger);
+    const result = handleError(mockAppContext, new PayGovError());
     expect(result.statusCode).toBe(504);
     expect(JSON.parse(result.body).message).toBe(
       "Error communicating with Pay.gov",
@@ -77,8 +82,8 @@ describe("handleError", () => {
 
   it("returns the PayGovError statusCode when overridden (e.g. 500)", () => {
     const result = handleError(
+      mockAppContext,
       new PayGovError("Please retry", 500),
-      mockLogger,
     );
     expect(result.statusCode).toBe(500);
     expect(JSON.parse(result.body).message).toBe("Please retry");
@@ -86,40 +91,43 @@ describe("handleError", () => {
 
   describe("structured logging", () => {
     it("emits logger.error with statusCode for 5xx responses (drives the *-5xx-critical alarm)", () => {
-      handleError(new ServerError("DB unreachable"), mockLogger);
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      handleError(mockAppContext, new ServerError("DB unreachable"));
+      expect(mockAppContext.logger.error).toHaveBeenCalledWith(
         "Lambda handler returned a server error",
         expect.objectContaining({
           statusCode: 500,
           errorMessage: "DB unreachable",
         }),
       );
-      expect(mockLogger.warn).not.toHaveBeenCalled();
+      expect(mockAppContext.logger.warn).not.toHaveBeenCalled();
     });
 
     it("emits logger.warn (not error) for 4xx responses to keep alarms quiet", () => {
-      handleError({ statusCode: 403, message: "Forbidden" }, mockLogger);
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      handleError(mockAppContext, { statusCode: 403, message: "Forbidden" });
+      expect(mockAppContext.logger.warn).toHaveBeenCalledWith(
         "Lambda handler returned a client error",
         expect.objectContaining({
           statusCode: 403,
           errorMessage: "Forbidden",
         }),
       );
-      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(mockAppContext.logger.error).not.toHaveBeenCalled();
     });
 
     it("extracts errorMessage from plain object shapes (e.g. {statusCode, message})", () => {
-      handleError({ statusCode: 502, message: "Upstream timeout" }, mockLogger);
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      handleError(mockAppContext, {
+        statusCode: 502,
+        message: "Upstream timeout",
+      });
+      expect(mockAppContext.logger.error).toHaveBeenCalledWith(
         "Lambda handler returned a server error",
         expect.objectContaining({ errorMessage: "Upstream timeout" }),
       );
     });
 
     it("includes errorStack for Error instances to aid CloudWatch triage", () => {
-      handleError(new Error("boom"), mockLogger);
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      handleError(mockAppContext, new Error("boom"));
+      expect(mockAppContext.logger.error).toHaveBeenCalledWith(
         "Lambda handler returned a server error",
         expect.objectContaining({
           errorMessage: "boom",
@@ -129,8 +137,8 @@ describe("handleError", () => {
     });
 
     it("falls back to String() for primitives without a .message field", () => {
-      handleError("a string error", mockLogger);
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      handleError(mockAppContext, "a string error");
+      expect(mockAppContext.logger.error).toHaveBeenCalledWith(
         "Lambda handler returned a server error",
         expect.objectContaining({ errorMessage: "a string error" }),
       );
@@ -139,17 +147,17 @@ describe("handleError", () => {
     it("emits logger.warn for ZodError (validation = 4xx)", () => {
       const schema = z.object({ trackingId: z.string() });
       const { error } = schema.safeParse({});
-      handleError(error!, mockLogger);
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      handleError(mockAppContext, error!);
+      expect(mockAppContext.logger.warn).toHaveBeenCalledWith(
         "Lambda handler returned a client error",
         expect.objectContaining({ statusCode: 400 }),
       );
-      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(mockAppContext.logger.error).not.toHaveBeenCalled();
     });
 
     it("emits logger.error for unrecognized errors (falls through to 500)", () => {
-      handleError(new Error("internal knex detail"), mockLogger);
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      handleError(mockAppContext, new Error("internal knex detail"));
+      expect(mockAppContext.logger.error).toHaveBeenCalledWith(
         "Lambda handler returned a server error",
         expect.objectContaining({
           statusCode: 500,
