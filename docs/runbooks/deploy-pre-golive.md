@@ -35,7 +35,7 @@ gates.
         └─ dispatch rc-release.yml → creates a GitHub *pre-release*
         │
         ▼
-  MANUAL verification on STAGING (Cypress + dashboard)
+  MANUAL verification on STAGING (Cypress + getDetails/logs)
         │
         ▼
   cut final tag  v<X.Y.Z>  on the SAME SHA + publish a (non-pre-) GitHub Release
@@ -121,6 +121,56 @@ works end-to-end.
 > the expected state via `getDetails`/logs. If either fails, stop and fix
 > forward; the same SHA will flow again from Stage 1.
 
+### Verifying with `getDetails`
+
+`getDetails` is `GET /details/{transactionReferenceId}`, where
+`transactionReferenceId` is the **UUIDv4 the client generated and sent to
+`/init`** (not a Pay.gov id) — your Cypress run controls this value, so capture
+it. The route is `AWS_IAM` (SigV4-signed) and `authorizeClient`-gated, so you
+must call it with AWS credentials for an account the Staging API allows (the
+deploying/CI account is always allowed; client accounts come from
+`allowed_account_ids`). Sign it exactly like the staging smoke test signs
+`/init`:
+
+```bash
+# API_URL from terraform output (see Command reference); creds = assumed Staging role
+curl -s "$API_URL/details/$TRANSACTION_REFERENCE_ID" \
+  --aws-sigv4 "aws:amz:us-east-1:execute-api" \
+  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+  -H "x-amz-security-token: $AWS_SESSION_TOKEN" | jq
+```
+
+Response shape:
+
+```jsonc
+{
+  "paymentStatus": "success",          // business outcome: pending | success | failed
+  "transactions": [                    // one entry PER ATTEMPT — may be more than one
+    {
+      "payGovTrackingId": "...",
+      "transactionStatus": "processed", // technical: received|initiated|processed|failed
+      "returnDetail": "...",
+      "createdTimestamp": "...",
+      "updatedTimestamp": "..."
+    }
+  ]
+}
+```
+
+What to assert:
+
+- The **latest** transaction row has `transactionStatus` = `processed`. This is
+  your "a payment ran end-to-end and persisted" signal. When there are multiple
+  attempts, the latest one is what counts.
+- `paymentStatus` = `success` for an instant/card payment. **ACH settles
+  asynchronously**, so `paymentStatus` may legitimately remain `pending` even on
+  a good attempt — in that case rely on the latest `transactionStatus` =
+  `processed` as the deploy-health signal.
+
+The integration tests in [`src/test/integration/`](../../src/test/integration/)
+are the canonical example of a signed `getDetails` client if you need the exact
+signing in code.
+
 ---
 
 ## Stage 4 — Promote to Production
@@ -173,5 +223,85 @@ same release as the code that depends on it.
 |-------|----------|---------|----------------|-----------|
 | Dev | `cicd-dev.yml` | auto on push to `main` | Dev | run green + 5 artifacts |
 | Staging | `staging-deploy.yml` | manual dispatch | Staging | `/init` smoke test 200 + redirect 302 |
-| Verify | — | manual | Staging | Cypress + dashboard |
+| Verify | — | manual | Staging | Cypress + `getDetails`/logs |
 | Prod | `prod-deploy.yml` | Release published / manual | Production | reviewed Terraform plan |
+
+---
+
+## Command reference
+
+Copy-paste helpers, grouped by stage. **Read-only commands are safe to run.**
+Anything that tags, releases, dispatches a deploy, or applies Terraform changes
+an environment — run those deliberately, and per repo safety rules let a human
+own every Prod action. Replace `<SHA>` / `<tag>` / `<fn>` placeholders.
+`gh`/`aws` calls assume you're authenticated for the relevant account.
+
+### Stage 1 — confirm Dev (read-only)
+
+```bash
+# Newest dev tags, most recent first
+git tag -l "v*-dev.*" --sort=-creatordate | head
+
+# Resolve a tag to its commit SHA
+git rev-list -n 1 <tag>
+
+# Confirm all 5 artifacts exist for the SHA
+aws s3 ls "s3://ustc-payment-portal-build-artifacts/artifacts/dev/<SHA>/"
+# Per-file check (exits non-zero if missing):
+for f in initPayment processPayment getDetails testCert migrationRunner; do
+  aws s3api head-object \
+    --bucket ustc-payment-portal-build-artifacts \
+    --key "artifacts/dev/<SHA>/$f.zip" >/dev/null && echo "ok: $f" || echo "MISSING: $f"
+done
+
+# Watch the Dev run for your merge
+gh run list --workflow=cicd-dev.yml --limit 5
+```
+
+### Stage 2 — deploy to Staging
+
+```bash
+# Trigger staging (blank source_dev_tag = auto-pick latest valid dev tag)
+gh workflow run staging-deploy.yml
+#   …or promote a specific dev tag:
+gh workflow run staging-deploy.yml -f source_dev_tag=<v X.Y.Z-dev.N>
+
+# Watch it
+gh run list --workflow=staging-deploy.yml --limit 5
+gh run watch <run-id>
+```
+
+### Stage 3 — verify Staging (read-only)
+
+```bash
+# Get the Staging API URL + migration runner name from Terraform outputs
+terraform -chdir=terraform/environments/stg output -raw api_gateway_url
+terraform -chdir=terraform/environments/stg output -raw migration_runner_function_name
+
+# Confirm a transaction end-to-end (SigV4-signed; needs allowed Staging creds)
+curl -s "$API_URL/details/$TRANSACTION_REFERENCE_ID" \
+  --aws-sigv4 "aws:amz:us-east-1:execute-api" \
+  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+  -H "x-amz-security-token: $AWS_SESSION_TOKEN" | jq
+
+# Tail processPayment logs (find the exact log group first)
+aws logs describe-log-groups \
+  --log-group-name-prefix /aws/lambda/ --query 'logGroups[].logGroupName' --output text \
+  | tr '\t' '\n' | grep -i processpayment
+aws logs tail "/aws/lambda/<fn>" --since 15m --follow
+```
+
+### Stage 4 — promote to Production
+
+```bash
+# Plan-only first: see the prod Terraform plan WITHOUT applying
+gh workflow run prod-deploy.yml -f release_tag=<vX.Y.Z> -f plan_only=true
+gh run watch <run-id>          # read the plan in the job log
+
+# To apply, publish the final (non-pre-release) GitHub Release on the SAME SHA.
+# Creating tags/releases changes Prod — provide to the developer to run; do not
+# script around the human gate:
+#   git tag -a vX.Y.Z <SHA> -m "Release vX.Y.Z"   # run by a human
+#   git push origin vX.Y.Z                          # run by a human
+#   gh release create vX.Y.Z --title vX.Y.Z --notes "…"   # triggers prod-deploy.yml
+```
