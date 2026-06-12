@@ -146,17 +146,6 @@ describe("make a transaction", () => {
         scenario,
         expectedInitialStates,
       );
-      const initialTransaction = getLatestTransaction(detailsResponse);
-
-      if (
-        detailsResponse.paymentStatus === scenario.expectedFinalPaymentStatus &&
-        initialTransaction.transactionStatus ===
-          scenario.expectedFinalTransactionStatus
-      ) {
-        expect(initialTransaction.payGovTrackingId).toBeTruthy();
-        return;
-      }
-
       const resolvedDetails = await waitForResolvedDetails(
         initialized.transactionReferenceId,
         scenario,
