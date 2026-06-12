@@ -330,17 +330,17 @@ describe("make a transaction", () => {
 
   const getDetailsWithTransientRetry = async (
     referenceId: string,
-    attempts = 3,
   ): Promise<GetDetailsResponse> => {
+    const deadline = Date.now() + ACH_RESOLUTION_TIMEOUT_MS;
     let lastError: unknown;
 
-    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    while (Date.now() < deadline) {
       try {
         return await getDetails(referenceId);
       } catch (err) {
         lastError = err;
         const message = err instanceof Error ? err.message : String(err);
-        if (!isTransientDetailsError(message) || attempt === attempts) {
+        if (!isTransientDetailsError(message)) {
           throw err;
         }
 
@@ -348,7 +348,11 @@ describe("make a transaction", () => {
       }
     }
 
-    throw lastError;
+    throw new Error(
+      `Timed out waiting for initial ACH details for ${referenceId}. Last error: ${String(
+        lastError,
+      )}`,
+    );
   };
 
   const assertLatestTransaction = (
@@ -410,18 +414,24 @@ describe("make a transaction", () => {
     const seenStates = [
       `${initialDetails.paymentStatus}/${initialTransaction.transactionStatus}`,
     ];
+
+    const isExpectedFinalState = (details: GetDetailsResponse): boolean => {
+      const transaction = getLatestTransaction(details);
+      return (
+        details.paymentStatus === scenario.expectedFinalPaymentStatus &&
+        transaction.transactionStatus ===
+          scenario.expectedFinalTransactionStatus
+      );
+    };
+
     let current = initialDetails;
 
-    while (Date.now() < deadline) {
-      const currentTransaction = getLatestTransaction(current);
-      if (
-        current.paymentStatus === scenario.expectedFinalPaymentStatus &&
-        currentTransaction.transactionStatus ===
-          scenario.expectedFinalTransactionStatus
-      ) {
-        return current;
-      }
+    // Initial details can already be final for fast ACH completions.
+    if (isExpectedFinalState(current)) {
+      return current;
+    }
 
+    while (Date.now() < deadline) {
       await sleep(POLL_INTERVAL_MS);
       try {
         current = await getDetails(referenceId);
@@ -438,6 +448,10 @@ describe("make a transaction", () => {
       seenStates.push(
         `${current.paymentStatus}/${nextTransaction.transactionStatus}`,
       );
+
+      if (isExpectedFinalState(current)) {
+        return current;
+      }
     }
 
     throw new Error(
