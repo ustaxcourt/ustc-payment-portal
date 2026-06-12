@@ -102,9 +102,13 @@ resource "aws_eip" "nat_replacement" {
   }
 }
 
+locals {
+  nat_allocation_id = var.nat_eip_allocation_id != "" ? var.nat_eip_allocation_id : aws_eip.nat_replacement.id
+}
+
 resource "aws_nat_gateway" "default_nat_gw" {
   subnet_id     = aws_subnet.public_subnet.id
-  allocation_id = aws_eip.nat_replacement.id
+  allocation_id = local.nat_allocation_id
 
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-nat-gw"
