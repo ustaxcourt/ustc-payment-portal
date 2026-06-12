@@ -28,7 +28,7 @@
     "test:integration:sigv4": "BASE_URL=$BASE_URL npx jest ./src/test/integration/sigv4Smoke.test.ts --coverage --verbose",
     "test:db:setup": "node -r dotenv/config ./scripts/ensure-test-db.js && NODE_ENV=test APP_ENV=test npm run knex -- migrate:latest && NODE_ENV=test APP_ENV=test npm run knex -- seed:run",
     "test:types": "tsc --project tsconfig.test-types.json",
-    "ci:publish": "npm run build && changeset publish --provenance",
+    "ci:publish": "npm run build && changeset publish",
     "generate:openapi": "ts-node src/openapi/generate.ts",
     "start:dev-server": "node scripts/start-dev-server-runtime.js",
     "start:all": "node -r dotenv/config scripts/start-local-stack.js",
