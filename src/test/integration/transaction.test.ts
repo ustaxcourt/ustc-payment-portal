@@ -29,6 +29,7 @@ type ExpectedState = {
 
 const ACH_RESOLUTION_TIMEOUT_MS = 30_000;
 const POLL_INTERVAL_MS = 1_000;
+const ACH_SCENARIO_MAX_ATTEMPTS = 2;
 
 const scenarios: Scenario[] = [
   {
@@ -103,74 +104,86 @@ describe("make a transaction", () => {
 
   // Run through the full transaction flow for each of the defined payment scenarios defined above.
   it.each(scenarios)("handles $name end-to-end", async (scenario) => {
-    const initialized = await initTransaction();
+    for (let attempt = 1; attempt <= ACH_SCENARIO_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        const initialized = await initTransaction();
 
-    await verifyPaymentRedirect(initialized.paymentRedirect);
-    await markPayment(
-      initialized.paymentRedirect,
-      initialized.token,
-      scenario.paymentMethod,
-      scenario.paymentStatus,
-    );
+        await verifyPaymentRedirect(initialized.paymentRedirect);
+        await markPayment(
+          initialized.paymentRedirect,
+          initialized.token,
+          scenario.paymentMethod,
+          scenario.paymentStatus,
+        );
 
-    const processResponse = await processTransaction(initialized.token);
-    const expectedInitialStates: ExpectedState[] =
-      scenario.expectPendingDuringResolution
-        ? [
-            { paymentStatus: "pending", transactionStatus: "pending" },
-            {
-              paymentStatus: scenario.expectedFinalPaymentStatus,
-              transactionStatus: scenario.expectedFinalTransactionStatus,
-            },
-          ]
-        : [
-            {
-              paymentStatus: scenario.expectedProcessPaymentStatus,
-              transactionStatus: scenario.expectedFinalTransactionStatus,
-            },
-          ];
+        const processResponse = await processTransaction(initialized.token);
+        const expectedInitialStates: ExpectedState[] =
+          scenario.expectPendingDuringResolution
+            ? [
+                { paymentStatus: "pending", transactionStatus: "pending" },
+                {
+                  paymentStatus: scenario.expectedFinalPaymentStatus,
+                  transactionStatus: scenario.expectedFinalTransactionStatus,
+                },
+              ]
+            : [
+                {
+                  paymentStatus: scenario.expectedProcessPaymentStatus,
+                  transactionStatus: scenario.expectedFinalTransactionStatus,
+                },
+              ];
 
-    assertLatestTransactionInExpectedStates(
-      processResponse,
-      scenario,
-      expectedInitialStates,
-    );
+        assertLatestTransactionInExpectedStates(
+          processResponse,
+          scenario,
+          expectedInitialStates,
+        );
 
-    const detailsResponse = scenario.expectPendingDuringResolution
-      ? await getDetailsWithTransientRetry(initialized.transactionReferenceId)
-      : await getDetails(initialized.transactionReferenceId);
+        if (scenario.expectPendingDuringResolution) {
+          const resolvedDetails = await waitForResolvedDetails(
+            initialized.transactionReferenceId,
+            scenario,
+            expectedInitialStates,
+          );
 
-    if (scenario.expectPendingDuringResolution) {
-      assertLatestTransactionInExpectedStates(
-        detailsResponse,
-        scenario,
-        expectedInitialStates,
-      );
-      const resolvedDetails = await waitForResolvedDetails(
-        initialized.transactionReferenceId,
-        scenario,
-        detailsResponse,
-      );
+          assertLatestTransaction(
+            resolvedDetails,
+            scenario,
+            scenario.expectedFinalPaymentStatus,
+            scenario.expectedFinalTransactionStatus,
+          );
+          expect(
+            getLatestTransaction(resolvedDetails).payGovTrackingId,
+          ).toBeTruthy();
+          return;
+        }
 
-      assertLatestTransaction(
-        resolvedDetails,
-        scenario,
-        scenario.expectedFinalPaymentStatus,
-        scenario.expectedFinalTransactionStatus,
-      );
-      expect(
-        getLatestTransaction(resolvedDetails).payGovTrackingId,
-      ).toBeTruthy();
-      return;
+        const detailsResponse = await getDetails(
+          initialized.transactionReferenceId,
+        );
+
+        assertLatestTransaction(
+          detailsResponse,
+          scenario,
+          scenario.expectedFinalPaymentStatus,
+          scenario.expectedFinalTransactionStatus,
+        );
+        expect(
+          getLatestTransaction(detailsResponse).payGovTrackingId,
+        ).toBeTruthy();
+        return;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const shouldRetryAchScenario =
+          scenario.expectPendingDuringResolution &&
+          isTransientDetailsError(message);
+        if (!shouldRetryAchScenario || attempt === ACH_SCENARIO_MAX_ATTEMPTS) {
+          throw err;
+        }
+
+        await sleep(POLL_INTERVAL_MS);
+      }
     }
-
-    assertLatestTransaction(
-      detailsResponse,
-      scenario,
-      scenario.expectedFinalPaymentStatus,
-      scenario.expectedFinalTransactionStatus,
-    );
-    expect(getLatestTransaction(detailsResponse).payGovTrackingId).toBeTruthy();
   });
 
   // Helper so every portal call uses SigV4 in deployed envs, plain fetch locally.
@@ -328,33 +341,6 @@ describe("make a transaction", () => {
   const isTransientDetailsError = (message: string): boolean =>
     /GET \/details\/.* failed: 5\d\d /.test(message);
 
-  const getDetailsWithTransientRetry = async (
-    referenceId: string,
-  ): Promise<GetDetailsResponse> => {
-    const deadline = Date.now() + ACH_RESOLUTION_TIMEOUT_MS;
-    let lastError: unknown;
-
-    while (Date.now() < deadline) {
-      try {
-        return await getDetails(referenceId);
-      } catch (err) {
-        lastError = err;
-        const message = err instanceof Error ? err.message : String(err);
-        if (!isTransientDetailsError(message)) {
-          throw err;
-        }
-
-        await sleep(POLL_INTERVAL_MS);
-      }
-    }
-
-    throw new Error(
-      `Timed out waiting for initial ACH details for ${referenceId}. Last error: ${String(
-        lastError,
-      )}`,
-    );
-  };
-
   const assertLatestTransaction = (
     response: ProcessPaymentResponse | GetDetailsResponse,
     scenario: Scenario,
@@ -407,13 +393,10 @@ describe("make a transaction", () => {
   const waitForResolvedDetails = async (
     referenceId: string,
     scenario: Scenario,
-    initialDetails: GetDetailsResponse,
+    expectedInitialStates: ExpectedState[],
   ): Promise<GetDetailsResponse> => {
     const deadline = Date.now() + ACH_RESOLUTION_TIMEOUT_MS;
-    const initialTransaction = getLatestTransaction(initialDetails);
-    const seenStates = [
-      `${initialDetails.paymentStatus}/${initialTransaction.transactionStatus}`,
-    ];
+    const seenStates: string[] = [];
 
     const isExpectedFinalState = (details: GetDetailsResponse): boolean => {
       const transaction = getLatestTransaction(details);
@@ -424,15 +407,10 @@ describe("make a transaction", () => {
       );
     };
 
-    let current = initialDetails;
-
-    // Initial details can already be final for fast ACH completions.
-    if (isExpectedFinalState(current)) {
-      return current;
-    }
+    let current: GetDetailsResponse | undefined;
+    let validatedInitialDetails = false;
 
     while (Date.now() < deadline) {
-      await sleep(POLL_INTERVAL_MS);
       try {
         current = await getDetails(referenceId);
       } catch (err) {
@@ -442,16 +420,29 @@ describe("make a transaction", () => {
           throw err;
         }
 
+        await sleep(POLL_INTERVAL_MS);
         continue;
       }
+
       const nextTransaction = getLatestTransaction(current);
       seenStates.push(
         `${current.paymentStatus}/${nextTransaction.transactionStatus}`,
       );
 
+      if (!validatedInitialDetails) {
+        assertLatestTransactionInExpectedStates(
+          current,
+          scenario,
+          expectedInitialStates,
+        );
+        validatedInitialDetails = true;
+      }
+
       if (isExpectedFinalState(current)) {
         return current;
       }
+
+      await sleep(POLL_INTERVAL_MS);
     }
 
     throw new Error(
