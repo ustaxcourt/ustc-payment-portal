@@ -38,3 +38,9 @@ variable "name_prefix" {
   type = string
 }
 
+variable "nat_eip_allocation_id" {
+  description = "Existing EIP allocation to use for NAT egress. Empty = create a fresh replacement EIP (dev/stg). Prod sets this to the Pay.gov-allowlisted address so outbound SOAP traffic egresses on the trusted IP."
+  type        = string
+  default     = ""
+}
+
