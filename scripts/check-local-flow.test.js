@@ -40,25 +40,42 @@ describe("check-local-flow", () => {
       parsePort: jest.fn((value, fallback) => fallback),
     }));
 
-    delete process.env.FEE_ID;
     delete process.env.BASE_URL;
     delete process.env.PAYMENT_URL;
   });
 
   afterEach(() => jest.restoreAllMocks());
 
-  it("succeeds when /init returns a token in the body and /pay returns a valid mock page", async () => {
+  const VALID_PAY_PAGE_HTML =
+    "<html><body data-payment-method='card'>test payment page</body></html>";
+
+  it("succeeds when /init returns a token in the body and /pay returns a valid mock page for all scenarios", async () => {
     global.fetch = jest
       .fn()
+      // petitionFiling: /init returns token
       .mockResolvedValueOnce(
         makeFetchResponse({
           json: { token: "abc-token-123" },
         }),
       )
+      // petitionFiling: /pay returns valid page
       .mockResolvedValueOnce(
         makeFetchResponse({
           contentType: "text/html",
-          text: "<html><body data-payment-method='card'>test payment page</body></html>",
+          text: VALID_PAY_PAGE_HTML,
+        }),
+      )
+      // nonattorneyExam: /init returns token
+      .mockResolvedValueOnce(
+        makeFetchResponse({
+          json: { token: "def-token-456" },
+        }),
+      )
+      // nonattorneyExam: /pay returns valid page
+      .mockResolvedValueOnce(
+        makeFetchResponse({
+          contentType: "text/html",
+          text: VALID_PAY_PAGE_HTML,
         }),
       );
 
@@ -66,11 +83,13 @@ describe("check-local-flow", () => {
     await flushPromises();
 
     expect(processExitSpy).not.toHaveBeenCalledWith(1);
+    expect(global.fetch).toHaveBeenCalledTimes(4);
   });
 
-  it("succeeds when /init returns a paymentRedirect URL containing the token", async () => {
+  it("succeeds when /init returns a paymentRedirect URL containing the token for all scenarios", async () => {
     global.fetch = jest
       .fn()
+      // petitionFiling: /init returns paymentRedirect
       .mockResolvedValueOnce(
         makeFetchResponse({
           json: {
@@ -79,10 +98,24 @@ describe("check-local-flow", () => {
           },
         }),
       )
+      // petitionFiling: /pay returns valid page
       .mockResolvedValueOnce(
         makeFetchResponse({
           contentType: "text/html",
-          text: "<html><body data-payment-method='ach'>test payment page</body></html>",
+          text: VALID_PAY_PAGE_HTML,
+        }),
+      )
+      // nonattorneyExam: /init returns paymentRedirect
+      .mockResolvedValueOnce(
+        makeFetchResponse({
+          json: { paymentRedirect: "http://localhost:3366/pay?token=redirect-token-abc" },
+        }),
+      )
+      // nonattorneyExam: /pay returns valid page
+      .mockResolvedValueOnce(
+        makeFetchResponse({
+          contentType: "text/html",
+          text: VALID_PAY_PAGE_HTML,
         }),
       );
 
@@ -90,8 +123,8 @@ describe("check-local-flow", () => {
     await flushPromises();
 
     expect(processExitSpy).not.toHaveBeenCalledWith(1);
-    // Second fetch should include the token from paymentRedirect
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    // 4 total fetch calls: 2 scenarios × (1 /init + 1 /pay)
+    expect(global.fetch).toHaveBeenCalledTimes(4);
   });
 
   it("exits with 1 when /init returns a non-2xx response", async () => {
@@ -145,15 +178,6 @@ describe("check-local-flow", () => {
           text: "<html><body>some other page</body></html>",
         }),
       );
-
-    require("./check-local-flow");
-    await flushPromises();
-
-    expect(processExitSpy).toHaveBeenCalledWith(1);
-  });
-
-  it("exits with 1 when an unknown FEE_ID is set", async () => {
-    process.env.FEE_ID = "UNKNOWN_FEE";
 
     require("./check-local-flow");
     await flushPromises();

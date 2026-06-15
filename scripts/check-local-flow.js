@@ -55,28 +55,7 @@ function parseToken(initResponseBody) {
   throw new Error('Could not determine token from /init response');
 }
 
-function selectScenario(fee) {
-  const match = Object.values(TEST_DATA).find((s) => s.fee === fee);
-  if (!match) {
-    throw new Error(
-      `Unknown FEE: ${fee}. Supported: ${Object.values(TEST_DATA).map((s) => s.fee).join(', ')}`,
-    );
-  }
-  return match;
-}
-
-async function main() {
-  const apiPort = parsePort(process.env.API_PORT, 8080, 'API_PORT');
-  const paymentPort = parsePort(
-    process.env.PAY_GOV_TEST_SERVER_PORT,
-    3366,
-    'PAY_GOV_TEST_SERVER_PORT',
-  );
-  const baseUrl = process.env.BASE_URL || `http://localhost:${apiPort}`;
-  const paymentBase = process.env.PAYMENT_URL || `http://localhost:${paymentPort}/pay`;
-  const scenario = selectScenario(process.env.FEE || TEST_DATA.petitionFiling.fee);
-  const initUrl = new URL('/init', baseUrl).toString();
-
+async function runScenario(scenario, initUrl, paymentBase) {
   const initPayload = {
     transactionReferenceId: crypto.randomUUID(),
     fee: scenario.fee,
@@ -85,7 +64,7 @@ async function main() {
     metadata: scenario.metadata,
   };
 
-  log.info(`POST ${initUrl}`);
+  log.info(`POST ${initUrl} [${scenario.fee}]`);
   const initResponse = await fetch(initUrl, {
     method: 'POST',
     headers: {
@@ -94,19 +73,19 @@ async function main() {
     },
     body: JSON.stringify(initPayload),
   });
-  await ensureOk(initResponse, '/init');
+  await ensureOk(initResponse, `/init for ${scenario.fee}`);
 
   const initBody = await initResponse.json();
   const token = parseToken(initBody);
   const payUrl = new URL(paymentBase);
   payUrl.searchParams.set('token', token);
 
-  log.info(`GET ${payUrl.toString()}`);
+  log.info(`GET ${payUrl.toString()} [${scenario.fee}]`);
   const payResponse = await fetch(payUrl.toString(), {
     method: 'GET',
     headers: { accept: 'text/html' },
   });
-  await ensureOk(payResponse, '/pay');
+  await ensureOk(payResponse, `/pay for ${scenario.fee}`);
 
   const payHtml = await payResponse.text();
   const lowerHtml = (payHtml || '').toLowerCase();
@@ -118,12 +97,28 @@ async function main() {
 
   if (!looksLikeHtmlDoc || !isMockPayPage) {
     throw new Error(
-      '/pay returned 200 but did not render the expected mock payment page. ' +
+      `/pay for ${scenario.fee} returned 200 but did not render the expected mock payment page. ` +
         'The mock Pay.gov server is reachable but the flow is broken.'
     );
   }
+}
 
-  log.info('Success: /init and /pay token flow validated.');
+async function main() {
+  const apiPort = parsePort(process.env.API_PORT, 8080, 'API_PORT');
+  const paymentPort = parsePort(
+    process.env.PAY_GOV_TEST_SERVER_PORT,
+    3366,
+    'PAY_GOV_TEST_SERVER_PORT',
+  );
+  const baseUrl = process.env.BASE_URL || `http://localhost:${apiPort}`;
+  const paymentBase = process.env.PAYMENT_URL || `http://localhost:${paymentPort}/pay`;
+  const initUrl = new URL('/init', baseUrl).toString();
+
+  for (const scenario of Object.values(TEST_DATA)) {
+    await runScenario(scenario, initUrl, paymentBase);
+  }
+
+  log.info('Success: /init and /pay token flow validated for all fee scenarios.');
 }
 
 main().catch((error) => {
