@@ -477,7 +477,7 @@ resource "aws_api_gateway_stage" "stage" {
 }
 
 # Throttling — protects against runaway clients and abuse.
-# 10 requests/second sustained, burst of 20.
+# Stage-wide default: 10 req/s sustained, burst of 20. Payment endpoints and /details override this below.
 resource "aws_api_gateway_method_settings" "all" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
   stage_name  = aws_api_gateway_stage.stage.stage_name
@@ -487,6 +487,46 @@ resource "aws_api_gateway_method_settings" "all" {
     throttling_burst_limit = 20
     throttling_rate_limit  = 10
     metrics_enabled        = true
+  }
+}
+
+# Per-endpoint overrides. AWS throttling is req/s; rates below are converted from req/min.
+# throttling_rate_limit  = sustained fill rate of the token bucket (req/s)
+# throttling_burst_limit = max bucket capacity (instantaneous spike headroom)
+
+# 100 req/min = 2 req/s
+resource "aws_api_gateway_method_settings" "init_throttle" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  stage_name  = aws_api_gateway_stage.stage.stage_name
+  method_path = "POST/init"
+
+  settings {
+    throttling_burst_limit = 10
+    throttling_rate_limit  = 2
+  }
+}
+
+# 100 req/min = 2 req/s
+resource "aws_api_gateway_method_settings" "process_throttle" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  stage_name  = aws_api_gateway_stage.stage.stage_name
+  method_path = "POST/process"
+
+  settings {
+    throttling_burst_limit = 10
+    throttling_rate_limit  = 2
+  }
+}
+
+# 5000 req/min = 84 req/s
+resource "aws_api_gateway_method_settings" "details_throttle" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  stage_name  = aws_api_gateway_stage.stage.stage_name
+  method_path = "GET/details~1{transactionReferenceId}"
+
+  settings {
+    throttling_burst_limit = 150
+    throttling_rate_limit  = 84
   }
 }
 
