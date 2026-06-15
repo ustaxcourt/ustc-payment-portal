@@ -5,7 +5,7 @@ import {
 } from "../schemas/InitPayment.schema";
 import { InvalidRequestError } from "../errors/invalidRequest";
 import { ConflictError } from "../errors/conflict";
-import FeesModel from "../db/FeesModel";
+import { getActiveFeeByKey } from "../fees";
 import { generateAgencyTrackingId } from "../utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
 import { isUniqueViolation } from "../db/pgErrors";
@@ -61,8 +61,9 @@ export const initPayment: InitPayment = async (
     },
   );
 
-  const fee = await FeesModel.getActiveFeeByKey(feeKey);
-  if (!fee || !fee.tcsAppId) {
+  const tcsAppIds = await appContext.getTcsAppIds();
+  const fee = getActiveFeeByKey(feeKey, tcsAppIds);
+  if (!fee) {
     throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
   }
 
@@ -136,6 +137,7 @@ export const initPayment: InitPayment = async (
     await TransactionModel.createReceived({
       agencyTrackingId,
       feeId: fee.feeId,
+      transactionAmount,
       clientName,
       transactionReferenceId,
       metadata: request.metadata,

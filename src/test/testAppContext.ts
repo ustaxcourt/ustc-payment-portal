@@ -2,6 +2,7 @@ import { AppContext } from "../types/AppContext";
 
 export const testAppContext: AppContext = {
   getHttpsAgent: jest.fn(),
+  getTcsAppIds: jest.fn(),
   postHttpRequest: jest.fn(),
   getUseCases: () => ({
     initPayment: jest.fn(),

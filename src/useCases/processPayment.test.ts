@@ -7,7 +7,7 @@ import { NotFoundError } from "../errors/notFound";
 import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
-import FeesModel from "../db/FeesModel";
+import * as feesModule from "../fees";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -20,17 +20,15 @@ jest.mock("../db/TransactionModel", () => ({
   },
 }));
 
-jest.mock("../db/FeesModel", () => ({
-  __esModule: true,
-  default: {
-    getFeeById: jest.fn(),
-  },
+jest.mock("../fees", () => ({
+  ...jest.requireActual("../fees"),
+  getFeeById: jest.fn(),
 }));
 
 const TransactionModelMock = TransactionModel as jest.Mocked<
   typeof TransactionModel
 >;
-const FeesModelMock = FeesModel as jest.Mocked<typeof FeesModel>;
+const getFeeByIdMock = feesModule.getFeeById as jest.Mock;
 
 const mockClient: ClientPermission = {
   clientName: "Test Client",
@@ -221,11 +219,15 @@ describe("processPayment", () => {
       mockUpdatedTransaction(null),
     );
     TransactionModelMock.findByReferenceId.mockResolvedValue([]);
-    FeesModelMock.getFeeById.mockResolvedValue({
+    (appContext.getTcsAppIds as jest.Mock).mockResolvedValue({
+      PETITION_FILING_FEE: "TCSUSTAXCOURTPETITION",
+      NONATTORNEY_EXAM_REGISTRATION_FEE: "TCSUSTAXCOURTANAEF",
+    });
+    getFeeByIdMock.mockReturnValue({
       feeId: "fee-123",
       feeKey: "fee-123",
       tcsAppId: "TCSUSTAXCOURTPETITION",
-    } as unknown as FeesModel);
+    });
   });
 
   it("throws NotFoundError when token is not in the database", async () => {
@@ -299,7 +301,7 @@ describe("processPayment", () => {
   });
 
   it("throws NotFoundError when fee is not found for the transaction", async () => {
-    FeesModelMock.getFeeById.mockResolvedValueOnce(undefined);
+    getFeeByIdMock.mockReturnValueOnce(undefined);
 
     await expect(
       processPayment(appContext, {
@@ -307,21 +309,6 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       }),
     ).rejects.toThrow(NotFoundError);
-  });
-
-  it("throws ServerError when fee has no tcsAppId", async () => {
-    FeesModelMock.getFeeById.mockResolvedValueOnce({
-      feeId: "fee-123",
-      feeKey: "fee-123",
-      tcsAppId: "",
-    } as unknown as FeesModel);
-
-    await expect(
-      processPayment(appContext, {
-        client: mockClient,
-        request: { token: "mock-token" },
-      }),
-    ).rejects.toThrow(ServerError);
   });
 
   it("passes the fee's tcsAppId to the SOAP request", async () => {

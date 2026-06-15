@@ -83,6 +83,34 @@ resource "aws_secretsmanager_secret_version" "allowed_account_ids_initial" {
   }
 }
 
+# tcsAppId per fee key — Pay.gov application identifiers, sensitive in prod.
+# Seed with a placeholder; set the real value via:
+#   aws ssm put-parameter --name "/ustc/pay-gov/<env>/tcs-app-id/<FEE_KEY>" \
+#     --type SecureString --value "<value>" --overwrite
+resource "aws_ssm_parameter" "tcs_app_id_petition_filing_fee" {
+  name        = "/${local.basepath}/tcs-app-id/PETITION_FILING_FEE"
+  description = "Pay.gov tcsAppId for PETITION_FILING_FEE (${local.env})"
+  type        = "SecureString"
+  value       = "placeholder"
+  tags        = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "tcs_app_id_nonattorney_exam_registration_fee" {
+  name        = "/${local.basepath}/tcs-app-id/NONATTORNEY_EXAM_REGISTRATION_FEE"
+  description = "Pay.gov tcsAppId for NONATTORNEY_EXAM_REGISTRATION_FEE (${local.env})"
+  type        = "SecureString"
+  value       = "placeholder"
+  tags        = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
 # JSON array of {protocol, endpoint}. SecureString since phone numbers are PII;
 # updated via `aws ssm put-parameter` without redeploying.
 resource "aws_ssm_parameter" "monitoring_subscribers" {

@@ -15,6 +15,7 @@ export type AppContextLogger = {
 
 export type AppContext = {
   getHttpsAgent: () => Promise<https.Agent | undefined>;
+  getTcsAppIds: (feeKey: string) => Promise<string>;
   postHttpRequest: (appContext: AppContext, body: string) => Promise<string>;
   getUseCases: () => {
     initPayment: InitPayment;

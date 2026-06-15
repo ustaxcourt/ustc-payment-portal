@@ -1,19 +1,18 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
+import { FEES } from "../fees";
 
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);
 
-// TODO: replace with DB lookup once fees table is provisioned. This enum must stay in
-// sync with fees.ts until then.
+const feeIds = Object.keys(FEES) as [string, ...string[]];
+
 export const FeeIdSchema = z
-  .enum(["PETITION_FILING_FEE", "NONATTORNEY_EXAM_REGISTRATION_FEE"])
+  .enum(feeIds)
   .openapi({
     description:
-      "The fee type identifier. Available fee types:\n\n" +
-      "- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n" +
-      "- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\n" +
-      "Fee amounts are determined by the Payment Portal based on the fee type. " +
+      "The versioned fee identifier stored on a transaction. Matches the feeId active at the time the transaction was initiated.\n\n" +
+      "Fee amounts are determined by the Payment Portal based on the fee key. " +
       "See the API documentation for more details on fee authorization and supported fees.",
     example: "PETITION_FILING_FEE",
   });

@@ -1,11 +1,13 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
+import { FEE_KEYS } from "../fees";
+import type { FeeKey } from "../fees";
 
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);
 
 export const FeeKeySchema = z
-  .enum(["PETITION_FILING_FEE", "NONATTORNEY_EXAM_REGISTRATION_FEE"])
+  .enum(FEE_KEYS)
   .openapi({
     description:
       "The stable fee identifier sent by the client. Available fee keys:\n\n" +
@@ -16,4 +18,4 @@ export const FeeKeySchema = z
     example: "PETITION_FILING_FEE",
   });
 
-export type FeeKey = z.infer<typeof FeeKeySchema>;
+export type { FeeKey };

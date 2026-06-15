@@ -110,5 +110,13 @@ variable "tf_state_bucket_name" {
   type        = string
 }
 
+# tcsAppId values per fee key — sensitive, must be supplied via tfvars or environment,
+# never committed to source control. These are the Pay.gov application identifiers.
+variable "tcs_app_ids" {
+  description = "Map of fee key to Pay.gov tcsAppId value (e.g. { PETITION_FILING_FEE = \"TCSUSTAXCOURT...\" })"
+  type        = map(string)
+  sensitive   = true
+}
+
 
 

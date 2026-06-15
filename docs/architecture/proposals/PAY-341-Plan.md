@@ -32,3 +32,6 @@
 - **AppContext**: gains a `getTcsAppIds(): Promise<Record<FeeKey, string>>` method, following the same lazy-cache pattern as the existing `getHttpsAgent()`. The SSM client holds a module-level cache populated on first call; warm invocations return the cached value. Use cases `await ctx.getTcsAppIds()` then pass the result into the fee functions.
 - **No class**: the Objection model class is eliminated entirely; use cases import the two functions directly from `src/fees.ts`
 - **FK drop**: `transactions.feeId` becomes a plain string column with no DB-enforced FK. The code registry is the source of truth for resolving historical fee versions.
+
+## First Pass Follow Up Tasks
+- Clean up Fee Schemas, `FeeIdSchema` doesn't appear to be used anywhere. 

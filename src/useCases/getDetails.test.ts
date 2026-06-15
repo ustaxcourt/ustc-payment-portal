@@ -5,7 +5,7 @@ import { NotFoundError } from "../errors/notFound";
 import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
-import FeesModel from "../db/FeesModel";
+import * as feesModule from "../fees";
 import { randomUUID } from "crypto";
 import { mockTrackingId } from "../test/utils/mocks";
 import { ForbiddenError } from "../errors/forbidden";
@@ -19,17 +19,15 @@ jest.mock("../db/TransactionModel", () => ({
   },
 }));
 
-jest.mock("../db/FeesModel", () => ({
-  __esModule: true,
-  default: {
-    getFeeById: jest.fn(),
-  },
+jest.mock("../fees", () => ({
+  ...jest.requireActual("../fees"),
+  getFeeById: jest.fn(),
 }));
 
 const TransactionModelMock = TransactionModel as jest.Mocked<
   typeof TransactionModel
 >;
-const FeesModelMock = FeesModel as jest.Mocked<typeof FeesModel>;
+const getFeeByIdMock = feesModule.getFeeById as jest.Mock;
 
 const mockClient: ClientPermission = {
   clientName: "Test Client",
@@ -123,11 +121,15 @@ describe("getDetails", () => {
           lastUpdatedAt: "2026-01-15T11:00:00.000Z",
         }),
     );
-    FeesModelMock.getFeeById.mockResolvedValue({
+    (appContext.getTcsAppIds as jest.Mock).mockResolvedValue({
+      PETITION_FILING_FEE: "TCSUSTAXCOURTPETITION",
+      NONATTORNEY_EXAM_REGISTRATION_FEE: "TCSUSTAXCOURTANAEF",
+    });
+    getFeeByIdMock.mockReturnValue({
       feeId: "PETITION_FILING_FEE",
       feeKey: "PETITION_FILING_FEE",
       tcsAppId: "TCSUSTAXCOURTPETITION",
-    } as unknown as FeesModel);
+    });
   });
 
   it("throws NotFoundError when no transactions exist for the reference id", async () => {
@@ -162,7 +164,7 @@ describe("getDetails", () => {
   });
 
   it("throws ServerError when fee is not found for the transaction (data corruption)", async () => {
-    FeesModelMock.getFeeById.mockResolvedValueOnce(undefined);
+    getFeeByIdMock.mockReturnValueOnce(undefined);
 
     await expect(
       getDetails(appContext, {
@@ -176,38 +178,6 @@ describe("getDetails", () => {
       expect.objectContaining({
         transactionReferenceId: mockTransactionReferenceId,
         clientName: mockClient.clientName,
-        reason: "fee row missing",
-      }),
-    );
-  });
-
-  it("throws ServerError when fee has no tcsAppId", async () => {
-    FeesModelMock.getFeeById.mockResolvedValueOnce({
-      feeId: "PETITION_FILING_FEE",
-      feeKey: "PETITION_FILING_FEE",
-      tcsAppId: "",
-    } as unknown as FeesModel);
-    TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
-      buildRow({
-        transactionStatus: "pending",
-        paymentStatus: "pending",
-        paygovTrackingId: mockPayGovTrackingId,
-      }),
-    ]);
-
-    await expect(
-      getDetails(appContext, {
-        client: mockClient,
-        request: { transactionReferenceId: mockTransactionReferenceId },
-      }),
-    ).rejects.toThrow(ServerError);
-
-    expect(appContext.logger.error).toHaveBeenCalledWith(
-      "Fee misconfigured — aborting getDetails",
-      expect.objectContaining({
-        transactionReferenceId: mockTransactionReferenceId,
-        clientName: mockClient.clientName,
-        reason: "tcsAppId missing",
       }),
     );
   });

@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import dayjs from 'dayjs';
-import FeesModel from '../../../src/db/FeesModel';
+import { FEES } from '../../../src/fees';
 import { generateAgencyTrackingId } from '../../../src/utils/generateTrackingId';
 
 type GenerateTransactionsParams = {
@@ -14,6 +14,7 @@ type TransactionRow = {
   agency_tracking_id: string;
   paygov_tracking_id: string | null;
   fee_id: string;
+  transaction_amount: number;
   client_name: string;
   transaction_reference_id: string;
   payment_status: string;
@@ -35,7 +36,7 @@ export const generateTransactions = async ({
   pendingTransactions,
   multiAttemptGroups = 0,
 }: GenerateTransactionsParams): Promise<TransactionRow[]> => {
-  const feesList = await FeesModel.query().select('feeId');
+  const feesList = Object.values(FEES).map((f) => ({ feeId: f.feeId }));
   const clientNames = ['payment-portal', 'efile-portal', 'clerk-app'];
   const paymentMethods = ["plastic_card", "ach", "paypal"] as const;
 
@@ -100,6 +101,7 @@ export const generateTransactions = async ({
       agency_tracking_id: generateAgencyTrackingId(),
       paygov_tracking_id: faker.datatype.boolean() ? faker.string.alphanumeric({ length: 20, casing: 'upper' }) : null,
       fee_id: fee.feeId,
+      transaction_amount: FEES[fee.feeId]?.amount ?? 0,
       client_name: overrides.clientName ?? faker.helpers.arrayElement(clientNames),
       transaction_reference_id: transactionReferenceId,
       payment_status,

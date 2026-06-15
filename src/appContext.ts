@@ -1,5 +1,7 @@
 import { getSecretString } from "./clients/secretsClient";
-import { isLocal } from "./config/appEnv";
+import { getParameter } from "./clients/ssmClient";
+import { isLocal, getAppEnv } from "./config/appEnv";
+import { FEE_KEYS, type FeeKey } from "./fees";
 import { AppContext } from "./types/AppContext";
 import { getDetails } from "./useCases/getDetails";
 import { initPayment } from "./useCases/initPayment";
@@ -13,6 +15,13 @@ import { createRequestLogger } from "./utils/logger";
 import type { APIGatewayEvent } from "aws-lambda";
 
 let httpsAgentCache: https.Agent | undefined;
+let tcsAppIdsCache: Record<FeeKey, string> | undefined;
+
+// Local dev values mirror the sandbox Pay.gov app IDs used in the test server.
+const LOCAL_TCS_APP_IDS: Record<FeeKey, string> = {
+  PETITION_FILING_FEE: 'TCSUSTAXCOURTPETITION',
+  NONATTORNEY_EXAM_REGISTRATION_FEE: 'TCSUSTAXCOURTANAEF',
+};
 
 function normalizePem(pem: string): string {
   return pem.replace(/\r\n/g, "\n").trimEnd() + "\n";
@@ -53,6 +62,14 @@ export const createAppContext = (
   const logger = createRequestLogger(requestContext);
 
   return {
+    getTcsAppIds: async (feeKey: string) => {
+      if (isLocal()) return LOCAL_TCS_APP_IDS;
+      const env = getAppEnv();
+
+      const value = await getParameter(`/ustc/pay-gov/${env}/tcs-app-id/${feeKey}`);
+
+      return value;
+    },
     getHttpsAgent: async () => {
       if (!httpsAgentCache) {
         const keyId = process.env.PRIVATE_KEY_SECRET_ID;

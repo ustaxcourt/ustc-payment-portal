@@ -13,35 +13,34 @@ jest.mock("../db/TransactionModel", () => ({
   },
 }));
 
-jest.mock("../db/FeesModel", () => ({
-  __esModule: true,
-  default: {
-    getActiveFeeByKey: jest.fn((feeKey) => {
-      if (feeKey === "PETITION_FILING_FEE") {
-        return Promise.resolve({
-          feeId: "PETITION_FILING_FEE",
-          feeKey: "PETITION_FILING_FEE",
-          tcsAppId: "TCSUSTAXCOURTPETITION",
-          amount: 250,
-          isVariable: false,
-        });
-      }
-      if (feeKey === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
-        return Promise.resolve({
-          feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
-          feeKey: "NONATTORNEY_EXAM_REGISTRATION_FEE",
-          tcsAppId: "TCSUSTAXCOURTANAEF",
-          amount: 250,
-          isVariable: false,
-        });
-      }
-      return Promise.resolve(undefined);
-    }),
-  },
+jest.mock("../fees", () => ({
+  ...jest.requireActual("../fees"),
+  getActiveFeeByKey: jest.fn((feeKey: string) => {
+    if (feeKey === "PETITION_FILING_FEE") {
+      return {
+        feeId: "PETITION_FILING_FEE",
+        feeKey: "PETITION_FILING_FEE",
+        tcsAppId: "TCSUSTAXCOURTPETITION",
+        amount: 60,
+        isVariable: false,
+      };
+    }
+    if (feeKey === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
+      return {
+        feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        feeKey: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        tcsAppId: "TCSUSTAXCOURTANAEF",
+        amount: 250,
+        isVariable: false,
+      };
+    }
+    return undefined;
+  }),
 }));
 
 import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
+import * as feesModule from "../fees";
 import { InitPaymentRequest } from "../schemas/InitPayment.schema";
 import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
 import { ZodError } from "zod";
@@ -75,6 +74,19 @@ const mockSoapRequest = (token: string) => {
 describe("initPayment", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (feesModule.getActiveFeeByKey as jest.Mock).mockImplementation((feeKey: string) => {
+      if (feeKey === "PETITION_FILING_FEE") {
+        return { feeId: "PETITION_FILING_FEE", feeKey: "PETITION_FILING_FEE", tcsAppId: "TCSUSTAXCOURTPETITION", amount: 60, isVariable: false };
+      }
+      if (feeKey === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
+        return { feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE", feeKey: "NONATTORNEY_EXAM_REGISTRATION_FEE", tcsAppId: "TCSUSTAXCOURTANAEF", amount: 250, isVariable: false };
+      }
+      return undefined;
+    });
+    (appContext.getTcsAppIds as jest.Mock).mockResolvedValue({
+      PETITION_FILING_FEE: "TCSUSTAXCOURTPETITION",
+      NONATTORNEY_EXAM_REGISTRATION_FEE: "TCSUSTAXCOURTANAEF",
+    });
   });
 
   afterEach(() => {
@@ -140,8 +152,7 @@ describe("initPayment", () => {
   });
 
   it("throws InvalidRequestError when amount is missing for a variable fee", async () => {
-    const FeesModel = require("../db/FeesModel").default;
-    FeesModel.getActiveFeeByKey.mockResolvedValueOnce({
+    (feesModule.getActiveFeeByKey as jest.Mock).mockReturnValueOnce({
       feeId: "PETITION_FILING_FEE",
       feeKey: "PETITION_FILING_FEE",
       tcsAppId: "TCSUSTAXCOURTPETITION",

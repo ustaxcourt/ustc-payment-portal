@@ -1,5 +1,5 @@
 import { Model } from 'objection';
-import FeesModel from './FeesModel';
+import { FEES } from '../fees';
 import type { PaymentStatus } from '../schemas/PaymentStatus.schema';
 import type { TransactionStatus as SchemaTransactionStatus } from '../schemas/TransactionStatus.schema';
 import { getKnex } from './knex';
@@ -15,10 +15,15 @@ export type PaymentMethod =
   | 'paypal';
 
 
+function enrichWithFeeName(row: TransactionModel): TransactionModel {
+  row.feeName = FEES[row.feeId]?.name ?? row.feeId;
+  return row;
+}
+
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
-  feeId!: string; // e.g. "PETITION_FILING_FEE_2026_03_05" — the specific fee version in effect at the time of the transaction attempt. FK to FeesModel.
+  feeId!: string; // e.g. "PETITION_FILING_FEE" — the specific fee version in effect at the time of the transaction attempt. Soft reference to FEES in src/fees.ts.
   feeName?: string;
   clientName!: string;
   transactionReferenceId!: string;
@@ -43,19 +48,6 @@ export default class TransactionModel extends Model {
     return 'agencyTrackingId';
   }
 
-  static get relationMappings() {
-    return {
-      fee: {
-        relation: Model.BelongsToOneRelation,
-        modelClass: FeesModel,
-        join: {
-          from: 'transactions.feeId',
-          to: 'fees.feeId',
-        },
-      },
-    };
-  }
-
   $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
     const parsed = super.$parseDatabaseJson(json);
     if (parsed.transactionAmount !== undefined && parsed.transactionAmount !== null) {
@@ -64,27 +56,21 @@ export default class TransactionModel extends Model {
     return parsed;
   }
 
-  // Fees from Fee Table will never be deleted, new ones are versioned according
-  // to FeeKey & activation date, with the latest date accepted as the active fee.
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
     await getKnex();
-    return TransactionModel.query()
-      .alias('t')
-      .join('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.name as feeName', 'f.amount as transactionAmount')
-      .where('t.paymentStatus', paymentStatus)
-      .orderBy('t.createdAt', 'desc')
+    const rows = await TransactionModel.query()
+      .where('paymentStatus', paymentStatus)
+      .orderBy('createdAt', 'desc')
       .limit(100);
+    return rows.map((row) => enrichWithFeeName(row));
   }
 
   static async getAll(): Promise<TransactionModel[]> {
     await getKnex();
-    return TransactionModel.query()
-      .alias('t')
-      .join('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.name as feeName', 'f.amount as transactionAmount')
-      .orderBy('t.createdAt', 'desc')
+    const rows = await TransactionModel.query()
+      .orderBy('createdAt', 'desc')
       .limit(100);
+    return rows.map((row) => enrichWithFeeName(row));
   }
 
   static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
