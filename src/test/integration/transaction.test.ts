@@ -104,7 +104,11 @@ describe("make a transaction", () => {
 
   // Run through the full transaction flow for each of the defined payment scenarios defined above.
   it.each(scenarios)("handles $name end-to-end", async (scenario) => {
-    for (let attempt = 1; attempt <= ACH_SCENARIO_MAX_ATTEMPTS; attempt += 1) {
+    const maxAttempts = scenario.expectPendingDuringResolution
+      ? ACH_SCENARIO_MAX_ATTEMPTS
+      : 1;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         const initialized = await initTransaction();
 
@@ -177,7 +181,7 @@ describe("make a transaction", () => {
         const shouldRetryAchScenario =
           scenario.expectPendingDuringResolution &&
           isTransientDetailsError(message);
-        if (!shouldRetryAchScenario || attempt === ACH_SCENARIO_MAX_ATTEMPTS) {
+        if (!shouldRetryAchScenario || attempt === maxAttempts) {
           throw err;
         }
 
