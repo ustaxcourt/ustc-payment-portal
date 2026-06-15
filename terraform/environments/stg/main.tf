@@ -104,6 +104,34 @@ resource "aws_acm_certificate_validation" "this" {
   validation_record_fqdns = [for r in aws_route53_record.cert_validation : r.fqdn]
 }
 
+resource "aws_iam_role" "api_gateway_cloudwatch_logs" {
+  name = "${local.name_prefix}-apigw-cloudwatch-logs"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "apigateway.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch_logs" {
+  role       = aws_iam_role.api_gateway_cloudwatch_logs.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
+# One per AWS account per region — sets the default CloudWatch role for all API Gateway stages.
+resource "aws_api_gateway_account" "this" {
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch_logs.arn
+}
+
 module "api" {
   source = "../../modules/api-gateway"
 
@@ -115,7 +143,7 @@ module "api" {
   certificate_arn      = aws_acm_certificate_validation.this.certificate_arn
   route53_zone_id      = aws_route53_zone.this.zone_id
 
-  depends_on = [module.secrets, aws_acm_certificate_validation.this]
+  depends_on = [module.secrets, aws_acm_certificate_validation.this, aws_api_gateway_account.this]
 }
 
 # Read allowed account IDs from Secrets Manager for API Gateway resource policy
@@ -155,6 +183,8 @@ module "monitoring" {
     processPayment = module.lambda.log_group_names["processPayment"]
     getDetails     = module.lambda.log_group_names["getDetails"]
   }
+
+  api_gateway_access_log_group_name = module.api.access_log_group_name
 
   tags = {
     Env     = local.environment

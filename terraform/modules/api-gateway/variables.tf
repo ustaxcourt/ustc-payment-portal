@@ -57,3 +57,9 @@ variable "dashboard_allowed_origin" {
   default     = ""
 }
 
+variable "log_retention_days" {
+  description = "Retention period in days for the API Gateway access log group."
+  type        = number
+  default     = 30
+}
+

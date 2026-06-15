@@ -76,3 +76,9 @@ variable "teams_channel_id" {
   default     = null
   sensitive   = true
 }
+
+variable "api_gateway_access_log_group_name" {
+  description = "Name of the API Gateway access log group. When set, creates a 429 throttle metric filter and alarm."
+  type        = string
+  default     = null
+}
