@@ -473,6 +473,7 @@ resource "aws_cloudwatch_log_group" "access_logs" {
   count             = var.enable_access_logging ? 1 : 0
   name              = "/aws/apigateway/${var.environment}"
   retention_in_days = var.log_retention_days
+  skip_destroy      = true
   tags              = var.common_tags
 
   lifecycle {
