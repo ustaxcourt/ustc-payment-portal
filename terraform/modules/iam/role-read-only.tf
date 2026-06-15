@@ -100,7 +100,8 @@ resource "aws_iam_role_policy" "github_actions_read_only" {
           "arn:aws:apigateway:${local.aws_region}::/restapis*",
           "arn:aws:apigateway:${local.aws_region}::/deployments*",
           "arn:aws:apigateway:${local.aws_region}::/domainnames*",
-          "arn:aws:apigateway:${local.aws_region}::/basepathmappings*"
+          "arn:aws:apigateway:${local.aws_region}::/basepathmappings*",
+          "arn:aws:apigateway:${local.aws_region}::/account"
         ]
       },
       {
