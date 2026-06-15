@@ -63,3 +63,15 @@ variable "log_retention_days" {
   default     = 30
 }
 
+variable "enable_access_logging" {
+  description = "Whether to enable CloudWatch access logging on the stage. Requires aws_api_gateway_account to be configured in the AWS account. Set to false in environments where that account-level resource is not present."
+  type        = bool
+  default     = true
+}
+
+variable "enable_per_endpoint_throttling" {
+  description = "Whether to apply per-endpoint throttle overrides for /init, /process, and /details. When false, all routes fall back to the stage-wide default. Set to false in dev/PR environments to avoid throttling during testing."
+  type        = bool
+  default     = true
+}
+
