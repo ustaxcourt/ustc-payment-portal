@@ -447,7 +447,9 @@ resource "aws_iam_role_policy" "github_actions_pr_log_cleanup" {
         ]
         Resource = [
           "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-pr-*",
-          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-pr-*:*"
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-pr-*:*",
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/pr-*",
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/pr-*:*"
         ]
       }
     ]
