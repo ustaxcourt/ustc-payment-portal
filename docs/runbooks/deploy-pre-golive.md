@@ -14,7 +14,7 @@ gates.
 
 ## The promotion chain
 
-```
+```text
   merge PR to main
         │
         ▼
@@ -32,7 +32,7 @@ gates.
         ├─ terraform plan/apply → STAGING account
         ├─ run DB migrations (migrationRunner Lambda)
         ├─ smoke test  /init  + Pay.gov redirect
-        └─ dispatch rc-release.yml → creates a GitHub *pre-release*
+        └─ dispatch rc-release.yml → creates a GitHub Release for the RC tag
         │
         ▼
   MANUAL verification on STAGING (Cypress + getDetails/logs)
@@ -89,7 +89,11 @@ Dev deploys automatically when the PR merges. Do **not** skip the check.
      commit.
 2. The `promote` job validates artifacts, mints an **RC tag**
    (`v<X.Y.Z>-rc.<N>`) on the resolved SHA, and dispatches `rc-release.yml`
-   (which opens a GitHub **pre-release** recording the SHA + artifact prefix).
+   (which creates a GitHub Release for the RC tag, recording the SHA + artifact
+   prefix). **Note:** this RC Release is *not* marked as a pre-release. It does
+   **not** trigger a Prod deploy only because it is created via `GITHUB_TOKEN`,
+   and GitHub does not re-trigger workflows from `GITHUB_TOKEN`-created events.
+   That safeguard is implicit and fragile — see the Stage 4 note and Section 3.
 3. The `deploy` job runs against the Staging account: `terraform apply`, then DB
    migrations via the `migrationRunner` Lambda, then the built-in smoke test.
 
@@ -157,15 +161,24 @@ Response shape:
 }
 ```
 
-What to assert:
+What to assert. The mapping is deterministic — `paymentStatus` is derived purely
+from `transactionStatus` ([derivePaymentStatus.ts](../../src/utils/derivePaymentStatus.ts)),
+and Pay.gov states map via
+[parseTransactionStatus.ts](../../src/useCases/parseTransactionStatus.ts):
 
-- The **latest** transaction row has `transactionStatus` = `processed`. This is
-  your "a payment ran end-to-end and persisted" signal. When there are multiple
-  attempts, the latest one is what counts.
-- `paymentStatus` = `success` for an instant/card payment. **ACH settles
-  asynchronously**, so `paymentStatus` may legitimately remain `pending` even on
-  a good attempt — in that case rely on the latest `transactionStatus` =
-  `processed` as the deploy-health signal.
+- Rule: any transaction `processed` → `paymentStatus` `success`; all `failed` →
+  `failed`; otherwise `pending`. The two fields **never disagree** —
+  `transactionStatus` = `processed` always implies `paymentStatus` = `success`.
+- **Card / instant payment:** the latest transaction lands
+  `transactionStatus` = `processed` / `paymentStatus` = `success` right away.
+  That is your green deploy-health signal.
+- **ACH:** settlement is asynchronous. Pay.gov first returns
+  `Pending`/`Received`/`Submitted`/`Waiting`, which map to a **non-terminal**
+  `transactionStatus` and `paymentStatus` = `pending` — for **both** fields. This
+  is healthy, not a failure; you will *not* see `processed` yet. Confirm the row
+  was created and Pay.gov accepted it, then re-poll `getDetails` later — it flips
+  to `processed`/`success` once Pay.gov reports `Settled`/`Success`. **For deploy
+  verification, prefer a card payment so you get a terminal result immediately.**
 
 The integration tests in [`src/test/integration/`](../../src/test/integration/)
 are the canonical example of a signed `getDetails` client if you need the exact
@@ -202,6 +215,15 @@ Production deploys from a **final (non-pre-release) GitHub Release** on the
 - **Prod does not auto-run DB migrations** in the deploy workflow the way
   Staging does. If your change includes a migration, coordinate how it gets
   applied to the Prod database **before** promoting.
+- **The RC Release is not marked as a pre-release**, so the only thing keeping it
+  from triggering a Prod deploy is GitHub's "no workflow re-trigger from
+  `GITHUB_TOKEN`" rule. *Verified empirically:* 14+ RC releases exist and
+  `prod-deploy.yml` has never fired on a `-rc.*` tag (only one `release`-event run
+  ever, on a final tag). But the safeguard is implicit — if anyone re-publishes an
+  RC Release by hand (or automation switches to a PAT), `prod-deploy.yml` would
+  fire and, because the release is not a pre-release, could apply. Hardening
+  (mark RC releases `prerelease: true` **and** filter the Prod `release` trigger
+  to skip `*-rc.*`) is a Section 3 backlog item.
 
 ---
 
