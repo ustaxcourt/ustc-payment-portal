@@ -366,10 +366,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "sns:GetSubscriptionAttributes",
           "sns:SetSubscriptionAttributes"
         ],
-        Resource = [
-          "arn:aws:sns:${local.aws_region}:${data.aws_caller_identity.current.account_id}:${var.lambda_name_prefix}-*",
-          "arn:aws:sns:${local.aws_region}:${data.aws_caller_identity.current.account_id}:${var.lambda_name_prefix}-*:*"
-        ]
+        Resource = "*"
       },
       {
         Effect = "Allow", # CloudWatch alarms — scoped to project-prefixed alarms
