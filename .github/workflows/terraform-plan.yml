@@ -108,6 +108,10 @@ jobs:
         id: plan
         if: ${{ steps.init.outputs.exitcode == '0' }}
         working-directory: terraform/environments/${{ matrix.env }}
+        env:
+          TF_VAR_teams_tenant_id: ${{ secrets[matrix.teams_tenant_secret] }}
+          TF_VAR_teams_team_id: ${{ secrets[matrix.teams_team_secret] }}
+          TF_VAR_teams_channel_id: ${{ secrets[matrix.teams_channel_secret] }}
         run: |
           set +e
           terraform plan -input=false -lock=false -detailed-exitcode -no-color -out=tfplan

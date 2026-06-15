@@ -38,6 +38,7 @@ module "networking" {
   availability_zone     = "us-east-1a"
   availability_zone_2   = "us-east-1b"
   name_prefix           = local.name_prefix
+  nat_eip_allocation_id = "eipalloc-008587cebd5d34afb"
   tags = {
     Env     = local.environment
     Project = "ustc-payment-portal"
