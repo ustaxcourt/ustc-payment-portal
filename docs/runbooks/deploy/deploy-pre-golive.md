@@ -219,7 +219,7 @@ Production deploys from a **final (non-pre-release) GitHub Release** on the
 
 - **Prod has no post-deploy smoke test today** — the smoke-test step in
   `prod-deploy.yml` is commented out. After a Prod apply, manually confirm the
-  API responds. (Tracked in the [deploy backlog](deploy-backlog-tickets.md).)
+  API responds. (Tracked in the [deploy backlog](../../deploy-backlog.md).)
 - **Prod does not auto-run DB migrations** in the deploy workflow the way
   Staging does. If your change includes a migration, coordinate how it gets
   applied to the Prod database **before** promoting.
@@ -231,7 +231,7 @@ Production deploys from a **final (non-pre-release) GitHub Release** on the
   RC Release by hand (or automation switches to a PAT), `prod-deploy.yml` would
   fire and, because the release is not a pre-release, could apply. Hardening
   (mark RC releases `prerelease: true` **and** filter the Prod `release` trigger
-  to skip `*-rc.*`) is tracked in the [deploy backlog](deploy-backlog-tickets.md).
+  to skip `*-rc.*`) is tracked in the [deploy backlog](../../deploy-backlog.md).
 
 ---
 

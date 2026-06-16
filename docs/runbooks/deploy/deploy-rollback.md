@@ -105,7 +105,7 @@ depends on it.** (The repo already trends this way — see
 
 ---
 
-## Known gaps (tracked in the [deploy backlog](deploy-backlog-tickets.md))
+## Known gaps (tracked in the [deploy backlog](../../deploy-backlog.md))
 
 - **No automated DB migration rollback** in deployed environments — reversal is
   manual or forward-only today. A supported down-migration path (or a documented

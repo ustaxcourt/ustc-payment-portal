@@ -12,6 +12,11 @@ use [`deploy-pre-golive.md`](deploy-pre-golive.md) instead.
 > This doc describes only the *deltas*. For the mechanics of each stage and the
 > command reference, read the pre-go-live runbook alongside it.
 
+**At go-live, fold pre-go-live in.** This doc references the pre-go-live runbook
+for shared mechanics (Stage 1–2 and the command reference). When that file is
+retired (per its retire note), pull those referenced sections into this doc first,
+then delete pre-go-live so nothing dangles.
+
 ---
 
 ## What is different after go-live
@@ -99,7 +104,7 @@ mandatory after go-live:
    > required reviewer). The `environment: production` block in `prod-deploy.yml`
    > is only a label until a reviewer is added. **Configuring a required reviewer
    > on the `production` environment is a prerequisite for this runbook**, tracked
-   > in the [deploy backlog](deploy-backlog-tickets.md). Until then there is no
+   > in the [deploy backlog](../../deploy-backlog.md). Until then there is no
    > enforced approval gate — a human must self-discipline the plan-review step.
 2. **Post-deploy verification is required, not optional.** Prod has **no
    automated smoke test** (it's commented out in `prod-deploy.yml`), so you must
@@ -127,7 +132,7 @@ Consequences and rules:
 
 - **Any release containing a DB migration is blocked from Prod** until a
   supported migration path exists. This must be resolved **before go-live** —
-  it is the highest-priority item in the [deploy backlog](deploy-backlog-tickets.md).
+  it is the highest-priority item in the [deploy backlog](../../deploy-backlog.md).
 - **Mandate expand-contract (backward-compatible) migrations.** Never ship a
   destructive schema change in the same release as the code that depends on it.
   Add columns/tables in release N (old code ignores them), switch code to use

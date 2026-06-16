@@ -6,9 +6,13 @@ documenting the pipeline. Each item was verified against the codebase, not a
 guess. Effort is a rough t-shirt size (S ≈ <1 day, M ≈ 1–3 days, L ≈ multi-day /
 needs design).
 
-Context for all items: [`deploy-pre-golive.md`](deploy-pre-golive.md),
-[`deploy-post-golive.md`](deploy-post-golive.md),
-[`deploy-rollback.md`](deploy-rollback.md).
+> **This is a transient capture, not a long-lived runbook.** Its purpose is to
+> seed JIRA tickets. Once these items are filed (check with the team whether some
+> already exist), this file can be removed.
+
+Context for all items: [`deploy-pre-golive.md`](runbooks/deploy/deploy-pre-golive.md),
+[`deploy-post-golive.md`](runbooks/deploy/deploy-post-golive.md),
+[`deploy-rollback.md`](runbooks/deploy/deploy-rollback.md).
 
 ---
 
@@ -42,7 +46,7 @@ Context for all items: [`deploy-pre-golive.md`](deploy-pre-golive.md),
 
 - **Priority:** High
 - **Why:** Rollback safety depends on backward-compatible migrations
-  (see [`deploy-rollback.md`](deploy-rollback.md)) — but nothing **enforces** it.
+  (see [`deploy-rollback.md`](runbooks/deploy/deploy-rollback.md)) — but nothing **enforces** it.
   A destructive migration shipped with dependent code cannot be rolled back
   (there is no automated down-migration; see G2).
 - **Build:** a CI check that flags destructive operations (drop column/table,
@@ -127,12 +131,25 @@ in the same backlog.
 - **Build:** delete the debug steps from both workflows.
 - **Effort:** S
 
+### G7. Gate the Dev deploy on integration tests + prevent admin bypass
+
+- **Priority:** Medium
+- **Why:** `deploy_dev` in `cicd-dev.yml` deploys to hosted Dev on push to
+  `main`. PR checks catch most broken builds, but nothing requires the
+  integration tests to pass at the deploy step, and an admin can push directly to
+  `main` — deploying a broken build to hosted Dev.
+- **Build:** require the integration tests to pass in `deploy_dev` before it
+  tags/deploys, and/or enforce branch protection on `main` so required checks
+  can't be bypassed (including by admins). Worth a team discussion first.
+- **Effort:** S–M
+
 ---
 
 ## Suggested ordering
 
 1. **G1** (Prod migration path) — go-live blocker.
-2. **G4** (Prod reviewer) and **G3** (trigger hardening) — small, high-value safety.
+2. **G4** (Prod reviewer), **G3** (trigger hardening), and **G7** (gate Dev deploy
+   on integration tests) — small, high-value safety.
 3. **T1** (Prod health check) and **T2** (integration suite in pipeline) — close the
    verification gaps the runbooks rely on humans for.
 4. **G2** (migration rollback) and **T3** (migration-safety check) — rollback safety.

@@ -15,9 +15,6 @@ go-live; what changes is the discipline around it.
    verification.
 3. [`deploy/deploy-rollback.md`](deploy/deploy-rollback.md) — how to reverse a
    deploy safely (code rollback is clean; database rollback is not automated).
-4. [`deploy/deploy-backlog-tickets.md`](deploy/deploy-backlog-tickets.md) —
-   improvements still to build (automated tests + infrastructure gaps), for the
-   backlog.
 
 ## Incidents
 
