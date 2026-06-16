@@ -1,20 +1,23 @@
 # Runbooks
 
-Operational runbooks for the payment portal.
+Operational runbooks for the payment portal. This page is the table of contents —
+add a new section here when a new topic is added.
 
 ## Deploying to Staging and Production
 
-Read in order. The pipeline is the same before and after go-live — what changes
-is the discipline around it.
+In [`deploy/`](deploy/). Read in order — the pipeline is the same before and after
+go-live; what changes is the discipline around it.
 
-1. [`deploy-pre-golive.md`](deploy-pre-golive.md) — the deploy procedure while the
-   app has no live clients. **Start here.**
-2. [`deploy-post-golive.md`](deploy-post-golive.md) — the same pipeline once
-   clients depend on uptime: change windows, approvals, mandatory verification.
-3. [`deploy-rollback.md`](deploy-rollback.md) — how to reverse a deploy safely
-   (code rollback is clean; database rollback is not automated).
-4. [`deploy-backlog-tickets.md`](deploy-backlog-tickets.md) — improvements still to
-   build (automated tests + infrastructure gaps), for the backlog.
+1. [`deploy/deploy-pre-golive.md`](deploy/deploy-pre-golive.md) — the deploy
+   procedure while the app has no live clients. **Start here.**
+2. [`deploy/deploy-post-golive.md`](deploy/deploy-post-golive.md) — the same
+   pipeline once clients depend on uptime: change windows, approvals, mandatory
+   verification.
+3. [`deploy/deploy-rollback.md`](deploy/deploy-rollback.md) — how to reverse a
+   deploy safely (code rollback is clean; database rollback is not automated).
+4. [`deploy/deploy-backlog-tickets.md`](deploy/deploy-backlog-tickets.md) —
+   improvements still to build (automated tests + infrastructure gaps), for the
+   backlog.
 
 ## Incidents
 

@@ -6,6 +6,10 @@ practice the flow and shake out problems. After go-live, follow
 [`deploy-post-golive.md`](deploy-post-golive.md) instead — same pipeline, stricter
 gates.
 
+**Retire this doc after go-live.** Once we're live this procedure is superseded by
+[`deploy-post-golive.md`](deploy-post-golive.md); delete this file and drop it from
+the [runbooks index](../README.md) at that point.
+
 > One-line model: **we build the artifact once in Dev and promote that exact
 > commit (by Git SHA) forward to Staging and then Production. Staging and
 > Production never rebuild.**
@@ -35,7 +39,7 @@ gates.
         └─ dispatch rc-release.yml → creates a GitHub Release for the RC tag
         │
         ▼
-  MANUAL verification on STAGING (Cypress + getDetails/logs)
+  MANUAL verification on STAGING (integration suite + getDetails/logs)
         │
         ▼
   cut final tag  v<X.Y.Z>  on the SAME SHA + publish a (non-pre-) GitHub Release
@@ -108,8 +112,15 @@ Dev deploys automatically when the PR merges. Do **not** skip the check.
 The pipeline only proves `/init` works. You must prove a **full transaction**
 works end-to-end.
 
-1. Run the Cypress "process a transaction" flow against the Staging URL. This is
-   your primary signal — it drives a real payment from start to finish.
+1. Process a real transaction end-to-end against Staging by running the
+   integration suite — it is SigV4-signed against a deployed API Gateway. Point it
+   at the Staging API with allowed Staging credentials:
+   `BASE_URL=<staging-api-gateway-url> npm run test:integration`
+   (see [`src/test/integration/`](../../../src/test/integration/), e.g.
+   `transaction.test.ts`). This is your primary signal — it drives a real payment
+   start to finish. *(There is no Cypress suite in this repo; a client app such as
+   DAWSON may exercise the flow with Cypress, but the repo-local end-to-end check
+   is this Jest integration suite.)*
 2. Confirm the resulting transaction reached the expected state
    (`transactionStatus` = `processed`, `paymentStatus` = `success`). **Note: the
    transaction dashboard is Dev-only** — its endpoints are gated to `dev`/`pr-*`
@@ -118,17 +129,17 @@ works end-to-end.
    - calling the **`getDetails`** endpoint for the transaction id (it is deployed
      to Staging as a core payment Lambda), or
    - checking the `processPayment` Lambda's **CloudWatch logs** /
-     [observability](../observability/).
+     [observability](../../observability/).
 
-> **GATE — human go/no-go.** Cypress green **and** the transaction confirmed in
-> the expected state via `getDetails`/logs. If either fails, stop and fix
-> forward; the same SHA will flow again from Stage 1.
+> **GATE — human go/no-go.** The integration suite passes **and** the transaction
+> is confirmed in the expected state via `getDetails`/logs. If either fails, stop
+> and fix forward; the same SHA will flow again from Stage 1.
 
 ### Verifying with `getDetails`
 
 `getDetails` is `GET /details/{transactionReferenceId}`, where
 `transactionReferenceId` is the **UUIDv4 the client generated and sent to
-`/init`** (not a Pay.gov id) — your Cypress run controls this value, so capture
+`/init`** (not a Pay.gov id) — your test run controls this value, so capture
 it. The route is `AWS_IAM` (SigV4-signed) and `authorizeClient`-gated, so you
 must call it with AWS credentials for an account the Staging API allows (the
 deploying/CI account is always allowed; client accounts come from
@@ -160,9 +171,9 @@ Response shape:
 ```
 
 What to assert. The mapping is deterministic — `paymentStatus` is derived purely
-from `transactionStatus` ([derivePaymentStatus.ts](../../src/utils/derivePaymentStatus.ts)),
+from `transactionStatus` ([derivePaymentStatus.ts](../../../src/utils/derivePaymentStatus.ts)),
 and Pay.gov states map via
-[parseTransactionStatus.ts](../../src/useCases/parseTransactionStatus.ts):
+[parseTransactionStatus.ts](../../../src/useCases/parseTransactionStatus.ts):
 
 - Rule: any transaction `processed` → `paymentStatus` `success`; all `failed` →
   `failed`; otherwise `pending`. The two fields **never disagree** —
@@ -178,7 +189,7 @@ and Pay.gov states map via
   to `processed`/`success` once Pay.gov reports `Settled`/`Success`. **For deploy
   verification, prefer a card payment so you get a terminal result immediately.**
 
-The integration tests in [`src/test/integration/`](../../src/test/integration/)
+The integration tests in [`src/test/integration/`](../../../src/test/integration/)
 are the canonical example of a signed `getDetails` client if you need the exact
 signing in code.
 
@@ -242,7 +253,7 @@ same release as the code that depends on it.
 |-------|----------|---------|----------------|-----------|
 | Dev | `cicd-dev.yml` | auto on push to `main` | Dev | run green + 5 artifacts |
 | Staging | `staging-deploy.yml` | manual dispatch | Staging | `/init` smoke test 200 + redirect 302 |
-| Verify | — | manual | Staging | Cypress + `getDetails`/logs |
+| Verify | — | manual | Staging | integration suite + `getDetails`/logs |
 | Prod | `prod-deploy.yml` | Release published / manual | Production | reviewed Terraform plan |
 
 ---
@@ -250,9 +261,9 @@ same release as the code that depends on it.
 ## Command reference
 
 Copy-paste helpers, grouped by stage. **Read-only commands are safe to run.**
-Anything that tags, releases, dispatches a deploy, or applies Terraform changes
-an environment — run those deliberately, and per repo safety rules let a human
-own every Prod action. Replace `<SHA>` / `<tag>` / `<fn>` placeholders.
+Commands that tag, release, dispatch a deploy, or apply Terraform change an
+environment — run those deliberately, and per repo safety rules let a human own
+every Prod action. Replace `<SHA>` / `<tag>` / `<fn>` placeholders.
 `gh`/`aws` calls assume you're authenticated for the relevant account.
 
 ### Stage 1 — confirm Dev (read-only)

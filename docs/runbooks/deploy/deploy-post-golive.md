@@ -65,14 +65,14 @@ gate (200 + `token`/`paymentRedirect` + redirect 302). See
 
 Run the full verification from
 [pre-go-live Stage 3](deploy-pre-golive.md#stage-3--verify-staging-by-hand):
-Cypress end-to-end transaction, then confirm the latest transaction is
+the integration-suite end-to-end transaction, then confirm the latest transaction is
 `transactionStatus = processed` via `getDetails` or `processPayment` CloudWatch
 logs (the dashboard is Dev-only).
 
 **Added gate — formal go/no-go.** Verification passing is necessary but not
 sufficient. Before promoting, confirm:
 
-- [ ] Cypress green + transaction confirmed via `getDetails`/logs
+- [ ] Integration suite green + transaction confirmed via `getDetails`/logs
 - [ ] Change window is open
 - [ ] Client integrators have been notified
 - [ ] If a migration is involved, the migration plan is resolved (see blocker)
@@ -106,7 +106,7 @@ mandatory after go-live:
    verify by hand immediately after apply:
    - Confirm the API responds (signed request to a known endpoint).
    - Watch the Lambda error alerts / dashboards for a few minutes — see
-     [`lambda-error-alerts.md`](lambda-error-alerts.md).
+     [`lambda-error-alerts.md`](../lambda-error-alerts.md).
    - If anything looks wrong, go to rollback (below) **before** the window
      closes.
 

@@ -26,14 +26,16 @@ Context for all items: [`deploy-pre-golive.md`](deploy-pre-golive.md),
   to a safe endpoint asserting 200, or a dedicated health route).
 - **Effort:** M
 
-### T2. Promote the Cypress "process a transaction" flow into the pipeline
+### T2. Run the integration suite against Staging as a pipeline gate
 
 - **Priority:** High
 - **Why:** Stage 3 verification (full transaction end-to-end) is **manual**
-  today. Automating it removes a human eyeball from every deploy and makes the
-  staging gate trustworthy.
-- **Build:** run the Cypress transaction flow against Staging as a pipeline gate
-  after `staging-deploy.yml`; fail the promotion if it fails.
+  today — the staging workflow only smoke-tests `/init`, not a full transaction.
+  Automating it removes a human eyeball from every deploy and makes the staging
+  gate trustworthy. (There is no Cypress suite in this repo; the Jest integration
+  tests in `src/test/integration/` are the end-to-end check.)
+- **Build:** run `npm run test:integration` (SigV4-signed) against the Staging API
+  after `staging-deploy.yml` as a gate; fail the promotion if it fails.
 - **Effort:** M
 
 ### T3. CI migration-safety check (enforce expand-contract)
@@ -131,7 +133,7 @@ in the same backlog.
 
 1. **G1** (Prod migration path) — go-live blocker.
 2. **G4** (Prod reviewer) and **G3** (trigger hardening) — small, high-value safety.
-3. **T1** (Prod health check) and **T2** (Cypress in pipeline) — close the
+3. **T1** (Prod health check) and **T2** (integration suite in pipeline) — close the
    verification gaps the runbooks rely on humans for.
 4. **G2** (migration rollback) and **T3** (migration-safety check) — rollback safety.
 5. **T4** (migration Lambda tests), **G5** (Staging/Prod read-view), **G6** (cleanup).

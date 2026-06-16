@@ -84,7 +84,7 @@ depends on it.** (The repo already trends this way — see
 
 | Where it failed | Did anything reach a live env? | Action |
 |-----------------|-------------------------------|--------|
-| Dev / Staging gate (smoke, Cypress, `getDetails`) | No (Staging only, no live clients pre-go-live) | Fix forward; re-run from Dev. No rollback needed. |
+| Dev / Staging gate (smoke, integration tests, `getDetails`) | No (Staging only, no live clients pre-go-live) | Fix forward; re-run from Dev. No rollback needed. |
 | Prod `terraform plan` looks wrong | No | Don't apply. Investigate the plan. |
 | Prod `terraform apply` errored mid-run, **no migration in release** | Partially | Re-deploy previous good tag (Axis A). |
 | Prod healthy-check failed after apply, **no migration** | Yes | Re-deploy previous good tag (Axis A). |
@@ -113,4 +113,4 @@ depends on it.** (The repo already trends this way — see
   path.
 - **No automated Prod post-deploy verification** (smoke test commented out), so
   detecting that a rollback is *needed* currently relies on manual checks /
-  alerts — see [`lambda-error-alerts.md`](lambda-error-alerts.md).
+  alerts — see [`lambda-error-alerts.md`](../lambda-error-alerts.md).
