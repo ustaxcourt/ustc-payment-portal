@@ -44,7 +44,16 @@ const jsonBodyParser = express.json({ strict: false });
 app.use((req, res, next) => {
   jsonBodyParser(req, res, (err) => {
     if (err) {
+      // Parse failures return early and never reach setupLocalAppContext below,
+      // so create a minimal context here solely for contextual error logging.
+      const parseErrorAppContext = createAppContext({
+        localRequest: {
+          method: req.method,
+          path: req.path,
+        },
+      });
       const { statusCode, body } = handleError(
+        parseErrorAppContext,
         new InvalidRequestError("invalid JSON in request body"),
       );
       res.status(statusCode).json(JSON.parse(body));
@@ -114,7 +123,7 @@ app.post("/init", async (req, res) => {
       .initPayment(res.locals.appContext, { client: devClient, request });
     res.json(result);
   } catch (err) {
-    const { statusCode, body } = handleError(err);
+    const { statusCode, body } = handleError(res.locals.appContext, err);
     res.status(statusCode).json(JSON.parse(body));
   }
 });
@@ -132,7 +141,7 @@ app.post("/process", async (req, res) => {
       .processPayment(res.locals.appContext, { client: devClient, request });
     res.json(result);
   } catch (err) {
-    const { statusCode, body } = handleError(err);
+    const { statusCode, body } = handleError(res.locals.appContext, err);
     res.status(statusCode).json(JSON.parse(body));
   }
 });
@@ -151,7 +160,7 @@ app.get("/details/:transactionReferenceId", async (req, res) => {
       });
     res.json(result);
   } catch (err) {
-    const { statusCode, body } = handleError(err);
+    const { statusCode, body } = handleError(res.locals.appContext, err);
     res.status(statusCode).json(JSON.parse(body));
   }
 });
