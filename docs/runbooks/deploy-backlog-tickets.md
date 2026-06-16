@@ -1,10 +1,10 @@
-# Deploy workflow — backlog for the PO
+# Deploy workflow — improvement backlog
 
-Output of the deploy-workflow spike (AC #3). These are the automated tests we
-believe we need to build, plus the infrastructure/hardening gaps the spike
-surfaced while documenting the real pipeline. Each item is something we verified
-against the codebase, not a guess. Effort is a rough t-shirt size (S ≈ <1 day,
-M ≈ 1–3 days, L ≈ multi-day / needs design).
+Improvements for the staging→production deploy workflow: automated tests we
+believe we need to build, plus infrastructure/hardening gaps surfaced while
+documenting the pipeline. Each item was verified against the codebase, not a
+guess. Effort is a rough t-shirt size (S ≈ <1 day, M ≈ 1–3 days, L ≈ multi-day /
+needs design).
 
 Context for all items: [`deploy-pre-golive.md`](deploy-pre-golive.md),
 [`deploy-post-golive.md`](deploy-post-golive.md),
@@ -12,9 +12,10 @@ Context for all items: [`deploy-pre-golive.md`](deploy-pre-golive.md),
 
 ---
 
-## Part 1 — Automated tests to build (the core AC #3 ask)
+## Part 1 — Automated tests to build
 
 ### T1. Prod post-deploy smoke / health check *(synthetic, read-only)*
+
 - **Priority:** High
 - **Why:** `prod-deploy.yml` has its smoke-test step **commented out**, so Prod
   currently has **no automated post-deploy verification**. For an app whose value
@@ -26,6 +27,7 @@ Context for all items: [`deploy-pre-golive.md`](deploy-pre-golive.md),
 - **Effort:** M
 
 ### T2. Promote the Cypress "process a transaction" flow into the pipeline
+
 - **Priority:** High
 - **Why:** Stage 3 verification (full transaction end-to-end) is **manual**
   today. Automating it removes a human eyeball from every deploy and makes the
@@ -35,6 +37,7 @@ Context for all items: [`deploy-pre-golive.md`](deploy-pre-golive.md),
 - **Effort:** M
 
 ### T3. CI migration-safety check (enforce expand-contract)
+
 - **Priority:** High
 - **Why:** Rollback safety depends on backward-compatible migrations
   (see [`deploy-rollback.md`](deploy-rollback.md)) — but nothing **enforces** it.
@@ -46,6 +49,7 @@ Context for all items: [`deploy-pre-golive.md`](deploy-pre-golive.md),
 - **Effort:** M
 
 ### T4. Integration tests for the `migrationRunner` Lambda
+
 - **Priority:** Medium
 - **Why:** `src/migrationHandler.ts` carries an in-code note that testing it
   requires PR-ephemeral RDS environments. Migrations are infra-critical and
@@ -56,12 +60,13 @@ Context for all items: [`deploy-pre-golive.md`](deploy-pre-golive.md),
 
 ---
 
-## Part 2 — Infrastructure / hardening gaps surfaced by the spike
+## Part 2 — Infrastructure / hardening gaps
 
 These are not tests, but they block or weaken the documented workflow and belong
 in the same backlog.
 
 ### G1. Build a Production DB-migration path **(GO-LIVE BLOCKER)**
+
 - **Priority:** Critical / blocker
 - **Why:** `terraform/environments/prod/` defines **no migration Lambda at all**.
   Staging deploys a `migrationRunner` and runs it; Prod has nothing. **Any
@@ -71,6 +76,7 @@ in the same backlog.
 - **Effort:** M–L
 
 ### G2. Provide an automated DB migration-rollback path
+
 - **Priority:** High
 - **Why:** The `migrationRunner` Lambda has **no `rollback`/`down` command** —
   `migrate` is forward-only. There is no automated way to reverse a migration in
@@ -80,6 +86,7 @@ in the same backlog.
 - **Effort:** M
 
 ### G3. Harden the RC-release → Prod-trigger coupling
+
 - **Priority:** Medium
 - **Why:** `rc-release.yml` creates a **normal** GitHub Release (not a
   pre-release) for RC tags. The only thing preventing it from triggering a Prod
@@ -90,6 +97,7 @@ in the same backlog.
 - **Effort:** S
 
 ### G4. Configure a required reviewer on the `production` GitHub Environment
+
 - **Priority:** High
 - **Why:** Verified via the GitHub API — the `production` environment has
   **no protection rules**. The `environment: production` block in
@@ -100,6 +108,7 @@ in the same backlog.
 - **Effort:** S
 
 ### G5. Add a transaction read-view for Staging/Prod
+
 - **Priority:** Medium
 - **Why:** The transaction dashboard endpoints are gated to `dev`/`pr-*` in
   `terraform/modules/api-gateway/main.tf`, so there is **no dashboard in Staging
@@ -109,6 +118,7 @@ in the same backlog.
 - **Effort:** M
 
 ### G6. Remove the `aws sts get-caller-identity` debug steps
+
 - **Priority:** Low / cleanup
 - **Why:** Both `staging-deploy.yml` and `prod-deploy.yml` contain
   `Verify AWS caller identity` steps explicitly labelled "to be removed later".

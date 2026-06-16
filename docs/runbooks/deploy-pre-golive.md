@@ -28,7 +28,7 @@ gates.
   [staging-deploy.yml]  MANUAL (workflow_dispatch)
         ├─ pick a dev tag (latest valid, or one you name)
         ├─ validate all 5 artifact zips exist for that SHA
-        ├─ mint + push an RC tag  v<X.Y.Z>-rc.<N>  on the SAME SHA
+        ├─ mint + push a release-candidate (RC) tag  v<X.Y.Z>-rc.<N>  on SAME SHA
         ├─ terraform plan/apply → STAGING account
         ├─ run DB migrations (migrationRunner Lambda)
         ├─ smoke test  /init  + Pay.gov redirect
@@ -59,8 +59,9 @@ anything. If you remember one thing, remember that.
   **green**. A red Dev run means there is nothing safe to promote — stop.
 - You can see the auto-created `v<X.Y.Z>-dev.<N>` tag for your commit
   (`git tag -l "v*-dev.*" --sort=-creatordate | head`).
-- You have permission to run workflows and to approve the `staging` /
-  `production` GitHub Environments.
+- You have permission to run workflows (and to approve the `staging` /
+  `production` GitHub Environments once required reviewers are configured — none
+  are today).
 
 ---
 
@@ -88,12 +89,10 @@ Dev deploys automatically when the PR merges. Do **not** skip the check.
      artifacts, **or** type a specific `v<X.Y.Z>-dev.<N>` to promote a known
      commit.
 2. The `promote` job validates artifacts, mints an **RC tag**
-   (`v<X.Y.Z>-rc.<N>`) on the resolved SHA, and dispatches `rc-release.yml`
-   (which creates a GitHub Release for the RC tag, recording the SHA + artifact
-   prefix). **Note:** this RC Release is *not* marked as a pre-release. It does
-   **not** trigger a Prod deploy only because it is created via `GITHUB_TOKEN`,
-   and GitHub does not re-trigger workflows from `GITHUB_TOKEN`-created events.
-   That safeguard is implicit and fragile — see the Stage 4 note and Section 3.
+   (`v<X.Y.Z>-rc.<N>`) on the resolved SHA, and dispatches `rc-release.yml`,
+   which creates a GitHub Release for the RC tag recording the SHA + artifact
+   prefix. This Release is a normal release, not a pre-release — see the Stage 4
+   known gaps for why it does not trigger a Prod deploy, and how to harden that.
 3. The `deploy` job runs against the Staging account: `terraform apply`, then DB
    migrations via the `migrationRunner` Lambda, then the built-in smoke test.
 
@@ -137,7 +136,6 @@ deploying/CI account is always allowed; client accounts come from
 `/init`:
 
 ```bash
-# API_URL from terraform output (see Command reference); creds = assumed Staging role
 curl -s "$API_URL/details/$TRANSACTION_REFERENCE_ID" \
   --aws-sigv4 "aws:amz:us-east-1:execute-api" \
   --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
@@ -210,8 +208,7 @@ Production deploys from a **final (non-pre-release) GitHub Release** on the
 
 - **Prod has no post-deploy smoke test today** — the smoke-test step in
   `prod-deploy.yml` is commented out. After a Prod apply, manually confirm the
-  API responds. (No ticket exists yet — filing one is a deliverable of this
-  spike; see Section 3 / the PO ticket list.)
+  API responds. (Tracked in the [deploy backlog](deploy-backlog-tickets.md).)
 - **Prod does not auto-run DB migrations** in the deploy workflow the way
   Staging does. If your change includes a migration, coordinate how it gets
   applied to the Prod database **before** promoting.
@@ -223,7 +220,7 @@ Production deploys from a **final (non-pre-release) GitHub Release** on the
   RC Release by hand (or automation switches to a PAT), `prod-deploy.yml` would
   fire and, because the release is not a pre-release, could apply. Hardening
   (mark RC releases `prerelease: true` **and** filter the Prod `release` trigger
-  to skip `*-rc.*`) is a Section 3 backlog item.
+  to skip `*-rc.*`) is tracked in the [deploy backlog](deploy-backlog-tickets.md).
 
 ---
 
@@ -261,52 +258,46 @@ own every Prod action. Replace `<SHA>` / `<tag>` / `<fn>` placeholders.
 ### Stage 1 — confirm Dev (read-only)
 
 ```bash
-# Newest dev tags, most recent first
 git tag -l "v*-dev.*" --sort=-creatordate | head
-
-# Resolve a tag to its commit SHA
 git rev-list -n 1 <tag>
 
-# Confirm all 5 artifacts exist for the SHA
 aws s3 ls "s3://ustc-payment-portal-build-artifacts/artifacts/dev/<SHA>/"
-# Per-file check (exits non-zero if missing):
 for f in initPayment processPayment getDetails testCert migrationRunner; do
   aws s3api head-object \
     --bucket ustc-payment-portal-build-artifacts \
     --key "artifacts/dev/<SHA>/$f.zip" >/dev/null && echo "ok: $f" || echo "MISSING: $f"
 done
 
-# Watch the Dev run for your merge
 gh run list --workflow=cicd-dev.yml --limit 5
 ```
 
 ### Stage 2 — deploy to Staging
 
-```bash
-# Trigger staging (blank source_dev_tag = auto-pick latest valid dev tag)
-gh workflow run staging-deploy.yml
-#   …or promote a specific dev tag:
-gh workflow run staging-deploy.yml -f source_dev_tag=<v X.Y.Z-dev.N>
+Trigger staging (blank `source_dev_tag` auto-picks the latest valid dev tag, or
+name one), then watch the run:
 
-# Watch it
+```bash
+gh workflow run staging-deploy.yml
+gh workflow run staging-deploy.yml -f source_dev_tag=<vX.Y.Z-dev.N>
+
 gh run list --workflow=staging-deploy.yml --limit 5
 gh run watch <run-id>
 ```
 
 ### Stage 3 — verify Staging (read-only)
 
+Read Terraform outputs, confirm a transaction (SigV4-signed — needs Staging
+creds), then tail logs:
+
 ```bash
-# Get the Staging API URL + migration runner name from Terraform outputs
 terraform -chdir=terraform/environments/stg output -raw api_gateway_url
 terraform -chdir=terraform/environments/stg output -raw migration_runner_function_name
 
-# Confirm a transaction end-to-end (SigV4-signed; needs allowed Staging creds)
 curl -s "$API_URL/details/$TRANSACTION_REFERENCE_ID" \
   --aws-sigv4 "aws:amz:us-east-1:execute-api" \
   --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
   -H "x-amz-security-token: $AWS_SESSION_TOKEN" | jq
 
-# Tail processPayment logs (find the exact log group first)
 aws logs describe-log-groups \
   --log-group-name-prefix /aws/lambda/ --query 'logGroups[].logGroupName' --output text \
   | tr '\t' '\n' | grep -i processpayment
@@ -315,15 +306,18 @@ aws logs tail "/aws/lambda/<fn>" --since 15m --follow
 
 ### Stage 4 — promote to Production
 
-```bash
-# Plan-only first: see the prod Terraform plan WITHOUT applying
-gh workflow run prod-deploy.yml -f release_tag=<vX.Y.Z> -f plan_only=true
-gh run watch <run-id>          # read the plan in the job log
+Preview the prod plan without applying (safe to run):
 
-# To apply, publish the final (non-pre-release) GitHub Release on the SAME SHA.
-# Creating tags/releases changes Prod — provide to the developer to run; do not
-# script around the human gate:
-#   git tag -a vX.Y.Z <SHA> -m "Release vX.Y.Z"   # run by a human
-#   git push origin vX.Y.Z                          # run by a human
-#   gh release create vX.Y.Z --title vX.Y.Z --notes "…"   # triggers prod-deploy.yml
+```bash
+gh workflow run prod-deploy.yml -f release_tag=<vX.Y.Z> -f plan_only=true
+gh run watch <run-id>
+```
+
+To apply, a human publishes the final (non-pre-release) Release on the same SHA —
+this changes Prod, and publishing triggers `prod-deploy.yml`:
+
+```bash
+git tag -a vX.Y.Z <SHA> -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+gh release create vX.Y.Z --title vX.Y.Z --notes "..."
 ```

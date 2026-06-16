@@ -32,9 +32,8 @@ use [`deploy-pre-golive.md`](deploy-pre-golive.md) instead.
 In addition to the pre-go-live prerequisites (green Dev run + 5 artifacts):
 
 1. **Change window scheduled.** Deploys to Prod happen inside an agreed window,
-   not ad hoc. *(Exact window cadence is a team policy — ratify at the AC #5
-   meeting and record it here: `<TBD: e.g. business-day mornings, avoid filing
-   deadlines>`.)*
+   not ad hoc. *(Exact window cadence is a team policy — agree it and record it
+   here: `<TBD: e.g. business-day mornings, avoid filing deadlines>`.)*
 2. **Client integrators notified.** Tell downstream consumers (DAWSON and any
    other integrators) what is deploying and when, before you touch Prod. *(Notify
    via `<TBD: channel / distribution list>`.)*
@@ -99,9 +98,9 @@ mandatory after go-live:
    > the `production` environment currently has **no protection rules** (no
    > required reviewer). The `environment: production` block in `prod-deploy.yml`
    > is only a label until a reviewer is added. **Configuring a required reviewer
-   > on the `production` environment is a prerequisite for this runbook** and a
-   > Section 3 action item. Until then there is no enforced approval gate — a human
-   > must self-discipline the plan-review step.
+   > on the `production` environment is a prerequisite for this runbook**, tracked
+   > in the [deploy backlog](deploy-backlog-tickets.md). Until then there is no
+   > enforced approval gate — a human must self-discipline the plan-review step.
 2. **Post-deploy verification is required, not optional.** Prod has **no
    automated smoke test** (it's commented out in `prod-deploy.yml`), so you must
    verify by hand immediately after apply:
@@ -128,7 +127,7 @@ Consequences and rules:
 
 - **Any release containing a DB migration is blocked from Prod** until a
   supported migration path exists. This must be resolved **before go-live** —
-  it is the highest-priority item on the Section 3 backlog list for the PO.
+  it is the highest-priority item in the [deploy backlog](deploy-backlog-tickets.md).
 - **Mandate expand-contract (backward-compatible) migrations.** Never ship a
   destructive schema change in the same release as the code that depends on it.
   Add columns/tables in release N (old code ignores them), switch code to use
@@ -136,9 +135,9 @@ Consequences and rules:
   reversible, so a code rollback never strands the schema. This is what keeps
   [`deploy-rollback.md`](deploy-rollback.md) safe.
 - Until the Prod migration path is built, **schema-only releases must be planned
-  with the team** and applied through whatever mechanism is agreed at the AC #5
-  meeting: `<TBD: deploy migrationRunner to Prod for parity, or define an
-  approved one-off>`.
+  with the team** and applied through whatever mechanism the team agrees on:
+  `<TBD: deploy migrationRunner to Prod for parity, or define an approved
+  one-off>`.
 
 ---
 
@@ -168,5 +167,5 @@ Post-go-live, a bad Prod deploy is an **incident**, not a practice run. Follow
 | Verify | — | manual | formal go/no-go checklist |
 | Prod | `prod-deploy.yml` | Release published / manual | Environment reviewer approval *(reviewer must be configured first)* + required post-deploy verification |
 
-> Items marked `<TBD>` are deliberate placeholders for decisions the team ratifies
-> at the AC #5 meeting. Replace them with the agreed policy and remove this note.
+> Items marked `<TBD>` are deliberate placeholders for decisions the team must
+> agree on. Replace them with the agreed policy and remove this note.

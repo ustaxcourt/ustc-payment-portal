@@ -20,12 +20,11 @@ Because every environment is pinned to a **Dev-built artifact by commit SHA**
 tag." Terraform converges the Lambdas back to that tag's artifact set
 deterministically — there is no rebuild and no ambiguity about what is running.
 
-**Production:**
+**Production** — re-deploy the last known-good tag, plan first, then apply (review
+the plan, then publish that tag's Release or re-dispatch with `plan_only=false`):
 
 ```bash
-# Re-deploy the last known-good tag. Plan first, then apply.
 gh workflow run prod-deploy.yml -f release_tag=<previous-good-vX.Y.Z> -f plan_only=true
-# review the plan, then publish that tag's Release (or re-dispatch with plan_only=false)
 ```
 
 **Staging:** re-run `staging-deploy.yml` selecting the previous good dev tag
@@ -106,7 +105,7 @@ depends on it.** (The repo already trends this way — see
 
 ---
 
-## Known gaps (feed the Section 3 backlog)
+## Known gaps (tracked in the [deploy backlog](deploy-backlog-tickets.md))
 
 - **No automated DB migration rollback** in deployed environments — reversal is
   manual or forward-only today. A supported down-migration path (or a documented
