@@ -492,13 +492,14 @@ resource "aws_api_gateway_stage" "stage" {
     content {
       destination_arn = aws_cloudwatch_log_group.access_logs[0].arn
       format = jsonencode({
-        requestId      = "$context.requestId"
-        ip             = "$context.identity.sourceIp"
-        requestTime    = "$context.requestTime"
-        httpMethod     = "$context.httpMethod"
-        resourcePath   = "$context.resourcePath"
-        status         = "$context.status"
-        responseLength = "$context.responseLength"
+        requestId         = "$context.requestId"
+        extendedRequestId = "$context.extendedRequestId"
+        ip                = "$context.identity.sourceIp"
+        requestTime       = "$context.requestTime"
+        httpMethod        = "$context.httpMethod"
+        resourcePath      = "$context.resourcePath"
+        status            = "$context.status"
+        responseLength    = "$context.responseLength"
       })
     }
   }
