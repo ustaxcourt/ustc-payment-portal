@@ -128,8 +128,7 @@ resource "aws_cloudwatch_log_metric_filter" "api_gateway_429" {
 
   name           = "${var.name_prefix}-api-gateway-429"
   log_group_name = var.api_gateway_access_log_group_name
-  pattern        = "{ $.status = 429 }"
-
+  pattern        = "{ $.status = \"429\" }"
   metric_transformation {
     namespace     = "${var.name_prefix}/throttles"
     name          = "api-gateway-429"
