@@ -100,7 +100,7 @@ describe("make a transaction", () => {
   it.each(scenarios)("handles $name end-to-end", async (scenario) => {
     const initialized = await initTransaction();
 
-    sleep(200);
+    await sleep(200);
 
     await verifyPaymentRedirect(initialized.paymentRedirect);
     await markPayment(
@@ -110,7 +110,7 @@ describe("make a transaction", () => {
       scenario.paymentStatus,
     );
 
-    sleep(200);
+    await sleep(200);
 
     const processResponse = await processTransaction(initialized.token);
     assertSingleTransaction(
@@ -122,7 +122,7 @@ describe("make a transaction", () => {
         : scenario.expectedFinalTransactionStatus,
     );
 
-    sleep(200);
+    await sleep(200);
 
     const detailsResponse = await getDetails(
       initialized.transactionReferenceId,
