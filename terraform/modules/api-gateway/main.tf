@@ -528,7 +528,7 @@ resource "aws_api_gateway_method_settings" "init_throttle" {
   count = var.enable_per_endpoint_throttling ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
   stage_name  = aws_api_gateway_stage.stage.stage_name
-  method_path = "POST/init"
+  method_path = "init/POST"
 
   settings {
     throttling_burst_limit = 10
@@ -541,7 +541,7 @@ resource "aws_api_gateway_method_settings" "process_throttle" {
   count = var.enable_per_endpoint_throttling ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
   stage_name  = aws_api_gateway_stage.stage.stage_name
-  method_path = "POST/process"
+  method_path = "process/POST"
 
   settings {
     throttling_burst_limit = 10
@@ -554,7 +554,7 @@ resource "aws_api_gateway_method_settings" "details_throttle" {
   count = var.enable_per_endpoint_throttling ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
   stage_name  = aws_api_gateway_stage.stage.stage_name
-  method_path = "GET/details~1{transactionReferenceId}"
+  method_path = "details~1{transactionReferenceId}/GET"
 
   settings {
     throttling_burst_limit = 150
