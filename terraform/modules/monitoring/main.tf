@@ -38,7 +38,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_uncaught" {
   for_each = var.lambda_functions
 
   alarm_name          = "${var.name_prefix}-${each.key}-uncaught-critical"
-  alarm_description = <<-EOT
+  alarm_description   = <<-EOT
     Uncaught Lambda error in ${each.key}.
     Service: payment-portal (${var.env})
     Severity: critical
@@ -91,7 +91,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_5xx" {
   for_each = var.lambda_log_group_names
 
   alarm_name          = "${var.name_prefix}-${each.key}-5xx-critical"
-  alarm_description = <<-EOT
+  alarm_description   = <<-EOT
     5xx response from ${each.key} (≥1 in any 5-min bucket over 30-min window).
     Service: payment-portal (${var.env})
     Severity: critical
@@ -140,13 +140,13 @@ resource "aws_cloudwatch_log_metric_filter" "api_gateway_429" {
 resource "aws_cloudwatch_metric_alarm" "api_gateway_429" {
   count = var.api_gateway_access_log_group_name != null ? 1 : 0
 
-  alarm_name = "${var.name_prefix}-api-gateway-429-critical"
+  alarm_name        = "${var.name_prefix}-api-gateway-429-critical"
   alarm_description = <<-EOT
     API Gateway throttle (429) detected.
     Service: payment-portal (${var.env})
     Severity: critical
     Logs: https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/${replace(var.api_gateway_access_log_group_name, "/", "$252F")}
-    Runbook: ${var.runbook_url}
+    Runbook: ${var.throttle_runbook_url}
   EOT
 
   comparison_operator = "GreaterThanOrEqualToThreshold"
@@ -165,7 +165,7 @@ resource "aws_cloudwatch_metric_alarm" "api_gateway_429" {
   tags = merge(local.default_tags, {
     Severity = "critical"
     Metric   = "429"
-    Runbook  = var.runbook_url
+    Runbook  = var.throttle_runbook_url
   })
 
   depends_on = [aws_cloudwatch_log_metric_filter.api_gateway_429]

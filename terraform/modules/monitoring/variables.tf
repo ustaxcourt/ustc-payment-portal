@@ -47,6 +47,12 @@ variable "runbook_url" {
   default     = ""
 }
 
+variable "throttle_runbook_url" {
+  description = "Runbook URL for API Gateway 429 throttle alarms. Falls back to runbook_url if not set."
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Additional tags applied to all resources."
   type        = map(string)

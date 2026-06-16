@@ -51,5 +51,6 @@ locals {
     []
   ))
 
-  runbook_url = "https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/runbooks/lambda-error-alerts.md"
+  runbook_url          = "https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/runbooks/lambda-error-alerts.md"
+  throttle_runbook_url = "https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/runbooks/api-gateway-throttle-alerts.md"
 }
