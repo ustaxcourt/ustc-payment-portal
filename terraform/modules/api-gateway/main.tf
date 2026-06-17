@@ -532,7 +532,7 @@ resource "aws_api_gateway_method_settings" "init_throttle" {
 
   settings {
     throttling_burst_limit = 10
-    throttling_rate_limit  = 2
+    throttling_rate_limit  = 1.67
   }
 }
 
@@ -545,7 +545,7 @@ resource "aws_api_gateway_method_settings" "process_throttle" {
 
   settings {
     throttling_burst_limit = 10
-    throttling_rate_limit  = 2
+    throttling_rate_limit  = 1.67
   }
 }
 
