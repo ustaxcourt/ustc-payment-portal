@@ -46,4 +46,16 @@ describe("emitPayGovHealthMetric", () => {
       { Name: "PayGovLatencyMs", Unit: "Milliseconds" },
     ]);
   });
+
+  it("never throws, even if the underlying write fails (best-effort telemetry)", () => {
+    writeSpy.mockImplementation(() => {
+      throw new Error("EPIPE");
+    });
+    const logSpy = jest.spyOn(console, "log").mockImplementation(() => undefined);
+
+    expect(() => emitPayGovHealthMetric(true, 5)).not.toThrow();
+    expect(logSpy).toHaveBeenCalled();
+
+    logSpy.mockRestore();
+  });
 });
