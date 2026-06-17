@@ -18,12 +18,6 @@ variable "testcert_function_arn" {
   type        = string
 }
 
-variable "schedule_expression" {
-  description = "EventBridge schedule for the health probe"
-  type        = string
-  default     = "rate(15 minutes)"
-}
-
 variable "alarm_sns_topic_arns" {
   description = "SNS topic ARNs to notify on alarm/ok transitions. Empty = alarm with no notification target (still visible on dashboards and the console)."
   type        = list(string)

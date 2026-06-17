@@ -6,9 +6,13 @@
 # "is Pay.gov healthy?" signal that drives outage alerting and dashboards.
 
 resource "aws_cloudwatch_event_rule" "health" {
-  name                = "${var.name_prefix}-paygov-health"
-  description         = "Periodic Pay.gov health probe (invokes the testCert Lambda)"
-  schedule_expression = var.schedule_expression
+  name        = "${var.name_prefix}-paygov-health"
+  description = "Periodic Pay.gov health probe (invokes the testCert Lambda)"
+  # Cadence is fixed at 15 min and intentionally coupled to the alarm window below
+  # (period 900s × 2 evaluation periods). It is NOT a variable: changing the cadence
+  # without also re-deriving the alarm period would silently break the alarm
+  # (e.g. a slower schedule leaves empty periods that breach on missing data).
+  schedule_expression = "rate(15 minutes)"
   tags                = var.tags
 }
 
