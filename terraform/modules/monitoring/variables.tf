@@ -47,6 +47,12 @@ variable "runbook_url" {
   default     = ""
 }
 
+variable "paygov_retry_alarm_threshold" {
+  description = "Number of Pay.gov retry warnings in a single 5-min bucket that constitutes sustained flakiness. A few retries are normal (the retry succeeds), so this is intentionally higher than 1 and severity is warning, not critical. Tune once real traffic exists."
+  type        = number
+  default     = 5
+}
+
 variable "tags" {
   description = "Additional tags applied to all resources."
   type        = map(string)

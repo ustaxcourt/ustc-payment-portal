@@ -38,7 +38,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_uncaught" {
   for_each = var.lambda_functions
 
   alarm_name          = "${var.name_prefix}-${each.key}-uncaught-critical"
-  alarm_description = <<-EOT
+  alarm_description   = <<-EOT
     Uncaught Lambda error in ${each.key}.
     Service: payment-portal (${var.env})
     Severity: critical
@@ -91,7 +91,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_5xx" {
   for_each = var.lambda_log_group_names
 
   alarm_name          = "${var.name_prefix}-${each.key}-5xx-critical"
-  alarm_description = <<-EOT
+  alarm_description   = <<-EOT
     5xx response from ${each.key} (≥1 in any 5-min bucket over 30-min window).
     Service: payment-portal (${var.env})
     Severity: critical
@@ -119,6 +119,56 @@ resource "aws_cloudwatch_metric_alarm" "lambda_5xx" {
   })
 
   depends_on = [aws_cloudwatch_log_metric_filter.lambda_5xx]
+}
+
+resource "aws_cloudwatch_log_metric_filter" "paygov_retry" {
+  for_each = var.lambda_log_group_names
+
+  name           = "${var.name_prefix}-${each.key}-paygov-retry"
+  log_group_name = each.value
+  pattern        = "{ ($.level = \"warn\") && ($.msg = \"Pay.gov request failed; retrying\") }"
+
+  metric_transformation {
+    namespace     = "${var.name_prefix}/warnings"
+    name          = "${each.key}-paygov-retry"
+    value         = "1"
+    default_value = "0"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "paygov_retry" {
+  for_each = var.lambda_log_group_names
+
+  alarm_name          = "${var.name_prefix}-${each.key}-paygov-retry-warning"
+  alarm_description   = <<-EOT
+    Elevated Pay.gov retry rate from ${each.key} (≥${var.paygov_retry_alarm_threshold} in any 5-min bucket, sustained over 3 of 6 buckets).
+    Indicates Pay.gov is intermittently failing/timing out before requests fail outright.
+    Service: payment-portal (${var.env})
+    Severity: warning
+    Logs: https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/$252Faws$252Flambda$252F${var.name_prefix}-${each.key}
+    Runbook: ${var.runbook_url}
+  EOT
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  period              = 300
+  evaluation_periods  = 6
+  datapoints_to_alarm = 3
+  threshold           = var.paygov_retry_alarm_threshold
+  statistic           = "Sum"
+  metric_name         = "${each.key}-paygov-retry"
+  namespace           = "${var.name_prefix}/warnings"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = merge(local.default_tags, {
+    Severity = "warning"
+    Metric   = "paygov-retry"
+    Lambda   = each.key
+    Runbook  = var.runbook_url
+  })
+
+  depends_on = [aws_cloudwatch_log_metric_filter.paygov_retry]
 }
 
 # Chatbot routes the SNS topic to a Teams channel. Inert until all teams_* vars set.

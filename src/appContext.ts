@@ -16,6 +16,11 @@ let httpsAgentCache: https.Agent | undefined;
 
 const PAYGOV_REQUEST_TIMEOUT_MS = 10_000;
 const PAYGOV_MAX_ATTEMPTS = 2;
+const RETRYABLE_ERROR_NAMES = new Set(["FetchError", "AbortError"]);
+
+function isRetryablePaygovError(err: unknown): boolean {
+  return err instanceof Error && RETRYABLE_ERROR_NAMES.has(err.name);
+}
 
 function normalizePem(pem: string): string {
   return pem.replace(/\r\n/g, "\n").trimEnd() + "\n";
@@ -108,8 +113,8 @@ export const createAppContext = (
             headers.Authorization = `Bearer ${token}`;
             headers.Authentication = headers.Authorization;
           } catch (err: any) {
-            console.warn(
-              "[postHttpRequest] Failed to read token from Secrets Manager",
+            appContext.logger.warn(
+              "Failed to read token from Secrets Manager",
               {
                 secretId: tokenSecretId,
                 errorName: err?.name,
@@ -138,6 +143,10 @@ export const createAppContext = (
           });
           return await result.text();
         } catch (err) {
+          const timedOut = controller.signal.aborted;
+          if (!timedOut && !isRetryablePaygovError(err)) {
+            throw err;
+          }
           lastError = err;
           appContext.logger.warn(
             attempt < PAYGOV_MAX_ATTEMPTS
