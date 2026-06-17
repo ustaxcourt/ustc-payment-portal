@@ -14,6 +14,9 @@ import type { APIGatewayEvent } from "aws-lambda";
 
 let httpsAgentCache: https.Agent | undefined;
 
+const PAYGOV_REQUEST_TIMEOUT_MS = 10_000;
+const PAYGOV_MAX_ATTEMPTS = 2;
+
 function normalizePem(pem: string): string {
   return pem.replace(/\r\n/g, "\n").trimEnd() + "\n";
 }
@@ -118,15 +121,41 @@ export const createAppContext = (
         }
       }
 
-      const result = await fetch(process.env.SOAP_URL as string, {
-        method: "POST",
-        headers,
-        body,
-        agent: httpsAgent,
-      });
-
-      const responseBody = await result.text();
-      return responseBody;
+      let lastError: unknown;
+      for (let attempt = 1; attempt <= PAYGOV_MAX_ATTEMPTS; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(
+          () => controller.abort(),
+          PAYGOV_REQUEST_TIMEOUT_MS,
+        );
+        try {
+          const result = await fetch(process.env.SOAP_URL as string, {
+            method: "POST",
+            headers,
+            body,
+            agent: httpsAgent,
+            signal: controller.signal,
+          });
+          return await result.text();
+        } catch (err) {
+          lastError = err;
+          appContext.logger.warn(
+            attempt < PAYGOV_MAX_ATTEMPTS
+              ? "Pay.gov request failed; retrying"
+              : "Pay.gov request failed; no retries remaining",
+            {
+              attempt,
+              maxAttempts: PAYGOV_MAX_ATTEMPTS,
+              errorName: err instanceof Error ? err.name : undefined,
+              errorMessage: err instanceof Error ? err.message : String(err),
+              soapUrl: process.env.SOAP_URL,
+            },
+          );
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+      throw lastError;
     },
     getUseCases: () => ({
       initPayment,
