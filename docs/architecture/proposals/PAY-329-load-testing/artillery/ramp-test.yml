@@ -1,0 +1,45 @@
+config:
+  target: "https://example-api/payments"
+  phases:
+    - duration: 120
+      arrivalRate: 10
+      name: warm-up
+    - duration: 120
+      arrivalRate: 25
+      name: ramp-1
+    - duration: 120
+      arrivalRate: 50
+      name: ramp-2
+    - duration: 120
+      arrivalRate: 100
+      name: ramp-3
+    - duration: 120
+      arrivalRate: 150
+      name: ramp-4
+    - duration: 120
+      arrivalRate: 200
+      name: ramp-5
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+scenarios:
+  - name: create-payment-ramp
+    flow:
+      - post:
+          url: "/payments"
+          json:
+            clientId: "load-test-client"
+            caseNumber: "2026-0001"
+            amount: 125.00
+            currency: "USD"
+            paymentType: "filing-fee"
+            payer:
+              firstName: "Test"
+              lastName: "User"
+              email: "loadtest@example.com"
+            metadata:
+              source: "artillery-spike"
+              environment: "load-test"
+              requestId: "ramp-test-sample"
