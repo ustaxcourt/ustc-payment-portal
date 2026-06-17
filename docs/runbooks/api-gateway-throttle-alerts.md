@@ -38,7 +38,7 @@ In order. Each is cheap; do them sequentially.
 aws logs filter-log-events \
   --log-group-name /aws/apigateway/{env} \
   --start-time $(date -v-30M +%s)000 \
-  --filter-pattern '{ $.status = 429 }' \
+  --filter-pattern '{ $.status = "429" }' \
   --query 'events[*].message' \
   --output text
 ```
@@ -129,7 +129,7 @@ Re-enable with `enable-alarm-actions`. Always file a ticket in **JIRA** to track
 API Gateway access logging writes one JSON record per request to `/aws/apigateway/{env}`. A CloudWatch log metric filter watches that log group for:
 
 ```text
-{ $.status = 429 }
+{ $.status = "429" }
 ```
 
 Each matching record increments the custom metric `ustc-payment-portal-{env}/throttles/api-gateway-429` by 1. A `default_value = "0"` ensures the metric reports zero (not missing) during quiet periods so `treat_missing_data = notBreaching` behaves correctly.
