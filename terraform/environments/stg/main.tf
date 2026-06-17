@@ -138,6 +138,7 @@ module "monitoring" {
   subscribers          = local.monitoring_subscribers
   runbook_url          = local.runbook_url
   throttle_runbook_url = local.throttle_runbook_url
+  throttle_429_threshold = local.throttle_429_threshold
   teams_tenant_id      = var.teams_tenant_id
   teams_team_id        = var.teams_team_id
   teams_channel_id     = var.teams_channel_id

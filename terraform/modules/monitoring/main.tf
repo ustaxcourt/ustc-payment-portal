@@ -153,7 +153,7 @@ resource "aws_cloudwatch_metric_alarm" "api_gateway_429" {
   period              = 300
   evaluation_periods  = 6
   datapoints_to_alarm = 1
-  threshold           = 1
+  threshold           = var.throttle_429_threshold
   statistic           = "Sum"
   metric_name         = "api-gateway-429"
   namespace           = "${var.name_prefix}/throttles"

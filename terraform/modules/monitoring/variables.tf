@@ -53,6 +53,12 @@ variable "throttle_runbook_url" {
   default     = ""
 }
 
+variable "throttle_429_threshold" {
+  description = "Number of 429s in a 5-minute period required to trigger the api-gateway-429 alarm. Default 1 (any throttle fires). Raise for prod to reduce noise from expected bursts."
+  type        = number
+  default     = 1
+}
+
 variable "tags" {
   description = "Additional tags applied to all resources."
   type        = map(string)

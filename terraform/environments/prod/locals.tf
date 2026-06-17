@@ -53,4 +53,8 @@ locals {
 
   runbook_url          = "https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/runbooks/lambda-error-alerts.md"
   throttle_runbook_url = "https://github.com/ustaxcourt/ustc-payment-portal/blob/main/docs/runbooks/api-gateway-throttle-alerts.md"
+
+  # Prod threshold is higher to absorb expected bursts (e.g. CI runs) without paging.
+  # stg uses the module default (1) to catch throttles early.
+  throttle_429_threshold = 5
 }
