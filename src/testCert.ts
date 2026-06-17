@@ -1,11 +1,16 @@
 import fetch from "node-fetch";
 
-import { APIGatewayProxyResult } from "aws-lambda";
+import type { APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "./appContext";
 import { getSecretString } from "./clients/secretsClient";
+import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
 
-// This is the handler for the /test endpoint.
+// Handler for the /test endpoint. Also serves as the scheduled Pay.gov health
+// probe: an EventBridge rule invokes it every ~15 min, and each run publishes a
+// PayGovHealthy CloudWatch metric (healthy = the WSDL probe returned a 2xx).
+// The HTTP response is unchanged for on-demand callers; EventBridge ignores it.
 export const handler = async (): Promise<APIGatewayProxyResult> => {
+  const startedAt = Date.now();
   try {
     const appContext = createAppContext();
     const httpsAgent = await appContext.getHttpsAgent();
@@ -28,8 +33,10 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
       headers,
     });
 
-    console.log(result);
     const resultText = await result.text();
+
+    // Healthy = Pay.gov's server responded to the WSDL probe with a 2xx.
+    emitPayGovHealthMetric(result.ok, Date.now() - startedAt);
 
     return {
       statusCode: 200,
@@ -37,6 +44,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
     };
   } catch (err) {
     console.log(err);
+    emitPayGovHealthMetric(false, Date.now() - startedAt);
     return {
       statusCode: 500,
       body: "not ok",

@@ -149,6 +149,24 @@ module "api" {
   depends_on = [module.secrets, aws_acm_certificate_validation.this]
 }
 
+# Scheduled Pay.gov health probe + alarm. Real dev env only — PR workspaces are
+# ephemeral and must not run a 15-min probe or create alarms on the shared metric.
+# No SNS target in dev (the monitoring module / alerts topic is stg+prod only).
+module "paygov_health" {
+  count  = local.environment == "dev" ? 1 : 0
+  source = "../../modules/paygov-health"
+
+  name_prefix            = local.name_prefix
+  environment            = local.app_env
+  testcert_function_name = module.lambda.function_names["testCert"]
+  testcert_function_arn  = module.lambda.function_arns["testCert"]
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
 # Read allowed account IDs from Secrets Manager for API Gateway resource policy
 # This secret is seeded with [] and should be populated via AWS CLI/Console
 data "aws_secretsmanager_secret_version" "allowed_account_ids" {

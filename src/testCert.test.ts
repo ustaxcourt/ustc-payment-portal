@@ -1,6 +1,7 @@
 import { handler } from "./testCert";
 import fetch from "node-fetch";
 import { getSecretString } from "./clients/secretsClient";
+import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
 
 // Mock node-fetch
 jest.mock("node-fetch", () => jest.fn());
@@ -15,6 +16,13 @@ jest.mock("./appContext", () => ({
 
 jest.mock("./clients/secretsClient");
 const mockGetSecretString = getSecretString as jest.MockedFunction<typeof getSecretString>;
+
+jest.mock("./health/payGovHealthMetric", () => ({
+  emitPayGovHealthMetric: jest.fn(),
+}));
+const mockEmit = emitPayGovHealthMetric as jest.MockedFunction<
+  typeof emitPayGovHealthMetric
+>;
 
 describe("testCert handler", () => {
   let tempEnv: any;
@@ -147,5 +155,37 @@ describe("testCert handler", () => {
     expect(result.body).toBe(mockWsdlContent);
 
     delete process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
+  });
+
+  it("emits a healthy metric when the WSDL probe returns a 2xx", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: jest.fn().mockResolvedValue("wsdl"),
+    } as any);
+
+    await handler();
+
+    expect(mockEmit).toHaveBeenCalledWith(true, expect.any(Number));
+  });
+
+  it("emits an unhealthy metric (still 200) when the probe returns a non-2xx", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      text: jest.fn().mockResolvedValue("error page"),
+    } as any);
+
+    const result = await handler();
+
+    expect(result.statusCode).toBe(200);
+    expect(mockEmit).toHaveBeenCalledWith(false, expect.any(Number));
+  });
+
+  it("emits an unhealthy metric when the probe throws", async () => {
+    mockFetch.mockRejectedValue(new Error("Network error"));
+
+    const result = await handler();
+
+    expect(result.statusCode).toBe(500);
+    expect(mockEmit).toHaveBeenCalledWith(false, expect.any(Number));
   });
 });
