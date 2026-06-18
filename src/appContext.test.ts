@@ -269,7 +269,7 @@ describe("postHttpRequest", () => {
 
 describe("postHttpRequest timeout and retry", () => {
   const okResponse = (body: string) =>
-    ({ text: jest.fn().mockResolvedValue(body) }) as any;
+    ({ text: jest.fn().mockResolvedValue(body) } as any);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -329,7 +329,9 @@ describe("postHttpRequest timeout and retry", () => {
       name: "FetchError",
     });
     mockFetch
-      .mockResolvedValueOnce({ text: jest.fn().mockRejectedValue(bodyErr) } as any)
+      .mockResolvedValueOnce({
+        text: jest.fn().mockRejectedValue(bodyErr),
+      } as any)
       .mockResolvedValueOnce(okResponse("recovered"));
     const appContext = createAppContext();
 
@@ -365,6 +367,17 @@ describe("postHttpRequest timeout and retry", () => {
     );
   });
 
+  it("does not retry a server/client HTTP error (node-fetch resolves it, so it never reaches the retry path)", async () => {
+    mockFetch.mockResolvedValueOnce(okResponse("<soap:Fault>500</soap:Fault>"));
+    const appContext = createAppContext();
+
+    const result = await appContext.postHttpRequest(appContext, "<soap/>");
+
+    expect(result).toBe("<soap:Fault>500</soap:Fault>");
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(appContext.logger.warn).not.toHaveBeenCalled();
+  });
+
   it("does not retry on a non-network/non-timeout error", async () => {
     const otherErr = Object.assign(new Error("boom"), { name: "TypeError" });
     mockFetch.mockRejectedValue(otherErr);
@@ -383,9 +396,7 @@ describe("postHttpRequest timeout and retry", () => {
       (_url: string, opts: any) =>
         new Promise((_resolve, reject) => {
           opts.signal.addEventListener("abort", () =>
-            reject(
-              Object.assign(new Error("aborted"), { name: "AbortError" }),
-            ),
+            reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
           );
         }),
     );
