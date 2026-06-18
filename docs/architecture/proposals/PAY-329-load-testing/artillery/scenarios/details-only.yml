@@ -1,0 +1,6 @@
+scenarios:
+  - name: details-only
+    weight: 0
+    flow:
+      - get:
+          url: "/details/{{ $uuid }}"

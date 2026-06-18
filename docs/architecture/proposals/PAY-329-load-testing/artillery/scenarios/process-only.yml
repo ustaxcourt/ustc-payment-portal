@@ -1,0 +1,8 @@
+scenarios:
+  - name: process-only
+    weight: 0
+    flow:
+      - post:
+          url: "/process"
+          json:
+          token: "{{ $uuid }}"

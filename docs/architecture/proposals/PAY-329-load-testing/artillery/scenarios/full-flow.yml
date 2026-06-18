@@ -1,0 +1,40 @@
+scenarios:
+  - name: full-flow
+    weight: 30
+    flow:
+      # STEP 1: INIT
+      - post:
+          url: "/init"
+          json:
+            transactionReferenceId: "{{ $uuid }}"
+            fee: "PETITION_FILING_FEE"
+            urlSuccess: "https://client.app/success"
+            urlCancel: "https://client.app/cancel"
+            metadata:
+              docketNumber: "{{ $randomString() }}"
+          capture:
+            - json: "$.token"
+              as: "paymentToken"
+            - json: "$.transactionReferenceId"
+              as: "txId"
+
+      - think: 1
+
+      # STEP 2: SIMULATE USER DECISION
+      - function: "choosePaymentOutcome"
+
+      # STEP 3: PROCESS
+      - post:
+          url: "/process"
+          json:
+            token: "{{ paymentToken }}"
+          expect:
+            - statusCode: 200
+
+      - think: 1
+
+      # STEP 4: DETAILS
+      - get:
+          url: "/details/{{ txId }}"
+          expect:
+            - statusCode: 200

@@ -1,0 +1,15 @@
+config:
+  target: "http://localhost:8080"
+
+  phases:
+    - duration: 300
+      arrivalRate: 10
+      rampTo: 167
+      name: full-flow-ramp
+
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+  processor: "./processor.js"

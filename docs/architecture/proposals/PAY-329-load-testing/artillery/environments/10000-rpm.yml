@@ -1,0 +1,11 @@
+config:
+  target: "https://dev-payments.ustaxcourt.gov"
+  phases:
+    - duration: 300
+      arrivalRate: 167
+      name: stress-10000-rpm
+
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"

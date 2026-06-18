@@ -1,0 +1,20 @@
+config:
+  target: "http://localhost:8080"
+
+  phases:
+    - duration: 300
+      arrivalRate: 17
+      name: baseline-1000-rpm
+
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+  processor: "../processor.js"
+
+# scenarios:
+#   - $include: "../scenarios/init-only.yml"
+#   # - $include: "../scenarios/full-flow.yml"
+#   # - $include: "../scenarios/process-only.yml"
+#   # - $include: "../scenarios/details-only.yml"
