@@ -1,5 +1,5 @@
 config:
-  target: "http://localhost:8080"
+  target: "https://dev-payments.ustaxcourt.gov"
 
   phases:
     - duration: 300
@@ -12,9 +12,3 @@ config:
       Accept: "application/json"
 
   processor: "../processor.js"
-
-# scenarios:
-#   - $include: "../scenarios/init-only.yml"
-#   # - $include: "../scenarios/full-flow.yml"
-#   # - $include: "../scenarios/process-only.yml"
-#   # - $include: "../scenarios/details-only.yml"
