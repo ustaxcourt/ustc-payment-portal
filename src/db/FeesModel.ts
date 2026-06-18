@@ -1,6 +1,10 @@
 import { Model } from 'objection';
 import { getKnex } from './knex';
 
+/**
+ * @deprecated Fees have been refactored out of the database and are now hardcoded in the codebase.
+ * Use getFeeById and getActiveFeeByKey from `src/config/fees` instead of querying FeesModel.
+ */
 export default class FeesModel extends Model {
   feeId!: string; // e.g. "PETITION_FILING_FEE_2026_03_05"
   feeKey!: string; // e.g. "PETITION_FILING_FEE"

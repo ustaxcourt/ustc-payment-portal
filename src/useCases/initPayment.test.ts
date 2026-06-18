@@ -13,31 +13,29 @@ jest.mock("../db/TransactionModel", () => ({
   },
 }));
 
-jest.mock("../db/FeesModel", () => ({
+jest.mock("../config/fees", () => ({
   __esModule: true,
-  default: {
-    getActiveFeeByKey: jest.fn((feeKey) => {
-      if (feeKey === "PETITION_FILING_FEE") {
-        return Promise.resolve({
-          feeId: "PETITION_FILING_FEE",
-          feeKey: "PETITION_FILING_FEE",
-          tcsAppId: "TCSUSTAXCOURTPETITION",
-          amount: 250,
-          isVariable: false,
-        });
-      }
-      if (feeKey === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
-        return Promise.resolve({
-          feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
-          feeKey: "NONATTORNEY_EXAM_REGISTRATION_FEE",
-          tcsAppId: "TCSUSTAXCOURTANAEF",
-          amount: 250,
-          isVariable: false,
-        });
-      }
-      return Promise.resolve(undefined);
-    }),
-  },
+  getActiveFeeByKey: jest.fn((feeKey) => {
+    if (feeKey === "PETITION_FILING_FEE") {
+      return {
+        feeId: "PETITION_FILING_FEE",
+        feeKey: "PETITION_FILING_FEE",
+        tcsAppId: "TCSUSTAXCOURTPETITION",
+        amount: 250,
+        isVariable: false,
+      };
+    }
+    if (feeKey === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
+      return {
+        feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        feeKey: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        tcsAppId: "TCSUSTAXCOURTANAEF",
+        amount: 250,
+        isVariable: false,
+      };
+    }
+    return undefined;
+  }),
 }));
 
 import { initPayment } from "./initPayment";
@@ -140,8 +138,8 @@ describe("initPayment", () => {
   });
 
   it("throws InvalidRequestError when amount is missing for a variable fee", async () => {
-    const FeesModel = require("../db/FeesModel").default;
-    FeesModel.getActiveFeeByKey.mockResolvedValueOnce({
+    const feesConfig = require("../config/fees");
+    feesConfig.getActiveFeeByKey.mockReturnValueOnce({
       feeId: "PETITION_FILING_FEE",
       feeKey: "PETITION_FILING_FEE",
       tcsAppId: "TCSUSTAXCOURTPETITION",

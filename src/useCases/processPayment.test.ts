@@ -7,7 +7,7 @@ import { NotFoundError } from "../errors/notFound";
 import { PayGovError } from "../errors/payGovError";
 import { ServerError } from "../errors/serverError";
 import TransactionModel from "../db/TransactionModel";
-import FeesModel from "../db/FeesModel";
+import { getFeeById } from "../config/fees";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -20,17 +20,15 @@ jest.mock("../db/TransactionModel", () => ({
   },
 }));
 
-jest.mock("../db/FeesModel", () => ({
+jest.mock("../config/fees", () => ({
   __esModule: true,
-  default: {
-    getFeeById: jest.fn(),
-  },
+  getFeeById: jest.fn(),
 }));
 
 const TransactionModelMock = TransactionModel as jest.Mocked<
   typeof TransactionModel
 >;
-const FeesModelMock = FeesModel as jest.Mocked<typeof FeesModel>;
+const getFeeByIdMock = getFeeById as jest.Mock;
 
 const mockClient: ClientPermission = {
   clientName: "Test Client",
@@ -221,11 +219,11 @@ describe("processPayment", () => {
       mockUpdatedTransaction(null),
     );
     TransactionModelMock.findByReferenceId.mockResolvedValue([]);
-    FeesModelMock.getFeeById.mockResolvedValue({
+    getFeeByIdMock.mockReturnValue({
       feeId: "fee-123",
       feeKey: "fee-123",
       tcsAppId: "TCSUSTAXCOURTPETITION",
-    } as unknown as FeesModel);
+    });
   });
 
   it("throws NotFoundError when token is not in the database", async () => {
@@ -299,7 +297,7 @@ describe("processPayment", () => {
   });
 
   it("throws NotFoundError when fee is not found for the transaction", async () => {
-    FeesModelMock.getFeeById.mockResolvedValueOnce(undefined);
+    getFeeByIdMock.mockReturnValueOnce(undefined);
 
     await expect(
       processPayment(appContext, {
@@ -310,11 +308,11 @@ describe("processPayment", () => {
   });
 
   it("throws ServerError when fee has no tcsAppId", async () => {
-    FeesModelMock.getFeeById.mockResolvedValueOnce({
+    getFeeByIdMock.mockReturnValueOnce({
       feeId: "fee-123",
       feeKey: "fee-123",
       tcsAppId: "",
-    } as unknown as FeesModel);
+    });
 
     await expect(
       processPayment(appContext, {

@@ -12,7 +12,7 @@ import { parseTransactionStatus } from "./parseTransactionStatus";
 import { derivePaymentStatusFromSingleTransaction } from "../utils/derivePaymentStatus";
 import { ClientPermission } from "../types/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
-import FeesModel from "../db/FeesModel";
+import { getFeeById } from "../config/fees";
 import { toPaymentMethod } from "../utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
 import { safeUpdateToFailed } from "../utils/safeUpdateToFailed";
@@ -66,7 +66,7 @@ export const processPayment: ProcessPayment = async (
     throw new GoneError("This token is no longer valid.");
   }
 
-  const fee = await FeesModel.getFeeById(transaction.feeId);
+  const fee = getFeeById(transaction.feeId);
   if (!fee) {
     appContext.logger.error("Fee not found for transaction", {
       ...baseLogFields,

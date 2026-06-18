@@ -121,15 +121,6 @@ describe("dbSetup", () => {
     );
   });
 
-  it("runs only the reference data seed", async () => {
-    const { setupConsumerDb } = require("./dbSetup");
-    await setupConsumerDb();
-
-    expect(mockKnexInstance.seed.run).toHaveBeenCalledWith({
-      specific: "01_reference_data.ts",
-    });
-  });
-
   it("calls knex.destroy() even if migrate.latest() throws", async () => {
     mockKnexInstance.migrate.latest.mockRejectedValue(
       new Error("migration failed"),

@@ -11,7 +11,7 @@ import {
 } from "../utils/derivePaymentStatus";
 import { toPaymentMethod } from "../utils/toPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
-import FeesModel from "../db/FeesModel";
+import { getFeeById } from "../config/fees";
 import { NotFoundError } from "../errors/notFound";
 import { PayGovError } from "../errors/payGovError";
 import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
@@ -63,7 +63,7 @@ export const getDetails: GetDetails = async (
   const feeId = allRows[0].feeId;
 
   // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
-  const fee = await FeesModel.getFeeById(feeId);
+  const fee = getFeeById(feeId);
   if (!fee || !fee.tcsAppId) {
     // Both branches indicate server-side data corruption: the FK prevents the first,
     // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.

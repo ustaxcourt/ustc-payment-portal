@@ -24,7 +24,6 @@ export async function up(knex: Knex): Promise<void> {
   });
 
   // Add FK as NOT VALID so Postgres skips checking existing rows. (We don't need to check them yet anyway, any transaction rows are dummy data at this point)
-  // Fees table is empty until 01_reference_data seed runs after migrations.
   await knex.raw(`
     ALTER TABLE transactions
       ADD CONSTRAINT transactions_fee_id_foreign

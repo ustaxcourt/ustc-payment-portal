@@ -1,3 +1,5 @@
+import { staticFees } from '../../../src/config/fees';
+
 type FeesRow = {
   fee_id: string;
   fee_key: string;
@@ -10,28 +12,16 @@ type FeesRow = {
 };
 
 // Insert new fee versions here to get them registered in the DB. Added via seeding.
+// Now mapped from the hardcoded fees configuration in the codebase as the single source of truth.
 export const generateFees = (): FeesRow[] => {
-  const fees = [
-    {
-      fee_id: 'PETITION_FILING_FEE',
-      fee_key: 'PETITION_FILING_FEE',
-      name: 'Petition Filing Fee',
-      tcs_app_id: 'TCSUSTAXCOURTPETITION',
-      is_variable: false,
-      amount: 60,
-      description: 'Fee charged for filing a petition with the U.S. Tax Court.',
-      activation_date: '2026-03-05T00:00:00Z',
-    },
-    {
-      fee_id: 'NONATTORNEY_EXAM_REGISTRATION_FEE',
-      fee_key: 'NONATTORNEY_EXAM_REGISTRATION_FEE',
-      name: 'Non-Attorney Exam Registration Fee',
-      tcs_app_id: 'TCSUSTAXCOURTANAEF',
-      is_variable: false,
-      amount: 250,
-      description: 'Fee for non-attorneys to register for an examination with the U.S. Tax Court.',
-      activation_date: '2026-03-05T00:00:00Z',
-    },
-  ];
-  return fees;
+  return staticFees.map((fee) => ({
+    fee_id: fee.feeId,
+    fee_key: fee.feeKey,
+    name: fee.name,
+    tcs_app_id: fee.tcsAppId,
+    is_variable: fee.isVariable,
+    amount: fee.amount ?? 0,
+    description: fee.description ?? '',
+    activation_date: fee.activationDate,
+  }));
 };

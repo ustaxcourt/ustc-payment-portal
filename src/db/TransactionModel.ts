@@ -1,4 +1,5 @@
 import { Model } from 'objection';
+import { getFeeById } from '../config/fees';
 import FeesModel from './FeesModel';
 import type { PaymentStatus } from '../schemas/PaymentStatus.schema';
 import type { TransactionStatus as SchemaTransactionStatus } from '../schemas/TransactionStatus.schema';
@@ -64,27 +65,39 @@ export default class TransactionModel extends Model {
     return parsed;
   }
 
-  // Fees from Fee Table will never be deleted, new ones are versioned according
+  // Fees are hardcoded into the codebase, new ones are versioned according
   // to FeeKey & activation date, with the latest date accepted as the active fee.
   static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
     await getKnex();
-    return TransactionModel.query()
-      .alias('t')
-      .join('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.name as feeName', 'f.amount as transactionAmount')
-      .where('t.paymentStatus', paymentStatus)
-      .orderBy('t.createdAt', 'desc')
+    const rows = await TransactionModel.query()
+      .where('paymentStatus', paymentStatus)
+      .orderBy('createdAt', 'desc')
       .limit(100);
+
+    for (const row of rows) {
+      const fee = getFeeById(row.feeId);
+      if (fee) {
+        row.feeName = fee.name;
+        row.transactionAmount = fee.isVariable ? row.transactionAmount : (fee.amount ?? null);
+      }
+    }
+    return rows;
   }
 
   static async getAll(): Promise<TransactionModel[]> {
     await getKnex();
-    return TransactionModel.query()
-      .alias('t')
-      .join('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.name as feeName', 'f.amount as transactionAmount')
-      .orderBy('t.createdAt', 'desc')
+    const rows = await TransactionModel.query()
+      .orderBy('createdAt', 'desc')
       .limit(100);
+
+    for (const row of rows) {
+      const fee = getFeeById(row.feeId);
+      if (fee) {
+        row.feeName = fee.name;
+        row.transactionAmount = fee.isVariable ? row.transactionAmount : (fee.amount ?? null);
+      }
+    }
+    return rows;
   }
 
   static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
