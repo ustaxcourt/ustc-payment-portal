@@ -1,18 +1,18 @@
 locals {
   lambda_functions = {
-    # 27s leaves headroom under API Gateway's 29s cap for two 10s Pay.gov
-    # attempts plus cold-start secrets/DB work and the failure-path DB write.
+    # Payment-flow lambdas share var.payment_lambda_timeout (see variables.tf)
+    # so the Pay.gov retry budget is tuned in one place.
     initPayment = {
       handler = "initPaymentHandler.initPaymentHandler"
-      timeout = 27
+      timeout = var.payment_lambda_timeout
     }
     processPayment = {
       handler = "processPaymentHandler.processPaymentHandler"
-      timeout = 27
+      timeout = var.payment_lambda_timeout
     }
     getDetails = {
       handler = "getDetailsHandler.getDetailsHandler"
-      timeout = 27
+      timeout = var.payment_lambda_timeout
     }
     testCert = {
       handler = "lambdaHandler.handler"
