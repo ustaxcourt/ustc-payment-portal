@@ -159,36 +159,57 @@ describe("testCert handler", () => {
     delete process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
   });
 
-  it("emits a healthy metric when the WSDL probe returns a 2xx", async () => {
+  it("emits a healthy metric when the scheduled probe returns a 2xx", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       text: jest.fn().mockResolvedValue("wsdl"),
     } as any);
 
-    await handler();
+    await handler({ healthProbe: true });
 
     expect(mockEmit).toHaveBeenCalledWith(true, expect.any(Number));
   });
 
-  it("emits an unhealthy metric (still 200) when the probe returns a non-2xx", async () => {
+  it("emits an unhealthy metric (still 200) when the scheduled probe returns a non-2xx", async () => {
     mockFetch.mockResolvedValue({
       ok: false,
       text: jest.fn().mockResolvedValue("error page"),
     } as any);
 
-    const result = await handler();
+    const result = await handler({ healthProbe: true });
 
     expect(result.statusCode).toBe(200);
     expect(mockEmit).toHaveBeenCalledWith(false, expect.any(Number));
   });
 
-  it("emits an unhealthy metric with -1 latency when the probe throws", async () => {
+  it("emits an unhealthy metric with -1 latency when the scheduled probe throws", async () => {
+    mockFetch.mockRejectedValue(new Error("Network error"));
+
+    const result = await handler({ healthProbe: true });
+
+    expect(result.statusCode).toBe(500);
+    expect(mockEmit).toHaveBeenCalledWith(false, -1);
+  });
+
+  it("does not emit a metric for on-demand /test calls (no scheduled payload)", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: jest.fn().mockResolvedValue("wsdl"),
+    } as any);
+
+    const result = await handler();
+
+    expect(result.statusCode).toBe(200);
+    expect(mockEmit).not.toHaveBeenCalled();
+  });
+
+  it("does not emit a metric when an on-demand /test call fails", async () => {
     mockFetch.mockRejectedValue(new Error("Network error"));
 
     const result = await handler();
 
     expect(result.statusCode).toBe(500);
-    expect(mockEmit).toHaveBeenCalledWith(false, -1);
+    expect(mockEmit).not.toHaveBeenCalled();
   });
 
   it("logs the failure via the structured logger when the probe throws", async () => {

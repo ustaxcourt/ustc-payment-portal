@@ -12,6 +12,7 @@ resource "aws_cloudwatch_event_target" "health" {
   rule      = aws_cloudwatch_event_rule.health.name
   target_id = "testCert"
   arn       = var.testcert_function_arn
+  input     = jsonencode({ healthProbe = true })
 }
 
 resource "aws_lambda_permission" "allow_eventbridge" {

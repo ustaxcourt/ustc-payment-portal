@@ -5,12 +5,17 @@ import { createAppContext } from "./appContext";
 import { getSecretString } from "./clients/secretsClient";
 import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
 
+type TestCertEvent = { healthProbe?: boolean };
+
 // Handler for the /test endpoint. Also serves as the scheduled Pay.gov health
-// probe: an EventBridge rule invokes it every ~15 min, and each run publishes a
-// PayGovHealthy CloudWatch metric (healthy = the WSDL probe returned a 2xx).
-// The HTTP response is unchanged for on-demand callers; EventBridge ignores it.
-export const handler = async (): Promise<APIGatewayProxyResult> => {
+// probe: an EventBridge rule invokes it every ~15 min, and each scheduled run
+// publishes a PayGovHealthy CloudWatch metric (healthy = the WSDL probe returned
+// a 2xx). The HTTP response is unchanged for on-demand callers; EventBridge ignores it.
+export const handler = async (
+  event?: TestCertEvent,
+): Promise<APIGatewayProxyResult> => {
   const appContext = createAppContext();
+  const isScheduledProbe = event?.healthProbe === true;
   try {
     const httpsAgent = await appContext.getHttpsAgent();
 
@@ -36,7 +41,9 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
     const resultText = await result.text();
 
     // Healthy = Pay.gov's server responded to the WSDL probe with a 2xx.
-    emitPayGovHealthMetric(result.ok, Date.now() - startedAt);
+    if (isScheduledProbe) {
+      emitPayGovHealthMetric(result.ok, Date.now() - startedAt);
+    }
 
     return {
       statusCode: 200,
@@ -49,7 +56,9 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
       errorStack: err instanceof Error ? err.stack : undefined,
     });
     // -1 latency = the probe failed before Pay.gov responded (no meaningful timing).
-    emitPayGovHealthMetric(false, -1);
+    if (isScheduledProbe) {
+      emitPayGovHealthMetric(false, -1);
+    }
     return {
       statusCode: 500,
       body: "not ok",
