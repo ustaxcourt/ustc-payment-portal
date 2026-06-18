@@ -8,9 +8,11 @@ jest.mock("node-fetch", () => jest.fn());
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
 // Mock the appContext module
+const mockLoggerError = jest.fn();
 jest.mock("./appContext", () => ({
   createAppContext: jest.fn(() => ({
     getHttpsAgent: jest.fn().mockReturnValue({ mockAgent: true }),
+    logger: { error: mockLoggerError },
   })),
 }));
 
@@ -187,5 +189,16 @@ describe("testCert handler", () => {
 
     expect(result.statusCode).toBe(500);
     expect(mockEmit).toHaveBeenCalledWith(false, -1);
+  });
+
+  it("logs the failure via the structured logger when the probe throws", async () => {
+    mockFetch.mockRejectedValue(new Error("Network error"));
+
+    await handler();
+
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      "Pay.gov health probe failed",
+      expect.objectContaining({ errorMessage: "Network error" })
+    );
   });
 });
