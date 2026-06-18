@@ -56,5 +56,5 @@ locals {
 
   # Prod threshold is higher to absorb expected bursts (e.g. CI runs) without paging.
   # stg uses the module default (1) to catch throttles early.
-  throttle_429_threshold = 5
+  throttle_429_threshold = 3
 }
