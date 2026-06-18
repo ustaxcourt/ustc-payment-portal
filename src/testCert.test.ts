@@ -180,12 +180,12 @@ describe("testCert handler", () => {
     expect(mockEmit).toHaveBeenCalledWith(false, expect.any(Number));
   });
 
-  it("emits an unhealthy metric when the probe throws", async () => {
+  it("emits an unhealthy metric with -1 latency when the probe throws", async () => {
     mockFetch.mockRejectedValue(new Error("Network error"));
 
     const result = await handler();
 
     expect(result.statusCode).toBe(500);
-    expect(mockEmit).toHaveBeenCalledWith(false, expect.any(Number));
+    expect(mockEmit).toHaveBeenCalledWith(false, -1);
   });
 });

@@ -10,7 +10,6 @@ import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
 // PayGovHealthy CloudWatch metric (healthy = the WSDL probe returned a 2xx).
 // The HTTP response is unchanged for on-demand callers; EventBridge ignores it.
 export const handler = async (): Promise<APIGatewayProxyResult> => {
-  const startedAt = Date.now();
   try {
     const appContext = createAppContext();
     const httpsAgent = await appContext.getHttpsAgent();
@@ -28,6 +27,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
       }
     }
 
+    const startedAt = Date.now();
     const result = await fetch(`${process.env.SOAP_URL}?wsdl`, {
       agent: httpsAgent,
       headers,
@@ -44,7 +44,8 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
     };
   } catch (err) {
     console.log(err);
-    emitPayGovHealthMetric(false, Date.now() - startedAt);
+    // -1 latency = the probe failed before Pay.gov responded (no meaningful timing).
+    emitPayGovHealthMetric(false, -1);
     return {
       statusCode: 500,
       body: "not ok",
