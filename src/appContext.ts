@@ -148,11 +148,13 @@ export const createAppContext = (
             throw err;
           }
           lastError = err;
+          const willRetry = attempt < PAYGOV_MAX_ATTEMPTS;
           appContext.logger.warn(
-            attempt < PAYGOV_MAX_ATTEMPTS
+            willRetry
               ? "Pay.gov request failed; retrying"
               : "Pay.gov request failed; no retries remaining",
             {
+              event: willRetry ? "paygov_retry" : "paygov_retry_exhausted",
               attempt,
               maxAttempts: PAYGOV_MAX_ATTEMPTS,
               errorName: err instanceof Error ? err.name : undefined,

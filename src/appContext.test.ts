@@ -316,6 +316,7 @@ describe("postHttpRequest timeout and retry", () => {
     expect(appContext.logger.warn).toHaveBeenCalledWith(
       "Pay.gov request failed; retrying",
       expect.objectContaining({
+        event: "paygov_retry",
         attempt: 1,
         maxAttempts: 2,
         errorName: "FetchError",
@@ -363,7 +364,11 @@ describe("postHttpRequest timeout and retry", () => {
     expect(appContext.logger.warn).toHaveBeenCalledTimes(2);
     expect(appContext.logger.warn).toHaveBeenLastCalledWith(
       "Pay.gov request failed; no retries remaining",
-      expect.objectContaining({ attempt: 2, maxAttempts: 2 }),
+      expect.objectContaining({
+        event: "paygov_retry_exhausted",
+        attempt: 2,
+        maxAttempts: 2,
+      }),
     );
   });
 

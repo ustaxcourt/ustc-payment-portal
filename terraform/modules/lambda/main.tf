@@ -1,16 +1,18 @@
 locals {
   lambda_functions = {
+    # 27s leaves headroom under API Gateway's 29s cap for two 10s Pay.gov
+    # attempts plus cold-start secrets/DB work and the failure-path DB write.
     initPayment = {
       handler = "initPaymentHandler.initPaymentHandler"
-      timeout = 24
+      timeout = 27
     }
     processPayment = {
       handler = "processPaymentHandler.processPaymentHandler"
-      timeout = 24
+      timeout = 27
     }
     getDetails = {
       handler = "getDetailsHandler.getDetailsHandler"
-      timeout = 24
+      timeout = 27
     }
     testCert = {
       handler = "lambdaHandler.handler"

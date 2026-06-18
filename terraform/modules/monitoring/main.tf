@@ -126,7 +126,7 @@ resource "aws_cloudwatch_log_metric_filter" "paygov_retry" {
 
   name           = "${var.name_prefix}-${each.key}-paygov-retry"
   log_group_name = each.value
-  pattern        = "{ ($.level = \"warn\") && ($.msg = \"Pay.gov request failed; retrying\") }"
+  pattern        = "{ ($.level = \"warn\") && ($.event = \"paygov_retry\") }"
 
   metric_transformation {
     namespace     = "${var.name_prefix}/warnings"
