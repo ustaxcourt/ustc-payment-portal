@@ -1,5 +1,7 @@
 config:
-  target: "https://dev-payments.ustaxcourt.gov"
+  target: "http://localhost:8080"
+  # target: "https://dev-payments.ustaxcourt.gov"
+
   phases:
     - duration: 300
       arrivalRate: 167
@@ -9,3 +11,5 @@ config:
     headers:
       Content-Type: "application/json"
       Accept: "application/json"
+
+  processor: "../processor.js"
