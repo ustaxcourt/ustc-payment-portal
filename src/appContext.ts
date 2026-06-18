@@ -159,7 +159,6 @@ export const createAppContext = (
               maxAttempts: PAYGOV_MAX_ATTEMPTS,
               errorName: err instanceof Error ? err.name : undefined,
               errorMessage: err instanceof Error ? err.message : String(err),
-              soapUrl: process.env.SOAP_URL,
             },
           );
         } finally {
