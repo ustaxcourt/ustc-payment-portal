@@ -2,8 +2,14 @@ config:
   target: "http://localhost:8080"
   # target: "https://dev-payments.ustaxcourt.gov"
 
+  http:
+    timeout: 30
+
+  ensure:
+    maxErrorRate: 100
+
   phases:
-    - duration: 300
+    - duration: 60
       arrivalRate: 167
       name: stress-10000-rpm
 

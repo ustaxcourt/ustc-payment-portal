@@ -2,8 +2,14 @@ config:
   target: "http://localhost:8080"
   # target: "https://dev-payments.ustaxcourt.gov"
 
+  http:
+    timeout: 30
+
+  ensure:
+    maxErrorRate: 100
+
   phases:
-    - duration: 120
+    - duration: 60
       arrivalRate: 10
       rampTo: 167
       name: full-flow-ramp

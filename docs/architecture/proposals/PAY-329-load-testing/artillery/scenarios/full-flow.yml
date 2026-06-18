@@ -2,7 +2,9 @@ scenarios:
   - name: full-flow
     weight: 30
     flow:
-      # STEP 1: INIT
+      - log: "== STARTING FULL FLOW SCENARIO =="
+
+      # STEP 1
       - post:
           url: "/init"
           json:
@@ -13,28 +15,30 @@ scenarios:
             metadata:
               docketNumber: "{{ $randomString() }}"
           capture:
-            - json: "$.token"
+            - json: $.token
               as: "paymentToken"
-            - json: "$.transactionReferenceId"
-              as: "txId"
+      - log: "INIT COMPLETED"
 
       - think: 1
 
-      # STEP 2: SIMULATE USER DECISION
+      # STEP 2
       - function: "choosePaymentOutcome"
+      - log: "PAYMENT OUTCOME CHOSEN"
 
-      # STEP 3: PROCESS
+      - think: 1
+
+      # STEP 3
       - post:
           url: "/process"
           json:
             token: "{{ paymentToken }}"
           expect:
             - statusCode: 200
+      - log: "PROCESS COMPLETED"
 
-      - think: 1
-
-      # STEP 4: DETAILS
+      # STEP 4
       - get:
-          url: "/details/{{ txId }}"
+          url: "/details/{{ transactionReferenceId }}"
           expect:
             - statusCode: 200
+      - log: "DETAILS COMPLETED"

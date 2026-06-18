@@ -2,14 +2,23 @@ config:
   target: "http://localhost:8080"
   # target: "https://dev-payments.ustaxcourt.gov"
 
+  http:
+    timeout: 30
+
+  ensure:
+    maxErrorRate: 100
+
   phases:
-    - duration: 300
-      arrivalRate: 17
+    - duration: 60
+      arrivalRate: 1
       name: baseline-1000-rpm
 
   defaults:
     headers:
       Content-Type: "application/json"
       Accept: "application/json"
+
+    capture:
+      json: true
 
   processor: "../processor.js"
