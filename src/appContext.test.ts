@@ -271,9 +271,16 @@ describe("postHttpRequest timeout and retry", () => {
   const okResponse = (body: string) =>
     ({ text: jest.fn().mockResolvedValue(body) } as any);
 
+  const originalEnv = process.env;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env = { ...originalEnv };
     process.env.SOAP_URL = "https://test-soap-url.com";
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
   });
 
   it("passes an abort signal to fetch", async () => {

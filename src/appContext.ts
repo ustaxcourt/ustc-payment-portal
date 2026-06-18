@@ -165,7 +165,9 @@ export const createAppContext = (
           clearTimeout(timer);
         }
       }
-      throw lastError;
+      throw lastError instanceof Error
+        ? lastError
+        : new Error(`Pay.gov request failed: ${String(lastError)}`);
     },
     getUseCases: () => ({
       initPayment,
