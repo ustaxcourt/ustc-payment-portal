@@ -9,5 +9,7 @@
 - Option 8: Separate account for the artifact bucket?
 
 ## What actually let us eliminate a single point of failure
-- Add artifact buckets to `stg` and `prod`, and include a copy step that jumps promoted artifacts from `dev -> stg -> prod`.
-  - For additional 
+1. Add artifact buckets to `stg` and `prod`, and include a copy step that jumps promoted artifacts from `dev -> stg -> prod`.
+  - For additional security we can use checksums to verify artifacts between each environment before it's allowed in.
+  - There's also Lambda Code Signing, but that might be overkill - think of it like Sigv4 signing (It tells the Lambda that a lambda update actually came from us.)
+2. Separate AWS Account for Tools (essentiallly just an account with the artifact bucket)
