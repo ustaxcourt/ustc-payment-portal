@@ -10,25 +10,31 @@ This spike is intended to produce measurable, actionable findings about the syst
 
 ### Run Artillery Tests (Local)
 
-Run Artillery tests locally by combining scenario files with environment (load) configurations:
+Run Artillery tests locally by combining scenario files with environment (load) configurations.
+
+> When using `--record`, Artillery will automatically upload results to Artillery Cloud and generate a hosted report/dashboard for the run.
+> Results are also saved locally via `--output` for offline analysis and HTML report generation.
+
+Example:
 
 ```bash
 # Make sure you have Artillery installed globally or use npx
 
-# Go to the directory containing your Artillery configuration
 cd docs/architecture/proposals/PAY-329-load-testing/artillery
 
-# Baseline (1,000 RPM)
-artillery run scenarios/init-only.yml \
+# Full Flow (1,000 RPM)
+artillery run scenarios/full-flow.yml \
   --config environments/1000-rpm.yml \
-  --output results/1000-rpm-results.json \
+  --target https://dev-payments.ustaxcourt.gov \
+  --output results/1000-rpm.json \
   --key <api_key> \
-  --name "Load Test - 1,000 RPM" \
+  --name "Full Flow 1,000 RPM" \
   --record
 
 # Stress (10,000 RPM)
 artillery run scenarios/init-only.yml \
   --config environments/10000-rpm.yml \
+  --target https://dev-payments.ustaxcourt.gov \
   --output results/10000-rpm-results.json \
   --key <api_key> \
   --name "Load Test - 10,000 RPM" \
@@ -37,6 +43,7 @@ artillery run scenarios/init-only.yml \
 # Ramp (threshold identification)
 artillery run scenarios/full-flow.yml \
   --config environments/ramp-test.yml \
+  --target https://dev-payments.ustaxcourt.gov \
   --output results/ramp-test-results.json \
   --key <api_key> \
   --name "Load Test - Ramp Test" \
@@ -67,6 +74,9 @@ artillery run-lambda scenarios/init-only.yml \
   --target https://your-api-endpoint.com \
   --output results/1000-rpm-results.json \
   --region us-west-2 \
+  --key <api_key> \
+  --name "Full Flow 1,000 RPM" \
+  --record \
   --count 2
 
 # Stress (10,000 RPM)
@@ -75,6 +85,9 @@ artillery run-lambda scenarios/init-only.yml \
   --target https://your-api-endpoint.com \
   --output results/10000-rpm-results.json \
   --region us-west-2 \
+  --key <api_key> \
+  --name "Full Flow 1,000 RPM" \
+  --record \
   --count 10
 
 # Ramp (threshold identification)
@@ -83,6 +96,9 @@ artillery run-lambda scenarios/full-flow.yml \
   --target https://your-api-endpoint.com \
   --output results/ramp-test-results.json \
   --region us-west-2 \
+  --key <api_key> \
+  --name "Full Flow 1,000 RPM" \
+  --record \
   --count 5
 ```
 
@@ -276,3 +292,9 @@ Helps identify:
 1. Run tests locally (`artillery run`) to validate flows and correctness
 2. Switch to distributed testing (`artillery run-lambda`) for realistic load
 3. Adjust `--count` carefully to avoid unintentionally overloading the system
+
+## Sample Results Table
+
+Here's a screenshot of the Artillery Cloud dashboard for the 1,000 RPM full-flow test:
+
+<img src="artillery/images/Screenshot 1000-rpm-results.png" alt="Artillery Dashboard" width="600" />
