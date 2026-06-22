@@ -17,6 +17,7 @@ config:
     headers:
       Content-Type: "application/json"
       Accept: "application/json"
+      Authorization: "Bearer ${PAY_GOV_DEV_SERVER_ACCESS_TOKEN}"
 
     capture:
       json: true
