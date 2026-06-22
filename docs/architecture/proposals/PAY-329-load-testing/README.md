@@ -124,18 +124,16 @@ The following results were collected from Artillery test runs using the provided
 
 ---
 
-### Observations
+## Observations
 
-#### 1. 1,000 RPM (Full Flow)
+### 1. 1,000 RPM (Full Flow)
 
 - System remained **stable under sustained transactional load**
 - Latency remained low across all percentiles (p95 < 10 ms)
 - Minimal error rate (99.7% success)
 - Full-flow transactions (init → process → details) completed successfully
 
----
-
-#### 2. 10,000 RPM (Init Only)
+### 2. 10,000 RPM (Init Only)
 
 - System handled **high request volume without failures**
 - Latency remained consistent (p95 \~7–8 ms)
@@ -143,9 +141,7 @@ The following results were collected from Artillery test runs using the provided
 
 Note: This test only exercises the `/init` endpoint and does not simulate full transaction flow or database-heavy operations.
 
----
-
-#### 3. Ramp Test
+### 3. Ramp Test
 
 - Throughput scaled linearly up to \~95 RPS
 - Latency increased slightly at higher load
@@ -160,8 +156,6 @@ Note: This test only exercises the `/init` endpoint and does not simulate full t
 - The system demonstrates **strong performance at both moderate and high request rates**
 - No significant degradation observed under tested conditions
 
----
-
 ### 2. Threshold (Projected)
 
 Based on current results:
@@ -174,8 +168,6 @@ Based on current results:
 - The system can safely handle **at least \~100 RPS sustained**
 - True failure point has **not yet been reached**
 
----
-
 ### 3. Latency Characteristics
 
 - Latency remained consistently low:
@@ -184,8 +176,6 @@ Based on current results:
   - p99: \~8–14 ms
 
 No evidence of latency collapse or queuing under tested load
-
----
 
 ### 4. Asynchronous Processing Behavior
 
@@ -198,8 +188,6 @@ Indicates **eventual consistency**
 
 - `/process` returning 200 does not guarantee immediate completion
 - This is expected behavior for asynchronous workflows
-
----
 
 ### 5. Bottleneck Analysis (Database)
 
@@ -224,16 +212,12 @@ However:
   - Extend ramp test beyond 100 RPS
   - Increase `--count` in Lambda runs
 
----
-
 ### 2. Execute Full-Flow at High Load
 
 - Run full transactional flow at **10,000 RPM**
 - This will:
   - exercise DB writes
   - reveal real bottlenecks
-
----
 
 ### 3. Monitor Database Metrics
 
@@ -244,8 +228,6 @@ To validate bottleneck hypothesis:
 - Query latency
 - Lock contention
 
----
-
 ### 4. Track Business-Level Success Rate
 
 Add metrics for:
@@ -254,8 +236,6 @@ Add metrics for:
 - % stuck in `pending`
 
 More meaningful than raw HTTP success
-
----
 
 ### 5. Run Longer Duration Tests
 
@@ -271,7 +251,7 @@ Helps identify:
 
 ---
 
-## Final Acceptance Criteria Status
+## **Final Acceptance Criteria Status**
 
 | Requirement                         | Status                                     |
 | ----------------------------------- | ------------------------------------------ |
