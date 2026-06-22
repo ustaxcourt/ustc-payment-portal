@@ -2,4 +2,4 @@
 "@ustaxcourt/payment-portal": patch
 ---
 
-update dependencies to address high vulnerabilities discovered
+Update dependencies to address security vulnerabilities and update the Pay.gov test server to reduce intermittent test failures.
