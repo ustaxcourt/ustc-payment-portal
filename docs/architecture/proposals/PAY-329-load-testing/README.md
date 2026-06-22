@@ -8,9 +8,9 @@ This spike is intended to produce measurable, actionable findings about the syst
 
 ## Test Execution
 
-### Run Artillery Tests
+### Run Artillery Tests (Local)
 
-Run Artillery tests by combining scenario files with environment (load) configurations:
+Run Artillery tests locally by combining scenario files with environment (load) configurations:
 
 ```bash
 # Make sure you have Artillery installed globally or use npx
@@ -36,13 +36,75 @@ artillery run scenarios/full-flow.yml \
 
 ---
 
-### Generate Reports
+## Run Artillery Tests (AWS Lambda - Distributed Load)
+
+Use AWS Lambda to generate distributed, high-scale load. This is recommended for realistic performance testing beyond local machine limits.
+
+> ⚠️ **Important:** The `target` in your config **must NOT be `localhost`**. It must be a publicly reachable endpoint (e.g., API Gateway, dev environment URL).
+
+### Prerequisites
+
+- AWS credentials configured (`aws configure` or environment variables)
+- IAM permissions for Lambda, S3, SQS (AdministratorAccess is acceptable for testing)
+
+---
+
+### Example Commands
+
+```bash
+# Baseline (1,000 RPM)
+artillery run-lambda scenarios/init-only.yml \
+  --config environments/1000-rpm.yml \
+  --target https://your-api-endpoint.com \
+  --output results/1000-rpm-results.json \
+  --region us-west-2 \
+  --count 2
+
+# Stress (10,000 RPM)
+artillery run-lambda scenarios/init-only.yml \
+  --config environments/10000-rpm.yml \
+  --target https://your-api-endpoint.com \
+  --output results/10000-rpm-results.json \
+  --region us-west-2 \
+  --count 10
+
+# Ramp (threshold identification)
+artillery run-lambda scenarios/full-flow.yml \
+  --config environments/ramp-test.yml \
+  --target https://your-api-endpoint.com \
+  --output results/ramp-test-results.json \
+  --region us-west-2 \
+  --count 5
+```
+
+---
+
+### Notes on Lambda Execution
+
+- **`--count` controls the number of distributed load generators**
+  Each worker runs your scenario independently.
+
+- **Total load is multiplied across workers**
+
+  ```
+  total load ≈ config load × count
+  ```
+
+- **Maximum test duration is \~15 minutes** (Lambda limit)
+
+- All scenario files, configs, and JS processors are **automatically bundled and uploaded**
+
+---
+
+## Generate Reports
 
 ```bash
 artillery report results/1000-rpm-results.json > reports/1000-rpm-report.html
 artillery report results/10000-rpm-results.json > reports/10000-rpm-report.html
 artillery report results/ramp-test-results.json > reports/ramp-test-report.html
 ```
+
+> Report format is identical for both local (`run`) and distributed (`run-lambda`) executions
 
 ---
 
@@ -95,3 +157,11 @@ Degradation is defined as one or more of the following:
   - noticeable latency increase
   - possible error rates
   - bottlenecks (likely database-related) become visible
+
+---
+
+## Recommended Workflow
+
+1. Run tests locally (`artillery run`) to validate flows and correctness
+2. Switch to distributed testing (`artillery run-lambda`) for realistic load
+3. Adjust `--count` carefully to avoid unintentionally overloading the system
