@@ -21,17 +21,26 @@ cd docs/architecture/proposals/PAY-329-load-testing/artillery
 # Baseline (1,000 RPM)
 artillery run scenarios/init-only.yml \
   --config environments/1000-rpm.yml \
-  --output results/1000-rpm-results.json
+  --output results/1000-rpm-results.json \
+  --key <api_key> \
+  --name "Load Test - 1,000 RPM" \
+  --record
 
 # Stress (10,000 RPM)
 artillery run scenarios/init-only.yml \
   --config environments/10000-rpm.yml \
-  --output results/10000-rpm-results.json
+  --output results/10000-rpm-results.json \
+  --key <api_key> \
+  --name "Load Test - 10,000 RPM" \
+  --record
 
 # Ramp (threshold identification)
 artillery run scenarios/full-flow.yml \
   --config environments/ramp-test.yml \
-  --output results/ramp-test-results.json
+  --output results/ramp-test-results.json \
+  --key <api_key> \
+  --name "Load Test - Ramp Test" \
+  --record
 ```
 
 ---
@@ -116,11 +125,11 @@ The following results were collected from Artillery test runs using the provided
 
 | Metric       | 1,000 RPM (Full-Flow) | 10,000 RPM (Init-Only) | Ramp Test |
 | ------------ | --------------------- | ---------------------- | --------- |
-| Achieved RPS | 45                    | 167                    | 95        |
-| P50 Latency  | 5 ms                  | 6 ms                   | 7.9 ms    |
-| P95 Latency  | 7.9 ms                | 7.9 ms                 | 10.1 ms   |
-| P99 Latency  | 10.9 ms               | 8.9 ms                 | 13.9 ms   |
-| Success Rate | 99.7%                 | 100%                   | 100%      |
+| Achieved RPS | 16                    | 167                    | 81        |
+| P50 Latency  | 133 ms                | 125 ms                 | 105 ms    |
+| P95 Latency  | 187 ms                | 194 ms                 | 130 ms    |
+| P99 Latency  | 369 ms                | 408 ms                 | 173 ms    |
+| Success Rate | ~0%                   | ~0%                    | ~0%       |
 
 ---
 
