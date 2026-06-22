@@ -10,7 +10,7 @@ config:
 
   phases:
     - duration: 60
-      arrivalRate: 1
+      arrivalRate: 16
       name: baseline-1000-rpm
 
   defaults:

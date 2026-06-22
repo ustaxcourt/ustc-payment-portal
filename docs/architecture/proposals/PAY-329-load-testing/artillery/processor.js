@@ -1,8 +1,17 @@
 'use strict';
 
 const http = require('http');
+const crypto = require('crypto');
 
 module.exports = {
+  setTransactionReferenceId: (context, events, done) => {
+
+ // Simple UUID generator (no external deps)
+    const uuid = crypto.randomUUID();
+    context.vars.transactionReferenceId = uuid;
+    // console.log('Generated transactionReferenceId:', uuid);
+    return done();
+  },
   choosePaymentOutcome: (context, events, done) => {
     const token = context.vars.paymentToken;
 
@@ -22,13 +31,13 @@ module.exports = {
     let path;
 
     if (shouldCancel) {
-      console.log('Simulating CANCEL');
+      // console.log('Simulating CANCEL');
       path = `/pay/CANCEL/Cancel?token=${token}`;
     } else {
       // ✅ Pick a random outcome
       const choice = outcomes[Math.floor(Math.random() * outcomes.length)];
 
-      console.log(`Simulating ${choice.method} - ${choice.status}`);
+      // console.log(`Simulating ${choice.method} - ${choice.status}`);
 
       path = `/pay/${choice.method}/${choice.status}?token=${token}`;
     }
@@ -43,13 +52,13 @@ module.exports = {
     const req = http.request(options, (res) => {
       res.on('data', () => {}); // ignore body
       res.on('end', () => {
-        console.log('PAY call completed');
+        // console.log('PAY call completed');
         done();
       });
     });
 
     req.on('error', (err) => {
-      console.error('Error calling /pay:', err);
+      // console.error('Error calling /pay:', err);
       done(); // prevent blocking
     });
 

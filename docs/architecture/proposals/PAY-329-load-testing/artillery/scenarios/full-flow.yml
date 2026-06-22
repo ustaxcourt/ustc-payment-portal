@@ -2,13 +2,15 @@ scenarios:
   - name: full-flow
     weight: 30
     flow:
-      - log: "== STARTING FULL FLOW SCENARIO =="
+      # - log: "== STARTING FULL FLOW SCENARIO =="
+
+      - function: "setTransactionReferenceId"
 
       # STEP 1
       - post:
           url: "/init"
           json:
-            transactionReferenceId: "{{ $uuid }}"
+            transactionReferenceId: "{{ transactionReferenceId }}"
             fee: "PETITION_FILING_FEE"
             urlSuccess: "https://client.app/success"
             urlCancel: "https://client.app/cancel"
@@ -17,13 +19,13 @@ scenarios:
           capture:
             - json: $.token
               as: "paymentToken"
-      - log: "INIT COMPLETED"
+      # - log: "INIT COMPLETED"
 
       - think: 1
 
       # STEP 2
       - function: "choosePaymentOutcome"
-      - log: "PAYMENT OUTCOME CHOSEN"
+      # - log: "PAYMENT OUTCOME CHOSEN"
 
       - think: 1
 
@@ -34,11 +36,21 @@ scenarios:
             token: "{{ paymentToken }}"
           expect:
             - statusCode: 200
-      - log: "PROCESS COMPLETED"
+      # - log: "PROCESS COMPLETED"
+
+      - think: 1
+      # - log: "Transaction Reference ID: {{ transactionReferenceId }}"
 
       # STEP 4
       - get:
           url: "/details/{{ transactionReferenceId }}"
+          capture:
+            - json: $.paymentStatus
+              as: "paymentStatus"
+              default: "NOT_READY"
           expect:
             - statusCode: 200
-      - log: "DETAILS COMPLETED"
+          retry:
+            count: 5
+            delay: 1
+      # - log: "DETAILS COMPLETED - status={{ paymentStatus }}"

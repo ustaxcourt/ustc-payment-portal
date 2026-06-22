@@ -34,12 +34,5 @@
         // PowerShell equivalents - block
         "/^Remove-Item\\b/i": false,
         "/^Stop-Process\\b/i": false
-    },
-    "yaml.schemas": {
-        "https://www.artillery.io/schema.json": [
-            "file:///Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/docs/architecture/proposals/PAY-329-load-testing/artillery/scenarios/full-flow.yml",
-            "file:///Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/docs/architecture/proposals/PAY-329-load-testing/artillery/environments/1000-rpm.yml",
-            "file:///Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/docs/architecture/proposals/PAY-329-load-testing/artillery/scenarios/details-only.yml"
-        ]
     }
 }
