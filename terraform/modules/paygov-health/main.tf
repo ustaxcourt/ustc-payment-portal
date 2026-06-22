@@ -31,8 +31,8 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy" {
   dimensions          = { Environment = var.environment }
   statistic           = "Maximum"
   period              = 900
-  evaluation_periods  = 2
-  datapoints_to_alarm = 2
+  evaluation_periods  = 1
+  datapoints_to_alarm = 1
   comparison_operator = "LessThanThreshold"
   threshold           = 1
   treat_missing_data  = "breaching"
