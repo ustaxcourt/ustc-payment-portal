@@ -31,7 +31,7 @@ Using S3's built in hash check, we can calculate an Artifact's SHA256 before upl
 4. **Update `staging-deploy.yml`** — instead of copying from the dev bucket, read the GH run ID from the dev git tag annotation and use `actions/download-artifact` to pull the ZIPs directly from GH. Upload to the stg bucket with `--checksum-algorithm sha256` and verify the hash. Object Lock retention is applied on landing. Change `TF_VAR_artifact_bucket` to the stg bucket. If we are using the s3 CLI, computing the hash and checking it when it arrives on the account is handled automatically.
 
 5. **Update `prod-deploy.yml`** — copy from the stg bucket → prod bucket with checksum re-verification. Object Lock retention applied on landing. Point Terraform at the prod bucket.
-  - `Stg` needs to permit access on it's policy, and Prod's deployer role will need to also allow `s3:GetObject` on the stg bucket.
+  - `Stg` needs to permit access on its policy, and Prod's deployer role will need to also allow `s3:GetObject` on the stg bucket.
 
 6. **Update IAM** — GH Actions OIDC needs `s3:PutObject` on the dev bucket (already exists) and the stg bucket (new). Grant the prod deployer role cross-account `s3:GetObject` on the stg bucket scoped to `artifacts/stg/*`. No cross-account trust between Dev and Stg accounts is needed.
 
