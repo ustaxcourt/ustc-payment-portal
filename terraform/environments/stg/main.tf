@@ -133,13 +133,15 @@ data "aws_ssm_parameter" "monitoring_subscribers" {
 module "monitoring" {
   source = "../../modules/monitoring"
 
-  env              = local.environment
-  name_prefix      = local.name_prefix
-  subscribers      = local.monitoring_subscribers
-  runbook_url      = local.runbook_url
-  teams_tenant_id  = var.teams_tenant_id
-  teams_team_id    = var.teams_team_id
-  teams_channel_id = var.teams_channel_id
+  env                  = local.environment
+  name_prefix          = local.name_prefix
+  subscribers          = local.monitoring_subscribers
+  runbook_url          = local.runbook_url
+  throttle_runbook_url = local.throttle_runbook_url
+  throttle_429_threshold = local.throttle_429_threshold
+  teams_tenant_id      = var.teams_tenant_id
+  teams_team_id        = var.teams_team_id
+  teams_channel_id     = var.teams_channel_id
 
   # migrationRunner: uncaught-error alarm only (no HTTP response = no 5xx concept).
   # testCert: excluded — test-only endpoint, no user impact when it fails.
@@ -155,6 +157,8 @@ module "monitoring" {
     processPayment = module.lambda.log_group_names["processPayment"]
     getDetails     = module.lambda.log_group_names["getDetails"]
   }
+
+  api_gateway_access_log_group_name = module.api.access_log_group_name
 
   tags = {
     Env     = local.environment

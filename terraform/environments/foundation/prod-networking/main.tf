@@ -63,3 +63,32 @@ module "iam" {
     Project = "ustc-payment-portal"
   }
 }
+
+# Account-level singleton — one per AWS account per region.
+# Must live in foundation so per-environment CI never needs read/write access to the /account ARN.
+resource "aws_iam_role" "api_gateway_cloudwatch_logs" {
+  name = "${local.name_prefix}-apigw-cloudwatch-logs"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "apigateway.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch_logs" {
+  role       = aws_iam_role.api_gateway_cloudwatch_logs.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
+resource "aws_api_gateway_account" "this" {
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch_logs.arn
+}
