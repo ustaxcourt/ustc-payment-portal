@@ -1,8 +1,8 @@
 import { SignatureV4 } from "@smithy/signature-v4";
 import { Sha256 } from "@aws-crypto/sha256-js";
-import { HttpRequest } from "@smithy/protocol-http";
+import { HttpRequest } from "@smithy/core/protocols";
 import { STSClient, AssumeRoleCommand } from "@aws-sdk/client-sts";
-import { AwsCredentialIdentity } from "@smithy/types";
+import type { AwsCredentialIdentity } from "@smithy/types";
 
 /**
  * Reads AWS credentials directly from environment variables.
@@ -48,10 +48,16 @@ export const assumeRole = async (
     throw new Error(`Failed to assume role ${roleArn}`);
   }
 
+  const { AccessKeyId, SecretAccessKey, SessionToken } = response.Credentials;
+
+  if (!AccessKeyId || !SecretAccessKey) {
+    throw new Error(`Assumed role ${roleArn} returned incomplete credentials`);
+  }
+
   return {
-    accessKeyId: response.Credentials.AccessKeyId!,
-    secretAccessKey: response.Credentials.SecretAccessKey!,
-    sessionToken: response.Credentials.SessionToken,
+    accessKeyId: AccessKeyId,
+    secretAccessKey: SecretAccessKey,
+    sessionToken: SessionToken,
   };
 };
 
