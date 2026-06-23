@@ -55,17 +55,17 @@ curl -X POST "https://aplnu5xea1.execute-api.us-east-1.amazonaws.com/pr-292/init
 Run Artillery tests locally by combining scenario files with environment (load) configurations.
 
 > When using `--record`, Artillery will automatically upload results to Artillery Cloud and generate a hosted report/dashboard for the run.
+
 > Results are also saved locally via `--output` for offline analysis and HTML report generation.
 
 Example:
 
 ```bash
 # Make sure you have Artillery installed globally or use npx
-
 cd docs/architecture/proposals/PAY-329-load-testing/artillery
 
 # Full Flow (1,000 RPM)
-PAY_GOV_DEV_SERVER_ACCESS_TOKEN='<dev_token>' artillery run scenarios/full-flow.yml \
+artillery run scenarios/full-flow.yml \
   --config environments/1000-rpm.yml \
   --target https://dev-payments.ustaxcourt.gov \
   --output results/1000-rpm.json \
@@ -74,7 +74,7 @@ PAY_GOV_DEV_SERVER_ACCESS_TOKEN='<dev_token>' artillery run scenarios/full-flow.
   --record
 
 # Stress (10,000 RPM)
-PAY_GOV_DEV_SERVER_ACCESS_TOKEN='<dev_token>' artillery run scenarios/init-only.yml \
+artillery run scenarios/init-only.yml \
   --config environments/10000-rpm.yml \
   --target https://dev-payments.ustaxcourt.gov \
   --output results/10000-rpm-results.json \
@@ -83,7 +83,7 @@ PAY_GOV_DEV_SERVER_ACCESS_TOKEN='<dev_token>' artillery run scenarios/init-only.
   --record
 
 # Ramp (threshold identification)
-PAY_GOV_DEV_SERVER_ACCESS_TOKEN='<dev_token>' artillery run scenarios/full-flow.yml \
+artillery run scenarios/full-flow.yml \
   --config environments/ramp-test.yml \
   --target https://dev-payments.ustaxcourt.gov \
   --output results/ramp-test-results.json \
@@ -110,6 +110,9 @@ Use AWS Lambda to generate distributed, high-scale load. This is recommended for
 ### Example Commands
 
 ```bash
+# Make sure you have Artillery installed globally or use npx
+cd docs/architecture/proposals/PAY-329-load-testing/artillery
+
 # Baseline (1,000 RPM)
 artillery run-lambda scenarios/init-only.yml \
   --config environments/1000-rpm.yml \
@@ -160,34 +163,6 @@ artillery run-lambda scenarios/full-flow.yml \
 - **Maximum test duration is \~15 minutes** (Lambda limit)
 
 - All scenario files, configs, and JS processors are **automatically bundled and uploaded**
-
----
-
-## Generate Reports
-
-```bash
-artillery report results/1000-rpm-results.json > reports/1000-rpm-report.html
-artillery report results/10000-rpm-results.json > reports/10000-rpm-report.html
-artillery report results/ramp-test-results.json > reports/ramp-test-report.html
-```
-
-> Report format is identical for both local (`run`) and distributed (`run-lambda`) executions
-
----
-
-## **Test Results**
-
-The following results were collected from Artillery test runs using the provided scenarios and configurations.
-
-### Summary of Results
-
-| Metric       | 1,000 RPM (Full-Flow) | 10,000 RPM (Init-Only) | Ramp Test |
-| ------------ | --------------------- | ---------------------- | --------- |
-| Achieved RPS | 16                    | 167                    | 81        |
-| P50 Latency  | 133 ms                | 125 ms                 | 105 ms    |
-| P95 Latency  | 187 ms                | 194 ms                 | 130 ms    |
-| P99 Latency  | 369 ms                | 408 ms                 | 173 ms    |
-| Success Rate | ~0%                   | ~0%                    | ~0%       |
 
 ---
 
