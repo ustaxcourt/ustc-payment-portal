@@ -8,7 +8,7 @@ Similar to the `Artifact Bucket Per Environment` solution — both approaches pu
 
 The main benefit of this approach is that it doesn't require the 3 environments to have cross-account relationships with each other. We can still check the SHA256 hash after an artifact arrives in each bucket, and we can still lock objects, however we don't get the **chain-of-custody** benefit that the bucket chain strategy gets us. GitHub would need `s3:PutObject` for all 3 environments to upload artifacts. In the Bucket Chain approach, we only need it for `Dev`.
 
-**The primary weakness here is that all of trust is centralized in GitHub. If a bad actor gets into our GitHub Org, they gain access to all 3 environments.**
+**The primary weakness here is that all trust is centralized in GitHub. If a bad actor gets into our GitHub Org, they gain access to all 3 environments.**
 
 ## Reliability
 
