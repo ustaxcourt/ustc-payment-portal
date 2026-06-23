@@ -16,7 +16,7 @@ Each environment is fully independent from GitHub the moment that the artifact a
 
 ## Cost
 
-Going by the zip sizes in the Dev bucket, per function each zip is about **100 KB**. Pretending for a moment that we are a much larger API, lets say 10 lambda functions at **100 KB** each, that's about **1 MB** per build. At **$0.023 per GB** for s3 with a 10 artifacts stored, we would be looking at **$0.00023** per month. Call it **$0.00069** total per month for all 3 buckets, storing 10 artifacts each at any given moment.
+Going by the zip sizes in the Dev bucket, per function each zip is about **100 KB**. Pretending for a moment that we are a much larger API, let's say 10 Lambda functions at **100 KB** each, that's about **1 MB** per build. At **$0.023 per GB** for S3 with 10 artifacts stored, we would be looking at **$0.00023** per month. Call it **$0.00069** total per month for all 3 buckets, storing 10 artifacts each at any given moment.
 
 `10 Artifacts x 1 MB per Artifact = 10 MB Total x 3 buckets @ $0.00023 Per Month = $0.00069 per month`
 
