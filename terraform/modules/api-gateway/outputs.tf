@@ -20,3 +20,8 @@ output "custom_domain_url" {
   description = "Custom domain URL for the API, if configured"
 }
 
+output "access_log_group_name" {
+  value       = var.enable_access_logging ? aws_cloudwatch_log_group.access_logs[0].name : null
+  description = "Name of the CloudWatch log group receiving API Gateway access logs. Null when enable_access_logging is false."
+}
+
