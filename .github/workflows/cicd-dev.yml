@@ -311,7 +311,7 @@ jobs:
               IAM_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
               # Wildcard allowedFeeKeys so CI tests pass regardless of which fee Keys are added in the future.
               # This entry is CI-only and never written to dev/stg/prod client-permissions.
-              DEPLOYER_PERMISSIONS=$(jq -n --arg arn "$IAM_ROLE_ARN" '[{clientName: "USTC-AWS-IAM-SPP-GODADMIN", clientRoleArn: "arn:aws:iam::723609007960:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_USTC-AWS-IAM-SPP-GODADMIN_06b114409fe55134", allowedFeeKeys: ["*"]},{clientName: "CI Deployer", clientRoleArn: $arn, allowedFeeKeys: ["*"]}]')
+              DEPLOYER_PERMISSIONS=$(jq -n --arg arn "$IAM_ROLE_ARN" '[{clientName: "CI Deployer", clientRoleArn: $arn, allowedFeeKeys: ["*"]}]')
               aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string "$DEPLOYER_PERMISSIONS"
               echo "Seeded client-permissions with deployer role: $IAM_ROLE_ARN"
             else
