@@ -2,8 +2,6 @@ scenarios:
   - name: full-flow
     weight: 30
     flow:
-      # - log: "== STARTING FULL FLOW SCENARIO =="
-
       - function: "setTransactionReferenceId"
 
       # STEP 1
@@ -21,13 +19,11 @@ scenarios:
           capture:
             - json: $.token
               as: "paymentToken"
-      # - log: "INIT COMPLETED"
 
       - think: 1
 
       # STEP 2
       - function: "choosePaymentOutcome"
-      # - log: "PAYMENT OUTCOME CHOSEN"
 
       - think: 1
 
@@ -40,10 +36,8 @@ scenarios:
             token: "{{ paymentToken }}"
           expect:
             - statusCode: 200
-      # - log: "PROCESS COMPLETED"
 
       - think: 1
-      # - log: "Transaction Reference ID: {{ transactionReferenceId }}"
 
       # STEP 4
       - get:
@@ -59,4 +53,3 @@ scenarios:
           retry:
             count: 5
             delay: 1
-      # - log: "DETAILS COMPLETED - status={{ paymentStatus }}"

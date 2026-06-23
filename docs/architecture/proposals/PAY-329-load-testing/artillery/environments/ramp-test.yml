@@ -10,7 +10,7 @@ config:
     maxErrorRate: 100
 
   phases:
-    - duration: 60
+    - duration: 30
       arrivalRate: 10
       rampTo: 167
       name: full-flow-ramp
