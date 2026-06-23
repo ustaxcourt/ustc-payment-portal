@@ -14,7 +14,7 @@ locals {
     CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
     PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = module.secrets.paygov_dev_server_token_secret_id
     CLIENT_PERMISSIONS_SECRET_ID       = module.secrets.client_permissions_secret_id
-    RDS_ENDPOINT                       = module.rds.endpoint
+    RDS_ENDPOINT                       = module.rds_proxy.endpoint
     RDS_SECRET_ARN                     = module.rds.master_user_secret_arn
     RDS_DB_NAME                        = local.rds_db_name
     }, local.mtls_enabled ? {
@@ -25,6 +25,7 @@ locals {
   # Migration Lambda: migrationRunner
   # Needs RDS only — no payment secrets. RDS_MASTER_SECRET_ARN must be the admin
   # creds for CREATE/DROP DATABASE during knex migrations.
+  # Connects DIRECTLY to RDS, not the proxy: CREATE/DROP DATABASE pins/breaks through a proxy.
   lambda_env_migration = {
     NODE_ENV              = local.node_env
     APP_ENV               = local.app_env

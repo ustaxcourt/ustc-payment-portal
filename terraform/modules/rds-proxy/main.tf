@@ -33,8 +33,6 @@ resource "aws_iam_role_policy" "secret_access" {
         Resource = [var.secret_arn]
       },
       {
-        # "*" only when no CMK is given (the AWS-managed key has no stable ARN);
-        # the kms:ViaService condition still confines the key to Secrets Manager.
         Effect   = "Allow"
         Action   = ["kms:Decrypt"]
         Resource = var.secret_kms_key_arn != null ? var.secret_kms_key_arn : "*"

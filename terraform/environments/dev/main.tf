@@ -90,6 +90,25 @@ module "rds" {
   }
 }
 
+# Proxy lives only in the dev workspace; PR workspaces bypass it and connect
+# directly to the shared dev RDS. Lower cap (50%) leaves slots for those direct PRs.
+module "rds_proxy" {
+  count  = local.environment == "dev" ? 1 : 0
+  source = "../../modules/rds-proxy"
+
+  name                    = "${local.name_prefix}-proxy"
+  secret_arn              = module.secrets.rds_credentials_secret_arn
+  rds_instance_identifier = module.rds[0].instance_identifier
+  vpc_subnet_ids          = data.terraform_remote_state.foundation.outputs.proxy_subnet_ids
+  vpc_security_group_ids  = [data.terraform_remote_state.foundation.outputs.proxy_security_group_id]
+  max_connections_percent = 50
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
 resource "aws_route53_zone" "this" {
   count = local.environment == "dev" ? 1 : 0
   name  = local.custom_domain

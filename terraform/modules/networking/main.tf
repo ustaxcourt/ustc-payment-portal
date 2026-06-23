@@ -117,7 +117,6 @@ resource "aws_security_group" "proxy" {
     description = "PostgreSQL to RDS private subnets"
   }
 
-  # Fail loudly at plan time: RDS Proxy requires two distinct AZs.
   lifecycle {
     precondition {
       condition     = var.availability_zone_2 != ""

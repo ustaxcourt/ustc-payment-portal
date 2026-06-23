@@ -322,7 +322,10 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "rds:DescribeDBSnapshots",
           "rds:DescribeDBParameterGroups",
           "rds:DescribeDBParameters",
-          "rds:ListTagsForResource"
+          "rds:ListTagsForResource",
+          "rds:DescribeDBProxies",
+          "rds:DescribeDBProxyTargets",
+          "rds:DescribeDBProxyTargetGroups"
         ],
         Resource = "*"
       },
@@ -355,6 +358,33 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Condition = {
           StringEquals = {
             "iam:AWSServiceName" = "rds.amazonaws.com"
+          }
+        }
+      },
+      {
+        Effect = "Allow", # RDS Proxy management for Lambda connection pooling
+        Action = [
+          "rds:CreateDBProxy",
+          "rds:DeleteDBProxy",
+          "rds:ModifyDBProxy",
+          "rds:RegisterDBProxyTargets",
+          "rds:DeregisterDBProxyTargets",
+          "rds:ModifyDBProxyTargetGroup",
+          "rds:AddTagsToResource",
+          "rds:RemoveTagsFromResource"
+        ],
+        Resource = [
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db-proxy:*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:target-group:*"
+        ]
+      },
+      {
+        Effect   = "Allow", # Pass the RDS Proxy's role to the proxy service at create time
+        Action   = ["iam:PassRole"],
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.lambda_name_prefix}-proxy-role",
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "rds.amazonaws.com"
           }
         }
       },

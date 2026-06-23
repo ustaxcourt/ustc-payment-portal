@@ -64,6 +64,22 @@ module "rds" {
   }
 }
 
+module "rds_proxy" {
+  source = "../../modules/rds-proxy"
+
+  name                    = "${local.name_prefix}-proxy"
+  secret_arn              = module.rds.master_user_secret_arn
+  rds_instance_identifier = module.rds.instance_identifier
+  vpc_subnet_ids          = data.terraform_remote_state.foundation.outputs.proxy_subnet_ids
+  vpc_security_group_ids  = [data.terraform_remote_state.foundation.outputs.proxy_security_group_id]
+  max_connections_percent = 75
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
 resource "aws_route53_zone" "this" {
   name = local.custom_domain
 
@@ -133,15 +149,15 @@ data "aws_ssm_parameter" "monitoring_subscribers" {
 module "monitoring" {
   source = "../../modules/monitoring"
 
-  env                  = local.environment
-  name_prefix          = local.name_prefix
-  subscribers          = local.monitoring_subscribers
-  runbook_url          = local.runbook_url
-  throttle_runbook_url = local.throttle_runbook_url
+  env                    = local.environment
+  name_prefix            = local.name_prefix
+  subscribers            = local.monitoring_subscribers
+  runbook_url            = local.runbook_url
+  throttle_runbook_url   = local.throttle_runbook_url
   throttle_429_threshold = local.throttle_429_threshold
-  teams_tenant_id      = var.teams_tenant_id
-  teams_team_id        = var.teams_team_id
-  teams_channel_id     = var.teams_channel_id
+  teams_tenant_id        = var.teams_tenant_id
+  teams_team_id          = var.teams_team_id
+  teams_channel_id       = var.teams_channel_id
 
   # migrationRunner: uncaught-error alarm only (no HTTP response = no 5xx concept).
   # testCert: excluded — test-only endpoint, no user impact when it fails.
