@@ -40,6 +40,12 @@ The portal is published as `@ustaxcourt/payment-portal` and serves two purposes:
   apply commands — provide them to the developer to run. (See Safety Rules.)
 - Build the deploy artifact with `npm run build:lambda`.
 
+#### Terraform Conventions
+
+- **Foundation vs per-environment**: `terraform/environments/foundation/{dev,stg,prod}-networking/` manages account-level and shared infrastructure (VPC, IAM roles, OIDC provider). Per-environment Terraform (`environments/{dev,stg,prod}/`) manages application infrastructure (Lambda, API Gateway, RDS, monitoring). IAM role changes (`terraform/modules/iam/`) require a foundation apply, not a per-environment apply.
+- **Account-level AWS singletons belong in foundation.** Resources that are one-per-AWS-account-per-region (e.g. `aws_api_gateway_account`, service-linked roles) must live in the foundation networking modules, not in per-environment `main.tf`. Putting them in per-environment Terraform causes two problems: (1) the per-environment CI read-only role (`terraform plan`) is scoped to specific resource ARNs and won't have read access to account-level ARN patterns; (2) if two environments share an AWS account, creating the same singleton twice conflicts. The rule: if the AWS resource has exactly one instance per account/region regardless of how many environments exist, it goes in foundation.
+- **Per-environment CI roles**: the read-only role (used for `terraform plan` in CI) and deployer role (used for `terraform apply`) are both managed in foundation and scoped deliberately. When adding new resource types to per-environment Terraform, check whether the read-only and deployer roles already cover the required ARN patterns — account-level and global ARNs often need explicit additions.
+
 ### Running, Linting, and Testing the Application
 
 - **Local stack** (recommended one-command start): `npm run start:all`. This starts Docker/Postgres, the mock Pay.gov test server, and the Express dev server. See [running-locally.md](running-locally.md) for full details, port configuration, and advanced options.

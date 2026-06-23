@@ -145,8 +145,28 @@ module "api" {
   certificate_arn          = local.environment == "dev" ? aws_acm_certificate_validation.this[0].certificate_arn : ""
   route53_zone_id          = local.environment == "dev" ? aws_route53_zone.this[0].zone_id : ""
   enable_public_dashboard  = startswith(local.environment, "pr-") || local.environment == "dev"
+  enable_access_logging          = false
+  enable_per_endpoint_throttling = false
 
   depends_on = [module.secrets, aws_acm_certificate_validation.this]
+}
+
+# Scheduled Pay.gov health probe + alarm. Real dev env only — PR workspaces are
+# ephemeral and must not run a 15-min probe or create alarms on the shared metric.
+# No SNS target in dev (the monitoring module / alerts topic is stg+prod only).
+module "paygov_health" {
+  count  = local.environment == "dev" ? 1 : 0
+  source = "../../modules/paygov-health"
+
+  name_prefix            = local.name_prefix
+  environment            = local.app_env
+  testcert_function_name = module.lambda.function_names["testCert"]
+  testcert_function_arn  = module.lambda.function_arns["testCert"]
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
 }
 
 # Read allowed account IDs from Secrets Manager for API Gateway resource policy
