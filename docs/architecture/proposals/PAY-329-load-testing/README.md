@@ -23,7 +23,7 @@ Example:
 cd docs/architecture/proposals/PAY-329-load-testing/artillery
 
 # Full Flow (1,000 RPM)
-artillery run scenarios/full-flow.yml \
+PAY_GOV_DEV_SERVER_ACCESS_TOKEN='<dev_token>' artillery run scenarios/full-flow.yml \
   --config environments/1000-rpm.yml \
   --target https://dev-payments.ustaxcourt.gov \
   --output results/1000-rpm.json \
@@ -32,7 +32,7 @@ artillery run scenarios/full-flow.yml \
   --record
 
 # Stress (10,000 RPM)
-artillery run scenarios/init-only.yml \
+PAY_GOV_DEV_SERVER_ACCESS_TOKEN='<dev_token>' artillery run scenarios/init-only.yml \
   --config environments/10000-rpm.yml \
   --target https://dev-payments.ustaxcourt.gov \
   --output results/10000-rpm-results.json \
@@ -41,7 +41,7 @@ artillery run scenarios/init-only.yml \
   --record
 
 # Ramp (threshold identification)
-artillery run scenarios/full-flow.yml \
+PAY_GOV_DEV_SERVER_ACCESS_TOKEN='<dev_token>' artillery run scenarios/full-flow.yml \
   --config environments/ramp-test.yml \
   --target https://dev-payments.ustaxcourt.gov \
   --output results/ramp-test-results.json \

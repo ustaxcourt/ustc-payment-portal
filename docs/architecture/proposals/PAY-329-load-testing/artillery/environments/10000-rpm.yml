@@ -17,5 +17,6 @@ config:
     headers:
       Content-Type: "application/json"
       Accept: "application/json"
+      Authorization: "${PAY_GOV_DEV_SERVER_ACCESS_TOKEN}"
 
   processor: "../processor.js"

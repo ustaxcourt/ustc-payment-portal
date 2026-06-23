@@ -4,14 +4,24 @@ const http = require('http');
 const crypto = require('crypto');
 
 module.exports = {
-  setTransactionReferenceId: (context, events, done) => {
-
- // Simple UUID generator (no external deps)
-    const uuid = crypto.randomUUID();
-    context.vars.transactionReferenceId = uuid;
-    // console.log('Generated transactionReferenceId:', uuid);
+  setAuthHeader: (req, context, ee, done) => {
+    req.headers = req.headers || {};
+    req.headers.Authorization = process.env.PAY_GOV_DEV_SERVER_ACCESS_TOKEN;
+    console.log("Authorization header:", req.headers.Authorization);
     return done();
   },
+
+  debugHeaders: (req, context, ee, next) => {
+    console.log("Authorization header:", req.headers?.authorization);
+    return next();
+  },
+
+  setTransactionReferenceId: (context, events, done) => {
+    const uuid = crypto.randomUUID();
+    context.vars.transactionReferenceId = uuid;
+    return done();
+  },
+
   choosePaymentOutcome: (context, events, done) => {
     const token = context.vars.paymentToken;
 
