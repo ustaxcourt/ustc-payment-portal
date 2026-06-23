@@ -1,8 +1,8 @@
 import { handleError } from "./handleError";
 import { z } from "zod";
-import type { AppContext } from "./types/AppContext";
-import { PayGovError } from "./errors/payGovError";
-import { ServerError } from "./errors/serverError";
+import type { AppContext } from "types/AppContext";
+import { PayGovError } from "errors/payGovError";
+import { ServerError } from "errors/serverError";
 
 const mockAppContext = {
   logger: {

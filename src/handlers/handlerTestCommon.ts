@@ -1,4 +1,4 @@
-import { getClientByRoleArn } from "../clients/permissionsClient";
+import { getClientByRoleArn } from "clients/permissionsClient";
 
 jest.mock("../appContext", () => ({
   createAppContext: jest.fn(

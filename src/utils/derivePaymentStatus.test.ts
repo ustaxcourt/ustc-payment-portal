@@ -3,7 +3,7 @@ import {
   derivePaymentStatusFromSingleTransaction,
 } from "./derivePaymentStatus";
 import TransactionModel from "../db/TransactionModel";
-import { TransactionStatus } from "../schemas/TransactionStatus.schema";
+import { TransactionStatus } from "schemas/TransactionStatus.schema";
 
 const makeRow = (transactionStatus: TransactionStatus): TransactionModel =>
   ({ transactionStatus } as unknown as TransactionModel);

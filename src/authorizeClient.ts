@@ -1,6 +1,6 @@
-import { ForbiddenError } from "./errors/forbidden";
-import { ClientPermission } from "./types/ClientPermission";
-import { logger } from "./utils/logger";
+import { ForbiddenError } from "errors/forbidden";
+import { ClientPermission } from "types/ClientPermission";
+import { logger } from "utils/logger";
 
 /**
  * Validates that the client is authorized to access the given fee key.

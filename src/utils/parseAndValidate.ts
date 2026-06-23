@@ -1,5 +1,5 @@
 import { ZodType } from "zod";
-import { ParseResult } from "../types/ParseResult";
+import { ParseResult } from "types/ParseResult";
 import { jsonParse } from "./jsonParse";
 
 /**

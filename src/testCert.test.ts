@@ -1,6 +1,6 @@
 import { handler } from "./testCert";
 import fetch from "node-fetch";
-import { getSecretString } from "./clients/secretsClient";
+import { getSecretString } from "clients/secretsClient";
 import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
 
 // Mock node-fetch

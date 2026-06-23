@@ -5,15 +5,15 @@ import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { isLocal } from "./config/appEnv";
 import { generateOpenAPIDocument } from "./openapi/registry";
-import { TransactionsByStatusPathParams } from "./types/TransactionsByStatus";
+import { TransactionsByStatusPathParams } from "types/TransactionsByStatus";
 import { migrationHandler } from "./migrationHandler";
 import { handleError } from "./handleError";
-import { InvalidRequestError } from "./errors/invalidRequest";
+import { InvalidRequestError } from "errors/invalidRequest";
 import { parseRequestBody } from "./parseRequestBody";
-import { InitPaymentRequestSchema } from "./schemas/InitPayment.schema";
-import { ProcessPaymentRequestSchema } from "./schemas/ProcessPayment.schema";
+import { InitPaymentRequestSchema } from "schemas/InitPayment.schema";
+import { ProcessPaymentRequestSchema } from "schemas/ProcessPayment.schema";
 import "./db/knex";
-import { ClientPermission } from "./types/ClientPermission";
+import { ClientPermission } from "types/ClientPermission";
 
 const app = express();
 

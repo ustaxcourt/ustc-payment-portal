@@ -1,7 +1,7 @@
 import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { lambdaHandler } from "./lambdaHandler";
-import { GetDetailsPathParamsSchema } from "../schemas/GetDetails.schema";
-import { getDetails } from "../useCases/getDetails";
+import { GetDetailsPathParamsSchema } from "schemas/GetDetails.schema";
+import { getDetails } from "useCases/getDetails";
 
 export const getDetailsHandler = (
   event: APIGatewayEvent,

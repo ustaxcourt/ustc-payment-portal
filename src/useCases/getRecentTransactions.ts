@@ -1,8 +1,8 @@
 import TransactionModel from "../db/TransactionModel";
-import { RecentTransactionsResponseSchema } from "../schemas/RecentTransactions.schema";
-import { AppContext } from "../types/AppContext";
-import { RecentTransactionsResponse } from "../types/RecentTransactions";
-import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
+import { RecentTransactionsResponseSchema } from "schemas/RecentTransactions.schema";
+import { AppContext } from "types/AppContext";
+import { RecentTransactionsResponse } from "types/RecentTransactions";
+import { toApiPaymentMethod } from "utils/toApiPaymentMethod";
 
 export type GetRecentTransactions = (
   appContext: AppContext

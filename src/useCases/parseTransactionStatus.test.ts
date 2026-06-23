@@ -1,4 +1,4 @@
-import { PayGovTransactionStatus } from "../types/TransactionStatus";
+import { PayGovTransactionStatus } from "types/TransactionStatus";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 
 describe("parseTransactionStatus", () => {

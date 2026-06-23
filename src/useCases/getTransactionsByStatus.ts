@@ -2,14 +2,14 @@ import TransactionModel from "../db/TransactionModel";
 import {
   TransactionsByStatusPathParamsSchema,
   TransactionsByStatusResponseSchema,
-} from "../schemas/TransactionsByStatus.schema";
-import { AppContext } from "../types/AppContext";
+} from "schemas/TransactionsByStatus.schema";
+import { AppContext } from "types/AppContext";
 import {
   TransactionsByStatusPathParams,
   TransactionsByStatusResponse,
-} from "../types/TransactionsByStatus";
-import { InvalidRequestError } from "../errors/invalidRequest";
-import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
+} from "types/TransactionsByStatus";
+import { InvalidRequestError } from "errors/invalidRequest";
+import { toApiPaymentMethod } from "utils/toApiPaymentMethod";
 
 export type GetTransactionsByStatus = (
   appContext: AppContext,

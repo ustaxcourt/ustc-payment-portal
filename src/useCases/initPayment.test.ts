@@ -42,12 +42,12 @@ jest.mock("../db/FeesModel", () => ({
 
 import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
-import { InitPaymentRequest } from "../schemas/InitPayment.schema";
-import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
+import { InitPaymentRequest } from "schemas/InitPayment.schema";
+import * as SoapRequestModule from "entities/StartOnlineCollectionRequest";
 import { ZodError } from "zod";
-import { ConflictError } from "../errors/conflict";
-import { PayGovError } from "../errors/payGovError";
-import { ClientPermission } from "../types/ClientPermission";
+import { ConflictError } from "errors/conflict";
+import { PayGovError } from "errors/payGovError";
+import { ClientPermission } from "types/ClientPermission";
 
 const mockClient: ClientPermission = {
   clientName: "Test Client App",

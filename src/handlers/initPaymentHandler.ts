@@ -1,7 +1,7 @@
 import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { lambdaHandler } from "./lambdaHandler";
-import { InitPaymentRequestSchema } from "../schemas/InitPayment.schema";
-import { initPayment } from "../useCases/initPayment";
+import { InitPaymentRequestSchema } from "schemas/InitPayment.schema";
+import { initPayment } from "useCases/initPayment";
 
 export const initPaymentHandler = (
   event: APIGatewayEvent,
