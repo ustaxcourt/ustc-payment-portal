@@ -120,13 +120,16 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "*"
       },
       {
-        Effect = "Allow", # Log metric filters for the monitoring module's 5xx detection
+        Effect = "Allow", # Log metric filters for Lambda 5xx and API Gateway 429 detection
         Action = [
           "logs:PutMetricFilter",
           "logs:DeleteMetricFilter",
           "logs:DescribeMetricFilters"
         ],
-        Resource = "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-*:*"
+        Resource = [
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-*:*",
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/*:*"
+        ]
       },
       {
         Effect = "Allow",
@@ -152,6 +155,23 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "arn:aws:apigateway:${local.aws_region}::/domainnames*",
           "arn:aws:apigateway:${local.aws_region}::/basepathmappings*"
         ]
+      },
+      {
+        # Account-level resource for aws_api_gateway_account (sets CloudWatch logging role).
+        # Cannot be scoped further — /account is the only ARN for this resource.
+        Effect   = "Allow",
+        Action   = ["apigateway:GET", "apigateway:PATCH"],
+        Resource = "arn:aws:apigateway:${local.aws_region}::/account"
+      },
+      {
+        Effect   = "Allow",
+        Action   = ["iam:PassRole"],
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.lambda_name_prefix}-apigw-*",
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "apigateway.amazonaws.com"
+          }
+        }
       },
       {
         Effect = "Allow",
@@ -427,7 +447,9 @@ resource "aws_iam_role_policy" "github_actions_pr_log_cleanup" {
         ]
         Resource = [
           "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-pr-*",
-          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-pr-*:*"
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_name_prefix}-pr-*:*",
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/pr-*",
+          "arn:aws:logs:${local.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/pr-*:*"
         ]
       }
     ]

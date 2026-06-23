@@ -136,6 +136,22 @@ resource "aws_cloudwatch_log_metric_filter" "paygov_retry" {
   }
 }
 
+# 429 throttle detection via API Gateway access logs. Gated on the log group name being provided
+# so this is inert until access logging is wired up in the environment.
+resource "aws_cloudwatch_log_metric_filter" "api_gateway_429" {
+  count = var.api_gateway_access_log_group_name != null ? 1 : 0
+
+  name           = "${var.name_prefix}-api-gateway-429"
+  log_group_name = var.api_gateway_access_log_group_name
+  pattern        = "{ $.status = \"429\" }"
+  metric_transformation {
+    namespace     = "${var.name_prefix}/throttles"
+    name          = "api-gateway-429"
+    value         = "1"
+    default_value = "0"
+  }
+}
+
 resource "aws_cloudwatch_metric_alarm" "paygov_retry" {
   for_each = var.lambda_log_group_names
 
@@ -169,6 +185,40 @@ resource "aws_cloudwatch_metric_alarm" "paygov_retry" {
   })
 
   depends_on = [aws_cloudwatch_log_metric_filter.paygov_retry]
+}
+
+resource "aws_cloudwatch_metric_alarm" "api_gateway_429" {
+  count = var.api_gateway_access_log_group_name != null ? 1 : 0
+
+  alarm_name        = "${var.name_prefix}-api-gateway-429-critical"
+  alarm_description = <<-EOT
+    API Gateway throttle (429) detected.
+    Service: payment-portal (${var.env})
+    Severity: critical
+    Logs: https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/${replace(var.api_gateway_access_log_group_name, "/", "$252F")}
+    Runbook: ${var.throttle_runbook_url}
+  EOT
+
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  period              = 300
+  evaluation_periods  = 6
+  datapoints_to_alarm = 1
+  threshold           = var.throttle_429_threshold
+  statistic           = "Sum"
+  metric_name         = "api-gateway-429"
+  namespace           = "${var.name_prefix}/throttles"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = merge(local.default_tags, {
+    Severity = "critical"
+    Metric   = "429"
+    Runbook  = var.throttle_runbook_url
+  })
+
+  depends_on = [aws_cloudwatch_log_metric_filter.api_gateway_429]
 }
 
 # Chatbot routes the SNS topic to a Teams channel. Inert until all teams_* vars set.
