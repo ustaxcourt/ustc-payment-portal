@@ -31,14 +31,15 @@
     "rootDir": "./src" /* Specify the root folder within your source files. */,
     "baseUrl": "./src" /* Resolve non-relative imports from the source root. */,
     "paths": {
-      "clients/*": ["clients/*"],
-      "entities/*": ["entities/*"],
-      "errors/*": ["errors/*"],
-      "handlers/*": ["handlers/*"],
-      "schemas/*": ["schemas/*"],
-      "utils/*": ["utils/*"],
-      "types/*": ["types/*"],
-      "useCases/*": ["useCases/*"]
+      "@/*": ["*"],
+      "@clients/*": ["clients/*"],
+      "@entities/*": ["entities/*"],
+      "@errors/*": ["errors/*"],
+      "@handlers/*": ["handlers/*"],
+      "@schemas/*": ["schemas/*"],
+      "@utils/*": ["utils/*"],
+      "@appTypes/*": ["types/*"],
+      "@useCases/*": ["useCases/*"]
     },
     "moduleResolution": "node" /* Specify how TypeScript looks up a file from a given module specifier. */,
     "ignoreDeprecations": "6.0" /* Acknowledge legacy node module resolution until the v7 resolver migration. */,

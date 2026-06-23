@@ -1,8 +1,8 @@
 import { getSecretString } from "./secretsClient";
-import { ServerError } from "errors/serverError";
+import { ServerError } from "@errors/serverError";
 import { LOCAL_DEV_ROLE_ARN } from "../extractCallerArn";
-import { ClientPermission } from "types/ClientPermission";
-import { ForbiddenError } from "errors/forbidden";
+import { ClientPermission } from "@appTypes/ClientPermission";
+import { ForbiddenError } from "@errors/forbidden";
 
 /**
  * Cache for client permissions to avoid per-request Secrets Manager calls.

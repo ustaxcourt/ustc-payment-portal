@@ -3,10 +3,10 @@ import { ZodType } from "zod";
 import { createAppContext } from "../appContext";
 import { extractCallerArn } from "../extractCallerArn";
 import { handleError } from "../handleError";
-import { ClientPermission } from "types/ClientPermission";
-import { AppContext } from "types/AppContext";
-import { getClientByRoleArn } from "clients/permissionsClient";
-import { parseAndValidate } from "utils/parseAndValidate";
+import { ClientPermission } from "@appTypes/ClientPermission";
+import { AppContext } from "@appTypes/AppContext";
+import { getClientByRoleArn } from "@clients/permissionsClient";
+import { parseAndValidate } from "@utils/parseAndValidate";
 
 type LambdaHandler<T> = (
   appContext: AppContext,

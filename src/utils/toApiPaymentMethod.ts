@@ -1,5 +1,5 @@
 import { PaymentMethod as DbPaymentMethod } from "../db/TransactionModel";
-import { PaymentMethod as ApiPaymentMethod } from "schemas/PaymentMethod.schema";
+import { PaymentMethod as ApiPaymentMethod } from "@schemas/PaymentMethod.schema";
 
 export const toApiPaymentMethod = (
   method: DbPaymentMethod | null | undefined,

@@ -3,8 +3,8 @@ import {
   clearPermissionsCache,
 } from "./permissionsClient";
 import { getSecretString } from "./secretsClient";
-import { ServerError } from "errors/serverError";
-import { ClientPermission } from "types/ClientPermission";
+import { ServerError } from "@errors/serverError";
+import { ClientPermission } from "@appTypes/ClientPermission";
 
 jest.mock("./secretsClient");
 

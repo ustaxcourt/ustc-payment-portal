@@ -1,5 +1,5 @@
-import { TransactionStatus } from "schemas/TransactionStatus.schema";
-import { PaymentStatus } from "schemas/PaymentStatus.schema";
+import { TransactionStatus } from "@schemas/TransactionStatus.schema";
+import { PaymentStatus } from "@schemas/PaymentStatus.schema";
 
 // Accepts any object that exposes a transactionStatus field — TransactionModel
 // rows from the DB and TransactionRecordSummary objects from a refreshed response

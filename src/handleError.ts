@@ -1,7 +1,7 @@
 import { ZodError } from "zod";
-import { PayGovError } from "errors/payGovError";
-import { ServerError } from "errors/serverError";
-import type { AppContext } from "types/AppContext";
+import { PayGovError } from "@errors/payGovError";
+import { ServerError } from "@errors/serverError";
+import type { AppContext } from "@appTypes/AppContext";
 
 const computeResponse = (err: any) => {
   if (err.statusCode && err.statusCode < 500) {

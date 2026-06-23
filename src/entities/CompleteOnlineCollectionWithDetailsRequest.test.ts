@@ -1,6 +1,6 @@
 import { CompleteOnlineCollectionWithDetailsRequest } from "./CompleteOnlineCollectionWithDetailsRequest";
 import { testAppContext as appContext } from "../test/testAppContext";
-import { FailedTransactionError } from "errors/failedTransaction";
+import { FailedTransactionError } from "@errors/failedTransaction";
 
 const mockToken = "test-token-12345";
 const mockPayGovTrackingId = "test-tracking-id-12345";
