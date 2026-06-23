@@ -28,4 +28,4 @@ Option 1 gives us flexibility to continue to use **Dev** as a testbed, without r
 - **Security Posture** If the Dev account gets compromised, it will no longer affect Stg or Prod level artifacts. We will also lock artifacts going from Stg to Prod (they can't be deleted or overwritten).
 - **Structural Changes** We will need two new buckets (and associated Terraform), and `s3:PutObject` added to the existing Stg deployer role (`STAGING_AWS_DEPLOYER_ROLE_ARN`) to allow GH Actions to upload artifacts to the Stg bucket. No new OIDC trust role is needed — the provider already exists in the Stg account.
 
-**See [Proposal](docs/architecture/proposals/PAY-213-Harden-Artifacts-and-Promotions/Bucket-Per-Env.md) for more details and migration plan.**
+**See [Proposal](../proposals/PAY-213-Harden-Artifacts-and-Promotions/Bucket-Per-Env.md) for more details and migration plan.**
