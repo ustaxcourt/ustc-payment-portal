@@ -435,6 +435,23 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "*"
       },
       {
+        Effect = "Allow", # EventBridge rule for the scheduled Pay.gov health probe — scoped to project-prefixed rules
+        Action = [
+          "events:PutRule",
+          "events:DeleteRule",
+          "events:DescribeRule",
+          "events:EnableRule",
+          "events:DisableRule",
+          "events:PutTargets",
+          "events:RemoveTargets",
+          "events:ListTargetsByRule",
+          "events:ListTagsForResource",
+          "events:TagResource",
+          "events:UntagResource"
+        ],
+        Resource = "arn:aws:events:${local.aws_region}:${data.aws_caller_identity.current.account_id}:rule/${var.lambda_name_prefix}-*"
+      },
+      {
         # DescribeParameters cannot be scoped to a specific resource — AWS requires "*"
         Effect   = "Allow",
         Action   = ["ssm:DescribeParameters"],

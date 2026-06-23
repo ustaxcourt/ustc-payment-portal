@@ -184,3 +184,20 @@ module "monitoring" {
   }
 }
 
+# Scheduled Pay.gov health probe + alarm (invokes the testCert Lambda every 15 min).
+# Reuses the monitoring module's alerts topic so outages page via the same Teams channel.
+module "paygov_health" {
+  source = "../../modules/paygov-health"
+
+  name_prefix            = local.name_prefix
+  environment            = local.app_env
+  testcert_function_name = module.lambda.function_names["testCert"]
+  testcert_function_arn  = module.lambda.function_arns["testCert"]
+  alarm_sns_topic_arns   = [module.monitoring.sns_topic_arn]
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
