@@ -22,13 +22,13 @@ Using S3's built in hash check, we can calculate an Artifact's SHA256 before upl
 
 ## Migration Plan
 
-1. **Create Stg and Prod artifact buckets (Terraform)** — add a new `artifacts_bucket` module instance in `terraform/environments/stg` and `terraform/environments/prod`. Enable versioning and encryption. Enable Object Lock on the Stg and Prod buckets (not Dev). **Do we only want object lock on Prod?**
+1. **Create Stg and Prod artifact buckets (Terraform)** — add a new `artifacts_bucket` module instance in `terraform/environments/stg` and `terraform/environments/prod`. Enable versioning and encryption. Enable Object Lock on the Stg and Prod buckets (not Dev). Consider locking when the artifacts get into Stg first, or immediately after they pass testing against Pay.gov QA.
 
 2. **Upload Lambda ZIPs to GH artifact during PR builds** — add `actions/upload-artifact` to the `pr_build_test_deploy` job in `cicd-dev.yml` after the build step. The PR still uploads to S3 for its ephemeral Terraform environment, but GH artifact becomes the authoritative copy for the promotion chain.
 
 3. **Update the dev deploy job** — replace the `promote_artifacts_s3.sh` call (which currently copies PR→dev within the same bucket) with: download from GH artifact, upload to the dev bucket using `--checksum-algorithm sha256`. After upload, fetch `x-amz-checksum-sha256` via `HeadObject` and assert it matches the hash computed in step 2. Store the GH run ID in the dev git tag annotation for traceability.
 
-4. **Update `staging-deploy.yml`** — instead of copying from the dev bucket, read the GH run ID from the dev git tag annotation and use `actions/download-artifact` to pull the ZIPs directly from GH. Upload to the stg bucket with `--checksum-algorithm sha256` and verify the hash. Object Lock retention is applied on landing. Change `TF_VAR_artifact_bucket` to the stg bucket. **We don't need to calculate the sha256 hash ourselves, the AWS CLI does it automatically 
+4. **Update `staging-deploy.yml`** — instead of copying from the dev bucket, read the GH run ID from the dev git tag annotation and use `actions/download-artifact` to pull the ZIPs directly from GH. Upload to the stg bucket with `--checksum-algorithm sha256` and verify the hash. Object Lock retention is applied on landing. Change `TF_VAR_artifact_bucket` to the stg bucket. If we are using the s3 CLI, computing the hash and checking it when it arrives on the account is handled automatically.
 
 5. **Update `prod-deploy.yml`** — copy from the stg bucket → prod bucket with checksum re-verification. Object Lock retention applied on landing. Point Terraform at the prod bucket.
   - `Stg` needs to permit access on it's policy, and Prod's deployer role will need to also allow `s3:GetObject` on the stg bucket.

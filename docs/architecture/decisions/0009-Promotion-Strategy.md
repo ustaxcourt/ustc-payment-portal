@@ -18,7 +18,7 @@ Our current promotion workflow to Stg and Prod is defunct. We only support pushi
 
 The team met on June 23rd, 2026 and accepted option 1 as our promotion strategy, with option 3 as our fallback.
 
-Option 1 gives us flexibility to continue to use **Dev** as a testbed, without risking affecting **Stg and Prod**. We also still get the benefit of placing **Stg** infront of **Prod** to protect against un-validated artifacts getting deployed.
+Option 1 gives us flexibility to continue to use **Dev** as a testbed, without risking affecting **Stg and Prod**. We also still get the benefit of placing **Stg** in front of **Prod** to protect against un-validated artifacts getting deployed.
 
 ## Consequences
 
