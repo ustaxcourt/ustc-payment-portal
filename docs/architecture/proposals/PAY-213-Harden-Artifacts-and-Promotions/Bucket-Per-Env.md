@@ -20,11 +20,13 @@ Going by the zip sizes in the Dev bucket, per function each zip is about **100 K
 
 Using S3's built in hash check, we can calculate an Artifact's SHA256 before uploading to Dev and Stg, and re-check the hash when Prod copies from Stg. The freeze happens at Stg — once an artifact lands in the Stg bucket, Object Lock prevents it from being modified or deleted. Prod ships those exact frozen bytes. Dev stays mutable to allow fast iteration. If the SHA256 doesn't match at any step, the artifact is rejected by S3 (`BadDigest` error) and the current deployed artifact remains in place. The chain of custody proof runs from GH → Stg → Prod via `x-amz-checksum-sha256`.
 
+**Object Lock mode and retention:** We recommend **GOVERNANCE** mode rather than COMPLIANCE. COMPLIANCE mode prevents deletion by anyone, including root and lifecycle rules, until the retention period expires. This would block artifact pruning entirely, causing unbounded storage growth and breaking the 10-artifact cost estimate. GOVERNANCE mode still protects against accidental deletion but allows a designated IAM role with `s3:BypassGovernanceRetention` to delete objects when needed (e.g., lifecycle cleanup after the rollback window closes). A retention period of **30 days** is a reasonable starting point, long enough to cover any realistic rollback scenario, short enough to keep storage bounded. This should be reconciled against the team's stated rollback window before implementation.
+
 ## Migration Plan
 
-1. **Create Stg and Prod artifact buckets (Terraform)** — add a new `artifacts_bucket` module instance in `terraform/environments/stg` and `terraform/environments/prod`. Enable versioning and encryption. Enable Object Lock on the Stg and Prod buckets (not Dev). We should lock the artifacts when they get into Stg first, or immediately after they pass testing against Pay.gov QA.
+1. **Create Stg and Prod artifact buckets (Terraform)** — add a new `artifacts_bucket` module instance in `terraform/environments/stg` and `terraform/environments/prod`. Enable versioning and encryption. Object Lock must be configured at bucket creation, it cannot be enabled on an existing bucket. The current `artifacts_bucket` module has no Object Lock support and will need two additions: `object_lock_enabled = true` on the `aws_s3_bucket` resource, and a new `aws_s3_bucket_object_lock_configuration` resource to set the default retention rule. **The Dev bucket is exempt.**
 
-2. **Upload Lambda ZIPs to GH artifact during PR builds** — add `actions/upload-artifact` to the `pr_build_test_deploy` job in `cicd-dev.yml` after the build step. The PR still uploads to S3 for its ephemeral Terraform environment, but GH artifact becomes the authoritative copy for the promotion chain.
+2. **Save Lambda ZIPs as a GH artifact on merge to main** — the `pr_build_test_deploy` job is unchanged; ephemeral PR artifacts go to S3 only for the ephemeral Terraform environment and are not saved to GH. Add a step to `deploy_dev` (after the ZIPs are in hand — either from the S3 PR prefix or a fresh build at the merge SHA) that uploads them as a named GH artifact (e.g. `lambda-zips-<sha>`) before writing to the dev S3 bucket. This is the canonical save point for the promotion chain.
 
 3. **Update the dev deploy job** — replace the `promote_artifacts_s3.sh` call (which currently copies PR→dev within the same bucket) with: download from GH artifact, upload to the dev bucket using `--checksum-algorithm sha256`. After upload, fetch `x-amz-checksum-sha256` via `HeadObject` and assert it matches the hash computed in step 2. Store the GH run ID in the dev git tag annotation for traceability.
 
@@ -35,7 +37,7 @@ Using S3's built in hash check, we can calculate an Artifact's SHA256 before upl
 
 6. **Update IAM** — GH Actions OIDC needs `s3:PutObject` on the dev bucket (already exists) and the stg bucket (new). Grant the prod deployer role cross-account `s3:GetObject` on the stg bucket scoped to `artifacts/stg/*`. No cross-account trust between Dev and Stg accounts is needed.
 
-7. **Remove old cross-account permissions** — once prod is confirmed working from the stg bucket, remove the `AllowProdDeployerGetDevObjects` Sid from the dev bucket policy. No `AllowStagingDeployerGetDevObjects` Sid is ever added.
+7. **Remove old cross-account permissions** — the dev bucket policy in `terraform/modules/artifacts_bucket/main.tf` currently grants stg and prod read access via six existing Sids. Once both environments are confirmed working from their own buckets, remove all six from the Terraform: `AllowStagingDeployerListDevPrefix`, `AllowStagingDeployerGetBucketLocation`, `AllowStagingDeployerGetDevObjects`, `AllowProdDeployerListDevPrefix`, `AllowProdDeployerGetBucketLocation`, and `AllowProdDeployerGetDevObjects`. Also remove `var.staging_deployer_role_arn` and `var.prod_deployer_role_arn` from the module variables if no longer referenced.
 
 ## Rollback Plan
 

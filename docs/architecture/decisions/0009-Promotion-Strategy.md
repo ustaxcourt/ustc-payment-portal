@@ -14,7 +14,7 @@ Our current promotion workflow to Stg and Prod is defunct. We only support pushi
 2. All 3 environments get artifacts directly from GitHub.
 3. GH Checkout Build -> Artifact copied to Dev -> Artifact copied from Dev to Stg -> Artifact copied from Stg to Prod.
 
-## Decisions
+## Decision
 
 The team met on June 23rd, 2026 and accepted option 1 as our promotion strategy, with option 3 as our fallback.
 
