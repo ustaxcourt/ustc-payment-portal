@@ -3,13 +3,14 @@ config:
   # target: "https://dev-payments.ustaxcourt.gov"
 
   http:
-    timeout: 30
+    timeout: 60000
+    pool: 50
 
   ensure:
     maxErrorRate: 100
 
   phases:
-    - duration: 60
+    - duration: 30
       arrivalRate: 167
       name: stress-10000-rpm
 
@@ -17,6 +18,5 @@ config:
     headers:
       Content-Type: "application/json"
       Accept: "application/json"
-      Authorization: "${PAY_GOV_DEV_SERVER_ACCESS_TOKEN}"
 
   processor: "../processor.js"

@@ -1,23 +1,23 @@
 config:
   target: "http://localhost:8080"
-  # target: "https://dev-payments.ustaxcourt.gov"
+  # target: "https://aplnu5xea1.execute-api.us-east-1.amazonaws.com/pr-292"
 
   http:
-    timeout: 30
+    timeout: 60000
+    pool: 50
 
   ensure:
     maxErrorRate: 100
 
   phases:
-    - duration: 60
-      arrivalRate: 16
-      name: baseline-1000-rpm
+    - duration: 30
+      arrivalRate: 2
+      name: debug-low-load
 
   defaults:
     headers:
       Content-Type: "application/json"
       Accept: "application/json"
-      Authorization: "${PAY_GOV_DEV_SERVER_ACCESS_TOKEN}"
 
     capture:
       json: true

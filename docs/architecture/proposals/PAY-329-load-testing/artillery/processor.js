@@ -2,12 +2,64 @@
 
 const http = require('http');
 const crypto = require('crypto');
+const { URL } = require('url');
+const aws4 = require('aws4');
 
 module.exports = {
-  setAuthHeader: (req, context, ee, done) => {
+  signWithSigV4IfNeeded: (req, context, ee, done) => {
     req.headers = req.headers || {};
-    req.headers.Authorization = process.env.PAY_GOV_DEV_SERVER_ACCESS_TOKEN;
-    console.log("Authorization header:", req.headers.Authorization);
+
+    const parsed = new URL(req.url);
+    const host = parsed.host;
+
+    const isLocalhost =
+      host.includes('localhost') ||
+      host.includes('127.0.0.1');
+
+    if (isLocalhost) {
+      req.headers.Authorization = process.env.PAY_GOV_DEV_SERVER_ACCESS_TOKEN;
+      return done();
+    }
+
+    // ✅ Ensure headers BEFORE signing
+    req.headers.Host = host;
+    req.headers['Content-Type'] = 'application/json';
+
+    if (process.env.AWS_SESSION_TOKEN) {
+      req.headers['X-Amz-Security-Token'] =
+        process.env.AWS_SESSION_TOKEN;
+    }
+
+    // ✅ CRITICAL: exact body reconstruction
+    let body;
+    if (req.json) {
+      body = JSON.stringify(req.json);
+    } else if (typeof req.body === 'string') {
+      body = req.body;
+    } else {
+      body = '';
+    }
+
+    const opts = {
+      host,
+      method: req.method,
+      path: parsed.pathname + (parsed.search || ''),
+      service: 'execute-api',
+      region: 'us-east-1',
+      headers: {
+        ...req.headers
+      },
+      body
+    };
+
+    aws4.sign(opts, {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      sessionToken: process.env.AWS_SESSION_TOKEN
+    });
+
+    req.headers = opts.headers;
+
     return done();
   },
 
@@ -73,5 +125,11 @@ module.exports = {
     });
 
     req.end();
+  },
+
+  logResponse: (req, res, context, ee, done) => {
+    console.log("STATUS:", res.statusCode);
+    console.log("BODY:", res.body);
+    return done();
   }
 };

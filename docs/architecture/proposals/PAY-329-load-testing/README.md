@@ -8,6 +8,48 @@ This spike is intended to produce measurable, actionable findings about the syst
 
 ## Test Execution
 
+### Example: Signed Request via `curl` (SigV4)
+
+```bash
+curl -X POST "https://aplnu5xea1.execute-api.us-east-1.amazonaws.com/pr-292/init" \
+  --aws-sigv4 "aws:amz:us-east-1:execute-api" \
+  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+  -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+  -H "Host: aplnu5xea1.execute-api.us-east-1.amazonaws.com" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transactionReferenceId": "550e8400-e29b-41d4-a716-446655440000",
+    "fee": "PETITION_FILING_FEE",
+    "urlSuccess": "https://client.app/success",
+    "urlCancel": "https://client.app/cancel",
+    "metadata": {
+      "docketNumber": "123-26"
+    }
+  }'
+```
+
+---
+
+### Notes
+
+- Ensure the following environment variables are set:
+
+  - `AWS_ACCESS_KEY_ID`
+  - `AWS_SECRET_ACCESS_KEY`
+  - `AWS_SESSION_TOKEN` (required for temporary credentials)
+
+- The SigV4 scope must match:
+
+  - **Service:** `execute-api`
+  - **Region:** `us-east-1`
+
+- The `Host` header must match the API Gateway domain exactly
+
+- This request exercises the `/init` endpoint used in load testing scenarios
+
+---
+
 ### Run Artillery Tests (Local)
 
 Run Artillery tests locally by combining scenario files with environment (load) configurations.

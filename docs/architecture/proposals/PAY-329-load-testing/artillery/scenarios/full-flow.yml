@@ -9,7 +9,8 @@ scenarios:
       # STEP 1
       - post:
           url: "/init"
-          beforeRequest: "setAuthHeader"
+          beforeRequest: "signWithSigV4IfNeeded"
+          afterResponse: "logResponse"
           json:
             transactionReferenceId: "{{ transactionReferenceId }}"
             fee: "PETITION_FILING_FEE"
@@ -33,7 +34,8 @@ scenarios:
       # STEP 3
       - post:
           url: "/process"
-          beforeRequest: "setAuthHeader"
+          beforeRequest: "signWithSigV4IfNeeded"
+          afterResponse: "logResponse"
           json:
             token: "{{ paymentToken }}"
           expect:
@@ -46,7 +48,8 @@ scenarios:
       # STEP 4
       - get:
           url: "/details/{{ transactionReferenceId }}"
-          beforeRequest: "setAuthHeader"
+          beforeRequest: "signWithSigV4IfNeeded"
+          afterResponse: "logResponse"
           capture:
             - json: $.paymentStatus
               as: "paymentStatus"
