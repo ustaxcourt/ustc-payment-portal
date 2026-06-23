@@ -1,6 +1,8 @@
 # Separate Artifact Buckets Per Env, but all pulling from GH Artifacts.
 
-Similar to the `Artifact Bucket Per Environment` solution, but rather than being a bucket chain, each bucket gets artifacts directly from GH Artifacts.
+**Rejected by Team**
+
+Similar to the `Artifact Bucket Per Environment` solution — both approaches pull from GH Actions artifacts. The difference is routing: in the bucket chain, GH feeds Dev and Stg independently, and Stg feeds Prod. Here, GH feeds all three environments directly, with no Stg → Prod copy step.
 
 ## Security
 

@@ -1,0 +1,75 @@
+<mxfile host="65bd71144e">
+    <diagram id="PAY-213-bucket-per-env" name="Bucket Per Env">
+        <mxGraphModel dx="1024" dy="831" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="PAY-213: Bucket Per Environment — Artifact Promotion Strategy" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="327" y="20" width="1000" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="gh-container" value="GitHub" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="350" y="80" width="700" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="gh-actions" value="&lt;b&gt;GH Actions Runner&lt;/b&gt;&lt;div&gt;CICD-Dev&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" parent="gh-container" vertex="1">
+                    <mxGeometry x="50" y="76" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="gh-artifact" value="&lt;b&gt;GH Artifact Storage&lt;/b&gt;&#xa;Lambda ZIPs + SHA256" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" parent="gh-container" vertex="1">
+                    <mxGeometry x="430" y="65" width="210" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="edge-build-to-artifact" value="upload artifact&amp;nbsp;&lt;div&gt;(automatic when pushed to main)&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;fontSize=10;" parent="gh-container" source="gh-actions" target="gh-artifact" edge="1">
+                    <mxGeometry x="0.0062" y="30" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="dev-account" value="Dev AWS Account" style="swimlane;startSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="720" width="320" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="dev-s3" value="&lt;b&gt;Dev S3 Artifact Bucket&lt;/b&gt;&#xa;artifacts/dev/&lt;SHA&gt;/" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" parent="dev-account" vertex="1">
+                    <mxGeometry x="70" y="80" width="180" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="dev-note" value="Mutable — no Object Lock&#xa;Fast iteration" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2;" parent="dev-account" vertex="1">
+                    <mxGeometry x="50" y="180" width="220" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="stg-account" value="Stg AWS Account" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="720" y="720" width="320" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="stg-s3" value="&lt;b&gt;Stg S3 Artifact Bucket&lt;/b&gt;&#xa;artifacts/stg/&lt;SHA&gt;/&#xa;🔒 Object Lock (Freeze Point)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" parent="stg-account" vertex="1">
+                    <mxGeometry x="70" y="80" width="180" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="stg-note" value="Artifacts locked on arrival&#xa;Tested against Pay.gov QA" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2;" parent="stg-account" vertex="1">
+                    <mxGeometry x="40" y="190" width="240" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="prod-account" value="Prod AWS Account" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1260" y="720" width="320" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="prod-s3" value="&lt;b&gt;Prod S3 Artifact Bucket&lt;/b&gt;&#xa;artifacts/prod/&lt;SHA&gt;/&#xa;🔒 Object Lock" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" parent="prod-account" vertex="1">
+                    <mxGeometry x="70" y="80" width="180" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="prod-note" value="GH never touches Prod&#xa;Ships exact frozen bytes from Stg" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2;" parent="prod-account" vertex="1">
+                    <mxGeometry x="30" y="190" width="260" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="edge-gh-to-dev" value="s3:PutObject (OIDC)&#xa;on merge to main (auto)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;exitX=0.2;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="gh-artifact" target="dev-s3" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="820" y="235"/>
+                            <mxPoint x="820" y="518"/>
+                            <mxPoint x="290" y="518"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="edge-gh-to-stg" value="s3:PutObject (OIDC)&#xa;stg promotion (manual)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="gh-artifact" target="stg-s3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="edge-stg-to-prod" value="s3:GetObject (cross-account)&#xa;SHA256 re-verified&#xa;prod promotion (manual)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;strokeColor=#6c8ebf;strokeWidth=2;fontStyle=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="stg-s3" target="prod-s3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="freeze-label" value="⚡ Enforced Freeze Point" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1040" y="790" width="220" height="35" as="geometry"/>
+                </mxCell>
+                <mxCell id="isolation-note" value="Dev account has zero relationship&#xa;with Stg or Prod at deploy time" style="text;html=1;strokeColor=#b85450;fillColor=#f8cecc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="980" width="320" height="40" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
