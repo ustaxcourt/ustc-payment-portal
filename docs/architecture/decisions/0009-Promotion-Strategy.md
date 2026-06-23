@@ -10,9 +10,9 @@ Accepted
 
 Our current promotion workflow to Stg and Prod is defunct. We only support pushing artifacts to hosted `dev` at the moment. All 3 environments pull from the same artifacts bucket in `dev`. We need an artifact deployment strategy that supports all 3 environments, while maintaining the isolation and security we need for prod. There were 3 options that we considered:
 
-1. GH Checkout Build, Artifacts deployed to **Dev** and **Stg** separately, with artifacts being promoted to **Prod** required to be tested first in **Stg**. (Github never touches Prod)
+1. GH Checkout Build, Artifacts deployed to **Dev** and **Stg** separately, with artifacts being promoted to **Prod** required to be tested first in **Stg**. (GitHub never touches Prod)
 2. All 3 environments get artifacts directly from GitHub.
-3. Gh Checkout Build -> Artifact copied to Dev -> Artifact copied from Dev to Stg -> Artifact copied from Stg to Prod.
+3. GH Checkout Build -> Artifact copied to Dev -> Artifact copied from Dev to Stg -> Artifact copied from Stg to Prod.
 
 ## Decisions
 
