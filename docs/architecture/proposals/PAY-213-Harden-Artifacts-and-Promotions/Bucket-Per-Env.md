@@ -22,7 +22,7 @@ Using S3's built in hash check, we can calculate an Artifact's SHA256 before upl
 
 ## Migration Plan
 
-1. **Create Stg and Prod artifact buckets (Terraform)** — add a new `artifacts_bucket` module instance in `terraform/environments/stg` and `terraform/environments/prod`. Enable versioning and encryption. Enable Object Lock on the Stg and Prod buckets (not Dev). Consider locking when the artifacts get into Stg first, or immediately after they pass testing against Pay.gov QA.
+1. **Create Stg and Prod artifact buckets (Terraform)** — add a new `artifacts_bucket` module instance in `terraform/environments/stg` and `terraform/environments/prod`. Enable versioning and encryption. Enable Object Lock on the Stg and Prod buckets (not Dev). We should lock the artifacts when they get into Stg first, or immediately after they pass testing against Pay.gov QA.
 
 2. **Upload Lambda ZIPs to GH artifact during PR builds** — add `actions/upload-artifact` to the `pr_build_test_deploy` job in `cicd-dev.yml` after the build step. The PR still uploads to S3 for its ephemeral Terraform environment, but GH artifact becomes the authoritative copy for the promotion chain.
 
@@ -36,3 +36,23 @@ Using S3's built in hash check, we can calculate an Artifact's SHA256 before upl
 6. **Update IAM** — GH Actions OIDC needs `s3:PutObject` on the dev bucket (already exists) and the stg bucket (new). Grant the prod deployer role cross-account `s3:GetObject` on the stg bucket scoped to `artifacts/stg/*`. No cross-account trust between Dev and Stg accounts is needed.
 
 7. **Remove old cross-account permissions** — once prod is confirmed working from the stg bucket, remove the `AllowProdDeployerGetDevObjects` Sid from the dev bucket policy. No `AllowStagingDeployerGetDevObjects` Sid is ever added.
+
+## Rollback Plan
+
+**Where possible, we prefer to roll forward to fix issues.**
+
+1. Confirm the issue, and see if it can be fixed as a **fail-forward** case.
+
+### Pre-rollback Checklist
+- Assign incident owner and create a JIRA ticket to track the incident.
+- Retrieve the currently hosted commit SHA and the planned rollback commit SHA.
+- Run `Terraform Plan` comparing the two hashes.
+- Verify if there were any changes to the artifact bucket (there shouldn't be after we set this up the first time)
+- Hard pause on new promotions if rollback is happening on **Stg** or **Prod**. (Notify team)
+
+2. If the fix requires significant changes and/or testing, proceed with rollback procedures. We will keep at a minimum of 1 **last known good artifact** to rollback to in each artifact bucket. (Include the ability to manually define a SHA + run ID as a parameter, if it's in the env's bucket already we deploy it.) We may be able to include this in the deploy scripts, or have a separate script defined for rollback. **The rollback artifact has to exist in the environment's bucket, otherwise it will need to be redeployed from GitHub**.
+
+### Rollback Verification Checklist
+- Confirm Deployment success.
+- If deploying to **Prod**, confirm that it successfully deployed and passed on **Stg** first.
+
