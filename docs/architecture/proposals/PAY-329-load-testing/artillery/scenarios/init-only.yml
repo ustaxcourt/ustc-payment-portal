@@ -4,6 +4,8 @@ scenarios:
     flow:
       - post:
           url: "/init"
+          beforeRequest: "signWithSigV4IfNeeded"
+          afterResponse: "logResponse"
           json:
             transactionReferenceId: "{{ $uuid }}"
             fee: "PETITION_FILING_FEE"

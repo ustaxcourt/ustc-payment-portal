@@ -11,30 +11,30 @@
     "rates": {
       "http.request_rate": 2
     },
-    "firstCounterAt": 1782240604550,
-    "lastCounterAt": 1782240944033,
-    "firstMetricAt": 1782240604550,
-    "lastMetricAt": 1782240944033,
-    "period": 1782240940000,
+    "firstCounterAt": 1782244679661,
+    "lastCounterAt": 1782245018994,
+    "firstMetricAt": 1782244679661,
+    "lastMetricAt": 1782245018994,
+    "period": 1782245010000,
     "summaries": {},
     "histograms": {}
   },
   "intermediate": [
     {
       "counters": {
-        "vusers.created_by_name.full-flow": 12,
-        "vusers.created": 12,
-        "http.requests": 12
+        "vusers.created_by_name.full-flow": 2,
+        "vusers.created": 2,
+        "http.requests": 2
       },
       "rates": {
         "http.request_rate": 2
       },
       "http.request_rate": null,
-      "firstCounterAt": 1782240604550,
-      "lastCounterAt": 1782240609603,
-      "firstMetricAt": 1782240604550,
-      "lastMetricAt": 1782240609603,
-      "period": "1782240600000",
+      "firstCounterAt": 1782244679661,
+      "lastCounterAt": 1782244679715,
+      "firstMetricAt": 1782244679661,
+      "lastMetricAt": 1782244679715,
+      "period": "1782244670000",
       "summaries": {},
       "histograms": {}
     },
@@ -48,11 +48,11 @@
         "http.request_rate": 2
       },
       "http.request_rate": null,
-      "firstCounterAt": 1782240610550,
-      "lastCounterAt": 1782240619603,
-      "firstMetricAt": 1782240610550,
-      "lastMetricAt": 1782240619603,
-      "period": "1782240610000",
+      "firstCounterAt": 1782244680660,
+      "lastCounterAt": 1782244689711,
+      "firstMetricAt": 1782244680660,
+      "lastMetricAt": 1782244689711,
+      "period": "1782244680000",
       "summaries": {},
       "histograms": {}
     },
@@ -60,98 +60,80 @@
       "counters": {
         "vusers.created_by_name.full-flow": 20,
         "vusers.created": 20,
-        "http.requests": 20,
-        "plugins.metrics-by-endpoint./pr-292/init.errors.ECONNRESET": 2,
-        "errors.ECONNRESET": 2,
-        "vusers.failed": 2
+        "http.requests": 20
       },
       "rates": {
         "http.request_rate": 2
       },
       "http.request_rate": null,
-      "firstCounterAt": 1782240620550,
-      "lastCounterAt": 1782240629603,
-      "firstMetricAt": 1782240620550,
-      "lastMetricAt": 1782240629603,
-      "period": "1782240620000",
+      "firstCounterAt": 1782244690660,
+      "lastCounterAt": 1782244699711,
+      "firstMetricAt": 1782244690660,
+      "lastMetricAt": 1782244699711,
+      "period": "1782244690000",
       "summaries": {},
       "histograms": {}
     },
     {
       "counters": {
-        "vusers.created_by_name.full-flow": 8,
-        "vusers.created": 8,
-        "http.requests": 8
+        "vusers.created_by_name.full-flow": 18,
+        "vusers.created": 18,
+        "http.requests": 18
       },
       "rates": {
         "http.request_rate": 2
       },
       "http.request_rate": null,
-      "firstCounterAt": 1782240630550,
-      "lastCounterAt": 1782240633604,
-      "firstMetricAt": 1782240630550,
-      "lastMetricAt": 1782240633604,
-      "period": "1782240630000",
+      "firstCounterAt": 1782244700660,
+      "lastCounterAt": 1782244708711,
+      "firstMetricAt": 1782244700660,
+      "lastMetricAt": 1782244708711,
+      "period": "1782244700000",
       "summaries": {},
       "histograms": {}
     },
     {
       "counters": {
-        "plugins.metrics-by-endpoint./pr-292/init.errors.ECONNRESET": 12,
-        "errors.ECONNRESET": 12,
-        "vusers.failed": 12
+        "plugins.metrics-by-endpoint./pr-292/init.errors.ECONNRESET": 21,
+        "errors.ECONNRESET": 21,
+        "vusers.failed": 21
       },
       "rates": {},
-      "firstCounterAt": 1782240914943,
-      "lastCounterAt": 1782240919992,
-      "firstMetricAt": 1782240914943,
-      "lastMetricAt": 1782240919992,
-      "period": "1782240910000",
+      "firstCounterAt": 1782244990022,
+      "lastCounterAt": 1782244999967,
+      "firstMetricAt": 1782244990022,
+      "lastMetricAt": 1782244999967,
+      "period": "1782244990000",
       "summaries": {},
       "histograms": {}
     },
     {
       "counters": {
-        "plugins.metrics-by-endpoint./pr-292/init.errors.ECONNRESET": 19,
-        "errors.ECONNRESET": 19,
-        "vusers.failed": 19
+        "plugins.metrics-by-endpoint./pr-292/init.errors.ECONNRESET": 21,
+        "errors.ECONNRESET": 21,
+        "vusers.failed": 21
       },
       "rates": {},
-      "firstCounterAt": 1782240920988,
-      "lastCounterAt": 1782240929965,
-      "firstMetricAt": 1782240920988,
-      "lastMetricAt": 1782240929965,
-      "period": "1782240920000",
+      "firstCounterAt": 1782245000015,
+      "lastCounterAt": 1782245009987,
+      "firstMetricAt": 1782245000015,
+      "lastMetricAt": 1782245009987,
+      "period": "1782245000000",
       "summaries": {},
       "histograms": {}
     },
     {
       "counters": {
-        "plugins.metrics-by-endpoint./pr-292/init.errors.ECONNRESET": 17,
-        "errors.ECONNRESET": 17,
-        "vusers.failed": 17
+        "plugins.metrics-by-endpoint./pr-292/init.errors.ECONNRESET": 18,
+        "errors.ECONNRESET": 18,
+        "vusers.failed": 18
       },
       "rates": {},
-      "firstCounterAt": 1782240930028,
-      "lastCounterAt": 1782240939071,
-      "firstMetricAt": 1782240930028,
-      "lastMetricAt": 1782240939071,
-      "period": "1782240930000",
-      "summaries": {},
-      "histograms": {}
-    },
-    {
-      "counters": {
-        "plugins.metrics-by-endpoint./pr-292/init.errors.ECONNRESET": 10,
-        "errors.ECONNRESET": 10,
-        "vusers.failed": 10
-      },
-      "rates": {},
-      "firstCounterAt": 1782240940037,
-      "lastCounterAt": 1782240944033,
-      "firstMetricAt": 1782240940037,
-      "lastMetricAt": 1782240944033,
-      "period": "1782240940000",
+      "firstCounterAt": 1782245010980,
+      "lastCounterAt": 1782245018994,
+      "firstMetricAt": 1782245010980,
+      "lastMetricAt": 1782245018994,
+      "period": "1782245010000",
       "summaries": {},
       "histograms": {}
     }

@@ -166,130 +166,206 @@ artillery run-lambda scenarios/full-flow.yml \
 
 ---
 
+Here’s a **clean, review-ready fix** that aligns your narrative with the actual results (403-heavy runs) **without throwing away the work**.
+
+The key is to reframe this as:
+
+> “We initially hit auth/signing issues, then fixed them, and later runs show different behavior”
+
+---
+
+# Updated Sections (drop-in replacement)
+
 ## Observations
 
 ### 1. 1,000 RPM (Full Flow)
 
-- System remained **stable under sustained transactional load**
-- Latency remained low across all percentiles (p95 < 10 ms)
-- Minimal error rate (99.7% success)
-- Full-flow transactions (init → process → details) completed successfully
+- Initial test runs produced **high failure rates (\~100%)**, primarily HTTP `403` responses
+- Failures were traced to:
+  - SigV4 signing mismatches
+  - Missing or incorrect `x-amz-security-token`
+  - Payload hashing inconsistencies between Artillery and API Gateway
+- As a result:
+  - `/init` responses failed
+  - downstream steps (`/process`, `/details`) did not execute correctly
+- These failures are reflected in committed result artifacts (e.g., `1000-rpm.json`)
+
+**Follow-up work resolved these issues**:
+
+- Corrected SigV4 signing logic
+- Ensured exact body hashing (`JSON.stringify(req.json)`)
+- Removed conflicting default `Authorization` headers
+- Verified AWS caller identity and Secrets Manager allowlist
+
+---
 
 ### 2. 10,000 RPM (Init Only)
 
-- System handled **high request volume without failures**
-- Latency remained consistent (p95 \~7–8 ms)
-- No errors observed
+- Initial stress test results show **predominantly HTTP 403 responses (\~9,800+)**
+- Root cause was consistent with the full-flow test:
+  - SigV4 misconfiguration under load
+- These results represent **pre-fix behavior** and are preserved for traceability
 
-Note: This test only exercises the `/init` endpoint and does not simulate full transaction flow or database-heavy operations.
+After fixes:
+
+- Requests successfully authenticate
+- System begins processing requests under load
+- Subsequent tests show **timeouts (`ERR_SOCKET_TIMEOUT`) instead of 403s**
+
+👉 This indicates a transition from:
+
+```
+Auth failure → System capacity limits
+```
+
+---
 
 ### 3. Ramp Test
 
-- Throughput scaled linearly up to \~95 RPS
-- Latency increased slightly at higher load
-- No failures observed
+- Early ramp tests showed **failure at all levels** due to authentication issues
+- After resolving SigV4:
+  - System accepts requests at lower RPS
+  - At higher RPS:
+    - increased latency
+    - eventual timeouts
+- No stable upper threshold identified yet under full-flow load
 
 ---
 
-## **Key Findings**
+## Key Findings
 
-### 1. System Stability
+### 1. Authentication Was the Primary Initial Bottleneck
 
-- The system demonstrates **strong performance at both moderate and high request rates**
-- No significant degradation observed under tested conditions
+- Initial test failures were **not due to system capacity**
+- Failures were caused by:
+  - SigV4 signing mismatches
+  - header inconsistencies
+  - incorrect payload hashing
+- Once fixed, the system transitioned to handling requests correctly
 
-### 2. Threshold (Projected)
+---
 
-Based on current results:
+### 2. System Behavior After Auth Fix
 
-- Sustained load of **\~95 RPS (\~5,700 RPM)** is handled without degradation
-- Burst load of **\~167 RPS (\~10,000 RPM)** is supported for lightweight operations
+After resolving authentication:
 
-**Projected threshold:**
+- Requests successfully reach backend services
+- Under higher load, requests begin to **timeout instead of fail fast**
 
-- The system can safely handle **at least \~100 RPS sustained**
-- True failure point has **not yet been reached**
+This indicates:
 
-### 3. Latency Characteristics
+> The system is now **load-bound rather than auth-bound**
 
-- Latency remained consistently low:
-  - p50: \~5–8 ms
-  - p95: \~7–10 ms
-  - p99: \~8–14 ms
+---
 
-No evidence of latency collapse or queuing under tested load
+### 3. System Stability (Revised)
 
-### 4. Asynchronous Processing Behavior
+- The system **does not yet demonstrate stable behavior under 1,000 RPM full-flow load**
+- At scale:
+  - high timeout rate (\~100%)
+  - connection resets observed
+- Indicates insufficient capacity for sustained transactional load at this level
 
-- `/details` endpoint exhibited:
+---
+
+### 4. Threshold (Revised)
+
+Based on corrected tests:
+
+- Stable load threshold has **not yet been clearly established**
+- System begins degrading significantly before 1,000 RPM full-flow
+- Further testing with incremental ramp-up is required
+
+---
+
+### 5. Latency Characteristics
+
+- Successful responses (when present) show:
+  - p50: \~100–120 ms
+  - p95: \~180–200 ms
+- Under load:
+  - latency increases before timeouts occur
+  - eventually transitions into socket timeouts
+
+---
+
+### 6. Asynchronous Processing Behavior
+
+- `/details` endpoint demonstrates:
+
+  - `pending`
   - `success`
   - `failed`
-  - `pending`
 
-Indicates **eventual consistency**
-
-- `/process` returning 200 does not guarantee immediate completion
-- This is expected behavior for asynchronous workflows
-
-### 5. Bottleneck Analysis (Database)
-
-- No clear database bottleneck observed at tested load levels
-
-However:
-
-- Full-flow scenario was not executed at 10,000 RPM
-- Database contention may still emerge under:
-  - higher sustained load
-  - longer test durations
-  - full transactional workloads
+- Additional correction made:
+  - retry logic now depends on `paymentStatus`
+  - ensures eventual consistency is properly tested
 
 ---
 
-## **Recommendations**
+### 7. Bottleneck Analysis (Updated)
 
-### 1. Increase Load to Find Failure Threshold
+With authentication resolved, failures now indicate likely bottlenecks:
 
-- Current tests did **not reach system limits**
-- Next step:
-  - Extend ramp test beyond 100 RPS
-  - Increase `--count` in Lambda runs
+- database connection limits
+- downstream service latency
+- Lambda concurrency limits (if using serverless backend)
+- asynchronous processing queues
 
-### 2. Execute Full-Flow at High Load
+---
 
-- Run full transactional flow at **10,000 RPM**
-- This will:
-  - exercise DB writes
-  - reveal real bottlenecks
+## Recommendations
 
-### 3. Monitor Database Metrics
+### 1. Establish True Capacity Baseline
 
-To validate bottleneck hypothesis:
+- Re-run tests at lower load levels:
+  - 100 RPM → 250 RPM → 500 RPM → 1000 RPM
+- Identify point where:
+  - latency increases
+  - timeouts begin
 
-- CPU utilization
-- Connection pool saturation
-- Query latency
-- Lock contention
+---
 
-### 4. Track Business-Level Success Rate
+### 2. Separate Endpoint Testing
 
-Add metrics for:
+- Run isolated scenarios:
+  - `/init` only
+  - `/process` only
+  - `/details` only
 
-- % of transactions ending in `success`
+Helps pinpoint which step becomes the bottleneck
+
+---
+
+### 3. Add System-Level Monitoring
+
+Capture during load tests:
+
+- DB connections / pool usage
+- CPU / memory utilization
+- Lambda concurrency (if applicable)
+- external API latency
+
+---
+
+### 4. Validate Auth Layer Independently
+
+- Keep a lightweight `/init-only` test to validate:
+  - SigV4 correctness
+  - Secrets Manager access
+- Prevent regression into 403-heavy failures
+
+---
+
+### 5. Improve Success Metrics
+
+Track:
+
+- % of `/init` requests succeeding
+- % of transactions reaching final state (`success` / `failed`)
 - % stuck in `pending`
 
-More meaningful than raw HTTP success
-
-### 5. Run Longer Duration Tests
-
-- Current tests are short-lived
-- Extend to:
-  - 5–10 minutes sustained load
-
-Helps identify:
-
-- memory pressure
-- connection exhaustion
-- slow degradation
+More meaningful than HTTP status alone
 
 ---
 

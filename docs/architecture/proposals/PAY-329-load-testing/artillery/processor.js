@@ -40,16 +40,21 @@ module.exports = {
       body = '';
     }
 
+    const region =
+      process.env.SIGV4_REGION ??
+      process.env.AWS_REGION ??
+      "us-east-1";
+
     const opts = {
       host,
       method: req.method,
-      path: parsed.pathname + (parsed.search || ''),
-      service: 'execute-api',
-      region: 'us-east-1',
+      path: parsed.pathname + (parsed.search || ""),
+      service: "execute-api",
+      region,
       headers: {
-        ...req.headers
+        ...req.headers,
       },
-      body
+      body,
     };
 
     aws4.sign(opts, {
@@ -64,7 +69,9 @@ module.exports = {
   },
 
   debugHeaders: (req, context, ee, next) => {
-    console.log("Authorization header:", req.headers?.authorization);
+    if (process.env.ARTILLERY_DEBUG_HEADERS === "1") {
+      console.log("Authorization header:", req.headers?.authorization);
+    }
     return next();
   },
 
@@ -104,9 +111,12 @@ module.exports = {
       path = `/pay/${choice.method}/${choice.status}?token=${token}`;
     }
 
+    const payHost = process.env.PAY_GOV_TEST_SERVER_HOST ?? "localhost";
+    const payPort = Number(process.env.PAY_GOV_TEST_SERVER_PORT ?? "3366");
+
     const options = {
-      hostname: 'localhost',
-      port: 3366,
+      hostname: payHost,
+      port: payPort,
       path,
       method: 'POST'
     };
@@ -128,8 +138,31 @@ module.exports = {
   },
 
   logResponse: (req, res, context, ee, done) => {
-    console.log("STATUS:", res.statusCode);
-    console.log("BODY:", res.body);
+     if (process.env.ARTILLERY_DEBUG_RESPONSES === "1" || (res.statusCode ?? 0) >= 400) {
+       console.log("STATUS:", res.statusCode);
+       console.log("BODY:", res.body);
+     }
+    return done();
+  },
+
+  validatePaymentComplete: (req, res, context, ee, done) => {
+    let body;
+
+    try {
+      body = JSON.parse(res.body);
+    } catch (e) {
+      return done(new Error("Invalid JSON response"));
+    }
+
+    const status = body.paymentStatus;
+
+    if (!status || status === 'pending' || status === 'NOT_READY') {
+      console.log("Payment not ready yet:", status);
+      return done(new Error("Payment not completed yet")); // ❌ force retry
+    }
+
+    console.log("Payment complete:", status);
     return done();
   }
+
 };

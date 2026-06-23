@@ -50,6 +50,7 @@ scenarios:
               default: "NOT_READY"
           expect:
             - statusCode: 200
+            - function: "validatePaymentComplete"
           retry:
             count: 5
             delay: 1
