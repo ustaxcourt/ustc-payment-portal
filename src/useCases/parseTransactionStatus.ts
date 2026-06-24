@@ -1,5 +1,4 @@
-import type { PayGovTransactionStatus,
-  TransactionStatus, } from "@appTypes/TransactionStatus";
+import type { PayGovTransactionStatus, TransactionStatus } from "@appTypes/TransactionStatus";
 
 export const parseTransactionStatus = (
   status: PayGovTransactionStatus
