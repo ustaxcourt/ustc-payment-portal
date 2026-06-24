@@ -1,16 +1,18 @@
 locals {
   lambda_functions = {
+    # Payment-flow lambdas share var.payment_lambda_timeout (see variables.tf)
+    # so the Pay.gov retry budget is tuned in one place.
     initPayment = {
       handler = "initPaymentHandler.initPaymentHandler"
-      timeout = 10
+      timeout = var.payment_lambda_timeout
     }
     processPayment = {
       handler = "processPaymentHandler.processPaymentHandler"
-      timeout = 10
+      timeout = var.payment_lambda_timeout
     }
     getDetails = {
       handler = "getDetailsHandler.getDetailsHandler"
-      timeout = 10
+      timeout = var.payment_lambda_timeout
     }
     testCert = {
       handler = "lambdaHandler.handler"
