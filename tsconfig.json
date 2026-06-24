@@ -121,5 +121,21 @@
     /* Completeness */
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
+  },
+  "ts-node": {
+    "compilerOptions": {
+      "baseUrl": "./src",
+      "paths": {
+        "@/*": ["*"],
+        "@clients/*": ["clients/*"],
+        "@entities/*": ["entities/*"],
+        "@errors/*": ["errors/*"],
+        "@handlers/*": ["handlers/*"],
+        "@schemas/*": ["schemas/*"],
+        "@utils/*": ["utils/*"],
+        "@appTypes/*": ["types/*"],
+        "@useCases/*": ["useCases/*"]
+      }
+    }
   }
 }
