@@ -91,7 +91,7 @@ module "rds" {
 }
 
 # Proxy lives only in the dev workspace; PR workspaces bypass it and connect
-# directly to the shared dev RDS. Lower cap (50%) leaves slots for those direct PRs.
+# directly to the shared dev RDS. Connection cap is set via proxy_max_connections_percent in locals.
 module "rds_proxy" {
   count  = local.environment == "dev" ? 1 : 0
   source = "../../modules/rds-proxy"
@@ -101,7 +101,7 @@ module "rds_proxy" {
   rds_instance_identifier = module.rds[0].instance_identifier
   vpc_subnet_ids          = data.terraform_remote_state.foundation.outputs.proxy_subnet_ids
   vpc_security_group_ids  = [data.terraform_remote_state.foundation.outputs.proxy_security_group_id]
-  max_connections_percent = 50
+  max_connections_percent = local.proxy_max_connections_percent
 
   tags = {
     Env     = local.environment
@@ -155,15 +155,15 @@ resource "aws_acm_certificate_validation" "this" {
 module "api" {
   source = "../../modules/api-gateway"
 
-  lambda_function_arns     = module.lambda.function_arns
-  environment              = local.environment == "dev" ? "dev" : local.environment
-  stage_name               = local.environment == "dev" ? "dev" : local.environment
-  allowed_account_ids      = local.allowed_client_account_ids
-  dashboard_allowed_origin = local.dashboard_allowed_origin
-  custom_domain            = local.environment == "dev" ? local.custom_domain : ""
-  certificate_arn          = local.environment == "dev" ? aws_acm_certificate_validation.this[0].certificate_arn : ""
-  route53_zone_id          = local.environment == "dev" ? aws_route53_zone.this[0].zone_id : ""
-  enable_public_dashboard  = startswith(local.environment, "pr-") || local.environment == "dev"
+  lambda_function_arns           = module.lambda.function_arns
+  environment                    = local.environment == "dev" ? "dev" : local.environment
+  stage_name                     = local.environment == "dev" ? "dev" : local.environment
+  allowed_account_ids            = local.allowed_client_account_ids
+  dashboard_allowed_origin       = local.dashboard_allowed_origin
+  custom_domain                  = local.environment == "dev" ? local.custom_domain : ""
+  certificate_arn                = local.environment == "dev" ? aws_acm_certificate_validation.this[0].certificate_arn : ""
+  route53_zone_id                = local.environment == "dev" ? aws_route53_zone.this[0].zone_id : ""
+  enable_public_dashboard        = startswith(local.environment, "pr-") || local.environment == "dev"
   enable_access_logging          = false
   enable_per_endpoint_throttling = false
 

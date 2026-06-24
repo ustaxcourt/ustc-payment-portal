@@ -94,3 +94,27 @@ variable "api_gateway_access_log_group_name" {
   type        = string
   default     = null
 }
+
+variable "proxy_name" {
+  description = "RDS Proxy name. When set, creates connection/pinning/availability alarms for the proxy. Null disables them."
+  type        = string
+  default     = null
+}
+
+variable "proxy_connections_threshold" {
+  description = "Alarm when backend DB connections through the proxy stay at/above this. Starter value — tune from the Phase 6 load-test baseline (expected steady-state ~20; below each env's cap of ~150 prod / ~100 dev)."
+  type        = number
+  default     = 100
+}
+
+variable "proxy_pinned_threshold" {
+  description = "Alarm when session-pinned connections stay at/above this. Should be ~0 — pinning defeats connection multiplexing."
+  type        = number
+  default     = 5
+}
+
+variable "proxy_availability_threshold" {
+  description = "Alarm when proxy availability percentage (READ_WRITE target group) drops below this."
+  type        = number
+  default     = 99
+}

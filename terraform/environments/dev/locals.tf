@@ -11,6 +11,10 @@ locals {
   rds_secret_arn = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : data.aws_ssm_parameter.dev_rds_secret_arn[0].value
   rds_db_name    = local.environment == "dev" ? "paymentportal" : "paymentportal_${replace(local.environment, "-", "_")}"
 
+  # RDS Proxy connection cap (% of max_connections). Below AWS's 100% floor as a safety
+  # bound on the SHARED dev RDS (PR workspaces + migrationRunner connect direct). One-line knob.
+  proxy_max_connections_percent = 75
+
   # PR-scoped DB user (PAY-276). The dev workspace itself uses admin creds; PR
   # workspaces get an isolated user that can only see their own database.
   is_pr   = local.environment != "dev"

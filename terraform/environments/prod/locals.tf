@@ -6,6 +6,10 @@ locals {
   mtls_enabled  = true
   custom_domain = "payments.ustaxcourt.gov"
   rds_db_name   = "paymentportal"
+
+  # RDS Proxy connection cap (% of max_connections, ~198 on db.t3.small). AWS floor for
+  # this instance is 100%; it's a ceiling used on demand. One-line knob to tune.
+  proxy_max_connections_percent = 100
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
     APP_ENV                            = local.app_env

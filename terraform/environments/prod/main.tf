@@ -75,7 +75,7 @@ module "rds_proxy" {
   rds_instance_identifier = module.rds.instance_identifier
   vpc_subnet_ids          = data.terraform_remote_state.foundation.outputs.proxy_subnet_ids
   vpc_security_group_ids  = [data.terraform_remote_state.foundation.outputs.proxy_security_group_id]
-  max_connections_percent = 75
+  max_connections_percent = local.proxy_max_connections_percent
 
   tags = {
     Env     = local.environment
@@ -161,6 +161,8 @@ module "monitoring" {
   teams_tenant_id        = var.teams_tenant_id
   teams_team_id          = var.teams_team_id
   teams_channel_id       = var.teams_channel_id
+
+  proxy_name = module.rds_proxy.proxy_name
 
   lambda_functions = {
     initPayment    = module.lambda.function_names["initPayment"]
