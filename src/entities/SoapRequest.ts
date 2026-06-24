@@ -70,9 +70,8 @@ export class SoapRequest {
   ) {
     const xmlBody = this.buildXml(params, requestType);
 
-    console.log("makeRequest", xmlBody);
+    appContext.logger.debug("Sending Pay.gov SOAP request", { requestType });
     const result = await appContext.postHttpRequest(appContext, xmlBody);
-    console.log("makeRequest", result);
     const responseBody = this.parseXml(result);
     return responseBody;
   }

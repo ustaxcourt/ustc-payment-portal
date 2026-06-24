@@ -1,20 +1,30 @@
 import { handler } from "./testCert";
 import fetch from "node-fetch";
 import { getSecretString } from "./clients/secretsClient";
+import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
 
 // Mock node-fetch
 jest.mock("node-fetch", () => jest.fn());
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
 // Mock the appContext module
+const mockLoggerError = jest.fn();
 jest.mock("./appContext", () => ({
   createAppContext: jest.fn(() => ({
     getHttpsAgent: jest.fn().mockReturnValue({ mockAgent: true }),
+    logger: { error: mockLoggerError },
   })),
 }));
 
 jest.mock("./clients/secretsClient");
 const mockGetSecretString = getSecretString as jest.MockedFunction<typeof getSecretString>;
+
+jest.mock("./health/payGovHealthMetric", () => ({
+  emitPayGovHealthMetric: jest.fn(),
+}));
+const mockEmit = emitPayGovHealthMetric as jest.MockedFunction<
+  typeof emitPayGovHealthMetric
+>;
 
 describe("testCert handler", () => {
   let tempEnv: any;
@@ -147,5 +157,69 @@ describe("testCert handler", () => {
     expect(result.body).toBe(mockWsdlContent);
 
     delete process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
+  });
+
+  it("emits a healthy metric when the scheduled probe returns a 2xx", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: jest.fn().mockResolvedValue("wsdl"),
+    } as any);
+
+    await handler({ healthProbe: true });
+
+    expect(mockEmit).toHaveBeenCalledWith(true, expect.any(Number));
+  });
+
+  it("emits an unhealthy metric (still 200) when the scheduled probe returns a non-2xx", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      text: jest.fn().mockResolvedValue("error page"),
+    } as any);
+
+    const result = await handler({ healthProbe: true });
+
+    expect(result.statusCode).toBe(200);
+    expect(mockEmit).toHaveBeenCalledWith(false, expect.any(Number));
+  });
+
+  it("emits an unhealthy metric with -1 latency when the scheduled probe throws", async () => {
+    mockFetch.mockRejectedValue(new Error("Network error"));
+
+    const result = await handler({ healthProbe: true });
+
+    expect(result.statusCode).toBe(500);
+    expect(mockEmit).toHaveBeenCalledWith(false, -1);
+  });
+
+  it("does not emit a metric for on-demand /test calls (no scheduled payload)", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: jest.fn().mockResolvedValue("wsdl"),
+    } as any);
+
+    const result = await handler();
+
+    expect(result.statusCode).toBe(200);
+    expect(mockEmit).not.toHaveBeenCalled();
+  });
+
+  it("does not emit a metric when an on-demand /test call fails", async () => {
+    mockFetch.mockRejectedValue(new Error("Network error"));
+
+    const result = await handler();
+
+    expect(result.statusCode).toBe(500);
+    expect(mockEmit).not.toHaveBeenCalled();
+  });
+
+  it("logs the failure via the structured logger when the probe throws", async () => {
+    mockFetch.mockRejectedValue(new Error("Network error"));
+
+    await handler();
+
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      "Pay.gov health probe failed",
+      expect.objectContaining({ errorMessage: "Network error" })
+    );
   });
 });
