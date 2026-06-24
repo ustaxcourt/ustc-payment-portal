@@ -11,6 +11,11 @@ variable "availability_zones" {
 variable "public_subnet_cidrs" {
   description = "CIDR blocks for the public subnets, one per egress AZ. In HA mode (single_nat_gateway = false) this must have one entry per availability_zones entry; in single-NAT mode it needs exactly one entry (for the first AZ)."
   type        = list(string)
+
+  validation {
+    condition     = length(var.public_subnet_cidrs) == (var.single_nat_gateway ? 1 : length(var.availability_zones))
+    error_message = "public_subnet_cidrs must have exactly one entry in single-NAT mode (single_nat_gateway = true), or one entry per availability_zones entry in HA mode (single_nat_gateway = false)."
+  }
 }
 
 variable "private_subnet_cidrs" {
