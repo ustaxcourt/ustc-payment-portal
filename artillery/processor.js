@@ -6,10 +6,26 @@ const { URL } = require('url');
 const aws4 = require('aws4');
 
 module.exports = {
+  setSignedBody: (req, context, ee, done) => {
+    const bodyObj = {
+      transactionReferenceId: context.vars.transactionReferenceId,
+      fee: "PETITION_FILING_FEE",
+      urlSuccess: "https://client.app/success",
+      urlCancel: "https://client.app/cancel",
+      metadata: {
+        docketNumber: Math.random().toString(36).substring(7)
+      }
+    };
+
+    req.body = JSON.stringify(bodyObj);
+
+    return done();
+  },
+
   signWithSigV4IfNeeded: (req, context, ee, done) => {
-    req.headers = req.headers || {};
-    let body;
+    let body = req.body || '';
     let opts;
+    req.headers = req.headers || {};
 
     const parsed = new URL(req.url);
     const host = parsed.host;
@@ -19,18 +35,23 @@ module.exports = {
       host.includes('127.0.0.1');
 
     req.headers.Host = host;
-    req.headers['Content-Type'] = 'application/json';
+    // req.headers.Accept = 'application/json';
+    req.headers['content-type'] = 'application/json';
+    req.headers.accept = 'application/json';
 
-    if (req.json) {
-      body = JSON.stringify(req.json);
-    } else if (typeof req.body === 'string') {
-      body = req.body;
-    } else {
-      body = '';
-    }
+    // if (req.json !== undefined) {
+    //   body = JSON.stringify(req.json);
+    //   delete req.json;
+    // } else if (req.body === undefined || req.body === null) {
+    //   body = '';
+    // } else if (typeof req.body === 'string') {
+    //   body = req.body;
+    // } else {
+    //   body = JSON.stringify(req.body);
+    // }
 
     if (!isLocalhost && process.env.AWS_SESSION_TOKEN) {
-      req.headers['X-Amz-Security-Token'] = process.env.AWS_SESSION_TOKEN;
+      req.headers['x-amz-security-token'] = process.env.AWS_SESSION_TOKEN;
       const region =
         process.env.SIGV4_REGION ??
         process.env.AWS_REGION ??
@@ -38,6 +59,7 @@ module.exports = {
 
       opts = {
         host,
+        // port: parsed.protocol === 'https:' ? 443 : 80,
         method: req.method,
         path: parsed.pathname + (parsed.search || ""),
         service: "execute-api",
@@ -53,6 +75,11 @@ module.exports = {
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
         sessionToken: process.env.AWS_SESSION_TOKEN
       });
+
+      req.headers = opts.headers;
+      req.body = opts.body;
+
+      req._artilleryRawBody = true;
 
       return done();
     }
@@ -163,7 +190,7 @@ module.exports = {
       headers: signOpts.headers
     };
 
-    const req = https.request(options, (res) => {
+    const req = http.request(options, (res) => {
       res.on('data', () => {});
       res.on('end', done);
     });
@@ -178,8 +205,8 @@ module.exports = {
 
   logResponse: (req, res, context, ee, done) => {
      if (process.env.ARTILLERY_DEBUG_RESPONSES === "1" || (res.statusCode ?? 0) >= 400) {
-       console.log("STATUS:", res.statusCode);
-       console.log("BODY:", res.body);
+      console.log("REQUEST:", req.method, req.url, req.body, req.json, req.headers);
+      console.log("RESPONSE:", res.statusCode, res.body, res.headers);
      }
     return done();
   },
