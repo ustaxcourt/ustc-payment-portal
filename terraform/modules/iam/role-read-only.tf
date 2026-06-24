@@ -203,6 +203,17 @@ resource "aws_iam_role_policy" "github_actions_read_only" {
         Resource = "*"
       },
       {
+        # Plan/refresh of the paygov-health EventBridge rule (read-only counterpart
+        # to the deployer's events:PutRule).
+        Effect = "Allow",
+        Action = [
+          "events:DescribeRule",
+          "events:ListTargetsByRule",
+          "events:ListTagsForResource"
+        ],
+        Resource = "arn:aws:events:${local.aws_region}:${data.aws_caller_identity.current.account_id}:rule/${var.lambda_name_prefix}-*"
+      },
+      {
         Effect = "Allow",
         Action = [
           "chatbot:GetMicrosoftTeamsChannelConfiguration",
