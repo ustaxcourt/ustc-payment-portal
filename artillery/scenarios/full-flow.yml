@@ -27,10 +27,19 @@ scenarios:
 
       - think: 1
 
+      - function: "setPaymentOutcome"
+
       # STEP 2
-      - function: "choosePaymentOutcome"
+      - post:
+          url: "/pay/{{ choice.method }}/{{ choice.status }}?token={{ paymentToken }}"
+          headers:
+            Authorization: "{{ PAY_GOV_DEV_SERVER_ACCESS_TOKEN }}"
+          expect:
+            - statusCode: 200
 
       - think: 1
+
+      - log: "Payment outcome chosen: {{ paymentOutcome }}"
 
       # STEP 3
       - post:
@@ -49,7 +58,9 @@ scenarios:
       # STEP 4
       - get:
           url: "/details/{{ transactionReferenceId }}"
-          beforeRequest: "signWithSigV4IfNeeded"
+          beforeRequest:
+            - "setSignedBody"
+            - "signWithSigV4IfNeeded"
           afterResponse: "logResponse"
           capture:
             - json: $.paymentStatus

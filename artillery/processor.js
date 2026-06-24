@@ -1,9 +1,12 @@
 'use strict';
 
 const http = require('http');
+const https = require('https');
 const crypto = require('crypto');
 const { URL } = require('url');
 const aws4 = require('aws4');
+
+require('dotenv').config();
 
 module.exports = {
   setSignedBody: (req, context, ee, done) => {
@@ -34,10 +37,11 @@ module.exports = {
       host.includes('localhost') ||
       host.includes('127.0.0.1');
 
-    req.headers.Host = host;
-    // req.headers.Accept = 'application/json';
-    req.headers['content-type'] = 'application/json';
-    req.headers.accept = 'application/json';
+    req.headers = {
+      Host: host,
+      'content-type': 'application/json',
+      accept: 'application/json',
+    }
 
     // if (req.json !== undefined) {
     //   body = JSON.stringify(req.json);
@@ -132,6 +136,7 @@ module.exports = {
     ];
 
     const choice = outcomes[Math.floor(Math.random() * outcomes.length)];
+    console.log("Payment outcome chosen:", choice);
 
     if (isLocalhost) {
       const options = {
@@ -160,47 +165,39 @@ module.exports = {
 
     const headers = {
       'Content-Type': 'application/json',
-      Host: hostname
+      Host: hostname,
+      Authorization: process.env.PAY_GOV_DEV_SERVER_ACCESS_TOKEN
     };
 
-    if (process.env.AWS_SESSION_TOKEN) {
-      headers['X-Amz-Security-Token'] = process.env.AWS_SESSION_TOKEN;
-    }
-
-    const signOpts = {
-      host: hostname,
-      method: 'POST',
-      path,
-      service: 'execute-api',
-      region: process.env.AWS_REGION || 'us-east-1',
-      headers
-    };
-
-    aws4.sign(signOpts, {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      sessionToken: process.env.AWS_SESSION_TOKEN
-    });
-
+    const agent = new https.Agent({ keepAlive: false });
     const options = {
       hostname,
       port: 443,
       path,
       method: 'POST',
-      headers: signOpts.headers
+      headers: headers,
+      agent,
     };
 
-    const req = http.request(options, (res) => {
-      res.on('data', () => {});
+    const req = https.request(options, (res) => {
+      res.on('data', (data) => {
+        console.log(`Payment outcome response: ${data.toString()}`);
+      });
       res.on('end', done);
     });
 
     req.on('error', (err) => {
-      console.error('choosePaymentOutcome error:', err.message);
+      if (err.code !== 'ECONNRESET') {
+        console.error(err);
+      }
+      console.error('choosePaymentOutcome error:', err.code, err.message);
       done();
     });
 
+    req.write('');
     req.end();
+    console.log('done choosePaymentOutcome');
+    return done();
   },
 
   logResponse: (req, res, context, ee, done) => {
@@ -229,6 +226,25 @@ module.exports = {
 
     console.log("Payment complete:", status);
     return done();
-  }
+  },
 
+  setPaymentOutcome: (context, events, done) => {
+    const outcomes = [
+      { method: 'PAYPAL', status: 'Success' },
+      { method: 'PLASTIC_CARD', status: 'Success' },
+      { method: 'ACH', status: 'Success' },
+      { method: 'PAYPAL', status: 'Failed' },
+      { method: 'PLASTIC_CARD', status: 'Failed' },
+      { method: 'ACH', status: 'Failed' }
+    ];
+
+    const choice = outcomes[Math.floor(Math.random() * outcomes.length)];
+
+    context.vars.choiceMethod = choice.method;
+    context.vars.choiceStatus = choice.status;
+
+    console.log(`Outcome set: ${choice.method} ${choice.status}`);
+
+    done();
+  }
 };
