@@ -4,13 +4,13 @@ output "vpc_id" {
 }
 
 output "public_subnet_id" {
-  value       = aws_subnet.public[var.availability_zones[0]].id
-  description = "Public Subnet ID (first configured AZ, back-compat)"
+  value       = aws_subnet.public["us-east-1a"].id
+  description = "Public Subnet ID (us-east-1a, back-compat)"
 }
 
 output "private_subnet_id" {
-  value       = aws_subnet.private[var.availability_zones[0]].id
-  description = "Private Subnet ID (first configured AZ, back-compat — prefer private_subnet_ids for new consumers)"
+  value       = aws_subnet.private["us-east-1a"].id
+  description = "Private Subnet ID (us-east-1a, back-compat — prefer private_subnet_ids for new consumers)"
 }
 
 output "private_subnet_ids" {
