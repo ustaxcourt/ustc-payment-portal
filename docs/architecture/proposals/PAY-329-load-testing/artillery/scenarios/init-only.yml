@@ -2,14 +2,21 @@ scenarios:
   - name: init-only
     weight: 70
     flow:
+      - function: "setTransactionReferenceId"
+
       - post:
           url: "/init"
           beforeRequest: "signWithSigV4IfNeeded"
           afterResponse: "logResponse"
           json:
-            transactionReferenceId: "{{ $uuid }}"
+            transactionReferenceId: "{{ transactionReferenceId }}"
             fee: "PETITION_FILING_FEE"
             urlSuccess: "https://client.app/success"
             urlCancel: "https://client.app/cancel"
             metadata:
               docketNumber: "{{ $randomString() }}"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: $.token
+              as: "paymentToken"

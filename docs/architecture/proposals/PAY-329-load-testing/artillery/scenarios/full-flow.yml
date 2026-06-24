@@ -15,7 +15,9 @@ scenarios:
             urlSuccess: "https://client.app/success"
             urlCancel: "https://client.app/cancel"
             metadata:
-              docketNumber: "{{ $randomString() }}"
+              docketNumber: '{{ $loremWord() }}'
+          expect:
+            - statusCode: 200
           capture:
             - json: $.token
               as: "paymentToken"
