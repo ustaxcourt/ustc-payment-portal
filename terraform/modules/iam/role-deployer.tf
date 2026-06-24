@@ -469,7 +469,9 @@ resource "aws_iam_policy" "deployer_rds" {
         ]
         Resource = [
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db-proxy:*",
-          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:target-group:*"
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:target-group:*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:${var.lambda_name_prefix}-*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:*-pr-*-db"
         ]
       },
       {
