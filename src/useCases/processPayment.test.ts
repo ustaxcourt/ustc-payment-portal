@@ -1,6 +1,6 @@
 import { processPayment } from "./processPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
-import { ClientPermission } from "@appTypes/ClientPermission";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 import { ForbiddenError } from "@errors/forbidden";
 import { GoneError } from "@errors/gone";
 import { NotFoundError } from "@errors/notFound";
@@ -883,3 +883,4 @@ describe("processPayment", () => {
     });
   });
 });
+

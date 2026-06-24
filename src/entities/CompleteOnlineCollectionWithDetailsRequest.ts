@@ -1,5 +1,5 @@
-import { AppContext } from "@appTypes/AppContext";
-import { RawCompleteOnlineCollectionRequest } from "@appTypes/RawCompleteOnlineCollectionRequest";
+import type { AppContext } from "@appTypes/AppContext";
+import type { RawCompleteOnlineCollectionRequest } from "@appTypes/RawCompleteOnlineCollectionRequest";
 import { RequestType, SoapRequest } from "./SoapRequest";
 import {
   CompleteOnlineCollectionWithDetailsResponse,
@@ -53,3 +53,4 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
     }
   };
 }
+

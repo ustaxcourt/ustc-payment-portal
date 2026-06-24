@@ -1,6 +1,6 @@
-import { ClientPermission } from "@appTypes/ClientPermission";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 import { GetRequestRequest } from "@entities/GetDetailsRequest";
-import { AppContext } from "@appTypes/AppContext";
+import type { AppContext } from "@appTypes/AppContext";
 import { GetDetailsResponse } from "@schemas/GetDetails.schema";
 import { TransactionRecordSummary } from "@schemas/TransactionRecord.schema";
 import { TransactionStatus } from "@schemas/TransactionStatus.schema";
@@ -197,3 +197,4 @@ const updatePendingAttemptFromPayGov = async (
 
   return { paymentStatus, transactions };
 };
+

@@ -1,4 +1,4 @@
-import { AppContext } from "@appTypes/AppContext";
+import type { AppContext } from "@appTypes/AppContext";
 import { RequestType, SoapRequest } from "./SoapRequest";
 import {
   PayGovGetDetailsResponseSchema,
@@ -67,3 +67,4 @@ export class GetRequestRequest extends SoapRequest {
     throw this.handleFault(responseBody["S:Fault"]);
   };
 }
+

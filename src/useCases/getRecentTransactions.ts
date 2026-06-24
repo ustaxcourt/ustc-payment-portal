@@ -1,7 +1,7 @@
 import TransactionModel from "../db/TransactionModel";
 import { RecentTransactionsResponseSchema } from "@schemas/RecentTransactions.schema";
-import { AppContext } from "@appTypes/AppContext";
-import { RecentTransactionsResponse } from "@appTypes/RecentTransactions";
+import type { AppContext } from "@appTypes/AppContext";
+import type { RecentTransactionsResponse } from "@appTypes/RecentTransactions";
 import { toApiPaymentMethod } from "@utils/toApiPaymentMethod";
 
 export type GetRecentTransactions = (
@@ -20,3 +20,4 @@ export const getRecentTransactions: GetRecentTransactions = async (
     total: data.length,
   });
 };
+

@@ -3,11 +3,9 @@ import {
   TransactionsByStatusPathParamsSchema,
   TransactionsByStatusResponseSchema,
 } from "@schemas/TransactionsByStatus.schema";
-import { AppContext } from "@appTypes/AppContext";
-import {
-  TransactionsByStatusPathParams,
-  TransactionsByStatusResponse,
-} from "@appTypes/TransactionsByStatus";
+import type { AppContext } from "@appTypes/AppContext";
+import type { TransactionsByStatusPathParams,
+  TransactionsByStatusResponse, } from "@appTypes/TransactionsByStatus";
 import { InvalidRequestError } from "@errors/invalidRequest";
 import { toApiPaymentMethod } from "@utils/toApiPaymentMethod";
 
@@ -46,3 +44,4 @@ export const isValidPaymentStatus: IsValidPaymentStatus = (paymentStatus: string
     paymentStatus,
   ).success;
 };
+

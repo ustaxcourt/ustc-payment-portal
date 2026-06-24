@@ -1,4 +1,4 @@
-import { AppContext } from "@appTypes/AppContext";
+import type { AppContext } from "@appTypes/AppContext";
 import {
   InitPaymentRequest,
   InitPaymentResponse,
@@ -12,7 +12,7 @@ import { isUniqueViolation } from "../db/pgErrors";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
 import { StartOnlineCollectionRequest } from "@entities/StartOnlineCollectionRequest";
-import { ClientPermission } from "@appTypes/ClientPermission";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { authorizeClient } from "../authorizeClient";
 
@@ -228,3 +228,4 @@ export const initPayment: InitPayment = async (
     paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${fee.tcsAppId}`,
   };
 };
+

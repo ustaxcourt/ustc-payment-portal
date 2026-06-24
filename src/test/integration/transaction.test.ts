@@ -1,4 +1,4 @@
-import { ProcessPaymentRequest } from "@appTypes/ProcessPaymentRequest";
+import type { ProcessPaymentRequest } from "@appTypes/ProcessPaymentRequest";
 import { InitPaymentRequest } from "@schemas/InitPayment.schema";
 import { isLocal } from "../../config/appEnv";
 import { GetDetailsResponse } from "@schemas/GetDetails.schema";
@@ -345,3 +345,4 @@ describe("make a transaction", () => {
     );
   };
 });
+

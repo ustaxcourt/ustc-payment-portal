@@ -1,5 +1,5 @@
-import { RawStartOnlineCollectionRequest } from "@appTypes/RawStartOnlineCollectionRequest";
-import { AppContext } from "@appTypes/AppContext";
+import type { RawStartOnlineCollectionRequest } from "@appTypes/RawStartOnlineCollectionRequest";
+import type { AppContext } from "@appTypes/AppContext";
 import { RequestType, SoapRequest } from "./SoapRequest";
 import {
   StartOnlineCollectionResponse,
@@ -83,3 +83,4 @@ export class StartOnlineCollectionRequest extends SoapRequest {
     throw this.handleFault(responseBody["S:Fault"]);
   }
 }
+

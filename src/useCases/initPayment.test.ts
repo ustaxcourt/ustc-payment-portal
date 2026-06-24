@@ -47,7 +47,7 @@ import * as SoapRequestModule from "@entities/StartOnlineCollectionRequest";
 import { ZodError } from "zod";
 import { ConflictError } from "@errors/conflict";
 import { PayGovError } from "@errors/payGovError";
-import { ClientPermission } from "@appTypes/ClientPermission";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 
 const mockClient: ClientPermission = {
   clientName: "Test Client App",
@@ -445,3 +445,4 @@ describe("initPayment", () => {
     expect(appContext.logger.error).toHaveBeenCalled();
   });
 });
+

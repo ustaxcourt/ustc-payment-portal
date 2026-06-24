@@ -1,7 +1,7 @@
 import { getSecretString } from "./secretsClient";
 import { ServerError } from "@errors/serverError";
 import { LOCAL_DEV_ROLE_ARN } from "../extractCallerArn";
-import { ClientPermission } from "@appTypes/ClientPermission";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 import { ForbiddenError } from "@errors/forbidden";
 
 /**
@@ -137,3 +137,4 @@ export const getClientByRoleArn = async (
 export const clearPermissionsCache = (): void => {
   cache = null;
 };
+

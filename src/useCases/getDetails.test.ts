@@ -1,6 +1,6 @@
 import { getDetails } from "./getDetails";
 import { testAppContext as appContext } from "../test/testAppContext";
-import { ClientPermission } from "@appTypes/ClientPermission";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
@@ -735,3 +735,4 @@ describe("getDetails", () => {
     });
   });
 });
+

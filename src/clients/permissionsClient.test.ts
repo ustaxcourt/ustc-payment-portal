@@ -4,7 +4,7 @@ import {
 } from "./permissionsClient";
 import { getSecretString } from "./secretsClient";
 import { ServerError } from "@errors/serverError";
-import { ClientPermission } from "@appTypes/ClientPermission";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 
 jest.mock("./secretsClient");
 
@@ -185,3 +185,4 @@ describe("permissionsClient", () => {
     });
   });
 });
+

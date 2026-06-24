@@ -1,5 +1,5 @@
 import { ZodType } from "zod";
-import { ParseResult } from "@appTypes/ParseResult";
+import type { ParseResult } from "@appTypes/ParseResult";
 import { jsonParse } from "./jsonParse";
 
 /**
@@ -19,3 +19,4 @@ export const parseAndValidate = <T>(
 
   return { ok: true, value: result.data };
 };
+

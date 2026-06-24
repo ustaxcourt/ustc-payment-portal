@@ -1,6 +1,6 @@
 import { getSecretString } from "@clients/secretsClient";
 import { isLocal } from "./config/appEnv";
-import { AppContext } from "@appTypes/AppContext";
+import type { AppContext } from "@appTypes/AppContext";
 import { getDetails } from "@useCases/getDetails";
 import { initPayment } from "@useCases/initPayment";
 import { processPayment } from "@useCases/processPayment";
@@ -139,3 +139,4 @@ export const createAppContext = (
     logger,
   };
 };
+

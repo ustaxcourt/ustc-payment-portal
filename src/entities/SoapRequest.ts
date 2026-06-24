@@ -1,6 +1,6 @@
 import { XMLBuilder, XMLParser } from "fast-xml-parser";
-import { RawCompleteOnlineCollectionRequest } from "@appTypes/RawCompleteOnlineCollectionRequest";
-import { RawStartOnlineCollectionRequest } from "@appTypes/RawStartOnlineCollectionRequest";
+import type { RawCompleteOnlineCollectionRequest } from "@appTypes/RawCompleteOnlineCollectionRequest";
+import type { RawStartOnlineCollectionRequest } from "@appTypes/RawStartOnlineCollectionRequest";
 import {
   GetRequestRequestParams,
   RawGetDetailsRequest,
@@ -8,7 +8,7 @@ import {
 import { xmlOptions } from "../xmlOptions";
 import { CompleteOnlineCollectionWithDetailsRequestParams } from "./CompleteOnlineCollectionWithDetailsRequest";
 import { StartOnlineCollectionRequestParams } from "./StartOnlineCollectionRequest";
-import { AppContext } from "@appTypes/AppContext";
+import type { AppContext } from "@appTypes/AppContext";
 import { FailedTransactionError } from "@errors/failedTransaction";
 
 export type RawSoapRequest =
@@ -109,3 +109,4 @@ type ProcessorFault =
       };
     }
   | undefined;
+

@@ -1,5 +1,5 @@
 import { ForbiddenError } from "@errors/forbidden";
-import { ClientPermission } from "@appTypes/ClientPermission";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 import { logger } from "@utils/logger";
 
 /**
@@ -22,3 +22,4 @@ export const authorizeClient = (
   logger.info(`Client not authorized for fee`);
   throw new ForbiddenError("Client not authorized for fee");
 };
+

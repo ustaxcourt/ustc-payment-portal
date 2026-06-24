@@ -1,7 +1,7 @@
 import { ZodError } from "zod";
-import { AppContext } from "@appTypes/AppContext";
+import type { AppContext } from "@appTypes/AppContext";
 import { CompleteOnlineCollectionWithDetailsRequest } from "@entities/CompleteOnlineCollectionWithDetailsRequest";
-import { ProcessPaymentRequest } from "@appTypes/ProcessPaymentRequest";
+import type { ProcessPaymentRequest } from "@appTypes/ProcessPaymentRequest";
 import { ProcessPaymentResponse } from "@schemas/ProcessPayment.schema";
 import { FailedTransactionError } from "@errors/failedTransaction";
 import { GoneError } from "@errors/gone";
@@ -10,7 +10,7 @@ import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { derivePaymentStatusFromSingleTransaction } from "@utils/derivePaymentStatus";
-import { ClientPermission } from "@appTypes/ClientPermission";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { toPaymentMethod } from "@utils/toPaymentMethod";
@@ -225,3 +225,4 @@ export const processPayment: ProcessPayment = async (
     transactions: allRows.map((row) => toTransactionRecordSummary(row)),
   };
 };
+
