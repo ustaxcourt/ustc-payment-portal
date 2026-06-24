@@ -1,18 +1,30 @@
 locals {
-  # Build index-aligned maps keyed by AZ name for use with for_each.
-  public_subnets  = zipmap(var.availability_zones, var.public_subnet_cidrs)
+  # AZs that host NAT egress infrastructure (public subnet + EIP + NAT gateway +
+  # private route table). In single-NAT mode only the first AZ hosts egress and
+  # every private subnet routes through it; in HA mode every AZ hosts its own.
+  nat_azs = var.single_nat_gateway ? slice(var.availability_zones, 0, 1) : var.availability_zones
+
+  # Public subnets exist only in the egress AZs. Private subnets exist in every AZ.
+  public_subnets  = zipmap(local.nat_azs, var.public_subnet_cidrs)
   private_subnets = zipmap(var.availability_zones, var.private_subnet_cidrs)
 
-  # For each AZ that does NOT have an existing EIP allocation provided, we will
-  # create a new EIP.  AZs listed in nat_eip_allocation_ids skip EIP creation.
+  # Map each private subnet's AZ to the AZ whose NAT gateway / route table it uses.
+  # HA: same AZ. Single-NAT: always the first (egress) AZ.
+  private_rt_az = {
+    for az in var.availability_zones :
+    az => var.single_nat_gateway ? var.availability_zones[0] : az
+  }
+
+  # For each egress AZ that does NOT have an existing EIP allocation provided, we
+  # will create a new EIP. AZs listed in nat_eip_allocation_ids skip EIP creation.
   azs_needing_eip = toset([
-    for az in var.availability_zones : az
+    for az in local.nat_azs : az
     if !contains(keys(var.nat_eip_allocation_ids), az)
   ])
 
-  # Resolve the allocation ID each AZ's NAT gateway should use.
+  # Resolve the allocation ID each egress AZ's NAT gateway should use.
   nat_allocation_by_az = {
-    for az in var.availability_zones :
+    for az in local.nat_azs :
     az => contains(keys(var.nat_eip_allocation_ids), az) ?
     var.nat_eip_allocation_ids[az] :
     aws_eip.nat[az].id
@@ -37,7 +49,7 @@ resource "aws_internet_gateway" "lambda_igw" {
 }
 
 # ---------------------------------------------------------------------------
-# Subnets — one public + one private per AZ
+# Subnets — a public subnet per egress AZ, a private subnet per AZ
 # ---------------------------------------------------------------------------
 
 resource "aws_subnet" "public" {
@@ -115,11 +127,11 @@ resource "aws_eip" "nat" {
 }
 
 # ---------------------------------------------------------------------------
-# NAT Gateways — one per AZ, placed in that AZ's public subnet
+# NAT Gateways — one per egress AZ, placed in that AZ's public subnet
 # ---------------------------------------------------------------------------
 
 resource "aws_nat_gateway" "this" {
-  for_each = toset(var.availability_zones)
+  for_each = toset(local.nat_azs)
 
   subnet_id     = aws_subnet.public[each.key].id
   allocation_id = local.nat_allocation_by_az[each.key]
@@ -157,11 +169,11 @@ resource "aws_route_table_association" "public" {
 }
 
 # ---------------------------------------------------------------------------
-# Private route tables — one per AZ, each pointing to that AZ's NAT gateway
+# Private route tables — one per egress AZ, each pointing to that AZ's NAT gateway
 # ---------------------------------------------------------------------------
 
 resource "aws_route_table" "private" {
-  for_each = toset(var.availability_zones)
+  for_each = toset(local.nat_azs)
 
   vpc_id = aws_vpc.lambda_vpc.id
 
@@ -171,7 +183,7 @@ resource "aws_route_table" "private" {
 }
 
 resource "aws_route" "private_default" {
-  for_each = toset(var.availability_zones)
+  for_each = toset(local.nat_azs)
 
   route_table_id         = aws_route_table.private[each.key].id
   destination_cidr_block = "0.0.0.0/0"
@@ -182,7 +194,7 @@ resource "aws_route_table_association" "private" {
   for_each = local.private_subnets
 
   subnet_id      = aws_subnet.private[each.key].id
-  route_table_id = aws_route_table.private[each.key].id
+  route_table_id = aws_route_table.private[local.private_rt_az[each.key]].id
 }
 
 # ---------------------------------------------------------------------------

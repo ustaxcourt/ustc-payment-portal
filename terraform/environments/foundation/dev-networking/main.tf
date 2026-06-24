@@ -35,10 +35,14 @@ module "networking" {
   vpc_cidr = "10.20.0.0/25"
 
   availability_zones   = ["us-east-1a", "us-east-1b"]
-  public_subnet_cidrs  = ["10.20.0.0/28", "10.20.0.16/28"]
+  public_subnet_cidrs  = ["10.20.0.0/28"]
   private_subnet_cidrs = ["10.20.0.32/28", "10.20.0.48/28"]
 
-  # No pre-existing EIP allocations — fresh EIPs are created for both AZs.
+  # Dev does not need AZ-redundant egress — a single NAT gateway (in us-east-1a)
+  # serves both private subnets. Two private subnets remain for the RDS subnet group.
+  single_nat_gateway = true
+
+  # No pre-existing EIP allocations — a fresh EIP is created for the NAT gateway.
   nat_eip_allocation_ids = {}
 
   name_prefix = local.name_prefix

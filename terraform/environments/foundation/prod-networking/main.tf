@@ -38,6 +38,10 @@ module "networking" {
   public_subnet_cidrs  = ["10.40.0.0/28", "10.40.0.16/28"]
   private_subnet_cidrs = ["10.40.0.32/28", "10.40.0.48/28"]
 
+  # Prod requires AZ-redundant egress: one NAT gateway + EIP + private route
+  # table per AZ so a single-AZ outage cannot sever the route to Pay.gov.
+  single_nat_gateway = false
+
   # AZ-a uses the Pay.gov-allowlisted EIP. AZ-b gets a new EIP;
   # submit that IP to Pay.gov for allowlisting before switching prod
   # Lambdas to private_subnet_ids.
