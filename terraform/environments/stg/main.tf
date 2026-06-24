@@ -12,7 +12,7 @@ module "lambda" {
   source                            = "../../modules/lambda"
   function_name_prefix              = local.name_prefix
   lambda_execution_role_arn         = data.terraform_remote_state.foundation.outputs.lambda_role_arn
-  subnet_ids                        = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
+  subnet_ids                        = data.terraform_remote_state.foundation.outputs.private_subnet_ids
   security_group_ids                = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
   environment_variables_by_function = local.lambda_env_by_function
 
@@ -133,15 +133,15 @@ data "aws_ssm_parameter" "monitoring_subscribers" {
 module "monitoring" {
   source = "../../modules/monitoring"
 
-  env                  = local.environment
-  name_prefix          = local.name_prefix
-  subscribers          = local.monitoring_subscribers
-  runbook_url          = local.runbook_url
-  throttle_runbook_url = local.throttle_runbook_url
+  env                    = local.environment
+  name_prefix            = local.name_prefix
+  subscribers            = local.monitoring_subscribers
+  runbook_url            = local.runbook_url
+  throttle_runbook_url   = local.throttle_runbook_url
   throttle_429_threshold = local.throttle_429_threshold
-  teams_tenant_id      = var.teams_tenant_id
-  teams_team_id        = var.teams_team_id
-  teams_channel_id     = var.teams_channel_id
+  teams_tenant_id        = var.teams_tenant_id
+  teams_team_id          = var.teams_team_id
+  teams_channel_id       = var.teams_channel_id
 
   # migrationRunner: uncaught-error alarm only (no HTTP response = no 5xx concept).
   # testCert: excluded — test-only endpoint, no user impact when it fails.

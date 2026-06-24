@@ -3,31 +3,19 @@ variable "vpc_cidr" {
   type        = string
 }
 
-variable "availability_zone" {
-  description = "Availability zone for the subnets"
-  type        = string
+variable "availability_zones" {
+  description = "List of availability zones to create subnets and NAT gateways in. Must have at least two entries for HA egress."
+  type        = list(string)
 }
 
-variable "availability_zone_2" {
-  description = "Optional availability zone for the second private subnet (for RDS Multi-AZ)"
-  type        = string
-  default     = ""
+variable "public_subnet_cidrs" {
+  description = "CIDR blocks for the public subnets, one per entry in availability_zones (index-aligned)."
+  type        = list(string)
 }
 
-variable "public_subnet_cidr" {
-  description = "CIDR block for the public subnet"
-  type        = string
-}
-
-variable "private_subnet_cidr" {
-  description = "CIDR block for the private subnet"
-  type        = string
-}
-
-variable "private_subnet_cidr_2" {
-  description = "CIDR block for an optional second private subnet (optional)"
-  type        = string
-  default     = ""
+variable "private_subnet_cidrs" {
+  description = "CIDR blocks for the private subnets, one per entry in availability_zones (index-aligned)."
+  type        = list(string)
 }
 
 variable "tags" {
@@ -38,9 +26,9 @@ variable "name_prefix" {
   type = string
 }
 
-variable "nat_eip_allocation_id" {
-  description = "Existing EIP allocation to use for NAT egress. Empty = create a fresh replacement EIP (dev/stg). Prod sets this to the Pay.gov-allowlisted address so outbound SOAP traffic egresses on the trusted IP."
-  type        = string
-  default     = ""
+variable "nat_eip_allocation_ids" {
+  description = "Map of AZ name to existing EIP allocation ID for NAT egress. AZs absent from this map will have a new EIP created. Prod sets the allowlisted EIP for us-east-1a so outbound SOAP traffic egresses on the Pay.gov-trusted IP."
+  type        = map(string)
+  default     = {}
 }
 

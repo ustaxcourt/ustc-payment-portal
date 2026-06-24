@@ -33,7 +33,7 @@ module "lambda" {
   source                            = "../../modules/lambda"
   function_name_prefix              = local.name_prefix
   lambda_execution_role_arn         = data.terraform_remote_state.foundation.outputs.lambda_role_arn
-  subnet_ids                        = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
+  subnet_ids                        = data.terraform_remote_state.foundation.outputs.private_subnet_ids
   security_group_ids                = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
   environment_variables_by_function = local.lambda_env_by_function
 
@@ -136,15 +136,15 @@ resource "aws_acm_certificate_validation" "this" {
 module "api" {
   source = "../../modules/api-gateway"
 
-  lambda_function_arns     = module.lambda.function_arns
-  environment              = local.environment == "dev" ? "dev" : local.environment
-  stage_name               = local.environment == "dev" ? "dev" : local.environment
-  allowed_account_ids      = local.allowed_client_account_ids
-  dashboard_allowed_origin = local.dashboard_allowed_origin
-  custom_domain            = local.environment == "dev" ? local.custom_domain : ""
-  certificate_arn          = local.environment == "dev" ? aws_acm_certificate_validation.this[0].certificate_arn : ""
-  route53_zone_id          = local.environment == "dev" ? aws_route53_zone.this[0].zone_id : ""
-  enable_public_dashboard  = startswith(local.environment, "pr-") || local.environment == "dev"
+  lambda_function_arns           = module.lambda.function_arns
+  environment                    = local.environment == "dev" ? "dev" : local.environment
+  stage_name                     = local.environment == "dev" ? "dev" : local.environment
+  allowed_account_ids            = local.allowed_client_account_ids
+  dashboard_allowed_origin       = local.dashboard_allowed_origin
+  custom_domain                  = local.environment == "dev" ? local.custom_domain : ""
+  certificate_arn                = local.environment == "dev" ? aws_acm_certificate_validation.this[0].certificate_arn : ""
+  route53_zone_id                = local.environment == "dev" ? aws_route53_zone.this[0].zone_id : ""
+  enable_public_dashboard        = startswith(local.environment, "pr-") || local.environment == "dev"
   enable_access_logging          = false
   enable_per_endpoint_throttling = false
 

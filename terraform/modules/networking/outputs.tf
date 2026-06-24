@@ -4,13 +4,18 @@ output "vpc_id" {
 }
 
 output "public_subnet_id" {
-  value       = aws_subnet.public_subnet.id
-  description = "Public Subnet ID"
+  value       = aws_subnet.public["us-east-1a"].id
+  description = "Public Subnet ID (us-east-1a, back-compat)"
 }
 
 output "private_subnet_id" {
-  value       = aws_subnet.private_subnet.id
-  description = "Private Subnet ID"
+  value       = aws_subnet.private["us-east-1a"].id
+  description = "Private Subnet ID (us-east-1a, back-compat — prefer private_subnet_ids for new consumers)"
+}
+
+output "private_subnet_ids" {
+  value       = [for az in sort(keys(aws_subnet.private)) : aws_subnet.private[az].id]
+  description = "All private subnet IDs, sorted by AZ. Use this for Lambda vpc_config to enable multi-AZ placement."
 }
 
 output "lambda_security_group_id" {
@@ -19,11 +24,11 @@ output "lambda_security_group_id" {
 }
 
 output "db_subnet_group_name" {
-  value       = var.private_subnet_cidr_2 != "" ? aws_db_subnet_group.rds[0].name : null
+  value       = aws_db_subnet_group.rds.name
   description = "RDS DB Subnet Group Name"
 }
 
 output "rds_security_group_id" {
-  value       = var.private_subnet_cidr_2 != "" ? aws_security_group.rds[0].id : null
+  value       = aws_security_group.rds.id
   description = "RDS Security Group ID"
 }

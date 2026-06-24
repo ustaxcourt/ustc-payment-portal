@@ -1,3 +1,24 @@
+locals {
+  # Build index-aligned maps keyed by AZ name for use with for_each.
+  public_subnets  = zipmap(var.availability_zones, var.public_subnet_cidrs)
+  private_subnets = zipmap(var.availability_zones, var.private_subnet_cidrs)
+
+  # For each AZ that does NOT have an existing EIP allocation provided, we will
+  # create a new EIP.  AZs listed in nat_eip_allocation_ids skip EIP creation.
+  azs_needing_eip = toset([
+    for az in var.availability_zones : az
+    if !contains(keys(var.nat_eip_allocation_ids), az)
+  ])
+
+  # Resolve the allocation ID each AZ's NAT gateway should use.
+  nat_allocation_by_az = {
+    for az in var.availability_zones :
+    az => contains(keys(var.nat_eip_allocation_ids), az) ?
+    var.nat_eip_allocation_ids[az] :
+    aws_eip.nat[az].id
+  }
+}
+
 resource "aws_vpc" "lambda_vpc" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
@@ -15,46 +36,42 @@ resource "aws_internet_gateway" "lambda_igw" {
   })
 }
 
+# ---------------------------------------------------------------------------
+# Subnets — one public + one private per AZ
+# ---------------------------------------------------------------------------
 
-resource "aws_subnet" "public_subnet" {
+resource "aws_subnet" "public" {
+  for_each = local.public_subnets
+
   vpc_id            = aws_vpc.lambda_vpc.id
-  cidr_block        = var.public_subnet_cidr
-  availability_zone = var.availability_zone
+  cidr_block        = each.value
+  availability_zone = each.key
 
   tags = merge(var.tags, {
-    Name = "${var.name_prefix}-public-subnet"
+    Name = "${var.name_prefix}-public-subnet-${each.key}"
   })
 }
 
-resource "aws_subnet" "private_subnet" {
+resource "aws_subnet" "private" {
+  for_each = local.private_subnets
+
   vpc_id            = aws_vpc.lambda_vpc.id
-  cidr_block        = var.private_subnet_cidr
-  availability_zone = var.availability_zone
+  cidr_block        = each.value
+  availability_zone = each.key
 
   tags = merge(var.tags, {
-    Name = "${var.name_prefix}-private-subnet"
+    Name = "${var.name_prefix}-private-subnet-${each.key}"
   })
 }
 
-resource "aws_subnet" "private_subnet_2" {
-  count             = var.private_subnet_cidr_2 != "" ? 1 : 0
-  vpc_id            = aws_vpc.lambda_vpc.id
-  cidr_block        = var.private_subnet_cidr_2
-  availability_zone = var.availability_zone_2 != "" ? var.availability_zone_2 : var.availability_zone
-
-  tags = merge(var.tags, {
-    Name = "${var.name_prefix}-private-subnet-2"
-  })
-}
+# ---------------------------------------------------------------------------
+# RDS subnet group and security group (unconditional — both AZs always present)
+# ---------------------------------------------------------------------------
 
 resource "aws_db_subnet_group" "rds" {
-  count = var.private_subnet_cidr_2 != "" ? 1 : 0
-  name  = "${var.name_prefix}-db-subnet-group"
+  name = "${var.name_prefix}-db-subnet-group"
 
-  subnet_ids = [
-    aws_subnet.private_subnet.id,
-    aws_subnet.private_subnet_2[0].id
-  ]
+  subnet_ids = [for az, subnet in aws_subnet.private : subnet.id]
 
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-db-subnet-group"
@@ -62,7 +79,6 @@ resource "aws_db_subnet_group" "rds" {
 }
 
 resource "aws_security_group" "rds" {
-  count       = var.private_subnet_cidr_2 != "" ? 1 : 0
   name        = "${var.name_prefix}-rds-sg"
   description = "Allow PostgreSQL from Lambda"
   vpc_id      = aws_vpc.lambda_vpc.id
@@ -80,21 +96,17 @@ resource "aws_security_group" "rds" {
   })
 }
 
-#keeping it here in case we've to rollback to the original EIP
+# ---------------------------------------------------------------------------
+# Elastic IPs — created only for AZs without a pre-existing allocation
+# ---------------------------------------------------------------------------
 
-# resource "aws_eip" "nat" {
-#   domain = "vpc"
+resource "aws_eip" "nat" {
+  for_each = local.azs_needing_eip
 
-#   tags = merge(var.tags, {
-#     Name = "${var.name_prefix}-eip"
-#   })
-# }
-
-resource "aws_eip" "nat_replacement" {
   domain = "vpc"
 
   tags = merge(var.tags, {
-    Name = "${var.name_prefix}-replacement-eip"
+    Name = "${var.name_prefix}-eip-${each.key}"
   })
 
   lifecycle {
@@ -102,19 +114,26 @@ resource "aws_eip" "nat_replacement" {
   }
 }
 
-locals {
-  nat_allocation_id = var.nat_eip_allocation_id != "" ? var.nat_eip_allocation_id : aws_eip.nat_replacement.id
-}
+# ---------------------------------------------------------------------------
+# NAT Gateways — one per AZ, placed in that AZ's public subnet
+# ---------------------------------------------------------------------------
 
-resource "aws_nat_gateway" "default_nat_gw" {
-  subnet_id     = aws_subnet.public_subnet.id
-  allocation_id = local.nat_allocation_id
+resource "aws_nat_gateway" "this" {
+  for_each = toset(var.availability_zones)
+
+  subnet_id     = aws_subnet.public[each.key].id
+  allocation_id = local.nat_allocation_by_az[each.key]
 
   tags = merge(var.tags, {
-    Name = "${var.name_prefix}-nat-gw"
+    Name = "${var.name_prefix}-nat-gw-${each.key}"
   })
+
+  depends_on = [aws_internet_gateway.lambda_igw]
 }
 
+# ---------------------------------------------------------------------------
+# Public route table (shared — all public subnets route to IGW)
+# ---------------------------------------------------------------------------
 
 resource "aws_route_table" "public_rt" {
   vpc_id = aws_vpc.lambda_vpc.id
@@ -124,47 +143,51 @@ resource "aws_route_table" "public_rt" {
   })
 }
 
-
 resource "aws_route" "public_default_route" {
   route_table_id         = aws_route_table.public_rt.id
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.lambda_igw.id
 }
 
+resource "aws_route_table_association" "public" {
+  for_each = local.public_subnets
 
-resource "aws_route_table" "private_rt" {
-  vpc_id = aws_vpc.lambda_vpc.id
-
-  tags = merge(var.tags, {
-    Name = "${var.name_prefix}-private-rt"
-  })
-}
-
-
-resource "aws_route" "private_default_route" {
-  route_table_id         = aws_route_table.private_rt.id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.default_nat_gw.id
-}
-
-
-resource "aws_route_table_association" "public_rta" {
-  subnet_id      = aws_subnet.public_subnet.id
+  subnet_id      = aws_subnet.public[each.key].id
   route_table_id = aws_route_table.public_rt.id
 }
 
+# ---------------------------------------------------------------------------
+# Private route tables — one per AZ, each pointing to that AZ's NAT gateway
+# ---------------------------------------------------------------------------
 
-resource "aws_route_table_association" "private_rta" {
-  subnet_id      = aws_subnet.private_subnet.id
-  route_table_id = aws_route_table.private_rt.id
+resource "aws_route_table" "private" {
+  for_each = toset(var.availability_zones)
+
+  vpc_id = aws_vpc.lambda_vpc.id
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-private-rt-${each.key}"
+  })
 }
 
-resource "aws_route_table_association" "private_rta_2" {
-  count          = var.private_subnet_cidr_2 != "" ? 1 : 0
-  subnet_id      = aws_subnet.private_subnet_2[0].id
-  route_table_id = aws_route_table.private_rt.id
+resource "aws_route" "private_default" {
+  for_each = toset(var.availability_zones)
+
+  route_table_id         = aws_route_table.private[each.key].id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.this[each.key].id
 }
 
+resource "aws_route_table_association" "private" {
+  for_each = local.private_subnets
+
+  subnet_id      = aws_subnet.private[each.key].id
+  route_table_id = aws_route_table.private[each.key].id
+}
+
+# ---------------------------------------------------------------------------
+# Lambda security group
+# ---------------------------------------------------------------------------
 
 resource "aws_security_group" "lambda" {
   name   = "lambda-SG"
