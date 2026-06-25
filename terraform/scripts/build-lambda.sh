@@ -166,10 +166,10 @@ if [ -d "certs" ]; then
     done
 fi
 
-# Download Amazon RDS CA bundle for TLS certificate verification
+# Global bundle (not regional) so TLS validates the RDS Proxy cert chain, not just direct RDS.
 echo "Downloading RDS CA bundle..."
 curl -sSf -o /tmp/rds-ca-bundle.pem \
-  https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem
+  https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 
 # Copy CA bundle to all Lambda functions that connect to RDS
 for func in initPayment processPayment getDetails migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
