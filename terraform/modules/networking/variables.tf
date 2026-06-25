@@ -6,6 +6,21 @@ variable "vpc_cidr" {
 variable "availability_zones" {
   description = "List of availability zones to create subnets and NAT gateways in. Must have at least two entries for HA egress."
   type        = list(string)
+
+  validation {
+    condition     = length(var.availability_zones) >= 1
+    error_message = "availability_zones must have at least one entry."
+  }
+
+  validation {
+    condition     = var.single_nat_gateway || length(var.availability_zones) >= 2
+    error_message = "availability_zones must have at least two entries for HA egress (single_nat_gateway = false)."
+  }
+
+  validation {
+    condition     = length(var.availability_zones) == length(distinct(var.availability_zones))
+    error_message = "availability_zones entries must be unique; duplicate AZs would silently collapse the subnet, NAT, and route-table maps built via zipmap."
+  }
 }
 
 variable "public_subnet_cidrs" {
@@ -21,6 +36,11 @@ variable "public_subnet_cidrs" {
 variable "private_subnet_cidrs" {
   description = "CIDR blocks for the private subnets, one per entry in availability_zones (index-aligned)."
   type        = list(string)
+
+  validation {
+    condition     = length(var.private_subnet_cidrs) == length(var.availability_zones)
+    error_message = "private_subnet_cidrs must have exactly one entry per availability_zones entry (index-aligned). Mismatched lengths cause zipmap to drop entries or emit null CIDRs."
+  }
 }
 
 variable "single_nat_gateway" {
