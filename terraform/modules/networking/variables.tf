@@ -61,5 +61,10 @@ variable "nat_eip_allocation_ids" {
   description = "Map of AZ name to existing EIP allocation ID for NAT egress. AZs absent from this map will have a new EIP created. Prod sets the allowlisted EIP for us-east-1a so outbound SOAP traffic egresses on the Pay.gov-trusted IP."
   type        = map(string)
   default     = {}
+
+  validation {
+    condition     = alltrue([for az in keys(var.nat_eip_allocation_ids) : contains(var.availability_zones, az)])
+    error_message = "nat_eip_allocation_ids keys must be AZ names present in availability_zones. Check for a typo (e.g. \"us-east-1A\" instead of \"us-east-1a\"); an unmatched key would otherwise be ignored, causing Terraform to allocate a new EIP instead of using the intended one."
+  }
 }
 
