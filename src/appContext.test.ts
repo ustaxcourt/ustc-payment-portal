@@ -147,6 +147,7 @@ describe("postHttpRequest", () => {
       },
       body,
       agent: undefined,
+      signal: expect.any(AbortSignal),
     });
   });
 
@@ -243,9 +244,6 @@ describe("postHttpRequest", () => {
       name: "AccessDeniedException",
     });
     mockGetSecretString.mockRejectedValueOnce(fetchError);
-    const warnSpy = jest
-      .spyOn(console, "warn")
-      .mockImplementation(() => undefined);
 
     const appContext = createAppContext();
     const body = "<soap>request</soap>";
@@ -258,16 +256,205 @@ describe("postHttpRequest", () => {
     };
     expect(lastFetchOptions.headers).not.toHaveProperty("Authorization");
     expect(lastFetchOptions.headers).not.toHaveProperty("Authentication");
-    expect(warnSpy).toHaveBeenCalledWith(
-      "[postHttpRequest] Failed to read token from Secrets Manager",
+    expect(appContext.logger.warn).toHaveBeenCalledWith(
+      "Failed to read token from Secrets Manager",
       {
         secretId: "token-secret-id",
         errorName: "AccessDeniedException",
         errorMessage: "AccessDenied",
       },
     );
+  });
+});
 
-    warnSpy.mockRestore();
+describe("postHttpRequest timeout and retry", () => {
+  const okResponse = (body: string) =>
+    ({ text: jest.fn().mockResolvedValue(body) } as any);
+
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env = { ...originalEnv };
+    process.env.SOAP_URL = "https://test-soap-url.com";
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("passes an abort signal to fetch", async () => {
+    mockFetch.mockResolvedValueOnce(okResponse("ok"));
+    const appContext = createAppContext();
+
+    await appContext.postHttpRequest(appContext, "<soap/>");
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://test-soap-url.com",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it("does not retry on a successful response", async () => {
+    mockFetch.mockResolvedValueOnce(okResponse("ok"));
+    const appContext = createAppContext();
+
+    const result = await appContext.postHttpRequest(appContext, "<soap/>");
+
+    expect(result).toBe("ok");
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(appContext.logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("retries once on a network error and returns the second response", async () => {
+    const netErr = Object.assign(new Error("ECONNRESET"), {
+      name: "FetchError",
+    });
+    mockFetch
+      .mockRejectedValueOnce(netErr)
+      .mockResolvedValueOnce(okResponse("recovered"));
+    const appContext = createAppContext();
+
+    const result = await appContext.postHttpRequest(appContext, "<soap/>");
+
+    expect(result).toBe("recovered");
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(appContext.logger.warn).toHaveBeenCalledTimes(1);
+    expect(appContext.logger.warn).toHaveBeenCalledWith(
+      "Pay.gov request failed; retrying",
+      expect.objectContaining({
+        event: "paygov_retry",
+        attempt: 1,
+        maxAttempts: 2,
+        errorName: "FetchError",
+        errorMessage: "ECONNRESET",
+      }),
+    );
+  });
+
+  it("retries when reading the response body fails mid-stream (re-POSTs the request)", async () => {
+    const bodyErr = Object.assign(new Error("Premature close"), {
+      name: "FetchError",
+    });
+    mockFetch
+      .mockResolvedValueOnce({
+        text: jest.fn().mockRejectedValue(bodyErr),
+      } as any)
+      .mockResolvedValueOnce(okResponse("recovered"));
+    const appContext = createAppContext();
+
+    const result = await appContext.postHttpRequest(appContext, "<soap/>");
+
+    expect(result).toBe("recovered");
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(appContext.logger.warn).toHaveBeenCalledTimes(1);
+    expect(appContext.logger.warn).toHaveBeenCalledWith(
+      "Pay.gov request failed; retrying",
+      expect.objectContaining({
+        errorName: "FetchError",
+        errorMessage: "Premature close",
+      }),
+    );
+  });
+
+  it("throws after two failed attempts and warns each time", async () => {
+    const netErr = Object.assign(new Error("ECONNREFUSED"), {
+      name: "FetchError",
+    });
+    mockFetch.mockRejectedValue(netErr);
+    const appContext = createAppContext();
+
+    await expect(
+      appContext.postHttpRequest(appContext, "<soap/>"),
+    ).rejects.toBe(netErr);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(appContext.logger.warn).toHaveBeenCalledTimes(2);
+    expect(appContext.logger.warn).toHaveBeenLastCalledWith(
+      "Pay.gov request failed; no retries remaining",
+      expect.objectContaining({
+        event: "paygov_retry_exhausted",
+        attempt: 2,
+        maxAttempts: 2,
+      }),
+    );
+  });
+
+  it("does not retry a server/client HTTP error (node-fetch resolves it, so it never reaches the retry path)", async () => {
+    mockFetch.mockResolvedValueOnce(okResponse("<soap:Fault>500</soap:Fault>"));
+    const appContext = createAppContext();
+
+    const result = await appContext.postHttpRequest(appContext, "<soap/>");
+
+    expect(result).toBe("<soap:Fault>500</soap:Fault>");
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(appContext.logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("does not retry on a non-network/non-timeout error", async () => {
+    const otherErr = Object.assign(new Error("boom"), { name: "TypeError" });
+    mockFetch.mockRejectedValue(otherErr);
+    const appContext = createAppContext();
+
+    await expect(
+      appContext.postHttpRequest(appContext, "<soap/>"),
+    ).rejects.toBe(otherErr);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(appContext.logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("aborts after the timeout and retries", async () => {
+    jest.useFakeTimers();
+    mockFetch.mockImplementation(
+      (_url: string, opts: any) =>
+        new Promise((_resolve, reject) => {
+          opts.signal.addEventListener("abort", () =>
+            reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+          );
+        }),
+    );
+    const appContext = createAppContext();
+
+    // Attach handlers up front so the rejection is never momentarily unhandled.
+    const settled = appContext
+      .postHttpRequest(appContext, "<soap/>")
+      .then(() => ({ rejected: false, err: undefined }))
+      .catch((err) => ({ rejected: true, err }));
+    await jest.advanceTimersByTimeAsync(10_000); // first attempt times out
+    await jest.advanceTimersByTimeAsync(10_000); // retry times out
+
+    expect(await settled).toMatchObject({
+      rejected: true,
+      err: { name: "AbortError" },
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(appContext.logger.warn).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
+  });
+
+  it("retries a timeout via the abort signal even when the error name is mangled (minify-safe)", async () => {
+    jest.useFakeTimers();
+    mockFetch.mockImplementation(
+      (_url: string, opts: any) =>
+        new Promise((_resolve, reject) => {
+          opts.signal.addEventListener("abort", () =>
+            // Simulates a minified build where constructor.name is no longer "AbortError".
+            reject(Object.assign(new Error("aborted"), { name: "e" })),
+          );
+        }),
+    );
+    const appContext = createAppContext();
+
+    const settled = appContext
+      .postHttpRequest(appContext, "<soap/>")
+      .then(() => ({ rejected: false }))
+      .catch(() => ({ rejected: true }));
+    await jest.advanceTimersByTimeAsync(10_000);
+    await jest.advanceTimersByTimeAsync(10_000);
+
+    expect(await settled).toEqual({ rejected: true });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(appContext.logger.warn).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
   });
 });
 
