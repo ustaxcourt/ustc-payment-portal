@@ -77,7 +77,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Configure AWS Credentials (OIDC - ${{ matrix.env }})
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets[matrix.role_arn_secret] }}
           aws-region: ${{ env.AWS_REGION }}
@@ -157,7 +157,7 @@ jobs:
 
       - name: Upload plan artifact
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: tfplan-${{ matrix.env }}
           path: terraform/environments/${{ matrix.env }}/plan-output/
