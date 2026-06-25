@@ -10,9 +10,21 @@ import { signedFetch } from "./sigv4Helper";
 const runOrSkip =
   process.env.RUN_LOAD_TEST === "true" ? describe : describe.skip;
 
+// Integer env var with a default; unset/empty falls back, a bad value fails loudly
+// instead of NaN-ing into a RangeError or NaN timeout later in the run.
+const intEnv = (name: string, fallback: number, min: number): number => {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < min) {
+    throw new Error(`${name} must be an integer >= ${min}, got "${raw}"`);
+  }
+  return parsed;
+};
+
 const BASE_URL = process.env.BASE_URL ?? "";
-const CONCURRENCY = Number(process.env.LOAD_CONCURRENCY ?? 40);
-const DURATION_MS = Number(process.env.LOAD_DURATION_MS ?? 60_000);
+const CONCURRENCY = intEnv("LOAD_CONCURRENCY", 40, 1);
+const DURATION_MS = intEnv("LOAD_DURATION_MS", 60_000, 1);
 
 runOrSkip("RDS Proxy load test", () => {
   it(
@@ -22,7 +34,7 @@ runOrSkip("RDS Proxy load test", () => {
 
       const headers = { "content-type": "application/json" };
       const deadline = Date.now() + DURATION_MS;
-      const pacingMs = Number(process.env.LOAD_PACING_MS ?? 0);
+      const pacingMs = intEnv("LOAD_PACING_MS", 0, 0);
       const okLatencies: number[] = [];
       const statusCounts = new Map<string, number>();
       const bump = (k: string): void => {
