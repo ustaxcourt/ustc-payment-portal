@@ -108,7 +108,7 @@ variable "proxy_name" {
 }
 
 variable "proxy_connections_threshold" {
-  description = "Alarm when backend DB connections through the proxy stay at/above this. Starter value — tune from the Phase 6 load-test baseline (expected steady-state ~20; below each env's cap of ~150 prod / ~100 dev)."
+  description = "Alarm when backend DB connections through the proxy stay at/above this. Starter value — tune from the Phase 6 load-test baseline (expected steady-state ~20). Keep below each env's proxy_max_connections_percent ceiling (~198 prod/stg at 100%, ~148 dev at 75%, of ~198 max_connections)."
   type        = number
   default     = 100
 }

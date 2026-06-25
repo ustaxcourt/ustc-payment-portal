@@ -92,6 +92,8 @@ module "rds" {
 
 # Proxy lives only in the dev workspace; PR workspaces bypass it and connect
 # directly to the shared dev RDS. Connection cap is set via proxy_max_connections_percent in locals.
+# NOTE: dev has no monitoring module, so the proxy has no CloudWatch alarms here — observe it
+# via the RDS Proxy console/metrics directly (alarms exist in stg/prod only).
 module "rds_proxy" {
   count  = local.environment == "dev" ? 1 : 0
   source = "../../modules/rds-proxy"

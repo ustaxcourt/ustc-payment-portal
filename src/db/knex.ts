@@ -51,6 +51,8 @@ export async function getKnex(): Promise<ReturnType<typeof Knex>> {
 
   const connection = await getRdsCredentials();
   // One connection per container: the RDS Proxy owns pooling across concurrent Lambdas.
+  // TRIPWIRE: with max:1, a knex.transaction() that issues a second pooled query inside the
+  // txn will deadlock (no codebase uses transactions today). Bump max if you add one.
   knexInstance = Knex({ client: 'pg', connection, pool: { min: 0, max: 1 }, ...knexSnakeCaseMappers() });
   Model.knex(knexInstance);
   return knexInstance;

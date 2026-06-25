@@ -204,7 +204,8 @@ resource "aws_iam_role_policy" "github_actions_read_only" {
       },
       {
         # Plan/refresh of the paygov-health EventBridge rule (read-only counterpart
-        # to the deployer's events:PutRule).
+        # to the deployer's events:PutRule). Required so `terraform plan` can read the
+        # deployer-managed rule; unrelated to RDS Proxy but needed to keep plan green.
         Effect = "Allow",
         Action = [
           "events:DescribeRule",

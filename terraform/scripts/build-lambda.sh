@@ -166,7 +166,8 @@ if [ -d "certs" ]; then
     done
 fi
 
-# Global bundle (not regional) so TLS validates the RDS Proxy cert chain, not just direct RDS.
+# Global bundle (not regional) covers RDS CAs across all regions; the proxy's public CA is
+# trusted separately via Node's built-in roots (see getRdsCredentials.ts).
 echo "Downloading RDS CA bundle..."
 curl -sSf -o /tmp/rds-ca-bundle.pem \
   https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem

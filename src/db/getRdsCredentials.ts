@@ -51,6 +51,8 @@ export async function getRdsCredentials(): Promise<RdsConnectionConfig> {
 
   // Trust both: Node's built-in roots (the RDS Proxy uses a public Amazon CA) plus the
   // bundled RDS CA (a direct RDS instance uses the private RDS CA). Local dev has no bundle.
+  // This deliberately widens trust to all public CAs; rejectUnauthorized + hostname check
+  // still require a cert for the exact proxy host. Reviewed/accepted for the proxy rollout.
   const caPath = join(__dirname, "rds-ca-bundle.pem");
   const ssl = existsSync(caPath)
     ? { rejectUnauthorized: true, ca: [...rootCertificates, readFileSync(caPath, "utf8")] }
