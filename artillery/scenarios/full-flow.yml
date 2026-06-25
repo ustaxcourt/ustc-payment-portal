@@ -12,13 +12,6 @@ scenarios:
             - "signWithSigV4IfNeeded"
           afterResponse: "logResponse"
           body: "{{ requestBody }}"
-          # json:
-          #   transactionReferenceId: "{{ transactionReferenceId }}"
-          #   fee: "PETITION_FILING_FEE"
-          #   urlSuccess: "https://client.app/success"
-          #   urlCancel: "https://client.app/cancel"
-          #   metadata:
-          #     docketNumber: '{{ $loremWord() }}'
           expect:
             - statusCode: 200
           capture:
@@ -29,17 +22,20 @@ scenarios:
 
       - function: "setPaymentOutcome"
 
+      - log: "Payment outcome chosen: {{ PAY_GOV_URL }} {{ choiceMethod }} {{ choiceStatus }}"
+
       # STEP 2
       - post:
-          url: "/pay/{{ choice.method }}/{{ choice.status }}?token={{ paymentToken }}"
+          url: "{{ PAY_GOV_URL }}/pay/{{ choiceMethod }}/{{ choiceStatus }}?token={{ paymentToken }}"
+          beforeRequest:
+            - "setTokenHeader"
+          afterResponse: "logResponse"
           headers:
             Authorization: "{{ PAY_GOV_DEV_SERVER_ACCESS_TOKEN }}"
           expect:
             - statusCode: 200
 
       - think: 1
-
-      - log: "Payment outcome chosen: {{ paymentOutcome }}"
 
       # STEP 3
       - post:
@@ -59,7 +55,6 @@ scenarios:
       - get:
           url: "/details/{{ transactionReferenceId }}"
           beforeRequest:
-            - "setSignedBody"
             - "signWithSigV4IfNeeded"
           afterResponse: "logResponse"
           capture:

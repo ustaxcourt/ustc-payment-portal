@@ -38,6 +38,7 @@ module.exports = {
       host.includes('127.0.0.1');
 
     req.headers = {
+      ...req.headers,
       Host: host,
       'content-type': 'application/json',
       accept: 'application/json',
@@ -53,6 +54,15 @@ module.exports = {
     // } else {
     //   body = JSON.stringify(req.body);
     // }
+
+    if (req.json !== undefined) {
+      body = JSON.stringify(req.json);
+      delete req.json;
+    }
+
+    if (req.method === 'GET') {
+      body = '';
+    }
 
     if (!isLocalhost && process.env.AWS_SESSION_TOKEN) {
       req.headers['x-amz-security-token'] = process.env.AWS_SESSION_TOKEN;
@@ -94,7 +104,7 @@ module.exports = {
       path: parsed.pathname + (parsed.search || ""),
     }
 
-    req.headers = opts.headers;
+    // req.headers = opts.headers;
 
     return done();
   },
@@ -109,94 +119,6 @@ module.exports = {
   setTransactionReferenceId: (context, events, done) => {
     const uuid = crypto.randomUUID();
     context.vars.transactionReferenceId = uuid;
-    return done();
-  },
-
-  choosePaymentOutcome: (context, events, done) => {
-    if (!context.vars.paymentToken) {
-      console.log("Skipping payment step: no token");
-      return done();
-    }
-
-    const token = context.vars.paymentToken;
-
-    const parsed = new URL(context.vars.target);
-
-    const isLocalhost =
-      parsed.hostname.includes('localhost') ||
-      parsed.hostname.includes('127.0.0.1');
-
-    const outcomes = [
-      { method: 'PAYPAL', status: 'Success' },
-      { method: 'PLASTIC_CARD', status: 'Success' },
-      { method: 'ACH', status: 'Success' },
-      { method: 'PAYPAL', status: 'Failed' },
-      { method: 'PLASTIC_CARD', status: 'Failed' },
-      { method: 'ACH', status: 'Failed' }
-    ];
-
-    const choice = outcomes[Math.floor(Math.random() * outcomes.length)];
-    console.log("Payment outcome chosen:", choice);
-
-    if (isLocalhost) {
-      const options = {
-        hostname: 'localhost',
-        port: 3366,
-        path: `/pay/${choice.method}/${choice.status}?token=${token}`,
-        method: 'POST'
-      };
-
-      const req = http.request(options, (res) => {
-        res.on('data', () => {});
-        res.on('end', done);
-      });
-
-      req.on('error', (err) => {
-        console.error('choosePaymentOutcome error:', err.message);
-        done();
-      });
-
-      req.end();
-      return;
-    }
-
-    const hostname = 'pay-gov-dev.ustaxcourt.gov';
-    const path = `/pay/${choice.method}/${choice.status}?token=${token}`;
-
-    const headers = {
-      'Content-Type': 'application/json',
-      Host: hostname,
-      Authorization: process.env.PAY_GOV_DEV_SERVER_ACCESS_TOKEN
-    };
-
-    const agent = new https.Agent({ keepAlive: false });
-    const options = {
-      hostname,
-      port: 443,
-      path,
-      method: 'POST',
-      headers: headers,
-      agent,
-    };
-
-    const req = https.request(options, (res) => {
-      res.on('data', (data) => {
-        console.log(`Payment outcome response: ${data.toString()}`);
-      });
-      res.on('end', done);
-    });
-
-    req.on('error', (err) => {
-      if (err.code !== 'ECONNRESET') {
-        console.error(err);
-      }
-      console.error('choosePaymentOutcome error:', err.code, err.message);
-      done();
-    });
-
-    req.write('');
-    req.end();
-    console.log('done choosePaymentOutcome');
     return done();
   },
 
@@ -221,7 +143,11 @@ module.exports = {
 
     if (!status || status === 'pending' || status === 'NOT_READY') {
       console.log("Payment not ready yet:", status);
-      return done(new Error("Payment not completed yet")); // ❌ force retry
+      if (!status || status === 'pending' || status === 'NOT_READY') {
+        console.log("Payment not ready yet:", status);
+        return done(new Error("retry")); // keep as retry signal
+      }
+      return done(new Error("Payment not completed yet"));
     }
 
     console.log("Payment complete:", status);
@@ -229,6 +155,16 @@ module.exports = {
   },
 
   setPaymentOutcome: (context, events, done) => {
+    const target = context.vars.target || '';
+
+    const isLocalhost =
+      target.includes('localhost') ||
+      target.includes('127.0.0.1');
+
+    context.vars.PAY_GOV_URL = isLocalhost
+      ? "http://localhost:3366"
+      : "https://pay-gov-dev.ustaxcourt.gov";
+
     const outcomes = [
       { method: 'PAYPAL', status: 'Success' },
       { method: 'PLASTIC_CARD', status: 'Success' },
@@ -246,5 +182,16 @@ module.exports = {
     console.log(`Outcome set: ${choice.method} ${choice.status}`);
 
     done();
+  },
+
+  setTokenHeader: (req, context, ee, done) => {
+    req.headers = {
+      ...req.headers,
+      Authorization: `Bearer ${process.env.PAY_GOV_DEV_SERVER_ACCESS_TOKEN}`,
+      'content-type': 'application/json',
+      accept: 'application/json',
+    };
+
+    return done();
   }
 };
