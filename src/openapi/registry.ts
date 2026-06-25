@@ -454,7 +454,7 @@ export const generateOpenAPIDocument = () => {
     openapi: "3.1.0",
     info: {
       title: "USTC Payment Portal API",
-      version: "0.1.3",
+      version: "1.0.0",
       description:
         "API for integrating with Pay.gov payment services for the US Tax Court.",
       contact: {
