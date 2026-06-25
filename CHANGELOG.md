@@ -1,5 +1,16 @@
 # @ustaxcourt/payment-portal
 
+## 1.0.1
+
+### Patch Changes
+
+- 719270e: Update dependencies to address security vulnerabilities and update the Pay.gov test server to reduce intermittent test failures.
+- a2cf4b7: Upgrade TypeScript to v6.0.3 and update compiler configuration for TypeScript 6 deprecations.
+
+  Remove the deprecated unused `baseUrl` and catch-all `paths` settings, and add `ignoreDeprecations: "6.0"` to preserve the current `moduleResolution: "node"` behavior while acknowledging the TypeScript 6 warning ahead of a future TypeScript 7 migration.
+
+  Update `tsconfig.json` and `tsconfig.test-types.json` to target ES2022.
+
 ## 1.0.0
 
 ### Major Changes
