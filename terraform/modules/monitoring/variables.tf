@@ -47,6 +47,24 @@ variable "runbook_url" {
   default     = ""
 }
 
+variable "paygov_retry_alarm_threshold" {
+  description = "Number of Pay.gov retry warnings in a single 5-min bucket that constitutes sustained flakiness. A few retries are normal (the retry succeeds), so this is intentionally higher than 1 and severity is warning, not critical. Tune once real traffic exists."
+  type        = number
+  default     = 5
+}
+
+variable "throttle_runbook_url" {
+  description = "Runbook URL for API Gateway 429 throttle alarms. Falls back to runbook_url if not set."
+  type        = string
+  default     = ""
+}
+
+variable "throttle_429_threshold" {
+  description = "Number of 429s in a 5-minute period required to trigger the api-gateway-429 alarm. Default 1 (any throttle fires). Raise for prod to reduce noise from expected bursts."
+  type        = number
+  default     = 1
+}
+
 variable "tags" {
   description = "Additional tags applied to all resources."
   type        = map(string)
@@ -75,4 +93,10 @@ variable "teams_channel_id" {
   type        = string
   default     = null
   sensitive   = true
+}
+
+variable "api_gateway_access_log_group_name" {
+  description = "Name of the API Gateway access log group. When set, creates a 429 throttle metric filter and alarm."
+  type        = string
+  default     = null
 }

@@ -136,13 +136,15 @@ data "aws_ssm_parameter" "monitoring_subscribers" {
 module "monitoring" {
   source = "../../modules/monitoring"
 
-  env              = local.environment
-  name_prefix      = local.name_prefix
-  subscribers      = local.monitoring_subscribers
-  runbook_url      = local.runbook_url
-  teams_tenant_id  = var.teams_tenant_id
-  teams_team_id    = var.teams_team_id
-  teams_channel_id = var.teams_channel_id
+  env                    = local.environment
+  name_prefix            = local.name_prefix
+  subscribers            = local.monitoring_subscribers
+  runbook_url            = local.runbook_url
+  throttle_runbook_url   = local.throttle_runbook_url
+  throttle_429_threshold = local.throttle_429_threshold
+  teams_tenant_id        = var.teams_tenant_id
+  teams_team_id          = var.teams_team_id
+  teams_channel_id       = var.teams_channel_id
 
   lambda_functions = {
     initPayment    = module.lambda.function_names["initPayment"]
@@ -157,6 +159,25 @@ module "monitoring" {
     getDetails     = module.lambda.log_group_names["getDetails"]
     testCert       = module.lambda.log_group_names["testCert"]
   }
+
+  api_gateway_access_log_group_name = module.api.access_log_group_name
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
+# Scheduled Pay.gov health probe + alarm (invokes the testCert Lambda every 15 min).
+# Reuses the monitoring module's alerts topic so outages page via the same Teams channel.
+module "paygov_health" {
+  source = "../../modules/paygov-health"
+
+  name_prefix            = local.name_prefix
+  environment            = local.app_env
+  testcert_function_name = module.lambda.function_names["testCert"]
+  testcert_function_arn  = module.lambda.function_arns["testCert"]
+  alarm_sns_topic_arns   = [module.monitoring.sns_topic_arn]
 
   tags = {
     Env     = local.environment

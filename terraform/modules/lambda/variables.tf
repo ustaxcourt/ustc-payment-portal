@@ -15,6 +15,12 @@ variable "runtime" {
   default     = "nodejs22.x"
 }
 
+variable "payment_lambda_timeout" {
+  description = "Timeout (seconds) shared by the payment-flow Lambdas (initPayment, processPayment, getDetails). Sized for two 10s Pay.gov attempts plus overhead, under API Gateway's 29s cap."
+  type        = number
+  default     = 27
+}
+
 
 variable "subnet_ids" {
   description = "List of subnet IDs for Lambda VPC configuration"
