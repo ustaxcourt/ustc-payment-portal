@@ -27,15 +27,25 @@ variable "rds_instance_identifier" {
 variable "vpc_subnet_ids" {
   description = "Private subnet IDs to place the proxy in (must reach the RDS instance; same subnets as the DB)"
   type        = list(string)
+
+  validation {
+    condition     = length(var.vpc_subnet_ids) >= 2
+    error_message = "RDS Proxy requires at least two subnets in distinct AZs."
+  }
 }
 
 variable "vpc_security_group_ids" {
   description = "Security group IDs to attach to the proxy. Created in the networking module; allows Lambda ingress and RDS egress on 5432."
   type        = list(string)
+
+  validation {
+    condition     = length(var.vpc_security_group_ids) >= 1
+    error_message = "RDS Proxy requires at least one security group."
+  }
 }
 
 variable "max_connections_percent" {
-  description = "Ceiling on backend DB connections the proxy may open, as a percent of the instance's max_connections. PO-agreed: ~75 in prod (~150 of ~200), ~50 in dev to leave slots for direct-connecting PR workspaces. This is a safety ceiling, NOT the expected steady-state (~20)."
+  description = "Ceiling on backend DB connections the proxy may open, as a percent of the instance's max_connections. A safety cap reached only under load, NOT the expected steady-state (~20). Set per environment via proxy_max_connections_percent in each env's locals (see those for current values)."
   type        = number
   default     = 75
 

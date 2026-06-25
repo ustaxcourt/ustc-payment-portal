@@ -266,7 +266,7 @@ resource "aws_cloudwatch_metric_alarm" "proxy_connections" {
   evaluation_periods  = 5
   datapoints_to_alarm = 5
   threshold           = var.proxy_connections_threshold
-  statistic           = "Sum"
+  statistic           = "Maximum" # gauge, not a count — Maximum reports the period's peak level
   metric_name         = "DatabaseConnections"
   namespace           = "AWS/RDS"
   treat_missing_data  = "notBreaching"
@@ -301,7 +301,7 @@ resource "aws_cloudwatch_metric_alarm" "proxy_session_pinned" {
   evaluation_periods  = 5
   datapoints_to_alarm = 5
   threshold           = var.proxy_pinned_threshold
-  statistic           = "Sum"
+  statistic           = "Maximum" # gauge, not a count — Maximum reports the period's peak level
   metric_name         = "DatabaseConnectionsCurrentlySessionPinned"
   namespace           = "AWS/RDS"
   treat_missing_data  = "notBreaching"
