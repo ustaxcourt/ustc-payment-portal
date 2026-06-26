@@ -8,7 +8,7 @@ scenarios:
       - post:
           url: "/init"
           beforeRequest:
-            - "setSignedBody"
+            - "setSignedInitBody"
             - "signWithSigV4IfNeeded"
           afterResponse: "logResponse"
           body: "{{ requestBody }}"
@@ -41,11 +41,12 @@ scenarios:
       - post:
           url: "/process"
           beforeRequest:
-            - "setSignedBody"
+            - "setSignedProcessBody"
             - "signWithSigV4IfNeeded"
           afterResponse: "logResponse"
-          json:
-            token: "{{ paymentToken }}"
+          body: "{{ requestBody }}"
+          # json:
+          #   token: "{{ paymentToken }}"
           expect:
             - statusCode: 200
 

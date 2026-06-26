@@ -9,7 +9,7 @@ const aws4 = require('aws4');
 require('dotenv').config();
 
 module.exports = {
-  setSignedBody: (req, context, ee, done) => {
+  setSignedInitBody: (req, context, ee, done) => {
     const bodyObj = {
       transactionReferenceId: context.vars.transactionReferenceId,
       fee: "PETITION_FILING_FEE",
@@ -19,9 +19,15 @@ module.exports = {
         docketNumber: Math.random().toString(36).substring(7)
       }
     };
-
     req.body = JSON.stringify(bodyObj);
+    return done();
+  },
 
+  setSignedProcessBody: (req, context, ee, done) => {
+    const bodyObj = {
+      token: context.vars.paymentToken,
+    };
+    req.body = JSON.stringify(bodyObj);
     return done();
   },
 
@@ -98,11 +104,11 @@ module.exports = {
       return done();
     }
 
-    opts = {
-      host,
-      method: req.method,
-      path: parsed.pathname + (parsed.search || ""),
-    }
+    // opts = {
+    //   host,
+    //   method: req.method,
+    //   path: parsed.pathname + (parsed.search || ""),
+    // }
 
     // req.headers = opts.headers;
 
