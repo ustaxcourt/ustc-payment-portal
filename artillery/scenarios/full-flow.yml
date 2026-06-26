@@ -18,7 +18,6 @@ scenarios:
               as: "paymentToken"
 
       - think: 1
-
       - function: "setPaymentOutcome"
 
       # STEP 2
