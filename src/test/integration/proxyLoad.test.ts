@@ -1,17 +1,10 @@
 import { randomUUID } from "crypto";
 import { signedFetch } from "./sigv4Helper";
 
-// Gated behind RUN_LOAD_TEST so it never runs in normal CI.
-//   RUN_LOAD_TEST=true BASE_URL=<dev api> LOAD_CONCURRENCY=40 LOAD_DURATION_MS=60000 \
-//     npx jest proxyLoad --verbose
-// CLEANUP: there is no delete API, so each run leaves transaction rows in the dev DB
-// tagged metadata.docketNumber='load-test'. Purge afterward, e.g.:
-//   DELETE FROM transactions WHERE metadata->>'docketNumber' = 'load-test';
+// Leaves rows behind (no delete API). Purge: DELETE FROM transactions WHERE metadata->>'docketNumber' = 'load-test';
 const runOrSkip =
   process.env.RUN_LOAD_TEST === "true" ? describe : describe.skip;
 
-// Integer env var with a default; unset/empty falls back, a bad value fails loudly
-// instead of NaN-ing into a RangeError or NaN timeout later in the run.
 const intEnv = (name: string, fallback: number, min: number): number => {
   const raw = process.env[name];
   if (raw === undefined || raw === "") return fallback;
@@ -89,9 +82,8 @@ runOrSkip("RDS Proxy load test", () => {
           )}ms\n`,
       );
 
-      // We only require real throughput through the proxy. Throttling (429s) under an
-      // aggressive firehose is expected and is not a proxy failure — see the status breakdown.
-      expect(ok).toBeGreaterThan(0);
+      expect(ok).toBeGreaterThan(0); // 429s under load are expected, not a proxy failure
+
     },
     DURATION_MS + 60_000,
   );

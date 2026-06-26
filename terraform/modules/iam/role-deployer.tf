@@ -399,9 +399,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
   })
 }
 
-# RDS + RDS Proxy deploy permissions live in a managed policy rather than inline:
-# the deployer's inline policy is at IAM's 10,240-byte aggregate limit. Managed
-# policies don't count against that, so this keeps headroom for future additions.
+# Managed policy, not inline: the deployer's inline policy is at IAM's 10,240-byte limit.
 resource "aws_iam_policy" "deployer_rds" {
   name = "${local.deploy_role_name}-rds"
 

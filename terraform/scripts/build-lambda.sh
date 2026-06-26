@@ -166,8 +166,7 @@ if [ -d "certs" ]; then
     done
 fi
 
-# Global bundle (not regional) covers RDS CAs across all regions; the proxy's public CA is
-# trusted separately via Node's built-in roots (see getRdsCredentials.ts).
+# Global bundle (not regional) so all-region RDS CAs are covered.
 echo "Downloading RDS CA bundle..."
 curl -sSf -o /tmp/rds-ca-bundle.pem \
   https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem

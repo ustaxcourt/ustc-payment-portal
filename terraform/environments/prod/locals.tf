@@ -7,8 +7,6 @@ locals {
   custom_domain = "payments.ustaxcourt.gov"
   rds_db_name   = "paymentportal"
 
-  # RDS Proxy backend-connection ceiling (% of max_connections, ~198 on db.t3.small).
-  # 100% — prod RDS is dedicated, so the proxy may use all available connections.
   proxy_max_connections_percent = 100
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env

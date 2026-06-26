@@ -247,10 +247,7 @@ resource "aws_iam_role_policy_attachment" "chatbot_cloudwatch_read" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess"
 }
 
-# RDS Proxy alarms (gated on proxy_name). Per AWS docs: ProxyName alone for connections/
-# pinning; availability also needs TargetGroup + TargetRole or the alarm never fires.
-
-# Backend DB connections approaching the pool cap (expected steady-state ~20).
+# RDS Proxy alarms — availability needs TargetGroup + TargetRole dimensions or it never fires.
 resource "aws_cloudwatch_metric_alarm" "proxy_connections" {
   count = var.proxy_name != null ? 1 : 0
 
@@ -266,7 +263,7 @@ resource "aws_cloudwatch_metric_alarm" "proxy_connections" {
   evaluation_periods  = 5
   datapoints_to_alarm = 5
   threshold           = var.proxy_connections_threshold
-  statistic           = "Maximum" # gauge, not a count — Maximum reports the period's peak level
+  statistic           = "Maximum"
   metric_name         = "DatabaseConnections"
   namespace           = "AWS/RDS"
   treat_missing_data  = "notBreaching"
@@ -285,7 +282,6 @@ resource "aws_cloudwatch_metric_alarm" "proxy_connections" {
   })
 }
 
-# Session pinning defeats multiplexing — should stay ~0.
 resource "aws_cloudwatch_metric_alarm" "proxy_session_pinned" {
   count = var.proxy_name != null ? 1 : 0
 
@@ -301,7 +297,7 @@ resource "aws_cloudwatch_metric_alarm" "proxy_session_pinned" {
   evaluation_periods  = 5
   datapoints_to_alarm = 5
   threshold           = var.proxy_pinned_threshold
-  statistic           = "Maximum" # gauge, not a count — Maximum reports the period's peak level
+  statistic           = "Maximum"
   metric_name         = "DatabaseConnectionsCurrentlySessionPinned"
   namespace           = "AWS/RDS"
   treat_missing_data  = "notBreaching"
@@ -320,7 +316,6 @@ resource "aws_cloudwatch_metric_alarm" "proxy_session_pinned" {
   })
 }
 
-# Proxy health — availability % for the READ_WRITE target group.
 resource "aws_cloudwatch_metric_alarm" "proxy_availability" {
   count = var.proxy_name != null ? 1 : 0
 

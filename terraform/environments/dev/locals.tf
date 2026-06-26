@@ -11,8 +11,6 @@ locals {
   rds_secret_arn = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : data.aws_ssm_parameter.dev_rds_secret_arn[0].value
   rds_db_name    = local.environment == "dev" ? "paymentportal" : "paymentportal_${replace(local.environment, "-", "_")}"
 
-  # RDS Proxy backend-connection ceiling (% of max_connections). 75% on the SHARED dev RDS to
-  # leave headroom for PR workspaces + migrationRunner, which connect directly (bypass proxy).
   proxy_max_connections_percent = 75
 
   # PR-scoped DB user (PAY-276). The dev workspace itself uses admin creds; PR
@@ -24,8 +22,6 @@ locals {
   # everywhere else they keep using the admin secret.
   app_rds_secret_arn = local.is_pr ? aws_secretsmanager_secret.pr_user[0].arn : local.rds_secret_arn
 
-  # Payment + dashboard Lambdas route through the proxy in the dev workspace; PR
-  # workspaces bypass it and connect directly to the shared dev RDS (SSM endpoint).
   app_rds_endpoint = local.is_pr ? local.rds_endpoint : module.rds_proxy[0].endpoint
 
   lambda_env_payment = merge({

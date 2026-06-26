@@ -75,8 +75,6 @@ resource "aws_security_group" "rds" {
     description     = "PostgreSQL from Lambda"
   }
 
-  # Kept alongside the Lambda rule during rollout as the rollback lever; drops out
-  # automatically when the proxy is disabled. Remove the Lambda rule in a follow-up.
   dynamic "ingress" {
     for_each = length(aws_security_group.proxy) > 0 ? [1] : []
     content {
@@ -107,8 +105,7 @@ resource "aws_security_group" "proxy" {
     description     = "PostgreSQL from Lambda"
   }
 
-  # Scoped by CIDR (not the RDS SG id) to avoid a circular dependency: the RDS
-  # SG already references this proxy SG for its ingress.
+  # Scoped by CIDR, not the RDS SG id, to avoid a circular SG dependency.
   egress {
     from_port   = 5432
     to_port     = 5432

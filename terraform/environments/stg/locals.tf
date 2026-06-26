@@ -7,8 +7,6 @@ locals {
   custom_domain = "stg-payments.ustaxcourt.gov"
   rds_db_name   = "paymentportal"
 
-  # RDS Proxy backend-connection ceiling (% of max_connections, ~198 on db.t3.small).
-  # 100% — stg RDS is dedicated, so the proxy may use all available connections.
   proxy_max_connections_percent = 100
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
@@ -27,9 +25,7 @@ locals {
   } : {})
 
   # Migration Lambda: migrationRunner
-  # Needs RDS only — no payment secrets. RDS_MASTER_SECRET_ARN must be the admin
-  # creds for CREATE/DROP DATABASE during knex migrations.
-  # Connects DIRECTLY to RDS, not the proxy: CREATE/DROP DATABASE pins/breaks through a proxy.
+  # Needs RDS only — no payment secrets. Connects directly, not via proxy (CREATE/DROP DATABASE breaks through a proxy).
   lambda_env_migration = {
     NODE_ENV              = local.node_env
     APP_ENV               = local.app_env

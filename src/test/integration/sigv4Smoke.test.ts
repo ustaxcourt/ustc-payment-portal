@@ -1,8 +1,6 @@
 import { signedFetch, signRequest, assumeRole, signedFetchWithCredentials } from "./sigv4Helper";
 
-// These hit the deployed API end-to-end (Lambda cold start + DB-through-proxy + Pay.gov
-// SOAP), which can exceed Jest's 5s default. Give the integration suite generous headroom.
-jest.setTimeout(20000);
+jest.setTimeout(20000); // end-to-end calls can exceed Jest's 5s default
 
 const hasSigningCredentials =
   Boolean(process.env.AWS_ACCESS_KEY_ID) && Boolean(process.env.AWS_SECRET_ACCESS_KEY);

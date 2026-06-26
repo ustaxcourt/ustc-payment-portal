@@ -49,10 +49,7 @@ export async function getRdsCredentials(): Promise<RdsConnectionConfig> {
   if (!username) throw new Error("RDS secret is missing 'username' field");
   if (!password) throw new Error("RDS secret is missing 'password' field");
 
-  // Trust both: Node's built-in roots (the RDS Proxy uses a public Amazon CA) plus the
-  // bundled RDS CA (a direct RDS instance uses the private RDS CA). Local dev has no bundle.
-  // This deliberately widens trust to all public CAs; rejectUnauthorized + hostname check
-  // still require a cert for the exact proxy host. Reviewed/accepted for the proxy rollout.
+  // Trust Node's public roots (proxy's public Amazon CA) plus the bundled private RDS CA.
   const caPath = join(__dirname, "rds-ca-bundle.pem");
   const ssl = existsSync(caPath)
     ? { rejectUnauthorized: true, ca: [...rootCertificates, readFileSync(caPath, "utf8")] }
