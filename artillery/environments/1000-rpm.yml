@@ -9,8 +9,8 @@ config:
     maxErrorRate: 100
 
   phases:
-    - duration: 30
-      arrivalRate: 2
-      name: debug-low-load
+    - duration: 300
+      arrivalRate: 17
+      name: baseline-1000-rpm
 
   processor: "../processor.js"

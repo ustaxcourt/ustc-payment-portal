@@ -9,7 +9,7 @@ config:
     maxErrorRate: 100
 
   phases:
-    - duration: 30
+    - duration: 300
       arrivalRate: 167
       name: stress-10000-rpm
 

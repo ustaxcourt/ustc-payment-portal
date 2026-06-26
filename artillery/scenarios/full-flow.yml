@@ -26,8 +26,6 @@ scenarios:
           beforeRequest:
             - "setTokenHeader"
           afterResponse: "logResponse"
-          headers:
-            Authorization: "{{ PAY_GOV_DEV_SERVER_ACCESS_TOKEN }}"
           expect:
             - statusCode: 200
 
