@@ -26,7 +26,7 @@ resource "aws_lambda_permission" "allow_eventbridge" {
 # Child alarm A — the scheduled WSDL probe is failing.
 resource "aws_cloudwatch_metric_alarm" "healthcheck_failed" {
   alarm_name          = "${var.name_prefix}-paygov-healthcheck-failed"
-  alarm_description   = "Pay.gov WSDL health probe reported unhealthy (no 2xx), or stopped reporting, within the health window. Child of ${var.name_prefix}-paygov-unhealthy."
+  alarm_description   = "Pay.gov WSDL health probe reported unhealthy (no 2xx), or stopped reporting, within the health window. Child of ${var.name_prefix}-paygov-unhealthy-composite."
   namespace           = "USTC/PaymentPortal"
   metric_name         = "PayGovHealthy"
   dimensions          = { Environment = var.environment }
@@ -44,7 +44,7 @@ resource "aws_cloudwatch_metric_alarm" "healthcheck_failed" {
 # Child alarm B — live payment requests are hitting Pay.gov transport errors.
 resource "aws_cloudwatch_metric_alarm" "errors" {
   alarm_name          = "${var.name_prefix}-paygov-errors"
-  alarm_description   = "Pay.gov transport/communication errors on live payment requests (>= ${var.error_alarm_threshold} in the health window). Child of ${var.name_prefix}-paygov-unhealthy."
+  alarm_description   = "Pay.gov transport/communication errors on live payment requests (>= ${var.error_alarm_threshold} in the health window). Child of ${var.name_prefix}-paygov-unhealthy-composite."
   namespace           = "USTC/PaymentPortal"
   metric_name         = "PayGovError"
   dimensions          = { Environment = var.environment }
@@ -61,7 +61,7 @@ resource "aws_cloudwatch_metric_alarm" "errors" {
 
 # Composite — Pay.gov is unhealthy if EITHER child trips.
 resource "aws_cloudwatch_composite_alarm" "unhealthy" {
-  alarm_name        = "${var.name_prefix}-paygov-unhealthy"
+  alarm_name        = "${var.name_prefix}-paygov-unhealthy-composite"
   alarm_description = <<-EOT
     Pay.gov is unhealthy: the scheduled health probe is failing and/or live payment
     requests are hitting Pay.gov transport errors.
