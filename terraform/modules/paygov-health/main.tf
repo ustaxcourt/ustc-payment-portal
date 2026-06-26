@@ -71,7 +71,7 @@ resource "aws_cloudwatch_composite_alarm" "unhealthy" {
     Error-rate alarm:   ${aws_cloudwatch_metric_alarm.errors.alarm_name}
   EOT
 
-  alarm_rule = "ALARM(${aws_cloudwatch_metric_alarm.healthcheck_failed.alarm_name}) OR ALARM(${aws_cloudwatch_metric_alarm.errors.alarm_name})"
+  alarm_rule = "ALARM(\"${aws_cloudwatch_metric_alarm.healthcheck_failed.alarm_name}\") OR ALARM(\"${aws_cloudwatch_metric_alarm.errors.alarm_name}\")"
 
   actions_enabled = true
   alarm_actions   = var.alarm_sns_topic_arns
