@@ -48,7 +48,13 @@
     "seed:make": "npm run knex -- seed:make $1",
     "seed:run": "npm run knex -- seed:run",
     "docker": "docker compose up",
-    "docker:migration": "MIGRATION_MODE=1 docker compose up"
+    "docker:migration": "MIGRATION_MODE=1 docker compose up",
+    "artillery:1000:full": "artillery run artillery/scenarios/full-flow.yml --config artillery/environments/1000-rpm.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/1000-rpm-results.json",
+    "artillery:10000:full": "artillery run artillery/scenarios/full-flow.yml --config artillery/environments/10000-rpm.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/10000-rpm-results.json",
+    "artillery:ramp:full": "artillery run artillery/scenarios/full-flow.yml --config artillery/environments/ramp-test.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/ramp-test-results.json",
+    "artillery:1000:init": "artillery run artillery/scenarios/init-only.yml --config artillery/environments/1000-rpm.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/1000-rpm-results.json",
+    "artillery:10000:init": "artillery run artillery/scenarios/init-only.yml --config artillery/environments/10000-rpm.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/10000-rpm-results.json",
+    "artillery:ramp:init": "artillery run artillery/scenarios/init-only.yml --config artillery/environments/ramp-test.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/ramp-test-results.json"
   },
   "keywords": [],
   "author": "",

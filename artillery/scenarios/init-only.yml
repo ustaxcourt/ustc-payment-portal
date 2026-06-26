@@ -4,17 +4,14 @@ scenarios:
     flow:
       - function: "setTransactionReferenceId"
 
+      # STEP 1
       - post:
           url: "/init"
-          beforeRequest: "signWithSigV4IfNeeded"
+          beforeRequest:
+            - "setSignedInitBody"
+            - "signWithSigV4IfNeeded"
           afterResponse: "logResponse"
-          json:
-            transactionReferenceId: "{{ transactionReferenceId }}"
-            fee: "PETITION_FILING_FEE"
-            urlSuccess: "https://client.app/success"
-            urlCancel: "https://client.app/cancel"
-            metadata:
-              docketNumber: "{{ $randomString() }}"
+          body: "{{ requestBody }}"
           expect:
             - statusCode: 200
           capture:

@@ -1,6 +1,5 @@
 config:
   target: "http://localhost:8080"
-  # target: "https://aplnu5xea1.execute-api.us-east-1.amazonaws.com/pr-292"
 
   http:
     timeout: 60000

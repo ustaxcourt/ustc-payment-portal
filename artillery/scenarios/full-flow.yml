@@ -43,8 +43,6 @@ scenarios:
             - "signWithSigV4IfNeeded"
           afterResponse: "logResponse"
           body: "{{ requestBody }}"
-          # json:
-          #   token: "{{ paymentToken }}"
           expect:
             - statusCode: 200
 
@@ -56,13 +54,5 @@ scenarios:
           beforeRequest:
             - "signWithSigV4IfNeeded"
           afterResponse: "logResponse"
-          # capture:
-          #   - json: $.paymentStatus
-          #     as: "paymentStatus"
-          #     default: "NOT_READY"
           expect:
             - statusCode: 200
-            # - function: "validatePaymentComplete"
-          # retry:
-          #   count: 5
-          #   delay: 1

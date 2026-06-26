@@ -1,10 +1,12 @@
 config:
   target: "http://localhost:8080"
-  # target: "https://dev-payments.ustaxcourt.gov"
 
   http:
     timeout: 60000
     pool: 50
+
+  plugins:
+    fake-data: {}
 
   ensure:
     maxErrorRate: 100
@@ -13,10 +15,5 @@ config:
     - duration: 30
       arrivalRate: 167
       name: stress-10000-rpm
-
-  defaults:
-    headers:
-      Content-Type: "application/json"
-      Accept: "application/json"
 
   processor: "../processor.js"
