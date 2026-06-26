@@ -1,7 +1,5 @@
 'use strict';
 
-const http = require('http');
-const https = require('https');
 const crypto = require('crypto');
 const { URL } = require('url');
 const aws4 = require('aws4');
@@ -36,38 +34,23 @@ module.exports = {
     let opts;
     req.headers = req.headers || {};
 
-    const parsed = new URL(req.url);
-    const host = parsed.host;
+    const parsedBase = new URL(context.vars.target);
+    const host = parsedBase.host;
 
     const isLocalhost =
       host.includes('localhost') ||
       host.includes('127.0.0.1');
 
-    // req.headers = {
-    //   ...req.headers,
-    //   host,
-    //   'content-type': 'application/json',
-    //   accept: 'application/json',
-    // }
+    if (req.url.includes('{{')) {
+      req.url = req.url.replace(
+        '{{ transactionReferenceId }}',
+        context.vars.transactionReferenceId
+      );
+    }
 
-    // if (req.json !== undefined) {
-    //   body = JSON.stringify(req.json);
-    //   delete req.json;
-    // } else if (req.body === undefined || req.body === null) {
-    //   body = '';
-    // } else if (typeof req.body === 'string') {
-    //   body = req.body;
-    // } else {
-    //   body = JSON.stringify(req.body);
-    // }
+    const fullUrl = new URL(req.url, context.vars.target);
 
     if (req.json !== undefined) {
-      // req.headers = {
-      //   ...req.headers,
-      //   host,
-      //   'content-type': 'application/json',
-      //   accept: 'application/json',
-      // }
       body = JSON.stringify(req.json);
       delete req.json;
     }
@@ -96,9 +79,8 @@ module.exports = {
 
       opts = {
         host,
-        // port: parsed.protocol === 'https:' ? 443 : 80,
         method: req.method,
-        path: parsed.pathname + (parsed.search || ""),
+        path: fullUrl.pathname + (fullUrl.search || ""),
         service: "execute-api",
         region,
         headers: {
@@ -106,6 +88,10 @@ module.exports = {
         },
         body,
       };
+
+      console.log("ACTUAL URL:", req.url);
+      console.log("FULL URL:", fullUrl.href);
+      console.log("PATH USED FOR SIGNING:", fullUrl.pathname);
 
       aws4.sign(opts, {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -120,14 +106,6 @@ module.exports = {
 
       return done();
     }
-
-    // opts = {
-    //   host,
-    //   method: req.method,
-    //   path: parsed.pathname + (parsed.search || ""),
-    // }
-
-    // req.headers = opts.headers;
 
     return done();
   },

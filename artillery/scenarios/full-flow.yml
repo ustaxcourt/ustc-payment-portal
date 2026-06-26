@@ -51,6 +51,7 @@ scenarios:
             - statusCode: 200
 
       - think: 1
+      - log: "DEBUG ID: {{ transactionReferenceId }}"
 
       # STEP 4
       - get:
