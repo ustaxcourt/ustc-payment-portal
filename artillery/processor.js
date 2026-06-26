@@ -77,12 +77,13 @@ module.exports = {
       req.headers = {
         ...req.headers,
         host,
+        accept: 'application/json',
       }
     } else {
       req.headers = {
         host: host,
         'content-type': 'application/json',
-        accept: 'application/json'
+        accept: 'application/json',
       };
     }
 
