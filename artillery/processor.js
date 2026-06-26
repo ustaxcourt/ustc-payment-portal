@@ -62,22 +62,28 @@ module.exports = {
     // }
 
     if (req.json !== undefined) {
-      req.headers = {
-        ...req.headers,
-        host,
-        'content-type': 'application/json',
-        accept: 'application/json',
-      }
+      // req.headers = {
+      //   ...req.headers,
+      //   host,
+      //   'content-type': 'application/json',
+      //   accept: 'application/json',
+      // }
       body = JSON.stringify(req.json);
       delete req.json;
     }
 
     if (req.method === 'GET') {
+      body = '';
       req.headers = {
         ...req.headers,
         host,
       }
-      body = undefined;
+    } else {
+      req.headers = {
+        host: host,
+        'content-type': 'application/json',
+        accept: 'application/json'
+      };
     }
 
     if (!isLocalhost && process.env.AWS_SESSION_TOKEN) {

@@ -17,12 +17,4 @@ config:
       arrivalRate: 2
       name: debug-low-load
 
-  defaults:
-    headers:
-      Content-Type: "application/json"
-      Accept: "application/json"
-
-    capture:
-      json: true
-
   processor: "../processor.js"
