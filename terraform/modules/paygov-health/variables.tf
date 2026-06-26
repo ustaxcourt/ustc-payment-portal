@@ -24,6 +24,18 @@ variable "alarm_sns_topic_arns" {
   default     = []
 }
 
+variable "health_window_seconds" {
+  description = "Evaluation window (seconds) for both child alarms. Must exceed the ~15-min probe cadence so each window contains at least one probe. Default 1200 (20 min) per the PAY-215 acceptance criteria."
+  type        = number
+  default     = 1200
+}
+
+variable "error_alarm_threshold" {
+  description = "Number of Pay.gov transport errors (Sum of PayGovError) within the window that trips the error child alarm. Default 1 = page on a single error."
+  type        = number
+  default     = 1
+}
+
 variable "tags" {
   description = "Tags to apply to created resources"
   type        = map(string)

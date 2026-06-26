@@ -392,6 +392,7 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Effect = "Allow", # CloudWatch alarms — scoped to project-prefixed alarms
         Action = [
           "cloudwatch:PutMetricAlarm",
+          "cloudwatch:PutCompositeAlarm",
           "cloudwatch:DeleteAlarms",
           "cloudwatch:ListTagsForResource",
           "cloudwatch:TagResource",

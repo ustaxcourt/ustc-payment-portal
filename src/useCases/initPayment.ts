@@ -15,6 +15,7 @@ import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionR
 import { ClientPermission } from "../types/ClientPermission";
 import { safeUpdateToFailed } from "../utils/safeUpdateToFailed";
 import { authorizeClient } from "../authorizeClient";
+import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
@@ -190,6 +191,7 @@ export const initPayment: InitPayment = async (
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
     });
+    emitPayGovErrorMetric();
     await safeUpdateToFailed(
       appContext,
       agencyTrackingId,
