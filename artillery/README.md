@@ -26,11 +26,11 @@ These examples demonstrate how requests are signed and sent outside Artillery fo
 ### Initialization Request
 
 ```bash
-curl -X POST "https://aplnu5xea1.execute-api.us-east-1.amazonaws.com/pr-292/init" \
+curl -X POST "https://dev-payments.ustaxcourt.gov/init" \
   --aws-sigv4 "aws:amz:us-east-1:execute-api" \
   --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
   -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
-  -H "Host: aplnu5xea1.execute-api.us-east-1.amazonaws.com" \
+  -H "Host: dev-payments.ustaxcourt.gov" \
   -H "Accept: application/json" \
   -H "Content-Type: application/json" \
   -d '{
@@ -49,7 +49,7 @@ curl -X POST "https://aplnu5xea1.execute-api.us-east-1.amazonaws.com/pr-292/init
 ### Processing Request
 
 ```bash
-curl -X POST "https://aplnu5xea1.execute-api.us-east-1.amazonaws.com/pr-292/process" \
+curl -X POST "https://dev-payments.ustaxcourt.gov/process" \
   --aws-sigv4 "aws:amz:us-east-1:execute-api" \
   --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
   -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
@@ -63,8 +63,8 @@ curl -X POST "https://aplnu5xea1.execute-api.us-east-1.amazonaws.com/pr-292/proc
 ### Choose Payment Outcome Request
 
 ```bash
-curl -X POST "https://dev-payments.ustaxcourt.gov/pay/{{ choiceMethod }}/{{ choiceStatus }}?token={{ paymentToken }}" \
-  -H "Authorization: {{ PAY_GOV_DEV_SERVER_ACCESS_TOKEN }}"
+curl -X POST "https://dev-payments.ustaxcourt.gov/pay/<choiceMethod>/<choiceStatus>?token=<paymentToken>" \
+   -H "Authorization: $PAY_GOV_DEV_SERVER_ACCESS_TOKEN"
 ```
 
 ---
@@ -72,7 +72,7 @@ curl -X POST "https://dev-payments.ustaxcourt.gov/pay/{{ choiceMethod }}/{{ choi
 ### Details Request
 
 ```bash
-curl -X GET "https://aplnu5xea1.execute-api.us-east-1.amazonaws.com/pr-292/details?token=550e8400-e29b-41d4-a716-446655440000" \
+curl -X GET "https://dev-payments.ustaxcourt.gov/details/550e8400-e29b-41d4-a716-446655440000" \
   --aws-sigv4 "aws:amz:us-east-1:execute-api" \
   --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
   -H "x-amz-security-token: $AWS_SESSION_TOKEN"

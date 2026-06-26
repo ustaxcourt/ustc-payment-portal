@@ -1,7 +1,5 @@
 # PAY-329: Load Testing Spike
 
-# Updated Sections (Drop-in Replacement)
-
 ## Observations
 
 ### 1. 1,000 RPM (Full Flow – Corrected Behavior)
@@ -46,13 +44,13 @@ Results show **severe degradation under load**:
 - ✅ HTTP 200: **1193 (\~18%)**
 - ❌ HTTP 429 (rate limited): **4684 (\~72%)**
 - ❌ HTTP 500: **645 (\~10%)**
-- Failed virtual users: **4506** [\[ustaxcourt...epoint.com\]](https://ustaxcourt-my.sharepoint.com/personal/franz_tanglao_ctr_ustaxcourt_gov/Documents/Microsoft%20Copilot%20Chat%20Files/10000-rpm-full-results.json)
+- Failed virtual users: **4506**
 
 #### Latency
 
-- Overall mean: \~309 ms (skewed by fast failures) [\[ustaxcourt...epoint.com\]](https://ustaxcourt-my.sharepoint.com/personal/franz_tanglao_ctr_ustaxcourt_gov/Documents/Microsoft%20Copilot%20Chat%20Files/10000-rpm-full-results.json)
+- Overall mean: \~309 ms (skewed by fast failures)
 - Successful (2xx) mean: **\~796 ms**
-- p95 (2xx): **\~3984 ms** [\[ustaxcourt...epoint.com\]](https://ustaxcourt-my.sharepoint.com/personal/franz_tanglao_ctr_ustaxcourt_gov/Documents/Microsoft%20Copilot%20Chat%20Files/10000-rpm-full-results.json)
+- p95 (2xx): **\~3984 ms**
 
 #### Key Behavior
 
@@ -259,25 +257,3 @@ Run isolated tests:
 | 1,000 RPM documented  | ✅ Met                         |
 | 10,000 RPM documented | ✅ Met                         |
 | Bottleneck analysis   | ✅ Substantially met           |
-
----
-
-## Final Takeaway
-
-> Your system **works correctly**, but:
-
-- ✅ Handles expected real-world load (30–80/day) easily
-- ⚠️ Begins degrading near **1,000 RPM**
-- ❌ Fails dramatically at **10,000 RPM**
-
-### Bottom line:
-
-- You are **\~10–30x over real workload capacity**
-- But **not resilient to burst spikes without throttling or queuing**
-
----
-
-If you want, I can next:
-
-- generate a **clean PNG-style chart** (actual plotted graph)
-- or convert this into a **Confluence-ready report with visuals**
