@@ -45,8 +45,14 @@ variable "error_alarm_threshold" {
   default     = 1
 
   validation {
-    condition     = var.error_alarm_threshold >= 1
-    error_message = "error_alarm_threshold must be >= 1 (a threshold of 0 would always be satisfied when any data is present)."
+    # A threshold is a count of errors, so it must be a positive integer. Terraform has no
+    # integer type, so floor(x) == x enforces whole numbers; a fractional value like 1.5 would
+    # silently behave as its ceiling (2) against the integer PayGovError Sum.
+    condition = (
+      var.error_alarm_threshold >= 1 &&
+      floor(var.error_alarm_threshold) == var.error_alarm_threshold
+    )
+    error_message = "error_alarm_threshold must be a positive integer (>= 1)."
   }
 }
 
