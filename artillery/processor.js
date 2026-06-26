@@ -30,17 +30,12 @@ module.exports = {
   },
 
   signWithSigV4IfNeeded: (req, context, ee, done) => {
-    let body = req.body || '';
+    let body = req.body || "";
     let opts;
-    let path;
     req.headers = req.headers || {};
 
     const parsedBase = new URL(context.vars.target);
     const host = parsedBase.host;
-
-    const isApiGw =
-      host.includes('execute-api') &&
-      host.includes('amazonaws.com');
 
     const isLocalhost =
       host.includes('localhost') ||
@@ -54,14 +49,6 @@ module.exports = {
     }
 
     const fullUrl = new URL(req.url, context.vars.target);
-
-    if (isApiGw) {
-      // API Gateway needs stage in path
-      path = fullUrl.pathname + (fullUrl.search || "");
-    } else {
-      // Custom domain strips stage
-      path = fullUrl.pathname + (fullUrl.search || "");
-    }
 
     if (req.json !== undefined) {
       body = JSON.stringify(req.json);
@@ -83,6 +70,7 @@ module.exports = {
       };
     }
 
+    // Sign the request with AWS SigV4 if not localhost and AWS_SESSION_TOKEN is present
     if (!isLocalhost && process.env.AWS_SESSION_TOKEN) {
       req.headers['x-amz-security-token'] = process.env.AWS_SESSION_TOKEN;
       const region =
@@ -108,8 +96,7 @@ module.exports = {
         sessionToken: process.env.AWS_SESSION_TOKEN
       });
 
-      req.headers = opts.headers;
-      // req.body = opts.body;
+      req.headers = opts.headers;      // req.body = opts.body;
       req.body = (req.method === 'GET') ? undefined : opts.body;
       req._artilleryRawBody = true;
 
