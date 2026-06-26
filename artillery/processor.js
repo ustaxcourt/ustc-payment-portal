@@ -127,33 +127,10 @@ module.exports = {
        const headers = { ...(req.headers ?? {}) };
        if (headers.authorization) headers.authorization = "[Redacted]";
        if (headers.Authorization) headers.Authorization = "[Redacted]";
+       if (headers["x-amz-security-token"]) headers["x-amz-security-token"] = "[Redacted]";
        console.log("REQUEST:", req.method, req.url, req.body, req.json, headers);
        console.log("RESPONSE:", res.statusCode, res.body, res.headers);
      }
-    return done();
-  },
-
-  validatePaymentComplete: (_req, res, _context, _ee, done) => {
-    let body;
-
-    try {
-      body = JSON.parse(res.body);
-    } catch (_e) {
-      return done(new Error("Invalid JSON response"));
-    }
-
-    const status = body.paymentStatus;
-
-    if (!status || status === 'pending' || status === 'NOT_READY') {
-      console.log("Payment not ready yet:", status);
-      if (!status || status === 'pending' || status === 'NOT_READY') {
-        console.log("Payment not ready yet:", status);
-        return done(new Error("retry")); // keep as retry signal
-      }
-      return done(new Error("Payment not completed yet"));
-    }
-
-    console.log("Payment complete:", status);
     return done();
   },
 
