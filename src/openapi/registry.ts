@@ -62,10 +62,22 @@ registry.register("PaymentMethod", PaymentMethodSchema);
 registry.register("ProcessPaymentRequest", ProcessPaymentRequestSchema);
 registry.register("ProcessPaymentResponse", ProcessPaymentResponseSchema);
 registry.register("GoneError", GoneErrorSchema);
-registry.register("RecentTransactionsResponse", RecentTransactionsResponseSchema);
-registry.register("TransactionsByStatusPathParams", TransactionsByStatusPathParamsSchema);
-registry.register("TransactionsByStatusResponse", TransactionsByStatusResponseSchema);
-registry.register("TransactionPaymentStatusResponse", TransactionPaymentStatusResponseSchema);
+registry.register(
+  "RecentTransactionsResponse",
+  RecentTransactionsResponseSchema,
+);
+registry.register(
+  "TransactionsByStatusPathParams",
+  TransactionsByStatusPathParamsSchema,
+);
+registry.register(
+  "TransactionsByStatusResponse",
+  TransactionsByStatusResponseSchema,
+);
+registry.register(
+  "TransactionPaymentStatusResponse",
+  TransactionPaymentStatusResponseSchema,
+);
 
 // ============================================
 // AWS Signature Version 4 Security Scheme
@@ -112,7 +124,8 @@ registry.registerPath({
       },
     },
     400: {
-      description: "Invalid request payload (e.g., missing body, validation error)",
+      description:
+        "Invalid request payload (e.g., missing body, validation error)",
       content: {
         "application/json": {
           schema: BadRequestErrorSchema,
@@ -120,7 +133,8 @@ registry.registerPath({
       },
     },
     403: {
-      description: "Forbidden - invalid SigV4 signature or client not authorized",
+      description:
+        "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,
@@ -273,7 +287,8 @@ registry.registerPath({
       },
     },
     404: {
-      description: "Token not found - no transaction exists for the supplied token",
+      description:
+        "Token not found - no transaction exists for the supplied token",
       content: {
         "application/json": {
           schema: NotFoundErrorSchema,
@@ -300,7 +315,8 @@ registry.registerPath({
       },
     },
     502: {
-      description: "Bad Gateway - Pay.gov returned an invalid or unparseable response",
+      description:
+        "Bad Gateway - Pay.gov returned an invalid or unparseable response",
       content: {
         "application/json": {
           schema: GatewayErrorSchema,
@@ -339,7 +355,8 @@ registry.registerPath({
       },
     },
     403: {
-      description: "Forbidden - invalid SigV4 signature or client not authorized",
+      description:
+        "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,
@@ -364,7 +381,8 @@ registry.registerPath({
   method: "get",
   path: "/transactions/{paymentStatus}",
   summary: "Get transactions by payment status",
-  description: "Returns up to 100 transactions matching the requested payment status.",
+  description:
+    "Returns up to 100 transactions matching the requested payment status.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   request: {
@@ -372,7 +390,8 @@ registry.registerPath({
   },
   responses: {
     200: {
-      description: "Transactions for the requested status retrieved successfully",
+      description:
+        "Transactions for the requested status retrieved successfully",
       content: {
         "application/json": {
           schema: TransactionsByStatusResponseSchema,
@@ -388,7 +407,8 @@ registry.registerPath({
       },
     },
     403: {
-      description: "Forbidden - invalid SigV4 signature or client not authorized",
+      description:
+        "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,
@@ -426,7 +446,8 @@ registry.registerPath({
       },
     },
     403: {
-      description: "Forbidden - invalid SigV4 signature or client not authorized",
+      description:
+        "Forbidden - invalid SigV4 signature or client not authorized",
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,
@@ -454,7 +475,7 @@ export const generateOpenAPIDocument = () => {
     openapi: "3.1.0",
     info: {
       title: "USTC Payment Portal API",
-      version: "1.0.0",
+      version: "1.0.1",
       description:
         "API for integrating with Pay.gov payment services for the US Tax Court.",
       contact: {
@@ -482,7 +503,8 @@ export const generateOpenAPIDocument = () => {
     tags: [
       {
         name: "Payments",
-        description: "Payment initialization, processing, and status operations",
+        description:
+          "Payment initialization, processing, and status operations",
       },
     ],
   });
