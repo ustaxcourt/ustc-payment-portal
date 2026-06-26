@@ -226,6 +226,6 @@ Key metrics to evaluate:
 
 ## Sample Results
 
-Example: 1,000 RPM full-flow test
+Example: 1,000 RPM full-flow test in the Artillery Dashboard.
 
 <img src="images/Screenshot 1000-rpm-results.png" alt="Artillery Dashboard" width="600" />

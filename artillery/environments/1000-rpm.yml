@@ -5,9 +5,6 @@ config:
     timeout: 60000
     pool: 50
 
-  plugins:
-    fake-data: {}
-
   ensure:
     maxErrorRate: 100
 
