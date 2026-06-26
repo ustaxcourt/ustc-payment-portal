@@ -8,6 +8,12 @@ variable "environment" {
   type        = string
 }
 
+variable "runbook_url" {
+  description = "URL of the runbook for responding to a Pay.gov-unhealthy alarm. Surfaced in the composite alarm description / notification."
+  type        = string
+  default     = ""
+}
+
 variable "testcert_function_name" {
   description = "Name of the testCert Lambda invoked by the schedule"
   type        = string

@@ -69,6 +69,7 @@ resource "aws_cloudwatch_composite_alarm" "unhealthy" {
     Severity: critical
     Health-probe alarm: ${aws_cloudwatch_metric_alarm.healthcheck_failed.alarm_name}
     Error-rate alarm:   ${aws_cloudwatch_metric_alarm.errors.alarm_name}
+    Runbook: ${var.runbook_url}
   EOT
 
   alarm_rule = "ALARM(\"${aws_cloudwatch_metric_alarm.healthcheck_failed.alarm_name}\") OR ALARM(\"${aws_cloudwatch_metric_alarm.errors.alarm_name}\")"
