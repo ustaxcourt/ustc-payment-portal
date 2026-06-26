@@ -1,5 +1,5 @@
-const crypto = require('crypto');
-const { URL } = require('url');
+const crypto = require('node:crypto');
+const { URL } = require('node:url');
 const aws4 = require('aws4');
 
 require('dotenv').config();
@@ -19,7 +19,7 @@ module.exports = {
     return done();
   },
 
-  setSignedProcessBody: (req, context, ee, done) => {
+  setSignedProcessBody: (req, context, _ee, done) => {
     const bodyObj = {
       token: context.vars.paymentToken,
     };
@@ -138,7 +138,7 @@ module.exports = {
 
     try {
       body = JSON.parse(res.body);
-    } catch (e) {
+    } catch (_e) {
       return done(new Error("Invalid JSON response"));
     }
 

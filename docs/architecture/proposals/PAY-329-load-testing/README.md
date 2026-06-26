@@ -38,7 +38,7 @@ After fixes:
 - System begins processing requests under load
 - Subsequent tests show **timeouts (`ERR_SOCKET_TIMEOUT`) instead of 403s**
 
-👉 This indicates a transition from:
+This indicates a transition from:
 
 ```
 Auth failure → System capacity limits
