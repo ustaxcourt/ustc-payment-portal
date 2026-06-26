@@ -32,10 +32,15 @@ module.exports = {
   signWithSigV4IfNeeded: (req, context, ee, done) => {
     let body = req.body || '';
     let opts;
+    let path;
     req.headers = req.headers || {};
 
     const parsedBase = new URL(context.vars.target);
     const host = parsedBase.host;
+
+    const isApiGw =
+      host.includes('execute-api') &&
+      host.includes('amazonaws.com');
 
     const isLocalhost =
       host.includes('localhost') ||
@@ -49,6 +54,14 @@ module.exports = {
     }
 
     const fullUrl = new URL(req.url, context.vars.target);
+
+    if (isApiGw) {
+      // API Gateway needs stage in path
+      path = fullUrl.pathname + (fullUrl.search || "");
+    } else {
+      // Custom domain strips stage
+      path = fullUrl.pathname + (fullUrl.search || "");
+    }
 
     if (req.json !== undefined) {
       body = JSON.stringify(req.json);
