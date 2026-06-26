@@ -1,5 +1,3 @@
-'use strict';
-
 const crypto = require('crypto');
 const { URL } = require('url');
 const aws4 = require('aws4');
@@ -7,7 +5,7 @@ const aws4 = require('aws4');
 require('dotenv').config();
 
 module.exports = {
-  setSignedInitBody: (req, context, ee, done) => {
+  setSignedInitBody: (req, context, _ee, done) => {
     const bodyObj = {
       transactionReferenceId: context.vars.transactionReferenceId,
       fee: "PETITION_FILING_FEE",
@@ -29,7 +27,7 @@ module.exports = {
     return done();
   },
 
-  signWithSigV4IfNeeded: (req, context, ee, done) => {
+  signWithSigV4IfNeeded: (req, context, _ee, done) => {
     let body = req.body || "";
     let opts;
     req.headers = req.headers || {};
@@ -71,8 +69,10 @@ module.exports = {
     }
 
     // Sign the request with AWS SigV4 if not localhost and AWS_SESSION_TOKEN is present
-    if (!isLocalhost && process.env.AWS_SESSION_TOKEN) {
-      req.headers['x-amz-security-token'] = process.env.AWS_SESSION_TOKEN;
+    if (!isLocalhost && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      if (process.env.AWS_SESSION_TOKEN) {
+        req.headers['x-amz-security-token'] = process.env.AWS_SESSION_TOKEN;
+      }
       const region =
         process.env.SIGV4_REGION ??
         process.env.AWS_REGION ??
@@ -106,28 +106,34 @@ module.exports = {
     return done();
   },
 
-  debugHeaders: (req, context, ee, next) => {
+  debugHeaders: (req, _context, _ee, next) => {
     if (process.env.ARTILLERY_DEBUG_HEADERS === "1") {
       console.log("Authorization header:", req.headers?.authorization);
     }
     return next();
   },
 
-  setTransactionReferenceId: (context, events, done) => {
+  setTransactionReferenceId: (context, _events, done) => {
     const uuid = crypto.randomUUID();
     context.vars.transactionReferenceId = uuid;
     return done();
   },
 
-  logResponse: (req, res, context, ee, done) => {
-     if (process.env.ARTILLERY_DEBUG_RESPONSES === "1" || (res.statusCode ?? 0) >= 400) {
-      console.log("REQUEST:", req.method, req.url, req.body, req.json, req.headers);
-      console.log("RESPONSE:", res.statusCode, res.body, res.headers);
+  logResponse: (req, res, _context, _ee, done) => {
+     if (
+       process.env.ARTILLERY_DEBUG_RESPONSES === "1" ||
+       (res.statusCode ?? 0) >= 400
+     ) {
+       const headers = { ...(req.headers ?? {}) };
+       if (headers.authorization) headers.authorization = "[Redacted]";
+       if (headers.Authorization) headers.Authorization = "[Redacted]";
+       console.log("REQUEST:", req.method, req.url, req.body, req.json, headers);
+       console.log("RESPONSE:", res.statusCode, res.body, res.headers);
      }
     return done();
   },
 
-  validatePaymentComplete: (req, res, context, ee, done) => {
+  validatePaymentComplete: (_req, res, _context, _ee, done) => {
     let body;
 
     try {
@@ -151,7 +157,7 @@ module.exports = {
     return done();
   },
 
-  setPaymentOutcome: (context, events, done) => {
+  setPaymentOutcome: (context, _events, done) => {
     const target = context.vars.target || '';
 
     const isLocalhost =
@@ -179,7 +185,7 @@ module.exports = {
     done();
   },
 
-  setTokenHeader: (req, context, ee, done) => {
+  setTokenHeader: (req, _context, _ee, done) => {
     req.headers = {
       ...req.headers,
       Authorization: `Bearer ${process.env.PAY_GOV_DEV_SERVER_ACCESS_TOKEN}`,

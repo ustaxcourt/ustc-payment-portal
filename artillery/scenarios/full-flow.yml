@@ -11,7 +11,6 @@ scenarios:
             - "setSignedInitBody"
             - "signWithSigV4IfNeeded"
           afterResponse: "logResponse"
-          body: "{{ requestBody }}"
           expect:
             - statusCode: 200
           capture:
@@ -42,7 +41,6 @@ scenarios:
             - "setSignedProcessBody"
             - "signWithSigV4IfNeeded"
           afterResponse: "logResponse"
-          body: "{{ requestBody }}"
           expect:
             - statusCode: 200
 
