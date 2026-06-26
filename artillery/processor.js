@@ -43,12 +43,12 @@ module.exports = {
       host.includes('localhost') ||
       host.includes('127.0.0.1');
 
-    req.headers = {
-      ...req.headers,
-      Host: host,
-      'content-type': 'application/json',
-      accept: 'application/json',
-    }
+    // req.headers = {
+    //   ...req.headers,
+    //   host,
+    //   'content-type': 'application/json',
+    //   accept: 'application/json',
+    // }
 
     // if (req.json !== undefined) {
     //   body = JSON.stringify(req.json);
@@ -62,12 +62,22 @@ module.exports = {
     // }
 
     if (req.json !== undefined) {
+      req.headers = {
+        ...req.headers,
+        host,
+        'content-type': 'application/json',
+        accept: 'application/json',
+      }
       body = JSON.stringify(req.json);
       delete req.json;
     }
 
     if (req.method === 'GET') {
-      body = '';
+      req.headers = {
+        ...req.headers,
+        host,
+      }
+      body = undefined;
     }
 
     if (!isLocalhost && process.env.AWS_SESSION_TOKEN) {
@@ -97,8 +107,8 @@ module.exports = {
       });
 
       req.headers = opts.headers;
-      req.body = opts.body;
-
+      // req.body = opts.body;
+      req.body = (req.method === 'GET') ? undefined : opts.body;
       req._artilleryRawBody = true;
 
       return done();
