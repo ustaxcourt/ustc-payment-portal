@@ -22,8 +22,6 @@ scenarios:
 
       - function: "setPaymentOutcome"
 
-      - log: "Payment outcome chosen: {{ PAY_GOV_URL }} {{ choiceMethod }} {{ choiceStatus }}"
-
       # STEP 2
       - post:
           url: "{{ PAY_GOV_URL }}/pay/{{ choiceMethod }}/{{ choiceStatus }}?token={{ paymentToken }}"
@@ -51,7 +49,6 @@ scenarios:
             - statusCode: 200
 
       - think: 1
-      - log: "DEBUG ID: {{ transactionReferenceId }}"
 
       # STEP 4
       - get:

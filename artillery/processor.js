@@ -102,10 +102,6 @@ module.exports = {
         body,
       };
 
-      console.log("ACTUAL URL:", req.url);
-      console.log("FULL URL:", fullUrl.href);
-      console.log("PATH USED FOR SIGNING:", fullUrl.pathname);
-
       aws4.sign(opts, {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -192,8 +188,6 @@ module.exports = {
 
     context.vars.choiceMethod = choice.method;
     context.vars.choiceStatus = choice.status;
-
-    console.log(`Outcome set: ${choice.method} ${choice.status}`);
 
     done();
   },
