@@ -389,6 +389,7 @@ describe("initPayment", () => {
     );
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
     expect(appContext.logger.error).toHaveBeenCalled();
+    expect(emitErrorMock).not.toHaveBeenCalled();
   });
 
   it("wraps a real malformed Pay.gov XML response as PayGovError (drives safeParse end-to-end)", async () => {
@@ -452,6 +453,7 @@ describe("initPayment", () => {
     );
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
     expect(appContext.logger.error).toHaveBeenCalled();
+    expect(emitErrorMock).not.toHaveBeenCalled();
   });
 
   it("emits a PayGovError metric when the Pay.gov SOAP request fails", async () => {
