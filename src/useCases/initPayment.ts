@@ -1,19 +1,19 @@
-import { AppContext } from "../types/AppContext";
+import type { AppContext } from "@appTypes/AppContext";
 import {
   InitPaymentRequest,
   InitPaymentResponse,
-} from "../schemas/InitPayment.schema";
-import { InvalidRequestError } from "../errors/invalidRequest";
-import { ConflictError } from "../errors/conflict";
+} from "@schemas/InitPayment.schema";
+import { InvalidRequestError } from "@errors/invalidRequest";
+import { ConflictError } from "@errors/conflict";
 import FeesModel from "../db/FeesModel";
-import { generateAgencyTrackingId } from "../utils/generateTrackingId";
+import { generateAgencyTrackingId } from "@utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
 import { isUniqueViolation } from "../db/pgErrors";
-import { PayGovError } from "../errors/payGovError";
-import { ServerError } from "../errors/serverError";
-import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
-import { ClientPermission } from "../types/ClientPermission";
-import { safeUpdateToFailed } from "../utils/safeUpdateToFailed";
+import { PayGovError } from "@errors/payGovError";
+import { ServerError } from "@errors/serverError";
+import { StartOnlineCollectionRequest } from "@entities/StartOnlineCollectionRequest";
+import type { ClientPermission } from "@appTypes/ClientPermission";
+import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { authorizeClient } from "../authorizeClient";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
@@ -228,3 +228,4 @@ export const initPayment: InitPayment = async (
     paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${fee.tcsAppId}`,
   };
 };
+

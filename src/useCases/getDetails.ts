@@ -1,21 +1,21 @@
-import { ClientPermission } from "../types/ClientPermission";
-import { GetRequestRequest } from "../entities/GetDetailsRequest";
-import { AppContext } from "../types/AppContext";
-import { GetDetailsResponse } from "../schemas/GetDetails.schema";
-import { TransactionRecordSummary } from "../schemas/TransactionRecord.schema";
-import { TransactionStatus } from "../schemas/TransactionStatus.schema";
+import type { ClientPermission } from "@appTypes/ClientPermission";
+import { GetRequestRequest } from "@entities/GetDetailsRequest";
+import type { AppContext } from "@appTypes/AppContext";
+import { GetDetailsResponse } from "@schemas/GetDetails.schema";
+import { TransactionRecordSummary } from "@schemas/TransactionRecord.schema";
+import { TransactionStatus } from "@schemas/TransactionStatus.schema";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import {
   derivePaymentStatus,
   derivePaymentStatusFromSingleTransaction,
-} from "../utils/derivePaymentStatus";
-import { toPaymentMethod } from "../utils/toPaymentMethod";
+} from "@utils/derivePaymentStatus";
+import { toPaymentMethod } from "@utils/toPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
-import { NotFoundError } from "../errors/notFound";
-import { PayGovError } from "../errors/payGovError";
-import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
-import { ServerError } from "../errors/serverError";
+import { NotFoundError } from "@errors/notFound";
+import { PayGovError } from "@errors/payGovError";
+import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
+import { ServerError } from "@errors/serverError";
 import { authorizeClient } from "../authorizeClient";
 
 const PAYGOV_RETRY_MESSAGE =
@@ -197,3 +197,4 @@ const updatePendingAttemptFromPayGov = async (
 
   return { paymentStatus, transactions };
 };
+

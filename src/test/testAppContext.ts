@@ -1,4 +1,4 @@
-import { AppContext } from "../types/AppContext";
+import type { AppContext } from "@appTypes/AppContext";
 
 export const testAppContext: AppContext = {
   getHttpsAgent: jest.fn(),
@@ -18,3 +18,4 @@ export const testAppContext: AppContext = {
     warn: jest.fn(),
   },
 };
+

@@ -1,7 +1,7 @@
 import TransactionModel from "../db/TransactionModel";
-import { TransactionPaymentStatusResponseSchema } from "../schemas/TransactionPaymentStatus.schema";
-import { AppContext } from "../types/AppContext";
-import { TransactionPaymentStatusResponse } from "../types/TransactionPaymentStatus";
+import { TransactionPaymentStatusResponseSchema } from "@schemas/TransactionPaymentStatus.schema";
+import type { AppContext } from "@appTypes/AppContext";
+import type { TransactionPaymentStatusResponse } from "@appTypes/TransactionPaymentStatus";
 
 export type GetTransactionPaymentStatus = (
   appContext: AppContext
@@ -17,3 +17,4 @@ export const getTransactionPaymentStatus: GetTransactionPaymentStatus = async (
 
   return TransactionPaymentStatusResponseSchema.parse(totals);
 };
+
