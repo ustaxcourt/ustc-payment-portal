@@ -16,7 +16,7 @@ const credentialsFromEnv = (): AwsCredentialIdentity => {
   if (!accessKeyId || !secretAccessKey) {
     throw new Error(
       "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set to sign requests. " +
-        "Run `aws sso login --profile <profile>` and export credentials, or set them directly."
+        "Run `aws sso login --profile <profile>` and export credentials, or set them directly.",
     );
   }
 
@@ -48,10 +48,16 @@ export const assumeRole = async (
     throw new Error(`Failed to assume role ${roleArn}`);
   }
 
+  const { AccessKeyId, SecretAccessKey, SessionToken } = response.Credentials;
+
+  if (!AccessKeyId || !SecretAccessKey || !SessionToken) {
+    throw new Error(`Assumed role ${roleArn} returned incomplete credentials`);
+  }
+
   return {
-    accessKeyId: response.Credentials.AccessKeyId!,
-    secretAccessKey: response.Credentials.SecretAccessKey!,
-    sessionToken: response.Credentials.SessionToken,
+    accessKeyId: AccessKeyId,
+    secretAccessKey: SecretAccessKey,
+    sessionToken: SessionToken,
   };
 };
 

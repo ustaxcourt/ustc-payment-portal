@@ -5,11 +5,11 @@ import {
   resetCommonHandlerMocks,
 } from "./handlerTestCommon";
 import { processPaymentHandler } from "./processPaymentHandler";
-import { ForbiddenError } from "../errors/forbidden";
-import { GoneError } from "../errors/gone";
-import { NotFoundError } from "../errors/notFound";
-import { PayGovError } from "../errors/payGovError";
-import { processPayment } from "../useCases/processPayment";
+import { ForbiddenError } from "@errors/forbidden";
+import { GoneError } from "@errors/gone";
+import { NotFoundError } from "@errors/notFound";
+import { PayGovError } from "@errors/payGovError";
+import { processPayment } from "@useCases/processPayment";
 
 jest.mock("../useCases/processPayment", () => ({
   processPayment: jest.fn(),

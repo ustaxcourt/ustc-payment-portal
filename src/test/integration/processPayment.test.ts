@@ -1,7 +1,7 @@
 import { isLocal } from "../../config/appEnv";
 import { signedFetch } from "./sigv4Helper";
-import { InitPaymentRequest } from "../../schemas/InitPayment.schema";
-import { ProcessPaymentResponse } from "../../schemas/ProcessPayment.schema";
+import { InitPaymentRequest } from "@schemas/InitPayment.schema";
+import { ProcessPaymentResponse } from "@schemas/ProcessPayment.schema";
 
 type PayGovPaymentMethod = "PLASTIC_CARD" | "ACH" | "PAYPAL";
 type PayGovPaymentStatus = "Success" | "Failed";

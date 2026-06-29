@@ -1,7 +1,4 @@
-import {
-  PayGovTransactionStatus,
-  TransactionStatus,
-} from "../types/TransactionStatus";
+import type { PayGovTransactionStatus, TransactionStatus } from "@appTypes/TransactionStatus";
 
 export const parseTransactionStatus = (
   status: PayGovTransactionStatus
@@ -26,3 +23,4 @@ export const parseTransactionStatus = (
       throw new Error(`Could not parse transaction status ${status}`);
   }
 };
+
