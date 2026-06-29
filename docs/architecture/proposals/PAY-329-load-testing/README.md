@@ -1,259 +1,152 @@
-# PAY-329: Load Testing Spike
+# PAY-329: Load Testing Findings
+
+This document summarizes the saved Artillery artifacts under `artillery/results/` and records what they show about the current load-test spike.
+
+## Scope and Caveats
+
+- The how-to guidance for running Artillery lives in `artillery/README.md`.
+- The saved result files are the source of truth for the numbers below.
+- The `1000-rpm` and `10000-rpm` profile names describe approximate flow starts per minute, not literal HTTP requests per minute.
+- The two full-flow artifacts match the current 300-second environment files.
+- The two init-only artifacts do not match the current 300-second environment files and appear to come from shorter runs.
+- Request-level success and flow-level success are different metrics and need to be interpreted separately.
+
+## Saved Result Set
+
+| Artifact                                        | Scenario    | Notes                                                                  |
+| ----------------------------------------------- | ----------- | ---------------------------------------------------------------------- |
+| `artillery/results/1000-rpm-init-results.json`  | `init-only` | Older or shortened run; `60` users created rather than about `5100`    |
+| `artillery/results/10000-rpm-init-results.json` | `init-only` | Older or shortened run; `5010` users created rather than about `50100` |
+| `artillery/results/1000-rpm-full-results.json`  | `full-flow` | Matches current `17 arrivals/sec for 300s` profile                     |
+| `artillery/results/10000-rpm-full-results.json` | `full-flow` | Matches current `167 arrivals/sec for 300s` profile                    |
+
+## Results Summary
 
-## Observations
+### `1000-rpm-init-results.json`
+
+- Virtual users created: `60`
+- Virtual users completed: `52`
+- Virtual users failed: `8`
+- HTTP `200`: `52`
+- HTTP `429`: `8`
+- Overall mean response time: `303.6 ms`
+- Overall p95 response time: `459.5 ms`
+- Successful-request mean response time: `335.5 ms`
 
-### 1. 1,000 RPM (Full Flow – Corrected Behavior)
+Interpretation:
 
-Based on the provided results:
+- This was a short `init-only` run, not a current 5-minute profile run.
+- Even in this small sample, `/init` experienced throttling.
 
-- ✅ **0 failures**
-- ✅ **100% HTTP 200 success rate**
-- Total requests executed: **240**
-- Mean response time: **\~969ms** [\[ustaxcourt...epoint.com\]](https://ustaxcourt-my.sharepoint.com/personal/franz_tanglao_ctr_ustaxcourt_gov/Documents/Microsoft%20Copilot%20Chat%20Files/1000-rpm-full-results.json)
+### `10000-rpm-init-results.json`
 
-Latency distribution:
+- Virtual users created: `5010`
+- Virtual users completed: `312`
+- Virtual users failed: `4698`
+- HTTP `200`: `312`
+- HTTP `429`: `4659`
+- HTTP `500`: `39`
+- Overall mean response time: `181.2 ms`
+- Overall p95 response time: `368.8 ms`
+- Successful-request mean response time: `876.0 ms`
+- Successful-request p95 response time: `2618.1 ms`
 
-- p50: \~407 ms
-- p95: \~3678 ms
-- p99: \~3905 ms [\[ustaxcourt...epoint.com\]](https://ustaxcourt-my.sharepoint.com/personal/franz_tanglao_ctr_ustaxcourt_gov/Documents/Microsoft%20Copilot%20Chat%20Files/1000-rpm-full-results.json)
+Interpretation:
 
-Key observation:
+- This was also a shortened `init-only` run.
+- The dominant failure mode was `/init` throttling, with a small number of server errors.
+- The low overall mean is misleading because fast failures dominate the sample.
 
-- The system **successfully processes all requests**, but:
-  - **Tail latency is extremely high**
-  - Significant spikes appear at `/process` and `/details`
+### `1000-rpm-full-results.json`
 
-Endpoint-specific bottlenecks:
+- Virtual users created: `5100`
+- Virtual users completed: `3015`
+- Virtual users failed: `2085`
+- HTTP `200`: `11955`
+- HTTP `429`: `2190`
+- Overall mean response time: `321.9 ms`
+- Overall p95 response time: `507.8 ms`
+- Successful-request mean response time: `359.8 ms`
+- Successful-request p95 response time: `539.2 ms`
+- `/init` mean response time: `288.1 ms`
+- `/process` mean response time: `463.6 ms`
+- `/details` mean response time: `277.5 ms`
 
-- `/process` mean: **\~1386 ms**, with p95 \~3905 ms [\[ustaxcourt...epoint.com\]](https://ustaxcourt-my.sharepoint.com/personal/franz_tanglao_ctr_ustaxcourt_gov/Documents/Microsoft%20Copilot%20Chat%20Files/1000-rpm-full-results.json)
-- `/details` mean: **\~1206 ms** [\[ustaxcourt...epoint.com\]](https://ustaxcourt-my.sharepoint.com/personal/franz_tanglao_ctr_ustaxcourt_gov/Documents/Microsoft%20Copilot%20Chat%20Files/1000-rpm-full-results.json)
+Interpretation:
 
-👉 Interpretation:
+- This run was not stable at the flow level.
+- The main failure mode was HTTP `429`, mostly at `/init`.
+- `/process` was the slowest successful step in the end-to-end flow.
+- The saved artifact does not support a claim of `0` failures or `100%` success at this profile.
 
-> The system is **functionally stable at \~1,000 RPM**, but already exhibits **degradation patterns (queueing/backpressure)**.
+### `10000-rpm-full-results.json`
 
----
+- Virtual users created: `50100`
+- Virtual users completed: `2615`
+- Virtual users failed: `47485`
+- HTTP `200`: `8723`
+- HTTP `429`: `47263`
+- HTTP `500`: `1957`
+- Overall mean response time: `165.6 ms`
+- Overall p95 response time: `376.2 ms`
+- Successful-request mean response time: `382.0 ms`
+- Successful-request p95 response time: `572.6 ms`
+- `/init` mean response time: `142.3 ms`
+- `/process` mean response time: `412.6 ms`
+- `/details` mean response time: `261.2 ms`
 
-### 2. 10,000 RPM (Full Flow – Capacity Boundary)
+Interpretation:
 
-Results show **severe degradation under load**:
+- This run represents overload, not a usable operating point.
+- The dominant failure mode was `/init` throttling.
+- Additional HTTP `500` responses occurred later in the flow, especially around `/details`.
+- The low overall latency is again skewed by fast failures.
 
-#### Request Outcomes
+## Cross-Run Findings
 
-- Total requests: **6522**
-- ✅ HTTP 200: **1193 (\~18%)**
-- ❌ HTTP 429 (rate limited): **4684 (\~72%)**
-- ❌ HTTP 500: **645 (\~10%)**
-- Failed virtual users: **4506**
+### 1. Request-level and flow-level outcomes diverge sharply
 
-#### Latency
+- The full-flow artifacts contain many HTTP `200` responses while still showing poor end-to-end completion rates.
+- Any future summary should report both request success and virtual-user completion side by side.
 
-- Overall mean: \~309 ms (skewed by fast failures)
-- Successful (2xx) mean: **\~796 ms**
-- p95 (2xx): **\~3984 ms**
+### 2. `/init` is the main choke point in the saved runs
 
-#### Key Behavior
+- The majority of HTTP `429` responses are recorded at `/init` in both full-flow artifacts and both init-only artifacts.
+- This points to an upstream admission or throttling limit before most requests can proceed through the full workflow.
 
-- Massive **429 throttling at `/init`**
-- Frequent **500s in `/process` and `/details`**
-- High failure rate due to:
-  - upstream throttling
-  - internal processing failures under load
+### 3. `/process` is the slowest successful step
 
-👉 Interpretation:
+- In both full-flow artifacts, `/process` has the highest mean successful response time among the payment-portal endpoints.
+- That makes it the best first backend slice to inspect after `/init` throttling is understood.
 
-> The system **hard fails above \~10k RPM equivalent**, primarily through **rate limiting + backend overload**
+### 4. The current saved artifacts do not establish a stable threshold
 
----
+- The local artifact set does not support the claim that the system is stable at the lower profile.
+- A fresh controlled ramp is still needed to determine where sustained degradation begins.
 
-## Graphical Summary (5-Minute Projection)
+## Recommended Follow-Up
 
-### Throughput vs Stability
+### Fresh comparable runs
 
-```mermaid
-flowchart TB
-    subgraph Stable["✅ Stable Zone"]
-        A["1000 RPM<br/>● 100% success<br/>High latency spikes"]
-    end
-    subgraph Degradation["⚠️ Degradation Zone (Projected)"]
-        B["3000–5000 RPM<br/>Rising latency<br/>Intermittent 429s"]
-    end
-    subgraph Failure["❌ Failure Zone"]
-        C["10000 RPM<br/>● ~18% success<br/>~72% 429<br/>~10% 500"]
-    end
-    A --> B --> C
-    classDef stableStyle stroke:#4ade80,fill:#f0fdf4
-    classDef degradationStyle stroke:#facc15,fill:#fefce8
-    classDef failureStyle stroke:#f87171,fill:#fef2f2
-    class A stableStyle
-    class B degradationStyle
-    class C failureStyle
-```
+Re-run and archive a comparable set with the current configs:
 
----
+- `1000-rpm-init`
+- `1000-rpm-full`
+- `10000-rpm-init`
+- `10000-rpm-full`
 
-### Error Rate Comparison
+For each run, record:
 
-```
-Scenario        Success   429     500     Stability
----------------------------------------------------
-1,000 RPM       ~100%     0%      0%      ✅ Stable (slow)
-10,000 RPM      ~18%      72%     10%     ❌ Unstable
-```
+- command used
+- target URL
+- commit SHA
+- environment
+- timestamp
+- whether metrics are request-level or flow-level
 
----
+### Narrow next experiments
 
-### Latency Profile (Successful Requests)
-
-```
-Percentile   1,000 RPM     10,000 RPM
---------------------------------------
-p50          ~407 ms       ~369 ms
-p95          ~3678 ms      ~3984 ms
-p99          ~3905 ms      ~4492 ms
-```
-
-👉 Key insight:
-
-- High load does **not improve throughput**
-- It **only increases failure rate**, while latency remains poor
-
----
-
-## Key Findings
-
-### 1. Stability Threshold (Revised)
-
-- ✅ System is stable at **\~1,000 RPM (short-duration equivalent)**
-- ❌ System becomes unstable well before **10,000 RPM**
-
-> **Projected sustainable threshold: \~1,000–2,000 RPM**
-
----
-
-### 2. Performance at 1,000 RPM (5-Min Projection)
-
-For a 5-minute sustained run:
-
-- Expected total requests: **\~5,000**
-- Expected success rate: **\~100%**
-- Expected behavior:
-  - Increasing **tail latency (p95 > 3.5s)**
-  - Risk of eventual timeout saturation if sustained longer
-
----
-
-### 3. Performance at 10,000 RPM (5-Min Projection)
-
-For a 5-minute sustained run:
-
-- Expected total requests: **\~50,000**
-- Expected outcomes:
-  - ✅ \~9,000 successful
-  - ❌ \~36,000 throttled (429)
-  - ❌ \~5,000 failed (500)
-
-👉 System would:
-
-- Enter **persistent overload state**
-- Likely trigger:
-  - autoscaling limits
-  - DB connection exhaustion
-  - API Gateway throttling
-
----
-
-### 4. Bottleneck Identification
-
-Evidence strongly suggests bottlenecks at:
-
-#### Primary
-
-- **Rate limiting layer (API Gateway / WAF)**
-  - dominant 429s at high load [\[ustaxcourt...epoint.com\]](https://ustaxcourt-my.sharepoint.com/personal/franz_tanglao_ctr_ustaxcourt_gov/Documents/Microsoft%20Copilot%20Chat%20Files/10000-rpm-full-results.json)
-
-#### Secondary
-
-- **Backend processing (/process)**
-  - high latency and 500 errors
-
-#### Likely root causes
-
-- DB connection pool exhaustion
-- Lambda concurrency saturation
-- Queue/backlog buildup for async processing
-
----
-
-### 5. Latency Behavior
-
-At all loads:
-
-- Latency follows pattern:
-
-```
-stable → rising p95 → request queuing → failures
-```
-
-- Even at 1,000 RPM:
-  - system already shows **early signs of saturation**
-
----
-
-## Recommendations
-
-### 1. Identify True Breaking Point
-
-Run controlled ramp:
-
-```
-250 RPM → 500 RPM → 750 RPM → 1000 RPM → 1500 RPM → 2000 RPM
-```
-
-Track:
-
-- p95 latency
-- error %
-- queue depth
-
----
-
-### 2. Immediate Optimization Targets
-
-- **Database**
-  - connection pooling
-  - query optimization
-- **/process endpoint**
-  - largest latency contributor
-- **Retry / async patterns**
-  - reduce synchronous blocking
-
----
-
-### 3. Rate Limiting Strategy
-
-- Introduce:
-  - client backoff
-  - queue-based ingestion (SQS/EventBridge)
-- Avoid hard 429 collapse under spikes
-
----
-
-### 4. Separate Flow Testing
-
-Run isolated tests:
-
-- `/init` only → validate ingestion capacity
-- `/process` only → backend throughput
-- `/details` only → read scalability
-
----
-
-## Final Acceptance Criteria Status
-
-| Requirement           | Status                         |
-| --------------------- | ------------------------------ |
-| Threshold identified  | ✅ Met (\~1k–2k RPM projected) |
-| 1,000 RPM documented  | ✅ Met                         |
-| 10,000 RPM documented | ✅ Met                         |
-| Bottleneck analysis   | ✅ Substantially met           |
+- Run an incremental ramp between the two existing profiles.
+- Confirm where `/init` throttling is enforced.
+- Inspect `/process` for backend latency contributors once `/init` admission is understood.
+- Consider adding isolated `/details` coverage if read-path scalability becomes a question.
