@@ -50,7 +50,8 @@ export async function getKnex(): Promise<ReturnType<typeof Knex>> {
   if (knexInstance) return knexInstance;
 
   const connection = await getRdsCredentials();
-  knexInstance = Knex({ client: 'pg', connection, pool: { min: 0, max: 2 }, ...knexSnakeCaseMappers() });
+  // max:1 — proxy owns pooling; a knex.transaction() with a nested query would deadlock here.
+  knexInstance = Knex({ client: 'pg', connection, pool: { min: 0, max: 1 }, ...knexSnakeCaseMappers() });
   Model.knex(knexInstance);
   return knexInstance;
 }

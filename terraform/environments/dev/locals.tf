@@ -11,6 +11,8 @@ locals {
   rds_secret_arn = local.environment == "dev" ? module.secrets.rds_credentials_secret_arn : data.aws_ssm_parameter.dev_rds_secret_arn[0].value
   rds_db_name    = local.environment == "dev" ? "paymentportal" : "paymentportal_${replace(local.environment, "-", "_")}"
 
+  proxy_max_connections_percent = 75
+
   # PR-scoped DB user (PAY-276). The dev workspace itself uses admin creds; PR
   # workspaces get an isolated user that can only see their own database.
   is_pr   = local.environment != "dev"
@@ -20,6 +22,8 @@ locals {
   # everywhere else they keep using the admin secret.
   app_rds_secret_arn = local.is_pr ? aws_secretsmanager_secret.pr_user[0].arn : local.rds_secret_arn
 
+  app_rds_endpoint = local.is_pr ? local.rds_endpoint : module.rds_proxy[0].endpoint
+
   lambda_env_payment = merge({
     NODE_ENV                           = local.node_env
     APP_ENV                            = local.app_env
@@ -28,7 +32,7 @@ locals {
     CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
     PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = module.secrets.paygov_dev_server_token_secret_id
     CLIENT_PERMISSIONS_SECRET_ID       = module.secrets.client_permissions_secret_id
-    RDS_ENDPOINT                       = local.rds_endpoint
+    RDS_ENDPOINT                       = local.app_rds_endpoint
     RDS_SECRET_ARN                     = local.app_rds_secret_arn
     RDS_DB_NAME                        = local.rds_db_name
     }, local.mtls_enabled ? {
@@ -41,7 +45,7 @@ locals {
   lambda_env_dashboard = {
     NODE_ENV                 = local.node_env
     APP_ENV                  = local.app_env
-    RDS_ENDPOINT             = local.rds_endpoint
+    RDS_ENDPOINT             = local.app_rds_endpoint
     RDS_SECRET_ARN           = local.app_rds_secret_arn
     RDS_DB_NAME              = local.rds_db_name
     DASHBOARD_ALLOWED_ORIGIN = local.dashboard_allowed_origin
@@ -53,6 +57,7 @@ locals {
   # and for the provision-user / deprovision-user commands (PAY-276).
   # PR_USER_SECRET_ARN is set only in PR workspaces — read by provision-user to
   # learn the PR role's username/password.
+  # Uses local.rds_endpoint (direct), not the proxy: CREATE/DROP DATABASE pins/breaks through a proxy.
   lambda_env_migration = merge({
     NODE_ENV              = local.node_env
     APP_ENV               = local.app_env
