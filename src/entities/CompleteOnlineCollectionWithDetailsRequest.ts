@@ -1,10 +1,10 @@
-import { AppContext } from "../types/AppContext";
-import { RawCompleteOnlineCollectionRequest } from "../types/RawCompleteOnlineCollectionRequest";
+import type { AppContext } from "@appTypes/AppContext";
+import type { RawCompleteOnlineCollectionRequest } from "@appTypes/RawCompleteOnlineCollectionRequest";
 import { RequestType, SoapRequest } from "./SoapRequest";
 import {
   CompleteOnlineCollectionWithDetailsResponse,
   CompleteOnlineCollectionWithDetailsResponseSchema,
-} from "../schemas/CompleteOnlineCollectionWithDetailsResponse.schema";
+} from "@schemas/CompleteOnlineCollectionWithDetailsResponse.schema";
 
 export type CompleteOnlineCollectionWithDetailsRequestParams = {
   tcs_app_id: string;
@@ -53,3 +53,4 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
     }
   };
 }
+

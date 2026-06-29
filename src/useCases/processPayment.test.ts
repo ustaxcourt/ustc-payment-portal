@@ -1,11 +1,11 @@
 import { processPayment } from "./processPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
-import { ClientPermission } from "../types/ClientPermission";
-import { ForbiddenError } from "../errors/forbidden";
-import { GoneError } from "../errors/gone";
-import { NotFoundError } from "../errors/notFound";
-import { PayGovError } from "../errors/payGovError";
-import { ServerError } from "../errors/serverError";
+import type { ClientPermission } from "@appTypes/ClientPermission";
+import { ForbiddenError } from "@errors/forbidden";
+import { GoneError } from "@errors/gone";
+import { NotFoundError } from "@errors/notFound";
+import { PayGovError } from "@errors/payGovError";
+import { ServerError } from "@errors/serverError";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 
@@ -883,3 +883,4 @@ describe("processPayment", () => {
     });
   });
 });
+
