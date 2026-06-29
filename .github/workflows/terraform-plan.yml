@@ -172,21 +172,21 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Download dev plan artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: tfplan-dev
           path: artifacts/dev
         continue-on-error: true
 
       - name: Download stg plan artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: tfplan-stg
           path: artifacts/stg
         continue-on-error: true
 
       - name: Download prod plan artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: tfplan-prod
           path: artifacts/prod
