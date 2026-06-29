@@ -2,7 +2,7 @@ import fetch from "node-fetch";
 
 import type { APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "./appContext";
-import { getSecretString } from "./clients/secretsClient";
+import { getSecretString } from "@clients/secretsClient";
 import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
 
 type TestCertEvent = { healthProbe?: boolean };

@@ -1,4 +1,4 @@
-import { PayGovTransactionStatus } from "../types/TransactionStatus";
+import type { PayGovTransactionStatus } from "@appTypes/TransactionStatus";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 
 describe("parseTransactionStatus", () => {
@@ -29,3 +29,4 @@ describe("parseTransactionStatus", () => {
     }).toThrow("Could not parse transaction status InvalidStatus");
   });
 });
+
