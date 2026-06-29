@@ -96,7 +96,7 @@ module.exports = {
         sessionToken: process.env.AWS_SESSION_TOKEN
       });
 
-      req.headers = opts.headers;      // req.body = opts.body;
+      req.headers = opts.headers;
       req.body = (req.method === 'GET') ? undefined : opts.body;
       req._artilleryRawBody = true;
 
