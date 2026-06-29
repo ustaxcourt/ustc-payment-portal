@@ -3,7 +3,7 @@ config:
 
   http:
     timeout: 60000
-    pool: 50
+    pool: 200
 
   ensure:
     maxErrorRate: 100
