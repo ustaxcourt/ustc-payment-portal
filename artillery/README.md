@@ -94,7 +94,7 @@ npm run artillery:10000:full --target=https://your-api-endpoint.com
 - Result files are written to `artillery/results/`.
 - Read request-level metrics such as `http.codes.200`, `http.codes.429`, and `http.codes.500` separately from flow-level metrics such as `vusers.completed` and `vusers.failed`.
 - A run can show many successful individual requests while still having a poor end-to-end flow completion rate.
-- The findings and interpretation for the saved PAY-329 artifacts live in the [Load Testing docs](../docs/architecture/proposals/PAY-329-load-testing/README.md).
+- The findings and interpretation for the saved PAY-329 artifacts live in the [load testing findings](../docs/architecture/proposals/PAY-329-load-testing/README.md).
 
 ## Manual Request Debugging
 
