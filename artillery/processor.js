@@ -106,13 +106,6 @@ module.exports = {
     return done();
   },
 
-  debugHeaders: (req, _context, _ee, next) => {
-    if (process.env.ARTILLERY_DEBUG_HEADERS === "1") {
-      console.log("Authorization header:", req.headers?.authorization);
-    }
-    return next();
-  },
-
   setTransactionReferenceId: (context, _events, done) => {
     const uuid = crypto.randomUUID();
     context.vars.transactionReferenceId = uuid;

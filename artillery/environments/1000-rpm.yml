@@ -6,7 +6,7 @@ config:
     pool: 200
 
   ensure:
-    maxErrorRate: 100
+    maxErrorRate: 10
 
   phases:
     - duration: 300
