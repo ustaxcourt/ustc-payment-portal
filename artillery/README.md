@@ -1,150 +1,144 @@
 # Artillery Load-Test Runbook
 
-This directory contains the Artillery load-test scenarios, target profiles, processor logic, and saved result artifacts for the PAY-329 spike.
+This directory contains the Artillery scenarios, traffic profiles, processor hooks, and saved result artifacts used for load testing the payment portal.
+
+The four `npm run artillery:*` scripts in [package.json](../package.json) all execute [scripts/run-artillery-lambda.js](../scripts/run-artillery-lambda.js), which wraps `artillery run-lambda`. These runbooks are therefore for Lambda-backed Artillery runs against deployed or otherwise network-reachable targets, not for hitting a developer's local `localhost` stack.
 
 ## Files
 
-- `scenarios/init-only.yml` exercises only `POST /init`
-- `scenarios/full-flow.yml` exercises `/init`, simulated Pay.gov, `/process`, and `/details/{transactionReferenceId}`
-- `environments/1000-rpm.yml` launches 17 new virtual users per second for 300 seconds
-- `environments/10000-rpm.yml` launches 167 new virtual users per second for 300 seconds
-- `processor.js` generates payloads, signs deployed requests with SigV4, sets the simulated Pay.gov auth header, and logs failed responses
-- `results/*.json` stores Artillery JSON output
+- `scenarios/init-only.yml` exercises `POST /init` only.
+- `scenarios/full-flow.yml` exercises `/init`, the simulated Pay.gov payment step, `/process`, and `/details/{transactionReferenceId}`.
+- `environments/1000-rpm.yml` launches `17` new virtual users per second for `300` seconds.
+- `environments/10000-rpm.yml` launches `167` new virtual users per second for `300` seconds.
+- `processor.js` builds request payloads, conditionally applies SigV4, selects payment outcomes, and logs failed responses with auth values redacted.
+- `results/*.json` stores Artillery JSON output.
+- `.env.example` shows the environment variables expected by the Lambda wrapper and processor.
+
+## Script Map
+
+These repository scripts create `artillery/results/` if needed and then run one Lambda-backed Artillery test:
+
+- `npm run artillery:1000:init`
+  - Scenario: `artillery/scenarios/init-only.yml`
+  - Config: `artillery/environments/1000-rpm.yml`
+  - Output: `artillery/results/1000-rpm-init-results.json`
+- `npm run artillery:1000:full`
+  - Scenario: `artillery/scenarios/full-flow.yml`
+  - Config: `artillery/environments/1000-rpm.yml`
+  - Output: `artillery/results/1000-rpm-full-results.json`
+- `npm run artillery:10000:init`
+  - Scenario: `artillery/scenarios/init-only.yml`
+  - Config: `artillery/environments/10000-rpm.yml`
+  - Output: `artillery/results/10000-rpm-init-results.json`
+- `npm run artillery:10000:full`
+  - Scenario: `artillery/scenarios/full-flow.yml`
+  - Config: `artillery/environments/10000-rpm.yml`
+  - Output: `artillery/results/10000-rpm-full-results.json`
 
 ## Naming Caveat
 
-The `1000-rpm` and `10000-rpm` profile names refer to approximate flow starts per minute, not literal HTTP requests per minute.
+The `1000-rpm` and `10000-rpm` names are approximate scenario-start rates, not literal HTTP requests per minute.
 
 - `17` arrivals per second is about `1,020` scenario starts per minute.
 - `167` arrivals per second is about `10,020` scenario starts per minute.
-- A successful `full-flow` user can emit up to 4 HTTP requests and includes 3 seconds of think time, so request rate will differ from scenario start rate.
+- A successful `full-flow` user can emit up to four HTTP requests and includes three one-second think times, so request-per-minute numbers will differ from scenario-start rate.
+
+## How The Wrapper Works
+
+[scripts/run-artillery-lambda.js](../scripts/run-artillery-lambda.js) does the following before invoking Artillery:
+
+- Loads `artillery/.env` with `override: true`.
+- Requires `ARTILLERY_LAMBDA_ROLE_ARN` to be present.
+- Uses `ARTILLERY_TARGET` from `artillery/.env`, defaulting to a deployed payments URL if unset.
+- Appends `--dotenv artillery/.env`, `--target <ARTILLERY_TARGET>`, `--region us-east-1`, `--count 1`, and `--lambda-role-arn <ARTILLERY_LAMBDA_ROLE_ARN>` to the `artillery run-lambda` command.
+
+Operational implications:
+
+- Do not rely on passing `--target ...` after `npm run artillery:*`; the wrapper appends its own `--target` afterward, so `ARTILLERY_TARGET` in `artillery/.env` is the effective source of truth.
+- These scripts are intended for targets reachable from the Lambda worker. A developer's local `http://localhost:8080` stack is not a valid target for this wrapper.
+- The worker region is currently fixed to `us-east-1` by the wrapper. If the API's SigV4 signing region differs, set `SIGV4_REGION` in `artillery/.env` for request signing.
 
 ## Prerequisites
 
-### Local target
+1. Copy `artillery/.env.example` to `artillery/.env`.
+2. Set `ARTILLERY_TARGET` to the API base URL you intend to load test.
+3. Set `ARTILLERY_LAMBDA_ROLE_ARN` to the IAM role ARN used by `artillery run-lambda`.
+4. Set `PAY_GOV_DEV_SERVER_ACCESS_TOKEN` for `full-flow` runs.
+5. Set `SIGV4_REGION` if the API Gateway region is not `us-east-1`.
 
-- Start the local stack from the repository root with `npm run start:all`.
-- The default Artillery target is `http://localhost:8080`.
-- Full-flow scenarios call the local Pay.gov simulator at `http://localhost:3366`.
+Example `artillery/.env` values with placeholders only:
 
-### Deployed target
-
-- Set `AWS_ACCESS_KEY_ID`.
-- Set `AWS_SECRET_ACCESS_KEY`.
-- Set `AWS_SESSION_TOKEN` when using temporary credentials.
-- Set `SIGV4_REGION` if the API is not in `us-east-1`.
-- For full-flow runs, set `PAY_GOV_DEV_SERVER_ACCESS_TOKEN`.
+```dotenv
+ARTILLERY_TARGET=https://your-payments-api.example.gov
+ARTILLERY_LAMBDA_ROLE_ARN=arn:aws:iam::<account-id>:role/<artillery-lambda-role>
+PAY_GOV_DEV_SERVER_ACCESS_TOKEN=<pay-gov-dev-server-access-token>
+SIGV4_REGION=us-east-1
+ARTILLERY_DEBUG_RESPONSES=0
+```
 
 ## Scenario Behavior
 
 ### `init-only`
 
-- Creates a unique `transactionReferenceId`.
+- Generates a unique `transactionReferenceId`.
 - Sends `POST /init`.
 - Applies SigV4 signing when the target host is not localhost.
-- Expects HTTP `200` and captures the payment token.
+- Expects HTTP `200` and captures the returned payment token.
 
-Use this scenario to isolate ingestion behavior and request signing.
+Use this scenario to isolate ingestion behavior, authorization behavior, and request-signing behavior.
 
 ### `full-flow`
 
-- Creates a unique `transactionReferenceId`.
+- Generates a unique `transactionReferenceId`.
 - Sends `POST /init`.
-- Waits 1 second.
-- Chooses a random payment method and success or failure outcome.
+- Waits one second.
+- Randomly chooses a payment method and success or failure outcome.
 - Calls the simulated Pay.gov `/pay/...` endpoint.
-- Waits 1 second.
+- Waits one second.
 - Sends `POST /process`.
-- Waits 1 second.
+- Waits one second.
 - Sends `GET /details/{transactionReferenceId}`.
 
-Use this scenario to measure end-to-end flow completion, dependency behavior, and failure propagation.
+Use this scenario to measure end-to-end flow completion, downstream dependency behavior, and failure propagation.
 
 ## Processor Notes
 
-- `processor.js` only applies SigV4 signing for non-local targets.
-- For deployed full-flow runs, the simulated payment step is hard-wired to `https://pay-gov-dev.ustaxcourt.gov`.
-- Failed responses, or all responses when `ARTILLERY_DEBUG_RESPONSES=1`, are logged with auth headers redacted.
-- Both environment files set `ensure.maxErrorRate` to `10`, so Artillery should treat runs above that threshold as failed.
+[processor.js](./processor.js) currently behaves as follows:
 
-## Run Commands
+- `signWithSigV4IfNeeded` signs `/init`, `/process`, and `/details` requests for non-local targets.
+- `setPaymentOutcome` points the simulated payment step at `http://localhost:3366` for local targets and at a deployed Pay.gov dev host for non-local targets.
+- `setTokenHeader` adds a bearer token from `PAY_GOV_DEV_SERVER_ACCESS_TOKEN` for the simulated payment call.
+- `logResponse` logs all `4xx` and `5xx` responses, plus all responses when `ARTILLERY_DEBUG_RESPONSES=1`, with auth headers redacted.
 
-Run these commands from the repository root, not from this directory.
+## Running Tests
 
-### Local runs
+Run these commands from the repository root.
+
+### Baseline profile
 
 ```bash
 npm run artillery:1000:init
 npm run artillery:1000:full
+```
+
+### Stress profile
+
+```bash
 npm run artillery:10000:init
 npm run artillery:10000:full
 ```
 
-### Deployed runs
+## Results And Interpretation
 
-```bash
-npm run artillery:1000:init --target=https://your-api-endpoint.com
-npm run artillery:1000:full --target=https://your-api-endpoint.com
-npm run artillery:10000:init --target=https://your-api-endpoint.com
-npm run artillery:10000:full --target=https://your-api-endpoint.com
-```
-
-## Results and Interpretation
-
-- Result files are written to `artillery/results/`.
+- Result files are written to `artillery/results/` using the filenames baked into each `npm run artillery:*` script.
 - Read request-level metrics such as `http.codes.200`, `http.codes.429`, and `http.codes.500` separately from flow-level metrics such as `vusers.completed` and `vusers.failed`.
-- A run can show many successful individual requests while still having a poor end-to-end flow completion rate.
-- The findings and interpretation for the saved PAY-329 artifacts live in the [load testing findings](../docs/architecture/proposals/PAY-329-load-testing/README.md).
+- A run can show many successful individual requests while still having poor end-to-end flow completion.
+- `environments/1000-rpm.yml` sets `ensure.maxErrorRate` to `10`.
+- `environments/10000-rpm.yml` sets `ensure.maxErrorRate` to `100`.
 
-## Manual Request Debugging
+## Debugging Notes
 
-These examples mirror the request shapes used by the scenarios and are useful when debugging signing or endpoint behavior outside Artillery.
-
-### Initialization request
-
-```bash
-curl -X POST "https://dev-payments.ustaxcourt.gov/init" \
-  --aws-sigv4 "aws:amz:us-east-1:execute-api" \
-  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-  -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
-  -H "Host: dev-payments.ustaxcourt.gov" \
-  -H "Accept: application/json" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "transactionReferenceId": "550e8400-e29b-41d4-a716-446655440000",
-    "fee": "PETITION_FILING_FEE",
-    "urlSuccess": "https://client.app/success",
-    "urlCancel": "https://client.app/cancel",
-    "metadata": {
-      "docketNumber": "123-26"
-    }
-  }'
-```
-
-### Processing request
-
-```bash
-curl -X POST "https://dev-payments.ustaxcourt.gov/process" \
-  --aws-sigv4 "aws:amz:us-east-1:execute-api" \
-  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-  -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
-  -d '{
-    "token": "550e8400-e29b-41d4-a716-446655440000"
-  }'
-```
-
-### Simulated payment outcome request
-
-```bash
-curl -X POST "https://pay-gov-dev.ustaxcourt.gov/pay/<choiceMethod>/<choiceStatus>?token=<paymentToken>" \
-  -H "Authorization: Bearer $PAY_GOV_DEV_SERVER_ACCESS_TOKEN"
-```
-
-### Details request
-
-```bash
-curl -X GET "https://dev-payments.ustaxcourt.gov/details/550e8400-e29b-41d4-a716-446655440000" \
-  --aws-sigv4 "aws:amz:us-east-1:execute-api" \
-  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-  -H "x-amz-security-token: $AWS_SESSION_TOKEN"
-```
+- Set `ARTILLERY_DEBUG_RESPONSES=1` in `artillery/.env` to log every response payload during a run.
+- Failed responses are already logged by default.
+- If you need to change the target, update `ARTILLERY_TARGET` in `artillery/.env` before rerunning the script.
+- If you need to inspect the raw scenario definitions or hooks, see [init-only.yml](./scenarios/init-only.yml), [full-flow.yml](./scenarios/full-flow.yml), and [processor.js](./processor.js).
