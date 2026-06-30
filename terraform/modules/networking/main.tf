@@ -75,8 +75,54 @@ resource "aws_security_group" "rds" {
     description     = "PostgreSQL from Lambda"
   }
 
+  dynamic "ingress" {
+    for_each = length(aws_security_group.proxy) > 0 ? [1] : []
+    content {
+      from_port       = 5432
+      to_port         = 5432
+      protocol        = "tcp"
+      security_groups = [aws_security_group.proxy[0].id]
+      description     = "PostgreSQL from RDS Proxy"
+    }
+  }
+
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-rds-sg"
+  })
+}
+
+resource "aws_security_group" "proxy" {
+  count       = var.enable_proxy && var.private_subnet_cidr_2 != "" ? 1 : 0
+  name        = "${var.name_prefix}-rds-proxy-sg"
+  description = "RDS Proxy: ingress from Lambda, egress to RDS"
+  vpc_id      = aws_vpc.lambda_vpc.id
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.lambda.id]
+    description     = "PostgreSQL from Lambda"
+  }
+
+  # Scoped by CIDR, not the RDS SG id, to avoid a circular SG dependency.
+  egress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = [var.private_subnet_cidr, var.private_subnet_cidr_2]
+    description = "PostgreSQL to RDS private subnets"
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.availability_zone_2 != ""
+      error_message = "enable_proxy requires availability_zone_2 to be set (RDS Proxy needs two distinct AZs)."
+    }
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-rds-proxy-sg"
   })
 }
 
