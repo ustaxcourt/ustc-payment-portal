@@ -2,6 +2,8 @@ import { Model } from 'objection';
 import FeesModel from './FeesModel';
 import type { PaymentStatus } from '../schemas/PaymentStatus.schema';
 import type { TransactionStatus as SchemaTransactionStatus } from '../schemas/TransactionStatus.schema';
+import { ConflictError } from '../errors/conflict';
+import { GoneError } from '../errors/gone';
 import { getKnex } from './knex';
 
 export type TransactionStatus = SchemaTransactionStatus;
@@ -13,6 +15,24 @@ export type PaymentMethod =
   | 'plastic_card'
   | 'ach'
   | 'paypal';
+
+/** Max age before a stuck `processing` row is treated as abandoned (Lambda timeout, crash). */
+const PROCESSING_STALE_MS = 600_000; // 10 minutes
+const STALE_PROCESSING_RETURN_CODE = 5010;
+const STALE_PROCESSING_DETAIL = 'Processing interrupted — token expired';
+
+export const PROCESSING_CONFLICT_MESSAGE =
+  'A payment is already being processed for this token';
+
+const SIBLING_GONE_MESSAGE =
+  'This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.';
+
+const TOKEN_NO_LONGER_VALID_MESSAGE = 'This token is no longer valid.';
+
+const isStaleProcessing = (row: TransactionModel): boolean => {
+  const ageMs = Date.now() - new Date(row.lastUpdatedAt).getTime();
+  return ageMs >= PROCESSING_STALE_MS;
+};
 
 
 export default class TransactionModel extends Model {
@@ -192,6 +212,71 @@ export default class TransactionModel extends Model {
       .where('transactionReferenceId', transactionReferenceId)
       .whereNot('paygovToken', excludeToken)
       .first();
+  }
+
+  /**
+   * Atomically claims an initiated transaction for Pay.gov completion.
+   * Must be called before any SOAP request for the token.
+   *
+   * Runs inside a short DB transaction: row lock (NOWAIT) → guard checks →
+   * status flip to `processing`. The connection is released before Pay.gov is called.
+   *
+   * @returns undefined when no row exists for the token (caller maps to NotFoundError).
+   * @throws ConflictError when another request already holds or claimed the token.
+   * @throws GoneError when the token is no longer valid for processing.
+   * @throws Postgres lock-not-available (55P03) when NOWAIT cannot acquire the row lock.
+   */
+  static async claimForProcessing(
+    paygovToken: string,
+  ): Promise<TransactionModel | undefined> {
+    const knex = await getKnex();
+    return knex.transaction(async (trx) => {
+      const row = await this.query(trx)
+        .where({ paygovToken })
+        .forUpdate()
+        .noWait()
+        .first();
+
+      if (!row) {
+        return undefined;
+      }
+
+      const sibling = await this.query(trx)
+        .whereIn('transactionStatus', ['pending', 'processed'])
+        .where({
+          clientName: row.clientName,
+          transactionReferenceId: row.transactionReferenceId,
+        })
+        .whereNot('paygovToken', paygovToken)
+        .first();
+
+      if (sibling) {
+        throw new GoneError(SIBLING_GONE_MESSAGE);
+      }
+
+      if (row.transactionStatus === 'processing') {
+        if (isStaleProcessing(row)) {
+          await this.query(trx)
+            .patch({
+              transactionStatus: 'failed',
+              paymentStatus: 'failed',
+              returnCode: STALE_PROCESSING_RETURN_CODE,
+              returnDetail: STALE_PROCESSING_DETAIL,
+            })
+            .where('agencyTrackingId', row.agencyTrackingId);
+          throw new GoneError(TOKEN_NO_LONGER_VALID_MESSAGE);
+        }
+        throw new ConflictError(PROCESSING_CONFLICT_MESSAGE);
+      }
+
+      if (row.transactionStatus !== 'initiated') {
+        throw new GoneError(TOKEN_NO_LONGER_VALID_MESSAGE);
+      }
+
+      return this.query(trx).patchAndFetchById(row.agencyTrackingId, {
+        transactionStatus: 'processing',
+      });
+    });
   }
 
 // Returns the in-flight 'initiated' attempt for the given transactionReferenceId, if one exists.
