@@ -514,6 +514,7 @@ components:
           enum:
             - received
             - initiated
+            - processing
             - processed
             - failed
             - pending
@@ -555,6 +556,7 @@ components:
           enum:
             - received
             - initiated
+            - processing
             - processed
             - failed
             - pending
@@ -594,6 +596,7 @@ components:
       enum:
         - received
         - initiated
+        - processing
         - processed
         - failed
         - pending
@@ -758,6 +761,7 @@ components:
           enum:
             - received
             - initiated
+            - processing
             - processed
             - failed
             - pending

@@ -7,7 +7,14 @@ extendZodWithOpenApi(z);
 // NOTE: We use 'processed' instead of 'success' here to avoid
 // confusion between TransactionStatus and PaymentStatus.
 export const TransactionStatusSchema = z
-  .enum(["received", "initiated", "processed", "failed", "pending"])
+  .enum([
+    "received",
+    "initiated",
+    "processing",
+    "processed",
+    "failed",
+    "pending",
+  ])
   .openapi({
     description: "The status of the payment transaction",
     example: "processed",

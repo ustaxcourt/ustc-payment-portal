@@ -555,6 +555,7 @@
             "enum": [
               "received",
               "initiated",
+              "processing",
               "processed",
               "failed",
               "pending"
@@ -607,6 +608,7 @@
             "enum": [
               "received",
               "initiated",
+              "processing",
               "processed",
               "failed",
               "pending"
@@ -657,6 +659,7 @@
         "enum": [
           "received",
           "initiated",
+          "processing",
           "processed",
           "failed",
           "pending"
@@ -845,6 +848,7 @@
             "enum": [
               "received",
               "initiated",
+              "processing",
               "processed",
               "failed",
               "pending",
