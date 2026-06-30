@@ -43,6 +43,16 @@ output "rds_security_group_id" {
   description = "RDS security group ID"
 }
 
+output "proxy_security_group_id" {
+  value       = module.networking.proxy_security_group_id
+  description = "RDS Proxy Security Group ID"
+}
+
+output "proxy_subnet_ids" {
+  value       = module.networking.proxy_subnet_ids
+  description = "Private subnet IDs (both AZs) for placing the RDS Proxy"
+}
+
 output "ci_deployer_role_arn" {
   value       = module.iam.deployer_role_arn
   description = "CI/CD deployer role ARN (for GitHub Actions OIDC)"

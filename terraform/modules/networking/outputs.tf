@@ -32,3 +32,13 @@ output "rds_security_group_id" {
   value       = aws_security_group.rds.id
   description = "RDS Security Group ID"
 }
+
+output "proxy_security_group_id" {
+  value       = var.enable_proxy ? aws_security_group.proxy[0].id : null
+  description = "RDS Proxy Security Group ID (null when the proxy is disabled)"
+}
+
+output "proxy_subnet_ids" {
+  value       = [for az in sort(keys(aws_subnet.private)) : aws_subnet.private[az].id]
+  description = "All private subnet IDs for placing the RDS Proxy (all AZs, sorted)."
+}

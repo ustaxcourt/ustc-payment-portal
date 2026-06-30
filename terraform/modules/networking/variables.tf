@@ -49,6 +49,12 @@ variable "single_nat_gateway" {
   default     = true
 }
 
+variable "enable_proxy" {
+  description = "Create the RDS Proxy security group. Requires a second private subnet in a distinct AZ (availability_zone_2)."
+  type        = bool
+  default     = true
+}
+
 variable "tags" {
   type = map(string)
 }

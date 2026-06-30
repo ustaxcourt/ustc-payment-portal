@@ -315,50 +315,6 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "*"
       },
       {
-        Effect = "Allow", # RDS read permissions (require * for describe operations)
-        Action = [
-          "rds:DescribeDBInstances",
-          "rds:DescribeDBSubnetGroups",
-          "rds:DescribeDBSnapshots",
-          "rds:DescribeDBParameterGroups",
-          "rds:DescribeDBParameters",
-          "rds:ListTagsForResource"
-        ],
-        Resource = "*"
-      },
-      {
-        Effect = "Allow", # RDS write permissions for database provisioning
-        Action = [
-          "rds:CreateDBInstance",
-          "rds:DeleteDBInstance",
-          "rds:ModifyDBInstance",
-          "rds:AddTagsToResource",
-          "rds:RemoveTagsFromResource",
-          "rds:CreateDBSnapshot",
-          "rds:DeleteDBSnapshot",
-          "rds:CreateDBParameterGroup",
-          "rds:DeleteDBParameterGroup",
-          "rds:ModifyDBParameterGroup"
-        ],
-        Resource = [
-          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:${var.lambda_name_prefix}-*",
-          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:*-pr-*-db",
-          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:subgrp:*",
-          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:snapshot:*",
-          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:pg:${var.lambda_name_prefix}-*"
-        ]
-      },
-      {
-        Effect   = "Allow", # RDS service-linked role (required for first RDS instance)
-        Action   = ["iam:CreateServiceLinkedRole"],
-        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS",
-        Condition = {
-          StringEquals = {
-            "iam:AWSServiceName" = "rds.amazonaws.com"
-          }
-        }
-      },
-      {
         Effect   = "Allow",
         Action   = ["execute-api:Invoke"],
         Resource = "arn:aws:execute-api:${local.aws_region}:${data.aws_caller_identity.current.account_id}:*"
@@ -441,6 +397,98 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
       }
     ]
   })
+}
+
+# Managed policy, not inline: the deployer's inline policy is at IAM's 10,240-byte limit.
+resource "aws_iam_policy" "deployer_rds" {
+  name = "${local.deploy_role_name}-rds"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow" # RDS read permissions (require * for describe operations)
+        Action = [
+          "rds:DescribeDBInstances",
+          "rds:DescribeDBSubnetGroups",
+          "rds:DescribeDBSnapshots",
+          "rds:DescribeDBParameterGroups",
+          "rds:DescribeDBParameters",
+          "rds:ListTagsForResource",
+          "rds:DescribeDBProxies",
+          "rds:DescribeDBProxyTargets",
+          "rds:DescribeDBProxyTargetGroups"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow" # RDS write permissions for database provisioning
+        Action = [
+          "rds:CreateDBInstance",
+          "rds:DeleteDBInstance",
+          "rds:ModifyDBInstance",
+          "rds:AddTagsToResource",
+          "rds:RemoveTagsFromResource",
+          "rds:CreateDBSnapshot",
+          "rds:DeleteDBSnapshot",
+          "rds:CreateDBParameterGroup",
+          "rds:DeleteDBParameterGroup",
+          "rds:ModifyDBParameterGroup"
+        ]
+        Resource = [
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:${var.lambda_name_prefix}-*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:*-pr-*-db",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:subgrp:*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:snapshot:*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:pg:${var.lambda_name_prefix}-*"
+        ]
+      },
+      {
+        Effect   = "Allow" # RDS service-linked role (required for first RDS instance)
+        Action   = ["iam:CreateServiceLinkedRole"]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS"
+        Condition = {
+          StringEquals = {
+            "iam:AWSServiceName" = "rds.amazonaws.com"
+          }
+        }
+      },
+      {
+        Effect = "Allow" # RDS Proxy management for Lambda connection pooling
+        Action = [
+          "rds:CreateDBProxy",
+          "rds:DeleteDBProxy",
+          "rds:ModifyDBProxy",
+          "rds:RegisterDBProxyTargets",
+          "rds:DeregisterDBProxyTargets",
+          "rds:ModifyDBProxyTargetGroup",
+          "rds:AddTagsToResource",
+          "rds:RemoveTagsFromResource"
+        ]
+        Resource = [
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db-proxy:*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:target-group:*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:${var.lambda_name_prefix}-*",
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:*-pr-*-db"
+        ]
+      },
+      {
+        Effect   = "Allow" # Pass the RDS Proxy's role to the proxy service at create time
+        Action   = ["iam:PassRole"]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.lambda_name_prefix}-proxy-role"
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "rds.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "deployer_rds" {
+  role       = aws_iam_role.github_actions_deployer.name
+  policy_arn = aws_iam_policy.deployer_rds.arn
 }
 
 resource "aws_iam_role_policy" "github_actions_pr_log_cleanup" {
