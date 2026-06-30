@@ -17,7 +17,7 @@ const port = parsePort(
   3366,
   "PAY_GOV_TEST_SERVER_PORT",
 );
-const token = process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN || "development-token";
+const token = "asdf123";
 const payGovNodeEnv = process.env.PAY_GOV_NODE_ENV || "local";
 
 const entry = resolveTestServerEntry();

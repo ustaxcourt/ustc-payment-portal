@@ -26,7 +26,7 @@ const PORTAL_ENV = {
   DB_USER: "user",
   DB_PASSWORD: "password",
   DB_NAME: "mydb",
-  PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID: "development-token",
+  PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID: "asdf123",
   PAY_GOV_NODE_ENV: "local",
   LOG_LEVEL: "info",
 };

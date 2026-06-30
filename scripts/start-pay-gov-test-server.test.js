@@ -60,7 +60,7 @@ describe("start-pay-gov-test-server", () => {
       expect.objectContaining({
         stdio: "inherit",
         env: expect.objectContaining({
-          ACCESS_TOKEN: "development-token",
+          ACCESS_TOKEN: "asdf123",
         }),
       }),
     );
@@ -86,13 +86,13 @@ describe("start-pay-gov-test-server", () => {
   });
 
   it("uses PAY_GOV_TEST_SERVER_ACCESS_TOKEN for ACCESS_TOKEN when set", () => {
-    process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN = "custom-token";
+    process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN = "asdf123";
     mockSpawn.mockReturnValue(makeChildProcess());
 
     require("./start-pay-gov-test-server");
 
     const spawnEnv = mockSpawn.mock.calls[0][2].env;
-    expect(spawnEnv.ACCESS_TOKEN).toBe("custom-token");
+    expect(spawnEnv.ACCESS_TOKEN).toBe("asdf123");
   });
 
   it("forwards PAY_GOV_NODE_ENV to the child as NODE_ENV when set", () => {
