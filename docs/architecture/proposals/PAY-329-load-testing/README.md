@@ -147,6 +147,8 @@ Interpretation:
 
 ## Recommended Follow-Up
 
+For a step-by-step investigation plan, see [investigation-guide.md](./investigation-guide.md).
+
 ### Fresh comparable runs
 
 Re-run and archive a comparable set with the current configs:
