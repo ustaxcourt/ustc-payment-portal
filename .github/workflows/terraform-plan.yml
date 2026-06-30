@@ -279,13 +279,13 @@ jobs:
 
       - name: Find existing plan comment
         id: find_comment
-        uses: peter-evans/find-comment@v3
+        uses: peter-evans/find-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body-includes: 'terraform-plan-bot:PAY-264'
 
       - name: Create or update plan comment
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-id: ${{ steps.find_comment.outputs.comment-id }}
