@@ -7,6 +7,15 @@ import { ClientPermission } from "../types/ClientPermission";
 import { AppContext } from "../types/AppContext";
 import { getClientByRoleArn } from "../clients/permissionsClient";
 import { parseAndValidate } from "../utils/parseAndValidate";
+import { getKnex } from "../db/knex";
+import { getClientPermissions } from "../clients/permissionsClient";
+
+// Pre-warm the RDS connection during the Lambda init phase so the first
+// invocation does not pay Secrets Manager + TCP connection-setup latency. (Saves us some cold-start time.)
+// In local/test environments RDS_SECRET_ARN is unset and getKnex() returns
+// the already-initialised synchronous instance immediately.
+void getKnex();
+void getClientPermissions();
 
 type LambdaHandler<T> = (
   appContext: AppContext,

@@ -18,6 +18,7 @@ jest.mock("../extractCallerArn", () => ({
 
 jest.mock("../clients/permissionsClient", () => ({
   getClientByRoleArn: jest.fn(),
+  getClientPermissions: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock("../utils/parseAndValidate", () => ({
