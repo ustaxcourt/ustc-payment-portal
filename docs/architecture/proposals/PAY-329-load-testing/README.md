@@ -7,122 +7,138 @@ This document summarizes the saved Artillery artifacts under `artillery/results/
 - The how-to guidance for running Artillery lives in `artillery/README.md`.
 - The saved result files are the source of truth for the numbers below.
 - The `1000-rpm` and `10000-rpm` profile names describe approximate flow starts per minute, not literal HTTP requests per minute.
-- The two full-flow artifacts match the current 300-second environment files.
-- The two init-only artifacts do not match the current 300-second environment files and appear to come from shorter runs.
+- All four saved artifacts align with the current 300-second environment files.
+- The `10000-rpm` artifacts create `50101` virtual users rather than exactly `50100`; treat that as effectively matching the current `167 arrivals/sec for 300s` profile.
 - Request-level success and flow-level success are different metrics and need to be interpreted separately.
+- The saved `10000-rpm-full` artifact reports `null` for the aggregate HTTP mean fields, so the stress-profile discussion below relies on medians, p95s, per-endpoint means, and counters instead.
 
 ## Saved Result Set
 
-| Artifact                                        | Scenario    | Notes                                                                  |
-| ----------------------------------------------- | ----------- | ---------------------------------------------------------------------- |
-| `artillery/results/1000-rpm-init-results.json`  | `init-only` | Older or shortened run; `60` users created rather than about `5100`    |
-| `artillery/results/10000-rpm-init-results.json` | `init-only` | Older or shortened run; `5010` users created rather than about `50100` |
-| `artillery/results/1000-rpm-full-results.json`  | `full-flow` | Matches current `17 arrivals/sec for 300s` profile                     |
-| `artillery/results/10000-rpm-full-results.json` | `full-flow` | Matches current `167 arrivals/sec for 300s` profile                    |
+| Artifact                                        | Scenario    | Notes                                                           |
+| ----------------------------------------------- | ----------- | --------------------------------------------------------------- |
+| `artillery/results/1000-rpm-init-results.json`  | `init-only` | Matches current `17 arrivals/sec for 300s` profile              |
+| `artillery/results/1000-rpm-full-results.json`  | `full-flow` | Matches current `17 arrivals/sec for 300s` profile              |
+| `artillery/results/10000-rpm-init-results.json` | `init-only` | Effectively matches current `167 arrivals/sec for 300s` profile |
+| `artillery/results/10000-rpm-full-results.json` | `full-flow` | Effectively matches current `167 arrivals/sec for 300s` profile |
 
 ## Results Summary
 
 ### `1000-rpm-init-results.json`
 
-- Virtual users created: `60`
-- Virtual users completed: `52`
-- Virtual users failed: `8`
-- HTTP `200`: `52`
-- HTTP `429`: `8`
-- Overall mean response time: `303.6 ms`
-- Overall p95 response time: `459.5 ms`
-- Successful-request mean response time: `335.5 ms`
+- Virtual users created: `5100`
+- Virtual users completed: `5100`
+- Virtual users failed: `0`
+- HTTP `200`: `5100`
+- HTTP `500`: `0`
+- HTTP `502`: `0`
+- Overall mean response time: `335.1 ms`
+- Overall p95 response time: `596.0 ms`
+- Successful-request mean response time: `335.1 ms`
 
 Interpretation:
 
-- This was a short `init-only` run, not a current 5-minute profile run.
-- Even in this small sample, `/init` experienced throttling.
+- This saved artifact is a clean 5-minute `init-only` baseline run.
+- At the lower profile, `/init` completed successfully for every virtual user.
 
 ### `10000-rpm-init-results.json`
 
-- Virtual users created: `5010`
-- Virtual users completed: `312`
-- Virtual users failed: `4698`
-- HTTP `200`: `312`
-- HTTP `429`: `4659`
-- HTTP `500`: `39`
-- Overall mean response time: `181.2 ms`
-- Overall p95 response time: `368.8 ms`
-- Successful-request mean response time: `876.0 ms`
-- Successful-request p95 response time: `2618.1 ms`
+- Virtual users created: `50101`
+- Virtual users completed: `27524`
+- Virtual users failed: `22577`
+- Completion rate: `54.9%`
+- Failure rate: `45.1%`
+- HTTP `200`: `27524`
+- HTTP `500`: `18`
+- HTTP `502`: `517`
+- Recorded `errors.EMFILE`: `22042`
+- Recorded `errors.Failed capture or match`: `535`
+- Overall mean response time: `10453.0 ms`
+- Overall p95 response time: `24594.7 ms`
+- Successful-request mean response time: `10148.5 ms`
+- Successful-request p95 response time: `23630.3 ms`
 
 Interpretation:
 
-- This was also a shortened `init-only` run.
-- The dominant failure mode was `/init` throttling, with a small number of server errors.
-- The low overall mean is misleading because fast failures dominate the sample.
+- This saved artifact is not shortened; it is a stress-profile run over the current 5-minute shape.
+- The dominant recorded failure mode is non-HTTP `EMFILE`, not `429` throttling.
+- Even successful `/init` requests became very slow under this profile, with p95 latency above `24` seconds.
 
 ### `1000-rpm-full-results.json`
 
 - Virtual users created: `5100`
-- Virtual users completed: `3015`
-- Virtual users failed: `2085`
-- HTTP `200`: `11955`
-- HTTP `429`: `2190`
-- Overall mean response time: `321.9 ms`
-- Overall p95 response time: `507.8 ms`
-- Successful-request mean response time: `359.8 ms`
-- Successful-request p95 response time: `539.2 ms`
-- `/init` mean response time: `288.1 ms`
-- `/process` mean response time: `463.6 ms`
-- `/details` mean response time: `277.5 ms`
+- Virtual users completed: `5100`
+- Virtual users failed: `0`
+- Completion rate: `100.0%`
+- HTTP `200`: `20400`
+- HTTP `500`: `0`
+- HTTP `502`: `0`
+- Overall mean response time: `287.8 ms`
+- Overall p95 response time: `561.2 ms`
+- Successful-request mean response time: `287.8 ms`
+- Successful-request p95 response time: `561.2 ms`
+- `/init` mean response time: `319.0 ms`
+- `/process` mean response time: `442.9 ms`
+- `/details` mean response time: `282.8 ms`
 
 Interpretation:
 
-- This run was not stable at the flow level.
-- The main failure mode was HTTP `429`, mostly at `/init`.
-- `/process` was the slowest successful step in the end-to-end flow.
-- The saved artifact does not support a claim of `0` failures or `100%` success at this profile.
+- This saved artifact shows a stable lower-profile full-flow run with zero recorded failures.
+- `/process` is still the slowest successful payment-portal step in the end-to-end flow.
+- The local artifact set now does support a claim of `100%` virtual-user completion at this profile.
 
 ### `10000-rpm-full-results.json`
 
-- Virtual users created: `50100`
-- Virtual users completed: `2615`
-- Virtual users failed: `47485`
-- HTTP `200`: `8723`
-- HTTP `429`: `47263`
-- HTTP `500`: `1957`
-- Overall mean response time: `165.6 ms`
-- Overall p95 response time: `376.2 ms`
-- Successful-request mean response time: `382.0 ms`
-- Successful-request p95 response time: `572.6 ms`
-- `/init` mean response time: `142.3 ms`
-- `/process` mean response time: `412.6 ms`
-- `/details` mean response time: `261.2 ms`
+- Virtual users created: `50101`
+- Virtual users completed: `4182`
+- Virtual users failed: `45919`
+- Completion rate: `8.3%`
+- Failure rate: `91.7%`
+- HTTP `200`: `60216`
+- HTTP `500`: `0`
+- HTTP `502`: `0`
+- Recorded `errors.EMFILE`: `45919`
+- `EMFILE` by step: `/init` `23823`, simulated pay step `5591`, `/process` `11618`, `/details` `4887`
+- Overall mean response time: `null` in the saved artifact
+- Overall p50 response time: `6976.1 ms`
+- Overall p95 response time: `10617.5 ms`
+- `/init` mean response time: `7343.1 ms`
+- `/process` mean response time: `10192.2 ms`
+- `/details` mean response time: `6054.5 ms`
 
 Interpretation:
 
 - This run represents overload, not a usable operating point.
-- The dominant failure mode was `/init` throttling.
-- Additional HTTP `500` responses occurred later in the flow, especially around `/details`.
-- The low overall latency is again skewed by fast failures.
+- The saved artifact shows no HTTP `429`, `500`, or `502` responses in the full-flow stress run.
+- Instead, failures are recorded as non-HTTP `EMFILE` errors across every stage of the flow.
+- When requests do succeed, latencies are still very high, and `/process` remains the slowest payment-portal step.
 
 ## Cross-Run Findings
 
-### 1. Request-level and flow-level outcomes diverge sharply
+### 1. All four saved artifacts now match the current profile shapes
 
-- The full-flow artifacts contain many HTTP `200` responses while still showing poor end-to-end completion rates.
-- Any future summary should report both request success and virtual-user completion side by side.
+- The saved `1000-rpm` artifacts each create `5100` virtual users, matching `17 arrivals/sec for 300s`.
+- The saved `10000-rpm` artifacts each create `50101` virtual users, which is effectively the current `167 arrivals/sec for 300s` shape.
 
-### 2. `/init` is the main choke point in the saved runs
+### 2. The lower profile is stable in the current artifact set
 
-- The majority of HTTP `429` responses are recorded at `/init` in both full-flow artifacts and both init-only artifacts.
-- This points to an upstream admission or throttling limit before most requests can proceed through the full workflow.
+- Both `1000-rpm` artifacts show `100%` completion and no recorded failures.
+- At this profile, the saved results do not show throttling or server-error behavior.
 
-### 3. `/process` is the slowest successful step
+### 3. The stress-profile failures are dominated by recorded `EMFILE` errors
 
-- In both full-flow artifacts, `/process` has the highest mean successful response time among the payment-portal endpoints.
-- That makes it the best first backend slice to inspect after `/init` throttling is understood.
+- The saved `10000-rpm-init` artifact records `22042` `EMFILE` errors, plus a smaller number of HTTP `502` and `500` responses.
+- The saved `10000-rpm-full` artifact records `45919` `EMFILE` errors and no HTTP `429`, `500`, or `502` responses.
+- Any follow-up should treat this as a different failure mode from simple API throttling.
 
-### 4. The current saved artifacts do not establish a stable threshold
+### 4. Request-level and flow-level outcomes diverge sharply at `10000-rpm`
 
-- The local artifact set does not support the claim that the system is stable at the lower profile.
-- A fresh controlled ramp is still needed to determine where sustained degradation begins.
+- The `10000-rpm-full` artifact contains `60216` HTTP `200` responses while only `4182` virtual users complete the full scenario.
+- Future summaries should continue to report both request success and virtual-user completion side by side.
+
+### 5. `/process` is the slowest successful payment-portal step in full-flow runs
+
+- At `1000-rpm-full`, `/process` has the highest mean response time among the payment-portal endpoints.
+- At `10000-rpm-full`, `/process` is still the slowest successful payment-portal step, and its mean response time rises above `10` seconds.
 
 ## Recommended Follow-Up
 
@@ -138,7 +154,7 @@ Re-run and archive a comparable set with the current configs:
 For each run, record:
 
 - command used
-- target URL
+- target identifier
 - commit SHA
 - environment
 - timestamp
@@ -147,6 +163,6 @@ For each run, record:
 ### Narrow next experiments
 
 - Run an incremental ramp between the two existing profiles.
-- Confirm where `/init` throttling is enforced.
-- Inspect `/process` for backend latency contributors once `/init` admission is understood.
+- Determine where the recorded `EMFILE` errors originate before treating the stress-profile results as pure service saturation.
+- Inspect `/process` for backend latency contributors once the stress-profile execution failure mode is understood.
 - Consider adding isolated `/details` coverage if read-path scalability becomes a question.
