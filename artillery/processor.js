@@ -1,8 +1,28 @@
 const crypto = require('node:crypto');
+const path = require('node:path');
 const { URL } = require('node:url');
-const aws4 = require('aws4');
+const { Sha256 } = require('@aws-crypto/sha256-js');
+const { HttpRequest } = require('@smithy/core/protocols');
+const { SignatureV4 } = require('@smithy/signature-v4');
 
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+function resolveAwsCredentials() {
+  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+
+  if (!accessKeyId || !secretAccessKey) {
+    return Promise.reject(
+      new Error("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are required for SigV4 signing"),
+    );
+  }
+
+  return Promise.resolve({
+    accessKeyId,
+    secretAccessKey,
+    sessionToken: process.env.AWS_SESSION_TOKEN,
+  });
+}
 
 module.exports = {
   setSignedInitBody: (req, context, _ee, done) => {
@@ -29,7 +49,6 @@ module.exports = {
 
   signWithSigV4IfNeeded: (req, context, _ee, done) => {
     let body = req.body || "";
-    let opts;
     req.headers = req.headers || {};
 
     const parsedBase = new URL(context.vars.target);
@@ -68,39 +87,47 @@ module.exports = {
       };
     }
 
-    // Sign the request with AWS SigV4 if not localhost and AWS_SESSION_TOKEN is present
-    if (!isLocalhost && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-      if (process.env.AWS_SESSION_TOKEN) {
-        req.headers['x-amz-security-token'] = process.env.AWS_SESSION_TOKEN;
-      }
-      const region =
-        process.env.SIGV4_REGION ??
-        process.env.AWS_REGION ??
-        "us-east-1";
+    if (!isLocalhost) {
+      resolveAwsCredentials()
+        .then(async (credentials) => {
+          const region =
+            process.env.SIGV4_REGION ??
+            process.env.AWS_REGION ??
+            "us-east-1";
 
-      opts = {
-        host,
-        method: req.method,
-        path: fullUrl.pathname + (fullUrl.search || ""),
-        service: "execute-api",
-        region,
-        headers: {
-          ...req.headers,
-        },
-        body,
-      };
+          const signer = new SignatureV4({
+            credentials: {
+              accessKeyId: credentials.accessKeyId,
+              secretAccessKey: credentials.secretAccessKey,
+              sessionToken: credentials.sessionToken,
+            },
+            region,
+            service: "execute-api",
+            sha256: Sha256,
+          });
 
-      aws4.sign(opts, {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        sessionToken: process.env.AWS_SESSION_TOKEN
-      });
+          const request = new HttpRequest({
+            method: req.method,
+            hostname: fullUrl.hostname,
+            path: fullUrl.pathname + (fullUrl.search || ""),
+            headers: {
+              host: fullUrl.hostname,
+              accept: "application/json",
+              ...(req.method === "GET"
+                ? {}
+                : { "content-type": "application/json" }),
+            },
+            body: req.method === "GET" ? undefined : body,
+          });
 
-      req.headers = opts.headers;
-      req.body = (req.method === 'GET') ? undefined : opts.body;
-      req._artilleryRawBody = true;
-
-      return done();
+          const signed = await signer.sign(request);
+          req.headers = signed.headers;
+          req.body = req.method === "GET" ? undefined : body;
+          req._artilleryRawBody = true;
+          done();
+        })
+        .catch(done);
+      return;
     }
 
     return done();

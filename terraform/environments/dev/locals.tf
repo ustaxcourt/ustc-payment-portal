@@ -13,6 +13,9 @@ locals {
 
   proxy_max_connections_percent = 75
 
+  api_stage_throttling_rate_limit  = local.environment == "dev" ? 200 : 10
+  api_stage_throttling_burst_limit = local.environment == "dev" ? 400 : 20
+
   # PR-scoped DB user (PAY-276). The dev workspace itself uses admin creds; PR
   # workspaces get an isolated user that can only see their own database.
   is_pr   = local.environment != "dev"
