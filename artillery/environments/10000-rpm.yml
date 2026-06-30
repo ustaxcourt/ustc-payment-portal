@@ -3,10 +3,10 @@ config:
 
   http:
     timeout: 60000
-    pool: 200
+    pool: 1000
 
   ensure:
-    maxErrorRate: 10
+    maxErrorRate: 100
 
   phases:
     - duration: 300

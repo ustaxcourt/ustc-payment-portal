@@ -49,10 +49,10 @@
     "seed:run": "npm run knex -- seed:run",
     "docker": "docker compose up",
     "docker:migration": "MIGRATION_MODE=1 docker compose up",
-    "artillery:1000:full": "mkdir -p artillery/results && artillery run artillery/scenarios/full-flow.yml --config artillery/environments/1000-rpm.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/1000-rpm-full-results.json",
-    "artillery:10000:full": "mkdir -p artillery/results && artillery run artillery/scenarios/full-flow.yml --config artillery/environments/10000-rpm.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/10000-rpm-full-results.json",
-    "artillery:1000:init": "mkdir -p artillery/results && artillery run artillery/scenarios/init-only.yml --config artillery/environments/1000-rpm.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/1000-rpm-init-results.json",
-    "artillery:10000:init": "mkdir -p artillery/results && artillery run artillery/scenarios/init-only.yml --config artillery/environments/10000-rpm.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/10000-rpm-init-results.json"
+    "artillery:1000:full": "mkdir -p artillery/results && artillery run-lambda artillery/scenarios/full-flow.yml --config artillery/environments/1000-rpm.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/1000-rpm-full-results.json --count=1 --region=us-east-1",
+    "artillery:10000:full": "mkdir -p artillery/results && artillery run-lambda artillery/scenarios/full-flow.yml --config artillery/environments/10000-rpm.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/10000-rpm-full-results.json --count=1 --region=us-east-1",
+    "artillery:1000:init": "mkdir -p artillery/results && artillery run-lambda artillery/scenarios/init-only.yml --config artillery/environments/1000-rpm.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/1000-rpm-init-results.json --count=1 --region=us-east-1",
+    "artillery:10000:init": "mkdir -p artillery/results && artillery run-lambda artillery/scenarios/init-only.yml --config artillery/environments/10000-rpm.yml --target ${npm_config_target:-http://localhost:8080} --output artillery/results/10000-rpm-init-results.json --count=1 --region=us-east-1"
   },
   "keywords": [],
   "author": "",
