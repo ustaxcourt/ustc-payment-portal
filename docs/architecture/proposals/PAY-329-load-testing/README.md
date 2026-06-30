@@ -66,25 +66,28 @@ Interpretation:
 ### `1000-rpm-full-results.json`
 
 - Virtual users created: `5100`
-- Virtual users completed: `5100`
-- Virtual users failed: `0`
-- Completion rate: `100.0%`
-- HTTP `200`: `20400`
+- Virtual users completed: `3857`
+- Virtual users failed: `1243`
+- Completion rate: `75.6%`
+- Failure rate: `24.4%`
+- HTTP `200`: `17089`
 - HTTP `500`: `0`
 - HTTP `502`: `0`
-- Overall mean response time: `287.8 ms`
-- Overall p95 response time: `561.2 ms`
-- Successful-request mean response time: `287.8 ms`
-- Successful-request p95 response time: `561.2 ms`
-- `/init` mean response time: `319.0 ms`
-- `/process` mean response time: `442.9 ms`
-- `/details` mean response time: `282.8 ms`
+- Recorded `errors.ERR_SOCKET_TIMEOUT`: `1243`
+- `ERR_SOCKET_TIMEOUT` by step: `/init` `557`, `/process` `397`, `/details` `289`
+- Overall mean response time: `5751.1 ms`
+- Overall p95 response time: `11050.8 ms`
+- Successful-request mean response time: `5751.1 ms`
+- Successful-request p95 response time: `11050.8 ms`
+- `/init` mean response time: `8664.1 ms`
+- `/process` mean response time: `9061.8 ms`
+- `/details` mean response time: `5411.8 ms`
 
 Interpretation:
 
-- This saved artifact shows a stable lower-profile full-flow run with zero recorded failures.
-- `/process` is still the slowest successful payment-portal step in the end-to-end flow.
-- The local artifact set now does support a claim of `100%` virtual-user completion at this profile.
+- This saved artifact no longer shows a stable lower-profile full-flow run.
+- The dominant recorded failure mode is `ERR_SOCKET_TIMEOUT`, not HTTP `429`, `500`, or `502`.
+- `/process` is still the slowest successful payment-portal step, but `/init` is close behind and both are now measured in seconds rather than milliseconds.
 
 ### `10000-rpm-full-results.json`
 
@@ -119,19 +122,21 @@ Interpretation:
 - The saved `1000-rpm` artifacts each create `5100` virtual users, matching `17 arrivals/sec for 300s`.
 - The saved `10000-rpm` artifacts each create `50101` virtual users, which is effectively the current `167 arrivals/sec for 300s` shape.
 
-### 2. The lower profile is stable in the current artifact set
+### 2. Only the lower-profile `init-only` run is clean in the current artifact set
 
-- Both `1000-rpm` artifacts show `100%` completion and no recorded failures.
-- At this profile, the saved results do not show throttling or server-error behavior.
+- `1000-rpm-init` still shows `100%` completion and no recorded failures.
+- `1000-rpm-full` now completes only `75.6%` of virtual users and records `1243` `ERR_SOCKET_TIMEOUT` failures.
 
-### 3. The stress-profile failures are dominated by recorded `EMFILE` errors
+### 3. The current artifact set shows two different non-HTTP failure modes
 
+- The saved `1000-rpm-full` artifact records `1243` `ERR_SOCKET_TIMEOUT` failures.
 - The saved `10000-rpm-init` artifact records `22042` `EMFILE` errors, plus a smaller number of HTTP `502` and `500` responses.
 - The saved `10000-rpm-full` artifact records `45919` `EMFILE` errors and no HTTP `429`, `500`, or `502` responses.
-- Any follow-up should treat this as a different failure mode from simple API throttling.
+- Any follow-up should treat these as different failure modes from simple API throttling.
 
-### 4. Request-level and flow-level outcomes diverge sharply at `10000-rpm`
+### 4. Request-level and flow-level outcomes diverge at both profiles
 
+- The `1000-rpm-full` artifact contains `17089` HTTP `200` responses while only `3857` virtual users complete the full scenario.
 - The `10000-rpm-full` artifact contains `60216` HTTP `200` responses while only `4182` virtual users complete the full scenario.
 - Future summaries should continue to report both request success and virtual-user completion side by side.
 
@@ -163,6 +168,7 @@ For each run, record:
 ### Narrow next experiments
 
 - Run an incremental ramp between the two existing profiles.
+- Determine why the updated `1000-rpm-full` artifact is now timing out before treating the lower profile as a stable baseline.
 - Determine where the recorded `EMFILE` errors originate before treating the stress-profile results as pure service saturation.
 - Inspect `/process` for backend latency contributors once the stress-profile execution failure mode is understood.
 - Consider adding isolated `/details` coverage if read-path scalability becomes a question.
