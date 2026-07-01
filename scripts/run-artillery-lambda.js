@@ -13,16 +13,19 @@ if (!roleArn) {
   console.error("ARTILLERY_LAMBDA_ROLE_ARN is not set in artillery/.env");
   process.exit(1);
 }
-
 const target =
   process.env.ARTILLERY_TARGET || "https://dev-payments.ustaxcourt.gov";
+const lambdaCount = process.env.ARTILLERY_LAMBDA_COUNT || "1";
+const awsRegion = process.env.ARTILLERY_LAMBDA_REGION || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "us-east-1";
+
+console.log(`Running artillery with target: ${target}, region: ${awsRegion}, lambda count: ${lambdaCount}, role ARN: ${roleArn}`);
 
 const childEnv = { ...process.env };
 delete childEnv.AWS_ACCESS_KEY_ID;
 delete childEnv.AWS_SECRET_ACCESS_KEY;
 delete childEnv.AWS_SESSION_TOKEN;
-childEnv.AWS_REGION = "us-east-1";
-childEnv.AWS_DEFAULT_REGION = "us-east-1";
+childEnv.AWS_REGION = awsRegion;
+childEnv.AWS_DEFAULT_REGION = awsRegion;
 
 const result = spawnSync(
   "artillery",
@@ -34,9 +37,9 @@ const result = spawnSync(
     "--target",
     target,
     "--region",
-    "us-east-1",
+    awsRegion,
     "--count",
-    "1",
+    lambdaCount,
     "--lambda-role-arn",
     roleArn,
   ],

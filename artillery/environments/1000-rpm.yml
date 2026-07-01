@@ -11,6 +11,7 @@ config:
   phases:
     - duration: 300
       arrivalRate: 17
+      maxVusers: 1000
       name: baseline-1000-rpm
 
   processor: "../processor.js"
