@@ -8,10 +8,27 @@ config:
   ensure:
     maxErrorRate: 10
 
+  maxVusers: 500
+
   phases:
-    - duration: 300
+    - duration: 60
+      arrivalRate: 3
+      name: "Ramp to 200 RPM"
+
+    - duration: 60
+      arrivalRate: 7
+      name: "Ramp to 400 RPM"
+
+    - duration: 60
+      arrivalRate: 10
+      name: "Ramp to 600 RPM"
+
+    - duration: 60
+      arrivalRate: 13
+      name: "Ramp to 800 RPM"
+
+    - duration: 60
       arrivalRate: 17
-      maxVusers: 200
-      name: baseline-1000-rpm
+      name: "Ramp to 1000 RPM"
 
   processor: "../processor.js"
