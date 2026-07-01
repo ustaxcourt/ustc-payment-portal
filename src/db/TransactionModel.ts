@@ -1,39 +1,37 @@
-import { Model } from 'objection';
-import FeesModel from './FeesModel';
-import type { PaymentStatus } from '../schemas/PaymentStatus.schema';
-import type { TransactionStatus as SchemaTransactionStatus } from '../schemas/TransactionStatus.schema';
-import { ConflictError } from '../errors/conflict';
-import { GoneError } from '../errors/gone';
-import { getKnex } from './knex';
+import { Model } from "objection";
+import FeesModel from "./FeesModel";
+import type { PaymentStatus } from "../schemas/PaymentStatus.schema";
+import type { TransactionStatus as SchemaTransactionStatus } from "../schemas/TransactionStatus.schema";
+import { ConflictError } from "../errors/conflict";
+import { GoneError } from "../errors/gone";
+import { getKnex } from "./knex";
 
 export type TransactionStatus = SchemaTransactionStatus;
 export type { PaymentStatus };
 
-export type AggregatedPaymentStatus = Record<PaymentStatus, number> & { total: number };
+export type AggregatedPaymentStatus = Record<PaymentStatus, number> & {
+  total: number;
+};
 
-export type PaymentMethod =
-  | 'plastic_card'
-  | 'ach'
-  | 'paypal';
+export type PaymentMethod = "plastic_card" | "ach" | "paypal";
 
 /** Max age before a stuck `processing` row is treated as abandoned (Lambda timeout, crash). */
 const PROCESSING_STALE_MS = 600_000; // 10 minutes
 const STALE_PROCESSING_RETURN_CODE = 5010;
-const STALE_PROCESSING_DETAIL = 'Processing interrupted — token expired';
+const STALE_PROCESSING_DETAIL = "Processing interrupted — token expired";
 
 export const PROCESSING_CONFLICT_MESSAGE =
-  'A payment is already being processed for this token';
+  "A payment is already being processed for this token";
 
 const SIBLING_GONE_MESSAGE =
-  'This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.';
+  "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.";
 
-const TOKEN_NO_LONGER_VALID_MESSAGE = 'This token is no longer valid.';
+const TOKEN_NO_LONGER_VALID_MESSAGE = "This token is no longer valid.";
 
 const isStaleProcessing = (row: TransactionModel): boolean => {
   const ageMs = Date.now() - new Date(row.lastUpdatedAt).getTime();
   return ageMs >= PROCESSING_STALE_MS;
 };
-
 
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
@@ -56,11 +54,11 @@ export default class TransactionModel extends Model {
   metadata?: Record<string, string> | null;
 
   static get tableName() {
-    return 'transactions';
+    return "transactions";
   }
 
   static get idColumn() {
-    return 'agencyTrackingId';
+    return "agencyTrackingId";
   }
 
   static get relationMappings() {
@@ -69,8 +67,8 @@ export default class TransactionModel extends Model {
         relation: Model.BelongsToOneRelation,
         modelClass: FeesModel,
         join: {
-          from: 'transactions.feeId',
-          to: 'fees.feeId',
+          from: "transactions.feeId",
+          to: "fees.feeId",
         },
       },
     };
@@ -78,7 +76,10 @@ export default class TransactionModel extends Model {
 
   $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
     const parsed = super.$parseDatabaseJson(json);
-    if (parsed.transactionAmount !== undefined && parsed.transactionAmount !== null) {
+    if (
+      parsed.transactionAmount !== undefined &&
+      parsed.transactionAmount !== null
+    ) {
       parsed.transactionAmount = Number(parsed.transactionAmount);
     }
     return parsed;
@@ -86,33 +87,35 @@ export default class TransactionModel extends Model {
 
   // Fees from Fee Table will never be deleted, new ones are versioned according
   // to FeeKey & activation date, with the latest date accepted as the active fee.
-  static async getByPaymentStatus(paymentStatus: PaymentStatus): Promise<TransactionModel[]> {
+  static async getByPaymentStatus(
+    paymentStatus: PaymentStatus,
+  ): Promise<TransactionModel[]> {
     await getKnex();
     return TransactionModel.query()
-      .alias('t')
-      .join('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.name as feeName', 'f.amount as transactionAmount')
-      .where('t.paymentStatus', paymentStatus)
-      .orderBy('t.createdAt', 'desc')
+      .alias("t")
+      .join("fees as f", "t.feeId", "f.feeId")
+      .select("t.*", "f.name as feeName", "f.amount as transactionAmount")
+      .where("t.paymentStatus", paymentStatus)
+      .orderBy("t.createdAt", "desc")
       .limit(100);
   }
 
   static async getAll(): Promise<TransactionModel[]> {
     await getKnex();
     return TransactionModel.query()
-      .alias('t')
-      .join('fees as f', 't.feeId', 'f.feeId')
-      .select('t.*', 'f.name as feeName', 'f.amount as transactionAmount')
-      .orderBy('t.createdAt', 'desc')
+      .alias("t")
+      .join("fees as f", "t.feeId", "f.feeId")
+      .select("t.*", "f.name as feeName", "f.amount as transactionAmount")
+      .orderBy("t.createdAt", "desc")
       .limit(100);
   }
 
   static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
     await getKnex();
     const rows = await TransactionModel.query()
-      .select('paymentStatus')
-      .count('* as count')
-      .groupBy('paymentStatus');
+      .select("paymentStatus")
+      .count("* as count")
+      .groupBy("paymentStatus");
 
     const totals: AggregatedPaymentStatus = {
       success: 0,
@@ -124,7 +127,11 @@ export default class TransactionModel extends Model {
     rows.forEach((row) => {
       const paymentStatus = row.paymentStatus;
 
-      if (paymentStatus === 'success' || paymentStatus === 'failed' || paymentStatus === 'pending') {
+      if (
+        paymentStatus === "success" ||
+        paymentStatus === "failed" ||
+        paymentStatus === "pending"
+      ) {
         const countValue = (row as unknown as { count: number | string }).count;
         totals[paymentStatus] = Number(countValue);
       }
@@ -137,45 +144,56 @@ export default class TransactionModel extends Model {
     return totals;
   }
 
-  static async createReceived(data: Partial<TransactionModel>): Promise<TransactionModel> {
+  static async createReceived(
+    data: Partial<TransactionModel>,
+  ): Promise<TransactionModel> {
     await getKnex();
     const newTransaction = await this.query().insertAndFetch({
       ...data,
-      paymentStatus: 'pending',
-      transactionStatus: 'received',
+      paymentStatus: "pending",
+      transactionStatus: "received",
     });
 
     return newTransaction;
   }
 
-  static async updateToInitiated(agencyTrackingId: string, paygovToken: string): Promise<void> {
+  static async updateToInitiated(
+    agencyTrackingId: string,
+    paygovToken: string,
+  ): Promise<void> {
     await getKnex();
     await this.query()
       .patch({
-        transactionStatus: 'initiated',
+        transactionStatus: "initiated",
         paygovToken,
       })
-      .where('agencyTrackingId', agencyTrackingId);
+      .where("agencyTrackingId", agencyTrackingId);
   }
 
-  static async findByPaygovToken(token: string): Promise<TransactionModel | undefined> {
+  static async findByPaygovToken(
+    token: string,
+  ): Promise<TransactionModel | undefined> {
     await getKnex();
     return TransactionModel.query().findOne({ paygovToken: token });
   }
 
-  static async findByPaygovTrackingId(paygovTrackingId: string): Promise<TransactionModel | undefined> {
+  static async findByPaygovTrackingId(
+    paygovTrackingId: string,
+  ): Promise<TransactionModel | undefined> {
     await getKnex();
     return TransactionModel.query().findOne({ paygovTrackingId });
   }
 
-  static async findByReferenceId(transactionReferenceId: string): Promise<TransactionModel[]> {
+  static async findByReferenceId(
+    transactionReferenceId: string,
+  ): Promise<TransactionModel[]> {
     await getKnex();
     // Order ascending by createdAt: getDetails relies on rows[0] being the earliest attempt
     // for the Fee-invariance lookup (all attempts share the same feeId, but rows[0]'s timestamp
     // is also implicitly the obligation's first-attempt timestamp).
     return TransactionModel.query()
       .where({ transactionReferenceId })
-      .orderBy('createdAt', 'asc');
+      .orderBy("createdAt", "asc");
   }
 
   static async updateAfterPayGovResponse(
@@ -189,15 +207,14 @@ export default class TransactionModel extends Model {
   ): Promise<TransactionModel> {
     await getKnex();
     // Skip empty dates: patching "" into a TIMESTAMP corrupts it; undefined would null an existing value.
-    return this.query()
-      .patchAndFetchById(agencyTrackingId, {
-        paygovTrackingId,
-        transactionStatus,
-        paymentStatus,
-        paymentMethod,
-        ...(transactionDate && { transactionDate }),
-        ...(paymentDate && { paymentDate }),
-      });
+    return this.query().patchAndFetchById(agencyTrackingId, {
+      paygovTrackingId,
+      transactionStatus,
+      paymentStatus,
+      paymentMethod,
+      ...(transactionDate && { transactionDate }),
+      ...(paymentDate && { paymentDate }),
+    });
   }
 
   static async findPendingOrProcessedByReferenceId(
@@ -207,10 +224,10 @@ export default class TransactionModel extends Model {
   ): Promise<TransactionModel | undefined> {
     await getKnex();
     return TransactionModel.query()
-      .whereIn('transactionStatus', ['pending', 'processed'])
-      .where('clientName', clientName)
-      .where('transactionReferenceId', transactionReferenceId)
-      .whereNot('paygovToken', excludeToken)
+      .whereIn("transactionStatus", ["pending", "processed"])
+      .where("clientName", clientName)
+      .where("transactionReferenceId", transactionReferenceId)
+      .whereNot("paygovToken", excludeToken)
       .first();
   }
 
@@ -242,54 +259,64 @@ export default class TransactionModel extends Model {
       }
 
       const sibling = await this.query(trx)
-        .whereIn('transactionStatus', ['pending', 'processed'])
+        .whereIn("transactionStatus", ["pending", "processed"])
         .where({
           clientName: row.clientName,
           transactionReferenceId: row.transactionReferenceId,
         })
-        .whereNot('paygovToken', paygovToken)
+        .whereNot("paygovToken", paygovToken)
         .first();
 
       if (sibling) {
         throw new GoneError(SIBLING_GONE_MESSAGE);
       }
 
-      if (row.transactionStatus === 'processing') {
+      if (row.transactionStatus === "processing") {
         if (isStaleProcessing(row)) {
           await this.query(trx)
             .patch({
-              transactionStatus: 'failed',
-              paymentStatus: 'failed',
+              transactionStatus: "failed",
+              paymentStatus: "failed",
               returnCode: STALE_PROCESSING_RETURN_CODE,
               returnDetail: STALE_PROCESSING_DETAIL,
             })
-            .where('agencyTrackingId', row.agencyTrackingId);
+            .where("agencyTrackingId", row.agencyTrackingId);
           throw new GoneError(TOKEN_NO_LONGER_VALID_MESSAGE);
         }
         throw new ConflictError(PROCESSING_CONFLICT_MESSAGE);
       }
 
-      if (row.transactionStatus !== 'initiated') {
+      if (row.transactionStatus !== "initiated") {
         throw new GoneError(TOKEN_NO_LONGER_VALID_MESSAGE);
       }
 
       return this.query(trx).patchAndFetchById(row.agencyTrackingId, {
-        transactionStatus: 'processing',
+        transactionStatus: "processing",
       });
     });
   }
 
-// Returns the in-flight 'initiated' attempt for the given transactionReferenceId, if one exists.
-// NOTE: the partial unique index `idx_transactions_unique_active` also covers 'received' and
-// 'pending' — those statuses are intentionally not checked here; the index is the sole guard
-// for those windows.
+  static async revertProcessingToInitiated(
+    agencyTrackingId: string,
+  ): Promise<void> {
+    await getKnex();
+    await this.query()
+      .patch({ transactionStatus: "initiated" })
+      .where("agencyTrackingId", agencyTrackingId)
+      .where("transactionStatus", "processing");
+  }
+
+  // Returns the in-flight 'initiated' attempt for the given transactionReferenceId, if one exists.
+  // NOTE: the partial unique index `idx_transactions_unique_active` also covers 'received' and
+  // 'pending' — those statuses are intentionally not checked here; the index is the sole guard
+  // for those windows.
   static async findInFlightByReferenceId(
     transactionReferenceId: string,
   ): Promise<TransactionModel | undefined> {
     await getKnex();
     return TransactionModel.query()
-      .where('transactionReferenceId', transactionReferenceId)
-      .whereIn('transactionStatus', ['initiated'])
+      .where("transactionReferenceId", transactionReferenceId)
+      .whereIn("transactionStatus", ["initiated"])
       .first();
   }
 
@@ -299,13 +326,12 @@ export default class TransactionModel extends Model {
     returnDetail?: string,
   ): Promise<TransactionModel> {
     await getKnex();
-    return this.query()
-      .patchAndFetchById(agencyTrackingId, {
-        transactionStatus: 'failed',
-        paymentStatus: 'failed',
-        returnCode,
-        returnDetail,
-      });
+    return this.query().patchAndFetchById(agencyTrackingId, {
+      transactionStatus: "failed",
+      paymentStatus: "failed",
+      returnCode,
+      returnDetail,
+    });
   }
 
   // TODO: [Future Ticket] Implement findByTransactionReferenceId to retrieve

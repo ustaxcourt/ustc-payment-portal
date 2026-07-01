@@ -295,11 +295,22 @@ registry.registerPath({
         },
       },
     },
+    409: {
+      description:
+        "Conflict - this token is already being processed. " +
+        "Retry only after the in-flight request completes or fails.",
+      content: {
+        "application/json": {
+          schema: ConflictErrorSchema,
+        },
+      },
+    },
     410: {
       description:
         "Gone - the token is no longer valid for processing. " +
-        "Either another transaction is already fulfilling the same obligation (check getDetails), " +
-        "or the transaction associated with this token is not in an initiatable state.",
+        "Another transaction may already be fulfilling the same obligation (check getDetails), " +
+        "or the transaction associated with this token is not in an initiatable state. " +
+        "This is not returned for concurrent in-flight requests on the same token (see 409).",
       content: {
         "application/json": {
           schema: GoneErrorSchema,
