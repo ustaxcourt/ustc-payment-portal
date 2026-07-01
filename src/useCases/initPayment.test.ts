@@ -46,8 +46,8 @@ jest.mock("../health/payGovHealthMetric", () => ({
 
 import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
-import { InitPaymentRequest } from "../schemas/InitPayment.schema";
-import * as SoapRequestModule from "../entities/StartOnlineCollectionRequest";
+import { InitPaymentRequest } from "@schemas/InitPayment.schema";
+import * as SoapRequestModule from "@entities/StartOnlineCollectionRequest";
 import { ZodError } from "zod";
 import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
@@ -483,3 +483,4 @@ describe("initPayment", () => {
     expect(emitErrorMock).not.toHaveBeenCalled();
   });
 });
+

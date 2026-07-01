@@ -247,6 +247,111 @@ resource "aws_iam_role_policy_attachment" "chatbot_cloudwatch_read" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess"
 }
 
+# RDS Proxy alarms — availability needs TargetGroup + TargetRole dimensions or it never fires.
+resource "aws_cloudwatch_metric_alarm" "proxy_connections" {
+  count = var.proxy_name != null ? 1 : 0
+
+  alarm_name          = "${var.name_prefix}-rds-proxy-connections-high"
+  alarm_description   = <<-EOT
+    RDS Proxy backend DB connections ≥ ${var.proxy_connections_threshold} for 5 min (approaching pool cap).
+    Service: payment-portal (${var.env})
+    Severity: warning
+    Runbook: ${var.runbook_url}
+  EOT
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  period              = 60
+  evaluation_periods  = 5
+  datapoints_to_alarm = 5
+  threshold           = var.proxy_connections_threshold
+  statistic           = "Maximum"
+  metric_name         = "DatabaseConnections"
+  namespace           = "AWS/RDS"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ProxyName = var.proxy_name
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = merge(local.default_tags, {
+    Severity = "warning"
+    Metric   = "proxy-connections"
+    Runbook  = var.runbook_url
+  })
+}
+
+resource "aws_cloudwatch_metric_alarm" "proxy_session_pinned" {
+  count = var.proxy_name != null ? 1 : 0
+
+  alarm_name          = "${var.name_prefix}-rds-proxy-session-pinned"
+  alarm_description   = <<-EOT
+    RDS Proxy session-pinned connections ≥ ${var.proxy_pinned_threshold} for 5 min — pinning prevents connection multiplexing.
+    Service: payment-portal (${var.env})
+    Severity: warning
+    Runbook: ${var.runbook_url}
+  EOT
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  period              = 60
+  evaluation_periods  = 5
+  datapoints_to_alarm = 5
+  threshold           = var.proxy_pinned_threshold
+  statistic           = "Maximum"
+  metric_name         = "DatabaseConnectionsCurrentlySessionPinned"
+  namespace           = "AWS/RDS"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ProxyName = var.proxy_name
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = merge(local.default_tags, {
+    Severity = "warning"
+    Metric   = "proxy-session-pinned"
+    Runbook  = var.runbook_url
+  })
+}
+
+resource "aws_cloudwatch_metric_alarm" "proxy_availability" {
+  count = var.proxy_name != null ? 1 : 0
+
+  alarm_name          = "${var.name_prefix}-rds-proxy-availability-low"
+  alarm_description   = <<-EOT
+    RDS Proxy availability below ${var.proxy_availability_threshold}% (READ_WRITE target group).
+    Service: payment-portal (${var.env})
+    Severity: critical
+    Runbook: ${var.runbook_url}
+  EOT
+  comparison_operator = "LessThanThreshold"
+  period              = 60
+  evaluation_periods  = 5
+  datapoints_to_alarm = 3
+  threshold           = var.proxy_availability_threshold
+  statistic           = "Average"
+  metric_name         = "AvailabilityPercentage"
+  namespace           = "AWS/RDS"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ProxyName   = var.proxy_name
+    TargetGroup = "default"
+    TargetRole  = "READ_WRITE"
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = merge(local.default_tags, {
+    Severity = "critical"
+    Metric   = "proxy-availability"
+    Runbook  = var.runbook_url
+  })
+}
+
 resource "aws_chatbot_teams_channel_configuration" "alerts" {
   count = local.enable_teams ? 1 : 0
 

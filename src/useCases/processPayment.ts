@@ -1,21 +1,21 @@
 import { ZodError } from "zod";
-import { AppContext } from "../types/AppContext";
-import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/CompleteOnlineCollectionWithDetailsRequest";
-import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
-import { ProcessPaymentResponse } from "../schemas/ProcessPayment.schema";
-import { FailedTransactionError } from "../errors/failedTransaction";
-import { GoneError } from "../errors/gone";
-import { NotFoundError } from "../errors/notFound";
-import { PayGovError } from "../errors/payGovError";
-import { ServerError } from "../errors/serverError";
+import type { AppContext } from "@appTypes/AppContext";
+import { CompleteOnlineCollectionWithDetailsRequest } from "@entities/CompleteOnlineCollectionWithDetailsRequest";
+import type { ProcessPaymentRequest } from "@appTypes/ProcessPaymentRequest";
+import { ProcessPaymentResponse } from "@schemas/ProcessPayment.schema";
+import { FailedTransactionError } from "@errors/failedTransaction";
+import { GoneError } from "@errors/gone";
+import { NotFoundError } from "@errors/notFound";
+import { PayGovError } from "@errors/payGovError";
+import { ServerError } from "@errors/serverError";
 import { parseTransactionStatus } from "./parseTransactionStatus";
-import { derivePaymentStatusFromSingleTransaction } from "../utils/derivePaymentStatus";
-import { ClientPermission } from "../types/ClientPermission";
+import { derivePaymentStatusFromSingleTransaction } from "@utils/derivePaymentStatus";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
-import { toPaymentMethod } from "../utils/toPaymentMethod";
-import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
-import { safeUpdateToFailed } from "../utils/safeUpdateToFailed";
+import { toPaymentMethod } from "@utils/toPaymentMethod";
+import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
+import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { authorizeClient } from "../authorizeClient";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 
@@ -227,3 +227,4 @@ export const processPayment: ProcessPayment = async (
     transactions: allRows.map((row) => toTransactionRecordSummary(row)),
   };
 };
+
