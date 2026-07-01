@@ -11,7 +11,7 @@ config:
   phases:
     - duration: 300
       arrivalRate: 167
-      maxVusers: 10000
+      maxVusers: 200
       name: stress-10000-rpm
 
   processor: "../processor.js"
