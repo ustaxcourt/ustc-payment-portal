@@ -11,24 +11,8 @@ config:
   maxVusers: 500
 
   phases:
-    - duration: 60
-      arrivalRate: 3
-      name: "Ramp to 200 RPM"
-
-    - duration: 60
-      arrivalRate: 7
-      name: "Ramp to 400 RPM"
-
-    - duration: 60
-      arrivalRate: 10
-      name: "Ramp to 600 RPM"
-
-    - duration: 60
-      arrivalRate: 13
-      name: "Ramp to 800 RPM"
-
-    - duration: 60
+    - duration: 300
       arrivalRate: 17
-      name: "Ramp to 1000 RPM"
+      name: baseline-1000-rpm
 
   processor: "../processor.js"

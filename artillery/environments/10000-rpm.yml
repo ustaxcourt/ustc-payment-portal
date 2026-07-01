@@ -3,7 +3,7 @@ config:
 
   http:
     timeout: 60000
-    pool: 1000
+    pool: 500
 
   ensure:
     maxErrorRate: 100
@@ -11,24 +11,8 @@ config:
   maxVusers: 2000
 
   phases:
-    - duration: 60
-      arrivalRate: 33
-      name: "2K RPM"
-
-    - duration: 60
-      arrivalRate: 66
-      name: "4K RPM"
-
-    - duration: 60
-      arrivalRate: 100
-      name: "6K RPM"
-
-    - duration: 60
-      arrivalRate: 133
-      name: "8K RPM"
-
-    - duration: 60
+    - duration: 180
       arrivalRate: 167
-      name: "10K RPM"
+      name: stress-10K-rpm
 
   processor: "../processor.js"
