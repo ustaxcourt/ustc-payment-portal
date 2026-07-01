@@ -15,6 +15,9 @@ import { StartOnlineCollectionRequest } from "@entities/StartOnlineCollectionReq
 import type { ClientPermission } from "@appTypes/ClientPermission";
 import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { authorizeClient } from "../authorizeClient";
+import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { ZodError } from "zod";
+import { FailedTransactionError } from "../errors/failedTransaction";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
@@ -165,8 +168,7 @@ export const initPayment: InitPayment = async (
 
     /* istanbul ignore next */
     throw new Error(
-      `Failed to record received transaction: ${
-        err instanceof Error ? err.message : String(err)
+      `Failed to record received transaction: ${err instanceof Error ? err.message : String(err)
       }`,
     );
   }
@@ -190,6 +192,9 @@ export const initPayment: InitPayment = async (
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
     });
+    if (!(err instanceof ZodError) && !(err instanceof FailedTransactionError)) {
+      emitPayGovErrorMetric();
+    }
     await safeUpdateToFailed(
       appContext,
       agencyTrackingId,
