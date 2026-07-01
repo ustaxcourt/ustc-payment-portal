@@ -59,7 +59,7 @@ describe("start-pay-gov-test-server", () => {
       expect.objectContaining({
         stdio: "inherit",
         env: expect.objectContaining({
-          ACCESS_TOKEN: "asdf123",
+          ACCESS_TOKEN: "development-token",
         }),
       }),
     );
