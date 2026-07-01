@@ -348,6 +348,23 @@ describe("processPayment", () => {
     );
   });
 
+  it("reverts processing to initiated when fee lookup throws", async () => {
+    const dbErr = new Error("connection refused");
+    FeesModelMock.getFeeById.mockRejectedValueOnce(dbErr);
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(dbErr);
+
+    expect(TransactionModelMock.revertProcessingToInitiated).toHaveBeenCalledWith(
+      mockTransaction.agencyTrackingId,
+    );
+    expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
+  });
+
   it("throws ServerError when fee has no tcsAppId", async () => {
     FeesModelMock.getFeeById.mockResolvedValueOnce({
       feeId: "fee-123",

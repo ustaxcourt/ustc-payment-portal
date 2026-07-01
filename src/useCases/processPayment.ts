@@ -74,7 +74,20 @@ export const processPayment: ProcessPayment = async (
     metadata: transaction.metadata,
   };
 
-  const fee = await FeesModel.getFeeById(transaction.feeId);
+  let fee: Awaited<ReturnType<typeof FeesModel.getFeeById>>;
+  try {
+    fee = await FeesModel.getFeeById(transaction.feeId);
+  } catch (err) {
+    appContext.logger.error("Fee lookup failed", {
+      ...baseLogFields,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    await TransactionModel.revertProcessingToInitiated(
+      transaction.agencyTrackingId,
+    );
+    throw err;
+  }
   if (!fee) {
     appContext.logger.error("Fee not found for transaction", {
       ...baseLogFields,
@@ -91,7 +104,8 @@ export const processPayment: ProcessPayment = async (
       ...baseLogFields,
       feeKey: fee.feeKey,
     });
-    await TransactionModel.updateToFailed(
+    await safeUpdateToFailed(
+      appContext,
       transaction.agencyTrackingId,
       undefined,
       "Fee is missing tcsAppId configuration",

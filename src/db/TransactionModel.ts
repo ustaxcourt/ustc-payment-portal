@@ -307,9 +307,10 @@ export default class TransactionModel extends Model {
   }
 
   // Returns the in-flight attempt for the given transactionReferenceId, if one exists.
-  // NOTE: the partial unique index `idx_transactions_unique_active` also covers 'received' and
-  // 'pending' — those statuses are intentionally not checked here; the index is the sole guard
-  // for those windows.
+  // Checks 'initiated' and 'processing' explicitly. The partial unique index
+  // `idx_transactions_unique_active` also covers 'received', 'initiated', 'processing', and
+  // 'pending' — 'received' and 'pending' are intentionally not checked here; the index is the
+  // sole guard for those windows.
   static async findInFlightByReferenceId(
     transactionReferenceId: string,
   ): Promise<TransactionModel | undefined> {
