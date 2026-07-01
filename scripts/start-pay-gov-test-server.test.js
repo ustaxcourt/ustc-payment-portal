@@ -42,6 +42,7 @@ describe("start-pay-gov-test-server", () => {
 
   afterEach(() => {
     delete process.env.PAY_GOV_TEST_SERVER_PORT;
+    delete process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN;
     delete process.env.PAY_GOV_NODE_ENV;
     jest.restoreAllMocks();
     process.removeAllListeners("SIGINT");
@@ -82,6 +83,16 @@ describe("start-pay-gov-test-server", () => {
 
     const spawnEnv = mockSpawn.mock.calls[0][2].env;
     expect(spawnEnv.NODE_ENV).toBe("local");
+  });
+
+  it("uses PAY_GOV_TEST_SERVER_ACCESS_TOKEN for ACCESS_TOKEN when set", () => {
+    process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN = "asdf123";
+    mockSpawn.mockReturnValue(makeChildProcess());
+
+    require("./start-pay-gov-test-server");
+
+    const spawnEnv = mockSpawn.mock.calls[0][2].env;
+    expect(spawnEnv.ACCESS_TOKEN).toBe("asdf123");
   });
 
   it("forwards PAY_GOV_NODE_ENV to the child as NODE_ENV when set", () => {

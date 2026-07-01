@@ -1,0 +1,18 @@
+config:
+  target: "http://localhost:8080"
+
+  http:
+    timeout: 60000
+    pool: 200
+
+  ensure:
+    maxErrorRate: 10
+
+  maxVusers: 500
+
+  phases:
+    - duration: 300
+      arrivalRate: 17
+      name: baseline-1000-rpm
+
+  processor: "../processor.js"

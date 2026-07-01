@@ -506,15 +506,14 @@ resource "aws_api_gateway_stage" "stage" {
 }
 
 # Throttling — protects against runaway clients and abuse.
-# Stage-wide default: 10 req/s sustained, burst of 20. Payment endpoints and /details override this below.
 resource "aws_api_gateway_method_settings" "all" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
   stage_name  = aws_api_gateway_stage.stage.stage_name
   method_path = "*/*"
 
   settings {
-    throttling_burst_limit = 20
-    throttling_rate_limit  = 10
+    throttling_burst_limit = var.stage_throttling_burst_limit
+    throttling_rate_limit  = var.stage_throttling_rate_limit
     metrics_enabled        = true
   }
 }

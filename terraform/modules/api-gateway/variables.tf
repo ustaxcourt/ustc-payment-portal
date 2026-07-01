@@ -82,3 +82,15 @@ variable "enable_per_endpoint_throttling" {
   default     = true
 }
 
+variable "stage_throttling_rate_limit" {
+  description = "API Gateway stage-wide sustained request rate limit (req/s)."
+  type        = number
+  default     = 10
+}
+
+variable "stage_throttling_burst_limit" {
+  description = "API Gateway stage-wide burst request limit."
+  type        = number
+  default     = 20
+}
+
