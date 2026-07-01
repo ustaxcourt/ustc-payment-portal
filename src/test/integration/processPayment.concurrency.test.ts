@@ -19,22 +19,37 @@ describeWithEnv("POST /process concurrency", () => {
     }
   });
 
-  it("returns 200 and 409 when the same token is processed concurrently, with only one Pay.gov completion", async () => {
+  it("returns one success and rejects duplicate concurrent processPayment calls for the same token", async () => {
     const { token, paymentRedirect } = await initPayment();
     await markPayment(paymentRedirect, token, "PLASTIC_CARD", "Success");
 
-    const [first, second] = await Promise.all([
-      processPaymentRaw(token),
-      processPaymentRaw(token),
-    ]);
+    const concurrentRequests = 10;
+    const responses = await Promise.all(
+      Array.from({ length: concurrentRequests }, () =>
+        processPaymentRaw(token),
+      ),
+    );
 
-    const statuses = [first.status, second.status].sort((a, b) => a - b);
-    expect(statuses).toEqual([200, 409]);
+    const statuses = responses.map((response) => response.status);
+    expect(statuses.filter((status) => status === 200)).toHaveLength(1);
+    expect(
+      statuses.filter((status) => status === 409).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      statuses.every(
+        (status) => status === 200 || status === 409 || status === 410,
+      ),
+    ).toBe(true);
 
-    const successResponse = first.status === 200 ? first : second;
-    const conflictResponse = first.status === 409 ? first : second;
+    const successResponse = responses.find(
+      (response) => response.status === 200,
+    )!;
+    const conflictResponse = responses.find(
+      (response) => response.status === 409,
+    )!;
 
-    const successBody = (await successResponse.json()) as ProcessPaymentResponse;
+    const successBody =
+      (await successResponse.json()) as ProcessPaymentResponse;
     expect(successBody.paymentStatus).toBe("success");
     expect(successBody.transactions).toHaveLength(1);
     expect(successBody.transactions[0].transactionStatus).toBe("processed");
@@ -42,8 +57,8 @@ describeWithEnv("POST /process concurrency", () => {
     const conflictBody = (await conflictResponse.json()) as { message: string };
     expect(conflictBody.message).toBe(PROCESSING_CONFLICT_MESSAGE);
 
-    const third = await processPaymentRaw(token);
-    expect(third.status).toBe(410);
+    const followUp = await processPaymentRaw(token);
+    expect(followUp.status).toBe(410);
   });
 
   const portalFetch = (
