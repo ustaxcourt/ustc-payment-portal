@@ -188,6 +188,27 @@ describe("initPayment", () => {
     expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
   });
 
+  it("returns the existing token when an attempt is processing (POST /process in flight)", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "processing",
+      paygovToken: "processing-token-abc",
+      lastUpdatedAt: new Date().toISOString(),
+    });
+
+    const result = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
+
+    expect(result.token).toBe("processing-token-abc");
+    expect(result.paymentRedirect).toContain("processing-token-abc");
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+  });
+
   it("marks expired in-flight transaction as failed and creates a new one when token age >= 3 hours", async () => {
     const expiredPaygovToken = crypto.randomUUID().replace(/-/g, "");
     const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");

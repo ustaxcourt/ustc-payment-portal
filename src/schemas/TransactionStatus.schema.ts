@@ -16,7 +16,11 @@ export const TransactionStatusSchema = z
     "pending",
   ])
   .openapi({
-    description: "The status of the payment transaction",
+    description:
+      "The status of a single payment transaction attempt. " +
+      "`processing` is transient: POST /process has claimed the token and may be calling Pay.gov. " +
+      "`pending` usually means Pay.gov is still settling (e.g. ACH). " +
+      "`processed` / `failed` are terminal for the attempt.",
     example: "processed",
   });
 

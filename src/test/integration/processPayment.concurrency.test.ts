@@ -19,7 +19,7 @@ describeWithEnv("POST /process concurrency", () => {
     }
   });
 
-  it("returns 200 and 409 when the same token is processed concurrently", async () => {
+  it("returns 200 and 409 when the same token is processed concurrently, with only one Pay.gov completion", async () => {
     const { token, paymentRedirect } = await initPayment();
     await markPayment(paymentRedirect, token, "PLASTIC_CARD", "Success");
 
@@ -41,6 +41,9 @@ describeWithEnv("POST /process concurrency", () => {
 
     const conflictBody = (await conflictResponse.json()) as { message: string };
     expect(conflictBody.message).toBe(PROCESSING_CONFLICT_MESSAGE);
+
+    const third = await processPaymentRaw(token);
+    expect(third.status).toBe(410);
   });
 
   const portalFetch = (

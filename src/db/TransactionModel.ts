@@ -306,7 +306,7 @@ export default class TransactionModel extends Model {
       .where("transactionStatus", "processing");
   }
 
-  // Returns the in-flight 'initiated' attempt for the given transactionReferenceId, if one exists.
+  // Returns the in-flight attempt for the given transactionReferenceId, if one exists.
   // NOTE: the partial unique index `idx_transactions_unique_active` also covers 'received' and
   // 'pending' — those statuses are intentionally not checked here; the index is the sole guard
   // for those windows.
@@ -316,7 +316,7 @@ export default class TransactionModel extends Model {
     await getKnex();
     return TransactionModel.query()
       .where("transactionReferenceId", transactionReferenceId)
-      .whereIn("transactionStatus", ["initiated"])
+      .whereIn("transactionStatus", ["initiated", "processing"])
       .first();
   }
 
