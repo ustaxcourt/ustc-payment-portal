@@ -20,6 +20,7 @@
     "tsc": "tsc",
     "dev": "nodemon --delay 2 --watch src -e ts,ejs --exec npm run dev:start",
     "tf:build": "npm run build:lambda",
+    "tf:test": "bash terraform/scripts/run-module-tests.sh",
     "start": "node .",
     "test": "npx jest --config jest-unit.config.ts",
     "test:coverage": "npm run test -- --coverage",
