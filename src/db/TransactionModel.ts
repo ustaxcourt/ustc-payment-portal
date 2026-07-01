@@ -1,10 +1,10 @@
-import { Model } from "objection";
-import FeesModel from "./FeesModel";
-import type { PaymentStatus } from "../schemas/PaymentStatus.schema";
-import type { TransactionStatus as SchemaTransactionStatus } from "../schemas/TransactionStatus.schema";
-import { ConflictError } from "../errors/conflict";
-import { GoneError } from "../errors/gone";
-import { getKnex } from "./knex";
+import { Model } from 'objection';
+import FeesModel from './FeesModel';
+import type { PaymentStatus } from '@schemas/PaymentStatus.schema';
+import type { TransactionStatus as SchemaTransactionStatus } from '@schemas/TransactionStatus.schema';
+import { ConflictError } from '@errors/conflict';
+import { GoneError } from '@errors/gone';
+import { getKnex } from './knex';
 
 export type TransactionStatus = SchemaTransactionStatus;
 export type { PaymentStatus };

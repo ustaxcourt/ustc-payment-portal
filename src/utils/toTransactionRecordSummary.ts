@@ -1,5 +1,5 @@
 import TransactionModel from "../db/TransactionModel";
-import { TransactionRecordSummary } from "../schemas/TransactionRecord.schema";
+import { TransactionRecordSummary } from "@schemas/TransactionRecord.schema";
 import { toApiPaymentMethod } from "./toApiPaymentMethod";
 
 export const toTransactionRecordSummary = (

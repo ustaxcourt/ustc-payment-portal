@@ -2,7 +2,7 @@ import { ZodError } from "zod";
 import { GetRequestRequest } from "./GetDetailsRequest";
 import { SoapRequest } from "./SoapRequest";
 import { testAppContext as appContext } from "../test/testAppContext";
-import { FailedTransactionError } from "../errors/failedTransaction";
+import { FailedTransactionError } from "@errors/failedTransaction";
 
 const mockPayGovTrackingId = "test-tracking-id-12345";
 

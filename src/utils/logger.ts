@@ -1,6 +1,6 @@
 import pino from "pino";
 import { getAppEnv, isLocal } from "../config/appEnv";
-import type { AppContextLogger } from "../types/AppContext";
+import type { AppContextLogger } from "@appTypes/AppContext";
 
 type RuntimeEnv = "test" | "development" | "production";
 

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { getSecretString } from "../clients/secretsClient";
+import { rootCertificates } from "tls";
+import { getSecretString } from "@clients/secretsClient";
 
 export interface RdsConnectionConfig {
   host: string;
@@ -8,7 +9,7 @@ export interface RdsConnectionConfig {
   user: string;
   password: string;
   database: string;
-  ssl: { rejectUnauthorized: boolean; ca?: Buffer };
+  ssl: { rejectUnauthorized: boolean; ca?: string | string[] };
 }
 
 // Cached per Lambda container lifetime — SecretsManager is only called on cold start.
@@ -48,11 +49,10 @@ export async function getRdsCredentials(): Promise<RdsConnectionConfig> {
   if (!username) throw new Error("RDS secret is missing 'username' field");
   if (!password) throw new Error("RDS secret is missing 'password' field");
 
-  // Use proper TLS verification when the RDS CA bundle is available (deployed Lambda).
-  // Fall back to rejectUnauthorized: false for local dev without the bundle.
+  // Trust Node's public roots (proxy's public Amazon CA) plus the bundled private RDS CA.
   const caPath = join(__dirname, "rds-ca-bundle.pem");
   const ssl = existsSync(caPath)
-    ? { rejectUnauthorized: true, ca: readFileSync(caPath) }
+    ? { rejectUnauthorized: true, ca: [...rootCertificates, readFileSync(caPath, "utf8")] }
     : { rejectUnauthorized: false };
 
   cached = { host, port, user: username, password, database: RDS_DB_NAME, ssl };

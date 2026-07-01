@@ -1,5 +1,7 @@
 import { signedFetch, signRequest, assumeRole, signedFetchWithCredentials } from "./sigv4Helper";
 
+jest.setTimeout(20000); // end-to-end calls can exceed Jest's 5s default
+
 const hasSigningCredentials =
   Boolean(process.env.AWS_ACCESS_KEY_ID) && Boolean(process.env.AWS_SECRET_ACCESS_KEY);
 const isLocalCiOnlySkipMode = Boolean(process.env.DEV_AWS_DEPLOYER_ROLE_ARN);

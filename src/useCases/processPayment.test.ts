@@ -1,12 +1,12 @@
 import { processPayment } from "./processPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
-import { ClientPermission } from "../types/ClientPermission";
-import { ConflictError } from "../errors/conflict";
-import { ForbiddenError } from "../errors/forbidden";
-import { GoneError } from "../errors/gone";
-import { NotFoundError } from "../errors/notFound";
-import { PayGovError } from "../errors/payGovError";
-import { ServerError } from "../errors/serverError";
+import type { ClientPermission } from "@appTypes/ClientPermission";
+import { ConflictError } from "@errors/conflict";
+import { ForbiddenError } from "@errors/forbidden";
+import { GoneError } from "@errors/gone";
+import { NotFoundError } from "@errors/notFound";
+import { PayGovError } from "@errors/payGovError";
+import { ServerError } from "@errors/serverError";
 import TransactionModel, {
   PROCESSING_CONFLICT_MESSAGE,
 } from "../db/TransactionModel";
@@ -928,3 +928,4 @@ describe("processPayment", () => {
     });
   });
 });
+

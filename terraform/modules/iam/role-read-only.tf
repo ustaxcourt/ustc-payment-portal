@@ -205,6 +205,15 @@ resource "aws_iam_role_policy" "github_actions_read_only" {
       {
         Effect = "Allow",
         Action = [
+          "events:DescribeRule",
+          "events:ListTargetsByRule",
+          "events:ListTagsForResource"
+        ],
+        Resource = "arn:aws:events:${local.aws_region}:${data.aws_caller_identity.current.account_id}:rule/${var.lambda_name_prefix}-*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
           "chatbot:GetMicrosoftTeamsChannelConfiguration",
           "chatbot:ListMicrosoftTeamsChannelConfigurations",
           "chatbot:ListTagsForResource"

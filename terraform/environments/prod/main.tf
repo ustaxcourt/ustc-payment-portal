@@ -67,6 +67,22 @@ module "rds" {
   }
 }
 
+module "rds_proxy" {
+  source = "../../modules/rds-proxy"
+
+  name                    = "${local.name_prefix}-proxy"
+  secret_arn              = module.rds.master_user_secret_arn
+  rds_instance_identifier = module.rds.instance_identifier
+  vpc_subnet_ids          = data.terraform_remote_state.foundation.outputs.proxy_subnet_ids
+  vpc_security_group_ids  = [data.terraform_remote_state.foundation.outputs.proxy_security_group_id]
+  max_connections_percent = local.proxy_max_connections_percent
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
 resource "aws_route53_zone" "this" {
   name = local.custom_domain
 
@@ -145,6 +161,8 @@ module "monitoring" {
   teams_tenant_id        = var.teams_tenant_id
   teams_team_id          = var.teams_team_id
   teams_channel_id       = var.teams_channel_id
+
+  proxy_name = module.rds_proxy.proxy_name
 
   lambda_functions = {
     initPayment    = module.lambda.function_names["initPayment"]

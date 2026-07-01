@@ -1,4 +1,4 @@
-import { ForbiddenError } from "./errors/forbidden";
+import { ForbiddenError } from "@errors/forbidden";
 import { APIGatewayEventRequestContext } from "aws-lambda";
 
 /**
