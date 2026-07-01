@@ -1,5 +1,6 @@
 // Postgres SQLSTATE codes — see https://www.postgresql.org/docs/current/errcodes-appendix.html
 const PG_UNIQUE_VIOLATION = "23505";
+const PG_LOCK_NOT_AVAILABLE = "55P03";
 
 /**
  * Detects whether a thrown error is a Postgres unique-violation (SQLSTATE 23505).
@@ -12,4 +13,12 @@ export const isUniqueViolation = (err: unknown): boolean => {
   const nativeCode = (err as { nativeError?: { code?: unknown } }).nativeError
     ?.code;
   return code === PG_UNIQUE_VIOLATION || nativeCode === PG_UNIQUE_VIOLATION;
+};
+
+export const isLockNotAvailable = (err: unknown): boolean => {
+  if (!err || typeof err !== "object") return false;
+  const code = (err as { code?: unknown }).code;
+  const nativeCode = (err as { nativeError?: { code?: unknown } }).nativeError
+    ?.code;
+  return code === PG_LOCK_NOT_AVAILABLE || nativeCode === PG_LOCK_NOT_AVAILABLE;
 };

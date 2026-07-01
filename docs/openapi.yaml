@@ -514,10 +514,15 @@ components:
           enum:
             - received
             - initiated
+            - processing
             - processed
             - failed
             - pending
-          description: The status of the payment transaction
+          description: >-
+            The status of a single payment transaction attempt. `processing` is
+            transient: POST /process has claimed the token and may be calling
+            Pay.gov. `pending` usually means Pay.gov is still settling (e.g.
+            ACH). `processed` / `failed` are terminal for the attempt.
           example: processed
         paymentMethod:
           type: string
@@ -555,10 +560,15 @@ components:
           enum:
             - received
             - initiated
+            - processing
             - processed
             - failed
             - pending
-          description: The status of the payment transaction
+          description: >-
+            The status of a single payment transaction attempt. `processing` is
+            transient: POST /process has claimed the token and may be calling
+            Pay.gov. `pending` usually means Pay.gov is still settling (e.g.
+            ACH). `processed` / `failed` are terminal for the attempt.
           example: processed
         paymentMethod:
           type: string
@@ -594,10 +604,15 @@ components:
       enum:
         - received
         - initiated
+        - processing
         - processed
         - failed
         - pending
-      description: The status of the payment transaction
+      description: >-
+        The status of a single payment transaction attempt. `processing` is
+        transient: POST /process has claimed the token and may be calling
+        Pay.gov. `pending` usually means Pay.gov is still settling (e.g. ACH).
+        `processed` / `failed` are terminal for the attempt.
       example: processed
     PaymentStatus:
       type: string
@@ -758,11 +773,16 @@ components:
           enum:
             - received
             - initiated
+            - processing
             - processed
             - failed
             - pending
             - null
-          description: The status of the payment transaction
+          description: >-
+            The status of a single payment transaction attempt. `processing` is
+            transient: POST /process has claimed the token and may be calling
+            Pay.gov. `pending` usually means Pay.gov is still settling (e.g.
+            ACH). `processed` / `failed` are terminal for the attempt.
           example: processed
         paymentMethod:
           type:
@@ -977,9 +997,11 @@ paths:
       description: >-
         Completes a payment transaction after the user has submitted payment
         information on Pay.gov. This endpoint must be called regardless of
-        payment type used to finalize the transaction. Note: When the
-        transaction reaches Pay.gov, both approved and declined outcomes return
-        HTTP 200 — check the transactionStatus field to determine the outcome.
+        payment type used to finalize the transaction. Concurrent requests for
+        the same token are serialized: only one Pay.gov complete call proceeds;
+        duplicates receive HTTP 409 Conflict. Note: When the transaction reaches
+        Pay.gov, both approved and declined outcomes return HTTP 200 — check the
+        transactionStatus field to determine the outcome.
       tags:
         - Payments
       security:
@@ -1024,12 +1046,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NotFoundError'
+        '409':
+          description: >-
+            Conflict - this token is already being processed by another
+            in-flight POST /process request. The duplicate request does not call
+            Pay.gov. Retry with backoff while responses are 409; once the
+            in-flight request finishes, a retry returns 200
+            (success/failure/pending), 410 (token no longer valid), or 404.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
         '410':
           description: >-
-            Gone - the token is no longer valid for processing. Either another
-            transaction is already fulfilling the same obligation (check
-            getDetails), or the transaction associated with this token is not in
-            an initiatable state.
+            Gone - the token is no longer valid for processing. Another
+            transaction may already be fulfilling the same obligation (check
+            getDetails), the transaction is not in an initiatable state (e.g.
+            already processed), or a prior POST /process claim was abandoned and
+            marked failed after the processing timeout. This is not returned for
+            concurrent in-flight requests on the same token (see 409).
           content:
             application/json:
               schema:
