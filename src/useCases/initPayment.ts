@@ -1,20 +1,23 @@
-import { AppContext } from "../types/AppContext";
+import type { AppContext } from "@appTypes/AppContext";
 import {
   InitPaymentRequest,
   InitPaymentResponse,
-} from "../schemas/InitPayment.schema";
-import { InvalidRequestError } from "../errors/invalidRequest";
-import { ConflictError } from "../errors/conflict";
+} from "@schemas/InitPayment.schema";
+import { InvalidRequestError } from "@errors/invalidRequest";
+import { ConflictError } from "@errors/conflict";
 import FeesModel from "../db/FeesModel";
-import { generateAgencyTrackingId } from "../utils/generateTrackingId";
+import { generateAgencyTrackingId } from "@utils/generateTrackingId";
 import TransactionModel from "../db/TransactionModel";
 import { isUniqueViolation } from "../db/pgErrors";
-import { PayGovError } from "../errors/payGovError";
-import { ServerError } from "../errors/serverError";
-import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
-import { ClientPermission } from "../types/ClientPermission";
-import { safeUpdateToFailed } from "../utils/safeUpdateToFailed";
+import { PayGovError } from "@errors/payGovError";
+import { ServerError } from "@errors/serverError";
+import { StartOnlineCollectionRequest } from "@entities/StartOnlineCollectionRequest";
+import type { ClientPermission } from "@appTypes/ClientPermission";
+import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { authorizeClient } from "../authorizeClient";
+import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { ZodError } from "zod";
+import { FailedTransactionError } from "../errors/failedTransaction";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
@@ -165,8 +168,7 @@ export const initPayment: InitPayment = async (
 
     /* istanbul ignore next */
     throw new Error(
-      `Failed to record received transaction: ${
-        err instanceof Error ? err.message : String(err)
+      `Failed to record received transaction: ${err instanceof Error ? err.message : String(err)
       }`,
     );
   }
@@ -190,6 +192,9 @@ export const initPayment: InitPayment = async (
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
     });
+    if (!(err instanceof ZodError) && !(err instanceof FailedTransactionError)) {
+      emitPayGovErrorMetric();
+    }
     await safeUpdateToFailed(
       appContext,
       agencyTrackingId,
@@ -228,3 +233,4 @@ export const initPayment: InitPayment = async (
     paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${fee.tcsAppId}`,
   };
 };
+

@@ -1,9 +1,9 @@
-import { AppContext } from "../types/AppContext";
+import type { AppContext } from "@appTypes/AppContext";
 import { RequestType, SoapRequest } from "./SoapRequest";
 import {
   PayGovGetDetailsResponseSchema,
   PayGovGetDetailsTransaction,
-} from "../schemas/PayGovGetDetailsResponse.schema";
+} from "@schemas/PayGovGetDetailsResponse.schema";
 
 export type RawGetDetailsRequest = {
   tcsAppId: string;
@@ -67,3 +67,4 @@ export class GetRequestRequest extends SoapRequest {
     throw this.handleFault(responseBody["S:Fault"]);
   };
 }
+
