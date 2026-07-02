@@ -1,4 +1,7 @@
-import { emitPayGovHealthMetric } from "./payGovHealthMetric";
+import {
+  emitPayGovHealthMetric,
+  emitPayGovErrorMetric,
+} from "./payGovHealthMetric";
 
 describe("emitPayGovHealthMetric", () => {
   const originalEnv = process.env;
@@ -57,5 +60,37 @@ describe("emitPayGovHealthMetric", () => {
     expect(logSpy).toHaveBeenCalled();
 
     logSpy.mockRestore();
+  });
+});
+
+describe("emitPayGovErrorMetric", () => {
+  const originalEnv = process.env;
+  let writeSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv, APP_ENV: "test" };
+    writeSpy = jest
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    writeSpy.mockRestore();
+    process.env = originalEnv;
+  });
+
+  const lastEmf = () => JSON.parse((writeSpy.mock.calls[0][0] as string).trim());
+
+  it("emits an EMF line with PayGovError=1 in the USTC/PaymentPortal namespace", () => {
+    emitPayGovErrorMetric();
+
+    const emf = lastEmf();
+    expect(emf.PayGovError).toBe(1);
+    expect(emf.Environment).toBe("test");
+    expect(emf._aws.CloudWatchMetrics[0].Namespace).toBe("USTC/PaymentPortal");
+    expect(emf._aws.CloudWatchMetrics[0].Dimensions).toEqual([["Environment"]]);
+    expect(emf._aws.CloudWatchMetrics[0].Metrics).toEqual([
+      { Name: "PayGovError", Unit: "Count" },
+    ]);
   });
 });
