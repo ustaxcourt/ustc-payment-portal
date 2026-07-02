@@ -11,9 +11,9 @@
   - Runs integration tests against the PR API (`BASE_URL` from Terraform outputs).
   - Publishes test results and coverage as artifacts.
 
-- **PR Cleanup** (`pr_cleanup`)
-  - Trigger: Pull Request closed.
-  - Runs `terraform plan -destroy` then `terraform apply tfplan-destroy` with `TF_VAR_namespace=pr-<number>`.
+- **PR Cleanup** (`pr-cleanup.yml`)
+  - Trigger: Pull Request closed (`pull_request_target`, base-repo context for OIDC/secrets).
+  - Runs `terraform plan -destroy` then `terraform apply -input=false tfplan-destroy` with `TF_VAR_namespace=pr-<number>`.
   - Deletes the `pr-<number>` workspace only if destroy succeeds.
 
 - **GC - Orphaned PR Databases and Roles** (`gc-pr-dbs.yml`)
