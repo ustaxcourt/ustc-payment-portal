@@ -69,27 +69,45 @@ const buildQueryMock = (steps: QueryStep[]) => {
         return step.result;
       });
     } else if (key === "patch") {
+      let patchAwaitable:
+        | {
+            where: jest.Mock;
+            then: (
+              resolve: (value: number) => void,
+              reject?: (reason: unknown) => void,
+            ) => void;
+          }
+        | undefined;
       const patchChain = {
         where: jest.fn(),
       };
-      patchChain.where.mockImplementation(() => ({
-        where: patchChain.where,
-        then: (
-          resolve: (value: number) => void,
-          reject?: (reason: unknown) => void,
-        ) => {
-          try {
-            const step = next();
-            if (step.kind !== "patch") {
-              throw new Error(`Expected patch(), got ${step.kind}`);
-            }
-            resolve(step.result);
-          } catch (err) {
-            reject?.(err);
-          }
-        },
-      }));
-      chain.patch.mockReturnValue(patchChain);
+      patchChain.where.mockImplementation(() => {
+        if (!patchAwaitable) {
+          patchAwaitable = {
+            where: patchChain.where,
+            // biome-ignore lint/suspicious/noThenProperty: mock Objection's thenable query builder
+            then: (
+              resolve: (value: number) => void,
+              reject?: (reason: unknown) => void,
+            ) => {
+              try {
+                const step = next();
+                if (step.kind !== "patch") {
+                  throw new Error(`Expected patch(), got ${step.kind}`);
+                }
+                resolve(step.result);
+              } catch (err) {
+                reject?.(err);
+              }
+            },
+          };
+        }
+        return patchAwaitable;
+      });
+      chain.patch.mockImplementation(() => {
+        patchAwaitable = undefined;
+        return patchChain;
+      });
     } else {
       chain[key].mockReturnValue(chain);
     }
