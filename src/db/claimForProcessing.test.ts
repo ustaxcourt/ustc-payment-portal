@@ -1,8 +1,6 @@
 import { ConflictError } from "../errors/conflict";
 import { GoneError } from "../errors/gone";
-import TransactionModel, {
-  PROCESSING_CONFLICT_MESSAGE,
-} from "./TransactionModel";
+import TransactionModel from "./TransactionModel";
 
 const mockTrx = { __trx: true };
 
@@ -175,7 +173,7 @@ describe("TransactionModel.claimForProcessing", () => {
     );
 
     await expect(TransactionModel.claimForProcessing("token-abc")).rejects.toThrow(
-      new ConflictError(PROCESSING_CONFLICT_MESSAGE),
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
     );
   });
 

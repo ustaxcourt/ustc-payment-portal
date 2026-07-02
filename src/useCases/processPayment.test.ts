@@ -7,11 +7,10 @@ import { GoneError } from "@errors/gone";
 import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
-import TransactionModel, {
-  PROCESSING_CONFLICT_MESSAGE,
-} from "../db/TransactionModel";
+import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
+import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 
 const emitProcessPaymentConflictMetricMock =
   emitProcessPaymentConflictMetric as jest.MockedFunction<
@@ -41,10 +40,17 @@ jest.mock("../db/FeesModel", () => ({
   },
 }));
 
+jest.mock("../health/payGovHealthMetric", () => ({
+  emitPayGovErrorMetric: jest.fn(),
+}));
+
 const TransactionModelMock = TransactionModel as jest.Mocked<
   typeof TransactionModel
 >;
 const FeesModelMock = FeesModel as jest.Mocked<typeof FeesModel>;
+const emitErrorMock = emitPayGovErrorMetric as jest.MockedFunction<
+  typeof emitPayGovErrorMetric
+>;
 
 const mockClient: ClientPermission = {
   clientName: "Test Client",
@@ -67,11 +73,11 @@ const mockTransaction = {
 } as unknown as TransactionModel;
 
 const mockUpdatedTransaction = (paymentMethod: string | null) =>
-  ({
-    ...mockTransaction,
-    paymentMethod,
-    lastUpdatedAt: "2026-01-15T10:35:01Z",
-  } as unknown as TransactionModel);
+({
+  ...mockTransaction,
+  paymentMethod,
+  lastUpdatedAt: "2026-01-15T10:35:01Z",
+} as unknown as TransactionModel);
 
 const mockPayGovTrackingId = "211d8c91c046404fb159b52d042a12ba";
 
@@ -327,7 +333,7 @@ describe("processPayment", () => {
 
   it("throws ConflictError when claim is rejected due to concurrent processing", async () => {
     TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
-      new ConflictError(PROCESSING_CONFLICT_MESSAGE),
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
     );
 
     await expect(
@@ -348,7 +354,9 @@ describe("processPayment", () => {
         client: mockClient,
         request: { token: "mock-token" },
       }),
-    ).rejects.toThrow(new ConflictError(PROCESSING_CONFLICT_MESSAGE));
+    ).rejects.toThrow(
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
+    );
 
     expect(emitProcessPaymentConflictMetricMock).toHaveBeenCalledWith(
       "lock_not_available",
@@ -372,14 +380,16 @@ describe("processPayment", () => {
         client: mockClient,
         request: { token: "mock-token" },
       }),
-    ).rejects.toThrow(new ConflictError(PROCESSING_CONFLICT_MESSAGE));
+    ).rejects.toThrow(
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
+    );
 
     expect(emitProcessPaymentConflictMetricMock).toHaveBeenCalledWith("deadlock");
   });
 
   it("emits a metric when claim is rejected due to concurrent processing", async () => {
     TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
-      new ConflictError(PROCESSING_CONFLICT_MESSAGE),
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
     );
 
     await expect(
@@ -844,6 +854,15 @@ describe("processPayment", () => {
         "The card has been declined, the transaction will not be processed.",
       );
     });
+
+    it("does not emit a PayGovError metric for a declined card (healthy Pay.gov)", async () => {
+      await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      });
+
+      expect(emitErrorMock).not.toHaveBeenCalled();
+    });
   });
 
   describe("Pending processing Transaction", () => {
@@ -980,6 +999,7 @@ describe("processPayment", () => {
       expect(
         TransactionModelMock.updateAfterPayGovResponse,
       ).not.toHaveBeenCalled();
+      expect(emitErrorMock).not.toHaveBeenCalled();
     });
 
     it("throws PayGovError (504) and marks the transaction failed when makeSoapRequest fails with a network error", async () => {
@@ -1003,6 +1023,7 @@ describe("processPayment", () => {
       expect(
         TransactionModelMock.updateAfterPayGovResponse,
       ).not.toHaveBeenCalled();
+      expect(emitErrorMock).toHaveBeenCalledTimes(1);
     });
 
     it("throws ServerError and marks the transaction failed when updateAfterPayGovResponse rejects", async () => {
@@ -1033,9 +1054,7 @@ describe("processPayment", () => {
         .fn()
         .mockReturnValue(mockSuccessfulResponse);
       TransactionModelMock.updateAfterPayGovResponse.mockRejectedValueOnce(
-        new ConflictError(
-          "Could not record the payment result because the transaction state changed. Use getDetails to check the current status.",
-        ),
+        new ConflictError(ConflictError.PERSIST_RACE_MESSAGE),
       );
 
       const conflictErr = await processPayment(appContext, {

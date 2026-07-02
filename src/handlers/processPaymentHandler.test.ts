@@ -10,7 +10,6 @@ import { ForbiddenError } from "@errors/forbidden";
 import { GoneError } from "@errors/gone";
 import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
-import { PROCESSING_CONFLICT_MESSAGE } from "../db/TransactionModel";
 import { processPayment } from "@useCases/processPayment";
 
 jest.mock("../useCases/processPayment", () => ({
@@ -154,7 +153,7 @@ describe("processPaymentHandler", () => {
 
   it("returns 409 when use case throws ConflictError", async () => {
     mockProcessPayment.mockRejectedValueOnce(
-      new ConflictError(PROCESSING_CONFLICT_MESSAGE),
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
     );
 
     const event = {

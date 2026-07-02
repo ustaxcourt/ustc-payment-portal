@@ -16,23 +16,25 @@ export type AggregatedPaymentStatus = Record<PaymentStatus, number> & {
 export type PaymentMethod = "plastic_card" | "ach" | "paypal";
 
 /** Max age before a stuck `processing` row is treated as abandoned (Lambda timeout, crash). */
-const PROCESSING_STALE_MS = 600_000;
+export const PROCESSING_STALE_MS = 600_000;
 
-export const PROCESSING_CONFLICT_MESSAGE =
-  "A payment is already being processed for this token";
-
-export const PROCESSING_PERSIST_CONFLICT_MESSAGE =
-  "Could not record the payment result because the transaction state changed. Use getDetails to check the current status.";
+export const isStaleProcessingTransaction = (
+  row: {
+    transactionStatus?: SchemaTransactionStatus | null;
+    lastUpdatedAt: string;
+  },
+): boolean => {
+  if (row.transactionStatus !== "processing") {
+    return false;
+  }
+  const ageMs = Date.now() - new Date(row.lastUpdatedAt).getTime();
+  return ageMs >= PROCESSING_STALE_MS;
+};
 
 const SIBLING_GONE_MESSAGE =
   "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.";
 
 const TOKEN_NO_LONGER_VALID_MESSAGE = "This token is no longer valid.";
-
-const isStaleProcessing = (row: TransactionModel): boolean => {
-  const ageMs = Date.now() - new Date(row.lastUpdatedAt).getTime();
-  return ageMs >= PROCESSING_STALE_MS;
-};
 
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
@@ -225,12 +227,12 @@ export default class TransactionModel extends Model {
 
     const updatedCount = await query;
     if (expectedTransactionStatus !== undefined && updatedCount === 0) {
-      throw new ConflictError(PROCESSING_PERSIST_CONFLICT_MESSAGE);
+      throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
     }
 
     const updated = await this.query().findById(agencyTrackingId);
     if (!updated) {
-      throw new ConflictError(PROCESSING_PERSIST_CONFLICT_MESSAGE);
+      throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
     }
     return updated;
   }
@@ -290,7 +292,7 @@ export default class TransactionModel extends Model {
       }
 
       if (row.transactionStatus === "processing") {
-        if (isStaleProcessing(row)) {
+        if (isStaleProcessingTransaction(row)) {
           await this.query(trx)
             .patch({ transactionStatus: "initiated" })
             .where("agencyTrackingId", row.agencyTrackingId)
@@ -299,7 +301,7 @@ export default class TransactionModel extends Model {
             transactionStatus: "processing",
           });
         }
-        throw new ConflictError(PROCESSING_CONFLICT_MESSAGE);
+        throw new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE);
       }
 
       if (row.transactionStatus !== "initiated") {

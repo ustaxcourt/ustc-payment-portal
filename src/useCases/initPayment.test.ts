@@ -1,17 +1,21 @@
-jest.mock("../db/TransactionModel", () => ({
-  __esModule: true,
-  default: {
-    findInFlightByReferenceId: jest.fn(() => Promise.resolve(undefined)),
-    createReceived: jest.fn((data) =>
-      Promise.resolve({
-        ...data,
-        agencyTrackingId: data.agencyTrackingId || "MOCK-TRACKING-ID",
-      }),
-    ),
-    updateToInitiated: jest.fn(() => Promise.resolve()),
-    updateToFailed: jest.fn(() => Promise.resolve()),
-  },
-}));
+jest.mock("../db/TransactionModel", () => {
+  const actual = jest.requireActual("../db/TransactionModel");
+  return {
+    __esModule: true,
+    ...actual,
+    default: {
+      findInFlightByReferenceId: jest.fn(() => Promise.resolve(undefined)),
+      createReceived: jest.fn((data) =>
+        Promise.resolve({
+          ...data,
+          agencyTrackingId: data.agencyTrackingId || "MOCK-TRACKING-ID",
+        }),
+      ),
+      updateToInitiated: jest.fn(() => Promise.resolve()),
+      updateToFailed: jest.fn(() => Promise.resolve()),
+    },
+  };
+});
 
 jest.mock("../db/FeesModel", () => ({
   __esModule: true,
@@ -40,14 +44,23 @@ jest.mock("../db/FeesModel", () => ({
   },
 }));
 
+jest.mock("../health/payGovHealthMetric", () => ({
+  emitPayGovErrorMetric: jest.fn(),
+}));
+
 import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "@schemas/InitPayment.schema";
 import * as SoapRequestModule from "@entities/StartOnlineCollectionRequest";
 import { ZodError } from "zod";
-import { ConflictError } from "@errors/conflict";
-import { PayGovError } from "@errors/payGovError";
-import type { ClientPermission } from "@appTypes/ClientPermission";
+import { ConflictError } from "../errors/conflict";
+import { PayGovError } from "../errors/payGovError";
+import { ClientPermission } from "../types/ClientPermission";
+import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+
+const emitErrorMock = emitPayGovErrorMetric as jest.MockedFunction<
+  typeof emitPayGovErrorMetric
+>;
 
 const mockClient: ClientPermission = {
   clientName: "Test Client App",
@@ -207,6 +220,35 @@ describe("initPayment", () => {
     expect(result.token).toBe("processing-token-abc");
     expect(result.paymentRedirect).toContain("processing-token-abc");
     expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+  });
+
+  it("marks stale processing in-flight transaction as failed and creates a new one", async () => {
+    const stalePaygovToken = crypto.randomUUID().replace(/-/g, "");
+    const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
+
+    mockSoapRequest(freshPaygovToken);
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "processing",
+      paygovToken: stalePaygovToken,
+      lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+    });
+
+    const result = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
+
+    expect(TransactionModel.updateToFailed).toHaveBeenCalledWith(
+      "existing-id",
+      5009,
+      "Existing token expired",
+    );
+    expect(TransactionModel.createReceived).toHaveBeenCalled();
+    expect(result.token).toBe(freshPaygovToken);
   });
 
   it("marks expired in-flight transaction as failed and creates a new one when token age >= 3 hours", async () => {
@@ -401,6 +443,7 @@ describe("initPayment", () => {
     );
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
     expect(appContext.logger.error).toHaveBeenCalled();
+    expect(emitErrorMock).not.toHaveBeenCalled();
   });
 
   it("wraps a real malformed Pay.gov XML response as PayGovError (drives safeParse end-to-end)", async () => {
@@ -464,6 +507,34 @@ describe("initPayment", () => {
     );
     expect(TransactionModel.updateToFailed).toHaveBeenCalled();
     expect(appContext.logger.error).toHaveBeenCalled();
+    expect(emitErrorMock).not.toHaveBeenCalled();
+  });
+
+  it("emits a PayGovError metric when the Pay.gov SOAP request fails", async () => {
+    jest
+      .spyOn(
+        SoapRequestModule.StartOnlineCollectionRequest.prototype,
+        "makeSoapRequest",
+      )
+      .mockRejectedValueOnce(new Error("SOAP error"));
+
+    await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    }).catch((e) => e);
+
+    expect(emitErrorMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not emit a PayGovError metric on a successful init", async () => {
+    mockSoapRequest("test-token-123");
+
+    await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
+
+    expect(emitErrorMock).not.toHaveBeenCalled();
   });
 });
 

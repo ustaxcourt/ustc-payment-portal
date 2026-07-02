@@ -1,5 +1,5 @@
 import { isLocal } from "../../config/appEnv";
-import { PROCESSING_CONFLICT_MESSAGE } from "../../db/TransactionModel";
+import { ConflictError } from "../../errors/conflict";
 import { InitPaymentRequest } from "../../schemas/InitPayment.schema";
 import { ProcessPaymentResponse } from "../../schemas/ProcessPayment.schema";
 import { signedFetch } from "./sigv4Helper";
@@ -55,7 +55,7 @@ describeWithEnv("POST /process concurrency", () => {
     expect(successBody.transactions[0].transactionStatus).toBe("processed");
 
     const conflictBody = (await conflictResponse.json()) as { message: string };
-    expect(conflictBody.message).toBe(PROCESSING_CONFLICT_MESSAGE);
+    expect(conflictBody.message).toBe(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE);
 
     const followUp = await processPaymentRaw(token);
     expect(followUp.status).toBe(410);

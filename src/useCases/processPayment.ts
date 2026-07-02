@@ -12,9 +12,7 @@ import { ServerError } from "@errors/serverError";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { derivePaymentStatusFromSingleTransaction } from "@utils/derivePaymentStatus";
 import type { ClientPermission } from "@appTypes/ClientPermission";
-import TransactionModel, {
-  PROCESSING_CONFLICT_MESSAGE,
-} from "../db/TransactionModel";
+import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
 import {
   getPostgresErrorCode,
@@ -25,6 +23,7 @@ import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
 import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { authorizeClient } from "../authorizeClient";
 import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
+import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -148,7 +147,7 @@ const claimProcessingTransaction = async (
           postgresErrorCode,
         },
       );
-      throw new ConflictError(PROCESSING_CONFLICT_MESSAGE);
+      throw new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE);
     }
     throw err;
   }
@@ -248,6 +247,7 @@ export const processPayment: ProcessPayment = async (
       errorMessage: err instanceof Error ? err.message : String(err),
     });
 
+    emitPayGovErrorMetric();
     await safeUpdateToFailed(
       appContext,
       transaction.agencyTrackingId,
