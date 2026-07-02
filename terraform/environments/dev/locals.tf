@@ -13,6 +13,7 @@ locals {
 
   proxy_max_connections_percent = 75
 
+  # Avoids Terraform plan/apply changes when switching between dev and PR workspaces.
   api_stage_throttling_rate_limit  = local.environment == "dev" ? 200 : 10
   api_stage_throttling_burst_limit = local.environment == "dev" ? 400 : 20
 
