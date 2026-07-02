@@ -13,8 +13,12 @@
 
 - **PR Cleanup** (`pr_cleanup`)
   - Trigger: Pull Request closed.
-  - Builds lambda bundles, runs `terraform plan -destroy`, then `terraform destroy`.
+  - Runs `terraform plan -destroy` then `terraform apply tfplan-destroy` with `TF_VAR_namespace=pr-<number>`.
   - Deletes the `pr-<number>` workspace only if destroy succeeds.
+
+- **GC - Orphaned PR Databases and Roles** (`gc-pr-dbs.yml`)
+  - Trigger: Nightly (02:00 UTC) and manual `workflow_dispatch`.
+  - Drops PR Postgres databases and roles whose GitHub PR is no longer open.
 
 - **Deploy to Dev** (`deploy_dev`)
   - Trigger: Push to `main`.

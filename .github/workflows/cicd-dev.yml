@@ -375,7 +375,9 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && needs.check_actor.outputs.is_dependabot != 'true'
     name: PR Cleanup (Destroy Ephemeral Env)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
+    env:
+      TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -463,10 +465,8 @@ jobs:
       - name: Destroy PR Workspace Resources
         if: ${{ steps.ws.outputs.no_ws != 'true' }}
         working-directory: terraform/environments/dev
-        env:
-          TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
         run: |
-          terraform destroy -auto-approve
+          terraform apply -auto-approve tfplan-destroy
 
       - name: Delete PR Workspace
         if: ${{ steps.ws.outputs.no_ws != 'true' && success() }}
