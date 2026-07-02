@@ -15,8 +15,8 @@ This document summarizes Artillery result artifacts collected during the load-te
 
 ## Saved Result Set
 
-| Artifact name | Scenario    | Notes                                                           |
-| ------------- | ----------- | --------------------------------------------------------------- |
+| Artifact name                 | Scenario    | Notes                                                           |
+| ----------------------------- | ----------- | --------------------------------------------------------------- |
 | `1000-rpm-init-results.json`  | `init-only` | Matches current `17 arrivals/sec for 300s` profile              |
 | `1000-rpm-full-results.json`  | `full-flow` | Matches current `17 arrivals/sec for 300s` profile              |
 | `10000-rpm-init-results.json` | `init-only` | Effectively matches current `167 arrivals/sec for 300s` profile |
