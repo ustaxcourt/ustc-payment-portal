@@ -40,4 +40,22 @@
     "/^Remove-Item\\b/i": false,
     "/^Stop-Process\\b/i": false
   },
+  "yaml.schemas": {
+    "https://www.artillery.io/schema.json": [
+      "file:///Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/environments/10000-rpm.yml",
+      "file:///Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/scenarios/full-flow.yml",
+      "file:///Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/scenarios/init-only.yml",
+      "git:/Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/environments/10000-rpm.yml?%7B%22path%22%3A%22%2FUsers%2FFranz.Tanglao.ctr%2FGitHub%2Fustc-payment-portal%2Fartillery%2Fenvironments%2F10000-rpm.yml%22%2C%22ref%22%3A%22~%22%7D",
+      "git:/Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/environments/10000-rpm.yml?%7B%22path%22%3A%22%2FUsers%2FFranz.Tanglao.ctr%2FGitHub%2Fustc-payment-portal%2Fartillery%2Fenvironments%2F10000-rpm.yml%22%2C%22ref%22%3A%22HEAD%22%7D",
+      "git:/Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/environments/10000-rpm.yml?%7B%22path%22%3A%22%2FUsers%2FFranz.Tanglao.ctr%2FGitHub%2Fustc-payment-portal%2Fartillery%2Fenvironments%2F10000-rpm.yml%22%2C%22ref%22%3A%22%22%7D",
+      "file:///Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/environments/1000-rpm.yml",
+      "file:///Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/environments/1000-rpm-backup.yml",
+      "file:///Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/environments/10000-rpm-ramp.yml",
+      "git:/Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/environments/10000-rpm.yml?%7B%22path%22%3A%22%2FUsers%2FFranz.Tanglao.ctr%2FGitHub%2Fustc-payment-portal%2Fartillery%2Fenvironments%2F10000-rpm.yml%22%2C%22ref%22%3A%227d714ef512f8a40a0fb87b23d7145d9bdc9123f1%22%7D",
+      "git:/Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/environments/10000-rpm.yml?%7B%22path%22%3A%22%2FUsers%2FFranz.Tanglao.ctr%2FGitHub%2Fustc-payment-portal%2Fartillery%2Fenvironments%2F10000-rpm.yml%22%2C%22ref%22%3A%22404b5fe1c77bd41235795646c7d4e8c5681db248%22%7D",
+      "git:/Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/environments/10000-rpm.yml?%7B%22path%22%3A%22%2FUsers%2FFranz.Tanglao.ctr%2FGitHub%2Fustc-payment-portal%2Fartillery%2Fenvironments%2F10000-rpm.yml%22%2C%22ref%22%3A%22e4ba600d5422b2138267b0ed77a6a853c3a4c8cb%22%7D",
+      "git:/Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/environments/10000-rpm.yml?%7B%22path%22%3A%22%2FUsers%2FFranz.Tanglao.ctr%2FGitHub%2Fustc-payment-portal%2Fartillery%2Fenvironments%2F10000-rpm.yml%22%2C%22ref%22%3A%22062f64dcee63c34a7d67fcfd8ce978a5c3f57df1%22%7D",
+      "git:/Users/Franz.Tanglao.ctr/GitHub/ustc-payment-portal/artillery/environments/10000-rpm.yml?%7B%22path%22%3A%22%2FUsers%2FFranz.Tanglao.ctr%2FGitHub%2Fustc-payment-portal%2Fartillery%2Fenvironments%2F10000-rpm.yml%22%2C%22ref%22%3A%2241de9525bc23e44e14325a7a57e55bd1650a6da0%22%7D"
+    ]
+  },
 }

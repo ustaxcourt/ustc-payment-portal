@@ -1,4 +1,4 @@
-# PAY-329: Load Testing Findings For `20260701121320`
+# PAY-329: Load Testing Findings
 
 This document summarizes the two saved Artillery artifacts under `artillery/results/20260701121320/` and records what they show about this specific load-test run.
 
