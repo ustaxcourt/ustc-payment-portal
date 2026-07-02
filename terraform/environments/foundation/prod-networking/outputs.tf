@@ -10,7 +10,12 @@ output "public_subnet_id" {
 
 output "private_subnet_id" {
   value       = module.networking.private_subnet_id
-  description = "Private Subnet ID"
+  description = "Private Subnet ID (us-east-1a, back-compat — prefer private_subnet_ids)"
+}
+
+output "private_subnet_ids" {
+  value       = module.networking.private_subnet_ids
+  description = "All private subnet IDs (all AZs). Use for Lambda vpc_config to enable multi-AZ placement."
 }
 
 output "lambda_security_group_id" {
