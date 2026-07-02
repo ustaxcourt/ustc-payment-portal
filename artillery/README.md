@@ -2,7 +2,7 @@
 
 This directory contains the Artillery scenarios, traffic profiles, processor hooks, and saved result artifacts used for load testing the payment portal.
 
-The four `npm run artillery:*` scripts in [package.json](../package.json) all execute [scripts/run-artillery-lambda.js](../scripts/run-artillery-lambda.js), which wraps `artillery run-lambda`. These runbooks are therefore for Lambda-backed Artillery runs against deployed or otherwise network-reachable targets, not for hitting a developer's local `localhost` stack.
+The six `npm run artillery:*` scripts in [package.json](../package.json) all execute [scripts/run-artillery-lambda.js](../scripts/run-artillery-lambda.js), which wraps `artillery run-lambda`. These runbooks are therefore for Lambda-backed Artillery runs against deployed or otherwise network-reachable targets, not for hitting a developer's local `localhost` stack.
 
 ## Files
 
@@ -10,6 +10,7 @@ The four `npm run artillery:*` scripts in [package.json](../package.json) all ex
 - `scenarios/full-flow.yml` exercises `/init`, the simulated Pay.gov payment step, `/process`, and `/details/{transactionReferenceId}`.
 - `environments/1000-rpm.yml` launches `17` new virtual users per second for `300` seconds.
 - `environments/10000-rpm.yml` launches `167` new virtual users per second for `300` seconds.
+- `environments/10000-rpm-ramp.yml` ramps from `33` to `167` new virtual users per second over five one-minute phases.
 - `processor.js` builds request payloads, conditionally applies SigV4, selects payment outcomes, and logs failed responses with auth values redacted.
 - `results/*.json` stores Artillery JSON output.
 - `.env.example` shows the environment variables expected by the Lambda wrapper and processor.
@@ -34,6 +35,14 @@ These repository scripts create `artillery/results/` if needed and then run one 
   - Scenario: `artillery/scenarios/full-flow.yml`
   - Config: `artillery/environments/10000-rpm.yml`
   - Output: `artillery/results/10000-rpm-full-results.json`
+- `npm run artillery:10000ramp:init`
+  - Scenario: `artillery/scenarios/init-only.yml`
+  - Config: `artillery/environments/10000-rpm-ramp.yml`
+  - Output: `artillery/results/10000ramp-rpm-init-results.json`
+- `npm run artillery:10000ramp:full`
+  - Scenario: `artillery/scenarios/full-flow.yml`
+  - Config: `artillery/environments/10000-rpm-ramp.yml`
+  - Output: `artillery/results/10000ramp-rpm-full-results.json`
 
 ## Naming Caveat
 
@@ -50,13 +59,15 @@ The `1000-rpm` and `10000-rpm` names are approximate scenario-start rates, not l
 - Loads `artillery/.env` with `override: true`.
 - Requires `ARTILLERY_LAMBDA_ROLE_ARN` to be present.
 - Uses `ARTILLERY_TARGET` from `artillery/.env`, defaulting to a deployed payments URL if unset.
-- Appends `--dotenv artillery/.env`, `--target <ARTILLERY_TARGET>`, `--region us-east-1`, `--count 1`, and `--lambda-role-arn <ARTILLERY_LAMBDA_ROLE_ARN>` to the `artillery run-lambda` command.
+- Uses `ARTILLERY_LAMBDA_REGION`, `AWS_REGION`, or `AWS_DEFAULT_REGION` for the Lambda worker region, defaulting to `us-east-1`.
+- Uses `ARTILLERY_LAMBDA_COUNT`, defaulting to `1`.
+- Appends `--dotenv artillery/.env`, `--target <ARTILLERY_TARGET>`, `--region <lambda-region>`, `--count <lambda-count>`, and `--lambda-role-arn <ARTILLERY_LAMBDA_ROLE_ARN>` to the `artillery run-lambda` command.
 
 Operational implications:
 
 - Do not rely on passing `--target ...` after `npm run artillery:*`; the wrapper appends its own `--target` afterward, so `ARTILLERY_TARGET` in `artillery/.env` is the effective source of truth.
 - These scripts are intended for targets reachable from the Lambda worker. A developer's local `http://localhost:8080` stack is not a valid target for this wrapper.
-- The worker region is currently fixed to `us-east-1` by the wrapper. If the API's SigV4 signing region differs, set `SIGV4_REGION` in `artillery/.env` for request signing.
+- If the API's SigV4 signing region differs from the Lambda execution region, set `SIGV4_REGION` in `artillery/.env` for request signing.
 
 ## Prerequisites
 
@@ -64,7 +75,9 @@ Operational implications:
 2. Set `ARTILLERY_TARGET` to the API base URL you intend to load test.
 3. Set `ARTILLERY_LAMBDA_ROLE_ARN` to the IAM role ARN used by `artillery run-lambda`.
 4. Set `PAY_GOV_DEV_SERVER_ACCESS_TOKEN` for `full-flow` runs.
-5. Set `SIGV4_REGION` if the API Gateway region is not `us-east-1`.
+5. Set `ARTILLERY_LAMBDA_COUNT` if you want more than one Lambda worker.
+6. Set `ARTILLERY_LAMBDA_REGION` if the load generator should run outside the default region.
+7. Set `SIGV4_REGION` if the API Gateway signing region differs from the Lambda worker region.
 
 Example `artillery/.env` values with placeholders only:
 
@@ -72,6 +85,8 @@ Example `artillery/.env` values with placeholders only:
 ARTILLERY_TARGET=https://your-payments-api.example.gov
 ARTILLERY_LAMBDA_ROLE_ARN=arn:aws:iam::<account-id>:role/<artillery-lambda-role>
 PAY_GOV_DEV_SERVER_ACCESS_TOKEN=<pay-gov-dev-server-access-token>
+ARTILLERY_LAMBDA_COUNT=5
+ARTILLERY_LAMBDA_REGION=us-east-1
 SIGV4_REGION=us-east-1
 ARTILLERY_DEBUG_RESPONSES=0
 ```
@@ -126,6 +141,8 @@ npm run artillery:1000:full
 ```bash
 npm run artillery:10000:init
 npm run artillery:10000:full
+npm run artillery:10000ramp:init
+npm run artillery:10000ramp:full
 ```
 
 ## Results And Interpretation
@@ -135,6 +152,7 @@ npm run artillery:10000:full
 - A run can show many successful individual requests while still having poor end-to-end flow completion.
 - `environments/1000-rpm.yml` sets `ensure.maxErrorRate` to `10`.
 - `environments/10000-rpm.yml` sets `ensure.maxErrorRate` to `100`.
+- `environments/10000-rpm-ramp.yml` sets `ensure.maxErrorRate` to `100` and ramps traffic to the same peak arrival rate as the steady `10000-rpm` profile.
 
 ## Debugging Notes
 
