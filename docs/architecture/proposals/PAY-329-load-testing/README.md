@@ -1,11 +1,12 @@
 # PAY-329: Load Testing Findings
 
-This document summarizes the saved Artillery artifacts under `artillery/results/` and records what they show about the current load-test spike.
+This document summarizes Artillery result artifacts collected during the load-test spike and records what they show about the current findings.
 
 ## Scope and Caveats
 
 - The how-to guidance for running Artillery lives in `artillery/README.md`.
-- The saved result files are the source of truth for the numbers below.
+- The raw Artillery JSON outputs are the source of truth for the numbers below.
+- Those raw outputs were generated locally under `artillery/results/`, which is ignored and not committed to the repository.
 - The `1000-rpm` and `10000-rpm` profile names describe approximate flow starts per minute, not literal HTTP requests per minute.
 - All four saved artifacts align with the current 300-second environment files.
 - The `10000-rpm` artifacts create `50101` virtual users rather than exactly `50100`; treat that as effectively matching the current `167 arrivals/sec for 300s` profile.
@@ -14,12 +15,12 @@ This document summarizes the saved Artillery artifacts under `artillery/results/
 
 ## Saved Result Set
 
-| Artifact                                        | Scenario    | Notes                                                           |
-| ----------------------------------------------- | ----------- | --------------------------------------------------------------- |
-| `artillery/results/1000-rpm-init-results.json`  | `init-only` | Matches current `17 arrivals/sec for 300s` profile              |
-| `artillery/results/1000-rpm-full-results.json`  | `full-flow` | Matches current `17 arrivals/sec for 300s` profile              |
-| `artillery/results/10000-rpm-init-results.json` | `init-only` | Effectively matches current `167 arrivals/sec for 300s` profile |
-| `artillery/results/10000-rpm-full-results.json` | `full-flow` | Effectively matches current `167 arrivals/sec for 300s` profile |
+| Artifact name | Scenario    | Notes                                                           |
+| ------------- | ----------- | --------------------------------------------------------------- |
+| `1000-rpm-init-results.json`  | `init-only` | Matches current `17 arrivals/sec for 300s` profile              |
+| `1000-rpm-full-results.json`  | `full-flow` | Matches current `17 arrivals/sec for 300s` profile              |
+| `10000-rpm-init-results.json` | `init-only` | Effectively matches current `167 arrivals/sec for 300s` profile |
+| `10000-rpm-full-results.json` | `full-flow` | Effectively matches current `167 arrivals/sec for 300s` profile |
 
 ## Results Summary
 
