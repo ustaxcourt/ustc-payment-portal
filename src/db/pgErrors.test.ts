@@ -1,4 +1,10 @@
-import { isLockNotAvailable, isUniqueViolation } from "./pgErrors";
+import {
+  getPostgresErrorCode,
+  isClaimContentionError,
+  isDeadlockDetected,
+  isLockNotAvailable,
+  isUniqueViolation,
+} from "./pgErrors";
 
 describe("isUniqueViolation", () => {
   it("returns true when err.code is '23505'", () => {
@@ -37,8 +43,8 @@ describe("isLockNotAvailable", () => {
   });
 
   it("returns false for any other pg SQLSTATE", () => {
-    expect(isLockNotAvailable({ code: "23505" })).toBe(false); // unique_violation
-    expect(isLockNotAvailable({ code: "40P01" })).toBe(false); // deadlock_detected
+    expect(isLockNotAvailable({ code: "23505" })).toBe(false);
+    expect(isLockNotAvailable({ code: "40P01" })).toBe(false);
   });
 
   it("returns false when neither code field is present", () => {
@@ -51,5 +57,39 @@ describe("isLockNotAvailable", () => {
     expect(isLockNotAvailable(undefined)).toBe(false);
     expect(isLockNotAvailable("55P03")).toBe(false);
     expect(isLockNotAvailable(55003)).toBe(false);
+  });
+});
+
+describe("getPostgresErrorCode", () => {
+  it("returns err.code when present", () => {
+    expect(getPostgresErrorCode({ code: "55P03" })).toBe("55P03");
+  });
+
+  it("returns err.nativeError.code when top-level code is absent", () => {
+    expect(getPostgresErrorCode({ nativeError: { code: "40P01" } })).toBe(
+      "40P01",
+    );
+  });
+});
+
+describe("isDeadlockDetected", () => {
+  it("returns true when err.code is '40P01'", () => {
+    expect(isDeadlockDetected({ code: "40P01" })).toBe(true);
+  });
+
+  it("returns false for lock-not-available", () => {
+    expect(isDeadlockDetected({ code: "55P03" })).toBe(false);
+  });
+});
+
+describe("isClaimContentionError", () => {
+  it("returns true for lock-not-available and deadlock", () => {
+    expect(isClaimContentionError({ code: "55P03" })).toBe(true);
+    expect(isClaimContentionError({ code: "40P01" })).toBe(true);
+  });
+
+  it("returns false for unrelated errors", () => {
+    expect(isClaimContentionError({ code: "23505" })).toBe(false);
+    expect(isClaimContentionError(new Error("nope"))).toBe(false);
   });
 });

@@ -16,12 +16,13 @@ export type AggregatedPaymentStatus = Record<PaymentStatus, number> & {
 export type PaymentMethod = "plastic_card" | "ach" | "paypal";
 
 /** Max age before a stuck `processing` row is treated as abandoned (Lambda timeout, crash). */
-const PROCESSING_STALE_MS = 600_000; // 10 minutes
-const STALE_PROCESSING_RETURN_CODE = 5010;
-const STALE_PROCESSING_DETAIL = "Processing interrupted — token expired";
+const PROCESSING_STALE_MS = 600_000;
 
 export const PROCESSING_CONFLICT_MESSAGE =
   "A payment is already being processed for this token";
+
+export const PROCESSING_PERSIST_CONFLICT_MESSAGE =
+  "Could not record the payment result because the transaction state changed. Use getDetails to check the current status.";
 
 const SIBLING_GONE_MESSAGE =
   "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.";
@@ -204,17 +205,34 @@ export default class TransactionModel extends Model {
     paymentMethod: PaymentMethod | null,
     transactionDate: string | undefined,
     paymentDate: string | undefined,
+    expectedTransactionStatus?: TransactionStatus,
   ): Promise<TransactionModel> {
     await getKnex();
-    // Skip empty dates: patching "" into a TIMESTAMP corrupts it; undefined would null an existing value.
-    return this.query().patchAndFetchById(agencyTrackingId, {
-      paygovTrackingId,
-      transactionStatus,
-      paymentStatus,
-      paymentMethod,
-      ...(transactionDate && { transactionDate }),
-      ...(paymentDate && { paymentDate }),
-    });
+    let query = this.query()
+      .patch({
+        paygovTrackingId,
+        transactionStatus,
+        paymentStatus,
+        paymentMethod,
+        ...(transactionDate && { transactionDate }),
+        ...(paymentDate && { paymentDate }),
+      })
+      .where("agencyTrackingId", agencyTrackingId);
+
+    if (expectedTransactionStatus !== undefined) {
+      query = query.where("transactionStatus", expectedTransactionStatus);
+    }
+
+    const updatedCount = await query;
+    if (expectedTransactionStatus !== undefined && updatedCount === 0) {
+      throw new ConflictError(PROCESSING_PERSIST_CONFLICT_MESSAGE);
+    }
+
+    const updated = await this.query().findById(agencyTrackingId);
+    if (!updated) {
+      throw new ConflictError(PROCESSING_PERSIST_CONFLICT_MESSAGE);
+    }
+    return updated;
   }
 
   static async findPendingOrProcessedByReferenceId(
@@ -274,14 +292,12 @@ export default class TransactionModel extends Model {
       if (row.transactionStatus === "processing") {
         if (isStaleProcessing(row)) {
           await this.query(trx)
-            .patch({
-              transactionStatus: "failed",
-              paymentStatus: "failed",
-              returnCode: STALE_PROCESSING_RETURN_CODE,
-              returnDetail: STALE_PROCESSING_DETAIL,
-            })
-            .where("agencyTrackingId", row.agencyTrackingId);
-          throw new GoneError(TOKEN_NO_LONGER_VALID_MESSAGE);
+            .patch({ transactionStatus: "initiated" })
+            .where("agencyTrackingId", row.agencyTrackingId)
+            .where("transactionStatus", "processing");
+          return this.query(trx).patchAndFetchById(row.agencyTrackingId, {
+            transactionStatus: "processing",
+          });
         }
         throw new ConflictError(PROCESSING_CONFLICT_MESSAGE);
       }

@@ -187,6 +187,42 @@ resource "aws_cloudwatch_metric_alarm" "paygov_retry" {
   depends_on = [aws_cloudwatch_log_metric_filter.paygov_retry]
 }
 
+resource "aws_cloudwatch_metric_alarm" "process_payment_conflict" {
+  count = contains(keys(var.lambda_functions), "processPayment") ? 1 : 0
+
+  alarm_name        = "${var.name_prefix}-process-payment-conflict-warning"
+  alarm_description = <<-EOT
+    Elevated POST /process concurrency conflicts (ProcessPaymentConflict EMF metric).
+    Indicates duplicate in-flight token claims or persist races returning HTTP 409.
+    Service: payment-portal (${var.env})
+    Severity: warning
+    Runbook: ${var.runbook_url}
+  EOT
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  period              = 300
+  evaluation_periods  = 3
+  datapoints_to_alarm = 2
+  threshold           = var.process_payment_conflict_alarm_threshold
+  statistic           = "Sum"
+  metric_name         = "ProcessPaymentConflict"
+  namespace           = "USTC/PaymentPortal"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    Environment = var.env
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = merge(local.default_tags, {
+    Severity = "warning"
+    Metric   = "process-payment-conflict"
+    Lambda   = "processPayment"
+    Runbook  = var.runbook_url
+  })
+}
+
 resource "aws_cloudwatch_metric_alarm" "api_gateway_429" {
   count = var.api_gateway_access_log_group_name != null ? 1 : 0
 

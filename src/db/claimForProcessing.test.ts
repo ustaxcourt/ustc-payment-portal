@@ -71,15 +71,27 @@ const buildQueryMock = (steps: QueryStep[]) => {
         return step.result;
       });
     } else if (key === "patch") {
-      chain.patch.mockReturnValue({
-        where: jest.fn().mockImplementation(async () => {
-          const step = next();
-          if (step.kind !== "patch") {
-            throw new Error(`Expected patch(), got ${step.kind}`);
+      const patchChain = {
+        where: jest.fn(),
+      };
+      patchChain.where.mockImplementation(() => ({
+        where: patchChain.where,
+        then: (
+          resolve: (value: number) => void,
+          reject?: (reason: unknown) => void,
+        ) => {
+          try {
+            const step = next();
+            if (step.kind !== "patch") {
+              throw new Error(`Expected patch(), got ${step.kind}`);
+            }
+            resolve(step.result);
+          } catch (err) {
+            reject?.(err);
           }
-          return step.result;
-        }),
-      });
+        },
+      }));
+      chain.patch.mockReturnValue(patchChain);
     } else {
       chain[key].mockReturnValue(chain);
     }
@@ -167,12 +179,17 @@ describe("TransactionModel.claimForProcessing", () => {
     );
   });
 
-  it("marks stale processing rows failed and throws GoneError", async () => {
+  it("releases a stale processing claim and allows the current request to proceed", async () => {
     const staleTime = new Date(Date.now() - 601_000).toISOString();
     const row = {
       ...baseRow(),
       transactionStatus: "processing",
       lastUpdatedAt: staleTime,
+    } as TransactionModel;
+    const reclaimed = {
+      ...row,
+      transactionStatus: "processing",
+      lastUpdatedAt: new Date().toISOString(),
     } as TransactionModel;
 
     jest.spyOn(TransactionModel, "query").mockReturnValue(
@@ -180,12 +197,12 @@ describe("TransactionModel.claimForProcessing", () => {
         { kind: "first", result: row },
         { kind: "first", result: undefined },
         { kind: "patch", result: 1 },
+        { kind: "patchAndFetchById", result: reclaimed },
       ]) as never,
     );
 
-    await expect(TransactionModel.claimForProcessing("token-abc")).rejects.toThrow(
-      GoneError,
-    );
+    const result = await TransactionModel.claimForProcessing("token-abc");
+    expect(result?.transactionStatus).toBe("processing");
   });
 
   it("throws GoneError when transaction status is not initiated or processing", async () => {
