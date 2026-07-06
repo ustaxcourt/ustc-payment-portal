@@ -293,10 +293,8 @@ export default class TransactionModel extends Model {
 
       if (row.transactionStatus === "processing") {
         if (isStaleProcessingTransaction(row)) {
-          await this.query(trx)
-            .patch({ transactionStatus: "initiated" })
-            .where("agencyTrackingId", row.agencyTrackingId)
-            .where("transactionStatus", "processing");
+          // Stale claim: re-touch the row so last_updated_at refreshes (DB trigger) and
+          // this request owns the in-flight completion attempt.
           return this.query(trx).patchAndFetchById(row.agencyTrackingId, {
             transactionStatus: "processing",
           });

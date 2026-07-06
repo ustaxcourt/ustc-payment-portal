@@ -14,8 +14,7 @@ const getKnexMock = getKnex as jest.MockedFunction<typeof getKnex>;
 
 type QueryStep =
   | { kind: "first"; result: TransactionModel | undefined }
-  | { kind: "patchAndFetchById"; result: TransactionModel }
-  | { kind: "patch"; result: number };
+  | { kind: "patchAndFetchById"; result: TransactionModel };
 
 const baseRow = (): TransactionModel =>
   ({
@@ -47,7 +46,6 @@ const buildQueryMock = (steps: QueryStep[]) => {
     forUpdate: jest.fn(),
     noWait: jest.fn(),
     first: jest.fn(),
-    patch: jest.fn(),
     patchAndFetchById: jest.fn(),
   };
 
@@ -67,46 +65,6 @@ const buildQueryMock = (steps: QueryStep[]) => {
           throw new Error(`Expected patchAndFetchById(), got ${step.kind}`);
         }
         return step.result;
-      });
-    } else if (key === "patch") {
-      let patchAwaitable:
-        | {
-            where: jest.Mock;
-            then: (
-              resolve: (value: number) => void,
-              reject?: (reason: unknown) => void,
-            ) => void;
-          }
-        | undefined;
-      const patchChain = {
-        where: jest.fn(),
-      };
-      patchChain.where.mockImplementation(() => {
-        if (!patchAwaitable) {
-          patchAwaitable = {
-            where: patchChain.where,
-            // biome-ignore lint/suspicious/noThenProperty: mock Objection's thenable query builder
-            then: (
-              resolve: (value: number) => void,
-              reject?: (reason: unknown) => void,
-            ) => {
-              try {
-                const step = next();
-                if (step.kind !== "patch") {
-                  throw new Error(`Expected patch(), got ${step.kind}`);
-                }
-                resolve(step.result);
-              } catch (err) {
-                reject?.(err);
-              }
-            },
-          };
-        }
-        return patchAwaitable;
-      });
-      chain.patch.mockImplementation(() => {
-        patchAwaitable = undefined;
-        return patchChain;
       });
     } else {
       chain[key].mockReturnValue(chain);
@@ -195,7 +153,7 @@ describe("TransactionModel.claimForProcessing", () => {
     );
   });
 
-  it("releases a stale processing claim and allows the current request to proceed", async () => {
+  it("refreshes a stale processing claim and allows the current request to proceed", async () => {
     const staleTime = new Date(Date.now() - 601_000).toISOString();
     const row = {
       ...baseRow(),
@@ -212,7 +170,6 @@ describe("TransactionModel.claimForProcessing", () => {
       buildQueryMock([
         { kind: "first", result: row },
         { kind: "first", result: undefined },
-        { kind: "patch", result: 1 },
         { kind: "patchAndFetchById", result: reclaimed },
       ]) as never,
     );
