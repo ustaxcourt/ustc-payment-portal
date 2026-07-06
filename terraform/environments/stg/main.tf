@@ -15,6 +15,7 @@ module "lambda" {
   subnet_ids                        = data.terraform_remote_state.foundation.outputs.private_subnet_ids
   security_group_ids                = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
   environment_variables_by_function = local.lambda_env_by_function
+  payment_lambda_provisioned_concurrency = 0
 
   # Consume dev artifacts by SHA (keys and optional hashes passed from workflow)
   artifact_bucket = var.artifact_bucket
@@ -123,7 +124,7 @@ resource "aws_acm_certificate_validation" "this" {
 module "api" {
   source = "../../modules/api-gateway"
 
-  lambda_function_arns = module.lambda.function_arns
+  lambda_function_arns = module.lambda.api_function_arns
   environment          = "stg"
   stage_name           = "stg"
   allowed_account_ids  = local.allowed_client_account_ids

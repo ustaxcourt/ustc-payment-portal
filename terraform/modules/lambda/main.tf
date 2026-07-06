@@ -1,4 +1,6 @@
 locals {
+  payment_flow_lambdas = toset(["initPayment", "processPayment", "getDetails"])
+
   lambda_functions = {
     # Payment-flow lambdas share var.payment_lambda_timeout (see variables.tf)
     # so the Pay.gov retry budget is tuned in one place.
@@ -48,6 +50,7 @@ resource "aws_lambda_function" "functions" {
   timeout = try(local.lambda_functions[each.key].timeout, null)
 
   runtime = var.runtime
+  publish = contains(local.payment_flow_lambdas, each.key)
 
   vpc_config {
     subnet_ids         = var.subnet_ids
@@ -66,6 +69,25 @@ resource "aws_lambda_function" "functions" {
   }
 
   tags = var.tags
+}
+
+resource "aws_lambda_alias" "payment_flow_live" {
+  for_each = {
+    for k, v in aws_lambda_function.functions : k => v
+    if contains(local.payment_flow_lambdas, k)
+  }
+
+  name             = "live"
+  function_name    = each.value.function_name
+  function_version = each.value.version
+}
+
+resource "aws_lambda_provisioned_concurrency_config" "payment_flow" {
+  for_each = var.payment_lambda_provisioned_concurrency > 0 ? aws_lambda_alias.payment_flow_live : {}
+
+  function_name                     = each.value.function_name
+  qualifier                         = each.value.name
+  provisioned_concurrent_executions = var.payment_lambda_provisioned_concurrency
 }
 
 resource "aws_cloudwatch_log_group" "lambda_logs" {
