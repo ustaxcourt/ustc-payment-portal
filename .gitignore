@@ -17,4 +17,4 @@ dist/
 .DS_Store
 
 # Artillery
-artillery/results
+artillery/results/**/*.json
