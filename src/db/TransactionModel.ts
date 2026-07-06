@@ -210,27 +210,33 @@ export default class TransactionModel extends Model {
     expectedTransactionStatus?: TransactionStatus,
   ): Promise<TransactionModel> {
     await getKnex();
-    let query = this.query()
-      .patch({
-        paygovTrackingId,
-        transactionStatus,
-        paymentStatus,
-        paymentMethod,
-        ...(transactionDate && { transactionDate }),
-        ...(paymentDate && { paymentDate }),
-      })
-      .where("agencyTrackingId", agencyTrackingId);
+    const patch = {
+      paygovTrackingId,
+      transactionStatus,
+      paymentStatus,
+      paymentMethod,
+      ...(transactionDate && { transactionDate }),
+      ...(paymentDate && { paymentDate }),
+    };
 
-    if (expectedTransactionStatus !== undefined) {
-      query = query.where("transactionStatus", expectedTransactionStatus);
+    if (expectedTransactionStatus === undefined) {
+      const updated = await this.query().patchAndFetchById(
+        agencyTrackingId,
+        patch,
+      );
+      if (!updated) {
+        throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
+      }
+      return updated;
     }
 
-    const updatedCount = await query;
-    if (expectedTransactionStatus !== undefined && updatedCount === 0) {
-      throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
-    }
+    const updated = (await this.query()
+      .patch(patch)
+      .where("agencyTrackingId", agencyTrackingId)
+      .where("transactionStatus", expectedTransactionStatus)
+      .returning("*")
+      .first()) as TransactionModel | undefined;
 
-    const updated = await this.query().findById(agencyTrackingId);
     if (!updated) {
       throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
     }
@@ -310,16 +316,6 @@ export default class TransactionModel extends Model {
         transactionStatus: "processing",
       });
     });
-  }
-
-  static async revertProcessingToInitiated(
-    agencyTrackingId: string,
-  ): Promise<void> {
-    await getKnex();
-    await this.query()
-      .patch({ transactionStatus: "initiated" })
-      .where("agencyTrackingId", agencyTrackingId)
-      .where("transactionStatus", "processing");
   }
 
   // Returns the in-flight attempt for the given transactionReferenceId, if one exists.

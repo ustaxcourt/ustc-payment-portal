@@ -26,7 +26,6 @@ jest.mock("../db/TransactionModel", () => ({
   default: {
     findByPaygovToken: jest.fn(),
     claimForProcessing: jest.fn(),
-    revertProcessingToInitiated: jest.fn(),
     updateAfterPayGovResponse: jest.fn(),
     updateToFailed: jest.fn(),
     findByReferenceId: jest.fn(),
@@ -238,7 +237,6 @@ describe("processPayment", () => {
       mockInitiatedTransaction,
     );
     TransactionModelMock.claimForProcessing.mockResolvedValue(mockTransaction);
-    TransactionModelMock.revertProcessingToInitiated.mockResolvedValue(undefined);
     TransactionModelMock.updateAfterPayGovResponse.mockImplementation(
       async (_id, _tid, _ts, _ps, paymentMethod) =>
         mockUpdatedTransaction(paymentMethod),
@@ -276,7 +274,6 @@ describe("processPayment", () => {
     ).rejects.toThrow(ForbiddenError);
 
     expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
-    expect(TransactionModelMock.revertProcessingToInitiated).not.toHaveBeenCalled();
   });
 
   it("proceeds when client has wildcard fee access", async () => {
@@ -473,7 +470,6 @@ describe("processPayment", () => {
     ).rejects.toThrow(dbErr);
 
     expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
-    expect(TransactionModelMock.revertProcessingToInitiated).not.toHaveBeenCalled();
     expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
   });
 
