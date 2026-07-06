@@ -17,6 +17,7 @@ import { toPaymentMethod } from "@utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
 import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { authorizeClient } from "../authorizeClient";
+import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -157,6 +158,7 @@ export const processPayment: ProcessPayment = async (
       errorMessage: err instanceof Error ? err.message : String(err),
     });
 
+    emitPayGovErrorMetric();
     await safeUpdateToFailed(
       appContext,
       transaction.agencyTrackingId,
