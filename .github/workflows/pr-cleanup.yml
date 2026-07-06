@@ -11,6 +11,12 @@ permissions:
   id-token: write
   contents: read
 
+# Shares cicd-dev.yml's concurrency group so cleanup queues behind an in-flight
+# deploy for the same PR instead of racing it.
+concurrency:
+  group: CICD - Dev-refs/pull/${{ github.event.pull_request.number }}/merge
+  cancel-in-progress: false
+
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   TF_IN_AUTOMATION: "true"
