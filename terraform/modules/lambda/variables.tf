@@ -22,9 +22,9 @@ variable "payment_lambda_timeout" {
 }
 
 variable "payment_lambda_provisioned_concurrency" {
-  description = "Provisioned concurrency units for each payment-flow Lambda alias (initPayment, processPayment, getDetails)."
+  description = "Provisioned concurrency units for each payment-flow Lambda alias (initPayment, processPayment, getDetails). Set to 0 to disable."
   type        = number
-  default     = 1
+  default     = 0
 }
 
 

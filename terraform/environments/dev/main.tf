@@ -36,6 +36,7 @@ module "lambda" {
   subnet_ids                        = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
   security_group_ids                = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
   environment_variables_by_function = local.lambda_env_by_function
+  payment_lambda_provisioned_concurrency  = 0
 
   artifact_bucket = var.artifact_bucket
   artifact_s3_keys = {

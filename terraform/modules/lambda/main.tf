@@ -83,7 +83,7 @@ resource "aws_lambda_alias" "payment_flow_live" {
 }
 
 resource "aws_lambda_provisioned_concurrency_config" "payment_flow" {
-  for_each = aws_lambda_alias.payment_flow_live
+  for_each = var.payment_lambda_provisioned_concurrency > 0 ? aws_lambda_alias.payment_flow_live : {}
 
   function_name                     = each.value.function_name
   qualifier                         = each.value.name
