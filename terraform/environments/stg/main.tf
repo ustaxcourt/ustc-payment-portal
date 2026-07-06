@@ -123,7 +123,7 @@ resource "aws_acm_certificate_validation" "this" {
 module "api" {
   source = "../../modules/api-gateway"
 
-  lambda_function_arns = module.lambda.function_arns
+  lambda_function_arns = module.lambda.api_function_arns
   environment          = "stg"
   stage_name           = "stg"
   allowed_account_ids  = local.allowed_client_account_ids

@@ -21,6 +21,12 @@ variable "payment_lambda_timeout" {
   default     = 27
 }
 
+variable "payment_lambda_provisioned_concurrency" {
+  description = "Provisioned concurrency units for each payment-flow Lambda alias (initPayment, processPayment, getDetails)."
+  type        = number
+  default     = 1
+}
+
 
 variable "subnet_ids" {
   description = "List of subnet IDs for Lambda VPC configuration"
@@ -64,4 +70,3 @@ variable "source_code_hashes" {
   description = "Map of function names to base64-encoded SHA256 hashes"
   type        = map(string)
 }
-
