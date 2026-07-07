@@ -10,27 +10,29 @@ The highest remaining gaps are concentrated in the DB/config layer. Most of thos
 
 1. `src/db/getRdsCredentials.ts`
 
-   This file has real logic and currently has no meaningful unit coverage. The valuable cases are malformed `RDS_ENDPOINT` parsing, missing required env vars, missing `username` or `password` in the secret payload, cache reuse, and CA-bundle selection. These tests would protect deploy-time configuration behavior, not just raise percentages.
+   This remains the clearest high-value gap in the current passing `npm run test:coverage` report. The valuable cases are malformed `RDS_ENDPOINT` parsing, missing required env vars, missing `username` or `password` in the secret payload, cache reuse, and CA-bundle selection. These tests protect deploy-time configuration behavior rather than just chasing percentages.
 
 2. `src/db/TransactionModel.ts`
 
-   Most query methods are thin wrappers and are not worth ticketing, but there are three load-bearing behaviors worth direct unit coverage: `getAggregatedPaymentStatus()` ignoring unknown statuses while still computing `total`, `createReceived()` enforcing `paymentStatus='pending'` and `transactionStatus='received'` regardless of caller input, and `updateAfterPayGovResponse()` omitting empty date fields instead of patching invalid timestamp values.
+   This file is still the largest remaining source-level gap after the ignore pass. Most query methods are thin wrappers and are not worth ticketing, but there are three load-bearing behaviors worth direct unit coverage: `getAggregatedPaymentStatus()` ignoring unknown statuses while still computing `total`, `createReceived()` enforcing `paymentStatus='pending'` and `transactionStatus='received'` regardless of caller input, and `updateAfterPayGovResponse()` omitting empty date fields instead of patching invalid timestamp values.
 
 3. `src/clients/permissionsClient.ts`
 
-   `getClientPermissions()` is already well covered, but `getClientByRoleArn()` is not. Add tests for the successful lookup path and the `ForbiddenError("Client not registered")` path so authorization failures are covered at the client lookup boundary.
+   `getClientPermissions()` is already covered much better than before, but `getClientByRoleArn()` still leaves meaningful function-level coverage on the table. Add tests for the successful lookup path and the `ForbiddenError("Client not registered")` path so authorization failures are covered at the client lookup boundary.
 
 4. `src/appContext.ts`
 
-   The retry wrapper around Pay.gov calls still has meaningful uncovered behavior. The useful cases are: a non-retryable fetch error is rethrown immediately without retrying, retryable errors exhaust both attempts and log the terminal `paygov_retry_exhausted` event, and the mTLS branch builds the HTTPS agent with normalized PEM content and optional passphrase handling.
+   The retry wrapper around Pay.gov calls still has meaningful uncovered behavior. The useful cases are: a non-retryable fetch error is rethrown immediately without retrying, retryable errors exhaust both attempts and log the terminal `paygov_retry_exhausted` event, the non-local token-secret path logs and proceeds when secret fetch fails, and the mTLS branch builds the HTTPS agent with normalized PEM content and optional passphrase handling.
 
-5. `src/useCases/getDetails.ts`
+5. `scripts/lib/ports.js`
 
-   Most happy-path and common failure cases are already tested, but a few business-protection branches remain. The best additions are: throwing `ServerError` when more than one pending attempt exists for the same reference ID, preserving the stored payment method when Pay.gov returns an empty or unrecognized `payment_type`, and surfacing `PayGovError` when Pay.gov refresh succeeds but DB persistence fails.
+   This helper still has real uncovered control flow around local startup ergonomics. The highest-value additions are: `lsof` missing (`ENOENT`) only warns once and skips preflight, `AUTO_KILL_PORTS=true` takes the kill-and-confirm path, non-interactive execution fails with the expected guidance, and an interactive “no” response cancels startup cleanly. Those tests would protect local developer experience rather than just script internals.
 
-6. `scripts/check-local-flow.js`
+6. `src/migrationHandler.ts`
 
-   This is not a net-new behavior gap so much as a flaky/stale unit harness around a smoke-check script. The current script still auto-runs at module load, and the current test file still covers the right broad scenarios, but it is out of sync in at least one concrete place: it sets `FEE_ID` even though the script reads `FEE`. A focused follow-up should stabilize this suite and restore trustworthy coverage around the `/init` failure path, `/pay` failure path, unknown fee selection, and `paymentRedirect` token parsing.
+   Coverage is already fairly high here, but the remaining uncovered branches are operationally meaningful enough to justify targeted tests. The best additions are: bundled-versus-source migration directory resolution, the “role already exists” provisioning branch, the “role does not exist” deprovision short-circuit, and the `createDb()` cleanup path that drops the partially created database after a failed create.
+
+`scripts/check-local-flow.js`, `src/useCases/getDetails.ts`, and the schema files no longer belong in this backlog: the current coverage run is green, those files are now either fully covered or intentionally narrowed with targeted ignore comments.
 
 ## Good Candidates For `/* istanbul ignore next */`
 
