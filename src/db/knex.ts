@@ -1,14 +1,14 @@
-import Knex from "knex";
-import { Model, knexSnakeCaseMappers } from "objection";
-import { getRdsCredentials } from "./getRdsCredentials";
+import Knex from 'knex';
+import { Model, knexSnakeCaseMappers } from 'objection';
+import { getRdsCredentials } from './getRdsCredentials';
 
 const {
-  DB_HOST = "localhost",
-  DB_PORT = "5432",
-  DB_USER = "user",
-  DB_PASSWORD = "password",
-  DB_NAME = "mydb",
-  NODE_ENV = "development",
+  DB_HOST = 'localhost',
+  DB_PORT = '5432',
+  DB_USER = 'user',
+  DB_PASSWORD = 'password',
+  DB_NAME = 'mydb',
+  NODE_ENV = 'development',
   RDS_SECRET_ARN,
 } = process.env;
 
@@ -17,26 +17,26 @@ let knexInitPromise: Promise<ReturnType<typeof Knex>> | null = null;
 
 function createKnexFromEnv(): ReturnType<typeof Knex> {
   const connection =
-    NODE_ENV === "production" && process.env.DATABASE_URL
+    NODE_ENV === 'production' && process.env.DATABASE_URL
       ? process.env.DATABASE_URL
       : {
           host: DB_HOST,
           port: Number(DB_PORT),
           user: DB_USER,
           password: DB_PASSWORD,
-          database: NODE_ENV === "test" ? `${DB_NAME}_test` : DB_NAME,
+          database: NODE_ENV === 'test' ? `${DB_NAME}_test` : DB_NAME,
         };
 
-  if (NODE_ENV !== "production") {
+  if (NODE_ENV !== 'production') {
     console.log(
       `[Knex] env=${NODE_ENV} db=${
-        typeof connection === "string" ? "(DATABASE_URL)" : connection.database
+        typeof connection === 'string' ? '(DATABASE_URL)' : connection.database
       }`,
     );
   }
 
   return Knex({
-    client: "pg",
+    client: 'pg',
     connection,
     pool: { min: 2, max: 10 },
     ...knexSnakeCaseMappers(),
@@ -69,7 +69,7 @@ export function getKnex(): Promise<ReturnType<typeof Knex>> {
     .then((connection) => {
       // max:1 — proxy owns pooling; a knex.transaction() with a nested query would deadlock here.
       knexInstance = Knex({
-        client: "pg",
+        client: 'pg',
         connection,
         pool: { min: 0, max: 1 },
         ...knexSnakeCaseMappers(),
