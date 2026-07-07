@@ -13,8 +13,10 @@ import { getKnex } from "../db/knex";
 // invocation does not pay Secrets Manager + TCP connection-setup latency. (Saves us some cold-start time.)
 // In local/test environments RDS_SECRET_ARN is unset and getKnex() returns
 // the already-initialised synchronous instance immediately.
-void getKnex();
-void getClientPermissions();
+void getKnex().catch((err) => console.error("[lambdaHandler] getKnex prewarm failed", err));
+void getClientPermissions().catch((err) =>
+  console.error("[lambdaHandler] getClientPermissions prewarm failed", err),
+);
 
 type LambdaHandler<T> = (
   appContext: AppContext,
