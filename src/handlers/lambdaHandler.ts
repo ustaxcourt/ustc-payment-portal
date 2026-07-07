@@ -5,10 +5,9 @@ import { extractCallerArn } from "../extractCallerArn";
 import { handleError } from "../handleError";
 import type { ClientPermission } from "@appTypes/ClientPermission";
 import type { AppContext } from "@appTypes/AppContext";
-import { getClientByRoleArn } from "@clients/permissionsClient";
+import { getClientByRoleArn, getClientPermissions } from "@clients/permissionsClient";
 import { parseAndValidate } from "@utils/parseAndValidate";
 import { getKnex } from "../db/knex";
-import { getClientPermissions } from "../clients/permissionsClient";
 
 // Pre-warm the RDS connection during the Lambda init phase so the first
 // invocation does not pay Secrets Manager + TCP connection-setup latency. (Saves us some cold-start time.)
