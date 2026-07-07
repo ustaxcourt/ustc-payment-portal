@@ -1,6 +1,4 @@
-import { getAppEnv } from "../config/appEnv";
-
-const METRIC_NAMESPACE = "USTC/PaymentPortal";
+import { writeEmf } from "./emf";
 
 export type ProcessPaymentConflictReason =
   | "claim_in_progress"
@@ -11,25 +9,9 @@ export type ProcessPaymentConflictReason =
 export function emitProcessPaymentConflictMetric(
   reason: ProcessPaymentConflictReason,
 ): void {
-  try {
-    const emf = {
-      _aws: {
-        Timestamp: Date.now(),
-        CloudWatchMetrics: [
-          {
-            Namespace: METRIC_NAMESPACE,
-            Dimensions: [["Environment"]],
-            Metrics: [{ Name: "ProcessPaymentConflict", Unit: "Count" }],
-          },
-        ],
-      },
-      Environment: getAppEnv(),
-      Reason: reason,
-      ProcessPaymentConflict: 1,
-    };
-
-    process.stdout.write(`${JSON.stringify(emf)}\n`);
-  } catch (err) {
-    console.log("Failed to emit process payment conflict metric", err);
-  }
+  writeEmf(
+    [{ Name: "ProcessPaymentConflict", Unit: "Count" }],
+    { ProcessPaymentConflict: 1 },
+    { Reason: reason },
+  );
 }

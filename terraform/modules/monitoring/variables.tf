@@ -53,6 +53,12 @@ variable "process_payment_conflict_alarm_threshold" {
   default     = 25
 }
 
+variable "init_payment_conflict_alarm_threshold" {
+  description = "POST /init concurrency conflicts (InitPaymentConflict EMF) in a 5-minute period before the warning alarm fires. Covers both an in-flight /process (processing_in_flight) and the partial unique-index insert race (persist_race) returning HTTP 409."
+  type        = number
+  default     = 25
+}
+
 variable "paygov_retry_alarm_threshold" {
   description = "Number of Pay.gov retry warnings in a single 5-min bucket that constitutes sustained flakiness. A few retries are normal (the retry succeeds), so this is intentionally higher than 1 and severity is warning, not critical. Tune once real traffic exists."
   type        = number

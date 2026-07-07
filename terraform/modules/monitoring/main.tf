@@ -190,8 +190,8 @@ resource "aws_cloudwatch_metric_alarm" "paygov_retry" {
 resource "aws_cloudwatch_metric_alarm" "process_payment_conflict" {
   count = contains(keys(var.lambda_functions), "processPayment") ? 1 : 0
 
-  alarm_name        = "${var.name_prefix}-process-payment-conflict-warning"
-  alarm_description = <<-EOT
+  alarm_name          = "${var.name_prefix}-process-payment-conflict-warning"
+  alarm_description   = <<-EOT
     Elevated POST /process concurrency conflicts (ProcessPaymentConflict EMF metric).
     Indicates duplicate in-flight token claims or persist races returning HTTP 409.
     Service: payment-portal (${var.env})
@@ -219,6 +219,43 @@ resource "aws_cloudwatch_metric_alarm" "process_payment_conflict" {
     Severity = "warning"
     Metric   = "process-payment-conflict"
     Lambda   = "processPayment"
+    Runbook  = var.runbook_url
+  })
+}
+
+resource "aws_cloudwatch_metric_alarm" "init_payment_conflict" {
+  count = contains(keys(var.lambda_functions), "initPayment") ? 1 : 0
+
+  alarm_name          = "${var.name_prefix}-init-payment-conflict-warning"
+  alarm_description   = <<-EOT
+    Elevated POST /init concurrency conflicts (InitPaymentConflict EMF metric).
+    Indicates re-initiation while a payment is actively processing, or a partial
+    unique-index insert race, returning HTTP 409.
+    Service: payment-portal (${var.env})
+    Severity: warning
+    Runbook: ${var.runbook_url}
+  EOT
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  period              = 300
+  evaluation_periods  = 3
+  datapoints_to_alarm = 2
+  threshold           = var.init_payment_conflict_alarm_threshold
+  statistic           = "Sum"
+  metric_name         = "InitPaymentConflict"
+  namespace           = "USTC/PaymentPortal"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    Environment = var.env
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = merge(local.default_tags, {
+    Severity = "warning"
+    Metric   = "init-payment-conflict"
+    Lambda   = "initPayment"
     Runbook  = var.runbook_url
   })
 }

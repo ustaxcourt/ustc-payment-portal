@@ -48,6 +48,10 @@ jest.mock("../health/payGovHealthMetric", () => ({
   emitPayGovErrorMetric: jest.fn(),
 }));
 
+jest.mock("../health/initPaymentConcurrencyMetric", () => ({
+  emitInitPaymentConflictMetric: jest.fn(),
+}));
+
 import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "@schemas/InitPayment.schema";
@@ -57,9 +61,13 @@ import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
 import { ClientPermission } from "../types/ClientPermission";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 
 const emitErrorMock = emitPayGovErrorMetric as jest.MockedFunction<
   typeof emitPayGovErrorMetric
+>;
+const emitConflictMock = emitInitPaymentConflictMetric as jest.MockedFunction<
+  typeof emitInitPaymentConflictMetric
 >;
 
 const mockClient: ClientPermission = {
@@ -201,7 +209,7 @@ describe("initPayment", () => {
     expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
   });
 
-  it("returns the existing token when an attempt is processing (POST /process in flight)", async () => {
+  it("throws ConflictError when an attempt is actively processing (POST /process in flight)", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
       agencyTrackingId: "existing-id",
@@ -212,14 +220,19 @@ describe("initPayment", () => {
       lastUpdatedAt: new Date().toISOString(),
     });
 
-    const result = await initPayment(appContext, {
-      client: mockClient,
-      request: validPetitionRequest,
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: ConflictError.PAYMENT_IN_FLIGHT_TRANSACTION_MESSAGE,
     });
 
-    expect(result.token).toBe("processing-token-abc");
-    expect(result.paymentRedirect).toContain("processing-token-abc");
     expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+    expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
+    expect(emitConflictMock).toHaveBeenCalledWith("processing_in_flight");
   });
 
   it("marks stale processing in-flight transaction as failed and creates a new one", async () => {
@@ -321,6 +334,7 @@ describe("initPayment", () => {
         request: validPetitionRequest,
       }),
     ).rejects.toThrow(ConflictError);
+    expect(emitConflictMock).toHaveBeenCalledWith("persist_race");
   });
 
   it("wraps non-unique-violation createReceived errors as a generic failure", async () => {

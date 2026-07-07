@@ -18,6 +18,7 @@ import type { ClientPermission } from "@appTypes/ClientPermission";
 import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { authorizeClient } from "../authorizeClient";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 import { ZodError } from "zod";
 import { FailedTransactionError } from "../errors/failedTransaction";
 
@@ -91,6 +92,25 @@ export const initPayment: InitPayment = async (
     const staleProcessing = isStaleProcessingTransaction(
       existingInFlightTransaction,
     );
+
+    if (
+      existingInFlightTransaction.transactionStatus === "processing" &&
+      !staleProcessing
+    ) {
+      appContext.logger.info(
+        "Rejecting initPayment: transaction is actively processing",
+        {
+          transactionReferenceId,
+          agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
+          tokenAgeMs,
+        },
+      );
+      emitInitPaymentConflictMetric("processing_in_flight");
+      throw new ConflictError(
+        ConflictError.PAYMENT_IN_FLIGHT_TRANSACTION_MESSAGE,
+      );
+    }
+
     if (
       existingInFlightTransaction.paygovToken &&
       tokenAgeMs < MAX_TOKEN_AGE_MS &&
@@ -164,6 +184,7 @@ export const initPayment: InitPayment = async (
         agencyTrackingId,
         clientName,
       });
+      emitInitPaymentConflictMetric("persist_race");
       throw new ConflictError(EXISTING_IN_FLIGHT_TRANSACTION_ERROR);
     }
 

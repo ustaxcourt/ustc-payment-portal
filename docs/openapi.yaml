@@ -913,8 +913,13 @@ paths:
                 $ref: '#/components/schemas/ForbiddenError'
         '409':
           description: >-
-            Conflict - a payment session is already initiated for this
-            transaction reference ID
+            Conflict - a payment session is already in-flight for this
+            transaction reference ID. Returned when a prior attempt is still
+            `initiated` (awaiting redirect) or is actively being finalized by an
+            in-flight POST /process. The duplicate request does not call
+            Pay.gov. Retry with backoff; once the in-flight attempt finishes, a
+            subsequent POST /init returns 200 with the payment redirect (or a
+            fresh session if the prior attempt expired or was abandoned).
           content:
             application/json:
               schema:
