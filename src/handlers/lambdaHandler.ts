@@ -5,17 +5,23 @@ import { extractCallerArn } from "../extractCallerArn";
 import { handleError } from "../handleError";
 import type { ClientPermission } from "@appTypes/ClientPermission";
 import type { AppContext } from "@appTypes/AppContext";
-import { getClientByRoleArn, getClientPermissions } from "@clients/permissionsClient";
+import {
+  getClientByRoleArn,
+  getClientPermissions,
+} from "@clients/permissionsClient";
 import { parseAndValidate } from "@utils/parseAndValidate";
+import { logger } from "@utils/logger";
 import { getKnex } from "../db/knex";
 
 // Pre-warm the RDS connection during the Lambda init phase so the first
 // invocation does not pay Secrets Manager + TCP connection-setup latency. (Saves us some cold-start time.)
 // In local/test environments RDS_SECRET_ARN is unset and getKnex() returns
 // the already-initialised synchronous instance immediately.
-void getKnex().catch((err) => console.error("[lambdaHandler] getKnex prewarm failed", err));
+void getKnex().catch((err) =>
+  logger.error({ err }, "[lambdaHandler] getKnex prewarm failed"),
+);
 void getClientPermissions().catch((err) =>
-  console.error("[lambdaHandler] getClientPermissions prewarm failed", err),
+  logger.error({ err }, "[lambdaHandler] getClientPermissions prewarm failed"),
 );
 
 type LambdaHandler<T> = (
@@ -51,4 +57,3 @@ export const lambdaHandler = async <T>({
     return handleError(appContext, err);
   }
 };
-
