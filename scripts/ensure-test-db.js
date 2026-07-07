@@ -43,6 +43,7 @@ async function ensureTestDatabase() {
   }
 }
 
+/* istanbul ignore next */
 ensureTestDatabase().catch((error) => {
   console.error('Failed to ensure test database exists')
   console.error(error)

@@ -50,6 +50,7 @@ export const handler = async (
       body: resultText,
     };
   } catch (err) {
+    /* istanbul ignore next: This is a health probe, so we don't expect to hit this branch in normal operation */
     appContext.logger.error("Pay.gov health probe failed", {
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),

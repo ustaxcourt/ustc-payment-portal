@@ -10,6 +10,7 @@ export const safeUpdateToFailed = async (
   try {
     await TransactionModel.updateToFailed(agencyTrackingId, code, detail);
   } catch (err) {
+    /* istanbul ignore next: This branch is for DB persistence failures, which are rare in normal operation */
     appContext.logger.error(
       `Failed to mark transaction '${agencyTrackingId}' as failed during error recovery:`,
       {

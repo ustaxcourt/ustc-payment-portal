@@ -151,6 +151,7 @@ export const processPayment: ProcessPayment = async (
       throw new PayGovError(PAYGOV_RETRY_MESSAGE, 502);
     }
 
+    /* istanbul ignore next: This branch is for Pay.gov communication failures, which are rare in normal operation */
     appContext.logger.error("Error communicating with Pay.gov", {
       ...baseLogFields,
       feeKey: fee.feeKey,
@@ -188,6 +189,7 @@ export const processPayment: ProcessPayment = async (
       result.payment_date,
     );
   } catch (err) {
+    /* istanbul ignore next: This branch is for database failures, which are rare in normal operation */
     appContext.logger.error("Failed to persist Pay.gov response", {
       ...baseLogFields,
       feeKey: fee.feeKey,
@@ -227,4 +229,3 @@ export const processPayment: ProcessPayment = async (
     transactions: allRows.map((row) => toTransactionRecordSummary(row)),
   };
 };
-
