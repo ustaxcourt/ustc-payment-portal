@@ -1,8 +1,5 @@
 name: PR Cleanup (Destroy Ephemeral Env)
 
-# pull_request_target runs in the base repo context so OIDC and secrets are
-# available when a PR is closed (including fork PRs). Only trusted workflow
-# code from the default branch runs; PR head code is never executed.
 on:
   pull_request_target:
     types: [closed]
@@ -11,8 +8,6 @@ permissions:
   id-token: write
   contents: read
 
-# Shares cicd-dev.yml's concurrency group so cleanup queues behind an in-flight
-# deploy for the same PR instead of racing it.
 concurrency:
   group: CICD - Dev-refs/pull/${{ github.event.pull_request.number }}/merge
   cancel-in-progress: false
@@ -130,3 +125,16 @@ jobs:
         run: |
           terraform workspace select default || true
           terraform workspace delete -force ${{ steps.ws.outputs.workspace }} || true
+
+      - name: Cleanup PR S3 artifacts
+        if: ${{ always() && github.event.pull_request.merged == false }}
+        env:
+          BUCKET: ${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          echo "Removing s3://$BUCKET/artifacts/pr-${PR_NUMBER}/"
+          aws s3 rm "s3://$BUCKET/artifacts/pr-${PR_NUMBER}/" --recursive || true
+          echo "Removing manifests for PR #${PR_NUMBER}"
+          aws s3 rm "s3://$BUCKET/manifests/" --recursive \
+            --exclude "*" --include "pr-${PR_NUMBER}-*.json" || true
