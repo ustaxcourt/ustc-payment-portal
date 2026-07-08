@@ -42,7 +42,7 @@ variable "lambda_log_group_names" {
 }
 
 variable "runbook_url" {
-  description = "Runbook URL included in alarm descriptions."
+  description = "Runbook URL included in alarm descriptions. Shared by the 5xx/uncaught error alarms and the init/process payment 409 conflict warnings — docs/runbooks/lambda-error-alerts.md has a dedicated 'Concurrency conflict warnings (409)' section covering the conflict alarms."
   type        = string
   default     = ""
 }

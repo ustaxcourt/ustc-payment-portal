@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import { writeEmf } from "./emf";
 
 describe("writeEmf", () => {
@@ -48,7 +49,9 @@ describe("writeEmf", () => {
     writeSpy.mockImplementation(() => {
       throw new Error("EPIPE");
     });
-    const logSpy = jest.spyOn(console, "log").mockImplementation(() => undefined);
+    const logSpy = jest
+      .spyOn(logger, "error")
+      .mockImplementation((() => undefined) as never);
 
     expect(() =>
       writeEmf([{ Name: "ExampleCount", Unit: "Count" }], { ExampleCount: 1 }),
