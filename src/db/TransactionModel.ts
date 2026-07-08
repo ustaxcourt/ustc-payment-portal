@@ -35,10 +35,12 @@ export default class TransactionModel extends Model {
   lastUpdatedAt!: string;
   metadata?: Record<string, string> | null;
 
+  /* istanbul ignore next */
   static get tableName() {
     return 'transactions';
   }
 
+  /* istanbul ignore next */
   static get idColumn() {
     return 'agencyTrackingId';
   }
