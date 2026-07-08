@@ -3,10 +3,6 @@
 # Runs native Terraform tests (terraform test) for the reusable modules under
 # terraform/modules. Tests are plan-only and use mock_provider, so NO AWS
 # credentials are required and nothing is provisioned.
-#
-# Usage:
-#   terraform/scripts/run-module-tests.sh              # test all modules with tests/
-#   terraform/scripts/run-module-tests.sh rds secrets  # test only the named modules
 
 set -euo pipefail
 
