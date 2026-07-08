@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import {
   emitProcessPaymentConflictMetric,
   type ProcessPaymentConflictReason,
@@ -41,7 +42,9 @@ describe("emitProcessPaymentConflictMetric", () => {
     writeSpy.mockImplementation(() => {
       throw new Error("EPIPE");
     });
-    const logSpy = jest.spyOn(console, "log").mockImplementation(() => undefined);
+    const logSpy = jest
+      .spyOn(logger, "error")
+      .mockImplementation((() => undefined) as never);
 
     expect(() =>
       emitProcessPaymentConflictMetric("claim_in_progress"),
