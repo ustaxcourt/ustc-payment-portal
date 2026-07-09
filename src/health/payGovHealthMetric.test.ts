@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import {
   emitPayGovHealthMetric,
   emitPayGovErrorMetric,
@@ -54,7 +55,9 @@ describe("emitPayGovHealthMetric", () => {
     writeSpy.mockImplementation(() => {
       throw new Error("EPIPE");
     });
-    const logSpy = jest.spyOn(console, "log").mockImplementation(() => undefined);
+    const logSpy = jest
+      .spyOn(logger, "error")
+      .mockImplementation((() => undefined) as never);
 
     expect(() => emitPayGovHealthMetric(true, 5)).not.toThrow();
     expect(logSpy).toHaveBeenCalled();

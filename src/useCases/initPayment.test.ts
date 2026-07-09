@@ -1,17 +1,21 @@
-jest.mock("../db/TransactionModel", () => ({
-  __esModule: true,
-  default: {
-    findInFlightByReferenceId: jest.fn(() => Promise.resolve(undefined)),
-    createReceived: jest.fn((data) =>
-      Promise.resolve({
-        ...data,
-        agencyTrackingId: data.agencyTrackingId || "MOCK-TRACKING-ID",
-      }),
-    ),
-    updateToInitiated: jest.fn(() => Promise.resolve()),
-    updateToFailed: jest.fn(() => Promise.resolve()),
-  },
-}));
+jest.mock("../db/TransactionModel", () => {
+  const actual = jest.requireActual("../db/TransactionModel");
+  return {
+    __esModule: true,
+    ...actual,
+    default: {
+      findInFlightByReferenceId: jest.fn(() => Promise.resolve(undefined)),
+      createReceived: jest.fn((data) =>
+        Promise.resolve({
+          ...data,
+          agencyTrackingId: data.agencyTrackingId || "MOCK-TRACKING-ID",
+        }),
+      ),
+      updateToInitiated: jest.fn(() => Promise.resolve()),
+      updateToFailed: jest.fn(() => Promise.resolve()),
+    },
+  };
+});
 
 jest.mock("../db/FeesModel", () => ({
   __esModule: true,
@@ -44,6 +48,10 @@ jest.mock("../health/payGovHealthMetric", () => ({
   emitPayGovErrorMetric: jest.fn(),
 }));
 
+jest.mock("../health/initPaymentConcurrencyMetric", () => ({
+  emitInitPaymentConflictMetric: jest.fn(),
+}));
+
 import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { InitPaymentRequest } from "@schemas/InitPayment.schema";
@@ -53,9 +61,13 @@ import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
 import { ClientPermission } from "../types/ClientPermission";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 
 const emitErrorMock = emitPayGovErrorMetric as jest.MockedFunction<
   typeof emitPayGovErrorMetric
+>;
+const emitConflictMock = emitInitPaymentConflictMetric as jest.MockedFunction<
+  typeof emitInitPaymentConflictMetric
 >;
 
 const mockClient: ClientPermission = {
@@ -197,6 +209,61 @@ describe("initPayment", () => {
     expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
   });
 
+  it("throws ConflictError when an attempt is actively processing (POST /process in flight)", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "processing",
+      paygovToken: "processing-token-abc",
+      lastUpdatedAt: new Date().toISOString(),
+    });
+
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: ConflictError.PAYMENT_IN_FLIGHT_TRANSACTION_MESSAGE,
+    });
+
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+    expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
+    expect(emitConflictMock).toHaveBeenCalledWith("processing_in_flight");
+  });
+
+  it("marks stale processing in-flight transaction as failed and creates a new one", async () => {
+    const stalePaygovToken = crypto.randomUUID().replace(/-/g, "");
+    const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
+
+    mockSoapRequest(freshPaygovToken);
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "processing",
+      paygovToken: stalePaygovToken,
+      lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+    });
+
+    const result = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
+
+    expect(TransactionModel.updateToFailed).toHaveBeenCalledWith(
+      "existing-id",
+      5009,
+      "Existing token expired",
+    );
+    expect(TransactionModel.createReceived).toHaveBeenCalled();
+    expect(result.token).toBe(freshPaygovToken);
+  });
+
   it("marks expired in-flight transaction as failed and creates a new one when token age >= 3 hours", async () => {
     const expiredPaygovToken = crypto.randomUUID().replace(/-/g, "");
     const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
@@ -267,6 +334,7 @@ describe("initPayment", () => {
         request: validPetitionRequest,
       }),
     ).rejects.toThrow(ConflictError);
+    expect(emitConflictMock).toHaveBeenCalledWith("persist_race");
   });
 
   it("wraps non-unique-violation createReceived errors as a generic failure", async () => {
