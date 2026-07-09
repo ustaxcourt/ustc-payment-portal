@@ -276,6 +276,18 @@ export const processPayment: ProcessPayment = async (
       "processing",
     );
   } catch (err) {
+    if (err instanceof ConflictError) {
+      emitProcessPaymentConflictMetric("persist_race");
+      appContext.logger.warn("Pay.gov response not persisted — state changed", {
+        ...baseLogFields,
+        feeKey: fee.feeKey,
+        paygovTrackingId: result.paygov_tracking_id,
+        parsedStatus,
+        paymentStatus,
+      });
+      throw err;
+    }
+
     /* istanbul ignore next: This branch is for database failures, which are rare in normal operation */
     appContext.logger.error("Failed to persist Pay.gov response", {
       ...baseLogFields,
