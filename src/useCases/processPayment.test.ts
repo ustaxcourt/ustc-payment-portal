@@ -1,6 +1,7 @@
 import { processPayment } from "./processPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
 import type { ClientPermission } from "@appTypes/ClientPermission";
+import { ConflictError } from "@errors/conflict";
 import { ForbiddenError } from "@errors/forbidden";
 import { GoneError } from "@errors/gone";
 import { NotFoundError } from "@errors/notFound";
@@ -8,13 +9,23 @@ import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
+import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+
+const emitProcessPaymentConflictMetricMock =
+  emitProcessPaymentConflictMetric as jest.MockedFunction<
+    typeof emitProcessPaymentConflictMetric
+  >;
+
+jest.mock("../health/processPaymentConcurrencyMetric", () => ({
+  emitProcessPaymentConflictMetric: jest.fn(),
+}));
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
   default: {
     findByPaygovToken: jest.fn(),
-    findPendingOrProcessedByReferenceId: jest.fn(),
+    claimForProcessing: jest.fn(),
     updateAfterPayGovResponse: jest.fn(),
     updateToFailed: jest.fn(),
     findByReferenceId: jest.fn(),
@@ -50,7 +61,7 @@ const mockTransaction = {
   feeId: "fee-123",
   agencyTrackingId: "agency-tracking-id-001",
   transactionReferenceId: "ref-123",
-  transactionStatus: "initiated",
+  transactionStatus: "processing",
   clientName: "Test Client",
   metadata: {
     docketNumber: "2026-ABC-001",
@@ -61,11 +72,11 @@ const mockTransaction = {
 } as unknown as TransactionModel;
 
 const mockUpdatedTransaction = (paymentMethod: string | null) =>
-({
-  ...mockTransaction,
-  paymentMethod,
-  lastUpdatedAt: "2026-01-15T10:35:01Z",
-} as unknown as TransactionModel);
+  ({
+    ...mockTransaction,
+    paymentMethod,
+    lastUpdatedAt: "2026-01-15T10:35:01Z",
+  } as unknown as TransactionModel);
 
 const mockPayGovTrackingId = "211d8c91c046404fb159b52d042a12ba";
 
@@ -214,13 +225,18 @@ const mockFaultWithoutTCSServiceFault = `<?xml version="1.0" encoding="UTF-8"?>
   </S:Body>
 </S:Envelope>`;
 
+const mockInitiatedTransaction = {
+  ...mockTransaction,
+  transactionStatus: "initiated",
+} as unknown as TransactionModel;
+
 describe("processPayment", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    TransactionModelMock.findByPaygovToken.mockResolvedValue(mockTransaction);
-    TransactionModelMock.findPendingOrProcessedByReferenceId.mockResolvedValue(
-      undefined,
+    TransactionModelMock.findByPaygovToken.mockResolvedValue(
+      mockInitiatedTransaction,
     );
+    TransactionModelMock.claimForProcessing.mockResolvedValue(mockTransaction);
     TransactionModelMock.updateAfterPayGovResponse.mockImplementation(
       async (_id, _tid, _ts, _ps, paymentMethod) =>
         mockUpdatedTransaction(paymentMethod),
@@ -245,6 +261,8 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       }),
     ).rejects.toThrow(NotFoundError);
+
+    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
   });
 
   it("throws ForbiddenError when client does not have access to the transaction's fee", async () => {
@@ -254,6 +272,8 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       }),
     ).rejects.toThrow(ForbiddenError);
+
+    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
   });
 
   it("proceeds when client has wildcard fee access", async () => {
@@ -266,8 +286,10 @@ describe("processPayment", () => {
   });
 
   it("throws GoneError when a sibling transaction is already pending", async () => {
-    TransactionModelMock.findPendingOrProcessedByReferenceId.mockResolvedValueOnce(
-      { transactionStatus: "pending" } as unknown as TransactionModel,
+    TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
+      new GoneError(
+        "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
+      ),
     );
 
     await expect(
@@ -279,8 +301,10 @@ describe("processPayment", () => {
   });
 
   it("throws GoneError when a sibling transaction is already processed", async () => {
-    TransactionModelMock.findPendingOrProcessedByReferenceId.mockResolvedValueOnce(
-      { transactionStatus: "processed" } as unknown as TransactionModel,
+    TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
+      new GoneError(
+        "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
+      ),
     );
 
     await expect(
@@ -292,11 +316,9 @@ describe("processPayment", () => {
   });
 
   it("throws GoneError when transaction status is not initiated", async () => {
-    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce({
-      feeId: "fee-123",
-      transactionReferenceId: "ref-123",
-      transactionStatus: "failed",
-    } as unknown as TransactionModel);
+    TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
+      new GoneError("This token is no longer valid."),
+    );
 
     await expect(
       processPayment(appContext, {
@@ -304,6 +326,125 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       }),
     ).rejects.toThrow(GoneError);
+  });
+
+  it("throws ConflictError when claim is rejected due to concurrent processing", async () => {
+    TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
+    );
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(ConflictError);
+  });
+
+  it("throws ConflictError when Postgres lock is not available", async () => {
+    const lockErr = new Error("could not obtain lock") as Error & {
+      code: string;
+    };
+    lockErr.code = "55P03";
+    TransactionModelMock.claimForProcessing.mockRejectedValueOnce(lockErr);
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
+    );
+
+    expect(emitProcessPaymentConflictMetricMock).toHaveBeenCalledWith(
+      "lock_not_available",
+    );
+    expect(appContext.logger.info).toHaveBeenCalledWith(
+      "processPayment claim rejected — concurrent request",
+      expect.objectContaining({
+        agencyTrackingId: mockInitiatedTransaction.agencyTrackingId,
+        postgresErrorCode: "55P03",
+      }),
+    );
+  });
+
+  it("throws ConflictError when Postgres detects a deadlock during claim", async () => {
+    const deadlockErr = new Error("deadlock detected") as Error & {
+      code: string;
+    };
+    deadlockErr.code = "40P01";
+    TransactionModelMock.claimForProcessing.mockRejectedValueOnce(deadlockErr);
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
+    );
+
+    expect(emitProcessPaymentConflictMetricMock).toHaveBeenCalledWith(
+      "deadlock",
+    );
+  });
+
+  it("emits a metric when claim is rejected due to concurrent processing", async () => {
+    TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
+    );
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(ConflictError);
+
+    expect(emitProcessPaymentConflictMetricMock).toHaveBeenCalledWith(
+      "claim_in_progress",
+    );
+  });
+
+  describe("pre-claim authorization", () => {
+    it("loads the token and authorizes the client before claiming processing", async () => {
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockReturnValue(mockSuccessfulResponse);
+      TransactionModelMock.findByReferenceId.mockResolvedValue([
+        mockProcessedRow,
+      ]);
+
+      await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      });
+
+      expect(TransactionModelMock.findByPaygovToken).toHaveBeenCalledWith(
+        "mock-token",
+      );
+      expect(TransactionModelMock.claimForProcessing).toHaveBeenCalledWith(
+        "mock-token",
+      );
+      expect(
+        TransactionModelMock.findByPaygovToken.mock.invocationCallOrder[0],
+      ).toBeLessThan(
+        TransactionModelMock.claimForProcessing.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("does not claim when authorization fails", async () => {
+      await expect(
+        processPayment(appContext, {
+          client: { ...mockClient, allowedFeeKeys: ["some-other-fee"] },
+          request: { token: "mock-token" },
+        }),
+      ).rejects.toThrow(ForbiddenError);
+
+      expect(TransactionModelMock.findByPaygovToken).toHaveBeenCalled();
+      expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+    });
   });
 
   it("throws NotFoundError when fee is not found for the transaction", async () => {
@@ -315,6 +456,27 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       }),
     ).rejects.toThrow(NotFoundError);
+
+    expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
+      mockTransaction.agencyTrackingId,
+      undefined,
+      "Fee configuration not found for this transaction",
+    );
+  });
+
+  it("does not claim the token when fee lookup throws", async () => {
+    const dbErr = new Error("connection refused");
+    FeesModelMock.getFeeById.mockRejectedValueOnce(dbErr);
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(dbErr);
+
+    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+    expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
   });
 
   it("throws ServerError when fee has no tcsAppId", async () => {
@@ -330,6 +492,12 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       }),
     ).rejects.toThrow(ServerError);
+
+    expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
+      mockTransaction.agencyTrackingId,
+      undefined,
+      "Fee is missing tcsAppId configuration",
+    );
   });
 
   it("passes the fee's tcsAppId to the SOAP request", async () => {
@@ -554,6 +722,7 @@ describe("processPayment", () => {
         "plastic_card",
         "2023-09-18T10:54:05",
         "2023-09-19",
+        "processing",
       );
     });
 
@@ -746,6 +915,7 @@ describe("processPayment", () => {
         "ach",
         "2023-09-18T10:54:05",
         "2023-09-19",
+        "processing",
       );
     });
   });
@@ -858,7 +1028,7 @@ describe("processPayment", () => {
       expect(emitErrorMock).toHaveBeenCalledTimes(1);
     });
 
-    it("throws PayGovError (500) and marks the transaction failed when updateAfterPayGovResponse rejects", async () => {
+    it("throws ServerError and marks the transaction failed when updateAfterPayGovResponse rejects", async () => {
       appContext.postHttpRequest = jest
         .fn()
         .mockReturnValue(mockSuccessfulResponse);
@@ -902,4 +1072,3 @@ describe("processPayment", () => {
     });
   });
 });
-
