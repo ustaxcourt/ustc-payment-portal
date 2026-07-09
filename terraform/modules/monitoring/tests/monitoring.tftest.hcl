@@ -91,6 +91,28 @@ run "teams_routing_enabled_when_all_vars_set" {
   }
 }
 
+# Partial config (some Teams vars set, not all) must disable routing — enable_teams requires all three.
+run "teams_routing_disabled_when_partially_configured" {
+  command = plan
+
+  variables {
+    env             = "prod"
+    name_prefix     = "ustc-payment-portal-prod"
+    teams_tenant_id = "11111111-1111-1111-1111-111111111111"
+    teams_team_id   = "22222222-2222-2222-2222-222222222222"
+  }
+
+  assert {
+    condition     = length(aws_iam_role.chatbot) == 0
+    error_message = "chatbot role should not be created when only some Teams vars are set"
+  }
+
+  assert {
+    condition     = length(aws_chatbot_teams_channel_configuration.alerts) == 0
+    error_message = "Teams channel config should not be created when only some Teams vars are set"
+  }
+}
+
 run "proxy_alarms_gated_on_proxy_name" {
   command = plan
 
