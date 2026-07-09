@@ -1051,6 +1051,27 @@ describe("processPayment", () => {
       );
     });
 
+    it("throws ConflictError without marking failed when updateAfterPayGovResponse detects a persist race", async () => {
+      appContext.postHttpRequest = jest
+        .fn()
+        .mockReturnValue(mockSuccessfulResponse);
+      TransactionModelMock.updateAfterPayGovResponse.mockRejectedValueOnce(
+        new ConflictError(ConflictError.PERSIST_RACE_MESSAGE),
+      );
+
+      const conflictErr = await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }).catch((e) => e);
+
+      expect(conflictErr).toBeInstanceOf(ConflictError);
+      expect(conflictErr.statusCode).toBe(409);
+      expect(emitProcessPaymentConflictMetricMock).toHaveBeenCalledWith(
+        "persist_race",
+      );
+      expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
+    });
+
     it("still throws ServerError when the recovery updateToFailed itself fails", async () => {
       appContext.postHttpRequest = jest
         .fn()
