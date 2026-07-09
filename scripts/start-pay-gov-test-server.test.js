@@ -1,16 +1,11 @@
 "use strict";
 
-// start-pay-gov-test-server.js runs top-level code (including resolveTestServerEntry
-// via require.resolve) synchronously on require. Tests set required env vars and
-// mock child_process.spawn before each require so no real process is started.
-//
-// Note: resolveTestServerEntry() calls require.resolve('@ustaxcourt/ustc-pay-gov-test-server/dist/server.js').
-// This resolves against the actual installed devDependency on disk, so the package
-// must be installed (npm ci / npm install) for these tests to pass.
-
 describe("start-pay-gov-test-server", () => {
   let mockSpawn;
   let mockLog;
+  let startPayGovTestServer;
+  let resolveAccessToken;
+  let DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN;
 
   function makeChildProcess() {
     const handlers = {};
@@ -38,11 +33,17 @@ describe("start-pay-gov-test-server", () => {
       parsePort: jest.fn((value, fallback) => fallback),
     }));
 
+    ({
+      startPayGovTestServer,
+      resolveAccessToken,
+      DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN,
+    } = require("./start-pay-gov-test-server"));
   });
 
   afterEach(() => {
     delete process.env.PAY_GOV_TEST_SERVER_PORT;
     delete process.env.PAY_GOV_NODE_ENV;
+    delete process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN;
     jest.restoreAllMocks();
     process.removeAllListeners("SIGINT");
     process.removeAllListeners("SIGTERM");
@@ -51,7 +52,7 @@ describe("start-pay-gov-test-server", () => {
   it("spawns the server using process.execPath with the resolved entry point", () => {
     mockSpawn.mockReturnValue(makeChildProcess());
 
-    require("./start-pay-gov-test-server");
+    startPayGovTestServer();
 
     expect(mockSpawn).toHaveBeenCalledWith(
       process.execPath,
@@ -59,16 +60,34 @@ describe("start-pay-gov-test-server", () => {
       expect.objectContaining({
         stdio: "inherit",
         env: expect.objectContaining({
-          ACCESS_TOKEN: "asdf123",
+          ACCESS_TOKEN: resolveAccessToken(),
         }),
       }),
     );
   });
 
+  it("defaults ACCESS_TOKEN to the shared local development token", () => {
+    expect(resolveAccessToken()).toBe(
+      DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN,
+    );
+    expect(DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN).toBe("development-token");
+  });
+
+  it("forwards PAY_GOV_TEST_SERVER_ACCESS_TOKEN to the child as ACCESS_TOKEN when set", () => {
+    process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN = "hosted-dev-token";
+    mockSpawn.mockReturnValue(makeChildProcess());
+
+    startPayGovTestServer();
+
+    const spawnEnv = mockSpawn.mock.calls[0][2].env;
+    expect(spawnEnv.ACCESS_TOKEN).toBe("hosted-dev-token");
+    expect(resolveAccessToken()).toBe("hosted-dev-token");
+  });
+
   it("sets PORT in the child environment from the resolved port", () => {
     mockSpawn.mockReturnValue(makeChildProcess());
 
-    require("./start-pay-gov-test-server");
+    startPayGovTestServer();
 
     const spawnEnv = mockSpawn.mock.calls[0][2].env;
     expect(spawnEnv).toHaveProperty("PORT");
@@ -78,7 +97,7 @@ describe("start-pay-gov-test-server", () => {
   it("sets NODE_ENV to 'local' by default in the child environment", () => {
     mockSpawn.mockReturnValue(makeChildProcess());
 
-    require("./start-pay-gov-test-server");
+    startPayGovTestServer();
 
     const spawnEnv = mockSpawn.mock.calls[0][2].env;
     expect(spawnEnv.NODE_ENV).toBe("local");
@@ -88,7 +107,7 @@ describe("start-pay-gov-test-server", () => {
     process.env.PAY_GOV_NODE_ENV = "staging";
     mockSpawn.mockReturnValue(makeChildProcess());
 
-    require("./start-pay-gov-test-server");
+    startPayGovTestServer();
 
     const spawnEnv = mockSpawn.mock.calls[0][2].env;
     expect(spawnEnv.NODE_ENV).toBe("staging");
@@ -101,7 +120,7 @@ describe("start-pay-gov-test-server", () => {
     const child = makeChildProcess();
     mockSpawn.mockReturnValue(child);
 
-    require("./start-pay-gov-test-server");
+    startPayGovTestServer();
     child.emit("exit", 42, null);
 
     expect(processExitSpy).toHaveBeenCalledWith(42);
@@ -115,7 +134,7 @@ describe("start-pay-gov-test-server", () => {
     const child = makeChildProcess();
     mockSpawn.mockReturnValue(child);
 
-    require("./start-pay-gov-test-server");
+    startPayGovTestServer();
     child.emit("error", new Error("spawn failed"));
 
     expect(mockLog.error).toHaveBeenCalled();
