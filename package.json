@@ -78,8 +78,8 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
-    "@aws-sdk/client-secrets-manager": "^3.1083.0",
-    "@aws-sdk/client-sts": "^3.1083.0",
+    "@aws-sdk/client-secrets-manager": "^3.1084.0",
+    "@aws-sdk/client-sts": "^3.1084.0",
     "@ustaxcourt/ustc-pay-gov-test-server": "^0.2.4",
     "dayjs": "^1.11.21",
     "dotenv": "^17.4.2",
