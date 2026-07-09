@@ -7,7 +7,7 @@ run "default_branch_uses_inline_password" {
     identifier             = "ustc-payments-dev"
     db_name                = "payments"
     username               = "portal"
-    password               = "supersecret"
+    password               = "fake-not-a-real-password"
     vpc_security_group_ids = ["sg-1234567890"]
     db_subnet_group_name   = "db-subnet-group"
   }
@@ -59,7 +59,7 @@ run "max_allocated_storage_branch_enabled" {
     identifier             = "ustc-payments-dev"
     db_name                = "payments"
     username               = "portal"
-    password               = "supersecret"
+    password               = "fake-not-a-real-password"
     max_allocated_storage  = 200
     vpc_security_group_ids = ["sg-1234567890"]
     db_subnet_group_name   = "db-subnet-group"
@@ -78,7 +78,7 @@ run "rejects_invalid_log_statement" {
     identifier             = "ustc-payments-dev"
     db_name                = "payments"
     username               = "portal"
-    password               = "supersecret"
+    password               = "fake-not-a-real-password"
     vpc_security_group_ids = ["sg-1234567890"]
     db_subnet_group_name   = "db-subnet-group"
     log_statement          = "invalid"
