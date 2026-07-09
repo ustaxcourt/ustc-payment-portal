@@ -32,8 +32,34 @@ jobs:
       - name: Coverage tests
         run: npm run test:coverage
 
+      - name: Start local stack
+        run: npm run start:all > local-stack.log 2>&1 &
+
+      - name: Wait for local stack readiness
+        env:
+          BASE_URL: http://localhost:8080
+        run: |
+          for attempt in {1..12}; do
+            if npm run check:local-flow; then
+              exit 0
+            fi
+
+            echo "Local stack not ready yet (attempt ${attempt}/12)."
+            sleep 10
+          done
+
+          echo "Local stack failed to become ready."
+          cat local-stack.log
+          exit 1
+
       - name: Local integration tests
+        env:
+          BASE_URL: http://localhost:8080
         run: npm run test:integration:dev
 
       - name: Security audit
         run: npm audit --audit-level=high
+
+      - name: Dump local stack log
+        if: ${{ always() }}
+        run: cat local-stack.log
