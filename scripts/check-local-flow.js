@@ -25,7 +25,6 @@ const TEST_DATA = {
 async function parseResponseBody(response) {
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
-    /* istanbul ignore next */
     return response.json();
   }
   return response.text();
