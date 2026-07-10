@@ -1,7 +1,7 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
-import { TransactionStatusSchema } from "./TransactionStatus.schema";
 import { PaymentMethodSchema } from "./PaymentMethod.schema";
+import { TransactionStatusSchema } from "./TransactionStatus.schema";
 
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);

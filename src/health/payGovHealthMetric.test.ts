@@ -1,7 +1,7 @@
 import { logger } from "../utils/logger";
 import {
-	emitPayGovHealthMetric,
 	emitPayGovErrorMetric,
+	emitPayGovHealthMetric,
 } from "./payGovHealthMetric";
 
 describe("emitPayGovHealthMetric", () => {

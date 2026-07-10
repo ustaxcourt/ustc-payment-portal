@@ -1,9 +1,9 @@
-import {
-	extractCallerArn,
-	convertAssumedRoleToIamArn,
-} from "./extractCallerArn";
 import { ForbiddenError } from "@errors/forbidden";
 import type { APIGatewayEventRequestContext } from "aws-lambda";
+import {
+	convertAssumedRoleToIamArn,
+	extractCallerArn,
+} from "./extractCallerArn";
 
 const createMockRequestContext = (
 	userArn?: string | null,

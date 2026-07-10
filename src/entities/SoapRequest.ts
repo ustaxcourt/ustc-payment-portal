@@ -1,15 +1,15 @@
-import { XMLBuilder, XMLParser } from "fast-xml-parser";
+import type { AppContext } from "@appTypes/AppContext";
 import type { RawCompleteOnlineCollectionRequest } from "@appTypes/RawCompleteOnlineCollectionRequest";
 import type { RawStartOnlineCollectionRequest } from "@appTypes/RawStartOnlineCollectionRequest";
+import { FailedTransactionError } from "@errors/failedTransaction";
+import { XMLBuilder, XMLParser } from "fast-xml-parser";
+import { xmlOptions } from "../xmlOptions";
+import type { CompleteOnlineCollectionWithDetailsRequestParams } from "./CompleteOnlineCollectionWithDetailsRequest";
 import type {
 	GetRequestRequestParams,
 	RawGetDetailsRequest,
 } from "./GetDetailsRequest";
-import { xmlOptions } from "../xmlOptions";
-import type { CompleteOnlineCollectionWithDetailsRequestParams } from "./CompleteOnlineCollectionWithDetailsRequest";
 import type { StartOnlineCollectionRequestParams } from "./StartOnlineCollectionRequest";
-import type { AppContext } from "@appTypes/AppContext";
-import { FailedTransactionError } from "@errors/failedTransaction";
 
 export type RawSoapRequest =
 	| RawStartOnlineCollectionRequest

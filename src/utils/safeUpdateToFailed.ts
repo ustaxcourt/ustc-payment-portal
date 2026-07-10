@@ -1,5 +1,5 @@
-import TransactionModel from "../db/TransactionModel";
 import type { AppContext } from "@appTypes/AppContext";
+import TransactionModel from "../db/TransactionModel";
 
 export const safeUpdateToFailed = async (
 	appContext: AppContext,

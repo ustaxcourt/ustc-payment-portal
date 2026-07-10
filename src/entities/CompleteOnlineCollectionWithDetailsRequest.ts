@@ -1,10 +1,10 @@
 import type { AppContext } from "@appTypes/AppContext";
 import type { RawCompleteOnlineCollectionRequest } from "@appTypes/RawCompleteOnlineCollectionRequest";
-import { type RequestType, SoapRequest } from "./SoapRequest";
 import {
 	type CompleteOnlineCollectionWithDetailsResponse,
 	CompleteOnlineCollectionWithDetailsResponseSchema,
 } from "@schemas/CompleteOnlineCollectionWithDetailsResponse.schema";
+import { type RequestType, SoapRequest } from "./SoapRequest";
 
 export type CompleteOnlineCollectionWithDetailsRequestParams = {
 	tcs_app_id: string;

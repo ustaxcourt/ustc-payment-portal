@@ -1,7 +1,7 @@
-import { SignatureV4 } from "@smithy/signature-v4";
 import { Sha256 } from "@aws-crypto/sha256-js";
+import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { HttpRequest } from "@smithy/core/protocols";
-import { STSClient, AssumeRoleCommand } from "@aws-sdk/client-sts";
+import { SignatureV4 } from "@smithy/signature-v4";
 import type { AwsCredentialIdentity } from "@smithy/types";
 
 /**

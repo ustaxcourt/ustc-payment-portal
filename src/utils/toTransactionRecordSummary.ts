@@ -1,5 +1,5 @@
-import type TransactionModel from "../db/TransactionModel";
 import type { TransactionRecordSummary } from "@schemas/TransactionRecord.schema";
+import type TransactionModel from "../db/TransactionModel";
 import { toApiPaymentMethod } from "./toApiPaymentMethod";
 
 export const toTransactionRecordSummary = (

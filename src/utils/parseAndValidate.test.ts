@@ -1,6 +1,6 @@
+import { InvalidRequestError } from "@errors/invalidRequest";
 import { z } from "zod";
 import { parseAndValidate } from "./parseAndValidate";
-import { InvalidRequestError } from "@errors/invalidRequest";
 
 describe("parseAndValidate", () => {
 	const schema = z.object({

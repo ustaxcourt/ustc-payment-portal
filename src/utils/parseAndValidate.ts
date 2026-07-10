@@ -1,5 +1,5 @@
-import type { ZodType } from "zod";
 import type { ParseResult } from "@appTypes/ParseResult";
+import type { ZodType } from "zod";
 import { jsonParse } from "./jsonParse";
 
 /**

@@ -1,7 +1,7 @@
-import { handler } from "./testCert";
-import fetch from "node-fetch";
 import { getSecretString } from "@clients/secretsClient";
+import fetch from "node-fetch";
 import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
+import { handler } from "./testCert";
 
 // Mock node-fetch
 jest.mock("node-fetch", () => jest.fn());

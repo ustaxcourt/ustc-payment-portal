@@ -1,6 +1,6 @@
-import { authorizeClient } from "./authorizeClient";
-import { ForbiddenError } from "@errors/forbidden";
 import type { ClientPermission } from "@appTypes/ClientPermission";
+import { ForbiddenError } from "@errors/forbidden";
+import { authorizeClient } from "./authorizeClient";
 
 const dawsonClient: ClientPermission = {
 	clientName: "DAWSON",

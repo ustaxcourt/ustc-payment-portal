@@ -1,10 +1,10 @@
 import type {
+	GetDetailsPathParams,
+	GetDetailsResponse,
 	InitPaymentRequest,
 	InitPaymentResponse,
 	ProcessPaymentRequest,
 	ProcessPaymentResponse,
-	GetDetailsPathParams,
-	GetDetailsResponse,
 } from "../dist/index";
 
 /*

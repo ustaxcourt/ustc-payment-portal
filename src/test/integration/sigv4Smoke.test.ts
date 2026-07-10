@@ -1,8 +1,8 @@
 import {
-	signedFetch,
-	signRequest,
 	assumeRole,
+	signedFetch,
 	signedFetchWithCredentials,
+	signRequest,
 } from "./sigv4Helper";
 
 jest.setTimeout(20000); // end-to-end calls can exceed Jest's 5s default

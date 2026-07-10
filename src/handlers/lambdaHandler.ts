@@ -1,17 +1,17 @@
-import type { APIGatewayProxyResult, APIGatewayEvent } from "aws-lambda";
-import type { ZodType } from "zod";
-import { createAppContext } from "../appContext";
-import { extractCallerArn } from "../extractCallerArn";
-import { handleError } from "../handleError";
-import type { ClientPermission } from "@appTypes/ClientPermission";
 import type { AppContext } from "@appTypes/AppContext";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 import {
 	getClientByRoleArn,
 	getClientPermissions,
 } from "@clients/permissionsClient";
-import { parseAndValidate } from "@utils/parseAndValidate";
 import { logger } from "@utils/logger";
+import { parseAndValidate } from "@utils/parseAndValidate";
+import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
+import type { ZodType } from "zod";
+import { createAppContext } from "../appContext";
 import { getKnex } from "../db/knex";
+import { extractCallerArn } from "../extractCallerArn";
+import { handleError } from "../handleError";
 
 // Pre-warm the RDS connection during the Lambda init phase so the first
 // invocation does not pay Secrets Manager + TCP connection-setup latency. (Saves us some cold-start time.)

@@ -1,9 +1,9 @@
 import type { AppContext } from "@appTypes/AppContext";
-import { type RequestType, SoapRequest } from "./SoapRequest";
 import {
 	PayGovGetDetailsResponseSchema,
 	type PayGovGetDetailsTransaction,
 } from "@schemas/PayGovGetDetailsResponse.schema";
+import { type RequestType, SoapRequest } from "./SoapRequest";
 
 export type RawGetDetailsRequest = {
 	tcsAppId: string;
