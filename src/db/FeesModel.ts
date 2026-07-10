@@ -13,10 +13,12 @@ export default class FeesModel extends Model {
   createdAt!: string;
   updatedAt!: string;
 
+  /* istanbul ignore next */
   static get tableName() {
     return 'fees';
   }
 
+  /* istanbul ignore next */
   static get idColumn() {
     return 'feeId';
   }

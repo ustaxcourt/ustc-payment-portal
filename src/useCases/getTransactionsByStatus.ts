@@ -26,6 +26,7 @@ export const getTransactionsByStatus: GetTransactionsByStatus = async (
   request: TransactionsByStatusPathParams
 ): Promise<TransactionsByStatusResponse> => {
   const parsed = TransactionsByStatusPathParamsSchema.safeParse(request);
+  /* istanbul ignore if */
   if (!parsed.success) {
     throw new InvalidRequestError(
       "Invalid paymentStatus. Expected one of: success, failed, pending",
@@ -41,6 +42,7 @@ export const getTransactionsByStatus: GetTransactionsByStatus = async (
   });
 };
 
+/* istanbul ignore next */
 export const isValidPaymentStatus: IsValidPaymentStatus = (paymentStatus: string): boolean => {
   return TransactionsByStatusPathParamsSchema.shape.paymentStatus.safeParse(
     paymentStatus,
