@@ -733,11 +733,13 @@ jobs:
           echo "PR Number: ${{ steps.extract_pr.outputs.pr_number }}"
           echo "Artifacts Path: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/${{ steps.resolve_deploy_sha.outputs.sha }}/"
 
-          # The build commit is the PR head; a squash-merge orphans it from main and the shallow
-          # checkout omits it. Fetch it so the tag can point at it. staging/prod/rc resolve the dev
-          # tag to this commit to locate artifacts at artifacts/dev/<build-sha>/, so the tag MUST
-          # target the build SHA (not $GITHUB_SHA).
-          git fetch origin "refs/pull/${{ steps.extract_pr.outputs.pr_number }}/head"
+          # The tag must target the build SHA: staging/prod/rc resolve the dev tag to its commit to
+          # locate artifacts at artifacts/dev/<build-sha>/. A squash-merge orphans that commit from
+          # main and the shallow checkout omits it, so fetch the exact build commit (falling back to
+          # the PR head ref) before tagging, or `git tag` fails with "bad object type".
+          BUILD_SHA="${{ steps.resolve_deploy_sha.outputs.sha }}"
+          git fetch origin "$BUILD_SHA" \
+            || git fetch origin "refs/pull/${{ steps.extract_pr.outputs.pr_number }}/head"
 
           # Create and push tag
           git tag -a "$DEV_TAG" "${{ steps.resolve_deploy_sha.outputs.sha }}" -m "Dev release $DEV_TAG
