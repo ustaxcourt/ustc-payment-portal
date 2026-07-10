@@ -1,5 +1,5 @@
 name: Dependabot Validate
-# Note: To test, add workflow_dispatch and uncomment the if condition in the jobs section below.
+# Note: To test, add workflow_dispatch and comment the if condition in the jobs section below.
 
 on:
   pull_request:
