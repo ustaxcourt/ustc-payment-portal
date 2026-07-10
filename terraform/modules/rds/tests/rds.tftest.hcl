@@ -86,3 +86,19 @@ run "rejects_invalid_log_statement" {
 
   expect_failures = [var.log_statement]
 }
+
+run "requires_final_snapshot_identifier_when_not_skipping" {
+  command = plan
+
+  variables {
+    identifier             = "ustc-payments-dev"
+    db_name                = "payments"
+    username               = "portal"
+    password               = "fake-not-a-real-password"
+    vpc_security_group_ids = ["sg-1234567890"]
+    db_subnet_group_name   = "db-subnet-group"
+    skip_final_snapshot    = false
+  }
+
+  expect_failures = [var.final_snapshot_identifier]
+}
