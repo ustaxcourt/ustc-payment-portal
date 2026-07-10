@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+env:
+  APP_ENV: 'local'
+  NODE_ENV: 'development'
+  LOG_LEVEL: 'debug'
+
 jobs:
   tests_only:
     # if: ${{ github.actor == 'dependabot[bot]' || startsWith(github.head_ref, 'dependabot/') }}
