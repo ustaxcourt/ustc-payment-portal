@@ -9,6 +9,7 @@ jest.mock("../appContext", () => ({
 jest.mock("../clients/permissionsClient", () => ({
   getClientByRoleArn: jest.fn(),
   clearPermissionsCache: jest.fn(),
+  getClientPermissions: jest.fn().mockResolvedValue([]),
 }));
 
 export const mockGetClientByRoleArn = getClientByRoleArn as jest.MockedFunction<
