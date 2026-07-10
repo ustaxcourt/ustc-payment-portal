@@ -734,7 +734,7 @@ jobs:
           echo "Artifacts Path: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/${{ steps.resolve_deploy_sha.outputs.sha }}/"
 
           # Create and push tag
-          git tag -a "$DEV_TAG" "${{ steps.resolve_deploy_sha.outputs.sha }}" -m "Dev release $DEV_TAG
+          git tag -a "$DEV_TAG" "$GITHUB_SHA" -m "Dev release $DEV_TAG
 
           Deployed from PR #${{ steps.extract_pr.outputs.pr_number }}
           Commit: ${{ steps.resolve_deploy_sha.outputs.sha }}
