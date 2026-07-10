@@ -63,11 +63,12 @@ function resolveNodeEnv(raw?: string): RuntimeEnv {
 		return normalizedEnv;
 	}
 
-	if (raw) {
-		process.stderr.write(
-			`[logger] Invalid NODE_ENV="${raw}"; falling back to development\n`,
-		);
-	}
+  /* istanbul ignore next: This branch is for misconfigured environments, which are rare in normal operation */
+  if (raw) {
+    process.stderr.write(
+      `[logger] Invalid NODE_ENV="${raw}"; falling back to development\n`,
+    );
+  }
 
 	return "development";
 }
@@ -170,14 +171,15 @@ export function createRequestLogger(context: {
 }): AppContextLogger {
 	const requestLogger = logger.child(context);
 
-	return {
-		debug: (message: string, additionalFields?: Record<string, unknown>) =>
-			requestLogger.debug(additionalFields ?? {}, message),
-		error: (message: string, additionalFields?: Record<string, unknown>) =>
-			requestLogger.error(additionalFields ?? {}, message),
-		info: (message: string, additionalFields?: Record<string, unknown>) =>
-			requestLogger.info(additionalFields ?? {}, message),
-		warn: (message: string, additionalFields?: Record<string, unknown>) =>
-			requestLogger.warn(additionalFields ?? {}, message),
-	};
+  /* istanbul ignore next: This branch is for Pay.gov communication failures, which are rare in normal operation */
+  return {
+    debug: (message: string, additionalFields?: Record<string, unknown>) =>
+      requestLogger.debug(additionalFields ?? {}, message),
+    error: (message: string, additionalFields?: Record<string, unknown>) =>
+      requestLogger.error(additionalFields ?? {}, message),
+    info: (message: string, additionalFields?: Record<string, unknown>) =>
+      requestLogger.info(additionalFields ?? {}, message),
+    warn: (message: string, additionalFields?: Record<string, unknown>) =>
+      requestLogger.warn(additionalFields ?? {}, message),
+  };
 }

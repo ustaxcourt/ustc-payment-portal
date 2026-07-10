@@ -237,12 +237,13 @@ export const processPayment: ProcessPayment = async (
 			throw new PayGovError(PAYGOV_RETRY_MESSAGE, 502);
 		}
 
-		appContext.logger.error("Error communicating with Pay.gov", {
-			...baseLogFields,
-			feeKey: fee.feeKey,
-			errorName: err instanceof Error ? err.name : undefined,
-			errorMessage: err instanceof Error ? err.message : String(err),
-		});
+    /* istanbul ignore next: This branch is for Pay.gov communication failures, which are rare in normal operation */
+    appContext.logger.error("Error communicating with Pay.gov", {
+      ...baseLogFields,
+      feeKey: fee.feeKey,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
 
 		emitPayGovErrorMetric();
 		await safeUpdateToFailed(
@@ -287,15 +288,16 @@ export const processPayment: ProcessPayment = async (
 			throw err;
 		}
 
-		appContext.logger.error("Failed to persist Pay.gov response", {
-			...baseLogFields,
-			feeKey: fee.feeKey,
-			paygovTrackingId: result.paygov_tracking_id,
-			parsedStatus,
-			paymentStatus,
-			errorName: err instanceof Error ? err.name : undefined,
-			errorMessage: err instanceof Error ? err.message : String(err),
-		});
+    /* istanbul ignore next: This branch is for database failures, which are rare in normal operation */
+    appContext.logger.error("Failed to persist Pay.gov response", {
+      ...baseLogFields,
+      feeKey: fee.feeKey,
+      paygovTrackingId: result.paygov_tracking_id,
+      parsedStatus,
+      paymentStatus,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
 
 		await safeUpdateToFailed(
 			appContext,

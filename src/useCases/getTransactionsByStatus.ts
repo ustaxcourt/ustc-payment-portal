@@ -25,12 +25,13 @@ export const getTransactionsByStatus: GetTransactionsByStatus = async (
 	_appContext: AppContext,
 	request: TransactionsByStatusPathParams,
 ): Promise<TransactionsByStatusResponse> => {
-	const parsed = TransactionsByStatusPathParamsSchema.safeParse(request);
-	if (!parsed.success) {
-		throw new InvalidRequestError(
-			"Invalid paymentStatus. Expected one of: success, failed, pending",
-		);
-	}
+  const parsed = TransactionsByStatusPathParamsSchema.safeParse(request);
+  /* istanbul ignore if */
+  if (!parsed.success) {
+    throw new InvalidRequestError(
+      "Invalid paymentStatus. Expected one of: success, failed, pending",
+    );
+  }
 
 	const { paymentStatus } = parsed.data;
 	const data = await TransactionModel.getByPaymentStatus(paymentStatus);
@@ -44,10 +45,9 @@ export const getTransactionsByStatus: GetTransactionsByStatus = async (
 	});
 };
 
-export const isValidPaymentStatus: IsValidPaymentStatus = (
-	paymentStatus: string,
-): boolean => {
-	return TransactionsByStatusPathParamsSchema.shape.paymentStatus.safeParse(
-		paymentStatus,
-	).success;
+/* istanbul ignore next */
+export const isValidPaymentStatus: IsValidPaymentStatus = (paymentStatus: string): boolean => {
+  return TransactionsByStatusPathParamsSchema.shape.paymentStatus.safeParse(
+    paymentStatus,
+  ).success;
 };

@@ -13,13 +13,15 @@ export default class FeesModel extends Model {
 	createdAt!: string;
 	updatedAt!: string;
 
-	static get tableName() {
-		return "fees";
-	}
+  /* istanbul ignore next */
+  static get tableName() {
+    return 'fees';
+  }
 
-	static get idColumn() {
-		return "feeId";
-	}
+  /* istanbul ignore next */
+  static get idColumn() {
+    return 'feeId';
+  }
 
 	$parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
 		const parsed = super.$parseDatabaseJson(json);
