@@ -433,9 +433,18 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_integration.test_integration.id,
       aws_api_gateway_integration.details_integration.id,
 
+      aws_api_gateway_integration.init_integration.uri,
+      aws_api_gateway_integration.process_integration.uri,
+      aws_api_gateway_integration.test_integration.uri,
+      aws_api_gateway_integration.details_integration.uri,
+
       try(aws_api_gateway_integration.transactions_integration[0].id, ""),
       try(aws_api_gateway_integration.transactions_by_status_integration[0].id, ""),
       try(aws_api_gateway_integration.transaction_payment_status_integration[0].id, ""),
+
+      try(aws_api_gateway_integration.transactions_integration[0].uri, ""),
+      try(aws_api_gateway_integration.transactions_by_status_integration[0].uri, ""),
+      try(aws_api_gateway_integration.transaction_payment_status_integration[0].uri, ""),
 
       try(aws_api_gateway_integration.transactions_options_integration[0].id, ""),
       try(aws_api_gateway_integration.transactions_by_status_options_integration[0].id, ""),
@@ -525,7 +534,7 @@ resource "aws_api_gateway_method_settings" "all" {
 
 # 100 req/min = 2 req/s
 resource "aws_api_gateway_method_settings" "init_throttle" {
-  count = var.enable_per_endpoint_throttling ? 1 : 0
+  count       = var.enable_per_endpoint_throttling ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
   stage_name  = aws_api_gateway_stage.stage.stage_name
   method_path = "init/POST"
@@ -538,7 +547,7 @@ resource "aws_api_gateway_method_settings" "init_throttle" {
 
 # 100 req/min = 2 req/s
 resource "aws_api_gateway_method_settings" "process_throttle" {
-  count = var.enable_per_endpoint_throttling ? 1 : 0
+  count       = var.enable_per_endpoint_throttling ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
   stage_name  = aws_api_gateway_stage.stage.stage_name
   method_path = "process/POST"
@@ -551,7 +560,7 @@ resource "aws_api_gateway_method_settings" "process_throttle" {
 
 # 5000 req/min = 84 req/s
 resource "aws_api_gateway_method_settings" "details_throttle" {
-  count = var.enable_per_endpoint_throttling ? 1 : 0
+  count       = var.enable_per_endpoint_throttling ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
   stage_name  = aws_api_gateway_stage.stage.stage_name
   method_path = "details~1{transactionReferenceId}/GET"
@@ -566,7 +575,8 @@ resource "aws_api_gateway_method_settings" "details_throttle" {
 resource "aws_lambda_permission" "init_permission" {
   statement_id  = "AllowAPIGatewayInvokeInit"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_function_arns["initPayment"]
+  function_name = trimsuffix(var.lambda_function_arns["initPayment"], ":live")
+  qualifier     = "live"
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/POST/init"
 }
@@ -574,7 +584,8 @@ resource "aws_lambda_permission" "init_permission" {
 resource "aws_lambda_permission" "process_permissions" {
   statement_id  = "AllowAPIGatewayInvokeProcess"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_function_arns["processPayment"]
+  function_name = trimsuffix(var.lambda_function_arns["processPayment"], ":live")
+  qualifier     = "live"
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/POST/process"
 }
@@ -590,7 +601,8 @@ resource "aws_lambda_permission" "test_permissions" {
 resource "aws_lambda_permission" "details_permissions" {
   statement_id  = "AllowAPIGatewayInvokeDetails"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_function_arns["getDetails"]
+  function_name = trimsuffix(var.lambda_function_arns["getDetails"], ":live")
+  qualifier     = "live"
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/details/*"
 }

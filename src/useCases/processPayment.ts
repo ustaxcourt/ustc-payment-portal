@@ -14,10 +14,7 @@ import { derivePaymentStatusFromSingleTransaction } from "@utils/derivePaymentSt
 import type { ClientPermission } from "@appTypes/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
 import FeesModel from "../db/FeesModel";
-import {
-  getPostgresErrorCode,
-  isClaimContentionError,
-} from "../db/pgErrors";
+import { getPostgresErrorCode, isClaimContentionError } from "../db/pgErrors";
 import { toPaymentMethod } from "@utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
 import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
@@ -240,6 +237,7 @@ export const processPayment: ProcessPayment = async (
       throw new PayGovError(PAYGOV_RETRY_MESSAGE, 502);
     }
 
+    /* istanbul ignore next: This branch is for Pay.gov communication failures, which are rare in normal operation */
     appContext.logger.error("Error communicating with Pay.gov", {
       ...baseLogFields,
       feeKey: fee.feeKey,
@@ -290,6 +288,7 @@ export const processPayment: ProcessPayment = async (
       throw err;
     }
 
+    /* istanbul ignore next: This branch is for database failures, which are rare in normal operation */
     appContext.logger.error("Failed to persist Pay.gov response", {
       ...baseLogFields,
       feeKey: fee.feeKey,

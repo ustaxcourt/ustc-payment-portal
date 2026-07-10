@@ -72,11 +72,11 @@ const mockTransaction = {
 } as unknown as TransactionModel;
 
 const mockUpdatedTransaction = (paymentMethod: string | null) =>
-({
-  ...mockTransaction,
-  paymentMethod,
-  lastUpdatedAt: "2026-01-15T10:35:01Z",
-} as unknown as TransactionModel);
+  ({
+    ...mockTransaction,
+    paymentMethod,
+    lastUpdatedAt: "2026-01-15T10:35:01Z",
+  } as unknown as TransactionModel);
 
 const mockPayGovTrackingId = "211d8c91c046404fb159b52d042a12ba";
 
@@ -342,7 +342,9 @@ describe("processPayment", () => {
   });
 
   it("throws ConflictError when Postgres lock is not available", async () => {
-    const lockErr = new Error("could not obtain lock") as Error & { code: string };
+    const lockErr = new Error("could not obtain lock") as Error & {
+      code: string;
+    };
     lockErr.code = "55P03";
     TransactionModelMock.claimForProcessing.mockRejectedValueOnce(lockErr);
 
@@ -368,7 +370,9 @@ describe("processPayment", () => {
   });
 
   it("throws ConflictError when Postgres detects a deadlock during claim", async () => {
-    const deadlockErr = new Error("deadlock detected") as Error & { code: string };
+    const deadlockErr = new Error("deadlock detected") as Error & {
+      code: string;
+    };
     deadlockErr.code = "40P01";
     TransactionModelMock.claimForProcessing.mockRejectedValueOnce(deadlockErr);
 
@@ -381,7 +385,9 @@ describe("processPayment", () => {
       new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
     );
 
-    expect(emitProcessPaymentConflictMetricMock).toHaveBeenCalledWith("deadlock");
+    expect(emitProcessPaymentConflictMetricMock).toHaveBeenCalledWith(
+      "deadlock",
+    );
   });
 
   it("emits a metric when claim is rejected due to concurrent processing", async () => {
@@ -1087,4 +1093,3 @@ describe("processPayment", () => {
     });
   });
 });
-
