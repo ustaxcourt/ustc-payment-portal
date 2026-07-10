@@ -1,47 +1,53 @@
-import { signedFetch, signRequest, assumeRole, signedFetchWithCredentials } from "./sigv4Helper";
+import {
+	signedFetch,
+	signRequest,
+	assumeRole,
+	signedFetchWithCredentials,
+} from "./sigv4Helper";
 
 jest.setTimeout(20000); // end-to-end calls can exceed Jest's 5s default
 
 const hasSigningCredentials =
-  Boolean(process.env.AWS_ACCESS_KEY_ID) && Boolean(process.env.AWS_SECRET_ACCESS_KEY);
+	Boolean(process.env.AWS_ACCESS_KEY_ID) &&
+	Boolean(process.env.AWS_SECRET_ACCESS_KEY);
 const isLocalCiOnlySkipMode = Boolean(process.env.DEV_AWS_DEPLOYER_ROLE_ARN);
 
 const skipCiOnlyTest = (reason: string): boolean => {
-  if (!isLocalCiOnlySkipMode) {
-    return false;
-  }
+	if (!isLocalCiOnlySkipMode) {
+		return false;
+	}
 
-  console.log(`Skipping: ${reason}`);
-  return true;
+	console.log(`Skipping: ${reason}`);
+	return true;
 };
 
 const mustGetBaseUrl = (): string => {
-  const url = process.env.BASE_URL;
-  if (!url) {
-    throw new Error("BASE_URL is required for SigV4 integration tests");
-  }
-  return url;
+	const url = process.env.BASE_URL;
+	if (!url) {
+		throw new Error("BASE_URL is required for SigV4 integration tests");
+	}
+	return url;
 };
 
 const parseJsonOrText = async (result: Response): Promise<any> => {
-  const raw = await result.text();
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return raw;
-  }
+	const raw = await result.text();
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return raw;
+	}
 };
 
 const body = JSON.stringify({
-  transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-  fee: "PETITION_FILING_FEE",
-  urlSuccess: "https://example.com",
-  urlCancel: "https://example.com",
-  metadata: { docketNumber: "123-26" },
+	transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+	fee: "PETITION_FILING_FEE",
+	urlSuccess: "https://example.com",
+	urlCancel: "https://example.com",
+	metadata: { docketNumber: "123-26" },
 });
 
 const headers: Record<string, string> = {
-  "Content-Type": "application/json",
+	"Content-Type": "application/json",
 };
 
 /**
@@ -68,197 +74,211 @@ const headers: Record<string, string> = {
 const describeWithCreds = hasSigningCredentials ? describe : describe.skip;
 
 describeWithCreds("SigV4 enforcement on protected endpoints", () => {
-  let apiBaseUrl: string;
+	let apiBaseUrl: string;
 
-  beforeAll(() => {
-    apiBaseUrl = mustGetBaseUrl();
-  });
+	beforeAll(() => {
+		apiBaseUrl = mustGetBaseUrl();
+	});
 
-  it("signed request passes API Gateway auth", async () => {
-    const result = await signedFetch(`${apiBaseUrl}/init`, {
-      method: "POST",
-      headers,
-      body,
-    });
+	it("signed request passes API Gateway auth", async () => {
+		const result = await signedFetch(`${apiBaseUrl}/init`, {
+			method: "POST",
+			headers,
+			body,
+		});
 
-    const data = await parseJsonOrText(result);
-    console.log("Signed request response:", result.status, data);
+		const data = await parseJsonOrText(result);
+		console.log("Signed request response:", result.status, data);
 
-    // A 403 means API Gateway rejected the SigV4 signature.
-    // Any other status (200, 400) proves auth passed and Lambda was invoked.
-    // Note: running locally with an unregistered role returns a Lambda-level 403
-    // ("Client not registered") which will fail here — that's expected. In CI the
-    // deployer role is registered in client-permissions.
-    expect(result.status).not.toBe(403);
-  });
+		// A 403 means API Gateway rejected the SigV4 signature.
+		// Any other status (200, 400) proves auth passed and Lambda was invoked.
+		// Note: running locally with an unregistered role returns a Lambda-level 403
+		// ("Client not registered") which will fail here — that's expected. In CI the
+		// deployer role is registered in client-permissions.
+		expect(result.status).not.toBe(403);
+	});
 
-  it("unsigned request returns 403", async () => {
-    const result = await fetch(`${apiBaseUrl}/init`, {
-      method: "POST",
-      headers,
-      body,
-    });
+	it("unsigned request returns 403", async () => {
+		const result = await fetch(`${apiBaseUrl}/init`, {
+			method: "POST",
+			headers,
+			body,
+		});
 
-    const data = await parseJsonOrText(result);
-    console.log("Unsigned request response:", result.status, data);
+		const data = await parseJsonOrText(result);
+		console.log("Unsigned request response:", result.status, data);
 
-    expect(result.status).toBe(403);
-    if (typeof data === "object" && data !== null) {
-      expect(data).toHaveProperty("message");
-      expect((data as { message: string }).message).toMatch(/Missing Authentication Token|Forbidden/i);
-    }
-  });
+		expect(result.status).toBe(403);
+		if (typeof data === "object" && data !== null) {
+			expect(data).toHaveProperty("message");
+			expect((data as { message: string }).message).toMatch(
+				/Missing Authentication Token|Forbidden/i,
+			);
+		}
+	});
 
-  it("tampered signature returns 403", async () => {
-    const signedHeaders = await signRequest(`${apiBaseUrl}/init`, {
-      method: "POST",
-      headers,
-      body,
-    });
+	it("tampered signature returns 403", async () => {
+		const signedHeaders = await signRequest(`${apiBaseUrl}/init`, {
+			method: "POST",
+			headers,
+			body,
+		});
 
-    const tamperedAuth = signedHeaders.authorization.replace(
-      /Signature=[a-f0-9]+/,
-      "Signature=0000000000000000000000000000000000000000000000000000000000000000"
-    );
+		const tamperedAuth = signedHeaders.authorization.replace(
+			/Signature=[a-f0-9]+/,
+			"Signature=0000000000000000000000000000000000000000000000000000000000000000",
+		);
 
-    const result = await fetch(`${apiBaseUrl}/init`, {
-      method: "POST",
-      headers: {
-        ...signedHeaders,
-        authorization: tamperedAuth,
-      },
-      body,
-    });
+		const result = await fetch(`${apiBaseUrl}/init`, {
+			method: "POST",
+			headers: {
+				...signedHeaders,
+				authorization: tamperedAuth,
+			},
+			body,
+		});
 
-    const data = await parseJsonOrText(result);
-    console.log("Tampered signature response:", result.status, data);
+		const data = await parseJsonOrText(result);
+		console.log("Tampered signature response:", result.status, data);
 
-    expect(result.status).toBe(403);
-    if (typeof data === "object" && data !== null) {
-      expect(data).toHaveProperty("message");
-      expect((data as { message: string }).message).toMatch(/signature|Forbidden/i);
-    }
-  });
+		expect(result.status).toBe(403);
+		if (typeof data === "object" && data !== null) {
+			expect(data).toHaveProperty("message");
+			expect((data as { message: string }).message).toMatch(
+				/signature|Forbidden/i,
+			);
+		}
+	});
 });
 
 describeWithCreds("Unsigned auth rejection", () => {
-  let apiBaseUrl: string;
+	let apiBaseUrl: string;
 
-  beforeAll(() => {
-    apiBaseUrl = mustGetBaseUrl();
-  });
+	beforeAll(() => {
+		apiBaseUrl = mustGetBaseUrl();
+	});
 
-  it("unsigned GET /test returns 403", async () => {
-    const result = await fetch(`${apiBaseUrl}/test`, {
-      method: "GET",
-    });
+	it("unsigned GET /test returns 403", async () => {
+		const result = await fetch(`${apiBaseUrl}/test`, {
+			method: "GET",
+		});
 
-    const data = await parseJsonOrText(result);
-    console.log("Unsigned request response:", result.status, data);
+		const data = await parseJsonOrText(result);
+		console.log("Unsigned request response:", result.status, data);
 
-    expect(result.status).toBe(403);
-    if (typeof data === "object" && data !== null) {
-      expect(data.message).toMatch(/Missing Authentication Token|Forbidden/i);
-    }
-  });
+		expect(result.status).toBe(403);
+		if (typeof data === "object" && data !== null) {
+			expect(data.message).toMatch(/Missing Authentication Token|Forbidden/i);
+		}
+	});
 
-  it("unsigned POST /init returns 403", async () => {
-    const result = await fetch(`${apiBaseUrl}/init`, {
-      method: "POST",
-    });
+	it("unsigned POST /init returns 403", async () => {
+		const result = await fetch(`${apiBaseUrl}/init`, {
+			method: "POST",
+		});
 
-    const data = await parseJsonOrText(result);
-    console.log("Unsigned request response:", result.status, data);
+		const data = await parseJsonOrText(result);
+		console.log("Unsigned request response:", result.status, data);
 
-    expect(result.status).toBe(403);
-    if (typeof data === "object" && data !== null) {
-      expect(data.message).toMatch(/Missing Authentication Token|Forbidden/i);
-    }
-  });
+		expect(result.status).toBe(403);
+		if (typeof data === "object" && data !== null) {
+			expect(data.message).toMatch(/Missing Authentication Token|Forbidden/i);
+		}
+	});
 });
 
 describeWithCreds("SigV4 helper behavior and credential handling", () => {
-  let apiBaseUrl: string;
+	let apiBaseUrl: string;
 
-  beforeAll(() => {
-    apiBaseUrl = mustGetBaseUrl();
-  });
+	beforeAll(() => {
+		apiBaseUrl = mustGetBaseUrl();
+	});
 
-  it("signRequest returns SigV4 headers", async () => {
-    const signedHeaders = await signRequest(`${apiBaseUrl}/test`, {
-      method: "GET",
-    });
+	it("signRequest returns SigV4 headers", async () => {
+		const signedHeaders = await signRequest(`${apiBaseUrl}/test`, {
+			method: "GET",
+		});
 
-    expect(signedHeaders.authorization).toMatch(/^AWS4-HMAC-SHA256/);
-    expect(signedHeaders["x-amz-date"]).toBeDefined();
-    expect(signedHeaders.host).toContain("execute-api");
-  });
+		expect(signedHeaders.authorization).toMatch(/^AWS4-HMAC-SHA256/);
+		expect(signedHeaders["x-amz-date"]).toBeDefined();
+		expect(signedHeaders.host).toContain("execute-api");
+	});
 
-  it("signedFetchWithCredentials returns 200 with explicit credentials", async () => {
-    if (skipCiOnlyTest("test requires credentials registered in CI client-permissions")) {
-      return;
-    }
+	it("signedFetchWithCredentials returns 200 with explicit credentials", async () => {
+		if (
+			skipCiOnlyTest(
+				"test requires credentials registered in CI client-permissions",
+			)
+		) {
+			return;
+		}
 
-    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+		const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+		const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
-    if (!accessKeyId || !secretAccessKey) {
-      throw new Error("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are required");
-    }
+		if (!accessKeyId || !secretAccessKey) {
+			throw new Error(
+				"AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are required",
+			);
+		}
 
-    const result = await signedFetchWithCredentials(
-      `${apiBaseUrl}/test`,
-      {
-        accessKeyId,
-        secretAccessKey,
-        sessionToken: process.env.AWS_SESSION_TOKEN,
-      },
-      { method: "GET" },
-    );
+		const result = await signedFetchWithCredentials(
+			`${apiBaseUrl}/test`,
+			{
+				accessKeyId,
+				secretAccessKey,
+				sessionToken: process.env.AWS_SESSION_TOKEN,
+			},
+			{ method: "GET" },
+		);
 
-    const responseBody = await result.text();
-    console.log("signedFetchWithCredentials response:", result.status, responseBody.slice(0, 200));
+		const responseBody = await result.text();
+		console.log(
+			"signedFetchWithCredentials response:",
+			result.status,
+			responseBody.slice(0, 200),
+		);
 
-    expect(result.status).toBe(200);
-  });
+		expect(result.status).toBe(200);
+	});
 });
 
 describeWithCreds("Credential guardrails", () => {
-  let apiBaseUrl: string;
+	let apiBaseUrl: string;
 
-  beforeAll(() => {
-    apiBaseUrl = mustGetBaseUrl();
-  });
+	beforeAll(() => {
+		apiBaseUrl = mustGetBaseUrl();
+	});
 
-  it("throws a clear error when required AWS credentials are missing", async () => {
-    const originalAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
-    const originalSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+	it("throws a clear error when required AWS credentials are missing", async () => {
+		const originalAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
+		const originalSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
-    try {
-      delete process.env.AWS_ACCESS_KEY_ID;
-      delete process.env.AWS_SECRET_ACCESS_KEY;
+		try {
+			delete process.env.AWS_ACCESS_KEY_ID;
+			delete process.env.AWS_SECRET_ACCESS_KEY;
 
-      await expect(
-        signedFetch(`${apiBaseUrl}/test`, {
-          method: "GET",
-        }),
-      ).rejects.toThrow(
-        "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set to sign requests",
-      );
-    } finally {
-      if (originalAccessKeyId) {
-        process.env.AWS_ACCESS_KEY_ID = originalAccessKeyId;
-      } else {
-        delete process.env.AWS_ACCESS_KEY_ID;
-      }
+			await expect(
+				signedFetch(`${apiBaseUrl}/test`, {
+					method: "GET",
+				}),
+			).rejects.toThrow(
+				"AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set to sign requests",
+			);
+		} finally {
+			if (originalAccessKeyId) {
+				process.env.AWS_ACCESS_KEY_ID = originalAccessKeyId;
+			} else {
+				delete process.env.AWS_ACCESS_KEY_ID;
+			}
 
-      if (originalSecretAccessKey) {
-        process.env.AWS_SECRET_ACCESS_KEY = originalSecretAccessKey;
-      } else {
-        delete process.env.AWS_SECRET_ACCESS_KEY;
-      }
-    }
-  });
+			if (originalSecretAccessKey) {
+				process.env.AWS_SECRET_ACCESS_KEY = originalSecretAccessKey;
+			} else {
+				delete process.env.AWS_SECRET_ACCESS_KEY;
+			}
+		}
+	});
 });
 
 /**
@@ -281,43 +301,49 @@ const testUnauthorizedRoleArn = process.env.TEST_UNAUTHORIZED_ROLE_ARN;
 const describeLambdaAuth = testUnauthorizedRoleArn ? describe : describe.skip;
 
 describeLambdaAuth("Lambda-level authorization", () => {
-  let apiBaseUrl: string;
+	let apiBaseUrl: string;
 
-  beforeAll(() => {
-    apiBaseUrl = mustGetBaseUrl();
-  });
+	beforeAll(() => {
+		apiBaseUrl = mustGetBaseUrl();
+	});
 
-  it("unregistered client receives 403 with 'Client not registered'", async () => {
-    // The test-unauthorized role's trust policy only allows the dev deployer role
-    // to assume it. This test runs in CI where the runner IS already the deployer role.
-    // Locally, this test is skipped because we cannot chain role assumptions with
-    // the current helper (would require modifying assumeRole to accept explicit credentials).
-    if (skipCiOnlyTest("test requires CI execution (runner must be deployer role)")) {
-      return;
-    }
+	it("unregistered client receives 403 with 'Client not registered'", async () => {
+		// The test-unauthorized role's trust policy only allows the dev deployer role
+		// to assume it. This test runs in CI where the runner IS already the deployer role.
+		// Locally, this test is skipped because we cannot chain role assumptions with
+		// the current helper (would require modifying assumeRole to accept explicit credentials).
+		if (
+			skipCiOnlyTest(
+				"test requires CI execution (runner must be deployer role)",
+			)
+		) {
+			return;
+		}
 
-    const credentials = await assumeRole(
-      testUnauthorizedRoleArn!,
-      "unregistered-client-test"
-    );
+		const credentials = await assumeRole(
+			testUnauthorizedRoleArn!,
+			"unregistered-client-test",
+		);
 
-    const result = await signedFetchWithCredentials(
-      `${apiBaseUrl}/init`,
-      credentials,
-      {
-        method: "POST",
-        headers,
-        body,
-      }
-    );
+		const result = await signedFetchWithCredentials(
+			`${apiBaseUrl}/init`,
+			credentials,
+			{
+				method: "POST",
+				headers,
+				body,
+			},
+		);
 
-    const data = await parseJsonOrText(result);
-    console.log("Unregistered client response:", result.status, data);
+		const data = await parseJsonOrText(result);
+		console.log("Unregistered client response:", result.status, data);
 
-    expect(result.status).toBe(403);
-    if (typeof data === "object" && data !== null) {
-      expect(data).toHaveProperty("message");
-      expect((data as { message: string }).message).toContain("Client not registered");
-    }
-  });
+		expect(result.status).toBe(403);
+		if (typeof data === "object" && data !== null) {
+			expect(data).toHaveProperty("message");
+			expect((data as { message: string }).message).toContain(
+				"Client not registered",
+			);
+		}
+	});
 });

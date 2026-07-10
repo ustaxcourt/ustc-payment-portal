@@ -1,6 +1,6 @@
 import {
-  getClientPermissions,
-  clearPermissionsCache,
+	getClientPermissions,
+	clearPermissionsCache,
 } from "./permissionsClient";
 import { getSecretString } from "./secretsClient";
 import { ServerError } from "@errors/serverError";
@@ -9,180 +9,181 @@ import type { ClientPermission } from "@appTypes/ClientPermission";
 jest.mock("./secretsClient");
 
 const mockGetSecretString = getSecretString as jest.MockedFunction<
-  typeof getSecretString
+	typeof getSecretString
 >;
 
 const validPermissions: ClientPermission[] = [
-  {
-    clientName: "DAWSON",
-    clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
-    allowedFeeKeys: ["PETITION_FILING_FEE"],
-  },
-  {
-    clientName: "Test App",
-    clientRoleArn: "arn:aws:iam::999888777666:role/test-app",
-    allowedFeeKeys: ["TEST_FEE"],
-  },
+	{
+		clientName: "DAWSON",
+		clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
+		allowedFeeKeys: ["PETITION_FILING_FEE"],
+	},
+	{
+		clientName: "Test App",
+		clientRoleArn: "arn:aws:iam::999888777666:role/test-app",
+		allowedFeeKeys: ["TEST_FEE"],
+	},
 ];
 
 describe("permissionsClient", () => {
-  let originalEnv: NodeJS.ProcessEnv;
+	let originalEnv: NodeJS.ProcessEnv;
 
-  beforeEach(() => {
-    originalEnv = { ...process.env };
-    process.env.CLIENT_PERMISSIONS_SECRET_ID = "test-secret-id";
-    delete process.env.LOCAL_DEV;
-    clearPermissionsCache();
-    jest.clearAllMocks();
-  });
+	beforeEach(() => {
+		originalEnv = { ...process.env };
+		process.env.CLIENT_PERMISSIONS_SECRET_ID = "test-secret-id";
+		delete process.env.LOCAL_DEV;
+		clearPermissionsCache();
+		jest.clearAllMocks();
+	});
 
-  afterEach(() => {
-    process.env = originalEnv;
-  });
+	afterEach(() => {
+		process.env = originalEnv;
+	});
 
-  describe("getClientPermissions", () => {
-    it("fetches and returns permissions from Secrets Manager", async () => {
-      mockGetSecretString.mockResolvedValueOnce(
-        JSON.stringify(validPermissions),
-      );
+	describe("getClientPermissions", () => {
+		it("fetches and returns permissions from Secrets Manager", async () => {
+			mockGetSecretString.mockResolvedValueOnce(
+				JSON.stringify(validPermissions),
+			);
 
-      const result = await getClientPermissions();
+			const result = await getClientPermissions();
 
-      expect(result).toEqual(validPermissions);
-      expect(mockGetSecretString).toHaveBeenCalledWith("test-secret-id");
-    });
+			expect(result).toEqual(validPermissions);
+			expect(mockGetSecretString).toHaveBeenCalledWith("test-secret-id");
+		});
 
-    it("caches permissions and does not refetch within TTL", async () => {
-      mockGetSecretString.mockResolvedValueOnce(
-        JSON.stringify(validPermissions),
-      );
+		it("caches permissions and does not refetch within TTL", async () => {
+			mockGetSecretString.mockResolvedValueOnce(
+				JSON.stringify(validPermissions),
+			);
 
-      // First call - fetches from Secrets Manager
-      await getClientPermissions();
-      // Second call - should use cache
-      await getClientPermissions();
+			// First call - fetches from Secrets Manager
+			await getClientPermissions();
+			// Second call - should use cache
+			await getClientPermissions();
 
-      expect(mockGetSecretString).toHaveBeenCalledTimes(1);
-    });
+			expect(mockGetSecretString).toHaveBeenCalledTimes(1);
+		});
 
-    it("throws ServerError when CLIENT_PERMISSIONS_SECRET_ID is not set", async () => {
-      delete process.env.CLIENT_PERMISSIONS_SECRET_ID;
+		it("throws ServerError when CLIENT_PERMISSIONS_SECRET_ID is not set", async () => {
+			delete process.env.CLIENT_PERMISSIONS_SECRET_ID;
 
-      await expect(getClientPermissions()).rejects.toThrow(ServerError);
-      await expect(getClientPermissions()).rejects.toThrow(
-        "CLIENT_PERMISSIONS_SECRET_ID environment variable not set",
-      );
-    });
+			await expect(getClientPermissions()).rejects.toThrow(ServerError);
+			await expect(getClientPermissions()).rejects.toThrow(
+				"CLIENT_PERMISSIONS_SECRET_ID environment variable not set",
+			);
+		});
 
-    it("throws ServerError when secret value is not valid JSON", async () => {
-      mockGetSecretString.mockResolvedValueOnce("not-valid-json");
+		it("throws ServerError when secret value is not valid JSON", async () => {
+			mockGetSecretString.mockResolvedValueOnce("not-valid-json");
 
-      await expect(getClientPermissions()).rejects.toThrow(ServerError);
-      await expect(getClientPermissions()).rejects.toThrow(
-        "Failed to fetch client permissions",
-      );
-    });
+			await expect(getClientPermissions()).rejects.toThrow(ServerError);
+			await expect(getClientPermissions()).rejects.toThrow(
+				"Failed to fetch client permissions",
+			);
+		});
 
-    it("throws ServerError when permissions is not an array", async () => {
-      mockGetSecretString.mockResolvedValueOnce(
-        JSON.stringify({ not: "array" }),
-      );
+		it("throws ServerError when permissions is not an array", async () => {
+			mockGetSecretString.mockResolvedValueOnce(
+				JSON.stringify({ not: "array" }),
+			);
 
-      await expect(getClientPermissions()).rejects.toThrow(ServerError);
-    });
+			await expect(getClientPermissions()).rejects.toThrow(ServerError);
+		});
 
-    it("throws ServerError when permission entry is missing required fields", async () => {
-      const invalidPermissions = [{ clientName: "Missing fields" }];
-      mockGetSecretString.mockResolvedValueOnce(
-        JSON.stringify(invalidPermissions),
-      );
+		it("throws ServerError when permission entry is missing required fields", async () => {
+			const invalidPermissions = [{ clientName: "Missing fields" }];
+			mockGetSecretString.mockResolvedValueOnce(
+				JSON.stringify(invalidPermissions),
+			);
 
-      await expect(getClientPermissions()).rejects.toThrow(ServerError);
-    });
+			await expect(getClientPermissions()).rejects.toThrow(ServerError);
+		});
 
-    it("coerces allowedFeeIds to allowedFeeKeys for pre-PAY-284 secrets", async () => {
-      const oldFormatPermissions = [
-        {
-          clientName: "DAWSON",
-          clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
-          allowedFeeIds: ["PETITION_FILING_FEE"],
-        },
-      ];
-      mockGetSecretString.mockResolvedValueOnce(JSON.stringify(oldFormatPermissions));
+		it("coerces allowedFeeIds to allowedFeeKeys for pre-PAY-284 secrets", async () => {
+			const oldFormatPermissions = [
+				{
+					clientName: "DAWSON",
+					clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
+					allowedFeeIds: ["PETITION_FILING_FEE"],
+				},
+			];
+			mockGetSecretString.mockResolvedValueOnce(
+				JSON.stringify(oldFormatPermissions),
+			);
 
-      const result = await getClientPermissions();
+			const result = await getClientPermissions();
 
-      expect(result[0].allowedFeeKeys).toEqual(["PETITION_FILING_FEE"]);
-      expect((result[0] as any).allowedFeeIds).toBeUndefined();
-    });
+			expect(result[0].allowedFeeKeys).toEqual(["PETITION_FILING_FEE"]);
+			expect((result[0] as any).allowedFeeIds).toBeUndefined();
+		});
 
-    it("keeps allowedFeeKeys when both allowedFeeKeys and allowedFeeIds are present", async () => {
-      const mixedFormatPermissions = [
-        {
-          clientName: "DAWSON",
-          clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
-          allowedFeeKeys: ["NEW_FEE"],
-          allowedFeeIds: ["OLD_FEE"],
-        },
-      ];
-      mockGetSecretString.mockResolvedValueOnce(
-        JSON.stringify(mixedFormatPermissions),
-      );
+		it("keeps allowedFeeKeys when both allowedFeeKeys and allowedFeeIds are present", async () => {
+			const mixedFormatPermissions = [
+				{
+					clientName: "DAWSON",
+					clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
+					allowedFeeKeys: ["NEW_FEE"],
+					allowedFeeIds: ["OLD_FEE"],
+				},
+			];
+			mockGetSecretString.mockResolvedValueOnce(
+				JSON.stringify(mixedFormatPermissions),
+			);
 
-      const result = await getClientPermissions();
+			const result = await getClientPermissions();
 
-      expect(result[0].allowedFeeKeys).toEqual(["NEW_FEE"]);
-    });
+			expect(result[0].allowedFeeKeys).toEqual(["NEW_FEE"]);
+		});
 
-    it("throws ServerError when neither allowedFeeKeys nor allowedFeeIds is present", async () => {
-      const missingFeeFieldPermissions = [
-        {
-          clientName: "DAWSON",
-          clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
-        },
-      ];
-      mockGetSecretString.mockResolvedValueOnce(
-        JSON.stringify(missingFeeFieldPermissions),
-      );
+		it("throws ServerError when neither allowedFeeKeys nor allowedFeeIds is present", async () => {
+			const missingFeeFieldPermissions = [
+				{
+					clientName: "DAWSON",
+					clientRoleArn: "arn:aws:iam::123456789012:role/dawson-client",
+				},
+			];
+			mockGetSecretString.mockResolvedValueOnce(
+				JSON.stringify(missingFeeFieldPermissions),
+			);
 
-      await expect(getClientPermissions()).rejects.toThrow(ServerError);
-    });
+			await expect(getClientPermissions()).rejects.toThrow(ServerError);
+		});
 
-    it("throws ServerError when Secrets Manager call fails", async () => {
-      mockGetSecretString.mockRejectedValueOnce(new Error("AWS error"));
+		it("throws ServerError when Secrets Manager call fails", async () => {
+			mockGetSecretString.mockRejectedValueOnce(new Error("AWS error"));
 
-      await expect(getClientPermissions()).rejects.toThrow(ServerError);
-    });
+			await expect(getClientPermissions()).rejects.toThrow(ServerError);
+		});
 
-    it("returns mock permissions in local development mode", async () => {
-      process.env.LOCAL_DEV = "true";
+		it("returns mock permissions in local development mode", async () => {
+			process.env.LOCAL_DEV = "true";
 
-      const result = await getClientPermissions();
+			const result = await getClientPermissions();
 
-      expect(result).toHaveLength(1);
-      expect(result[0].clientName).toBe("Local Development");
-      expect(result[0].clientRoleArn).toBe(
-        "arn:aws:iam::000000000000:role/local-dev-role",
-      );
-      expect(mockGetSecretString).not.toHaveBeenCalled();
-    });
-  });
+			expect(result).toHaveLength(1);
+			expect(result[0].clientName).toBe("Local Development");
+			expect(result[0].clientRoleArn).toBe(
+				"arn:aws:iam::000000000000:role/local-dev-role",
+			);
+			expect(mockGetSecretString).not.toHaveBeenCalled();
+		});
+	});
 
-  describe("clearPermissionsCache", () => {
-    it("clears cache forcing refetch on next call", async () => {
-      mockGetSecretString.mockResolvedValue(JSON.stringify(validPermissions));
+	describe("clearPermissionsCache", () => {
+		it("clears cache forcing refetch on next call", async () => {
+			mockGetSecretString.mockResolvedValue(JSON.stringify(validPermissions));
 
-      // First call
-      await getClientPermissions();
-      expect(mockGetSecretString).toHaveBeenCalledTimes(1);
+			// First call
+			await getClientPermissions();
+			expect(mockGetSecretString).toHaveBeenCalledTimes(1);
 
-      // Clear cache
-      clearPermissionsCache();
+			// Clear cache
+			clearPermissionsCache();
 
-      // Second call should refetch
-      await getClientPermissions();
-      expect(mockGetSecretString).toHaveBeenCalledTimes(2);
-    });
-  });
+			// Second call should refetch
+			await getClientPermissions();
+			expect(mockGetSecretString).toHaveBeenCalledTimes(2);
+		});
+	});
 });
-

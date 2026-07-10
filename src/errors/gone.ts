@@ -1,7 +1,7 @@
 export class GoneError extends Error {
-  public statusCode: number = 410;
+	public statusCode: number = 410;
 
-  constructor(message: string = "Gone") {
-    super(message);
-  }
+	constructor(message: string = "Gone") {
+		super(message);
+	}
 }

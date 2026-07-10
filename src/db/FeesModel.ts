@@ -1,67 +1,69 @@
-import { Model } from 'objection';
-import { getKnex } from './knex';
+import { Model } from "objection";
+import { getKnex } from "./knex";
 
 export default class FeesModel extends Model {
-  feeId!: string; // e.g. "PETITION_FILING_FEE_2026_03_05"
-  feeKey!: string; // e.g. "PETITION_FILING_FEE"
-  name!: string;
-  tcsAppId!: string;
-  isVariable!: boolean;
-  amount?: number | null;
-  description?: string | null;
-  activationDate!: string;
-  createdAt!: string;
-  updatedAt!: string;
+	feeId!: string; // e.g. "PETITION_FILING_FEE_2026_03_05"
+	feeKey!: string; // e.g. "PETITION_FILING_FEE"
+	name!: string;
+	tcsAppId!: string;
+	isVariable!: boolean;
+	amount?: number | null;
+	description?: string | null;
+	activationDate!: string;
+	createdAt!: string;
+	updatedAt!: string;
 
-  static get tableName() {
-    return 'fees';
-  }
+	static get tableName() {
+		return "fees";
+	}
 
-  static get idColumn() {
-    return 'feeId';
-  }
+	static get idColumn() {
+		return "feeId";
+	}
 
-  $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
-    const parsed = super.$parseDatabaseJson(json);
+	$parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
+		const parsed = super.$parseDatabaseJson(json);
 
-    if (parsed.amount !== undefined && parsed.amount !== null) {
-      parsed.amount = Number(parsed.amount);
-    }
+		if (parsed.amount !== undefined && parsed.amount !== null) {
+			parsed.amount = Number(parsed.amount);
+		}
 
-    return parsed;
-  }
+		return parsed;
+	}
 
-  static get relationMappings() {
-    // Lazy require to break the circular dependency with TransactionModel
-    const TransactionModel = require('./TransactionModel').default;
-    return {
-      transactions: {
-        relation: Model.HasManyRelation,
-        modelClass: TransactionModel,
-        join: {
-          from: 'fees.feeId',
-          to: 'transactions.feeId',
-        },
-      },
-    };
-  }
+	static get relationMappings() {
+		// Lazy require to break the circular dependency with TransactionModel
+		const TransactionModel = require("./TransactionModel").default;
+		return {
+			transactions: {
+				relation: Model.HasManyRelation,
+				modelClass: TransactionModel,
+				join: {
+					from: "fees.feeId",
+					to: "transactions.feeId",
+				},
+			},
+		};
+	}
 
-  static async getAll() {
-    await getKnex();
-    return FeesModel.query().orderBy('createdAt', 'desc');
-  }
+	static async getAll() {
+		await getKnex();
+		return FeesModel.query().orderBy("createdAt", "desc");
+	}
 
-  static async getFeeById(feeId: string): Promise<FeesModel | undefined> {
-    await getKnex();
-    return FeesModel.query().findById(feeId) || undefined;
-  }
+	static async getFeeById(feeId: string): Promise<FeesModel | undefined> {
+		await getKnex();
+		return FeesModel.query().findById(feeId) || undefined;
+	}
 
-  static async getActiveFeeByKey(feeKey: string): Promise<FeesModel | undefined> {
-    await getKnex();
-    return FeesModel.query()
-      .where('feeKey', feeKey)
-      .where('activationDate', '<=', new Date().toISOString())
-      .orderBy('activationDate', 'desc')
-      .first();
-  }
+	static async getActiveFeeByKey(
+		feeKey: string,
+	): Promise<FeesModel | undefined> {
+		await getKnex();
+		return FeesModel.query()
+			.where("feeKey", feeKey)
+			.where("activationDate", "<=", new Date().toISOString())
+			.orderBy("activationDate", "desc")
+			.first();
+	}
 }

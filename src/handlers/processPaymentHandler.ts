@@ -4,11 +4,11 @@ import { ProcessPaymentRequestSchema } from "@schemas/ProcessPayment.schema";
 import { processPayment } from "@useCases/processPayment";
 
 export const processPaymentHandler = (
-  event: APIGatewayEvent,
+	event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> =>
-  lambdaHandler({
-    schema: ProcessPaymentRequestSchema,
-    event,
-    rawRequest: event.body ?? "",
-    callback: processPayment,
-  });
+	lambdaHandler({
+		schema: ProcessPaymentRequestSchema,
+		event,
+		rawRequest: event.body ?? "",
+		callback: processPayment,
+	});

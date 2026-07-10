@@ -10,16 +10,16 @@ import { logger } from "@utils/logger";
  * @throws ForbiddenError if client is not authorized for the fee key
  */
 export const authorizeClient = (
-  client: ClientPermission,
-  feeKey: string,
+	client: ClientPermission,
+	feeKey: string,
 ): boolean => {
-  // Check for wildcard permission (used in local dev)
-  const isAuthorized =
-    client.allowedFeeKeys.includes("*") || client.allowedFeeKeys.includes(feeKey);
-  if (isAuthorized) {
-    return true;
-  }
-  logger.info(`Client not authorized for fee`);
-  throw new ForbiddenError("Client not authorized for fee");
+	// Check for wildcard permission (used in local dev)
+	const isAuthorized =
+		client.allowedFeeKeys.includes("*") ||
+		client.allowedFeeKeys.includes(feeKey);
+	if (isAuthorized) {
+		return true;
+	}
+	logger.info(`Client not authorized for fee`);
+	throw new ForbiddenError("Client not authorized for fee");
 };
-

@@ -1,1435 +1,1281 @@
 {
-  "openapi": "3.1.0",
-  "info": {
-    "title": "USTC Payment Portal API",
-    "version": "1.0.1",
-    "description": "API for integrating with Pay.gov payment services for the US Tax Court.",
-    "contact": {
-      "name": "US Tax Court"
-    }
-  },
-  "servers": [
-    {
-      "url": "http://localhost:8080",
-      "description": "Local development server"
-    },
-    {
-      "url": "https://dev-payments.ustaxcourt.gov",
-      "description": "Dev"
-    },
-    {
-      "url": "https://stg-payments.ustaxcourt.gov",
-      "description": "Test/Staging"
-    },
-    {
-      "url": "https://payments.ustaxcourt.gov",
-      "description": "Production"
-    }
-  ],
-  "tags": [
-    {
-      "name": "Payments",
-      "description": "Payment initialization, processing, and status operations"
-    }
-  ],
-  "components": {
-    "securitySchemes": {
-      "sigv4": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "Authorization",
-        "description": "AWS Signature Version 4 authentication. Requests must be signed using AWS credentials with the AWS4-HMAC-SHA256 algorithm. Include the Authorization header with the signature, along with X-Amz-Date and optionally X-Amz-Security-Token headers. See AWS documentation for signing requests: https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html"
-      }
-    },
-    "schemas": {
-      "FeeKey": {
-        "type": "string",
-        "enum": [
-          "PETITION_FILING_FEE",
-          "NONATTORNEY_EXAM_REGISTRATION_FEE"
-        ],
-        "description": "The stable fee identifier sent by the client. Available fee keys:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee key. See the API documentation for more details on fee authorization and supported fees.",
-        "example": "PETITION_FILING_FEE"
-      },
-      "MetadataDawson": {
-        "type": "object",
-        "properties": {
-          "docketNumber": {
-            "type": "string",
-            "description": "The docket number for the case (required for DAWSON fees)",
-            "example": "123-26"
-          }
-        },
-        "required": [
-          "docketNumber"
-        ]
-      },
-      "MetadataNonattorneyExam": {
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "description": "Applicant email address",
-            "example": "applicant@example.com"
-          },
-          "fullName": {
-            "type": "string",
-            "description": "Applicant full name",
-            "example": "John Doe"
-          },
-          "accessCode": {
-            "type": "string",
-            "description": "Registration access code",
-            "example": "ABC123"
-          }
-        },
-        "required": [
-          "email",
-          "fullName",
-          "accessCode"
-        ]
-      },
-      "Metadata": {
-        "anyOf": [
-          {
-            "$ref": "#/components/schemas/MetadataDawson"
-          },
-          {
-            "$ref": "#/components/schemas/MetadataNonattorneyExam"
-          }
-        ],
-        "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. See individual metadata schemas for field requirements."
-      },
-      "InitPaymentRequest": {
-        "type": "object",
-        "properties": {
-          "transactionReferenceId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Client-generated UUIDv4 uniquely identifying this transaction. Must be randomly generated (not derived from names or timestamps).",
-            "example": "550e8400-e29b-41d4-a716-446655440000"
-          },
-          "fee": {
-            "type": "string",
-            "enum": [
-              "PETITION_FILING_FEE",
-              "NONATTORNEY_EXAM_REGISTRATION_FEE"
-            ],
-            "description": "The stable fee identifier sent by the client. Available fee keys:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee key. See the API documentation for more details on fee authorization and supported fees.",
-            "example": "PETITION_FILING_FEE"
-          },
-          "amount": {
-            "type": "number",
-            "exclusiveMinimum": 0,
-            "description": "Override amount in dollars. Only valid for fees that allow variable amounts.",
-            "example": 60
-          },
-          "urlSuccess": {
-            "type": "string",
-            "format": "uri",
-            "description": "URL to redirect to after successful payment",
-            "example": "https://client.app/success"
-          },
-          "urlCancel": {
-            "type": "string",
-            "format": "uri",
-            "description": "URL to redirect to if payment is cancelled",
-            "example": "https://client.app/cancel"
-          },
-          "metadata": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MetadataDawson"
-              },
-              {
-                "$ref": "#/components/schemas/MetadataNonattorneyExam"
-              }
-            ],
-            "description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. See individual metadata schemas for field requirements."
-          }
-        },
-        "required": [
-          "transactionReferenceId",
-          "fee",
-          "urlSuccess",
-          "urlCancel",
-          "metadata"
-        ],
-        "additionalProperties": false
-      },
-      "InitPaymentResponse": {
-        "type": "object",
-        "properties": {
-          "token": {
-            "type": "string",
-            "description": "Payment token for the initiated transaction",
-            "example": "abc123token"
-          },
-          "paymentRedirect": {
-            "type": "string",
-            "format": "uri",
-            "description": "URL to redirect the user to complete payment on Pay.gov",
-            "example": "https://pay.gov/payment?token=abc123token&tcsAppID=USTC_APP"
-          }
-        },
-        "required": [
-          "token",
-          "paymentRedirect"
-        ]
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error summary"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": {},
-              "description": "A structured error detail object (for example a Zod validation issue)",
-              "example": {
-                "code": "invalid_type",
-                "expected": "string",
-                "received": "undefined",
-                "path": [
-                  "urlSuccess"
-                ],
-                "message": "Required"
-              }
-            },
-            "description": "Additional error details",
-            "example": []
-          }
-        },
-        "required": [
-          "message",
-          "errors"
-        ],
-        "description": "Generic JSON error response",
-        "example": {
-          "message": "Invalid Request",
-          "errors": []
-        }
-      },
-      "BadRequestError": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error summary"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": {},
-              "description": "A structured error detail object (for example a Zod validation issue)",
-              "example": {
-                "code": "invalid_type",
-                "expected": "string",
-                "received": "undefined",
-                "path": [
-                  "urlSuccess"
-                ],
-                "message": "Required"
-              }
-            },
-            "description": "Additional error details",
-            "example": []
-          }
-        },
-        "required": [
-          "message",
-          "errors"
-        ],
-        "description": "JSON error response for invalid requests (HTTP 400).\n\nCommon error scenarios:\n- Missing required fields\n- Invalid field values\n- Schema validation failures\n- Fee not found\n- Missing amount for variable fees",
-        "example": {
-          "message": "Validation error",
-          "errors": [
-            {
-              "code": "invalid_type",
-              "expected": "string",
-              "received": "undefined",
-              "path": [
-                "urlSuccess"
-              ],
-              "message": "Required"
-            }
-          ]
-        }
-      },
-      "ConflictError": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error summary"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": {},
-              "description": "A structured error detail object (for example a Zod validation issue)",
-              "example": {
-                "code": "invalid_type",
-                "expected": "string",
-                "received": "undefined",
-                "path": [
-                  "urlSuccess"
-                ],
-                "message": "Required"
-              }
-            },
-            "description": "Additional error details",
-            "example": []
-          }
-        },
-        "required": [
-          "message",
-          "errors"
-        ],
-        "description": "JSON error response for request conflicts (HTTP 409).\n\nReturned when a payment session has already been initiated for the same transaction reference ID.",
-        "example": {
-          "message": "A payment session is already initiated for this transactionReferenceId",
-          "errors": []
-        }
-      },
-      "ForbiddenError": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error summary"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": {},
-              "description": "A structured error detail object (for example a Zod validation issue)",
-              "example": {
-                "code": "invalid_type",
-                "expected": "string",
-                "received": "undefined",
-                "path": [
-                  "urlSuccess"
-                ],
-                "message": "Required"
-              }
-            },
-            "description": "Additional error details",
-            "example": []
-          }
-        },
-        "required": [
-          "message",
-          "errors"
-        ],
-        "description": "JSON error response for authentication/authorization failures (HTTP 403).\n\nCommon error scenarios:\n- Missing API key\n- Invalid API key\n- Unauthorized fee access: Client not authorized to charge the requested fee",
-        "example": {
-          "message": "Missing Authentication",
-          "errors": []
-        }
-      },
-      "ServerError": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error summary"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": {},
-              "description": "A structured error detail object (for example a Zod validation issue)",
-              "example": {
-                "code": "invalid_type",
-                "expected": "string",
-                "received": "undefined",
-                "path": [
-                  "urlSuccess"
-                ],
-                "message": "Required"
-              }
-            },
-            "description": "Additional error details",
-            "example": []
-          }
-        },
-        "required": [
-          "message",
-          "errors"
-        ],
-        "description": "JSON error response for internal server errors (HTTP 500).\n\nReturned when an unexpected error occurs during request processing. If this error persists, contact support with the request details.",
-        "example": {
-          "message": "An unexpected error occurred while processing the request",
-          "errors": []
-        }
-      },
-      "NotFoundError": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error summary"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": {},
-              "description": "A structured error detail object (for example a Zod validation issue)",
-              "example": {
-                "code": "invalid_type",
-                "expected": "string",
-                "received": "undefined",
-                "path": [
-                  "urlSuccess"
-                ],
-                "message": "Required"
-              }
-            },
-            "description": "Additional error details",
-            "example": []
-          }
-        },
-        "required": [
-          "message",
-          "errors"
-        ],
-        "description": "JSON error response for resource not found (HTTP 404).\n\nReturned when the supplied token cannot be found in the database.",
-        "example": {
-          "message": "Transaction with token 'abcdefghijklmnopqrstuvwxyz123456' could not be found",
-          "errors": []
-        }
-      },
-      "ValidationErrorResponse": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error summary"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": {},
-              "description": "A structured error detail object (for example a Zod validation issue)",
-              "example": {
-                "code": "invalid_type",
-                "expected": "string",
-                "received": "undefined",
-                "path": [
-                  "urlSuccess"
-                ],
-                "message": "Required"
-              }
-            },
-            "description": "Additional error details",
-            "example": []
-          }
-        },
-        "required": [
-          "message",
-          "errors"
-        ],
-        "description": "JSON error response for request validation failures.\n\n'Validation error' for Zod failures; otherwise the thrown error's message (e.g. 'missing body', 'invalid JSON in request body'). For Zod failures the errors array contains ZodIssue objects with `path`, `message`, and `code`. Empty array for non-Zod errors.",
-        "example": {
-          "message": "Validation error",
-          "errors": [
-            {
-              "code": "invalid_type",
-              "path": [
-                "token"
-              ],
-              "message": "Required"
-            }
-          ]
-        }
-      },
-      "GatewayError": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable summary of the gateway failure",
-            "example": "Error communicating with Pay.gov"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": {},
-              "description": "A structured error detail object (for example a Zod validation issue)",
-              "example": {
-                "code": "invalid_type",
-                "expected": "string",
-                "received": "undefined",
-                "path": [
-                  "urlSuccess"
-                ],
-                "message": "Required"
-              }
-            },
-            "description": "Additional error details",
-            "example": []
-          }
-        },
-        "required": [
-          "message",
-          "errors"
-        ],
-        "description": "JSON error response for Pay.gov communication failures (HTTP 504). Returned when the API cannot receive a timely response from Pay.gov.",
-        "example": {
-          "message": "Error communicating with Pay.gov",
-          "errors": []
-        }
-      },
-      "GetDetailsPathParams": {
-        "type": "object",
-        "properties": {
-          "transactionReferenceId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Client-generated UUIDv4 uniquely identifying the transaction. Must match the value supplied to /init.",
-            "example": "550e8400-e29b-41d4-a716-446655440000"
-          }
-        },
-        "required": [
-          "transactionReferenceId"
-        ],
-        "additionalProperties": false
-      },
-      "GetDetailsResponse": {
-        "type": "object",
-        "properties": {
-          "paymentStatus": {
-            "type": "string",
-            "enum": [
-              "success",
-              "failed",
-              "pending"
-            ],
-            "description": "Overall payment status representing the current state of the payment",
-            "example": "success"
-          },
-          "transactions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TransactionRecordSummary"
-            },
-            "description": "Array of all transaction records associated with this payment reference"
-          }
-        },
-        "required": [
-          "paymentStatus",
-          "transactions"
-        ]
-      },
-      "TransactionRecordSummary": {
-        "type": "object",
-        "properties": {
-          "payGovTrackingId": {
-            "type": "string",
-            "description": "Pay.gov tracking ID for the transaction, present once the transaction has been processed",
-            "example": "TRK-123456789"
-          },
-          "transactionStatus": {
-            "type": "string",
-            "enum": [
-              "received",
-              "initiated",
-              "processing",
-              "processed",
-              "failed",
-              "pending"
-            ],
-            "description": "The status of a single payment transaction attempt. `processing` is transient: POST /process has claimed the token and may be calling Pay.gov. `pending` usually means Pay.gov is still settling (e.g. ACH). `processed` / `failed` are terminal for the attempt.",
-            "example": "processed"
-          },
-          "paymentMethod": {
-            "type": "string",
-            "enum": [
-              "Credit/Debit Card",
-              "ACH",
-              "PayPal"
-            ],
-            "description": "Method of payment",
-            "example": "Credit/Debit Card"
-          },
-          "returnDetail": {
-            "type": "string",
-            "description": "Detailed return message from Pay.gov",
-            "example": "Transaction completed successfully"
-          },
-          "createdTimestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the transaction was created",
-            "example": "2024-01-15T10:30:00Z"
-          },
-          "updatedTimestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the transaction was last updated",
-            "example": "2024-01-15T10:35:00Z"
-          }
-        },
-        "required": [
-          "transactionStatus"
-        ]
-      },
-      "TransactionRecord": {
-        "type": "object",
-        "properties": {
-          "payGovTrackingId": {
-            "type": "string",
-            "description": "Pay.gov tracking ID for the transaction",
-            "example": "TRK-123456789"
-          },
-          "transactionStatus": {
-            "type": "string",
-            "enum": [
-              "received",
-              "initiated",
-              "processing",
-              "processed",
-              "failed",
-              "pending"
-            ],
-            "description": "The status of a single payment transaction attempt. `processing` is transient: POST /process has claimed the token and may be calling Pay.gov. `pending` usually means Pay.gov is still settling (e.g. ACH). `processed` / `failed` are terminal for the attempt.",
-            "example": "processed"
-          },
-          "paymentMethod": {
-            "type": "string",
-            "enum": [
-              "Credit/Debit Card",
-              "ACH",
-              "PayPal"
-            ],
-            "description": "Method of payment",
-            "example": "Credit/Debit Card"
-          },
-          "returnDetail": {
-            "type": "string",
-            "description": "Detailed return message from Pay.gov",
-            "example": "Transaction completed successfully"
-          },
-          "returnCode": {
-            "type": "string",
-            "description": "Return code from Pay.gov",
-            "example": "1000"
-          },
-          "createdTimestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the transaction was created",
-            "example": "2024-01-15T10:30:00Z"
-          },
-          "updatedTimestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the transaction was last updated",
-            "example": "2024-01-15T10:35:00Z"
-          }
-        },
-        "required": [
-          "payGovTrackingId",
-          "transactionStatus"
-        ]
-      },
-      "TransactionStatus": {
-        "type": "string",
-        "enum": [
-          "received",
-          "initiated",
-          "processing",
-          "processed",
-          "failed",
-          "pending"
-        ],
-        "description": "The status of a single payment transaction attempt. `processing` is transient: POST /process has claimed the token and may be calling Pay.gov. `pending` usually means Pay.gov is still settling (e.g. ACH). `processed` / `failed` are terminal for the attempt.",
-        "example": "processed"
-      },
-      "PaymentStatus": {
-        "type": "string",
-        "enum": [
-          "success",
-          "failed",
-          "pending"
-        ],
-        "description": "The overall status of the payment",
-        "example": "success"
-      },
-      "PaymentMethod": {
-        "type": "string",
-        "enum": [
-          "Credit/Debit Card",
-          "ACH",
-          "PayPal"
-        ],
-        "description": "Method of payment",
-        "example": "Credit/Debit Card"
-      },
-      "ProcessPaymentRequest": {
-        "type": "object",
-        "properties": {
-          "token": {
-            "type": "string",
-            "minLength": 32,
-            "maxLength": 32,
-            "description": "The payment token received from Pay.gov after user completes payment form. Must be exactly 32 characters long.",
-            "example": "abcdefghijklmnopqrstuvwxyz123456"
-          }
-        },
-        "required": [
-          "token"
-        ],
-        "additionalProperties": false
-      },
-      "ProcessPaymentResponse": {
-        "type": "object",
-        "properties": {
-          "paymentStatus": {
-            "type": "string",
-            "enum": [
-              "success",
-              "failed",
-              "pending"
-            ],
-            "description": "Overall payment status representing the current state of the payment",
-            "example": "success"
-          },
-          "transactions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TransactionRecordSummary"
-            },
-            "description": "Array of all transaction records associated with this payment reference"
-          }
-        },
-        "required": [
-          "paymentStatus",
-          "transactions"
-        ]
-      },
-      "GoneError": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error summary"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": {},
-              "description": "A structured error detail object (for example a Zod validation issue)",
-              "example": {
-                "code": "invalid_type",
-                "expected": "string",
-                "received": "undefined",
-                "path": [
-                  "urlSuccess"
-                ],
-                "message": "Required"
-              }
-            },
-            "description": "Additional error details",
-            "example": []
-          }
-        },
-        "required": [
-          "message",
-          "errors"
-        ],
-        "description": "JSON error response for gone/expired resources (HTTP 410).\n\nReturned when the supplied token is no longer valid for processing:\n- Another transaction for the same obligation is already pending or completed\n- The transaction associated with this token is not in an initiatable state",
-        "example": {
-          "message": "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
-          "errors": []
-        }
-      },
-      "RecentTransactionsResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DashboardTransaction"
-            },
-            "description": "Up to 100 most recent transactions"
-          },
-          "total": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Total number of transactions returned in this response",
-            "example": 100
-          }
-        },
-        "required": [
-          "data",
-          "total"
-        ]
-      },
-      "DashboardTransaction": {
-        "type": "object",
-        "properties": {
-          "agencyTrackingId": {
-            "type": "string",
-            "description": "Agency tracking ID for this transaction",
-            "example": "2f006f54-13a7-4e3d-9dc6-abb53bd4f891"
-          },
-          "paygovTrackingId": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Pay.gov tracking ID when available",
-            "example": "PG-2f006f54-13a7-4e3d-9dc6-abb53bd4f891"
-          },
-          "feeName": {
-            "type": "string",
-            "description": "Human-readable fee name",
-            "example": "Filing Fee"
-          },
-          "feeId": {
-            "type": "string",
-            "description": "Fee identifier",
-            "example": "PETITION_FILING_FEE"
-          },
-          "transactionAmount": {
-            "type": "number",
-            "description": "Actual amount charged for this transaction (USD)",
-            "example": 60.5
-          },
-          "clientName": {
-            "type": "string",
-            "description": "Client application name",
-            "example": "payment-portal"
-          },
-          "transactionReferenceId": {
-            "type": "string",
-            "description": "Client-specific transaction reference",
-            "example": "TXREF-00001"
-          },
-          "paymentStatus": {
-            "type": "string",
-            "enum": [
-              "success",
-              "failed",
-              "pending"
-            ],
-            "description": "The overall status of the payment",
-            "example": "success"
-          },
-          "transactionStatus": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "received",
-              "initiated",
-              "processing",
-              "processed",
-              "failed",
-              "pending",
-              null
-            ],
-            "description": "The status of a single payment transaction attempt. `processing` is transient: POST /process has claimed the token and may be calling Pay.gov. `pending` usually means Pay.gov is still settling (e.g. ACH). `processed` / `failed` are terminal for the attempt.",
-            "example": "processed"
-          },
-          "paymentMethod": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "Credit/Debit Card",
-              "ACH",
-              "PayPal",
-              null
-            ],
-            "description": "Payment method used for the transaction",
-            "example": "Credit/Debit Card"
-          },
-          "paygovToken": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Pay.gov token associated with this transaction",
-            "example": "7f90d8de-e67f-4f8b-a12f-f429b675f2df"
-          },
-          "metadata": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "additionalProperties": {
-              "type": "string"
-            },
-            "description": "Optional metadata associated with this transaction"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Record creation timestamp",
-            "example": "2026-03-06T16:15:10.231Z"
-          },
-          "lastUpdatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Record last updated timestamp",
-            "example": "2026-03-09T18:42:56.341Z"
-          }
-        },
-        "required": [
-          "agencyTrackingId",
-          "feeName",
-          "feeId",
-          "transactionAmount",
-          "clientName",
-          "transactionReferenceId",
-          "paymentStatus",
-          "createdAt",
-          "lastUpdatedAt"
-        ]
-      },
-      "TransactionsByStatusPathParams": {
-        "type": "object",
-        "properties": {
-          "paymentStatus": {
-            "type": "string",
-            "enum": [
-              "success",
-              "failed",
-              "pending"
-            ],
-            "description": "Filter transactions by overall payment status",
-            "example": "pending"
-          }
-        },
-        "required": [
-          "paymentStatus"
-        ]
-      },
-      "TransactionsByStatusResponse": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/RecentTransactionsResponse"
-          },
-          {
-            "type": "object",
-            "properties": {}
-          }
-        ]
-      },
-      "TransactionPaymentStatusResponse": {
-        "type": "object",
-        "properties": {
-          "pending": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Count of transactions currently pending",
-            "example": 5
-          },
-          "success": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Count of successful transactions",
-            "example": 42
-          },
-          "failed": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Count of failed transactions",
-            "example": 3
-          },
-          "total": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Total transactions across all statuses",
-            "example": 50
-          }
-        },
-        "required": [
-          "pending",
-          "success",
-          "failed",
-          "total"
-        ]
-      }
-    },
-    "parameters": {}
-  },
-  "paths": {
-    "/init": {
-      "post": {
-        "summary": "Initialize a payment",
-        "description": "Creates a new payment session with Pay.gov and returns a redirect URL for the user to complete payment.",
-        "tags": [
-          "Payments"
-        ],
-        "security": [
-          {
-            "sigv4": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InitPaymentRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Payment initialized successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InitPaymentResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request payload (e.g., missing body, validation error)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - invalid SigV4 signature or client not authorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Returned when a prior attempt is still `initiated` (awaiting redirect) or is actively being finalized by an in-flight POST /process. The duplicate request does not call Pay.gov. Retry with backoff; once the in-flight attempt finishes, a subsequent POST /init returns 200 with the payment redirect (or a fresh session if the prior attempt expired or was abandoned).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConflictError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerError"
-                }
-              }
-            }
-          },
-          "504": {
-            "description": "Gateway timeout communicating with Pay.gov",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GatewayError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/details/{transactionReferenceId}": {
-      "get": {
-        "summary": "Get transaction details",
-        "description": "Retrieves the payment status and all transaction records associated with a transaction reference ID. If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
-        "tags": [
-          "Payments"
-        ],
-        "security": [
-          {
-            "sigv4": []
-          }
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "description": "Client-generated UUIDv4 uniquely identifying the transaction. Must match the value supplied to /init.",
-              "example": "550e8400-e29b-41d4-a716-446655440000"
-            },
-            "required": true,
-            "description": "Client-generated UUIDv4 uniquely identifying the transaction. Must match the value supplied to /init.",
-            "name": "transactionReferenceId",
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Transaction details retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GetDetailsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request - transactionReferenceId is missing or not a valid UUID.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - invalid SigV4 signature, client not registered, or the transactionReferenceId belongs to a different client.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No transaction was found for the supplied transactionReferenceId.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/process": {
-      "post": {
-        "summary": "Process a payment",
-        "description": "Completes a payment transaction after the user has submitted payment information on Pay.gov. This endpoint must be called regardless of payment type used to finalize the transaction. Concurrent requests for the same token are serialized: only one Pay.gov complete call proceeds; duplicates receive HTTP 409 Conflict. Note: When the transaction reaches Pay.gov, both approved and declined outcomes return HTTP 200 — check the transactionStatus field to determine the outcome.",
-        "tags": [
-          "Payments"
-        ],
-        "security": [
-          {
-            "sigv4": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProcessPaymentRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Payment processed. The paymentStatus field indicates the overall outcome (success, failed, pending). It includes all attempts for the same transactionReferenceId.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProcessPaymentResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request payload. Returned when the body is missing, not valid JSON, or fails schema validation (missing `token`, wrong type, empty string, or unknown fields in strict mode).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - invalid SigV4 signature, client not authorized, or client does not have access to the fee associated with the supplied token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Token not found - no transaction exists for the supplied token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - this token is already being processed by another in-flight POST /process request. The duplicate request does not call Pay.gov. Retry with backoff while responses are 409; once the in-flight request finishes, a retry returns 200 (success/failure/pending), 410 (token no longer valid), or 404.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConflictError"
-                }
-              }
-            }
-          },
-          "410": {
-            "description": "Gone - the token is no longer valid for processing. Another transaction may already be fulfilling the same obligation (check getDetails), the transaction is not in an initiatable state (e.g. already processed), or a prior POST /process claim was abandoned and marked failed after the processing timeout. This is not returned for concurrent in-flight requests on the same token (see 409).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GoneError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerError"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Bad Gateway - Pay.gov returned an invalid or unparseable response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GatewayError"
-                }
-              }
-            }
-          },
-          "504": {
-            "description": "Gateway timeout communicating with Pay.gov",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GatewayError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/transactions": {
-      "get": {
-        "summary": "Get recent transactions",
-        "description": "Returns up to 100 most recent transactions across all payment statuses.",
-        "tags": [
-          "Payments"
-        ],
-        "security": [
-          {
-            "sigv4": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Recent transactions retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecentTransactionsResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - invalid SigV4 signature or client not authorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/transactions/{paymentStatus}": {
-      "get": {
-        "summary": "Get transactions by payment status",
-        "description": "Returns up to 100 transactions matching the requested payment status.",
-        "tags": [
-          "Payments"
-        ],
-        "security": [
-          {
-            "sigv4": []
-          }
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "enum": [
-                "success",
-                "failed",
-                "pending"
-              ],
-              "description": "Filter transactions by overall payment status",
-              "example": "pending"
-            },
-            "required": true,
-            "description": "Filter transactions by overall payment status",
-            "name": "paymentStatus",
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Transactions for the requested status retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionsByStatusResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid payment status path parameter",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - invalid SigV4 signature or client not authorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/transaction-payment-status": {
-      "get": {
-        "summary": "Get aggregate transaction payment status",
-        "description": "Returns counts of transactions grouped by payment status.",
-        "tags": [
-          "Payments"
-        ],
-        "security": [
-          {
-            "sigv4": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Aggregate status counts retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionPaymentStatusResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - invalid SigV4 signature or client not authorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerError"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "webhooks": {}
+	"openapi": "3.1.0",
+	"info": {
+		"title": "USTC Payment Portal API",
+		"version": "1.0.1",
+		"description": "API for integrating with Pay.gov payment services for the US Tax Court.",
+		"contact": {
+			"name": "US Tax Court"
+		}
+	},
+	"servers": [
+		{
+			"url": "http://localhost:8080",
+			"description": "Local development server"
+		},
+		{
+			"url": "https://dev-payments.ustaxcourt.gov",
+			"description": "Dev"
+		},
+		{
+			"url": "https://stg-payments.ustaxcourt.gov",
+			"description": "Test/Staging"
+		},
+		{
+			"url": "https://payments.ustaxcourt.gov",
+			"description": "Production"
+		}
+	],
+	"tags": [
+		{
+			"name": "Payments",
+			"description": "Payment initialization, processing, and status operations"
+		}
+	],
+	"components": {
+		"securitySchemes": {
+			"sigv4": {
+				"type": "apiKey",
+				"in": "header",
+				"name": "Authorization",
+				"description": "AWS Signature Version 4 authentication. Requests must be signed using AWS credentials with the AWS4-HMAC-SHA256 algorithm. Include the Authorization header with the signature, along with X-Amz-Date and optionally X-Amz-Security-Token headers. See AWS documentation for signing requests: https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html"
+			}
+		},
+		"schemas": {
+			"FeeKey": {
+				"type": "string",
+				"enum": ["PETITION_FILING_FEE", "NONATTORNEY_EXAM_REGISTRATION_FEE"],
+				"description": "The stable fee identifier sent by the client. Available fee keys:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee key. See the API documentation for more details on fee authorization and supported fees.",
+				"example": "PETITION_FILING_FEE"
+			},
+			"MetadataDawson": {
+				"type": "object",
+				"properties": {
+					"docketNumber": {
+						"type": "string",
+						"description": "The docket number for the case (required for DAWSON fees)",
+						"example": "123-26"
+					}
+				},
+				"required": ["docketNumber"]
+			},
+			"MetadataNonattorneyExam": {
+				"type": "object",
+				"properties": {
+					"email": {
+						"type": "string",
+						"format": "email",
+						"description": "Applicant email address",
+						"example": "applicant@example.com"
+					},
+					"fullName": {
+						"type": "string",
+						"description": "Applicant full name",
+						"example": "John Doe"
+					},
+					"accessCode": {
+						"type": "string",
+						"description": "Registration access code",
+						"example": "ABC123"
+					}
+				},
+				"required": ["email", "fullName", "accessCode"]
+			},
+			"Metadata": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/MetadataDawson"
+					},
+					{
+						"$ref": "#/components/schemas/MetadataNonattorneyExam"
+					}
+				],
+				"description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. See individual metadata schemas for field requirements."
+			},
+			"InitPaymentRequest": {
+				"type": "object",
+				"properties": {
+					"transactionReferenceId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Client-generated UUIDv4 uniquely identifying this transaction. Must be randomly generated (not derived from names or timestamps).",
+						"example": "550e8400-e29b-41d4-a716-446655440000"
+					},
+					"fee": {
+						"type": "string",
+						"enum": [
+							"PETITION_FILING_FEE",
+							"NONATTORNEY_EXAM_REGISTRATION_FEE"
+						],
+						"description": "The stable fee identifier sent by the client. Available fee keys:\n\n- `PETITION_FILING_FEE`: Filing fee for petitions in DAWSON ($60)\n- `NONATTORNEY_EXAM_REGISTRATION_FEE`: Registration fee for nonattorney examination\n\nFee amounts are determined by the Payment Portal based on the fee key. See the API documentation for more details on fee authorization and supported fees.",
+						"example": "PETITION_FILING_FEE"
+					},
+					"amount": {
+						"type": "number",
+						"exclusiveMinimum": 0,
+						"description": "Override amount in dollars. Only valid for fees that allow variable amounts.",
+						"example": 60
+					},
+					"urlSuccess": {
+						"type": "string",
+						"format": "uri",
+						"description": "URL to redirect to after successful payment",
+						"example": "https://client.app/success"
+					},
+					"urlCancel": {
+						"type": "string",
+						"format": "uri",
+						"description": "URL to redirect to if payment is cancelled",
+						"example": "https://client.app/cancel"
+					},
+					"metadata": {
+						"anyOf": [
+							{
+								"$ref": "#/components/schemas/MetadataDawson"
+							},
+							{
+								"$ref": "#/components/schemas/MetadataNonattorneyExam"
+							}
+						],
+						"description": "Metadata fields are dynamic and determined by the feeId value. Different fees require different metadata properties. See individual metadata schemas for field requirements."
+					}
+				},
+				"required": [
+					"transactionReferenceId",
+					"fee",
+					"urlSuccess",
+					"urlCancel",
+					"metadata"
+				],
+				"additionalProperties": false
+			},
+			"InitPaymentResponse": {
+				"type": "object",
+				"properties": {
+					"token": {
+						"type": "string",
+						"description": "Payment token for the initiated transaction",
+						"example": "abc123token"
+					},
+					"paymentRedirect": {
+						"type": "string",
+						"format": "uri",
+						"description": "URL to redirect the user to complete payment on Pay.gov",
+						"example": "https://pay.gov/payment?token=abc123token&tcsAppID=USTC_APP"
+					}
+				},
+				"required": ["token", "paymentRedirect"]
+			},
+			"ErrorResponse": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string",
+						"description": "Human-readable error summary"
+					},
+					"errors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {},
+							"additionalProperties": {},
+							"description": "A structured error detail object (for example a Zod validation issue)",
+							"example": {
+								"code": "invalid_type",
+								"expected": "string",
+								"received": "undefined",
+								"path": ["urlSuccess"],
+								"message": "Required"
+							}
+						},
+						"description": "Additional error details",
+						"example": []
+					}
+				},
+				"required": ["message", "errors"],
+				"description": "Generic JSON error response",
+				"example": {
+					"message": "Invalid Request",
+					"errors": []
+				}
+			},
+			"BadRequestError": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string",
+						"description": "Human-readable error summary"
+					},
+					"errors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {},
+							"additionalProperties": {},
+							"description": "A structured error detail object (for example a Zod validation issue)",
+							"example": {
+								"code": "invalid_type",
+								"expected": "string",
+								"received": "undefined",
+								"path": ["urlSuccess"],
+								"message": "Required"
+							}
+						},
+						"description": "Additional error details",
+						"example": []
+					}
+				},
+				"required": ["message", "errors"],
+				"description": "JSON error response for invalid requests (HTTP 400).\n\nCommon error scenarios:\n- Missing required fields\n- Invalid field values\n- Schema validation failures\n- Fee not found\n- Missing amount for variable fees",
+				"example": {
+					"message": "Validation error",
+					"errors": [
+						{
+							"code": "invalid_type",
+							"expected": "string",
+							"received": "undefined",
+							"path": ["urlSuccess"],
+							"message": "Required"
+						}
+					]
+				}
+			},
+			"ConflictError": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string",
+						"description": "Human-readable error summary"
+					},
+					"errors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {},
+							"additionalProperties": {},
+							"description": "A structured error detail object (for example a Zod validation issue)",
+							"example": {
+								"code": "invalid_type",
+								"expected": "string",
+								"received": "undefined",
+								"path": ["urlSuccess"],
+								"message": "Required"
+							}
+						},
+						"description": "Additional error details",
+						"example": []
+					}
+				},
+				"required": ["message", "errors"],
+				"description": "JSON error response for request conflicts (HTTP 409).\n\nReturned when a payment session has already been initiated for the same transaction reference ID.",
+				"example": {
+					"message": "A payment session is already initiated for this transactionReferenceId",
+					"errors": []
+				}
+			},
+			"ForbiddenError": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string",
+						"description": "Human-readable error summary"
+					},
+					"errors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {},
+							"additionalProperties": {},
+							"description": "A structured error detail object (for example a Zod validation issue)",
+							"example": {
+								"code": "invalid_type",
+								"expected": "string",
+								"received": "undefined",
+								"path": ["urlSuccess"],
+								"message": "Required"
+							}
+						},
+						"description": "Additional error details",
+						"example": []
+					}
+				},
+				"required": ["message", "errors"],
+				"description": "JSON error response for authentication/authorization failures (HTTP 403).\n\nCommon error scenarios:\n- Missing API key\n- Invalid API key\n- Unauthorized fee access: Client not authorized to charge the requested fee",
+				"example": {
+					"message": "Missing Authentication",
+					"errors": []
+				}
+			},
+			"ServerError": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string",
+						"description": "Human-readable error summary"
+					},
+					"errors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {},
+							"additionalProperties": {},
+							"description": "A structured error detail object (for example a Zod validation issue)",
+							"example": {
+								"code": "invalid_type",
+								"expected": "string",
+								"received": "undefined",
+								"path": ["urlSuccess"],
+								"message": "Required"
+							}
+						},
+						"description": "Additional error details",
+						"example": []
+					}
+				},
+				"required": ["message", "errors"],
+				"description": "JSON error response for internal server errors (HTTP 500).\n\nReturned when an unexpected error occurs during request processing. If this error persists, contact support with the request details.",
+				"example": {
+					"message": "An unexpected error occurred while processing the request",
+					"errors": []
+				}
+			},
+			"NotFoundError": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string",
+						"description": "Human-readable error summary"
+					},
+					"errors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {},
+							"additionalProperties": {},
+							"description": "A structured error detail object (for example a Zod validation issue)",
+							"example": {
+								"code": "invalid_type",
+								"expected": "string",
+								"received": "undefined",
+								"path": ["urlSuccess"],
+								"message": "Required"
+							}
+						},
+						"description": "Additional error details",
+						"example": []
+					}
+				},
+				"required": ["message", "errors"],
+				"description": "JSON error response for resource not found (HTTP 404).\n\nReturned when the supplied token cannot be found in the database.",
+				"example": {
+					"message": "Transaction with token 'abcdefghijklmnopqrstuvwxyz123456' could not be found",
+					"errors": []
+				}
+			},
+			"ValidationErrorResponse": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string",
+						"description": "Human-readable error summary"
+					},
+					"errors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {},
+							"additionalProperties": {},
+							"description": "A structured error detail object (for example a Zod validation issue)",
+							"example": {
+								"code": "invalid_type",
+								"expected": "string",
+								"received": "undefined",
+								"path": ["urlSuccess"],
+								"message": "Required"
+							}
+						},
+						"description": "Additional error details",
+						"example": []
+					}
+				},
+				"required": ["message", "errors"],
+				"description": "JSON error response for request validation failures.\n\n'Validation error' for Zod failures; otherwise the thrown error's message (e.g. 'missing body', 'invalid JSON in request body'). For Zod failures the errors array contains ZodIssue objects with `path`, `message`, and `code`. Empty array for non-Zod errors.",
+				"example": {
+					"message": "Validation error",
+					"errors": [
+						{
+							"code": "invalid_type",
+							"path": ["token"],
+							"message": "Required"
+						}
+					]
+				}
+			},
+			"GatewayError": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string",
+						"description": "Human-readable summary of the gateway failure",
+						"example": "Error communicating with Pay.gov"
+					},
+					"errors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {},
+							"additionalProperties": {},
+							"description": "A structured error detail object (for example a Zod validation issue)",
+							"example": {
+								"code": "invalid_type",
+								"expected": "string",
+								"received": "undefined",
+								"path": ["urlSuccess"],
+								"message": "Required"
+							}
+						},
+						"description": "Additional error details",
+						"example": []
+					}
+				},
+				"required": ["message", "errors"],
+				"description": "JSON error response for Pay.gov communication failures (HTTP 504). Returned when the API cannot receive a timely response from Pay.gov.",
+				"example": {
+					"message": "Error communicating with Pay.gov",
+					"errors": []
+				}
+			},
+			"GetDetailsPathParams": {
+				"type": "object",
+				"properties": {
+					"transactionReferenceId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Client-generated UUIDv4 uniquely identifying the transaction. Must match the value supplied to /init.",
+						"example": "550e8400-e29b-41d4-a716-446655440000"
+					}
+				},
+				"required": ["transactionReferenceId"],
+				"additionalProperties": false
+			},
+			"GetDetailsResponse": {
+				"type": "object",
+				"properties": {
+					"paymentStatus": {
+						"type": "string",
+						"enum": ["success", "failed", "pending"],
+						"description": "Overall payment status representing the current state of the payment",
+						"example": "success"
+					},
+					"transactions": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/TransactionRecordSummary"
+						},
+						"description": "Array of all transaction records associated with this payment reference"
+					}
+				},
+				"required": ["paymentStatus", "transactions"]
+			},
+			"TransactionRecordSummary": {
+				"type": "object",
+				"properties": {
+					"payGovTrackingId": {
+						"type": "string",
+						"description": "Pay.gov tracking ID for the transaction, present once the transaction has been processed",
+						"example": "TRK-123456789"
+					},
+					"transactionStatus": {
+						"type": "string",
+						"enum": [
+							"received",
+							"initiated",
+							"processing",
+							"processed",
+							"failed",
+							"pending"
+						],
+						"description": "The status of a single payment transaction attempt. `processing` is transient: POST /process has claimed the token and may be calling Pay.gov. `pending` usually means Pay.gov is still settling (e.g. ACH). `processed` / `failed` are terminal for the attempt.",
+						"example": "processed"
+					},
+					"paymentMethod": {
+						"type": "string",
+						"enum": ["Credit/Debit Card", "ACH", "PayPal"],
+						"description": "Method of payment",
+						"example": "Credit/Debit Card"
+					},
+					"returnDetail": {
+						"type": "string",
+						"description": "Detailed return message from Pay.gov",
+						"example": "Transaction completed successfully"
+					},
+					"createdTimestamp": {
+						"type": "string",
+						"format": "date-time",
+						"description": "Timestamp when the transaction was created",
+						"example": "2024-01-15T10:30:00Z"
+					},
+					"updatedTimestamp": {
+						"type": "string",
+						"format": "date-time",
+						"description": "Timestamp when the transaction was last updated",
+						"example": "2024-01-15T10:35:00Z"
+					}
+				},
+				"required": ["transactionStatus"]
+			},
+			"TransactionRecord": {
+				"type": "object",
+				"properties": {
+					"payGovTrackingId": {
+						"type": "string",
+						"description": "Pay.gov tracking ID for the transaction",
+						"example": "TRK-123456789"
+					},
+					"transactionStatus": {
+						"type": "string",
+						"enum": [
+							"received",
+							"initiated",
+							"processing",
+							"processed",
+							"failed",
+							"pending"
+						],
+						"description": "The status of a single payment transaction attempt. `processing` is transient: POST /process has claimed the token and may be calling Pay.gov. `pending` usually means Pay.gov is still settling (e.g. ACH). `processed` / `failed` are terminal for the attempt.",
+						"example": "processed"
+					},
+					"paymentMethod": {
+						"type": "string",
+						"enum": ["Credit/Debit Card", "ACH", "PayPal"],
+						"description": "Method of payment",
+						"example": "Credit/Debit Card"
+					},
+					"returnDetail": {
+						"type": "string",
+						"description": "Detailed return message from Pay.gov",
+						"example": "Transaction completed successfully"
+					},
+					"returnCode": {
+						"type": "string",
+						"description": "Return code from Pay.gov",
+						"example": "1000"
+					},
+					"createdTimestamp": {
+						"type": "string",
+						"format": "date-time",
+						"description": "Timestamp when the transaction was created",
+						"example": "2024-01-15T10:30:00Z"
+					},
+					"updatedTimestamp": {
+						"type": "string",
+						"format": "date-time",
+						"description": "Timestamp when the transaction was last updated",
+						"example": "2024-01-15T10:35:00Z"
+					}
+				},
+				"required": ["payGovTrackingId", "transactionStatus"]
+			},
+			"TransactionStatus": {
+				"type": "string",
+				"enum": [
+					"received",
+					"initiated",
+					"processing",
+					"processed",
+					"failed",
+					"pending"
+				],
+				"description": "The status of a single payment transaction attempt. `processing` is transient: POST /process has claimed the token and may be calling Pay.gov. `pending` usually means Pay.gov is still settling (e.g. ACH). `processed` / `failed` are terminal for the attempt.",
+				"example": "processed"
+			},
+			"PaymentStatus": {
+				"type": "string",
+				"enum": ["success", "failed", "pending"],
+				"description": "The overall status of the payment",
+				"example": "success"
+			},
+			"PaymentMethod": {
+				"type": "string",
+				"enum": ["Credit/Debit Card", "ACH", "PayPal"],
+				"description": "Method of payment",
+				"example": "Credit/Debit Card"
+			},
+			"ProcessPaymentRequest": {
+				"type": "object",
+				"properties": {
+					"token": {
+						"type": "string",
+						"minLength": 32,
+						"maxLength": 32,
+						"description": "The payment token received from Pay.gov after user completes payment form. Must be exactly 32 characters long.",
+						"example": "abcdefghijklmnopqrstuvwxyz123456"
+					}
+				},
+				"required": ["token"],
+				"additionalProperties": false
+			},
+			"ProcessPaymentResponse": {
+				"type": "object",
+				"properties": {
+					"paymentStatus": {
+						"type": "string",
+						"enum": ["success", "failed", "pending"],
+						"description": "Overall payment status representing the current state of the payment",
+						"example": "success"
+					},
+					"transactions": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/TransactionRecordSummary"
+						},
+						"description": "Array of all transaction records associated with this payment reference"
+					}
+				},
+				"required": ["paymentStatus", "transactions"]
+			},
+			"GoneError": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string",
+						"description": "Human-readable error summary"
+					},
+					"errors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {},
+							"additionalProperties": {},
+							"description": "A structured error detail object (for example a Zod validation issue)",
+							"example": {
+								"code": "invalid_type",
+								"expected": "string",
+								"received": "undefined",
+								"path": ["urlSuccess"],
+								"message": "Required"
+							}
+						},
+						"description": "Additional error details",
+						"example": []
+					}
+				},
+				"required": ["message", "errors"],
+				"description": "JSON error response for gone/expired resources (HTTP 410).\n\nReturned when the supplied token is no longer valid for processing:\n- Another transaction for the same obligation is already pending or completed\n- The transaction associated with this token is not in an initiatable state",
+				"example": {
+					"message": "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
+					"errors": []
+				}
+			},
+			"RecentTransactionsResponse": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/DashboardTransaction"
+						},
+						"description": "Up to 100 most recent transactions"
+					},
+					"total": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "Total number of transactions returned in this response",
+						"example": 100
+					}
+				},
+				"required": ["data", "total"]
+			},
+			"DashboardTransaction": {
+				"type": "object",
+				"properties": {
+					"agencyTrackingId": {
+						"type": "string",
+						"description": "Agency tracking ID for this transaction",
+						"example": "2f006f54-13a7-4e3d-9dc6-abb53bd4f891"
+					},
+					"paygovTrackingId": {
+						"type": ["string", "null"],
+						"description": "Pay.gov tracking ID when available",
+						"example": "PG-2f006f54-13a7-4e3d-9dc6-abb53bd4f891"
+					},
+					"feeName": {
+						"type": "string",
+						"description": "Human-readable fee name",
+						"example": "Filing Fee"
+					},
+					"feeId": {
+						"type": "string",
+						"description": "Fee identifier",
+						"example": "PETITION_FILING_FEE"
+					},
+					"transactionAmount": {
+						"type": "number",
+						"description": "Actual amount charged for this transaction (USD)",
+						"example": 60.5
+					},
+					"clientName": {
+						"type": "string",
+						"description": "Client application name",
+						"example": "payment-portal"
+					},
+					"transactionReferenceId": {
+						"type": "string",
+						"description": "Client-specific transaction reference",
+						"example": "TXREF-00001"
+					},
+					"paymentStatus": {
+						"type": "string",
+						"enum": ["success", "failed", "pending"],
+						"description": "The overall status of the payment",
+						"example": "success"
+					},
+					"transactionStatus": {
+						"type": ["string", "null"],
+						"enum": [
+							"received",
+							"initiated",
+							"processing",
+							"processed",
+							"failed",
+							"pending",
+							null
+						],
+						"description": "The status of a single payment transaction attempt. `processing` is transient: POST /process has claimed the token and may be calling Pay.gov. `pending` usually means Pay.gov is still settling (e.g. ACH). `processed` / `failed` are terminal for the attempt.",
+						"example": "processed"
+					},
+					"paymentMethod": {
+						"type": ["string", "null"],
+						"enum": ["Credit/Debit Card", "ACH", "PayPal", null],
+						"description": "Payment method used for the transaction",
+						"example": "Credit/Debit Card"
+					},
+					"paygovToken": {
+						"type": ["string", "null"],
+						"description": "Pay.gov token associated with this transaction",
+						"example": "7f90d8de-e67f-4f8b-a12f-f429b675f2df"
+					},
+					"metadata": {
+						"type": ["object", "null"],
+						"additionalProperties": {
+							"type": "string"
+						},
+						"description": "Optional metadata associated with this transaction"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time",
+						"description": "Record creation timestamp",
+						"example": "2026-03-06T16:15:10.231Z"
+					},
+					"lastUpdatedAt": {
+						"type": "string",
+						"format": "date-time",
+						"description": "Record last updated timestamp",
+						"example": "2026-03-09T18:42:56.341Z"
+					}
+				},
+				"required": [
+					"agencyTrackingId",
+					"feeName",
+					"feeId",
+					"transactionAmount",
+					"clientName",
+					"transactionReferenceId",
+					"paymentStatus",
+					"createdAt",
+					"lastUpdatedAt"
+				]
+			},
+			"TransactionsByStatusPathParams": {
+				"type": "object",
+				"properties": {
+					"paymentStatus": {
+						"type": "string",
+						"enum": ["success", "failed", "pending"],
+						"description": "Filter transactions by overall payment status",
+						"example": "pending"
+					}
+				},
+				"required": ["paymentStatus"]
+			},
+			"TransactionsByStatusResponse": {
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/RecentTransactionsResponse"
+					},
+					{
+						"type": "object",
+						"properties": {}
+					}
+				]
+			},
+			"TransactionPaymentStatusResponse": {
+				"type": "object",
+				"properties": {
+					"pending": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "Count of transactions currently pending",
+						"example": 5
+					},
+					"success": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "Count of successful transactions",
+						"example": 42
+					},
+					"failed": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "Count of failed transactions",
+						"example": 3
+					},
+					"total": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "Total transactions across all statuses",
+						"example": 50
+					}
+				},
+				"required": ["pending", "success", "failed", "total"]
+			}
+		},
+		"parameters": {}
+	},
+	"paths": {
+		"/init": {
+			"post": {
+				"summary": "Initialize a payment",
+				"description": "Creates a new payment session with Pay.gov and returns a redirect URL for the user to complete payment.",
+				"tags": ["Payments"],
+				"security": [
+					{
+						"sigv4": []
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/InitPaymentRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Payment initialized successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/InitPaymentResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid request payload (e.g., missing body, validation error)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BadRequestError"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Forbidden - invalid SigV4 signature or client not authorized",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ForbiddenError"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Returned when a prior attempt is still `initiated` (awaiting redirect) or is actively being finalized by an in-flight POST /process. The duplicate request does not call Pay.gov. Retry with backoff; once the in-flight attempt finishes, a subsequent POST /init returns 200 with the payment redirect (or a fresh session if the prior attempt expired or was abandoned).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ConflictError"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal server error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ServerError"
+								}
+							}
+						}
+					},
+					"504": {
+						"description": "Gateway timeout communicating with Pay.gov",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GatewayError"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/details/{transactionReferenceId}": {
+			"get": {
+				"summary": "Get transaction details",
+				"description": "Retrieves the payment status and all transaction records associated with a transaction reference ID. If there is a pending transaction, it will query Pay.gov for the latest status before returning.",
+				"tags": ["Payments"],
+				"security": [
+					{
+						"sigv4": []
+					}
+				],
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"format": "uuid",
+							"description": "Client-generated UUIDv4 uniquely identifying the transaction. Must match the value supplied to /init.",
+							"example": "550e8400-e29b-41d4-a716-446655440000"
+						},
+						"required": true,
+						"description": "Client-generated UUIDv4 uniquely identifying the transaction. Must match the value supplied to /init.",
+						"name": "transactionReferenceId",
+						"in": "path"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Transaction details retrieved successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GetDetailsResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid request - transactionReferenceId is missing or not a valid UUID.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BadRequestError"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Forbidden - invalid SigV4 signature, client not registered, or the transactionReferenceId belongs to a different client.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ForbiddenError"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No transaction was found for the supplied transactionReferenceId.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NotFoundError"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal server error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ServerError"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/process": {
+			"post": {
+				"summary": "Process a payment",
+				"description": "Completes a payment transaction after the user has submitted payment information on Pay.gov. This endpoint must be called regardless of payment type used to finalize the transaction. Concurrent requests for the same token are serialized: only one Pay.gov complete call proceeds; duplicates receive HTTP 409 Conflict. Note: When the transaction reaches Pay.gov, both approved and declined outcomes return HTTP 200 — check the transactionStatus field to determine the outcome.",
+				"tags": ["Payments"],
+				"security": [
+					{
+						"sigv4": []
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ProcessPaymentRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Payment processed. The paymentStatus field indicates the overall outcome (success, failed, pending). It includes all attempts for the same transactionReferenceId.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ProcessPaymentResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid request payload. Returned when the body is missing, not valid JSON, or fails schema validation (missing `token`, wrong type, empty string, or unknown fields in strict mode).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ValidationErrorResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Forbidden - invalid SigV4 signature, client not authorized, or client does not have access to the fee associated with the supplied token",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ForbiddenError"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Token not found - no transaction exists for the supplied token",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NotFoundError"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Conflict - this token is already being processed by another in-flight POST /process request. The duplicate request does not call Pay.gov. Retry with backoff while responses are 409; once the in-flight request finishes, a retry returns 200 (success/failure/pending), 410 (token no longer valid), or 404.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ConflictError"
+								}
+							}
+						}
+					},
+					"410": {
+						"description": "Gone - the token is no longer valid for processing. Another transaction may already be fulfilling the same obligation (check getDetails), the transaction is not in an initiatable state (e.g. already processed), or a prior POST /process claim was abandoned and marked failed after the processing timeout. This is not returned for concurrent in-flight requests on the same token (see 409).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GoneError"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal server error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ServerError"
+								}
+							}
+						}
+					},
+					"502": {
+						"description": "Bad Gateway - Pay.gov returned an invalid or unparseable response",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GatewayError"
+								}
+							}
+						}
+					},
+					"504": {
+						"description": "Gateway timeout communicating with Pay.gov",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GatewayError"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/transactions": {
+			"get": {
+				"summary": "Get recent transactions",
+				"description": "Returns up to 100 most recent transactions across all payment statuses.",
+				"tags": ["Payments"],
+				"security": [
+					{
+						"sigv4": []
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Recent transactions retrieved successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RecentTransactionsResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Forbidden - invalid SigV4 signature or client not authorized",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ForbiddenError"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal server error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ServerError"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/transactions/{paymentStatus}": {
+			"get": {
+				"summary": "Get transactions by payment status",
+				"description": "Returns up to 100 transactions matching the requested payment status.",
+				"tags": ["Payments"],
+				"security": [
+					{
+						"sigv4": []
+					}
+				],
+				"parameters": [
+					{
+						"schema": {
+							"type": "string",
+							"enum": ["success", "failed", "pending"],
+							"description": "Filter transactions by overall payment status",
+							"example": "pending"
+						},
+						"required": true,
+						"description": "Filter transactions by overall payment status",
+						"name": "paymentStatus",
+						"in": "path"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Transactions for the requested status retrieved successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TransactionsByStatusResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid payment status path parameter",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BadRequestError"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Forbidden - invalid SigV4 signature or client not authorized",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ForbiddenError"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal server error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ServerError"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/transaction-payment-status": {
+			"get": {
+				"summary": "Get aggregate transaction payment status",
+				"description": "Returns counts of transactions grouped by payment status.",
+				"tags": ["Payments"],
+				"security": [
+					{
+						"sigv4": []
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Aggregate status counts retrieved successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TransactionPaymentStatusResponse"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Forbidden - invalid SigV4 signature or client not authorized",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ForbiddenError"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal server error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ServerError"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"webhooks": {}
 }
