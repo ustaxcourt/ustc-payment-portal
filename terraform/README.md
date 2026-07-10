@@ -4,7 +4,7 @@ This directory contains Infrastructure as Code for the USTC Payment Portal. It i
 
 ## Terraform Version
 
-This project requires **Terraform ~> 1.14.0**. The `~>` constraint means any 1.14.x version is supported, but 1.15+ is not until explicitly upgraded.
+This project requires **Terraform ~> 1.15.0**. The `~>` constraint means any 1.15.x version is supported, but 1.16+ is not until explicitly upgraded.
 
 See [Upgrading Terraform](#upgrading-terraform) for the complete upgrade process.
 
@@ -237,7 +237,7 @@ Example change:
 - name: Setup Terraform
   uses: hashicorp/setup-terraform@v4
   with:
-    terraform_version: "1.14.6" # Update this version
+    terraform_version: "1.15.8" # Update this version
 ```
 
 ### GitHub Action Updates
