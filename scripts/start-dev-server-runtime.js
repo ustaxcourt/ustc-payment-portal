@@ -1,5 +1,3 @@
-"use strict";
-
 const path = require("node:path");
 const fs = require("node:fs");
 const { spawn } = require("node:child_process");

@@ -1,5 +1,5 @@
 import { ForbiddenError } from "@errors/forbidden";
-import { APIGatewayEventRequestContext } from "aws-lambda";
+import type { APIGatewayEventRequestContext } from "aws-lambda";
 
 /**
  * Mock IAM role ARN for local development when SigV4 is bypassed.

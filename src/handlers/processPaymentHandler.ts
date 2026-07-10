@@ -1,4 +1,4 @@
-import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
+import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { lambdaHandler } from "./lambdaHandler";
 import { ProcessPaymentRequestSchema } from "@schemas/ProcessPayment.schema";
 import { processPayment } from "@useCases/processPayment";

@@ -16,47 +16,47 @@ const metadataValidators = {
 } as const satisfies Record<z.infer<typeof FeeKeySchema>, z.ZodSchema>;
 
 export const InitPaymentRequestSchema = z
-  .object({
-    transactionReferenceId: z.uuidv4().openapi({
-      description:
-        "Client-generated UUIDv4 uniquely identifying this transaction. " +
-        "Must be randomly generated (not derived from names or timestamps).",
-      example: "550e8400-e29b-41d4-a716-446655440000",
-    }),
-    fee: FeeKeySchema,
-    amount: z.number().positive().optional().openapi({
-      description:
-        "Override amount in dollars. Only valid for fees that allow variable amounts.",
-      example: 60,
-    }),
-    urlSuccess: z.url().openapi({
-      description: "URL to redirect to after successful payment",
-      example: "https://client.app/success",
-    }),
-    urlCancel: z.url().openapi({
-      description: "URL to redirect to if payment is cancelled",
-      example: "https://client.app/cancel",
-    }),
-    metadata: MetadataSchema,
-  })
-  .strict()
-  .superRefine((data, ctx) => {
-    const validator = metadataValidators[data.fee];
-    const result = validator.safeParse(data.metadata);
-    /* istanbul ignore next: This branch is for validation errors, which are rare in normal operation */
-    if (!result.success) {
-      ctx.addIssue({
-        code: "custom",
-        message: `Metadata is invalid for fee "${
-          data.fee
-        }": ${result.error.issues
-          .map((i: { message: string }) => i.message)
-          .join(", ")}`,
-        path: ["metadata"],
-      });
-    }
-  })
-  .openapi("InitPaymentRequest");
+	.object({
+		transactionReferenceId: z.uuidv4().openapi({
+			description:
+				"Client-generated UUIDv4 uniquely identifying this transaction. " +
+				"Must be randomly generated (not derived from names or timestamps).",
+			example: "550e8400-e29b-41d4-a716-446655440000",
+		}),
+		fee: FeeKeySchema,
+		amount: z.number().positive().optional().openapi({
+			description:
+				"Override amount in dollars. Only valid for fees that allow variable amounts.",
+			example: 60,
+		}),
+		urlSuccess: z.url().openapi({
+			description: "URL to redirect to after successful payment",
+			example: "https://client.app/success",
+		}),
+		urlCancel: z.url().openapi({
+			description: "URL to redirect to if payment is cancelled",
+			example: "https://client.app/cancel",
+		}),
+		metadata: MetadataSchema,
+	})
+	.strict()
+	.superRefine((data, ctx) => {
+		const validator = metadataValidators[data.fee];
+		const result = validator.safeParse(data.metadata);
+		/* istanbul ignore next: This branch is for validation errors, which are rare in normal operation */
+		if (!result.success) {
+			ctx.addIssue({
+				code: "custom",
+				message: `Metadata is invalid for fee "${
+					data.fee
+				}": ${result.error.issues
+					.map((i: { message: string }) => i.message)
+					.join(", ")}`,
+				path: ["metadata"],
+			});
+		}
+	})
+	.openapi("InitPaymentRequest");
 
 export type InitPaymentRequest = z.infer<typeof InitPaymentRequestSchema>;
 

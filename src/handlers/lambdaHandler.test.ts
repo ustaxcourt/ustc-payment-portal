@@ -1,4 +1,4 @@
-import { APIGatewayEvent } from "aws-lambda";
+import type { APIGatewayEvent } from "aws-lambda";
 import { z } from "zod";
 import { lambdaHandler } from "./lambdaHandler";
 import { createAppContext } from "../appContext";

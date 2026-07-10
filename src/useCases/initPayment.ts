@@ -1,5 +1,5 @@
 import type { AppContext } from "@appTypes/AppContext";
-import {
+import type {
 	InitPaymentRequest,
 	InitPaymentResponse,
 } from "@schemas/InitPayment.schema";

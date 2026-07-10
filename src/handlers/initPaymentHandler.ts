@@ -1,4 +1,4 @@
-import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
+import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { lambdaHandler } from "./lambdaHandler";
 import { InitPaymentRequestSchema } from "@schemas/InitPayment.schema";
 import { initPayment } from "@useCases/initPayment";

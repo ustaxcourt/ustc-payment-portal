@@ -1,13 +1,13 @@
 import { XMLBuilder, XMLParser } from "fast-xml-parser";
 import type { RawCompleteOnlineCollectionRequest } from "@appTypes/RawCompleteOnlineCollectionRequest";
 import type { RawStartOnlineCollectionRequest } from "@appTypes/RawStartOnlineCollectionRequest";
-import {
+import type {
 	GetRequestRequestParams,
 	RawGetDetailsRequest,
 } from "./GetDetailsRequest";
 import { xmlOptions } from "../xmlOptions";
-import { CompleteOnlineCollectionWithDetailsRequestParams } from "./CompleteOnlineCollectionWithDetailsRequest";
-import { StartOnlineCollectionRequestParams } from "./StartOnlineCollectionRequest";
+import type { CompleteOnlineCollectionWithDetailsRequestParams } from "./CompleteOnlineCollectionWithDetailsRequest";
+import type { StartOnlineCollectionRequestParams } from "./StartOnlineCollectionRequest";
 import type { AppContext } from "@appTypes/AppContext";
 import { FailedTransactionError } from "@errors/failedTransaction";
 

@@ -1,5 +1,3 @@
-"use strict";
-
 /**
  * Forwards SIGINT/SIGTERM to a spawned child process and re-raises the signal
  * on exit so parent processes see the correct termination cause.

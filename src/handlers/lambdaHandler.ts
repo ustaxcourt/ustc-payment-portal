@@ -1,5 +1,5 @@
-import { APIGatewayProxyResult, APIGatewayEvent } from "aws-lambda";
-import { ZodType } from "zod";
+import type { APIGatewayProxyResult, APIGatewayEvent } from "aws-lambda";
+import type { ZodType } from "zod";
 import { createAppContext } from "../appContext";
 import { extractCallerArn } from "../extractCallerArn";
 import { handleError } from "../handleError";

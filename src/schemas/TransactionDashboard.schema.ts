@@ -7,14 +7,14 @@ import { TransactionStatusSchema } from "./TransactionStatus.schema";
 extendZodWithOpenApi(z);
 
 export const DashboardPaymentMethodSchema = z
-  .enum(["Credit/Debit Card", "ACH", "PayPal"])
-  .openapi({
-    description: "Payment method used for the transaction",
-    example: "Credit/Debit Card",
-  });
+	.enum(["Credit/Debit Card", "ACH", "PayPal"])
+	.openapi({
+		description: "Payment method used for the transaction",
+		example: "Credit/Debit Card",
+	});
 
 export type DashboardPaymentMethod = z.infer<
-  typeof DashboardPaymentMethodSchema
+	typeof DashboardPaymentMethodSchema
 >;
 
 /* istanbul ignore next */

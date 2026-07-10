@@ -3,7 +3,7 @@ import {
 	convertAssumedRoleToIamArn,
 } from "./extractCallerArn";
 import { ForbiddenError } from "@errors/forbidden";
-import { APIGatewayEventRequestContext } from "aws-lambda";
+import type { APIGatewayEventRequestContext } from "aws-lambda";
 
 const createMockRequestContext = (
 	userArn?: string | null,

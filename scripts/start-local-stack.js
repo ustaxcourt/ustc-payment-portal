@@ -140,18 +140,18 @@ async function main() {
 				return;
 			}
 
-      const exitedCleanly = code === 0;
-      /* istanbul ignore next */
-      log.error(
-        `${item.name} exited ${exitedCleanly ? "unexpectedly with code 0" : `with code ${code}`}. Stopping local stack.`,
-      );
-      /* istanbul ignore else */
-      if (item.onCrashHint) {
-        log.error(item.onCrashHint);
-      }
-      /* istanbul ignore next */
-      shutdown(exitedCleanly ? 1 : code, "SIGTERM");
-    });
+			const exitedCleanly = code === 0;
+			/* istanbul ignore next */
+			log.error(
+				`${item.name} exited ${exitedCleanly ? "unexpectedly with code 0" : `with code ${code}`}. Stopping local stack.`,
+			);
+			/* istanbul ignore else */
+			if (item.onCrashHint) {
+				log.error(item.onCrashHint);
+			}
+			/* istanbul ignore next */
+			shutdown(exitedCleanly ? 1 : code, "SIGTERM");
+		});
 
 		child.on("error", (error) => {
 			log.error(`Failed to start ${item.name}:`, error);

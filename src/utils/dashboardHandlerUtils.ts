@@ -1,4 +1,4 @@
-import { APIGatewayProxyResult } from "aws-lambda";
+import type { APIGatewayProxyResult } from "aws-lambda";
 
 export const getDashboardCorsHeaders = () => {
 	const origin = process.env.DASHBOARD_ALLOWED_ORIGIN;

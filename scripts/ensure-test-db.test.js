@@ -1,5 +1,3 @@
-"use strict";
-
 // ensure-test-db.js auto-runs ensureTestDatabase() on require. Tests mock the
 // pg.Client and flush the microtask queue to let the async call settle.
 

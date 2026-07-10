@@ -1,5 +1,3 @@
-"use strict";
-
 // Register tsx so that knex can require() .ts migration and seed files at runtime.
 require("tsx/cjs");
 

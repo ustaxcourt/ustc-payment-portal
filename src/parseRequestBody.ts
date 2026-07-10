@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import { ZodType } from "zod";
+import type { ZodType } from "zod";
 import { InvalidRequestError } from "@errors/invalidRequest";
 
 /**

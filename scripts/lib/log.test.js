@@ -1,5 +1,3 @@
-"use strict";
-
 const { createLogger } = require("./log");
 
 describe("createLogger", () => {

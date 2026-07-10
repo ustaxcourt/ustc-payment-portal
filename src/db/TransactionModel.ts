@@ -54,15 +54,15 @@ export default class TransactionModel extends Model {
 	lastUpdatedAt!: string;
 	metadata?: Record<string, string> | null;
 
-  /* istanbul ignore next */
-  static get tableName() {
-    return "transactions";
-  }
+	/* istanbul ignore next */
+	static get tableName() {
+		return "transactions";
+	}
 
-  /* istanbul ignore next */
-  static get idColumn() {
-    return "agencyTrackingId";
-  }
+	/* istanbul ignore next */
+	static get idColumn() {
+		return "agencyTrackingId";
+	}
 
 	static get relationMappings() {
 		return {
@@ -151,7 +151,7 @@ export default class TransactionModel extends Model {
 		data: Partial<TransactionModel>,
 	): Promise<TransactionModel> {
 		await getKnex();
-		const newTransaction = await this.query().insertAndFetch({
+		const newTransaction = await TransactionModel.query().insertAndFetch({
 			...data,
 			paymentStatus: "pending",
 			transactionStatus: "received",
@@ -165,7 +165,7 @@ export default class TransactionModel extends Model {
 		paygovToken: string,
 	): Promise<void> {
 		await getKnex();
-		await this.query()
+		await TransactionModel.query()
 			.patch({
 				transactionStatus: "initiated",
 				paygovToken,
@@ -220,7 +220,7 @@ export default class TransactionModel extends Model {
 		};
 
 		if (expectedTransactionStatus === undefined) {
-			const updated = await this.query().patchAndFetchById(
+			const updated = await TransactionModel.query().patchAndFetchById(
 				agencyTrackingId,
 				patch,
 			);
@@ -230,7 +230,7 @@ export default class TransactionModel extends Model {
 			return updated;
 		}
 
-		const updated = (await this.query()
+		const updated = (await TransactionModel.query()
 			.patch(patch)
 			.where("agencyTrackingId", agencyTrackingId)
 			.where("transactionStatus", expectedTransactionStatus)
@@ -274,7 +274,7 @@ export default class TransactionModel extends Model {
 	): Promise<TransactionModel | undefined> {
 		const knex = await getKnex();
 		return knex.transaction(async (trx) => {
-			const row = await this.query(trx)
+			const row = await TransactionModel.query(trx)
 				.where({ paygovToken })
 				.forUpdate()
 				.noWait()
@@ -284,7 +284,7 @@ export default class TransactionModel extends Model {
 				return undefined;
 			}
 
-			const sibling = await this.query(trx)
+			const sibling = await TransactionModel.query(trx)
 				.whereIn("transactionStatus", ["pending", "processed"])
 				.where({
 					clientName: row.clientName,
@@ -301,9 +301,12 @@ export default class TransactionModel extends Model {
 				if (isStaleProcessingTransaction(row)) {
 					// Stale claim: re-touch the row so last_updated_at refreshes (DB trigger) and
 					// this request owns the in-flight completion attempt.
-					return this.query(trx).patchAndFetchById(row.agencyTrackingId, {
-						transactionStatus: "processing",
-					});
+					return TransactionModel.query(trx).patchAndFetchById(
+						row.agencyTrackingId,
+						{
+							transactionStatus: "processing",
+						},
+					);
 				}
 				throw new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE);
 			}
@@ -312,9 +315,12 @@ export default class TransactionModel extends Model {
 				throw new GoneError(TOKEN_NO_LONGER_VALID_MESSAGE);
 			}
 
-			return this.query(trx).patchAndFetchById(row.agencyTrackingId, {
-				transactionStatus: "processing",
-			});
+			return TransactionModel.query(trx).patchAndFetchById(
+				row.agencyTrackingId,
+				{
+					transactionStatus: "processing",
+				},
+			);
 		});
 	}
 
@@ -339,7 +345,7 @@ export default class TransactionModel extends Model {
 		returnDetail?: string,
 	): Promise<TransactionModel> {
 		await getKnex();
-		return this.query().patchAndFetchById(agencyTrackingId, {
+		return TransactionModel.query().patchAndFetchById(agencyTrackingId, {
 			transactionStatus: "failed",
 			paymentStatus: "failed",
 			returnCode,

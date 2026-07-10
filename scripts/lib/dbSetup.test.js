@@ -1,5 +1,3 @@
-"use strict";
-
 describe("dbSetup", () => {
 	let mockKnexInstance;
 	let mockKnexConstructor;

@@ -1,10 +1,10 @@
 import type { ProcessPaymentRequest } from "@appTypes/ProcessPaymentRequest";
-import { InitPaymentRequest } from "@schemas/InitPayment.schema";
+import type { InitPaymentRequest } from "@schemas/InitPayment.schema";
 import { isLocal } from "../../config/appEnv";
-import { GetDetailsResponse } from "@schemas/GetDetails.schema";
-import { ProcessPaymentResponse } from "@schemas/ProcessPayment.schema";
-import { PaymentStatus } from "@schemas/PaymentStatus.schema";
-import { TransactionStatus } from "@schemas/TransactionStatus.schema";
+import type { GetDetailsResponse } from "@schemas/GetDetails.schema";
+import type { ProcessPaymentResponse } from "@schemas/ProcessPayment.schema";
+import type { PaymentStatus } from "@schemas/PaymentStatus.schema";
+import type { TransactionStatus } from "@schemas/TransactionStatus.schema";
 import { signedFetch } from "./sigv4Helper";
 
 type PayGovPaymentMethod = "PLASTIC_CARD" | "ACH" | "PAYPAL";

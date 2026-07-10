@@ -127,7 +127,7 @@ jest.mock("./TransactionModel", () => {
 	};
 });
 
-import TransactionModel, { PaymentMethod } from "./TransactionModel";
+import TransactionModel, { type PaymentMethod } from "./TransactionModel";
 
 describe("TransactionModel", () => {
 	let agencyTrackingId: string;

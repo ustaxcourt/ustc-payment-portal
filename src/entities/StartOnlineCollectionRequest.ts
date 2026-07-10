@@ -1,8 +1,8 @@
 import type { RawStartOnlineCollectionRequest } from "@appTypes/RawStartOnlineCollectionRequest";
 import type { AppContext } from "@appTypes/AppContext";
-import { RequestType, SoapRequest } from "./SoapRequest";
+import { type RequestType, SoapRequest } from "./SoapRequest";
 import {
-	StartOnlineCollectionResponse,
+	type StartOnlineCollectionResponse,
 	StartOnlineCollectionResponseSchema,
 } from "@schemas/StartOnlineCollectionResponse.schema";
 

@@ -1,5 +1,3 @@
-"use strict";
-
 // ports.js has module-level state (warnedMissingLsof), so each test resets
 // modules and re-mocks dependencies to get a clean slate.
 

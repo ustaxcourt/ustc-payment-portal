@@ -1,5 +1,3 @@
-"use strict";
-
 const { EventEmitter } = require("node:events");
 const { wireChild } = require("./wireChild");
 

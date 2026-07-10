@@ -1,5 +1,5 @@
-import { z } from "zod";
-import {
+import type { z } from "zod";
+import type {
 	TransactionsByStatusPathParamsSchema,
 	TransactionsByStatusResponseSchema,
 } from "@schemas/TransactionsByStatus.schema";

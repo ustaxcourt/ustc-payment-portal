@@ -1,4 +1,4 @@
-import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
+import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { lambdaHandler } from "./lambdaHandler";
 import { GetDetailsPathParamsSchema } from "@schemas/GetDetails.schema";
 import { getDetails } from "@useCases/getDetails";

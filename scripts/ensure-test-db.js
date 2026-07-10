@@ -8,11 +8,11 @@ const BASE_DB_NAME = process.env.DB_NAME || "mydb";
 const TEST_DB_NAME = `${BASE_DB_NAME}_test`;
 
 function quoteIdentifier(identifier) {
-  /* istanbul ignore if */
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(identifier)) {
-    throw new Error(`Invalid database name: ${identifier}`)
-  }
-  return `"${identifier.replace(/"/g, '""')}"`
+	/* istanbul ignore if */
+	if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(identifier)) {
+		throw new Error(`Invalid database name: ${identifier}`);
+	}
+	return `"${identifier.replace(/"/g, '""')}"`;
 }
 
 async function ensureTestDatabase() {

@@ -54,12 +54,12 @@ jest.mock("../health/initPaymentConcurrencyMetric", () => ({
 
 import { initPayment } from "./initPayment";
 import { testAppContext as appContext } from "../test/testAppContext";
-import { InitPaymentRequest } from "@schemas/InitPayment.schema";
+import type { InitPaymentRequest } from "@schemas/InitPayment.schema";
 import * as SoapRequestModule from "@entities/StartOnlineCollectionRequest";
 import { ZodError } from "zod";
 import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
-import { ClientPermission } from "../types/ClientPermission";
+import type { ClientPermission } from "../types/ClientPermission";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 

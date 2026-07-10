@@ -1,5 +1,3 @@
-"use strict";
-
 describe("start-pay-gov-test-server", () => {
 	let mockSpawn;
 	let mockLog;

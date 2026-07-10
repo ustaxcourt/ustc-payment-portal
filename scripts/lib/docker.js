@@ -18,24 +18,24 @@ function startDockerLogsStream(sinceTimestamp) {
 		},
 	);
 
-  /* istanbul ignore next */
-  dockerLogsProcess.on("error", (error) => {
-    log.warn(`Failed to stream docker logs: ${error.message}`);
-  });
+	/* istanbul ignore next */
+	dockerLogsProcess.on("error", (error) => {
+		log.warn(`Failed to stream docker logs: ${error.message}`);
+	});
 
-  /* istanbul ignore next */
-  dockerLogsProcess.on("close", (code, signal) => {
-    if (!dockerStarted) {
-      return;
-    }
-    if (signal) {
-      log.info(`Docker logs stream stopped (${signal}).`);
-      return;
-    }
-    if (code !== 0) {
-      log.warn(`Docker logs stream exited with code ${code}.`);
-    }
-  });
+	/* istanbul ignore next */
+	dockerLogsProcess.on("close", (code, signal) => {
+		if (!dockerStarted) {
+			return;
+		}
+		if (signal) {
+			log.info(`Docker logs stream stopped (${signal}).`);
+			return;
+		}
+		if (code !== 0) {
+			log.warn(`Docker logs stream exited with code ${code}.`);
+		}
+	});
 }
 
 function startDockerStack() {
@@ -76,11 +76,11 @@ function stopDockerStack() {
 	}
 	dockerStarted = false;
 
-  /* istanbul ignore else */
-  if (dockerLogsProcess && !dockerLogsProcess.killed) {
-    dockerLogsProcess.kill("SIGTERM");
-  }
-  dockerLogsProcess = null;
+	/* istanbul ignore else */
+	if (dockerLogsProcess && !dockerLogsProcess.killed) {
+		dockerLogsProcess.kill("SIGTERM");
+	}
+	dockerLogsProcess = null;
 
 	log.info("Stopping docker compose stack...");
 	spawnSync("docker", ["compose", "stop"], {

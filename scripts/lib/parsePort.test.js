@@ -1,5 +1,3 @@
-"use strict";
-
 const { parsePort } = require("./parsePort");
 
 describe("parsePort", () => {
