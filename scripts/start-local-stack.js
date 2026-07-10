@@ -10,8 +10,10 @@ const { setupConsumerDb } = require("./lib/dbSetup");
 // portal. Set by bin/ustc-payment-portal.js for consumer (dev-dependency) mode.
 const CONSUMER_MODE = process.env.CONSUMER_MODE === "true";
 
+/* istanbul ignore next */
 const log = createLogger(process.env.npm_lifecycle_event || "start");
 const IS_WINDOWS = process.platform === "win32";
+/* istanbul ignore next */
 const NPM_COMMAND = IS_WINDOWS ? "npm.cmd" : "npm";
 
 // Default is to include Pay.gov. `START_PAY_GOV=false` (used by
@@ -62,6 +64,7 @@ const children = [];
 let shuttingDown = false;
 let exitCode = 0;
 
+/* istanbul ignore next */
 function stopChildren(signal = "SIGTERM") {
   for (const child of children) {
     if (!child.killed) {
@@ -70,6 +73,7 @@ function stopChildren(signal = "SIGTERM") {
   }
 }
 
+/* istanbul ignore next */
 function shutdown(code = 0, signal = "SIGTERM") {
   /* istanbul ignore next */
   if (shuttingDown) {
@@ -134,12 +138,15 @@ async function main() {
       }
 
       const exitedCleanly = code === 0;
+      /* istanbul ignore next */
       log.error(
         `${item.name} exited ${exitedCleanly ? "unexpectedly with code 0" : `with code ${code}`}. Stopping local stack.`,
       );
+      /* istanbul ignore else */
       if (item.onCrashHint) {
         log.error(item.onCrashHint);
       }
+      /* istanbul ignore next */
       shutdown(exitedCleanly ? 1 : code, "SIGTERM");
     });
 

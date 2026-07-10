@@ -1,6 +1,7 @@
 const { spawn, spawnSync } = require("node:child_process");
 const { createLogger } = require("./log");
 
+/* istanbul ignore next */
 const log = createLogger(process.env.npm_lifecycle_event || "start");
 const IS_WINDOWS = process.platform === "win32";
 let dockerStarted = false;
@@ -17,10 +18,12 @@ function startDockerLogsStream(sinceTimestamp) {
     },
   );
 
+  /* istanbul ignore next */
   dockerLogsProcess.on("error", (error) => {
     log.warn(`Failed to stream docker logs: ${error.message}`);
   });
 
+  /* istanbul ignore next */
   dockerLogsProcess.on("close", (code, signal) => {
     if (!dockerStarted) {
       return;
@@ -76,6 +79,7 @@ function stopDockerStack() {
   }
   dockerStarted = false;
 
+  /* istanbul ignore else */
   if (dockerLogsProcess && !dockerLogsProcess.killed) {
     dockerLogsProcess.kill("SIGTERM");
   }

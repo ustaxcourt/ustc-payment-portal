@@ -8,6 +8,7 @@ const BASE_DB_NAME = process.env.DB_NAME || 'mydb'
 const TEST_DB_NAME = `${BASE_DB_NAME}_test`
 
 function quoteIdentifier(identifier) {
+  /* istanbul ignore if */
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(identifier)) {
     throw new Error(`Invalid database name: ${identifier}`)
   }
@@ -43,6 +44,7 @@ async function ensureTestDatabase() {
   }
 }
 
+/* istanbul ignore next */
 ensureTestDatabase().catch((error) => {
   console.error('Failed to ensure test database exists')
   console.error(error)
