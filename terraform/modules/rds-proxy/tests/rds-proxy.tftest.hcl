@@ -90,3 +90,27 @@ run "rejects_idle_percent_above_max" {
 
   expect_failures = [var.max_idle_connections_percent]
 }
+
+# When a CMK is provided, kms:Decrypt is scoped to that key ARN (not "*").
+run "secret_kms_key_arn_scopes_kms_policy" {
+  command = plan
+
+  variables {
+    name                    = "ustc-payment-portal-prod-proxy"
+    secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:rds!abcdef"
+    rds_instance_identifier = "ustc-payment-portal-prod"
+    vpc_subnet_ids          = ["subnet-111111", "subnet-222222"]
+    vpc_security_group_ids  = ["sg-111111"]
+    secret_kms_key_arn      = "arn:aws:kms:us-east-1:123456789012:key/abcd-1234"
+  }
+
+  assert {
+    condition     = strcontains(aws_iam_role_policy.secret_access.policy, "arn:aws:kms:us-east-1:123456789012:key/abcd-1234")
+    error_message = "kms:Decrypt should be scoped to the provided CMK ARN"
+  }
+
+  assert {
+    condition     = !strcontains(aws_iam_role_policy.secret_access.policy, "\"Resource\":\"*\"")
+    error_message = "no statement should use Resource \"*\" when a CMK is provided"
+  }
+}
