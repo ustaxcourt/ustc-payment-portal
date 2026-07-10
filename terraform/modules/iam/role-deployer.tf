@@ -69,7 +69,15 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "lambda:AddPermission",
           "lambda:RemovePermission",
           "lambda:TagResource",
-          "lambda:UntagResource"
+          "lambda:UntagResource",
+          "lambda:CreateAlias",
+          "lambda:UpdateAlias",
+          "lambda:DeleteAlias",
+          "lambda:GetAlias",
+          "lambda:ListAliases",
+          "lambda:PutProvisionedConcurrencyConfig",
+          "lambda:GetProvisionedConcurrencyConfig",
+          "lambda:DeleteProvisionedConcurrencyConfig"
         ],
         Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.lambda_name_prefix}*"
       },

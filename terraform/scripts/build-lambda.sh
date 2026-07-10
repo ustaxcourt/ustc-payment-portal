@@ -30,6 +30,8 @@ KNEX_EXTERNALS=(
   --external:sqlite3
   --external:mysql
   --external:mysql2
+  --external:mariadb
+  --external:mariadb/callback
   --external:tedious
   --external:pg-query-stream
   --external:better-sqlite3
