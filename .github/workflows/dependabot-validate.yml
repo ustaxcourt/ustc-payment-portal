@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   tests_only:
-    if: ${{ github.actor == 'dependabot[bot]' || startsWith(github.head_ref, 'dependabot/') }}
     runs-on: ubuntu-latest
 
     steps:
