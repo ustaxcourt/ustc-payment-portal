@@ -12,6 +12,7 @@ env:
   APP_ENV: 'local'
   NODE_ENV: 'development'
   LOG_LEVEL: 'debug'
+  DB_PORT: 5433
 
 jobs:
   tests_only:
