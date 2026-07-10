@@ -29,4 +29,14 @@ run "bucket_hardening_defaults" {
     condition     = aws_s3_bucket_public_access_block.build_artifacts.block_public_policy && aws_s3_bucket_public_access_block.build_artifacts.block_public_acls
     error_message = "artifact bucket should block public ACLs and policies"
   }
+
+  assert {
+    condition     = aws_s3_bucket_public_access_block.build_artifacts.ignore_public_acls && aws_s3_bucket_public_access_block.build_artifacts.restrict_public_buckets
+    error_message = "artifact bucket should ignore public ACLs and restrict public bucket policies"
+  }
+
+  assert {
+    condition     = one(one(aws_s3_bucket_server_side_encryption_configuration.build_artifacts.rule).apply_server_side_encryption_by_default).sse_algorithm == "AES256"
+    error_message = "artifact bucket should enforce AES256 server-side encryption at rest"
+  }
 }
