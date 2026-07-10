@@ -10,7 +10,9 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
-  contents: read
+  id-token: write       # OIDC for AWS role assumption
+  contents: read        # checkout
+  pull-requests: write  # PR comment
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
@@ -46,9 +48,6 @@ jobs:
     needs: check_actor
     if: needs.check_actor.outputs.is_dependabot != 'true'
     name: Plan (${{ matrix.env }})
-    permissions:
-      id-token: write
-      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -169,9 +168,6 @@ jobs:
     name: Post unified plan comment
     needs: [check_actor, plan]
     if: ${{ always() && github.event.pull_request.number && needs.check_actor.outputs.is_dependabot != 'true' }}
-    permissions:
-      contents: read
-      pull-requests: write
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

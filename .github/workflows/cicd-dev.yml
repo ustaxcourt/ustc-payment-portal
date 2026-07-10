@@ -13,7 +13,9 @@ on:
         default: false
 
 permissions:
+  id-token: write
   contents: read
+  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -42,9 +44,6 @@ jobs:
     needs: check_actor
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && needs.check_actor.outputs.is_dependabot != 'true'
     name: PR Build/Test and Ephemeral Deploy (Dev Account)
-    permissions:
-      id-token: write
-      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -375,9 +374,6 @@ jobs:
     needs: check_actor
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && needs.check_actor.outputs.is_dependabot != 'true'
     name: PR Cleanup (Destroy Ephemeral Env)
-    permissions:
-      id-token: write
-      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
