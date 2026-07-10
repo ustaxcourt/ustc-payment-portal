@@ -575,7 +575,8 @@ resource "aws_api_gateway_method_settings" "details_throttle" {
 resource "aws_lambda_permission" "init_permission" {
   statement_id  = "AllowAPIGatewayInvokeInit"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_function_arns["initPayment"]
+  function_name = trimsuffix(var.lambda_function_arns["initPayment"], ":live")
+  qualifier     = "live"
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/POST/init"
 }
@@ -583,7 +584,8 @@ resource "aws_lambda_permission" "init_permission" {
 resource "aws_lambda_permission" "process_permissions" {
   statement_id  = "AllowAPIGatewayInvokeProcess"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_function_arns["processPayment"]
+  function_name = trimsuffix(var.lambda_function_arns["processPayment"], ":live")
+  qualifier     = "live"
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/POST/process"
 }
@@ -599,7 +601,8 @@ resource "aws_lambda_permission" "test_permissions" {
 resource "aws_lambda_permission" "details_permissions" {
   statement_id  = "AllowAPIGatewayInvokeDetails"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_function_arns["getDetails"]
+  function_name = trimsuffix(var.lambda_function_arns["getDetails"], ":live")
+  qualifier     = "live"
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/details/*"
 }
