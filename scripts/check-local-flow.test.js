@@ -42,7 +42,7 @@ describe("check-local-flow", () => {
 			}),
 		}));
 		jest.doMock("./lib/parsePort", () => ({
-			parsePort: jest.fn((value, fallback) => fallback),
+			parsePort: jest.fn((_value, fallback) => fallback),
 		}));
 
 		delete process.env.FEE_ID;
