@@ -61,9 +61,16 @@ describe("handleError", () => {
 
 	it("returns 400 with validation details for ZodErrors", () => {
 		const schema = z.object({ trackingId: z.string() });
-		const { error } = schema.safeParse({});
+		const parsed = schema.safeParse({});
 
-		const result = handleError(mockAppContext, error!);
+		expect(parsed.success).toBe(false);
+
+		if (parsed.success) {
+			throw new Error("Expected validation failure");
+		}
+
+		const result = handleError(mockAppContext, parsed.error);
+
 		expect(result.statusCode).toBe(400);
 
 		const body = JSON.parse(result.body);
@@ -146,12 +153,21 @@ describe("handleError", () => {
 
 		it("emits logger.warn for ZodError (validation = 4xx)", () => {
 			const schema = z.object({ trackingId: z.string() });
-			const { error } = schema.safeParse({});
-			handleError(mockAppContext, error!);
+			const parsed = schema.safeParse({});
+
+			expect(parsed.success).toBe(false);
+
+			if (parsed.success) {
+				throw new Error("Expected validation failure");
+			}
+
+			handleError(mockAppContext, parsed.error);
+
 			expect(mockAppContext.logger.warn).toHaveBeenCalledWith(
 				"Lambda handler returned a client error",
 				expect.objectContaining({ statusCode: 400 }),
 			);
+
 			expect(mockAppContext.logger.error).not.toHaveBeenCalled();
 		});
 

@@ -4,21 +4,22 @@ const findById = jest.fn();
 
 jest.mock("./FeesModel", () => {
 	const actual = jest.requireActual("./FeesModel");
+
+	const query = jest.fn(() => ({
+		orderBy,
+		findById,
+	}));
+
+	const MockFeesModel = {
+		query,
+		getAll: jest.fn(() => query().orderBy("createdAt", "desc")),
+		getFeeById: jest.fn((feeId) => query().findById(feeId) || undefined),
+	};
+
 	return {
 		__esModule: true,
 		...actual,
-		default: class MockFeesModel {
-			static getAll = jest.fn(() => {
-				return MockFeesModel.query().orderBy("createdAt", "desc");
-			});
-			static getFeeById = jest.fn((feeId) => {
-				return MockFeesModel.query().findById(feeId) || undefined;
-			});
-			static query = jest.fn(() => ({
-				orderBy,
-				findById,
-			}));
-		},
+		default: MockFeesModel,
 	};
 });
 
