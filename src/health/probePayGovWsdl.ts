@@ -1,5 +1,5 @@
+import type * as https from "node:https";
 import fetch from "node-fetch";
-import type * as https from "https";
 
 export type WsdlProbeResult = { ok: boolean; latencyMs: number; body: string };
 

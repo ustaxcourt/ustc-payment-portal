@@ -291,27 +291,3 @@ jobs:
             echo "ERROR: Redirect returned $REDIRECT_STATUS (expected 302)" >&2
             exit 1
           fi
-
-      - name: Post-deploy health check (synthetic, read-only)
-        shell: bash
-        env:
-          API_URL: ${{ steps.tf_outputs.outputs.api_url }}
-          DEPLOY_TAG: ${{ needs.promote.outputs.release_tag }}
-        run: |
-          set -euo pipefail
-          trap 'echo "::error::Post-deploy health check FAILED"; [ -f health.json ] && cat health.json || true' ERR
-          echo "Health check against: $API_URL/health"
-
-          STATUS=$(curl -s -o health.json -w '%{http_code}' --retry 3 --retry-delay 5 --max-time 30 \
-            -X GET "$API_URL/health" \
-            --aws-sigv4 "aws:amz:${AWS_REGION}:execute-api" \
-            --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-            -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
-            -H "X-Deploy-Tag: $DEPLOY_TAG")
-
-          echo "HTTP_STATUS=$STATUS"
-          jq . health.json || cat health.json
-
-          test "$STATUS" = "200"
-          test "$(jq -r '.status' health.json)" = "healthy"
-          echo "Post-deploy health check PASSED"

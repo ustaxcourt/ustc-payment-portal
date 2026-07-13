@@ -157,6 +157,8 @@ jobs:
           API_URL=$(terraform output -raw api_gateway_url)
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
           echo "API Gateway URL: $API_URL"
+          ALERTS_SNS_TOPIC_ARN=$(terraform output -raw alerts_sns_topic_arn)
+          echo "alerts_sns_topic_arn=$ALERTS_SNS_TOPIC_ARN" >> $GITHUB_OUTPUT
 
       - name: Post-deploy health check (synthetic, read-only)
         if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
@@ -191,3 +193,20 @@ jobs:
           path: health.json
           retention-days: 30
           if-no-files-found: ignore
+
+      - name: Notify on deploy failure (SNS -> Teams/email)
+        if: ${{ failure() && steps.tf_outputs.outputs.alerts_sns_topic_arn != '' }}
+        run: |
+          set -uo pipefail
+          SUMMARY="No /health response was captured; the failure may have occurred before the health check ran."
+          if [ -f health.json ]; then
+            FAILED=$(jq -r '.checks | to_entries | map(select(.value.status == "failed") | "\(.key)=\(.value.error // "failed")") | join("; ")' health.json 2>/dev/null || true)
+            [ -n "$FAILED" ] && SUMMARY="Failing checks: $FAILED"
+          fi
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          MSG=$(printf 'Production deployment %s failed.\n%s\nRun: %s\nDiagnostics: download the prod-deploy-health-failure-%s artifact.' \
+            "${{ needs.promote.outputs.tag }}" "$SUMMARY" "$RUN_URL" "${{ github.run_id }}")
+          aws sns publish \
+            --topic-arn "${{ steps.tf_outputs.outputs.alerts_sns_topic_arn }}" \
+            --subject "Prod deploy FAILED - ${{ needs.promote.outputs.tag }}" \
+            --message "$MSG"
