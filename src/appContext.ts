@@ -1,3 +1,4 @@
+import * as https from "node:https";
 import type { AppContext } from "@appTypes/AppContext";
 import { getSecretString } from "@clients/secretsClient";
 import { getDetails } from "@useCases/getDetails";
@@ -8,7 +9,6 @@ import { initPayment } from "@useCases/initPayment";
 import { processPayment } from "@useCases/processPayment";
 import { createRequestLogger } from "@utils/logger";
 import type { APIGatewayEvent } from "aws-lambda";
-import * as https from "node:https";
 import fetch from "node-fetch";
 import { isLocal } from "./config/appEnv";
 
