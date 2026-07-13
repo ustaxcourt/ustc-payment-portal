@@ -37,7 +37,7 @@ describe("FeesModel.getActiveFeeByKey", () => {
 		);
 		expect(cutoffCall).toBeDefined();
 
-		const cutoff = cutoffCall![2] as string;
+		const cutoff = cutoffCall?.[2] as string;
 		expect(cutoff >= before && cutoff <= after).toBe(true);
 	});
 
