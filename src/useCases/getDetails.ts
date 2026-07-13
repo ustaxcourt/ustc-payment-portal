@@ -13,6 +13,7 @@ import {
 } from "@utils/derivePaymentStatus";
 import { toPaymentMethod } from "@utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
+import type { PayGovGetDetailsTransaction } from "@/schemas/PayGovGetDetailsResponse.schema";
 import { authorizeClient } from "../authorizeClient";
 import FeesModel from "../db/FeesModel";
 import TransactionModel from "../db/TransactionModel";
@@ -123,8 +124,8 @@ const updatePendingAttemptFromPayGov = async (
 				tcsAppId,
 				payGovTrackingId: row.paygovTrackingId,
 			});
-			let refreshedStatus;
-			let result;
+			let refreshedStatus: TransactionStatus;
+			let result: PayGovGetDetailsTransaction;
 			try {
 				result = await req.makeSoapRequest(appContext);
 				refreshedStatus = parseTransactionStatus(result.transaction_status);
