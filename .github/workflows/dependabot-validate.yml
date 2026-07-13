@@ -1,16 +1,17 @@
 name: Dependabot Validate
+# Note: To test, add workflow_dispatch and comment the if condition in the jobs section below.
 
 on:
   pull_request:
     branches: [main]
-  workflow_dispatch:
+  # workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   tests_only:
-    if: ${{ github.actor == 'dependabot[bot]' || startsWith(github.head_ref,'dependabot/') }}
+    if: ${{ github.actor == 'dependabot[bot]' || startsWith(github.head_ref, 'dependabot/') }}
     runs-on: ubuntu-latest
 
     steps:
@@ -33,5 +34,59 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint:ci
+
       - name: Run just the unit tests
         run: npm test
+
+      - name: Start local stack
+        env:
+          APP_ENV: 'local'
+          NODE_ENV: 'development'
+          LOG_LEVEL: 'debug'
+          BASE_URL: 'http://localhost:8080'
+          API_PORT: 8080
+
+          DB_HOST: 'localhost'
+          DB_PORT: 5433
+          DB_USER: 'user'
+          DB_PASSWORD: 'password'
+          DB_NAME: 'mydb'
+
+          PAY_GOV_TEST_SERVER_PORT: 3366
+          PAY_GOV_TEST_SERVER_ACCESS_TOKEN: 'development-token'
+          PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID: 'development-token'
+          PAY_GOV_NODE_ENV: 'local'
+          SOAP_URL: 'http://localhost:3366/wsdl'
+          PAYMENT_URL: 'http://localhost:3366/pay'
+        run: npm run start:all > local-stack.log 2>&1 &
+
+      - name: Wait for local stack readiness
+        env:
+          BASE_URL: http://localhost:8080
+        run: |
+          for attempt in {1..12}; do
+            if npm run check:local-flow; then
+              exit 0
+            fi
+
+            echo "Local stack not ready yet (attempt ${attempt}/12)."
+            sleep 10
+          done
+
+          echo "Local stack failed to become ready."
+          cat local-stack.log
+          exit 1
+
+      - name: Local integration tests
+        env:
+          BASE_URL: http://localhost:8080
+        run: npm run test:integration:dev
+
+      - name: Security audit
+        run: npm audit --audit-level=high
+
+      - name: Dump local stack log
+        if: ${{ always() }}
+        run: cat local-stack.log
