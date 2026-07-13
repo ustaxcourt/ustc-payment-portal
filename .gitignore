@@ -15,3 +15,6 @@ dist/
 
 *.tgz
 .DS_Store
+
+terraform/modules/**/.terraform/
+terraform/modules/**/.terraform.lock.hcl

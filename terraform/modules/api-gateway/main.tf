@@ -3,6 +3,16 @@
 ###############################
 locals {
   enable_dashboard_endpoints = var.environment == "dev" || startswith(var.environment, "pr-")
+
+  # Anonymous invoke paths added to the API resource policy when enable_public_dashboard is set.
+  public_dashboard_resource_arns = var.enable_public_dashboard ? [
+    "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transactions",
+    "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transactions/*",
+    "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transaction-payment-status",
+    "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transactions",
+    "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transactions/*",
+    "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transaction-payment-status",
+  ] : []
 }
 
 resource "aws_api_gateway_resource" "transactions" {
@@ -333,7 +343,7 @@ data "aws_iam_policy_document" "api_resource_policy" {
   # Allow unauthenticated browser requests to dashboard endpoints only.
   # Scoped to GET and OPTIONS on the three dashboard paths — /init, /process, /details remain SigV4-only.
   dynamic "statement" {
-    for_each = var.enable_public_dashboard ? [1] : []
+    for_each = length(local.public_dashboard_resource_arns) > 0 ? [1] : []
 
     content {
       effect = "Allow"
@@ -341,15 +351,8 @@ data "aws_iam_policy_document" "api_resource_policy" {
         type        = "*"
         identifiers = ["*"]
       }
-      actions = ["execute-api:Invoke"]
-      resources = [
-        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transactions",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transactions/*",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transaction-payment-status",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transactions",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transactions/*",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transaction-payment-status",
-      ]
+      actions   = ["execute-api:Invoke"]
+      resources = local.public_dashboard_resource_arns
     }
   }
 }
