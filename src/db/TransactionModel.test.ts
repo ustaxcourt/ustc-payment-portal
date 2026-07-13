@@ -119,9 +119,6 @@ jest.mock("./TransactionModel", () => {
 							: undefined,
 					),
 			);
-			constructor() {
-				// intentionally left blank
-			}
 			$parseDatabaseJson(json: Record<string, unknown>) {
 				return MockTransactionModel.$parseDatabaseJson(json);
 			}
