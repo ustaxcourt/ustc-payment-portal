@@ -8,7 +8,7 @@ import { initPayment } from "@useCases/initPayment";
 import { processPayment } from "@useCases/processPayment";
 import { createRequestLogger } from "@utils/logger";
 import type { APIGatewayEvent } from "aws-lambda";
-import * as https from "https";
+import * as https from "node:https";
 import fetch from "node-fetch";
 import { isLocal } from "./config/appEnv";
 

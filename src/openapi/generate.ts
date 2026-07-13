@@ -4,9 +4,9 @@
  * Run with: npm run generate:openapi
  */
 
-import * as fs from "fs";
+import * as fs from "node:fs";
 import * as yaml from "js-yaml";
-import * as path from "path";
+import * as path from "node:path";
 import { generateOpenAPIDocument } from "./registry";
 
 const outputDir = path.resolve(__dirname, "../../docs");
