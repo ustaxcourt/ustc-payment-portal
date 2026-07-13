@@ -2,10 +2,10 @@ import {
 	GetSecretValueCommand,
 	SecretsManagerClient,
 } from "@aws-sdk/client-secrets-manager";
-import fs from "fs";
+import fs from "node:fs";
 import Knex from "knex";
 import { knexSnakeCaseMappers } from "objection";
-import path from "path";
+import path from "node:path";
 import { parseRdsEndpoint } from "./db/getRdsCredentials";
 
 type Command =

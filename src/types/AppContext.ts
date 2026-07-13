@@ -4,7 +4,7 @@ import type { GetTransactionPaymentStatus } from "@useCases/getTransactionPaymen
 import type { GetTransactionsByStatus } from "@useCases/getTransactionsByStatus";
 import type { InitPayment } from "@useCases/initPayment";
 import type { ProcessPayment } from "@useCases/processPayment";
-import type * as https from "https";
+import type * as https from "node:https";
 
 export type AppContextLogger = {
 	debug: (message: string, additionalFields?: Record<string, unknown>) => void;

@@ -22,6 +22,11 @@
 		"enabled": true
 	},
 	"files": {
-		"includes": ["**"]
+		"includes": [
+			"**",
+			"!docs/openapi.json",
+			"!docs/openapi.yaml",
+			"!src/health/emf.ts"
+		]
 	}
 }

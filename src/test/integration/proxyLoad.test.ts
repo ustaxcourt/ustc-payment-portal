@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { signedFetch } from "./sigv4Helper";
 
 // Leaves rows behind (no delete API). Purge: DELETE FROM transactions WHERE metadata->>'docketNumber' = 'load-test';
