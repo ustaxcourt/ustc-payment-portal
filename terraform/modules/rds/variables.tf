@@ -82,6 +82,11 @@ variable "final_snapshot_identifier" {
   description = "Snapshot identifier for final snapshot when skip_final_snapshot is false (required for prod deletion)"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.skip_final_snapshot || var.final_snapshot_identifier != null
+    error_message = "final_snapshot_identifier is required when skip_final_snapshot is false (AWS otherwise fails at deletion time)."
+  }
 }
 
 variable "log_statement" {
