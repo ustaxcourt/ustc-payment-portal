@@ -231,7 +231,9 @@ describe("src/utils/logger.ts", () => {
 
 					const { logger } = await loadLoggerModule();
 
-					LEVEL_ORDER.forEach((lvl) => (logger as any)[lvl](`log at ${lvl}`));
+					LEVEL_ORDER.forEach((lvl) => {
+						(logger as any)[lvl](`log at ${lvl}`);
+					});
 
 					const output = stdoutSpy.mock.calls
 						.map(([c]) => String(c))
