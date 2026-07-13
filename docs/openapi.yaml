@@ -886,6 +886,8 @@ components:
           type: string
         timestamp:
           type: string
+        releaseTag:
+          type: string
         checks:
           type: object
           properties:
@@ -919,6 +921,9 @@ components:
           type: number
         error:
           type: string
+        details:
+          type: object
+          additionalProperties: {}
       required:
         - status
         - latencyMs

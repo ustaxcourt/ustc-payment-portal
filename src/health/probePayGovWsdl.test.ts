@@ -39,4 +39,10 @@ describe("probePayGovWsdl", () => {
     const result = await probePayGovWsdl(undefined);
     expect(result.ok).toBe(false);
   });
+
+  it("rejects when fetch fails with a network error", async () => {
+    mockFetch.mockRejectedValue(new Error("network down"));
+
+    await expect(probePayGovWsdl(undefined)).rejects.toThrow("network down");
+  });
 });

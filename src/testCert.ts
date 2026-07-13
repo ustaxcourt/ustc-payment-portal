@@ -1,16 +1,18 @@
+import { getSecretString } from "@clients/secretsClient";
+import { runDeployHealthCheck } from "@useCases/runDeployHealthCheck";
+import { logger } from "@utils/logger";
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "./appContext";
-import { getSecretString } from "@clients/secretsClient";
+import { getKnex } from "./db/knex";
 import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
 import { probePayGovWsdl } from "./health/probePayGovWsdl";
-import { runDeployHealthCheck } from "@useCases/runDeployHealthCheck";
+
+void getKnex().catch((err) =>
+  logger.error({ err }, "[testCert] getKnex prewarm failed"),
+);
 
 type TestCertEvent = { healthProbe?: boolean } | APIGatewayProxyEvent;
 
-// Handler for /test and /health, plus the scheduled Pay.gov health probe.
-//   - API GW GET /health  → synthetic, read-only deploy health check (JSON)
-//   - API GW GET /test    → on-demand Pay.gov WSDL response (unchanged)
-//   - { healthProbe: true }→ EventBridge probe; emits PayGovHealthy metric
 export const handler = async (
   event?: TestCertEvent,
 ): Promise<APIGatewayProxyResult> => {
@@ -18,7 +20,10 @@ export const handler = async (
     const route = event.resource ?? event.path ?? "";
     if (route.endsWith("/health")) {
       const appContext = createAppContext({ lambdaRequest: event });
-      const report = await runDeployHealthCheck(appContext);
+      const releaseTag = Object.entries(event.headers ?? {}).find(
+        ([name]) => name.toLowerCase() === "x-deploy-tag",
+      )?.[1];
+      const report = await runDeployHealthCheck(appContext, releaseTag);
       appContext.logger.info("deploy health check", { checks: report.checks });
       return {
         statusCode: report.status === "healthy" ? 200 : 503,
@@ -33,8 +38,6 @@ export const handler = async (
   return runWsdlProbe(isScheduledProbe);
 };
 
-// On-demand /test response and scheduled Pay.gov WSDL probe. The scheduled run
-// publishes a PayGovHealthy CloudWatch metric; on-demand callers get the WSDL.
 async function runWsdlProbe(
   isScheduledProbe: boolean,
 ): Promise<APIGatewayProxyResult> {

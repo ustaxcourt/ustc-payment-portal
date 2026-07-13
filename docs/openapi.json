@@ -994,6 +994,9 @@
           "timestamp": {
             "type": "string"
           },
+          "releaseTag": {
+            "type": "string"
+          },
           "checks": {
             "type": "object",
             "properties": {
@@ -1040,6 +1043,10 @@
           },
           "error": {
             "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {}
           }
         },
         "required": [

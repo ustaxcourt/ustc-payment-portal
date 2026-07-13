@@ -8,6 +8,7 @@ const HealthCheckResultSchema = z
     status: z.enum(["ok", "failed"]),
     latencyMs: z.number(),
     error: z.string().optional(),
+    details: z.record(z.string(), z.unknown()).optional(),
   })
   .openapi("HealthCheckResult");
 
@@ -16,6 +17,7 @@ export const DeployHealthReportSchema = z
     status: z.enum(["healthy", "unhealthy"]),
     environment: z.string(),
     timestamp: z.string(),
+    releaseTag: z.string().optional(),
     checks: z.object({
       secrets: HealthCheckResultSchema,
       ssm: HealthCheckResultSchema,

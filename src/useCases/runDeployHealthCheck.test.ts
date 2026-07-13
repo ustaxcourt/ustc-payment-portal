@@ -96,4 +96,25 @@ describe("runDeployHealthCheck", () => {
 
     expect(report.environment).toBe("unknown");
   });
+
+  it("fails the ssm check when the parameter is not a JSON array", async () => {
+    mockGetParam.mockResolvedValue('{"oops":true}');
+
+    const report = await runDeployHealthCheck(appContext);
+
+    expect(report.checks.ssm.status).toBe("failed");
+  });
+
+  it("reports secrets details and includes releaseTag when provided", async () => {
+    delete process.env.CERT_PASSPHRASE_SECRET_ID;
+
+    const report = await runDeployHealthCheck(appContext, "v1.2.3-dev.45");
+
+    expect(report.releaseTag).toBe("v1.2.3-dev.45");
+    expect(report.checks.secrets.details).toMatchObject({
+      privateKey: true,
+      certificate: true,
+      passphraseConfigured: false,
+    });
+  });
 });

@@ -1,6 +1,6 @@
 import { signedFetch } from "./sigv4Helper";
 
-jest.setTimeout(30000); // health check fans out to RDS, SSM, Secrets, Pay.gov
+jest.setTimeout(30000);
 
 const hasSigningCredentials =
   Boolean(process.env.AWS_ACCESS_KEY_ID) &&
@@ -14,11 +14,6 @@ const mustGetBaseUrl = (): string => {
   return url;
 };
 
-/**
- * Post-deploy health gate. Signs GET /health with the caller's AWS credentials
- * (execute-api:Invoke) and asserts every dependency check passed. Unlike /init,
- * /health does NOT call authorizeClient, so no client-permissions entry is needed.
- */
 const describeWithCreds = hasSigningCredentials ? describe : describe.skip;
 
 describeWithCreds("GET /health deploy gate", () => {

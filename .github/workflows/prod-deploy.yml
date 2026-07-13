@@ -158,26 +158,23 @@ jobs:
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
           echo "API Gateway URL: $API_URL"
 
-      # Synthetic, read-only post-deploy gate. We deliberately do NOT smoke-test
-      # POST /init in Prod — that creates real payment state. GET /health probes
-      # each dependency (Secrets, SSM, RDS, Pay.gov) server-side and returns JSON.
       - name: Post-deploy health check (synthetic, read-only)
         if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
         shell: bash
         env:
           API_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          DEPLOY_TAG: ${{ needs.promote.outputs.tag }}
         run: |
           set -euo pipefail
           trap 'echo "::error::Post-deploy health check FAILED"; [ -f health.json ] && cat health.json || true' ERR
           echo "Health check against: $API_URL/health"
 
-          # SigV4-signed with the ephemeral OIDC deploy credentials. --retry covers
-          # transient connection errors only (a 503 is a real failure, not retried).
           STATUS=$(curl -s -o health.json -w '%{http_code}' --retry 3 --retry-delay 5 --max-time 30 \
             -X GET "$API_URL/health" \
             --aws-sigv4 "aws:amz:${AWS_REGION}:execute-api" \
             --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-            -H "x-amz-security-token: $AWS_SESSION_TOKEN")
+            -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+            -H "X-Deploy-Tag: $DEPLOY_TAG")
 
           echo "HTTP_STATUS=$STATUS"
           jq . health.json || cat health.json
@@ -185,3 +182,12 @@ jobs:
           test "$STATUS" = "200"
           test "$(jq -r '.status' health.json)" = "healthy"
           echo "Post-deploy health check PASSED"
+
+      - name: Upload health check diagnostics on failure
+        if: ${{ failure() && steps.tf_outputs.outputs.api_url != '' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: prod-deploy-health-failure-${{ github.run_id }}
+          path: health.json
+          retention-days: 30
+          if-no-files-found: ignore

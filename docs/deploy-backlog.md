@@ -18,7 +18,7 @@ Context for all items: [`deploy-pre-golive.md`](runbooks/deploy/deploy-pre-goliv
 
 ## Part 1 — Automated tests to build
 
-### T1. Prod post-deploy smoke / health check *(synthetic, read-only)* — DONE (PAY-350)
+### T1. Prod post-deploy smoke / health check *(synthetic, read-only)* — DONE
 
 - **Priority:** High
 - **Delivered:** `prod-deploy.yml` runs a SigV4-signed `GET /health` after apply.

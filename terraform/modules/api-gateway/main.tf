@@ -268,7 +268,7 @@ resource "aws_api_gateway_resource" "test" {
   path_part   = "test"
 }
 
-#GET /health — synthetic, read-only post-deploy health check (same testCert Lambda)
+#GET /health
 resource "aws_api_gateway_resource" "health" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
   parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
