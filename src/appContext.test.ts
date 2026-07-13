@@ -1,6 +1,6 @@
+import * as https from "node:https";
 import { getSecretString } from "@clients/secretsClient";
 import { createRequestLogger } from "@utils/logger";
-import * as https from "node:https";
 import { createAppContext } from "./appContext";
 
 jest.mock("node-fetch", () => jest.fn());

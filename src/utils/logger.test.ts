@@ -315,7 +315,7 @@ describe("src/utils/logger.ts", () => {
 							return;
 						}
 
-						const output = stdoutSpy!.mock.calls
+						const output = stdoutSpy?.mock.calls
 							.map(([c]) => String(c))
 							.join("\n");
 

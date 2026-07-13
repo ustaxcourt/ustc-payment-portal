@@ -5,8 +5,8 @@
  */
 
 import * as fs from "node:fs";
-import * as yaml from "js-yaml";
 import * as path from "node:path";
+import * as yaml from "js-yaml";
 import { generateOpenAPIDocument } from "./registry";
 
 const outputDir = path.resolve(__dirname, "../../docs");
