@@ -29,6 +29,7 @@ const mustGetBaseUrl = (): string => {
 	return url;
 };
 
+// biome-ignore lint/suspicious/noExplicitAny: Low blast radius in test.
 const parseJsonOrText = async (result: Response): Promise<any> => {
 	const raw = await result.text();
 	try {

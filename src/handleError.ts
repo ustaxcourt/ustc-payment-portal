@@ -47,6 +47,7 @@ const computeResponse = (err: any) => {
 	};
 };
 
+// biome-ignore lint/suspicious/noExplicitAny: Handles more than 1 error type.
 export const handleError = (appContext: AppContext, err: any) => {
 	const response = computeResponse(err);
 	const logPayload = {
