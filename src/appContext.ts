@@ -23,7 +23,7 @@ function isRetryablePaygovError(err: unknown): boolean {
 }
 
 function normalizePem(pem: string): string {
-	return pem.replace(/\r\n/g, "\n").trimEnd() + "\n";
+	return `${pem.replace(/\r\n/g, "\n").trimEnd()}\n`;
 }
 
 type LocalRequestContext = {

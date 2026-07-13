@@ -28,7 +28,7 @@ describe("start-pay-gov-test-server", () => {
 		jest.doMock("node:child_process", () => ({ spawn: mockSpawn }));
 		jest.doMock("./lib/log", () => ({ createLogger: () => mockLog }));
 		jest.doMock("./lib/parsePort", () => ({
-			parsePort: jest.fn((value, fallback) => fallback),
+			parsePort: jest.fn((_value, fallback) => fallback),
 		}));
 
 		({

@@ -29,7 +29,7 @@ describe("StartOnlineCollectionResponseSchema", () => {
 
 	it("rejects a token longer than 32 characters", () => {
 		const result = StartOnlineCollectionResponseSchema.safeParse({
-			token: validToken + "x",
+			token: `${validToken}x`,
 		});
 		expect(result.success).toBe(false);
 	});
@@ -59,9 +59,9 @@ describe("StartOnlineCollectionResponseSchema", () => {
 	// Whitespace is preserved — Pay.gov-issued IDs have historically carried
 	// embedded spaces; do not trim or reject them.
 	it.each([
-		[" " + validToken.slice(0, 31), "leading space"],
-		[validToken.slice(0, 31) + " ", "trailing space"],
-		[validToken.slice(0, 15) + " " + validToken.slice(16), "internal space"],
+		[` ${validToken.slice(0, 31)}`, "leading space"],
+		[`${validToken.slice(0, 31)} `, "trailing space"],
+		[`${validToken.slice(0, 15)} ${validToken.slice(16)}`, "internal space"],
 		[" ".repeat(32), "all spaces"],
 	])("accepts a 32-character token containing whitespace (%s)", (token) => {
 		const result = StartOnlineCollectionResponseSchema.safeParse({ token });
