@@ -64,7 +64,7 @@ export const getDetails: GetDetails = async (
 
 	// Fee-invariance: all rows for a transactionReferenceId share the same feeId.
 	const fee = await FeesModel.getFeeById(feeId);
-	if (!fee || !fee.tcsAppId) {
+	if (!fee?.tcsAppId) {
 		// Both branches indicate server-side data corruption: the FK prevents the first,
 		// and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
 		appContext.logger.error("Fee misconfigured — aborting getDetails", {
