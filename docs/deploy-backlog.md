@@ -18,16 +18,14 @@ Context for all items: [`deploy-pre-golive.md`](runbooks/deploy/deploy-pre-goliv
 
 ## Part 1 — Automated tests to build
 
-### T1. Prod post-deploy smoke / health check *(synthetic, read-only)*
+### T1. Prod post-deploy smoke / health check *(synthetic, read-only)* — DONE (PAY-350)
 
 - **Priority:** High
-- **Why:** `prod-deploy.yml` has its smoke-test step **commented out**, so Prod
-  currently has **no automated post-deploy verification**. For an app whose value
-  is uptime, nothing automatically confirms a Prod deploy worked.
-- **Build:** a post-apply health check in `prod-deploy.yml`. **Constraint:** it
-  must **not** run a real Pay.gov transaction (real money), unlike the staging
-  `/init` smoke test — make it a read-only / synthetic check (e.g. an auth'd call
-  to a safe endpoint asserting 200, or a dedicated health route).
+- **Delivered:** `prod-deploy.yml` runs a SigV4-signed `GET /health` after apply.
+  The route hits the `testCert` Lambda, which probes Secrets Manager, SSM, RDS
+  (`SELECT 1`), and Pay.gov (WSDL) server-side and returns a JSON report; the job
+  fails on any unhealthy check. Read-only and synthetic — no Pay.gov transaction,
+  no payment state. Staging runs the same gate for burn-in.
 - **Effort:** M
 
 ### T2. Run the integration suite against Staging as a pipeline gate

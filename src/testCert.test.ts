@@ -12,9 +12,15 @@ const mockLoggerError = jest.fn();
 jest.mock("./appContext", () => ({
   createAppContext: jest.fn(() => ({
     getHttpsAgent: jest.fn().mockReturnValue({ mockAgent: true }),
-    logger: { error: mockLoggerError },
+    logger: { error: mockLoggerError, info: jest.fn() },
   })),
 }));
+
+jest.mock("@useCases/runDeployHealthCheck");
+import { runDeployHealthCheck } from "@useCases/runDeployHealthCheck";
+const mockRunHealth = runDeployHealthCheck as jest.MockedFunction<
+  typeof runDeployHealthCheck
+>;
 
 jest.mock("./clients/secretsClient");
 const mockGetSecretString = getSecretString as jest.MockedFunction<typeof getSecretString>;
@@ -221,5 +227,49 @@ describe("testCert handler", () => {
       "Pay.gov health probe failed",
       expect.objectContaining({ errorMessage: "Network error" })
     );
+  });
+
+  const healthEvent = (resource: string) =>
+    ({ requestContext: {}, resource } as any);
+
+  it("routes GET /health to the deploy health check and returns 200 when healthy", async () => {
+    const report = { status: "healthy", checks: { rds: { status: "ok" } } };
+    mockRunHealth.mockResolvedValue(report as any);
+
+    const result = await handler(healthEvent("/health"));
+
+    expect(mockRunHealth).toHaveBeenCalled();
+    expect(result.statusCode).toBe(200);
+    expect(result.headers).toEqual({ "Content-Type": "application/json" });
+    expect(JSON.parse(result.body)).toEqual(report);
+  });
+
+  it("returns 503 for GET /health when a check is unhealthy", async () => {
+    mockRunHealth.mockResolvedValue({ status: "unhealthy", checks: {} } as any);
+
+    const result = await handler(healthEvent("/health"));
+
+    expect(result.statusCode).toBe(503);
+  });
+
+  it("routes /health by event.path when resource is absent", async () => {
+    mockRunHealth.mockResolvedValue({ status: "healthy", checks: {} } as any);
+
+    const result = await handler({ requestContext: {}, path: "/health" } as any);
+
+    expect(mockRunHealth).toHaveBeenCalled();
+    expect(result.statusCode).toBe(200);
+  });
+
+  it("does not treat API Gateway GET /test as a health check", async () => {
+    mockFetch.mockResolvedValue({
+      text: jest.fn().mockResolvedValue("wsdl"),
+    } as any);
+
+    const result = await handler(healthEvent("/test"));
+
+    expect(mockRunHealth).not.toHaveBeenCalled();
+    expect(result.statusCode).toBe(200);
+    expect(result.body).toBe("wsdl");
   });
 });

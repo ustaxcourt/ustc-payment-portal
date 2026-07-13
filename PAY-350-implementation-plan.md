@@ -68,6 +68,18 @@ The deploying account is already in the API Gateway resource policy (`terraform/
 
 ## Phase 0 — Preconditions & decisions (½ day)
 
+### 0.0 Confirmed infrastructure baseline (verified in Terraform — do not re-investigate)
+
+The `testCert` Lambda is **already provisioned to reach RDS and Secrets**, so the RDS and Secrets health checks are **application-code only, zero infra**:
+
+- **VPC-attached:** the Lambda module applies `vpc_config` unconditionally to every function in its `for_each` (`terraform/modules/lambda/main.tf:55-58`) — `testCert` sits in the same private subnets + Lambda SG as the payment functions (`terraform/environments/prod/main.tf:16-18`).
+- **Shared execution role:** all functions use one `lambda_execution_role_arn` (`terraform/modules/lambda/main.tf:47` → `terraform/modules/iam/role-lambda.tf`), so `testCert`'s permissions are identical to `initPayment`'s.
+- **RDS env already injected:** `testCert = local.lambda_env_payment` (`terraform/environments/prod/locals.tf:31`) — it already receives `RDS_ENDPOINT`, `RDS_SECRET_ARN`, `RDS_DB_NAME`. No new env var needed for the RDS check.
+- **DB auth is secret-based and already permitted:** connections use the RDS-managed master secret via RDS Proxy; the exec role already grants `secretsmanager:GetSecretValue` on `rds!*` and `ustc/pay-gov/*` (`role-lambda.tf:27-31`). No `rds-db:connect` grant is involved.
+- **Egress:** private subnets route out via a NAT gateway (`terraform/modules/networking/main.tf:179`), so the runtime SSM call reaches AWS with **no new VPC interface endpoint**.
+
+**Net:** the only genuinely new infrastructure is the SSM read permission (0.3). API Gateway, Lambda, RDS, Secrets, and Pay.gov are all already wired.
+
 ### 0.1 Confirm Prod deployer can invoke today
 
 Before writing code, verify in the Prod account (read-only):
@@ -106,6 +118,8 @@ Add to `role-lambda.tf`:
   Resource = "arn:aws:ssm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/ustc/pay-gov/*"
 }
 ```
+
+**Parameter path (resolved):** the target param is `/ustc/pay-gov/${env}/monitoring-subscribers` — `basepath = "ustc/pay-gov/${env}"` (`terraform/modules/secrets/locals.tf:3`) + `monitoring_subscribers` (`terraform/modules/secrets/main.tf:88-89`). The `parameter/ustc/pay-gov/*` scope above matches it, and the CI read-only role **already** grants `ssm:GetParameter` on the same pattern (`terraform/modules/iam/role-read-only.tf:177`), so `terraform plan` in CI needs no additional grant.
 
 **Apply path:** foundation networking in **dev, stg, prod** accounts (IAM is account-level). This is a foundation apply, not a per-environment app apply — follow `AGENTS.md` Terraform conventions.
 

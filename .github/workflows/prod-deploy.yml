@@ -158,44 +158,30 @@ jobs:
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
           echo "API Gateway URL: $API_URL"
 
-      # - name: Smoke test /init and redirect reachability
-      #   shell: bash
-      #   env:
-      #     API_URL: ${{ steps.tf_outputs.outputs.api_url }}
-      #   run: |
-      #     set -euo pipefail
-      #     trap 'echo "Smoke test FAILED"; [ -f init.json ] && { echo "--- init.json ---"; cat init.json; echo "-----------------"; } || true' ERR
-      #     echo "Running smoke test against: $API_URL"
+      # Synthetic, read-only post-deploy gate. We deliberately do NOT smoke-test
+      # POST /init in Prod — that creates real payment state. GET /health probes
+      # each dependency (Secrets, SSM, RDS, Pay.gov) server-side and returns JSON.
+      - name: Post-deploy health check (synthetic, read-only)
+        if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
+        shell: bash
+        env:
+          API_URL: ${{ steps.tf_outputs.outputs.api_url }}
+        run: |
+          set -euo pipefail
+          trap 'echo "::error::Post-deploy health check FAILED"; [ -f health.json ] && cat health.json || true' ERR
+          echo "Health check against: $API_URL/health"
 
-      #     AMOUNT="6.00"
-      #     TRACKING="prod-smoke-$(date +%s)"
+          # SigV4-signed with the ephemeral OIDC deploy credentials. --retry covers
+          # transient connection errors only (a 503 is a real failure, not retried).
+          STATUS=$(curl -s -o health.json -w '%{http_code}' --retry 3 --retry-delay 5 --max-time 30 \
+            -X GET "$API_URL/health" \
+            --aws-sigv4 "aws:amz:${AWS_REGION}:execute-api" \
+            --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+            -H "x-amz-security-token: $AWS_SESSION_TOKEN")
 
-      #     echo "Using AMOUNT=$AMOUNT TRACKING_ID=$TRACKING"
-      #     printf '{"trackingId":"%s","fee":"PETITION_FILING_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com"}' "$TRACKING" "$AMOUNT" > body.json
+          echo "HTTP_STATUS=$STATUS"
+          jq . health.json || cat health.json
 
-      #     # POST to /init — signed with AWS SigV4 (IAM auth replaced the old Bearer token)
-      #     INIT_STATUS=$(curl -s -o init.json -w '%{http_code}' -X POST "$API_URL/init" \
-      #       -H 'Content-Type: application/json' \
-      #       --aws-sigv4 "aws:amz:us-east-1:execute-api" \
-      #       --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-      #       -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
-      #       --data-binary @body.json)
-      #     echo "INIT_STATUS=$INIT_STATUS" && cat init.json
-      #     test "$INIT_STATUS" = "200"
-
-      #     # Verify token present
-      #     TOKEN=$(jq -r '.token // empty' init.json)
-      #     REDIRECT=$(jq -r '.paymentRedirect // empty' init.json)
-      #     [ -n "$TOKEN" ] || { echo "Missing token in /init response" >&2; exit 1; }
-      #     [ -n "$REDIRECT" ] || { echo "Missing paymentRedirect in /init response" >&2; exit 1; }
-      #     echo "Token present. Redirect=$REDIRECT"
-
-      #     # Ensure redirect URL is reachable (expect 302 redirect from Pay.gov)
-      #     REDIRECT_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$REDIRECT")
-      #     echo "REDIRECT_STATUS=$REDIRECT_STATUS"
-      #     if [ "$REDIRECT_STATUS" = "302" ]; then
-      #       echo "Redirect reachable ($REDIRECT_STATUS)."
-      #     else
-      #       echo "ERROR: Redirect returned $REDIRECT_STATUS (expected 302)" >&2
-      #       exit 1
-      #     fi
+          test "$STATUS" = "200"
+          test "$(jq -r '.status' health.json)" = "healthy"
+          echo "Post-deploy health check PASSED"

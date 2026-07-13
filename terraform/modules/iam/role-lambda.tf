@@ -29,6 +29,12 @@ resource "aws_iam_role_policy" "lambda_secrets_access" {
           "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ustc/pay-gov/*",
           "arn:aws:secretsmanager:${local.aws_region}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
         ]
+      },
+      {
+        # Read-only SSM access for the post-deploy /health check.
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter"]
+        Resource = "arn:aws:ssm:${local.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/ustc/pay-gov/*"
       }
     ]
   })
