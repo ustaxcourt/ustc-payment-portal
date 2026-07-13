@@ -3,6 +3,7 @@ import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
 import { ZodError } from "zod";
 
+// biome-ignore lint/suspicious/noExplicitAny: Handles more than 1 error type.
 const computeResponse = (err: any) => {
 	if (err.statusCode && err.statusCode < 500) {
 		return {

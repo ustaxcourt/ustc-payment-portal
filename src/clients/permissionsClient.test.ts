@@ -115,7 +115,7 @@ describe("permissionsClient", () => {
 			const result = await getClientPermissions();
 
 			expect(result[0].allowedFeeKeys).toEqual(["PETITION_FILING_FEE"]);
-			expect((result[0] as any).allowedFeeIds).toBeUndefined();
+			expect("allowedFeeIds" in result[0]).toBe(false);
 		});
 
 		it("keeps allowedFeeKeys when both allowedFeeKeys and allowedFeeIds are present", async () => {
