@@ -321,8 +321,12 @@ describeLambdaAuth("Lambda-level authorization", () => {
 			return;
 		}
 
+		if (!testUnauthorizedRoleArn) {
+			throw new Error("testUnauthorizedRoleArn is required");
+		}
+
 		const credentials = await assumeRole(
-			testUnauthorizedRoleArn!,
+			testUnauthorizedRoleArn,
 			"unregistered-client-test",
 		);
 
