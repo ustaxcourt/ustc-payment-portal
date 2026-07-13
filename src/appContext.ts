@@ -112,13 +112,13 @@ export const createAppContext = (
 						const token = await getSecretString(tokenSecretId);
 						headers.Authorization = `Bearer ${token}`;
 						headers.Authentication = headers.Authorization;
-					} catch (err: any) {
+					} catch (err: unknown) {
 						appContext.logger.warn(
 							"Failed to read token from Secrets Manager",
 							{
 								secretId: tokenSecretId,
-								errorName: err?.name,
-								errorMessage: err?.message,
+								errorName: err instanceof Error ? err.name : undefined,
+								errorMessage: err instanceof Error ? err.message : String(err),
 							},
 						);
 						// Proceed without Authorization header if token fetch fails

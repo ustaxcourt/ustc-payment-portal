@@ -29,7 +29,7 @@ const mockEmit = emitPayGovHealthMetric as jest.MockedFunction<
 >;
 
 describe("testCert handler", () => {
-	let tempEnv: any;
+	let tempEnv: NodeJS.ProcessEnv;
 
 	beforeAll(() => {
 		tempEnv = process.env;
