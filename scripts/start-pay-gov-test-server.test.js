@@ -15,7 +15,7 @@ describe("start-pay-gov-test-server", () => {
 			on: jest.fn((event, cb) => {
 				handlers[event] = cb;
 			}),
-			emit: (event, ...args) => handlers[event] && handlers[event](...args),
+			emit: (event, ...args) => handlers[event]?.(...args),
 		};
 	}
 

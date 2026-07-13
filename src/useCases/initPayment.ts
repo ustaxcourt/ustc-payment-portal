@@ -68,7 +68,7 @@ export const initPayment: InitPayment = async (
 	);
 
 	const fee = await FeesModel.getActiveFeeByKey(feeKey);
-	if (!fee || !fee.tcsAppId) {
+	if (!fee?.tcsAppId) {
 		throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
 	}
 
