@@ -1,7 +1,7 @@
 import * as https from "node:https";
-import type { APIGatewayEvent } from "aws-lambda";
 import { getSecretString } from "@clients/secretsClient";
 import { createRequestLogger } from "@utils/logger";
+import type { APIGatewayEvent } from "aws-lambda";
 import { createAppContext } from "./appContext";
 
 jest.mock("node-fetch", () => jest.fn());
