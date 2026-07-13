@@ -1,3 +1,5 @@
+// biome-ignore-all lint/suspicious/noExplicitAny: No type to cast too
+// or there's a duct-tape solution that doesn't provide safety.
 type LoggerModule = typeof import("./logger");
 
 const PINO_LEVELS = [

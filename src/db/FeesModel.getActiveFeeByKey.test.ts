@@ -1,3 +1,5 @@
+// biome-ignore-all lint/suspicious/noExplicitAny: Test Only, low risk.
+// There's a planned refactor of this test coming up that may fix it.
 jest.mock("./knex", () => ({
 	__esModule: true,
 	getKnex: jest.fn().mockResolvedValue({}),
