@@ -9,7 +9,10 @@ describe("probePayGovWsdl", () => {
     process.env.SOAP_URL = "http://localhost:3366";
   });
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.SOAP_URL = "http://localhost:3366";
+  });
 
   it("appends ?wsdl and reports ok with the body", async () => {
     mockFetch.mockResolvedValue({
@@ -24,6 +27,7 @@ describe("probePayGovWsdl", () => {
     expect(mockFetch).toHaveBeenCalledWith("http://localhost:3366?wsdl", {
       agent: { mockAgent: true },
       headers: { Authorization: "Bearer x" },
+      signal: expect.any(AbortSignal),
     });
     expect(result.ok).toBe(true);
     expect(result.body).toBe("wsdl body");
@@ -44,5 +48,31 @@ describe("probePayGovWsdl", () => {
     mockFetch.mockRejectedValue(new Error("network down"));
 
     await expect(probePayGovWsdl(undefined)).rejects.toThrow("network down");
+  });
+
+  it("throws a clear error when SOAP_URL is unset", async () => {
+    delete (process.env as Record<string, string | undefined>).SOAP_URL;
+
+    await expect(probePayGovWsdl(undefined)).rejects.toThrow(
+      "SOAP_URL is not set",
+    );
+  });
+
+  it("throws a timeout error when the request exceeds the timeout", async () => {
+    jest.useFakeTimers();
+    mockFetch.mockImplementation((_url, opts) =>
+      new Promise((_resolve, reject) => {
+        opts?.signal?.addEventListener("abort", () =>
+          reject(new Error("The operation was aborted")),
+        );
+      }) as ReturnType<typeof fetch>,
+    );
+
+    const assertion = expect(
+      probePayGovWsdl(undefined, {}, 3000),
+    ).rejects.toThrow("Pay.gov WSDL probe timed out after 3000ms");
+    await jest.advanceTimersByTimeAsync(3000);
+    await assertion;
+    jest.useRealTimers();
   });
 });
