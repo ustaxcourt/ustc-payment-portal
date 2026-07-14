@@ -57,5 +57,4 @@ The team met this week and agreed to use Biome's recommended rule group, and the
 #### Rules selected specifically for Payment Portal
 - [noExcessiveCognitiveComplexity](https://biomejs.dev/linter/rules/no-excessive-cognitive-complexity/) Biome's version of ESLint's complexity rule, covers both cyclomatic complexity and general function complexity. Requires a complexity score of 15 or less for a function to pass. We can reduce the complexity score of a function by breaking it up into smaller, testable pieces, and simplify any nested conditionals as much as possible.
 - [noFloatingPromises](https://biomejs.dev/linter/rules/no-floating-promises/) Make sure that any promises are properly handled. Promises in code that aren't handled via `.then()`, `.catch()`, awaiting it, returning it, or voiding it are flagged. This rule is currently in nursery (their version of beta), and passes 85% (as of Biome 2.1) of the test cases for it's esLint equivalent. **Treat violations of this rule as advisory only until the rule comes out of nursery.**
-
-
+- [noConsole](https://biomejs.dev/linter/rules/no-console/) Enforce using Pino logs only in production code. For local code (anything for running on a dev machine or as the npm package), normal console logs are fine and can be added as an ignore case.
