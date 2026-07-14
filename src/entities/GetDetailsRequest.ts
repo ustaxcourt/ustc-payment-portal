@@ -51,10 +51,10 @@ export class GetRequestRequest extends SoapRequest {
 				// Pay.gov's getDetails response does not contain PCI data — payment_type is
 				// a string like "ACH"/"PLASTIC_CARD" and tracking IDs are server-side
 				// identifiers, not cardholder data. If that ever changes, redact before logging.
-				console.error(
-					"getDetails schema validation failed",
-					JSON.stringify({ raw, errors: parsed.error.issues }),
-				);
+				appContext.logger.error("getDetails schema validation failed", {
+					raw,
+					errors: parsed.error.issues,
+				});
 				throw parsed.error;
 			}
 

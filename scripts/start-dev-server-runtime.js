@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noConsole: local dev CLI script, never runs in a deployed environment.
 const path = require("node:path");
 const fs = require("node:fs");
 const { spawn } = require("node:child_process");

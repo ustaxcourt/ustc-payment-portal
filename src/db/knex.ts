@@ -28,6 +28,7 @@ function createKnexFromEnv(): ReturnType<typeof Knex> {
 				};
 
 	if (NODE_ENV !== "production") {
+		// biome-ignore lint/suspicious/noConsole: local/test-only branch, never runs in a deployed environment.
 		console.log(
 			`[Knex] env=${NODE_ENV} db=${
 				typeof connection === "string" ? "(DATABASE_URL)" : connection.database

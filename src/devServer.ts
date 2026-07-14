@@ -219,6 +219,8 @@ app.get("/transaction-payment-status", async (_req, res, next) => {
 
 // start the express server
 app.listen(port, () => {
+	// biome-ignore lint/suspicious/noConsole: local dev server startup banner, never runs in a deployed environment.
 	console.log(`Payment Portal started at http://localhost:${port}`);
+	// biome-ignore lint/suspicious/noConsole: local dev server startup banner, never runs in a deployed environment.
 	console.log(`API docs available at http://localhost:${port}/docs`);
 });

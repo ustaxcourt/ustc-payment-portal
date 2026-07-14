@@ -3,6 +3,7 @@
 // Usage:
 //   payment-portal start  (portal + pay-gov + db)
 //   payment-portal stop   (tear down docker)
+// biome-ignore-all lint/suspicious/noConsole: package CLI binary, runs on the consumer's machine, never in our deployed server.
 
 const path = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");

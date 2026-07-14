@@ -1,4 +1,5 @@
 #!/usr/bin/env ts-node
+// biome-ignore-all lint/suspicious/noConsole: build-time CLI script, never runs in a deployed environment.
 /**
  * Script to generate OpenAPI specification from Zod schemas.
  * Run with: npm run generate:openapi

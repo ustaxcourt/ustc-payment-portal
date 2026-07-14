@@ -12,6 +12,9 @@
 			"complexity": {
 				"noExcessiveCognitiveComplexity": "warn"
 			},
+			"suspicious": {
+				"noConsole": "warn"
+			},
 			"nursery": {
 				"noFloatingPromises": "warn"
 			}

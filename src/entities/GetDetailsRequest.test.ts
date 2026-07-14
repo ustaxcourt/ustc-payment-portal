@@ -235,9 +235,6 @@ describe("GetRequestRequest", () => {
 		});
 
 		it("logs the raw response and the Zod issues when validation fails", async () => {
-			const consoleErrorSpy = jest
-				.spyOn(console, "error")
-				.mockImplementation(jest.fn());
 			jest.spyOn(SoapRequest.prototype, "makeRequest").mockResolvedValue({
 				"ns2:getDetailsResponse": {
 					getDetailsResponse: { transactions: [] },
@@ -252,9 +249,9 @@ describe("GetRequestRequest", () => {
 			await expect(request.makeSoapRequest(appContext)).rejects.toBeInstanceOf(
 				ZodError,
 			);
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
+			expect(appContext.logger.error).toHaveBeenCalledWith(
 				"getDetails schema validation failed",
-				expect.stringContaining("errors"),
+				expect.objectContaining({ errors: expect.any(Array) }),
 			);
 		});
 

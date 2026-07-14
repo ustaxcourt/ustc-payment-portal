@@ -71,9 +71,9 @@ export class StartOnlineCollectionRequest extends SoapRequest {
 				// even when validation fails. Log only the length for diagnostics.
 				const tokenLength =
 					typeof raw?.token === "string" ? raw.token.length : null;
-				console.error(
+				appContext.logger.error(
 					"startOnlineCollection schema validation failed",
-					JSON.stringify({ tokenLength, errors: parsed.error.issues }),
+					{ tokenLength, errors: parsed.error.issues },
 				);
 				throw parsed.error;
 			}
