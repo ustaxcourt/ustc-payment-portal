@@ -9,9 +9,8 @@
 		"enabled": true,
 		"rules": {
 			"preset": "recommended",
-			"suspicious": {
-				"noImplicitAnyLet": "warn",
-				"useIterableCallbackReturn": "warn"
+			"complexity": {
+				"noExcessiveCognitiveComplexity": "warn"
 			},
 			"nursery": {
 				"noFloatingPromises": "warn"
