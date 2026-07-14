@@ -4,7 +4,7 @@ This directory contains Infrastructure as Code for the USTC Payment Portal. It i
 
 ## Terraform Version
 
-This project requires **Terraform ~> 1.14.0**. The `~>` constraint means any 1.14.x version is supported, but 1.15+ is not until explicitly upgraded.
+This project requires **Terraform ~> 1.15.0**. The `~>` constraint means any 1.15.x version is supported, but 1.16+ is not until explicitly upgraded.
 
 See [Upgrading Terraform](#upgrading-terraform) for the complete upgrade process.
 
@@ -24,7 +24,8 @@ As of March 2026, this project uses **S3 native locking** (`use_lockfile = true`
   - Application stack (Lambda, API Gateway, CI/CD IAM, etc.).
   - Uses `data.terraform_remote_state` to read the foundation outputs.
 - **`terraform/modules/`**
-  - Reusable modules such as `api-gateway/`, `iam/`, `lambda/`, `networking/`.
+  - Reusable modules such as `api-gateway/`, `iam/`, `lambda/`, `networking/`, `rds/`, `rds-proxy/`.
+  - `rds-proxy/` fronts the RDS instance with an AWS RDS Proxy so connections are pooled/multiplexed across Lambda invocations. Reuses the existing DB credentials secret; `RDS_ENDPOINT` points at the proxy's `host:port` endpoint (drop-in compatible with the `rds` module's endpoint).
 - **`terraform/scripts/`**
   - Helper scripts, e.g., `build-lambda.sh` bundles Lambda code before apply.
 
@@ -218,6 +219,7 @@ When upgrading Terraform, update the version constraint in **all** of these loca
 | `terraform/modules/lambda/versions.tf`                      | Lambda module           |
 | `terraform/modules/networking/versions.tf`                  | Networking module       |
 | `terraform/modules/rds/versions.tf`                         | RDS module              |
+| `terraform/modules/rds-proxy/versions.tf`                   | RDS Proxy module        |
 
 ### CI/CD Workflow Updates
 
@@ -235,7 +237,7 @@ Example change:
 - name: Setup Terraform
   uses: hashicorp/setup-terraform@v4
   with:
-    terraform_version: "1.14.6" # Update this version
+    terraform_version: "1.15.8" # Update this version
 ```
 
 ### GitHub Action Updates

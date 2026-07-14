@@ -1,4 +1,4 @@
-import { getClientByRoleArn } from "../clients/permissionsClient";
+import { getClientByRoleArn } from "@clients/permissionsClient";
 
 jest.mock("../appContext", () => ({
   createAppContext: jest.fn(
@@ -9,6 +9,7 @@ jest.mock("../appContext", () => ({
 jest.mock("../clients/permissionsClient", () => ({
   getClientByRoleArn: jest.fn(),
   clearPermissionsCache: jest.fn(),
+  getClientPermissions: jest.fn().mockResolvedValue([]),
 }));
 
 export const mockGetClientByRoleArn = getClientByRoleArn as jest.MockedFunction<

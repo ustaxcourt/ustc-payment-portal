@@ -1,22 +1,26 @@
 import { ZodError } from "zod";
-import { AppContext } from "../types/AppContext";
-import { CompleteOnlineCollectionWithDetailsRequest } from "../entities/CompleteOnlineCollectionWithDetailsRequest";
-import { ProcessPaymentRequest } from "../types/ProcessPaymentRequest";
-import { ProcessPaymentResponse } from "../schemas/ProcessPayment.schema";
-import { FailedTransactionError } from "../errors/failedTransaction";
-import { GoneError } from "../errors/gone";
-import { NotFoundError } from "../errors/notFound";
-import { PayGovError } from "../errors/payGovError";
-import { ServerError } from "../errors/serverError";
+import type { AppContext } from "@appTypes/AppContext";
+import { CompleteOnlineCollectionWithDetailsRequest } from "@entities/CompleteOnlineCollectionWithDetailsRequest";
+import type { ProcessPaymentRequest } from "@appTypes/ProcessPaymentRequest";
+import { ProcessPaymentResponse } from "@schemas/ProcessPayment.schema";
+import { ConflictError } from "@errors/conflict";
+import { FailedTransactionError } from "@errors/failedTransaction";
+import { GoneError } from "@errors/gone";
+import { NotFoundError } from "@errors/notFound";
+import { PayGovError } from "@errors/payGovError";
+import { ServerError } from "@errors/serverError";
 import { parseTransactionStatus } from "./parseTransactionStatus";
-import { derivePaymentStatusFromSingleTransaction } from "../utils/derivePaymentStatus";
-import { ClientPermission } from "../types/ClientPermission";
+import { derivePaymentStatusFromSingleTransaction } from "@utils/derivePaymentStatus";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
 import { getFeeById } from "../config/fees";
-import { toPaymentMethod } from "../utils/toPaymentMethod";
-import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
-import { safeUpdateToFailed } from "../utils/safeUpdateToFailed";
+import { toPaymentMethod } from "@utils/toPaymentMethod";
+import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
+import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
+import { getPostgresErrorCode, isClaimContentionError } from "../db/pgErrors";
 import { authorizeClient } from "../authorizeClient";
+import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
+import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -29,6 +33,123 @@ export type ProcessPayment = (
 const PAYGOV_RETRY_MESSAGE =
   "We could not complete this transaction with Pay.gov. Please retry the request.";
 
+type ProcessPaymentLogFields = {
+  token: string;
+  agencyTrackingId: string;
+  transactionReferenceId: string;
+  clientName: string;
+  metadata?: Record<string, string> | null;
+};
+
+type AuthorizedProcessPaymentContext = {
+  fee: NonNullable<Awaited<ReturnType<typeof FeesModel.getFeeById>>>;
+  baseLogFields: ProcessPaymentLogFields;
+};
+
+const buildLogFields = (
+  request: ProcessPaymentRequest,
+  transaction: TransactionModel,
+): ProcessPaymentLogFields => ({
+  token: request.token,
+  agencyTrackingId: transaction.agencyTrackingId,
+  transactionReferenceId: transaction.transactionReferenceId,
+  clientName: transaction.clientName,
+  metadata: transaction.metadata,
+});
+
+const loadAuthorizedContext = async (
+  appContext: AppContext,
+  client: ClientPermission,
+  request: ProcessPaymentRequest,
+): Promise<AuthorizedProcessPaymentContext> => {
+  const existingTransaction = await TransactionModel.findByPaygovToken(
+    request.token,
+  );
+  if (!existingTransaction) {
+    throw new NotFoundError("Transaction could not be found");
+  }
+
+  const baseLogFields = buildLogFields(request, existingTransaction);
+
+  let fee: Awaited<ReturnType<typeof FeesModel.getFeeById>>;
+  try {
+    fee = await FeesModel.getFeeById(existingTransaction.feeId);
+  } catch (err) {
+    appContext.logger.error("Fee lookup failed", {
+      ...baseLogFields,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
+  if (!fee) {
+    appContext.logger.error("Fee not found for transaction", {
+      ...baseLogFields,
+    });
+    await safeUpdateToFailed(
+      appContext,
+      existingTransaction.agencyTrackingId,
+      undefined,
+      "Fee configuration not found for this transaction",
+    );
+    throw new NotFoundError("Fee configuration not found for this transaction");
+  }
+  if (!fee.tcsAppId) {
+    appContext.logger.error("Fee is missing tcsAppId configuration", {
+      ...baseLogFields,
+      feeKey: fee.feeKey,
+    });
+    await safeUpdateToFailed(
+      appContext,
+      existingTransaction.agencyTrackingId,
+      undefined,
+      "Fee is missing tcsAppId configuration",
+    );
+    throw new ServerError();
+  }
+
+  authorizeClient(client, fee.feeKey);
+
+  return { fee, baseLogFields };
+};
+
+const claimProcessingTransaction = async (
+  appContext: AppContext,
+  token: string,
+  baseLogFields: ProcessPaymentLogFields,
+): Promise<TransactionModel> => {
+  try {
+    const claimed = await TransactionModel.claimForProcessing(token);
+    if (!claimed) {
+      throw new NotFoundError("Transaction could not be found");
+    }
+    return claimed;
+  } catch (err) {
+    if (err instanceof NotFoundError || err instanceof GoneError) {
+      throw err;
+    }
+    if (err instanceof ConflictError) {
+      emitProcessPaymentConflictMetric("claim_in_progress");
+      throw err;
+    }
+    if (isClaimContentionError(err)) {
+      const postgresErrorCode = getPostgresErrorCode(err);
+      emitProcessPaymentConflictMetric(
+        postgresErrorCode === "40P01" ? "deadlock" : "lock_not_available",
+      );
+      appContext.logger.info(
+        "processPayment claim rejected — concurrent request",
+        {
+          ...baseLogFields,
+          postgresErrorCode,
+        },
+      );
+      throw new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE);
+    }
+    throw err;
+  }
+};
+
 export const processPayment: ProcessPayment = async (
   appContext: AppContext,
   { client, request },
@@ -37,49 +158,17 @@ export const processPayment: ProcessPayment = async (
     token: request.token,
   });
 
-  const transaction = await TransactionModel.findByPaygovToken(request.token);
-  if (!transaction) {
-    throw new NotFoundError("Transaction could not be found");
-  }
-
-  const baseLogFields = {
-    token: request.token,
-    agencyTrackingId: transaction.agencyTrackingId,
-    transactionReferenceId: transaction.transactionReferenceId,
-    clientName: transaction.clientName,
-    metadata: transaction.metadata,
-  };
-
-  const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
-    transaction.clientName,
-    transaction.transactionReferenceId,
-    request.token,
+  const { fee, baseLogFields } = await loadAuthorizedContext(
+    appContext,
+    client,
+    request,
   );
 
-  if (sibling) {
-    throw new GoneError(
-      "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
-    );
-  }
-
-  if (transaction.transactionStatus !== "initiated") {
-    throw new GoneError("This token is no longer valid.");
-  }
-
-  const fee = getFeeById(transaction.feeId);
-  if (!fee) {
-    appContext.logger.error("Fee not found for transaction", {
-      ...baseLogFields,
-    });
-    throw new NotFoundError("Fee configuration not found for this transaction");
-  }
-  if (!fee.tcsAppId) {
-    appContext.logger.error("Fee is missing tcsAppId configuration", {
-      ...baseLogFields,
-      feeKey: fee.feeKey,
-    });
-    throw new ServerError();
-  }
+  const transaction = await claimProcessingTransaction(
+    appContext,
+    request.token,
+    baseLogFields,
+  );
 
   appContext.logger.info("Loaded processPayment request context", {
     ...baseLogFields,
@@ -88,8 +177,6 @@ export const processPayment: ProcessPayment = async (
       token: request.token,
     },
   });
-
-  authorizeClient(client, fee.feeKey);
 
   const req = new CompleteOnlineCollectionWithDetailsRequest({
     tcsAppId: fee.tcsAppId,
@@ -150,6 +237,7 @@ export const processPayment: ProcessPayment = async (
       throw new PayGovError(PAYGOV_RETRY_MESSAGE, 502);
     }
 
+    /* istanbul ignore next: This branch is for Pay.gov communication failures, which are rare in normal operation */
     appContext.logger.error("Error communicating with Pay.gov", {
       ...baseLogFields,
       feeKey: fee.feeKey,
@@ -157,6 +245,7 @@ export const processPayment: ProcessPayment = async (
       errorMessage: err instanceof Error ? err.message : String(err),
     });
 
+    emitPayGovErrorMetric();
     await safeUpdateToFailed(
       appContext,
       transaction.agencyTrackingId,
@@ -184,8 +273,22 @@ export const processPayment: ProcessPayment = async (
       toPaymentMethod(result.payment_type),
       result.transaction_date,
       result.payment_date,
+      "processing",
     );
   } catch (err) {
+    if (err instanceof ConflictError) {
+      emitProcessPaymentConflictMetric("persist_race");
+      appContext.logger.warn("Pay.gov response not persisted — state changed", {
+        ...baseLogFields,
+        feeKey: fee.feeKey,
+        paygovTrackingId: result.paygov_tracking_id,
+        parsedStatus,
+        paymentStatus,
+      });
+      throw err;
+    }
+
+    /* istanbul ignore next: This branch is for database failures, which are rare in normal operation */
     appContext.logger.error("Failed to persist Pay.gov response", {
       ...baseLogFields,
       feeKey: fee.feeKey,

@@ -1,5 +1,5 @@
 terraform {
-  required_version = "~> 1.14.0"
+  required_version = "~> 1.15.0"
 
   required_providers {
     aws = {
@@ -30,18 +30,32 @@ locals {
 }
 
 module "networking" {
-  source                = "../../../modules/networking"
-  vpc_cidr              = "10.20.0.0/25"
-  public_subnet_cidr    = "10.20.0.0/28"
-  private_subnet_cidr   = "10.20.0.32/28"
-  private_subnet_cidr_2 = "10.20.0.48/28"
-  availability_zone     = "us-east-1a"
-  availability_zone_2   = "us-east-1b"
-  name_prefix           = local.name_prefix
+  source = "../../../modules/networking"
+
+  vpc_cidr = "10.20.0.0/25"
+
+  availability_zones   = ["us-east-1a", "us-east-1b"]
+  public_subnet_cidrs  = ["10.20.0.0/28"]
+  private_subnet_cidrs = ["10.20.0.32/28", "10.20.0.48/28"]
+
+  # Dev does not need AZ-redundant egress — a single NAT gateway (in us-east-1a)
+  # serves both private subnets. Two private subnets remain for the RDS subnet group.
+  single_nat_gateway = true
+
+  # No pre-existing EIP allocations — a fresh EIP is created for the NAT gateway.
+  nat_eip_allocation_ids = {}
+
+  name_prefix = local.name_prefix
   tags = {
     Env     = "dev"
     Project = "ustc-payment-portal"
   }
+}
+
+# The old aws_eip.nat_replacement (AZ-a EIP) maps to the new keyed address.
+moved {
+  from = module.networking.aws_eip.nat_replacement
+  to   = module.networking.aws_eip.nat["us-east-1a"]
 }
 
 module "iam" {

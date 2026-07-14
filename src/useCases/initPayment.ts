@@ -1,20 +1,26 @@
-import { AppContext } from "../types/AppContext";
+import type { AppContext } from "@appTypes/AppContext";
 import {
   InitPaymentRequest,
   InitPaymentResponse,
-} from "../schemas/InitPayment.schema";
-import { InvalidRequestError } from "../errors/invalidRequest";
-import { ConflictError } from "../errors/conflict";
+} from "@schemas/InitPayment.schema";
+import { InvalidRequestError } from "@errors/invalidRequest";
+import { PayGovError } from "@errors/payGovError";
+import { ConflictError } from "@errors/conflict";
 import { getActiveFeeByKey } from "../config/fees";
-import { generateAgencyTrackingId } from "../utils/generateTrackingId";
-import TransactionModel from "../db/TransactionModel";
+import { generateAgencyTrackingId } from "@utils/generateTrackingId";
+import TransactionModel, {
+  isStaleProcessingTransaction,
+} from "../db/TransactionModel";
 import { isUniqueViolation } from "../db/pgErrors";
-import { PayGovError } from "../errors/payGovError";
-import { ServerError } from "../errors/serverError";
-import { StartOnlineCollectionRequest } from "../entities/StartOnlineCollectionRequest";
-import { ClientPermission } from "../types/ClientPermission";
-import { safeUpdateToFailed } from "../utils/safeUpdateToFailed";
+import { ServerError } from "@errors/serverError";
+import { StartOnlineCollectionRequest } from "@entities/StartOnlineCollectionRequest";
+import type { ClientPermission } from "@appTypes/ClientPermission";
+import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { authorizeClient } from "../authorizeClient";
+import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
+import { ZodError } from "zod";
+import { FailedTransactionError } from "../errors/failedTransaction";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
@@ -83,14 +89,38 @@ export const initPayment: InitPayment = async (
     const tokenAgeMs =
       Date.now() -
       new Date(existingInFlightTransaction.lastUpdatedAt).getTime();
+    const staleProcessing = isStaleProcessingTransaction(
+      existingInFlightTransaction,
+    );
+
+    if (
+      existingInFlightTransaction.transactionStatus === "processing" &&
+      !staleProcessing
+    ) {
+      appContext.logger.info(
+        "Rejecting initPayment: transaction is actively processing",
+        {
+          transactionReferenceId,
+          agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
+          tokenAgeMs,
+        },
+      );
+      emitInitPaymentConflictMetric("processing_in_flight");
+      throw new ConflictError(
+        ConflictError.PAYMENT_IN_FLIGHT_TRANSACTION_MESSAGE,
+      );
+    }
+
     if (
       existingInFlightTransaction.paygovToken &&
-      tokenAgeMs < MAX_TOKEN_AGE_MS
+      tokenAgeMs < MAX_TOKEN_AGE_MS &&
+      !staleProcessing
     ) {
       appContext.logger.info("Returning existing in-flight transaction", {
         transactionReferenceId,
         agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
         tokenAgeMs,
+        transactionStatus: existingInFlightTransaction.transactionStatus,
       });
       return {
         token: existingInFlightTransaction.paygovToken,
@@ -101,6 +131,8 @@ export const initPayment: InitPayment = async (
         transactionReferenceId,
         agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
         tokenAgeMs,
+        transactionStatus: existingInFlightTransaction.transactionStatus,
+        staleProcessing,
       });
       await TransactionModel.updateToFailed(
         existingInFlightTransaction.agencyTrackingId,
@@ -152,6 +184,7 @@ export const initPayment: InitPayment = async (
         agencyTrackingId,
         clientName,
       });
+      emitInitPaymentConflictMetric("persist_race");
       throw new ConflictError(EXISTING_IN_FLIGHT_TRANSACTION_ERROR);
     }
 
@@ -190,6 +223,12 @@ export const initPayment: InitPayment = async (
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
     });
+    if (
+      !(err instanceof ZodError) &&
+      !(err instanceof FailedTransactionError)
+    ) {
+      emitPayGovErrorMetric();
+    }
     await safeUpdateToFailed(
       appContext,
       agencyTrackingId,

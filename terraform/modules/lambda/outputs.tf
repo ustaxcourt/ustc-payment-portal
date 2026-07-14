@@ -3,6 +3,14 @@ output "function_arns" {
   value       = { for k, v in aws_lambda_function.functions : k => v.arn }
 }
 
+output "api_function_arns" {
+  description = "Map of Lambda ARNs for API integration, using the payment-flow aliases where configured."
+  value = merge(
+    { for k, v in aws_lambda_function.functions : k => v.arn },
+    { for k, v in aws_lambda_alias.payment_flow_live : k => v.arn },
+  )
+}
+
 output "function_names" {
   description = "Map of Lambda function names"
   value       = { for k, v in aws_lambda_function.functions : k => v.function_name }

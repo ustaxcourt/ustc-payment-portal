@@ -5,11 +5,12 @@ import {
   resetCommonHandlerMocks,
 } from "./handlerTestCommon";
 import { processPaymentHandler } from "./processPaymentHandler";
-import { ForbiddenError } from "../errors/forbidden";
-import { GoneError } from "../errors/gone";
-import { NotFoundError } from "../errors/notFound";
-import { PayGovError } from "../errors/payGovError";
-import { processPayment } from "../useCases/processPayment";
+import { ConflictError } from "@errors/conflict";
+import { ForbiddenError } from "@errors/forbidden";
+import { GoneError } from "@errors/gone";
+import { NotFoundError } from "@errors/notFound";
+import { PayGovError } from "@errors/payGovError";
+import { processPayment } from "@useCases/processPayment";
 
 jest.mock("../useCases/processPayment", () => ({
   processPayment: jest.fn(),
@@ -148,6 +149,22 @@ describe("processPaymentHandler", () => {
 
     const result = await processPaymentHandler(event);
     expect(result.statusCode).toBe(410);
+  });
+
+  it("returns 409 when use case throws ConflictError", async () => {
+    mockProcessPayment.mockRejectedValueOnce(
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
+    );
+
+    const event = {
+      body: JSON.stringify({ token: crypto.randomUUID().replace(/-/g, "") }),
+      headers: mockHeaders,
+      requestContext: mockRequestContext,
+    } as unknown as APIGatewayEvent;
+
+    const result = await processPaymentHandler(event);
+    expect(result.statusCode).toBe(409);
+    expect(JSON.parse(result.body).message).toContain("already being processed");
   });
 
   it("returns 500 when use case throws a generic error", async () => {

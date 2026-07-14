@@ -1,14 +1,14 @@
 import { getDetails } from "./getDetails";
 import { testAppContext as appContext } from "../test/testAppContext";
-import { ClientPermission } from "../types/ClientPermission";
-import { NotFoundError } from "../errors/notFound";
-import { PayGovError } from "../errors/payGovError";
-import { ServerError } from "../errors/serverError";
+import type { ClientPermission } from "@appTypes/ClientPermission";
+import { NotFoundError } from "@errors/notFound";
+import { PayGovError } from "@errors/payGovError";
+import { ServerError } from "@errors/serverError";
 import TransactionModel from "../db/TransactionModel";
 import { getFeeById } from "../config/fees";
 import { randomUUID } from "crypto";
 import { mockTrackingId } from "../test/utils/mocks";
-import { ForbiddenError } from "../errors/forbidden";
+import { ForbiddenError } from "@errors/forbidden";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -733,3 +733,4 @@ describe("getDetails", () => {
     });
   });
 });
+

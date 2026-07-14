@@ -1,5 +1,5 @@
 terraform {
-  required_version = "~> 1.14.0"
+  required_version = "~> 1.15.0"
 
   required_providers {
     aws = {
@@ -30,19 +30,38 @@ locals {
 }
 
 module "networking" {
-  source                = "../../../modules/networking"
-  vpc_cidr              = "10.40.0.0/25"
-  public_subnet_cidr    = "10.40.0.0/28"
-  private_subnet_cidr   = "10.40.0.32/28"
-  private_subnet_cidr_2 = "10.40.0.48/28"
-  availability_zone     = "us-east-1a"
-  availability_zone_2   = "us-east-1b"
-  name_prefix           = local.name_prefix
-  nat_eip_allocation_id = "eipalloc-008587cebd5d34afb"
+  source = "../../../modules/networking"
+
+  vpc_cidr = "10.40.0.0/25"
+
+  availability_zones   = ["us-east-1a", "us-east-1b"]
+  public_subnet_cidrs  = ["10.40.0.0/28", "10.40.0.16/28"]
+  private_subnet_cidrs = ["10.40.0.32/28", "10.40.0.48/28"]
+
+  # Prod requires AZ-redundant egress: one NAT gateway + EIP + private route
+  # table per AZ so a single-AZ outage cannot sever the route to Pay.gov.
+  single_nat_gateway = false
+
+  # AZ-a uses the Pay.gov-allowlisted EIP. AZ-b gets a new EIP;
+  # submit that IP to Pay.gov for allowlisting before switching prod
+  # Lambdas to private_subnet_ids.
+  nat_eip_allocation_ids = {
+    "us-east-1a" = "eipalloc-008587cebd5d34afb"
+  }
+
+  name_prefix = local.name_prefix
   tags = {
     Env     = local.environment
     Project = "ustc-payment-portal"
   }
+}
+
+# Prod's old aws_eip.nat_replacement was never used by the NAT gateway
+# (the allowlisted EIP was provided via nat_eip_allocation_id instead).
+# Reuse it as the AZ-b NAT EIP to avoid allocating a brand-new address.
+moved {
+  from = module.networking.aws_eip.nat_replacement
+  to   = module.networking.aws_eip.nat["us-east-1b"]
 }
 
 module "iam" {

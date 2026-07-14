@@ -42,9 +42,21 @@ variable "lambda_log_group_names" {
 }
 
 variable "runbook_url" {
-  description = "Runbook URL included in alarm descriptions."
+  description = "Runbook URL included in alarm descriptions. Shared by the 5xx/uncaught error alarms and the init/process payment 409 conflict warnings — docs/runbooks/lambda-error-alerts.md has a dedicated 'Concurrency conflict warnings (409)' section covering the conflict alarms."
   type        = string
   default     = ""
+}
+
+variable "process_payment_conflict_alarm_threshold" {
+  description = "POST /process concurrency conflicts (ProcessPaymentConflict EMF) in a 5-minute period before the warning alarm fires."
+  type        = number
+  default     = 25
+}
+
+variable "init_payment_conflict_alarm_threshold" {
+  description = "POST /init concurrency conflicts (InitPaymentConflict EMF) in a 5-minute period before the warning alarm fires. Covers both an in-flight /process (processing_in_flight) and the partial unique-index insert race (persist_race) returning HTTP 409."
+  type        = number
+  default     = 25
 }
 
 variable "paygov_retry_alarm_threshold" {
@@ -99,4 +111,28 @@ variable "api_gateway_access_log_group_name" {
   description = "Name of the API Gateway access log group. When set, creates a 429 throttle metric filter and alarm."
   type        = string
   default     = null
+}
+
+variable "proxy_name" {
+  description = "RDS Proxy name. When set, creates connection/pinning/availability alarms for the proxy. Null disables them."
+  type        = string
+  default     = null
+}
+
+variable "proxy_connections_threshold" {
+  description = "Alarm when backend DB connections through the proxy stay at/above this. Starter value — tune from the Phase 6 load-test baseline (expected steady-state ~20). Keep below each env's proxy_max_connections_percent ceiling (~198 prod/stg at 100%, ~148 dev at 75%, of ~198 max_connections)."
+  type        = number
+  default     = 100
+}
+
+variable "proxy_pinned_threshold" {
+  description = "Alarm when session-pinned connections stay at/above this. Should be ~0 — pinning defeats connection multiplexing."
+  type        = number
+  default     = 5
+}
+
+variable "proxy_availability_threshold" {
+  description = "Alarm when proxy availability percentage (READ_WRITE target group) drops below this."
+  type        = number
+  default     = 99
 }

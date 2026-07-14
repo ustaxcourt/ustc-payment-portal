@@ -72,12 +72,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Configure AWS Credentials (OIDC - ${{ matrix.env }})
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets[matrix.role_arn_secret] }}
           aws-region: ${{ env.AWS_REGION }}
@@ -85,7 +85,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: "1.14.6"
+          terraform_version: "1.15.8"
           terraform_wrapper: false
 
       - name: Terraform Init
@@ -157,7 +157,7 @@ jobs:
 
       - name: Upload plan artifact
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: tfplan-${{ matrix.env }}
           path: terraform/environments/${{ matrix.env }}/plan-output/
@@ -172,21 +172,21 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Download dev plan artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: tfplan-dev
           path: artifacts/dev
         continue-on-error: true
 
       - name: Download stg plan artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: tfplan-stg
           path: artifacts/stg
         continue-on-error: true
 
       - name: Download prod plan artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: tfplan-prod
           path: artifacts/prod
@@ -279,13 +279,13 @@ jobs:
 
       - name: Find existing plan comment
         id: find_comment
-        uses: peter-evans/find-comment@v3
+        uses: peter-evans/find-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body-includes: 'terraform-plan-bot:PAY-264'
 
       - name: Create or update plan comment
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-id: ${{ steps.find_comment.outputs.comment-id }}

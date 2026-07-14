@@ -3,8 +3,8 @@ import { z } from "zod";
 import { lambdaHandler } from "./lambdaHandler";
 import { createAppContext } from "../appContext";
 import { extractCallerArn } from "../extractCallerArn";
-import { getClientByRoleArn } from "../clients/permissionsClient";
-import { parseAndValidate } from "../utils/parseAndValidate";
+import { getClientByRoleArn } from "@clients/permissionsClient";
+import { parseAndValidate } from "@utils/parseAndValidate";
 import { handleError } from "../handleError";
 import { testAppContext } from "../test/testAppContext";
 
@@ -18,6 +18,7 @@ jest.mock("../extractCallerArn", () => ({
 
 jest.mock("../clients/permissionsClient", () => ({
   getClientByRoleArn: jest.fn(),
+  getClientPermissions: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock("../utils/parseAndValidate", () => ({

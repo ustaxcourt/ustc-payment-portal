@@ -2,7 +2,7 @@ import { ZodError } from "zod";
 import { StartOnlineCollectionRequest } from "./StartOnlineCollectionRequest";
 import { SoapRequest } from "./SoapRequest";
 import { testAppContext as appContext } from "../test/testAppContext";
-import { FailedTransactionError } from "../errors/failedTransaction";
+import { FailedTransactionError } from "@errors/failedTransaction";
 
 const validToken = crypto.randomUUID().replace(/-/g, "");
 

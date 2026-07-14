@@ -12,9 +12,10 @@ module "lambda" {
   source                            = "../../modules/lambda"
   function_name_prefix              = local.name_prefix
   lambda_execution_role_arn         = data.terraform_remote_state.foundation.outputs.lambda_role_arn
-  subnet_ids                        = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
+  subnet_ids                        = data.terraform_remote_state.foundation.outputs.private_subnet_ids
   security_group_ids                = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
   environment_variables_by_function = local.lambda_env_by_function
+  payment_lambda_provisioned_concurrency = 0
 
   # Consume dev artifacts by SHA (keys and optional hashes passed from workflow)
   artifact_bucket = var.artifact_bucket
@@ -54,9 +55,25 @@ module "rds" {
     data.terraform_remote_state.foundation.outputs.rds_security_group_id
   ]
 
-  multi_az            = false
+  multi_az            = true
   deletion_protection = true
   log_statement       = "ddl"
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
+module "rds_proxy" {
+  source = "../../modules/rds-proxy"
+
+  name                    = "${local.name_prefix}-proxy"
+  secret_arn              = module.rds.master_user_secret_arn
+  rds_instance_identifier = module.rds.instance_identifier
+  vpc_subnet_ids          = data.terraform_remote_state.foundation.outputs.proxy_subnet_ids
+  vpc_security_group_ids  = [data.terraform_remote_state.foundation.outputs.proxy_security_group_id]
+  max_connections_percent = local.proxy_max_connections_percent
 
   tags = {
     Env     = local.environment
@@ -107,7 +124,7 @@ resource "aws_acm_certificate_validation" "this" {
 module "api" {
   source = "../../modules/api-gateway"
 
-  lambda_function_arns = module.lambda.function_arns
+  lambda_function_arns = module.lambda.api_function_arns
   environment          = "stg"
   stage_name           = "stg"
   allowed_account_ids  = local.allowed_client_account_ids
@@ -133,15 +150,17 @@ data "aws_ssm_parameter" "monitoring_subscribers" {
 module "monitoring" {
   source = "../../modules/monitoring"
 
-  env                  = local.environment
-  name_prefix          = local.name_prefix
-  subscribers          = local.monitoring_subscribers
-  runbook_url          = local.runbook_url
-  throttle_runbook_url = local.throttle_runbook_url
+  env                    = local.environment
+  name_prefix            = local.name_prefix
+  subscribers            = local.monitoring_subscribers
+  runbook_url            = local.runbook_url
+  throttle_runbook_url   = local.throttle_runbook_url
   throttle_429_threshold = local.throttle_429_threshold
-  teams_tenant_id      = var.teams_tenant_id
-  teams_team_id        = var.teams_team_id
-  teams_channel_id     = var.teams_channel_id
+  teams_tenant_id        = var.teams_tenant_id
+  teams_team_id          = var.teams_team_id
+  teams_channel_id       = var.teams_channel_id
+
+  proxy_name = module.rds_proxy.proxy_name
 
   # migrationRunner: uncaught-error alarm only (no HTTP response = no 5xx concept).
   # testCert: excluded — test-only endpoint, no user impact when it fails.

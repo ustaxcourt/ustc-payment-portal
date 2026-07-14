@@ -1,10 +1,10 @@
-import { ProcessPaymentRequest } from "../../types/ProcessPaymentRequest";
-import { InitPaymentRequest } from "../../schemas/InitPayment.schema";
+import type { ProcessPaymentRequest } from "@appTypes/ProcessPaymentRequest";
+import { InitPaymentRequest } from "@schemas/InitPayment.schema";
 import { isLocal } from "../../config/appEnv";
-import { GetDetailsResponse } from "../../schemas/GetDetails.schema";
-import { ProcessPaymentResponse } from "../../schemas/ProcessPayment.schema";
-import { PaymentStatus } from "../../schemas/PaymentStatus.schema";
-import { TransactionStatus } from "../../schemas/TransactionStatus.schema";
+import { GetDetailsResponse } from "@schemas/GetDetails.schema";
+import { ProcessPaymentResponse } from "@schemas/ProcessPayment.schema";
+import { PaymentStatus } from "@schemas/PaymentStatus.schema";
+import { TransactionStatus } from "@schemas/TransactionStatus.schema";
 import { signedFetch } from "./sigv4Helper";
 
 type PayGovPaymentMethod = "PLASTIC_CARD" | "ACH" | "PAYPAL";
@@ -345,3 +345,4 @@ describe("make a transaction", () => {
     );
   };
 });
+

@@ -10,7 +10,12 @@ output "public_subnet_id" {
 
 output "private_subnet_id" {
   value       = module.networking.private_subnet_id
-  description = "Private Subnet ID"
+  description = "Private Subnet ID (us-east-1a, back-compat — prefer private_subnet_ids)"
+}
+
+output "private_subnet_ids" {
+  value       = module.networking.private_subnet_ids
+  description = "All private subnet IDs (all AZs). Use for Lambda vpc_config to enable multi-AZ placement."
 }
 
 output "lambda_security_group_id" {
@@ -36,6 +41,16 @@ output "db_subnet_group_name" {
 output "rds_security_group_id" {
   value       = module.networking.rds_security_group_id
   description = "RDS Security Group ID (if private_subnet_cidr_2 is provided)"
+}
+
+output "proxy_security_group_id" {
+  value       = module.networking.proxy_security_group_id
+  description = "RDS Proxy Security Group ID"
+}
+
+output "proxy_subnet_ids" {
+  value       = module.networking.proxy_subnet_ids
+  description = "Private subnet IDs (both AZs) for placing the RDS Proxy"
 }
 
 output "ci_deployer_role_arn" {

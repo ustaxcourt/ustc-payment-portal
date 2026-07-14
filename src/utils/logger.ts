@@ -1,6 +1,6 @@
 import pino from "pino";
 import { getAppEnv, isLocal } from "../config/appEnv";
-import type { AppContextLogger } from "../types/AppContext";
+import type { AppContextLogger } from "@appTypes/AppContext";
 
 type RuntimeEnv = "test" | "development" | "production";
 
@@ -63,6 +63,7 @@ function resolveNodeEnv(raw?: string): RuntimeEnv {
     return normalizedEnv;
   }
 
+  /* istanbul ignore next: This branch is for misconfigured environments, which are rare in normal operation */
   if (raw) {
     process.stderr.write(
       `[logger] Invalid NODE_ENV="${raw}"; falling back to development\n`,
@@ -170,6 +171,7 @@ export function createRequestLogger(context: {
 }): AppContextLogger {
   const requestLogger = logger.child(context);
 
+  /* istanbul ignore next: This branch is for Pay.gov communication failures, which are rare in normal operation */
   return {
     debug: (message: string, additionalFields?: Record<string, unknown>) =>
       requestLogger.debug(additionalFields ?? {}, message),

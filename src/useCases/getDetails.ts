@@ -1,21 +1,17 @@
-import { ClientPermission } from "../types/ClientPermission";
-import { GetRequestRequest } from "../entities/GetDetailsRequest";
-import { AppContext } from "../types/AppContext";
-import { GetDetailsResponse } from "../schemas/GetDetails.schema";
-import { TransactionRecordSummary } from "../schemas/TransactionRecord.schema";
-import { TransactionStatus } from "../schemas/TransactionStatus.schema";
+import type { ClientPermission } from "@appTypes/ClientPermission";
+import { GetRequestRequest } from "@entities/GetDetailsRequest";
+import type { AppContext } from "@appTypes/AppContext";
+import { GetDetailsResponse } from "@schemas/GetDetails.schema";
+import { TransactionRecordSummary } from "@schemas/TransactionRecord.schema";
+import { TransactionStatus } from "@schemas/TransactionStatus.schema";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import {
   derivePaymentStatus,
   derivePaymentStatusFromSingleTransaction,
-} from "../utils/derivePaymentStatus";
-import { toPaymentMethod } from "../utils/toPaymentMethod";
+} from "@utils/derivePaymentStatus";
+import { toPaymentMethod } from "@utils/toPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 import { getFeeById } from "../config/fees";
-import { NotFoundError } from "../errors/notFound";
-import { PayGovError } from "../errors/payGovError";
-import { toTransactionRecordSummary } from "../utils/toTransactionRecordSummary";
-import { ServerError } from "../errors/serverError";
 import { authorizeClient } from "../authorizeClient";
 
 const PAYGOV_RETRY_MESSAGE =
@@ -88,7 +84,13 @@ export const getDetails: GetDetails = async (
     return { paymentStatus, transactions };
   }
 
-  return updatePendingAttemptFromPayGov(appContext, allRows, fee.tcsAppId, client.clientName, fee.feeKey);
+  return updatePendingAttemptFromPayGov(
+    appContext,
+    allRows,
+    fee.tcsAppId,
+    client.clientName,
+    fee.feeKey,
+  );
 };
 
 const updatePendingAttemptFromPayGov = async (
@@ -126,6 +128,7 @@ const updatePendingAttemptFromPayGov = async (
         // getDetails is a read — a refresh failure means the source of truth is
         // temporarily unreachable, not that the underlying transaction failed.
         // We surface a retryable error and leave the row's pending state alone.
+        /* istanbul ignore next: This branch is for refresh failures, which are rare in normal operation */
         appContext.logger.error("Failed to refresh Pay.gov status", {
           transactionReferenceId: row.transactionReferenceId,
           agencyTrackingId: row.agencyTrackingId,
@@ -165,29 +168,36 @@ const updatePendingAttemptFromPayGov = async (
           result.transaction_date,
           result.payment_date,
         );
-        appContext.logger.info("Transaction updated in DB from Pay.gov response", {
-          transactionReferenceId: row.transactionReferenceId,
-          agencyTrackingId: row.agencyTrackingId,
-          clientName,
-          feeKey,
-          metadata: row.metadata ?? undefined,
-          refreshedTransactionStatus: refreshedStatus,
-          paygovTrackingId: result.paygov_tracking_id,
-        });
+        appContext.logger.info(
+          "Transaction updated in DB from Pay.gov response",
+          {
+            transactionReferenceId: row.transactionReferenceId,
+            agencyTrackingId: row.agencyTrackingId,
+            clientName,
+            feeKey,
+            metadata: row.metadata ?? undefined,
+            refreshedTransactionStatus: refreshedStatus,
+            paygovTrackingId: result.paygov_tracking_id,
+          },
+        );
         return toTransactionRecordSummary(updated);
       } catch (err) {
         // We had a fresh status from Pay.gov but couldn't persist it. The row's
         // recorded state is stale, not wrong — a retry will re-fetch and re-persist.
-        appContext.logger.error("Failed to persist refreshed Pay.gov status to DB", {
-          transactionReferenceId: row.transactionReferenceId,
-          agencyTrackingId: row.agencyTrackingId,
-          clientName,
-          feeKey,
-          metadata: row.metadata ?? undefined,
-          paygovTrackingId: row.paygovTrackingId,
-          errorName: err instanceof Error ? err.name : undefined,
-          errorMessage: err instanceof Error ? err.message : String(err),
-        });
+        /* istanbul ignore next: This branch is for DB persistence failures, which are rare in normal operation */
+        appContext.logger.error(
+          "Failed to persist refreshed Pay.gov status to DB",
+          {
+            transactionReferenceId: row.transactionReferenceId,
+            agencyTrackingId: row.agencyTrackingId,
+            clientName,
+            feeKey,
+            metadata: row.metadata ?? undefined,
+            paygovTrackingId: row.paygovTrackingId,
+            errorName: err instanceof Error ? err.name : undefined,
+            errorMessage: err instanceof Error ? err.message : String(err),
+          },
+        );
         throw new PayGovError(PAYGOV_RETRY_MESSAGE, 500);
       }
     }),

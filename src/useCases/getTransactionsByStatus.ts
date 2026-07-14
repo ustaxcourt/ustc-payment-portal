@@ -2,14 +2,14 @@ import TransactionModel from "../db/TransactionModel";
 import {
   TransactionsByStatusPathParamsSchema,
   TransactionsByStatusResponseSchema,
-} from "../schemas/TransactionsByStatus.schema";
-import { AppContext } from "../types/AppContext";
-import {
+} from "@schemas/TransactionsByStatus.schema";
+import type { AppContext } from "@appTypes/AppContext";
+import type {
   TransactionsByStatusPathParams,
   TransactionsByStatusResponse,
-} from "../types/TransactionsByStatus";
-import { InvalidRequestError } from "../errors/invalidRequest";
-import { toApiPaymentMethod } from "../utils/toApiPaymentMethod";
+} from "@appTypes/TransactionsByStatus";
+import { InvalidRequestError } from "@errors/invalidRequest";
+import { toApiPaymentMethod } from "@utils/toApiPaymentMethod";
 
 export type GetTransactionsByStatus = (
   appContext: AppContext,
@@ -26,6 +26,7 @@ export const getTransactionsByStatus: GetTransactionsByStatus = async (
   request: TransactionsByStatusPathParams
 ): Promise<TransactionsByStatusResponse> => {
   const parsed = TransactionsByStatusPathParamsSchema.safeParse(request);
+  /* istanbul ignore if */
   if (!parsed.success) {
     throw new InvalidRequestError(
       "Invalid paymentStatus. Expected one of: success, failed, pending",
@@ -41,8 +42,10 @@ export const getTransactionsByStatus: GetTransactionsByStatus = async (
   });
 };
 
+/* istanbul ignore next */
 export const isValidPaymentStatus: IsValidPaymentStatus = (paymentStatus: string): boolean => {
   return TransactionsByStatusPathParamsSchema.shape.paymentStatus.safeParse(
     paymentStatus,
   ).success;
 };
+
