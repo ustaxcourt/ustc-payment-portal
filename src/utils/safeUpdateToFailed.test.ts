@@ -1,6 +1,6 @@
-import { safeUpdateToFailed } from "./safeUpdateToFailed";
 import TransactionModel from "../db/TransactionModel";
 import { testAppContext as appContext } from "../test/testAppContext";
+import { safeUpdateToFailed } from "./safeUpdateToFailed";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,

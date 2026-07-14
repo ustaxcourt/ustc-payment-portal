@@ -1,4 +1,4 @@
-"use strict";
+
 
 /**
  * Forwards SIGINT/SIGTERM to a spawned child process and re-raises the signal

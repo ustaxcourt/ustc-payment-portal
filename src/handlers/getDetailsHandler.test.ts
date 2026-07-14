@@ -1,13 +1,13 @@
-import { APIGatewayEvent } from "aws-lambda";
+import { ForbiddenError } from "@errors/forbidden";
+import { NotFoundError } from "@errors/notFound";
+import { getDetails } from "@useCases/getDetails";
+import type { APIGatewayEvent } from "aws-lambda";
+import { getDetailsHandler } from "./getDetailsHandler";
 import {
   mockHeaders,
   mockRequestContext,
   resetCommonHandlerMocks,
 } from "./handlerTestCommon";
-import { getDetailsHandler } from "./getDetailsHandler";
-import { ForbiddenError } from "@errors/forbidden";
-import { NotFoundError } from "@errors/notFound";
-import { getDetails } from "@useCases/getDetails";
 
 jest.mock("../useCases/getDetails", () => ({
   getDetails: jest.fn(),

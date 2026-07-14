@@ -1,4 +1,4 @@
-"use strict";
+
 
 // docker.js holds module-level state (dockerStarted, dockerLogsProcess), so each
 // test resets modules and re-mocks dependencies to get a clean slate.

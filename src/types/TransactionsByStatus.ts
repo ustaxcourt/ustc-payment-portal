@@ -1,8 +1,8 @@
-import { z } from "zod";
-import {
+import type {
   TransactionsByStatusPathParamsSchema,
   TransactionsByStatusResponseSchema,
 } from "@schemas/TransactionsByStatus.schema";
+import type { z } from "zod";
 
 export type TransactionsByStatusPathParams = z.infer<
   typeof TransactionsByStatusPathParamsSchema

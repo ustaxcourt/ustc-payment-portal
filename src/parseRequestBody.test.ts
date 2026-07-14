@@ -1,6 +1,6 @@
-import { z, ZodError } from "zod";
-import { parseRequestBody } from "./parseRequestBody";
 import { InvalidRequestError } from "@errors/invalidRequest";
+import { ZodError, z } from "zod";
+import { parseRequestBody } from "./parseRequestBody";
 
 const TestSchema = z.object({
   token: z.string().min(1),

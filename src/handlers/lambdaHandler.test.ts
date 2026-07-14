@@ -1,12 +1,12 @@
-import { APIGatewayEvent } from "aws-lambda";
-import { z } from "zod";
-import { lambdaHandler } from "./lambdaHandler";
-import { createAppContext } from "../appContext";
-import { extractCallerArn } from "../extractCallerArn";
 import { getClientByRoleArn } from "@clients/permissionsClient";
 import { parseAndValidate } from "@utils/parseAndValidate";
+import type { APIGatewayEvent } from "aws-lambda";
+import { z } from "zod";
+import { createAppContext } from "../appContext";
+import { extractCallerArn } from "../extractCallerArn";
 import { handleError } from "../handleError";
 import { testAppContext } from "../test/testAppContext";
+import { lambdaHandler } from "./lambdaHandler";
 
 jest.mock("../appContext", () => ({
   createAppContext: jest.fn(),

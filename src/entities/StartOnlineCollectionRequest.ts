@@ -1,10 +1,10 @@
-import type { RawStartOnlineCollectionRequest } from "@appTypes/RawStartOnlineCollectionRequest";
 import type { AppContext } from "@appTypes/AppContext";
-import { RequestType, SoapRequest } from "./SoapRequest";
+import type { RawStartOnlineCollectionRequest } from "@appTypes/RawStartOnlineCollectionRequest";
 import {
-  StartOnlineCollectionResponse,
+  type StartOnlineCollectionResponse,
   StartOnlineCollectionResponseSchema,
 } from "@schemas/StartOnlineCollectionResponse.schema";
+import { type RequestType, SoapRequest } from "./SoapRequest";
 
 export type StartOnlineCollectionRequestParams = {
   tcs_app_id: string;

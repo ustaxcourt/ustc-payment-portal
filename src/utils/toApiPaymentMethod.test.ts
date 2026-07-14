@@ -1,4 +1,4 @@
-import { PaymentMethod as DbPaymentMethod } from "../db/TransactionModel";
+import type { PaymentMethod as DbPaymentMethod } from "../db/TransactionModel";
 import { toApiPaymentMethod } from "./toApiPaymentMethod";
 
 describe("toApiPaymentMethod", () => {

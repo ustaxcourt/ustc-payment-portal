@@ -1,17 +1,17 @@
 import "dotenv/config";
-import express from "express";
 import path from "node:path";
+import type { TransactionsByStatusPathParams } from "@appTypes/TransactionsByStatus";
+import { InvalidRequestError } from "@errors/invalidRequest";
+import { InitPaymentRequestSchema } from "@schemas/InitPayment.schema";
+import { ProcessPaymentRequestSchema } from "@schemas/ProcessPayment.schema";
+import express from "express";
 import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { isLocal } from "./config/appEnv";
-import { generateOpenAPIDocument } from "./openapi/registry";
-import type { TransactionsByStatusPathParams } from "@appTypes/TransactionsByStatus";
-import { migrationHandler } from "./migrationHandler";
 import { handleError } from "./handleError";
-import { InvalidRequestError } from "@errors/invalidRequest";
+import { migrationHandler } from "./migrationHandler";
+import { generateOpenAPIDocument } from "./openapi/registry";
 import { parseRequestBody } from "./parseRequestBody";
-import { InitPaymentRequestSchema } from "@schemas/InitPayment.schema";
-import { ProcessPaymentRequestSchema } from "@schemas/ProcessPayment.schema";
 import "./db/knex";
 import type { ClientPermission } from "@appTypes/ClientPermission";
 

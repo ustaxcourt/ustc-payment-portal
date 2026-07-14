@@ -1,13 +1,13 @@
-import { APIGatewayEvent } from "aws-lambda";
+import { ConflictError } from "@errors/conflict";
+import { ForbiddenError } from "@errors/forbidden";
+import { initPayment } from "@useCases/initPayment";
+import type { APIGatewayEvent } from "aws-lambda";
 import {
   mockHeaders,
   mockRequestContext,
   resetCommonHandlerMocks,
 } from "./handlerTestCommon";
 import { initPaymentHandler } from "./initPaymentHandler";
-import { ConflictError } from "@errors/conflict";
-import { ForbiddenError } from "@errors/forbidden";
-import { initPayment } from "@useCases/initPayment";
 
 jest.mock("../useCases/initPayment", () => ({
   initPayment: jest.fn(),
