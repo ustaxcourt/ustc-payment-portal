@@ -1,17 +1,17 @@
 import { writeEmf } from "./emf";
 
 export type ProcessPaymentConflictReason =
-  | "claim_in_progress"
-  | "lock_not_available"
-  | "deadlock"
-  | "persist_race";
+	| "claim_in_progress"
+	| "lock_not_available"
+	| "deadlock"
+	| "persist_race";
 
 export function emitProcessPaymentConflictMetric(
-  reason: ProcessPaymentConflictReason,
+	reason: ProcessPaymentConflictReason,
 ): void {
-  writeEmf(
-    [{ Name: "ProcessPaymentConflict", Unit: "Count" }],
-    { ProcessPaymentConflict: 1 },
-    { Reason: reason },
-  );
+	writeEmf(
+		[{ Name: "ProcessPaymentConflict", Unit: "Count" }],
+		{ ProcessPaymentConflict: 1 },
+		{ Reason: reason },
+	);
 }

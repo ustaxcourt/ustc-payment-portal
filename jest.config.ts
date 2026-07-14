@@ -1,23 +1,23 @@
 import type { Config } from "jest";
 
 const moduleNameMapper = {
-  "^@/(.*)$": "<rootDir>/src/$1",
-  "^@clients/(.*)$": "<rootDir>/src/clients/$1",
-  "^@entities/(.*)$": "<rootDir>/src/entities/$1",
-  "^@errors/(.*)$": "<rootDir>/src/errors/$1",
-  "^@handlers/(.*)$": "<rootDir>/src/handlers/$1",
-  "^@schemas/(.*)$": "<rootDir>/src/schemas/$1",
-  "^@utils/(.*)$": "<rootDir>/src/utils/$1",
-  "^@appTypes/(.*)$": "<rootDir>/src/types/$1",
-  "^@useCases/(.*)$": "<rootDir>/src/useCases/$1",
+	"^@/(.*)$": "<rootDir>/src/$1",
+	"^@clients/(.*)$": "<rootDir>/src/clients/$1",
+	"^@entities/(.*)$": "<rootDir>/src/entities/$1",
+	"^@errors/(.*)$": "<rootDir>/src/errors/$1",
+	"^@handlers/(.*)$": "<rootDir>/src/handlers/$1",
+	"^@schemas/(.*)$": "<rootDir>/src/schemas/$1",
+	"^@utils/(.*)$": "<rootDir>/src/utils/$1",
+	"^@appTypes/(.*)$": "<rootDir>/src/types/$1",
+	"^@useCases/(.*)$": "<rootDir>/src/useCases/$1",
 };
 
 const config: Config = {
-  preset: "ts-jest",
-  testEnvironment: "node",
-  setupFiles: ["dotenv/config"],
-  testPathIgnorePatterns: ["/node_modules/", "/dist/", "/resources/"],
-  moduleNameMapper,
+	preset: "ts-jest",
+	testEnvironment: "node",
+	setupFiles: ["dotenv/config"],
+	testPathIgnorePatterns: ["/node_modules/", "/dist/", "/resources/"],
+	moduleNameMapper,
 };
 
 export default config;

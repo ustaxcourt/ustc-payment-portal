@@ -7,22 +7,22 @@ import type { ProcessPayment } from "@useCases/processPayment";
 import type * as https from "https";
 
 export type AppContextLogger = {
-  debug: (message: string, additionalFields?: Record<string, unknown>) => void;
-  error: (message: string, additionalFields?: Record<string, unknown>) => void;
-  info: (message: string, additionalFields?: Record<string, unknown>) => void;
-  warn: (message: string, additionalFields?: Record<string, unknown>) => void;
+	debug: (message: string, additionalFields?: Record<string, unknown>) => void;
+	error: (message: string, additionalFields?: Record<string, unknown>) => void;
+	info: (message: string, additionalFields?: Record<string, unknown>) => void;
+	warn: (message: string, additionalFields?: Record<string, unknown>) => void;
 };
 
 export type AppContext = {
-  getHttpsAgent: () => Promise<https.Agent | undefined>;
-  postHttpRequest: (appContext: AppContext, body: string) => Promise<string>;
-  getUseCases: () => {
-    initPayment: InitPayment;
-    processPayment: ProcessPayment;
-    getDetails: GetDetails;
-    getRecentTransactions: GetRecentTransactions;
-    getTransactionPaymentStatus: GetTransactionPaymentStatus;
-    getTransactionsByStatus: GetTransactionsByStatus;
-  };
-  logger: AppContextLogger;
+	getHttpsAgent: () => Promise<https.Agent | undefined>;
+	postHttpRequest: (appContext: AppContext, body: string) => Promise<string>;
+	getUseCases: () => {
+		initPayment: InitPayment;
+		processPayment: ProcessPayment;
+		getDetails: GetDetails;
+		getRecentTransactions: GetRecentTransactions;
+		getTransactionPaymentStatus: GetTransactionPaymentStatus;
+		getTransactionsByStatus: GetTransactionsByStatus;
+	};
+	logger: AppContextLogger;
 };

@@ -4,7 +4,6 @@
 //   payment-portal start  (portal + pay-gov + db)
 //   payment-portal stop   (tear down docker)
 
-
 const path = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
@@ -20,15 +19,15 @@ const packageRoot = path.join(__dirname, "..");
 //    API_PORT, PAY_GOV_TEST_SERVER_PORT, and DB_PORT are intentionally absent —
 //    consumers may override those via .env.payment-portal (step 2 below).
 const PORTAL_ENV = {
-  APP_ENV: "local",
-  NODE_ENV: "development",
-  DB_HOST: "localhost",
-  DB_USER: "user",
-  DB_PASSWORD: "password",
-  DB_NAME: "mydb",
-  PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID: "asdf123",
-  PAY_GOV_NODE_ENV: "local",
-  LOG_LEVEL: "info",
+	APP_ENV: "local",
+	NODE_ENV: "development",
+	DB_HOST: "localhost",
+	DB_USER: "user",
+	DB_PASSWORD: "password",
+	DB_NAME: "mydb",
+	PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID: "asdf123",
+	PAY_GOV_NODE_ENV: "local",
+	LOG_LEVEL: "info",
 };
 
 // 2. Load port overrides from .env.payment-portal in the consumer's CWD.
@@ -39,12 +38,12 @@ const PORT_KEYS = ["API_PORT", "PAY_GOV_TEST_SERVER_PORT", "DB_PORT"];
 const portOverrides = {};
 const consumerEnvFile = path.join(process.cwd(), ".env.payment-portal");
 if (fs.existsSync(consumerEnvFile)) {
-  const parsed = require("dotenv").parse(fs.readFileSync(consumerEnvFile));
-  for (const key of PORT_KEYS) {
-    if (parsed[key] != null) {
-      portOverrides[key] = parsed[key];
-    }
-  }
+	const parsed = require("dotenv").parse(fs.readFileSync(consumerEnvFile));
+	for (const key of PORT_KEYS) {
+		if (parsed[key] != null) {
+			portOverrides[key] = parsed[key];
+		}
+	}
 }
 
 // 3. Derive SOAP_URL / PAYMENT_URL from the (possibly overridden) pay-gov port.
@@ -62,19 +61,22 @@ const args = process.argv.slice(2);
 const subcommand = args[0] || "start";
 
 if (subcommand === "stop") {
-  const result = spawnSync("docker", ["compose", "stop"], {
-    stdio: "inherit",
-    cwd: packageRoot,
-    env: { ...process.env, COMPOSE_FILE: path.join(packageRoot, "docker-compose.consumer.yml") },
-  });
-  process.exit(result.status ?? 0);
+	const result = spawnSync("docker", ["compose", "stop"], {
+		stdio: "inherit",
+		cwd: packageRoot,
+		env: {
+			...process.env,
+			COMPOSE_FILE: path.join(packageRoot, "docker-compose.consumer.yml"),
+		},
+	});
+	process.exit(result.status ?? 0);
 }
 
 if (subcommand !== "start") {
-  console.error(`[ustc-payment-portal] Unknown subcommand: ${subcommand}`);
-  console.error("Usage: payment-portal start");
-  console.error("       payment-portal stop");
-  process.exit(1);
+	console.error(`[ustc-payment-portal] Unknown subcommand: ${subcommand}`);
+	console.error("Usage: payment-portal start");
+	console.error("       payment-portal stop");
+	process.exit(1);
 }
 
 // ── Spawn start-local-stack.js with cwd=packageRoot ──────────────────────────
@@ -85,24 +87,24 @@ if (subcommand !== "start") {
 
 const stackScript = path.join(packageRoot, "scripts", "start-local-stack.js");
 const child = spawn(process.execPath, [stackScript], {
-  stdio: "inherit",
-  cwd: packageRoot,
-  env: {
-    ...process.env,
-    ...PORTAL_ENV,
-    DB_PORT: portOverrides.DB_PORT || "5433",
-    API_PORT: portOverrides.API_PORT || "8080",
-    PAY_GOV_TEST_SERVER_PORT: portOverrides.PAY_GOV_TEST_SERVER_PORT || "3366",
-    SOAP_URL,
-    PAYMENT_URL,
-    COMPOSE_FILE,
-    CONSUMER_MODE,
-  },
+	stdio: "inherit",
+	cwd: packageRoot,
+	env: {
+		...process.env,
+		...PORTAL_ENV,
+		DB_PORT: portOverrides.DB_PORT || "5433",
+		API_PORT: portOverrides.API_PORT || "8080",
+		PAY_GOV_TEST_SERVER_PORT: portOverrides.PAY_GOV_TEST_SERVER_PORT || "3366",
+		SOAP_URL,
+		PAYMENT_URL,
+		COMPOSE_FILE,
+		CONSUMER_MODE,
+	},
 });
 
 wireChild(child);
 
 child.on("error", (err) => {
-  console.error("[ustc-payment-portal] Failed to start:", err.message);
-  process.exit(1);
+	console.error("[ustc-payment-portal] Failed to start:", err.message);
+	process.exit(1);
 });

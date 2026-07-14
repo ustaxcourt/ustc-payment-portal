@@ -1,3 +1,3 @@
 export type AuthContext = {
-  roleArn: string;
+	roleArn: string;
 };

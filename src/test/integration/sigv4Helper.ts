@@ -10,21 +10,21 @@ import type { AwsCredentialIdentity } from "@smithy/types";
  * ESM dynamic imports that break Jest without --experimental-vm-modules.
  */
 const credentialsFromEnv = (): AwsCredentialIdentity => {
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+	const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+	const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
-  if (!accessKeyId || !secretAccessKey) {
-    throw new Error(
-      "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set to sign requests. " +
-        "Run `aws sso login --profile <profile>` and export credentials, or set them directly.",
-    );
-  }
+	if (!accessKeyId || !secretAccessKey) {
+		throw new Error(
+			"AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set to sign requests. " +
+				"Run `aws sso login --profile <profile>` and export credentials, or set them directly.",
+		);
+	}
 
-  return {
-    accessKeyId,
-    secretAccessKey,
-    sessionToken: process.env.AWS_SESSION_TOKEN,
-  };
+	return {
+		accessKeyId,
+		secretAccessKey,
+		sessionToken: process.env.AWS_SESSION_TOKEN,
+	};
 };
 
 /**
@@ -32,33 +32,33 @@ const credentialsFromEnv = (): AwsCredentialIdentity => {
  * Used for testing with different IAM identities.
  */
 export const assumeRole = async (
-  roleArn: string,
-  sessionName: string = "test-session",
+	roleArn: string,
+	sessionName: string = "test-session",
 ): Promise<AwsCredentialIdentity> => {
-  const sts = new STSClient({ region: process.env.AWS_REGION ?? "us-east-1" });
-  const command = new AssumeRoleCommand({
-    RoleArn: roleArn,
-    RoleSessionName: sessionName,
-    DurationSeconds: 900, // 15 minutes
-  });
+	const sts = new STSClient({ region: process.env.AWS_REGION ?? "us-east-1" });
+	const command = new AssumeRoleCommand({
+		RoleArn: roleArn,
+		RoleSessionName: sessionName,
+		DurationSeconds: 900, // 15 minutes
+	});
 
-  const response = await sts.send(command);
+	const response = await sts.send(command);
 
-  if (!response.Credentials) {
-    throw new Error(`Failed to assume role ${roleArn}`);
-  }
+	if (!response.Credentials) {
+		throw new Error(`Failed to assume role ${roleArn}`);
+	}
 
-  const { AccessKeyId, SecretAccessKey, SessionToken } = response.Credentials;
+	const { AccessKeyId, SecretAccessKey, SessionToken } = response.Credentials;
 
-  if (!AccessKeyId || !SecretAccessKey || !SessionToken) {
-    throw new Error(`Assumed role ${roleArn} returned incomplete credentials`);
-  }
+	if (!AccessKeyId || !SecretAccessKey || !SessionToken) {
+		throw new Error(`Assumed role ${roleArn} returned incomplete credentials`);
+	}
 
-  return {
-    accessKeyId: AccessKeyId,
-    secretAccessKey: SecretAccessKey,
-    sessionToken: SessionToken,
-  };
+	return {
+		accessKeyId: AccessKeyId,
+		secretAccessKey: SecretAccessKey,
+		sessionToken: SessionToken,
+	};
 };
 
 /**
@@ -66,38 +66,38 @@ export const assumeRole = async (
  * Useful for testing with assumed role credentials.
  */
 export const signedFetchWithCredentials = async (
-  url: string,
-  credentials: AwsCredentialIdentity,
-  options: RequestInit = {},
+	url: string,
+	credentials: AwsCredentialIdentity,
+	options: RequestInit = {},
 ): Promise<Response> => {
-  const urlObj = new URL(url);
-  const region = process.env.AWS_REGION ?? "us-east-1";
+	const urlObj = new URL(url);
+	const region = process.env.AWS_REGION ?? "us-east-1";
 
-  const signer = new SignatureV4({
-    credentials,
-    region,
-    service: "execute-api",
-    sha256: Sha256,
-  });
+	const signer = new SignatureV4({
+		credentials,
+		region,
+		service: "execute-api",
+		sha256: Sha256,
+	});
 
-  const body = options.body as string | undefined;
-  const request = new HttpRequest({
-    method: (options.method ?? "GET").toUpperCase(),
-    hostname: urlObj.hostname,
-    path: urlObj.pathname + urlObj.search,
-    headers: {
-      host: urlObj.hostname,
-      ...(options.headers as Record<string, string>),
-    },
-    body,
-  });
+	const body = options.body as string | undefined;
+	const request = new HttpRequest({
+		method: (options.method ?? "GET").toUpperCase(),
+		hostname: urlObj.hostname,
+		path: urlObj.pathname + urlObj.search,
+		headers: {
+			host: urlObj.hostname,
+			...(options.headers as Record<string, string>),
+		},
+		body,
+	});
 
-  const signed = await signer.sign(request);
+	const signed = await signer.sign(request);
 
-  return fetch(url, {
-    ...options,
-    headers: signed.headers,
-  });
+	return fetch(url, {
+		...options,
+		headers: signed.headers,
+	});
 };
 
 /**
@@ -105,33 +105,33 @@ export const signedFetchWithCredentials = async (
  * Useful for testing tampered signatures.
  */
 export const signRequest = async (
-  url: string,
-  options: RequestInit = {},
+	url: string,
+	options: RequestInit = {},
 ): Promise<Record<string, string>> => {
-  const urlObj = new URL(url);
-  const region = process.env.AWS_REGION ?? "us-east-1";
+	const urlObj = new URL(url);
+	const region = process.env.AWS_REGION ?? "us-east-1";
 
-  const signer = new SignatureV4({
-    credentials: credentialsFromEnv(),
-    region,
-    service: "execute-api",
-    sha256: Sha256,
-  });
+	const signer = new SignatureV4({
+		credentials: credentialsFromEnv(),
+		region,
+		service: "execute-api",
+		sha256: Sha256,
+	});
 
-  const body = options.body as string | undefined;
-  const request = new HttpRequest({
-    method: (options.method ?? "GET").toUpperCase(),
-    hostname: urlObj.hostname,
-    path: urlObj.pathname + urlObj.search,
-    headers: {
-      host: urlObj.hostname,
-      ...(options.headers as Record<string, string>),
-    },
-    body,
-  });
+	const body = options.body as string | undefined;
+	const request = new HttpRequest({
+		method: (options.method ?? "GET").toUpperCase(),
+		hostname: urlObj.hostname,
+		path: urlObj.pathname + urlObj.search,
+		headers: {
+			host: urlObj.hostname,
+			...(options.headers as Record<string, string>),
+		},
+		body,
+	});
 
-  const signed = await signer.sign(request);
-  return signed.headers as Record<string, string>;
+	const signed = await signer.sign(request);
+	return signed.headers as Record<string, string>;
 };
 
 /**
@@ -149,38 +149,38 @@ export const signRequest = async (
  * @returns       - The same Response you would get from plain fetch()
  */
 export const signedFetch = async (
-  url: string,
-  options: RequestInit = {},
+	url: string,
+	options: RequestInit = {},
 ): Promise<Response> => {
-  const urlObj = new URL(url);
-  const region = process.env.AWS_REGION ?? "us-east-1";
+	const urlObj = new URL(url);
+	const region = process.env.AWS_REGION ?? "us-east-1";
 
-  const signer = new SignatureV4({
-    credentials: credentialsFromEnv(),
-    region,
-    service: "execute-api",
-    sha256: Sha256,
-  });
+	const signer = new SignatureV4({
+		credentials: credentialsFromEnv(),
+		region,
+		service: "execute-api",
+		sha256: Sha256,
+	});
 
-  // Build a @smithy HttpRequest — this is what SignatureV4.sign() expects.
-  const body = options.body as string | undefined;
-  const request = new HttpRequest({
-    method: (options.method ?? "GET").toUpperCase(),
-    hostname: urlObj.hostname,
-    path: urlObj.pathname + urlObj.search,
-    headers: {
-      // "host" header is required for SigV4 signing.
-      host: urlObj.hostname,
-      ...(options.headers as Record<string, string>),
-    },
-    body,
-  });
+	// Build a @smithy HttpRequest — this is what SignatureV4.sign() expects.
+	const body = options.body as string | undefined;
+	const request = new HttpRequest({
+		method: (options.method ?? "GET").toUpperCase(),
+		hostname: urlObj.hostname,
+		path: urlObj.pathname + urlObj.search,
+		headers: {
+			// "host" header is required for SigV4 signing.
+			host: urlObj.hostname,
+			...(options.headers as Record<string, string>),
+		},
+		body,
+	});
 
-  const signed = await signer.sign(request);
+	const signed = await signer.sign(request);
 
-  // signed.headers now contains Authorization, x-amz-date, and x-amz-security-token (if STS).
-  return fetch(url, {
-    ...options,
-    headers: signed.headers,
-  });
+	// signed.headers now contains Authorization, x-amz-date, and x-amz-security-token (if STS).
+	return fetch(url, {
+		...options,
+		headers: signed.headers,
+	});
 };

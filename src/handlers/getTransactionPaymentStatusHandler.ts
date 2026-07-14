@@ -7,16 +7,16 @@ import { createAppContext } from "../appContext";
  * Returns aggregated counts per payment status.
  */
 export const getTransactionPaymentStatusHandler = async (
-  event: APIGatewayEvent,
+	event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const appContext = createAppContext({ lambdaRequest: event });
-  try {
-    const result = await appContext
-      .getUseCases()
-      .getTransactionPaymentStatus(appContext);
-    return dashboardOk(result);
-  } catch (err) {
-    console.error("[Dashboard] getTransactionPaymentStatus error:", err);
-    return dashboardError(500, "Internal server error");
-  }
+	const appContext = createAppContext({ lambdaRequest: event });
+	try {
+		const result = await appContext
+			.getUseCases()
+			.getTransactionPaymentStatus(appContext);
+		return dashboardOk(result);
+	} catch (err) {
+		console.error("[Dashboard] getTransactionPaymentStatus error:", err);
+		return dashboardError(500, "Internal server error");
+	}
 };

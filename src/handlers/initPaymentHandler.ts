@@ -4,11 +4,11 @@ import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { lambdaHandler } from "./lambdaHandler";
 
 export const initPaymentHandler = (
-  event: APIGatewayEvent,
+	event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> =>
-  lambdaHandler({
-    schema: InitPaymentRequestSchema,
-    event,
-    rawRequest: event.body ?? "",
-    callback: initPayment,
-  });
+	lambdaHandler({
+		schema: InitPaymentRequestSchema,
+		event,
+		rawRequest: event.body ?? "",
+		callback: initPayment,
+	});

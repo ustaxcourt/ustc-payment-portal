@@ -1,13 +1,13 @@
 import type {
-  TransactionsByStatusPathParamsSchema,
-  TransactionsByStatusResponseSchema,
+	TransactionsByStatusPathParamsSchema,
+	TransactionsByStatusResponseSchema,
 } from "@schemas/TransactionsByStatus.schema";
 import type { z } from "zod";
 
 export type TransactionsByStatusPathParams = z.infer<
-  typeof TransactionsByStatusPathParamsSchema
+	typeof TransactionsByStatusPathParamsSchema
 >;
 
 export type TransactionsByStatusResponse = z.infer<
-  typeof TransactionsByStatusResponseSchema
+	typeof TransactionsByStatusResponseSchema
 >;

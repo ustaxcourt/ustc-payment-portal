@@ -2,5 +2,5 @@ import type { RecentTransactionsResponseSchema } from "@schemas/RecentTransactio
 import type { z } from "zod";
 
 export type RecentTransactionsResponse = z.infer<
-  typeof RecentTransactionsResponseSchema
+	typeof RecentTransactionsResponseSchema
 >;

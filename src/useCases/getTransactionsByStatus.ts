@@ -1,19 +1,19 @@
 import type { AppContext } from "@appTypes/AppContext";
 import type {
-  TransactionsByStatusPathParams,
-  TransactionsByStatusResponse,
+	TransactionsByStatusPathParams,
+	TransactionsByStatusResponse,
 } from "@appTypes/TransactionsByStatus";
 import { InvalidRequestError } from "@errors/invalidRequest";
 import {
-  TransactionsByStatusPathParamsSchema,
-  TransactionsByStatusResponseSchema,
+	TransactionsByStatusPathParamsSchema,
+	TransactionsByStatusResponseSchema,
 } from "@schemas/TransactionsByStatus.schema";
 import { toApiPaymentMethod } from "@utils/toApiPaymentMethod";
 import TransactionModel from "../db/TransactionModel";
 
 export type GetTransactionsByStatus = (
-  appContext: AppContext,
-  request: TransactionsByStatusPathParams
+	appContext: AppContext,
+	request: TransactionsByStatusPathParams,
 ) => Promise<TransactionsByStatusResponse>;
 
 export type IsValidPaymentStatus = (paymentStatus: string) => boolean;
@@ -22,30 +22,34 @@ export type IsValidPaymentStatus = (paymentStatus: string) => boolean;
  * Returns up to 100 transactions filtered by payment status.
  */
 export const getTransactionsByStatus: GetTransactionsByStatus = async (
-  _appContext: AppContext,
-  request: TransactionsByStatusPathParams
+	_appContext: AppContext,
+	request: TransactionsByStatusPathParams,
 ): Promise<TransactionsByStatusResponse> => {
-  const parsed = TransactionsByStatusPathParamsSchema.safeParse(request);
-  /* istanbul ignore if */
-  if (!parsed.success) {
-    throw new InvalidRequestError(
-      "Invalid paymentStatus. Expected one of: success, failed, pending",
-    );
-  }
+	const parsed = TransactionsByStatusPathParamsSchema.safeParse(request);
+	/* istanbul ignore if */
+	if (!parsed.success) {
+		throw new InvalidRequestError(
+			"Invalid paymentStatus. Expected one of: success, failed, pending",
+		);
+	}
 
-  const { paymentStatus } = parsed.data;
-  const data = await TransactionModel.getByPaymentStatus(paymentStatus);
+	const { paymentStatus } = parsed.data;
+	const data = await TransactionModel.getByPaymentStatus(paymentStatus);
 
-  return TransactionsByStatusResponseSchema.parse({
-    data: data.map((row) => ({ ...row, paymentMethod: toApiPaymentMethod(row.paymentMethod) })),
-    total: data.length,
-  });
+	return TransactionsByStatusResponseSchema.parse({
+		data: data.map((row) => ({
+			...row,
+			paymentMethod: toApiPaymentMethod(row.paymentMethod),
+		})),
+		total: data.length,
+	});
 };
 
 /* istanbul ignore next */
-export const isValidPaymentStatus: IsValidPaymentStatus = (paymentStatus: string): boolean => {
-  return TransactionsByStatusPathParamsSchema.shape.paymentStatus.safeParse(
-    paymentStatus,
-  ).success;
+export const isValidPaymentStatus: IsValidPaymentStatus = (
+	paymentStatus: string,
+): boolean => {
+	return TransactionsByStatusPathParamsSchema.shape.paymentStatus.safeParse(
+		paymentStatus,
+	).success;
 };
-

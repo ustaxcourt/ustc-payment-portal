@@ -3,16 +3,16 @@ import { signedFetch } from "./sigv4Helper";
 
 // Leaves rows behind (no delete API). Purge: DELETE FROM transactions WHERE metadata->>'docketNumber' = 'load-test';
 const runOrSkip =
-  process.env.RUN_LOAD_TEST === "true" ? describe : describe.skip;
+	process.env.RUN_LOAD_TEST === "true" ? describe : describe.skip;
 
 const intEnv = (name: string, fallback: number, min: number): number => {
-  const raw = process.env[name];
-  if (raw === undefined || raw === "") return fallback;
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed < min) {
-    throw new Error(`${name} must be an integer >= ${min}, got "${raw}"`);
-  }
-  return parsed;
+	const raw = process.env[name];
+	if (raw === undefined || raw === "") return fallback;
+	const parsed = Number(raw);
+	if (!Number.isInteger(parsed) || parsed < min) {
+		throw new Error(`${name} must be an integer >= ${min}, got "${raw}"`);
+	}
+	return parsed;
 };
 
 const BASE_URL = process.env.BASE_URL ?? "";
@@ -20,71 +20,70 @@ const CONCURRENCY = intEnv("LOAD_CONCURRENCY", 40, 1);
 const DURATION_MS = intEnv("LOAD_DURATION_MS", 60_000, 1);
 
 runOrSkip("RDS Proxy load test", () => {
-  it(
-    `sustains ${CONCURRENCY} concurrent /init for ${DURATION_MS}ms`,
-    async () => {
-      if (!BASE_URL) throw new Error("BASE_URL is required");
+	it(
+		`sustains ${CONCURRENCY} concurrent /init for ${DURATION_MS}ms`,
+		async () => {
+			if (!BASE_URL) throw new Error("BASE_URL is required");
 
-      const headers = { "content-type": "application/json" };
-      const deadline = Date.now() + DURATION_MS;
-      const pacingMs = intEnv("LOAD_PACING_MS", 0, 0);
-      const okLatencies: number[] = [];
-      const statusCounts = new Map<string, number>();
-      const bump = (k: string): void => {
-        statusCounts.set(k, (statusCounts.get(k) ?? 0) + 1);
-      };
-      let total = 0;
-      let ok = 0;
+			const headers = { "content-type": "application/json" };
+			const deadline = Date.now() + DURATION_MS;
+			const pacingMs = intEnv("LOAD_PACING_MS", 0, 0);
+			const okLatencies: number[] = [];
+			const statusCounts = new Map<string, number>();
+			const bump = (k: string): void => {
+				statusCounts.set(k, (statusCounts.get(k) ?? 0) + 1);
+			};
+			let total = 0;
+			let ok = 0;
 
-      const worker = async (): Promise<void> => {
-        while (Date.now() < deadline) {
-          const body = JSON.stringify({
-            transactionReferenceId: randomUUID(),
-            fee: "PETITION_FILING_FEE",
-            urlSuccess: "https://example.com",
-            urlCancel: "https://example.com",
-            metadata: { docketNumber: "load-test" },
-          });
-          const start = Date.now();
-          try {
-            const res = await signedFetch(`${BASE_URL}/init`, {
-              method: "POST",
-              headers,
-              body,
-            });
-            total += 1;
-            bump(String(res.status));
-            if (res.status === 200) {
-              ok += 1;
-              okLatencies.push(Date.now() - start);
-            }
-          } catch (err) {
-            total += 1;
-            bump(`error:${(err as Error).name}`);
-          }
-          if (pacingMs > 0) await new Promise((r) => setTimeout(r, pacingMs));
-        }
-      };
+			const worker = async (): Promise<void> => {
+				while (Date.now() < deadline) {
+					const body = JSON.stringify({
+						transactionReferenceId: randomUUID(),
+						fee: "PETITION_FILING_FEE",
+						urlSuccess: "https://example.com",
+						urlCancel: "https://example.com",
+						metadata: { docketNumber: "load-test" },
+					});
+					const start = Date.now();
+					try {
+						const res = await signedFetch(`${BASE_URL}/init`, {
+							method: "POST",
+							headers,
+							body,
+						});
+						total += 1;
+						bump(String(res.status));
+						if (res.status === 200) {
+							ok += 1;
+							okLatencies.push(Date.now() - start);
+						}
+					} catch (err) {
+						total += 1;
+						bump(`error:${(err as Error).name}`);
+					}
+					if (pacingMs > 0) await new Promise((r) => setTimeout(r, pacingMs));
+				}
+			};
 
-      await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+			await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
-      okLatencies.sort((a, b) => a - b);
-      const pct = (p: number): number =>
-        okLatencies[Math.floor(okLatencies.length * p)] ?? 0;
-      const breakdown = [...statusCounts.entries()]
-        .map(([k, v]) => `${k}=${v}`)
-        .join(" ");
-      console.log(
-        `\nLoad summary: total=${total} ok=${ok} concurrency=${CONCURRENCY} duration=${DURATION_MS}ms\n` +
-          `  status: ${breakdown}\n` +
-          `  ok latency: p50=${pct(0.5)}ms p95=${pct(0.95)}ms p99=${pct(
-            0.99,
-          )}ms\n`,
-      );
+			okLatencies.sort((a, b) => a - b);
+			const pct = (p: number): number =>
+				okLatencies[Math.floor(okLatencies.length * p)] ?? 0;
+			const breakdown = [...statusCounts.entries()]
+				.map(([k, v]) => `${k}=${v}`)
+				.join(" ");
+			console.log(
+				`\nLoad summary: total=${total} ok=${ok} concurrency=${CONCURRENCY} duration=${DURATION_MS}ms\n` +
+					`  status: ${breakdown}\n` +
+					`  ok latency: p50=${pct(0.5)}ms p95=${pct(0.95)}ms p99=${pct(
+						0.99,
+					)}ms\n`,
+			);
 
-      expect(ok).toBeGreaterThan(0); // 429s under load are expected, not a proxy failure
-
-    },
-    DURATION_MS + 60_000,
-  );
+			expect(ok).toBeGreaterThan(0); // 429s under load are expected, not a proxy failure
+		},
+		DURATION_MS + 60_000,
+	);
 });

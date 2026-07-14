@@ -4,17 +4,16 @@ import { TransactionPaymentStatusResponseSchema } from "@schemas/TransactionPaym
 import TransactionModel from "../db/TransactionModel";
 
 export type GetTransactionPaymentStatus = (
-  appContext: AppContext
+	appContext: AppContext,
 ) => Promise<TransactionPaymentStatusResponse>;
 
 /**
  * Returns aggregate counts grouped by payment status.
  */
 export const getTransactionPaymentStatus: GetTransactionPaymentStatus = async (
-  _appContext: AppContext,
+	_appContext: AppContext,
 ) => {
-  const totals = await TransactionModel.getAggregatedPaymentStatus();
+	const totals = await TransactionModel.getAggregatedPaymentStatus();
 
-  return TransactionPaymentStatusResponseSchema.parse(totals);
+	return TransactionPaymentStatusResponseSchema.parse(totals);
 };
-

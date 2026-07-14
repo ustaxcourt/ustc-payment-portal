@@ -5,10 +5,10 @@ import { z } from "zod";
 extendZodWithOpenApi(z);
 
 export const PaymentMethodSchema = z
-  .enum(["Credit/Debit Card", "ACH", "PayPal"])
-  .openapi({
-    description: "Method of payment",
-    example: "Credit/Debit Card",
-  });
+	.enum(["Credit/Debit Card", "ACH", "PayPal"])
+	.openapi({
+		description: "Method of payment",
+		example: "Credit/Debit Card",
+	});
 
 export type PaymentMethod = z.infer<typeof PaymentMethodSchema>;

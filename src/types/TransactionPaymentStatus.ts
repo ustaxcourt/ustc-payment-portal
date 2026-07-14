@@ -2,5 +2,5 @@ import type { TransactionPaymentStatusResponseSchema } from "@schemas/Transactio
 import type { z } from "zod";
 
 export type TransactionPaymentStatusResponse = z.infer<
-  typeof TransactionPaymentStatusResponseSchema
+	typeof TransactionPaymentStatusResponseSchema
 >;

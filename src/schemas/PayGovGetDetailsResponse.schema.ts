@@ -6,29 +6,29 @@ import { PayGovTransactionStatusSchema } from "./CompleteOnlineCollectionWithDet
 // fake omits them and we don't read them downstream (the DB row already has them).
 // Strictness here would buy nothing and only break against the dev fake.
 export const PayGovGetDetailsTransactionSchema = z.object({
-  paygov_tracking_id: z.string(),
-  transaction_status: PayGovTransactionStatusSchema,
-  agency_tracking_id: z.string().optional(),
-  transaction_amount: z.number().optional(),
-  payment_type: z.string().optional(),
-  transaction_date: z.iso.datetime({ local: true, offset: true }).optional(),
-  payment_date: z.iso.date().optional(),
+	paygov_tracking_id: z.string(),
+	transaction_status: PayGovTransactionStatusSchema,
+	agency_tracking_id: z.string().optional(),
+	transaction_amount: z.number().optional(),
+	payment_type: z.string().optional(),
+	transaction_date: z.iso.datetime({ local: true, offset: true }).optional(),
+	payment_date: z.iso.date().optional(),
 });
 
 const TransactionWrapperSchema = z.object({
-  transaction: PayGovGetDetailsTransactionSchema,
+	transaction: PayGovGetDetailsTransactionSchema,
 });
 
 export const PayGovGetDetailsResponseSchema = z.object({
-  transactions: z.union([
-    TransactionWrapperSchema,
-    z.array(TransactionWrapperSchema).nonempty(),
-  ]),
+	transactions: z.union([
+		TransactionWrapperSchema,
+		z.array(TransactionWrapperSchema).nonempty(),
+	]),
 });
 
 export type PayGovGetDetailsTransaction = z.infer<
-  typeof PayGovGetDetailsTransactionSchema
+	typeof PayGovGetDetailsTransactionSchema
 >;
 export type PayGovGetDetailsResponseBody = z.infer<
-  typeof PayGovGetDetailsResponseSchema
+	typeof PayGovGetDetailsResponseSchema
 >;

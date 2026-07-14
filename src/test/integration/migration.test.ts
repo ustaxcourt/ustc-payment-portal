@@ -26,159 +26,153 @@ import { isLocal } from "../../config/appEnv";
 const TOTAL_SEEDED_ROWS = 270; // 200 success + 50 failed + 20 pending from 02_dummy_data.ts
 
 const baseUrl = process.env.BASE_URL;
-const isDeployed =
-  !!baseUrl &&
-  baseUrl.startsWith("https://") &&
-  !isLocal();
+const isDeployed = !!baseUrl && baseUrl.startsWith("https://") && !isLocal();
 
 // Skip the entire suite when not running against a deployed environment.
 const describeIfDeployed = isDeployed ? describe : describe.skip;
 
 describeIfDeployed("database migration and seed verification", () => {
-  // ── GET /transactions ─────────────────────────────────────────────────────
-  describe("GET /transactions (all seeded data)", () => {
-    let body: { data: Record<string, unknown>[]; total: number };
+	// ── GET /transactions ─────────────────────────────────────────────────────
+	describe("GET /transactions (all seeded data)", () => {
+		let body: { data: Record<string, unknown>[]; total: number };
 
-    beforeAll(async () => {
-      const response = await fetch(`${baseUrl}/transactions`);
-      if (!response.ok) {
-        throw new Error(`GET /transactions failed: ${response.status} ${await response.text()}`);
-      }
-      body = (await response.json()) as typeof body;
-    });
+		beforeAll(async () => {
+			const response = await fetch(`${baseUrl}/transactions`);
+			if (!response.ok) {
+				throw new Error(
+					`GET /transactions failed: ${response.status} ${await response.text()}`,
+				);
+			}
+			body = (await response.json()) as typeof body;
+		});
 
-    it("should return a capped page of results", () => {
-      expect(body.total).toBeGreaterThan(0);
-      expect(body.total).toBeLessThanOrEqual(100);
-      expect(body.data).toHaveLength(body.total);
-    });
+		it("should return a capped page of results", () => {
+			expect(body.total).toBeGreaterThan(0);
+			expect(body.total).toBeLessThanOrEqual(100);
+			expect(body.data).toHaveLength(body.total);
+		});
 
-    it("should return transactions with the correct schema shape", () => {
-      const row = body.data[0];
+		it("should return transactions with the correct schema shape", () => {
+			const row = body.data[0];
 
-      expect(row).toHaveProperty("agencyTrackingId");
-      expect(row).toHaveProperty("transactionReferenceId");
-      expect(row).toHaveProperty("feeName");
-      expect(row).toHaveProperty("feeId");
-      expect(row).toHaveProperty("transactionAmount"); // derived from fees.amount via join
-      expect(row).toHaveProperty("clientName");
-      expect(row).toHaveProperty("paymentStatus");
-      expect(row).toHaveProperty("transactionStatus");
-      expect(row).toHaveProperty("createdAt");
-      expect(row).toHaveProperty("lastUpdatedAt");
+			expect(row).toHaveProperty("agencyTrackingId");
+			expect(row).toHaveProperty("transactionReferenceId");
+			expect(row).toHaveProperty("feeName");
+			expect(row).toHaveProperty("feeId");
+			expect(row).toHaveProperty("transactionAmount"); // derived from fees.amount via join
+			expect(row).toHaveProperty("clientName");
+			expect(row).toHaveProperty("paymentStatus");
+			expect(row).toHaveProperty("transactionStatus");
+			expect(row).toHaveProperty("createdAt");
+			expect(row).toHaveProperty("lastUpdatedAt");
 
-      // paymentMethod is .optional() in TransactionDashboard.schema.ts — only
-      // populated once Pay.gov reports a method, so pending rows omit it. Assert
-      // on a completed row so the column is reachable.
-      const completedRow = body.data.find((r) => r.paymentStatus !== "pending");
-      if (completedRow) {
-        expect(completedRow).toHaveProperty("paymentMethod");
-      }
-    });
+			// paymentMethod is .optional() in TransactionDashboard.schema.ts — only
+			// populated once Pay.gov reports a method, so pending rows omit it. Assert
+			// on a completed row so the column is reachable.
+			const completedRow = body.data.find((r) => r.paymentStatus !== "pending");
+			if (completedRow) {
+				expect(completedRow).toHaveProperty("paymentMethod");
+			}
+		});
 
-    it("should contain only valid payment statuses", () => {
-      const validStatuses = ["success", "failed", "pending"];
-      for (const row of body.data) {
-        expect(validStatuses).toContain(row.paymentStatus);
-      }
-    });
+		it("should contain only valid payment statuses", () => {
+			const validStatuses = ["success", "failed", "pending"];
+			for (const row of body.data) {
+				expect(validStatuses).toContain(row.paymentStatus);
+			}
+		});
 
-    it("should contain only valid fee IDs from the seed data", () => {
-      const validFeeIds = [
-        "PETITION_FILING_FEE",
-        "NONATTORNEY_EXAM_REGISTRATION_FEE",
-      ];
-      for (const row of body.data) {
-        expect(validFeeIds).toContain(row.feeId);
-      }
-    });
+		it("should contain only valid fee IDs from the seed data", () => {
+			const validFeeIds = [
+				"PETITION_FILING_FEE",
+				"NONATTORNEY_EXAM_REGISTRATION_FEE",
+			];
+			for (const row of body.data) {
+				expect(validFeeIds).toContain(row.feeId);
+			}
+		});
 
-    it("should have non-negative fee amounts", () => {
-      for (const row of body.data) {
-        expect(Number(row.transactionAmount)).toBeGreaterThanOrEqual(0);
-      }
-    });
+		it("should have non-negative fee amounts", () => {
+			for (const row of body.data) {
+				expect(Number(row.transactionAmount)).toBeGreaterThanOrEqual(0);
+			}
+		});
 
-    it("reports the same transactionAmount for every row with the same feeId", () => {
-      const amountByFeeId = new Map<string, number>();
-      for (const row of body.data) {
-        const feeId = row.feeId as string;
-        const amount = Number(row.transactionAmount);
-        if (amountByFeeId.has(feeId)) {
-          expect(amount).toBe(amountByFeeId.get(feeId));
-        } else {
-          amountByFeeId.set(feeId, amount);
-        }
-      }
-      expect(amountByFeeId.size).toBeGreaterThan(0);
-    });
-  });
+		it("reports the same transactionAmount for every row with the same feeId", () => {
+			const amountByFeeId = new Map<string, number>();
+			for (const row of body.data) {
+				const feeId = row.feeId as string;
+				const amount = Number(row.transactionAmount);
+				if (amountByFeeId.has(feeId)) {
+					expect(amount).toBe(amountByFeeId.get(feeId));
+				} else {
+					amountByFeeId.set(feeId, amount);
+				}
+			}
+			expect(amountByFeeId.size).toBeGreaterThan(0);
+		});
+	});
 
-  // ── GET /transactions/{paymentStatus} ─────────────────────────────────────
-  describe("GET /transactions/{paymentStatus} (filtered queries)", () => {
-    it.each(["pending", "success", "failed"])(
-      "should return rows for payment status '%s'",
-      async (status) => {
-        const response = await fetch(
-          `${baseUrl}/transactions/${status}`,
-        );
-        expect(response.status).toBe(200);
+	// ── GET /transactions/{paymentStatus} ─────────────────────────────────────
+	describe("GET /transactions/{paymentStatus} (filtered queries)", () => {
+		it.each([
+			"pending",
+			"success",
+			"failed",
+		])("should return rows for payment status '%s'", async (status) => {
+			const response = await fetch(`${baseUrl}/transactions/${status}`);
+			expect(response.status).toBe(200);
 
-        const body = (await response.json()) as {
-          data: Record<string, unknown>[];
-          total: number;
-        };
+			const body = (await response.json()) as {
+				data: Record<string, unknown>[];
+				total: number;
+			};
 
-        // Seeds create a realistic distribution — each status has > 0 rows.
-        expect(body.total).toBeGreaterThan(0);
-        expect(body.data).toHaveLength(body.total);
+			// Seeds create a realistic distribution — each status has > 0 rows.
+			expect(body.total).toBeGreaterThan(0);
+			expect(body.data).toHaveLength(body.total);
 
-        // Every returned row must have the requested payment status.
-        for (const row of body.data) {
-          expect(row.paymentStatus).toBe(status);
-        }
-      },
-    );
+			// Every returned row must have the requested payment status.
+			for (const row of body.data) {
+				expect(row.paymentStatus).toBe(status);
+			}
+		});
 
-    it("should reject an invalid payment status with 400", async () => {
-      const response = await fetch(
-        `${baseUrl}/transactions/nonexistent`,
-      );
-      expect(response.status).toBe(400);
-    });
-  });
+		it("should reject an invalid payment status with 400", async () => {
+			const response = await fetch(`${baseUrl}/transactions/nonexistent`);
+			expect(response.status).toBe(400);
+		});
+	});
 
-  // ── GET /transaction-payment-status ───────────────────────────────────────
-  describe("GET /transaction-payment-status (aggregated counts)", () => {
-    it("should return status counts that include the seeded total", async () => {
-      const response = await fetch(
-        `${baseUrl}/transaction-payment-status`,
-      );
-      expect(response.status).toBe(200);
+	// ── GET /transaction-payment-status ───────────────────────────────────────
+	describe("GET /transaction-payment-status (aggregated counts)", () => {
+		it("should return status counts that include the seeded total", async () => {
+			const response = await fetch(`${baseUrl}/transaction-payment-status`);
+			expect(response.status).toBe(200);
 
-      const body = (await response.json()) as {
-        pending: number;
-        success: number;
-        failed: number;
-        total: number;
-      };
+			const body = (await response.json()) as {
+				pending: number;
+				success: number;
+				failed: number;
+				total: number;
+			};
 
-      expect(body).toHaveProperty("pending");
-      expect(body).toHaveProperty("success");
-      expect(body).toHaveProperty("failed");
-      expect(body).toHaveProperty("total");
+			expect(body).toHaveProperty("pending");
+			expect(body).toHaveProperty("success");
+			expect(body).toHaveProperty("failed");
+			expect(body).toHaveProperty("total");
 
-      expect(body.total).toBeGreaterThanOrEqual(TOTAL_SEEDED_ROWS);
-      expect(body.pending + body.success + body.failed).toBe(body.total);
-    });
-  });
+			expect(body.total).toBeGreaterThanOrEqual(TOTAL_SEEDED_ROWS);
+			expect(body.pending + body.success + body.failed).toBe(body.total);
+		});
+	});
 
-  // ── Database isolation ────────────────────────────────────────────────────
-  describe("database isolation", () => {
-    it("should be scoped to a PR-specific namespace", () => {
-      const namespace = process.env.TEST_NAMESPACE;
-      expect(namespace).toBeDefined();
-      expect(namespace).toMatch(/^pr-\d+$/);
-    });
-  });
+	// ── Database isolation ────────────────────────────────────────────────────
+	describe("database isolation", () => {
+		it("should be scoped to a PR-specific namespace", () => {
+			const namespace = process.env.TEST_NAMESPACE;
+			expect(namespace).toBeDefined();
+			expect(namespace).toMatch(/^pr-\d+$/);
+		});
+	});
 });

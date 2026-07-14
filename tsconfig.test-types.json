@@ -1,14 +1,14 @@
 {
-  "include": ["./test-types/**/*"],
-  "compilerOptions": {
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "ignoreDeprecations": "6.0",
-    "target": "es2022",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "noEmit": true,
-    "forceConsistentCasingInFileNames": true
-  }
+	"include": ["./test-types/**/*"],
+	"compilerOptions": {
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"ignoreDeprecations": "6.0",
+		"target": "es2022",
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"forceConsistentCasingInFileNames": true
+	}
 }

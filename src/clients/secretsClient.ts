@@ -1,14 +1,20 @@
-import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
+import {
+	GetSecretValueCommand,
+	SecretsManagerClient,
+} from "@aws-sdk/client-secrets-manager";
 
 const sm = new SecretsManagerClient({});
 
 export async function getSecretString(secretId: string): Promise<string> {
-  if (!secretId) throw new Error("getSecretString: secretId is required");
+	if (!secretId) throw new Error("getSecretString: secretId is required");
 
-  const res = await sm.send(new GetSecretValueCommand({ SecretId: secretId }));
+	const res = await sm.send(new GetSecretValueCommand({ SecretId: secretId }));
 
-  if (res.SecretString) return res.SecretString.trim();
-  if (res.SecretBinary) return Buffer.from(res.SecretBinary as any).toString("utf-8").trim();
+	if (res.SecretString) return res.SecretString.trim();
+	if (res.SecretBinary)
+		return Buffer.from(res.SecretBinary as any)
+			.toString("utf-8")
+			.trim();
 
-  throw new Error(`Secret "${secretId}" has no SecretString or SecretBinary`);
+	throw new Error(`Secret "${secretId}" has no SecretString or SecretBinary`);
 }

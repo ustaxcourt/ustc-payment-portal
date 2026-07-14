@@ -9,33 +9,33 @@ import { createAppContext } from "../appContext";
  * Returns up to 100 transactions filtered by payment status.
  */
 export const getTransactionsByStatusHandler = async (
-  event: APIGatewayEvent,
+	event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  const appContext = createAppContext({ lambdaRequest: event });
-  const paymentStatus = event.pathParameters?.paymentStatus;
-  if (!paymentStatus) {
-    return dashboardError(
-      400,
-      "Missing required path parameter: paymentStatus",
-    );
-  }
-  if (!isValidPaymentStatus(paymentStatus)) {
-    return dashboardError(
-      400,
-      `Invalid paymentStatus. Expected one of: ${PaymentStatusSchema.options.join(
-        ", ",
-      )}`,
-    );
-  }
-  try {
-    const result = await appContext
-      .getUseCases()
-      .getTransactionsByStatus(appContext, {
-        paymentStatus: paymentStatus as "pending" | "success" | "failed",
-      });
-    return dashboardOk(result);
-  } catch (err) {
-    console.error("[Dashboard] getTransactionsByStatus error:", err);
-    return dashboardError(500, "Internal server error");
-  }
+	const appContext = createAppContext({ lambdaRequest: event });
+	const paymentStatus = event.pathParameters?.paymentStatus;
+	if (!paymentStatus) {
+		return dashboardError(
+			400,
+			"Missing required path parameter: paymentStatus",
+		);
+	}
+	if (!isValidPaymentStatus(paymentStatus)) {
+		return dashboardError(
+			400,
+			`Invalid paymentStatus. Expected one of: ${PaymentStatusSchema.options.join(
+				", ",
+			)}`,
+		);
+	}
+	try {
+		const result = await appContext
+			.getUseCases()
+			.getTransactionsByStatus(appContext, {
+				paymentStatus: paymentStatus as "pending" | "success" | "failed",
+			});
+		return dashboardOk(result);
+	} catch (err) {
+		console.error("[Dashboard] getTransactionsByStatus error:", err);
+		return dashboardError(500, "Internal server error");
+	}
 };

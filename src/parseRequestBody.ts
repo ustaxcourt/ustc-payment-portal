@@ -11,13 +11,13 @@ import type { ZodType } from "zod";
  * caller's existing try/catch can route the error through handleError.
  */
 export const parseRequestBody = <T>(
-  req: Pick<Request, "body" | "headers">,
-  schema: ZodType<T>,
+	req: Pick<Request, "body" | "headers">,
+	schema: ZodType<T>,
 ): T => {
-  const isJsonRequest =
-    req.headers["content-type"]?.includes("application/json") ?? false;
-  if (!isJsonRequest && Object.keys(req.body ?? {}).length === 0) {
-    throw new InvalidRequestError("missing body");
-  }
-  return schema.parse(req.body);
+	const isJsonRequest =
+		req.headers["content-type"]?.includes("application/json") ?? false;
+	if (!isJsonRequest && Object.keys(req.body ?? {}).length === 0) {
+		throw new InvalidRequestError("missing body");
+	}
+	return schema.parse(req.body);
 };
