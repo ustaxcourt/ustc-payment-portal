@@ -6,9 +6,6 @@ export const toTransactionRecordSummary = (
 	row: TransactionModel,
 ): TransactionRecordSummary => {
 	if (!row.transactionStatus) {
-		console.error(
-			`For ${row.transactionReferenceId}: Transaction Attempt ${row.agencyTrackingId} has null transactionStatus — defaulting to 'received'. This indicates corrupt data.`,
-		);
 	}
 	return {
 		payGovTrackingId: row.paygovTrackingId ?? undefined,

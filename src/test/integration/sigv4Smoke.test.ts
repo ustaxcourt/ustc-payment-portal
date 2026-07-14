@@ -16,8 +16,6 @@ const skipCiOnlyTest = (reason: string): boolean => {
 	if (!isLocalCiOnlySkipMode) {
 		return false;
 	}
-
-	console.log(`Skipping: ${reason}`);
 	return true;
 };
 
@@ -89,7 +87,6 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
 		});
 
 		const data = await parseJsonOrText(result);
-		console.log("Signed request response:", result.status, data);
 
 		// A 403 means API Gateway rejected the SigV4 signature.
 		// Any other status (200, 400) proves auth passed and Lambda was invoked.
@@ -107,7 +104,6 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
 		});
 
 		const data = await parseJsonOrText(result);
-		console.log("Unsigned request response:", result.status, data);
 
 		expect(result.status).toBe(403);
 		if (typeof data === "object" && data !== null) {
@@ -140,7 +136,6 @@ describeWithCreds("SigV4 enforcement on protected endpoints", () => {
 		});
 
 		const data = await parseJsonOrText(result);
-		console.log("Tampered signature response:", result.status, data);
 
 		expect(result.status).toBe(403);
 		if (typeof data === "object" && data !== null) {
@@ -165,7 +160,6 @@ describeWithCreds("Unsigned auth rejection", () => {
 		});
 
 		const data = await parseJsonOrText(result);
-		console.log("Unsigned request response:", result.status, data);
 
 		expect(result.status).toBe(403);
 		if (typeof data === "object" && data !== null) {
@@ -179,7 +173,6 @@ describeWithCreds("Unsigned auth rejection", () => {
 		});
 
 		const data = await parseJsonOrText(result);
-		console.log("Unsigned request response:", result.status, data);
 
 		expect(result.status).toBe(403);
 		if (typeof data === "object" && data !== null) {
@@ -234,11 +227,6 @@ describeWithCreds("SigV4 helper behavior and credential handling", () => {
 		);
 
 		const responseBody = await result.text();
-		console.log(
-			"signedFetchWithCredentials response:",
-			result.status,
-			responseBody.slice(0, 200),
-		);
 
 		expect(result.status).toBe(200);
 	});
@@ -341,7 +329,6 @@ describeLambdaAuth("Lambda-level authorization", () => {
 		);
 
 		const data = await parseJsonOrText(result);
-		console.log("Unregistered client response:", result.status, data);
 
 		expect(result.status).toBe(403);
 		if (typeof data === "object" && data !== null) {

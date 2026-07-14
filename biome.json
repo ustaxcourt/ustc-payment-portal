@@ -14,6 +14,9 @@
 			},
 			"nursery": {
 				"noFloatingPromises": "warn"
+			},
+			"suspicious": {
+				"noConsole": "error"
 			}
 		}
 	},

@@ -29,6 +29,5 @@ if (fs.existsSync(distServerPath)) {
 wireChild(child);
 
 child.on("error", (err) => {
-	console.error("[start-dev-server] Failed to spawn:", err.message);
 	process.exit(1);
 });

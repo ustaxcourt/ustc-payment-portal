@@ -48,13 +48,6 @@ export class GetRequestRequest extends SoapRequest {
 			const raw = responseBody["ns2:getDetailsResponse"].getDetailsResponse;
 			const parsed = PayGovGetDetailsResponseSchema.safeParse(raw);
 			if (!parsed.success) {
-				// Pay.gov's getDetails response does not contain PCI data — payment_type is
-				// a string like "ACH"/"PLASTIC_CARD" and tracking IDs are server-side
-				// identifiers, not cardholder data. If that ever changes, redact before logging.
-				console.error(
-					"getDetails schema validation failed",
-					JSON.stringify({ raw, errors: parsed.error.issues }),
-				);
 				throw parsed.error;
 			}
 

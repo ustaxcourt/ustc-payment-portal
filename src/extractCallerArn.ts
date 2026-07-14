@@ -48,7 +48,6 @@ export const extractCallerArn = (
 ): string => {
 	// Bypass for local development
 	if (process.env.LOCAL_DEV === "true") {
-		console.log("Local development mode: bypassing IAM authorization");
 		return LOCAL_DEV_ROLE_ARN;
 	}
 

@@ -166,16 +166,10 @@ const getMigrationsDirectory = (): string => {
 	const bundledDirectory = path.join(__dirname, "db", "migrations");
 
 	if (fs.existsSync(bundledDirectory)) {
-		console.log(
-			`[migrationHandler] using bundled migrations directory: ${bundledDirectory}`,
-		);
 		return bundledDirectory;
 	}
 
 	const sourceDirectory = path.join(__dirname, "..", "db", "migrations");
-	console.log(
-		`[migrationHandler] using source migrations directory: ${sourceDirectory}`,
-	);
 	return sourceDirectory;
 };
 
@@ -452,7 +446,6 @@ const gcDbs = async (
 			if (openPrNumbers.includes(prNumber)) continue;
 			await knex.raw(`DROP DATABASE IF EXISTS ?? WITH (FORCE)`, [datname]);
 			dropped.push(datname);
-			console.log(`[migrationHandler] gc-dbs: dropped ${datname}`);
 		}
 	} finally {
 		await knex.destroy();
@@ -484,13 +477,9 @@ const gcRoles = async (
 			try {
 				await knex.raw(`DROP ROLE IF EXISTS ??`, [rolname]);
 				dropped.push(rolname);
-				console.log(`[migrationHandler] gc-roles: dropped ${rolname}`);
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
 				failed.push({ rolname, error: message });
-				console.error(
-					`[migrationHandler] gc-roles: failed to drop ${rolname}: ${message}`,
-				);
 			}
 		}
 	} finally {
@@ -507,12 +496,6 @@ export const migrationHandler = async (
 	event?: MigrationHandlerEvent,
 ): Promise<MigrationHandlerResult> => {
 	const command: Command = event?.command ?? "migrate";
-
-	console.log(
-		`[migrationHandler] command=${command} db=${
-			process.env.RDS_DB_NAME ?? "(local)"
-		}`,
-	);
 
 	if (command === "create-db") return createDb();
 	if (command === "drop-db") return dropDb();

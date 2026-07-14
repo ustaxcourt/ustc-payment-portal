@@ -16,7 +16,6 @@ export const getTransactionPaymentStatusHandler = async (
 			.getTransactionPaymentStatus(appContext);
 		return dashboardOk(result);
 	} catch (err) {
-		console.error("[Dashboard] getTransactionPaymentStatus error:", err);
 		return dashboardError(500, "Internal server error");
 	}
 };

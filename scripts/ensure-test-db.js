@@ -33,12 +33,10 @@ async function ensureTestDatabase() {
 		);
 
 		if (existsResult.rowCount && existsResult.rowCount > 0) {
-			console.log(`Test database already exists: ${TEST_DB_NAME}`);
 			return;
 		}
 
 		await adminClient.query(`CREATE DATABASE ${quoteIdentifier(TEST_DB_NAME)}`);
-		console.log(`Created test database: ${TEST_DB_NAME}`);
 	} finally {
 		await adminClient.end();
 	}
@@ -46,7 +44,5 @@ async function ensureTestDatabase() {
 
 /* istanbul ignore next */
 ensureTestDatabase().catch((error) => {
-	console.error("Failed to ensure test database exists");
-	console.error(error);
 	process.exit(1);
 });

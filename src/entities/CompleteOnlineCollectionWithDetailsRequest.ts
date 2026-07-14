@@ -46,10 +46,6 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
 			const parsed =
 				CompleteOnlineCollectionWithDetailsResponseSchema.safeParse(raw);
 			if (!parsed.success) {
-				console.error(
-					"completeOnlineCollectionWithDetails schema validation failed",
-					JSON.stringify({ raw, errors: parsed.error.issues }),
-				);
 				throw parsed.error;
 			}
 			return parsed.data;

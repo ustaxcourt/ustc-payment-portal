@@ -73,9 +73,6 @@ if (subcommand === "stop") {
 }
 
 if (subcommand !== "start") {
-	console.error(`[ustc-payment-portal] Unknown subcommand: ${subcommand}`);
-	console.error("Usage: payment-portal start");
-	console.error("       payment-portal stop");
 	process.exit(1);
 }
 
@@ -105,6 +102,5 @@ const child = spawn(process.execPath, [stackScript], {
 wireChild(child);
 
 child.on("error", (err) => {
-	console.error("[ustc-payment-portal] Failed to start:", err.message);
 	process.exit(1);
 });

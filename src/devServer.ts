@@ -218,7 +218,4 @@ app.get("/transaction-payment-status", async (_req, res, next) => {
 });
 
 // start the express server
-app.listen(port, () => {
-	console.log(`Payment Portal started at http://localhost:${port}`);
-	console.log(`API docs available at http://localhost:${port}/docs`);
-});
+app.listen(port, () => {});

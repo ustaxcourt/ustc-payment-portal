@@ -74,13 +74,6 @@ runOrSkip("RDS Proxy load test", () => {
 			const breakdown = [...statusCounts.entries()]
 				.map(([k, v]) => `${k}=${v}`)
 				.join(" ");
-			console.log(
-				`\nLoad summary: total=${total} ok=${ok} concurrency=${CONCURRENCY} duration=${DURATION_MS}ms\n` +
-					`  status: ${breakdown}\n` +
-					`  ok latency: p50=${pct(0.5)}ms p95=${pct(0.95)}ms p99=${pct(
-						0.99,
-					)}ms\n`,
-			);
 
 			expect(ok).toBeGreaterThan(0); // 429s under load are expected, not a proxy failure
 		},

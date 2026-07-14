@@ -6,9 +6,9 @@ function createLogger(prefix) {
 	const tag = `[${prefix}]`;
 	return {
 		tag,
-		info: (message) => console.log(`${tag} ${message}`),
-		warn: (message) => console.warn(`${tag} ${message}`),
-		error: (message, ...rest) => console.error(`${tag} ${message}`, ...rest),
+		info: (message) => {},
+		warn: (message) => {},
+		error: (message, ...rest) => {},
 	};
 }
 

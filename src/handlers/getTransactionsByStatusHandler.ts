@@ -35,7 +35,6 @@ export const getTransactionsByStatusHandler = async (
 			});
 		return dashboardOk(result);
 	} catch (err) {
-		console.error("[Dashboard] getTransactionsByStatus error:", err);
 		return dashboardError(500, "Internal server error");
 	}
 };

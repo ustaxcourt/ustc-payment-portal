@@ -28,11 +28,6 @@ function createKnexFromEnv(): ReturnType<typeof Knex> {
 				};
 
 	if (NODE_ENV !== "production") {
-		console.log(
-			`[Knex] env=${NODE_ENV} db=${
-				typeof connection === "string" ? "(DATABASE_URL)" : connection.database
-			}`,
-		);
 	}
 
 	return Knex({
