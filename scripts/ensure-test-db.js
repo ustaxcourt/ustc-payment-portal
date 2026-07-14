@@ -1,4 +1,3 @@
-// biome-ignore-all lint/suspicious/noConsole: local/CI test-setup CLI script, never runs in a deployed environment.
 const { Client } = require("pg");
 
 const DB_HOST = process.env.DB_HOST || "localhost";
