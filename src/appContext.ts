@@ -112,13 +112,14 @@ export const createAppContext = (
 						const token = await getSecretString(tokenSecretId);
 						headers.Authorization = `Bearer ${token}`;
 						headers.Authentication = headers.Authorization;
-					} catch (err: unknown) {
+						// biome-ignore lint/suspicious/noExplicitAny: err is typed as any to access name and message properties.
+					} catch (err: any) {
 						appContext.logger.warn(
 							"Failed to read token from Secrets Manager",
 							{
 								secretId: tokenSecretId,
-								errorName: err instanceof Error ? err.name : undefined,
-								errorMessage: err instanceof Error ? err.message : String(err),
+								errorName: err?.name,
+								errorMessage: err?.message,
 							},
 						);
 						// Proceed without Authorization header if token fetch fails

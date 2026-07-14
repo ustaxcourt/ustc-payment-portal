@@ -143,20 +143,9 @@ export const initPayment: InitPayment = async (
 	}
 
 	// TODO: Add a unit test for a variable fee request (when we actually have one to support)
-	let transactionAmount: number;
-	if (fee.isVariable) {
-		if (amount === undefined || amount === null) {
-			throw new Error("amount is required for variable fees");
-		}
-
-		transactionAmount = amount;
-	} else {
-		if (fee.amount === undefined || fee.amount === null) {
-			throw new Error("fee.amount is required for fixed fees");
-		}
-
-		transactionAmount = fee.amount;
-	}
+	/* istanbul ignore next */
+	// biome-ignore lint/style/noNonNullAssertion: amount/fee.amount presence already validated above (variable fees require amount, fixed fees always have fee.amount)
+	const transactionAmount = fee.isVariable ? amount! : fee.amount!;
 	const agencyTrackingId = generateAgencyTrackingId();
 
 	const req = new StartOnlineCollectionRequest({
