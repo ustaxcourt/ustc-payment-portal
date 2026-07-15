@@ -8,7 +8,6 @@ import FeesModel from "../db/FeesModel";
 import TransactionModel from "../db/TransactionModel";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { mockTrackingId } from "../test/utils/mocks";
-import { logger } from "../utils/logger";
 import { getDetails } from "./getDetails";
 
 jest.mock("../db/TransactionModel", () => ({
@@ -298,9 +297,6 @@ describe("getDetails", () => {
 		});
 
 		it("logs and defaults to 'received' when a row has a null transactionStatus (corrupt data)", async () => {
-			const loggerErrorSpy = jest
-				.spyOn(logger, "error")
-				.mockImplementation(jest.fn());
 			TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
 				buildRow({
 					agencyTrackingId: "corrupt-row",
@@ -316,14 +312,12 @@ describe("getDetails", () => {
 			});
 
 			expect(result.transactions[0].transactionStatus).toBe("received");
-			expect(loggerErrorSpy).toHaveBeenCalledWith(
-				expect.objectContaining({ agencyTrackingId: "corrupt-row" }),
+			expect(appContext.logger.error).toHaveBeenCalledWith(
 				expect.stringContaining(
 					"Transaction Attempt has null transactionStatus",
 				),
+				expect.objectContaining({ agencyTrackingId: "corrupt-row" }),
 			);
-
-			loggerErrorSpy.mockRestore();
 		});
 	});
 

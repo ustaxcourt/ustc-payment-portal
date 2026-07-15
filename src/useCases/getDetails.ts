@@ -85,7 +85,9 @@ export const getDetails: GetDetails = async (
 	// If the obligation is already resolved (success or failed), the DB is authoritative —
 	// no need to hit Pay.gov. Only the pending path fans out to refresh attempts.
 	if (paymentStatus !== "pending") {
-		const transactions = allRows.map((row) => toTransactionRecordSummary(row));
+		const transactions = allRows.map((row) =>
+			toTransactionRecordSummary(appContext, row),
+		);
 		return { paymentStatus, transactions };
 	}
 
@@ -117,7 +119,7 @@ const updatePendingAttemptFromPayGov = async (
 	const transactions: TransactionRecordSummary[] = await Promise.all(
 		allRows.map(async (row) => {
 			if (!row.paygovTrackingId || isTerminal(row.transactionStatus)) {
-				return toTransactionRecordSummary(row);
+				return toTransactionRecordSummary(appContext, row);
 			}
 
 			const req = new GetRequestRequest({
@@ -185,7 +187,7 @@ const updatePendingAttemptFromPayGov = async (
 						paygovTrackingId: result.paygov_tracking_id,
 					},
 				);
-				return toTransactionRecordSummary(updated);
+				return toTransactionRecordSummary(appContext, updated);
 			} catch (err) {
 				// We had a fresh status from Pay.gov but couldn't persist it. The row's
 				// recorded state is stale, not wrong — a retry will re-fetch and re-persist.
