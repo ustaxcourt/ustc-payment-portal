@@ -13,7 +13,7 @@
 				"noExcessiveCognitiveComplexity": "warn"
 			},
 			"suspicious": {
-				"noConsole": "warn"
+				"noConsole": "error"
 			},
 			"nursery": {
 				"noFloatingPromises": "warn"
