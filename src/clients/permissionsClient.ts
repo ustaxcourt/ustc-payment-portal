@@ -106,9 +106,9 @@ export const getClientPermissions = async (): Promise<ClientPermission[]> => {
 		};
 
 		return permissions;
-	} catch (error) {
+	} catch (err) {
 		logger.error(
-			{ error },
+			{ err },
 			"Failed to fetch client permissions from Secrets Manager",
 		);
 		throw new ServerError("Failed to fetch client permissions");
