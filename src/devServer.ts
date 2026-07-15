@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noConsole: Console logs are permitted in the local development environment.
 import "dotenv/config";
 import path from "node:path";
 import type { TransactionsByStatusPathParams } from "@appTypes/TransactionsByStatus";
@@ -219,8 +220,6 @@ app.get("/transaction-payment-status", async (_req, res, next) => {
 
 // start the express server
 app.listen(port, () => {
-	// biome-ignore lint/suspicious/noConsole: local dev server startup banner, never runs in a deployed environment.
 	console.log(`Payment Portal started at http://localhost:${port}`);
-	// biome-ignore lint/suspicious/noConsole: local dev server startup banner, never runs in a deployed environment.
 	console.log(`API docs available at http://localhost:${port}/docs`);
 });
