@@ -19,17 +19,7 @@ export const handler = async (
   if (event && "requestContext" in event) {
     const route = event.resource ?? event.path ?? "";
     if (route.endsWith("/health")) {
-      const appContext = createAppContext({ lambdaRequest: event });
-      const releaseTag = Object.entries(event.headers ?? {}).find(
-        ([name]) => name.toLowerCase() === "x-deploy-tag",
-      )?.[1];
-      const report = await runDeployHealthCheck(appContext, releaseTag);
-      appContext.logger.info("deploy health check", { checks: report.checks });
-      return {
-        statusCode: report.status === "healthy" ? 200 : 503,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(report),
-      };
+      return runDeployHealth(event);
     }
   }
 
@@ -37,6 +27,22 @@ export const handler = async (
     !!event && "healthProbe" in event && event.healthProbe === true;
   return runWsdlProbe(isScheduledProbe);
 };
+
+async function runDeployHealth(
+  event: APIGatewayProxyEvent,
+): Promise<APIGatewayProxyResult> {
+  const appContext = createAppContext({ lambdaRequest: event });
+  const releaseTag = Object.entries(event.headers ?? {}).find(
+    ([name]) => name.toLowerCase() === "x-deploy-tag",
+  )?.[1];
+  const report = await runDeployHealthCheck(appContext, releaseTag);
+  appContext.logger.info("deploy health check", { checks: report.checks });
+  return {
+    statusCode: report.status === "healthy" ? 200 : 503,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(report),
+  };
+}
 
 async function runWsdlProbe(
   isScheduledProbe: boolean,
