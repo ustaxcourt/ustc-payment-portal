@@ -46,6 +46,9 @@ export class CompleteOnlineCollectionWithDetailsRequest extends SoapRequest {
 			const parsed =
 				CompleteOnlineCollectionWithDetailsResponseSchema.safeParse(raw);
 			if (!parsed.success) {
+				// Pay.gov's CompleteOnlineCollectionWithDetails response does not contain PCI data — payment_type is
+				// a string like "ACH"/"PLASTIC_CARD" and tracking IDs are server-side
+				// identifiers, not cardholder data. If that ever changes, redact before logging.
 				appContext.logger.error(
 					"completeOnlineCollectionWithDetails schema validation failed",
 					{ raw, errors: parsed.error.issues },
