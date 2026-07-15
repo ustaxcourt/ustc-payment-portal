@@ -18,6 +18,7 @@ const config: Config = {
   testPathIgnorePatterns: [
     "/node_modules/",
     "/test/integration/",
+    "/test/staging-e2e/",
     "/dist/",
     "/resources/",
   ],
