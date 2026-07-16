@@ -60,6 +60,22 @@ enough context that the next person doesn't have to re-derive the decision.
   (read the upgrade guide, bump `~> 6.0` per module, review `terraform plan` in
   every environment), and flag the PO. Not appropriate to bundle here.
 
+### OpenAPI spec 3.1.0 → 3.2 — deferred (2026-07-16)
+
+- **Current:** generated spec pins `openapi: "3.1.0"` via `OpenApiGeneratorV31`
+  ([`src/openapi/registry.ts`](../src/openapi/registry.ts)). **Available:** the
+  `@asteasolutions/zod-to-openapi` 9.0.0 bump added `OpenApiGeneratorV32`
+  (additive OpenAPI 3.2 support).
+- **Reason:** The 9.0.0 upgrade was intentionally scoped to keep the generated
+  spec unchanged — no consumer-visible diff. Moving to 3.2 means switching the
+  generator, regenerating the spec (`npm run generate:openapi`), and validating
+  that every downstream client and tooling step (mock server, integration
+  tests, published types) still accepts a 3.2 document. That is a behavioral
+  change, not routine dependency maintenance.
+- **Plan:** Cut a dedicated follow-up ticket to evaluate the 3.1 → 3.2 bump
+  (swap to `OpenApiGeneratorV32`, regenerate, verify downstream consumers), and
+  flag the PO. Not appropriate to bundle into the recurring dependency update.
+
 <!-- Format:
 ### <package> <current> → <available> — deferred (<date>)
 
