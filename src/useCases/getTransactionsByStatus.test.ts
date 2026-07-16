@@ -30,6 +30,7 @@ describe("getTransactionsByStatus", () => {
 	it("normalizes Date timestamps to ISO strings", async () => {
 		const getByPaymentStatusSpy = jest
 			.spyOn(TransactionModel, "getByPaymentStatus")
+			// biome-ignore lint/suspicious/noExplicitAny: intentional Date/string mismatch to test normalization
 			.mockResolvedValue([transactionRow as any]);
 
 		const result = await getTransactionsByStatus(appContext, {

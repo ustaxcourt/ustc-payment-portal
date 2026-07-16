@@ -1,5 +1,5 @@
 import { getSecretString } from "@clients/secretsClient";
-import fetch from "node-fetch";
+import fetch, { type Response } from "node-fetch";
 import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
 import { handler } from "./testCert";
 
@@ -29,7 +29,7 @@ const mockEmit = emitPayGovHealthMetric as jest.MockedFunction<
 >;
 
 describe("testCert handler", () => {
-	let tempEnv: any;
+	let tempEnv: NodeJS.ProcessEnv;
 
 	beforeAll(() => {
 		tempEnv = process.env;
@@ -49,7 +49,7 @@ describe("testCert handler", () => {
 
 		mockFetch.mockResolvedValue({
 			text: jest.fn().mockResolvedValue(mockWsdlContent),
-		} as any);
+		} as unknown as Response);
 
 		const result = await handler();
 
@@ -68,7 +68,7 @@ describe("testCert handler", () => {
 
 		mockFetch.mockResolvedValue({
 			text: jest.fn().mockResolvedValue(mockWsdlContent),
-		} as any);
+		} as unknown as Response);
 
 		await handler();
 
@@ -83,7 +83,7 @@ describe("testCert handler", () => {
 	it("constructs the correct WSDL URL from SOAP_URL environment variable", async () => {
 		mockFetch.mockResolvedValue({
 			text: jest.fn().mockResolvedValue("wsdl content"),
-		} as any);
+		} as unknown as Response);
 
 		await handler();
 
@@ -105,7 +105,7 @@ describe("testCert handler", () => {
 	it("returns 500 when text() method fails", async () => {
 		mockFetch.mockResolvedValue({
 			text: jest.fn().mockRejectedValue(new Error("Failed to read response")),
-		} as any);
+		} as unknown as Response);
 
 		const result = await handler();
 
@@ -140,7 +140,7 @@ describe("testCert handler", () => {
 		const mockWsdlContent = "test wsdl content";
 		mockFetch.mockResolvedValue({
 			text: jest.fn().mockResolvedValue(mockWsdlContent),
-		} as any);
+		} as unknown as Response);
 
 		const result = await handler();
 
@@ -165,7 +165,7 @@ describe("testCert handler", () => {
 		mockFetch.mockResolvedValue({
 			ok: true,
 			text: jest.fn().mockResolvedValue("wsdl"),
-		} as any);
+		} as unknown as Response);
 
 		await handler({ healthProbe: true });
 
@@ -176,7 +176,7 @@ describe("testCert handler", () => {
 		mockFetch.mockResolvedValue({
 			ok: false,
 			text: jest.fn().mockResolvedValue("error page"),
-		} as any);
+		} as unknown as Response);
 
 		const result = await handler({ healthProbe: true });
 
@@ -197,7 +197,7 @@ describe("testCert handler", () => {
 		mockFetch.mockResolvedValue({
 			ok: true,
 			text: jest.fn().mockResolvedValue("wsdl"),
-		} as any);
+		} as unknown as Response);
 
 		const result = await handler();
 

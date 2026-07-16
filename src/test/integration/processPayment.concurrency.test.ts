@@ -43,10 +43,18 @@ describeWithEnv("POST /process concurrency", () => {
 
 		const successResponse = responses.find(
 			(response) => response.status === 200,
-		)!;
+		);
+
 		const conflictResponse = responses.find(
 			(response) => response.status === 409,
-		)!;
+		);
+
+		expect(successResponse).toBeDefined();
+		expect(conflictResponse).toBeDefined();
+
+		if (!successResponse || !conflictResponse) {
+			throw new Error("Expected both success and conflict responses");
+		}
 
 		const successBody =
 			(await successResponse.json()) as ProcessPaymentResponse;

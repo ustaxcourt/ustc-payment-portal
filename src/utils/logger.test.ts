@@ -1,3 +1,5 @@
+// biome-ignore-all lint/suspicious/noExplicitAny: No type to cast too
+// or there's a duct-tape solution that doesn't provide safety.
 type LoggerModule = typeof import("./logger");
 
 const PINO_LEVELS = [
@@ -229,7 +231,9 @@ describe("src/utils/logger.ts", () => {
 
 					const { logger } = await loadLoggerModule();
 
-					LEVEL_ORDER.forEach((lvl) => (logger as any)[lvl](`log at ${lvl}`));
+					LEVEL_ORDER.forEach((lvl) => {
+						(logger as any)[lvl](`log at ${lvl}`);
+					});
 
 					const output = stdoutSpy.mock.calls
 						.map(([c]) => String(c))
@@ -315,7 +319,7 @@ describe("src/utils/logger.ts", () => {
 							return;
 						}
 
-						const output = stdoutSpy!.mock.calls
+						const output = stdoutSpy?.mock.calls
 							.map(([c]) => String(c))
 							.join("\n");
 

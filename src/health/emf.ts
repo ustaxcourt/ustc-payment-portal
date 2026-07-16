@@ -23,29 +23,29 @@ export type EmfMetric = { Name: string; Unit: string };
  *                   on the log line for filtering but is not graphed as a metric.
  */
 export function writeEmf(
-  metrics: EmfMetric[],
-  values: Record<string, number>,
-  properties: Record<string, string> = {},
+	metrics: EmfMetric[],
+	values: Record<string, number>,
+	properties: Record<string, string> = {},
 ): void {
-  try {
-    const emf = {
-      _aws: {
-        Timestamp: Date.now(),
-        CloudWatchMetrics: [
-          {
-            Namespace: METRIC_NAMESPACE,
-            Dimensions: [["Environment"]],
-            Metrics: metrics,
-          },
-        ],
-      },
-      Environment: getAppEnv(),
-      ...properties,
-      ...values,
-    };
+	try {
+		const emf = {
+			_aws: {
+				Timestamp: Date.now(),
+				CloudWatchMetrics: [
+					{
+						Namespace: METRIC_NAMESPACE,
+						Dimensions: [["Environment"]],
+						Metrics: metrics,
+					},
+				],
+			},
+			Environment: getAppEnv(),
+			...properties,
+			...values,
+		};
 
-    process.stdout.write(`${JSON.stringify(emf)}\n`);
-  } catch (err) {
-    logger.error({ err }, "Failed to emit CloudWatch metric");
-  }
+		process.stdout.write(`${JSON.stringify(emf)}\n`);
+	} catch (err) {
+		logger.error({ err }, "Failed to emit CloudWatch metric");
+	}
 }

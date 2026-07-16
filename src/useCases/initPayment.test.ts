@@ -108,6 +108,7 @@ describe("initPayment", () => {
 				client: mockClient,
 				request: {
 					transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+					// biome-ignore lint/suspicious/noExplicitAny: intentionally invalid fee key to test error handling
 					fee: "UNKNOWN_FEE" as any,
 					urlCancel: "https://example.com/cancel",
 					urlSuccess: "https://example.com/success",

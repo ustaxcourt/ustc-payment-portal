@@ -9,9 +9,8 @@
 		"enabled": true,
 		"rules": {
 			"preset": "recommended",
-			"suspicious": {
-				"noImplicitAnyLet": "warn",
-				"useIterableCallbackReturn": "warn"
+			"complexity": {
+				"noExcessiveCognitiveComplexity": "warn"
 			},
 			"nursery": {
 				"noFloatingPromises": "warn"
@@ -22,6 +21,11 @@
 		"enabled": true
 	},
 	"files": {
-		"includes": ["**"]
+		"includes": [
+			"**",
+			"!docs/openapi.json",
+			"!docs/openapi.yaml",
+			"!src/health/emf.ts"
+		]
 	}
 }

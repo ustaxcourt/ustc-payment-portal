@@ -1,7 +1,7 @@
 import type { ParseResult } from "@appTypes/ParseResult";
 import { InvalidRequestError } from "@errors/invalidRequest";
 
-export const jsonParse = <T = any>(
+export const jsonParse = <T = unknown>(
 	body: string | null | undefined,
 ): ParseResult<T> => {
 	if (!body) {

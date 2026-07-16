@@ -1,3 +1,4 @@
+import * as https from "node:https";
 import type { AppContext } from "@appTypes/AppContext";
 import { getSecretString } from "@clients/secretsClient";
 import { getDetails } from "@useCases/getDetails";
@@ -8,7 +9,6 @@ import { initPayment } from "@useCases/initPayment";
 import { processPayment } from "@useCases/processPayment";
 import { createRequestLogger } from "@utils/logger";
 import type { APIGatewayEvent } from "aws-lambda";
-import * as https from "https";
 import fetch from "node-fetch";
 import { isLocal } from "./config/appEnv";
 
@@ -23,7 +23,7 @@ function isRetryablePaygovError(err: unknown): boolean {
 }
 
 function normalizePem(pem: string): string {
-	return pem.replace(/\r\n/g, "\n").trimEnd() + "\n";
+	return `${pem.replace(/\r\n/g, "\n").trimEnd()}\n`;
 }
 
 type LocalRequestContext = {
@@ -112,6 +112,7 @@ export const createAppContext = (
 						const token = await getSecretString(tokenSecretId);
 						headers.Authorization = `Bearer ${token}`;
 						headers.Authentication = headers.Authorization;
+						// biome-ignore lint/suspicious/noExplicitAny: err is typed as any to access name and message properties.
 					} catch (err: any) {
 						appContext.logger.warn(
 							"Failed to read token from Secrets Manager",

@@ -12,7 +12,7 @@ export async function getSecretString(secretId: string): Promise<string> {
 
 	if (res.SecretString) return res.SecretString.trim();
 	if (res.SecretBinary)
-		return Buffer.from(res.SecretBinary as any)
+		return Buffer.from(res.SecretBinary as Uint8Array)
 			.toString("utf-8")
 			.trim();
 

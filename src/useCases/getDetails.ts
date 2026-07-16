@@ -5,6 +5,7 @@ import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
 import type { GetDetailsResponse } from "@schemas/GetDetails.schema";
+import type { PayGovGetDetailsTransaction } from "@schemas/PayGovGetDetailsResponse.schema";
 import type { TransactionRecordSummary } from "@schemas/TransactionRecord.schema";
 import type { TransactionStatus } from "@schemas/TransactionStatus.schema";
 import {
@@ -64,7 +65,7 @@ export const getDetails: GetDetails = async (
 
 	// Fee-invariance: all rows for a transactionReferenceId share the same feeId.
 	const fee = await FeesModel.getFeeById(feeId);
-	if (!fee || !fee.tcsAppId) {
+	if (!fee?.tcsAppId) {
 		// Both branches indicate server-side data corruption: the FK prevents the first,
 		// and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
 		appContext.logger.error("Fee misconfigured — aborting getDetails", {
@@ -123,8 +124,8 @@ const updatePendingAttemptFromPayGov = async (
 				tcsAppId,
 				payGovTrackingId: row.paygovTrackingId,
 			});
-			let refreshedStatus;
-			let result;
+			let refreshedStatus: TransactionStatus;
+			let result: PayGovGetDetailsTransaction;
 			try {
 				result = await req.makeSoapRequest(appContext);
 				refreshedStatus = parseTransactionStatus(result.transaction_status);

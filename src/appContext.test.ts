@@ -1,6 +1,7 @@
+import * as https from "node:https";
 import { getSecretString } from "@clients/secretsClient";
 import { createRequestLogger } from "@utils/logger";
-import * as https from "https";
+import type { APIGatewayEvent } from "aws-lambda";
 import { createAppContext } from "./appContext";
 
 jest.mock("node-fetch", () => jest.fn());
@@ -81,7 +82,7 @@ describe("appContext", () => {
 				queryStringParameters: {
 					transactionReferenceId: "TXN-456",
 				},
-			} as any,
+			} as unknown as APIGatewayEvent,
 		});
 
 		expect(mockCreateRequestLogger).toHaveBeenCalledWith({
@@ -112,7 +113,7 @@ describe("appContext", () => {
 				queryStringParameters: {
 					transactionReferenceId: "LAMBDA-000",
 				},
-			} as any,
+			} as unknown as APIGatewayEvent,
 		});
 
 		expect(mockCreateRequestLogger).toHaveBeenCalledWith({
@@ -130,7 +131,7 @@ describe("postHttpRequest", () => {
 		process.env.SOAP_URL = "https://test-soap-url.com";
 		mockFetch.mockResolvedValueOnce({
 			text: mockResponseText,
-		} as any);
+		});
 		mockResponseText.mockResolvedValue("mock-response-body");
 	});
 
@@ -268,8 +269,9 @@ describe("postHttpRequest", () => {
 });
 
 describe("postHttpRequest timeout and retry", () => {
-	const okResponse = (body: string) =>
-		({ text: jest.fn().mockResolvedValue(body) }) as any;
+	const okResponse = (body: string) => ({
+		text: jest.fn().mockResolvedValue(body),
+	});
 
 	const originalEnv = process.env;
 
@@ -339,7 +341,7 @@ describe("postHttpRequest timeout and retry", () => {
 		mockFetch
 			.mockResolvedValueOnce({
 				text: jest.fn().mockRejectedValue(bodyErr),
-			} as any)
+			})
 			.mockResolvedValueOnce(okResponse("recovered"));
 		const appContext = createAppContext();
 
@@ -405,7 +407,7 @@ describe("postHttpRequest timeout and retry", () => {
 	it("aborts after the timeout and retries", async () => {
 		jest.useFakeTimers();
 		mockFetch.mockImplementation(
-			(_url: string, opts: any) =>
+			(_url: string, opts: { signal: AbortSignal }) =>
 				new Promise((_resolve, reject) => {
 					opts.signal.addEventListener("abort", () =>
 						reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
@@ -434,7 +436,7 @@ describe("postHttpRequest timeout and retry", () => {
 	it("retries a timeout via the abort signal even when the error name is mangled (minify-safe)", async () => {
 		jest.useFakeTimers();
 		mockFetch.mockImplementation(
-			(_url: string, opts: any) =>
+			(_url: string, opts: { signal: AbortSignal }) =>
 				new Promise((_resolve, reject) => {
 					opts.signal.addEventListener("abort", () =>
 						// Simulates a minified build where constructor.name is no longer "AbortError".

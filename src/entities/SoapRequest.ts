@@ -83,7 +83,7 @@ export class SoapRequest {
 			);
 		}
 
-		if (!fault.detail || !fault.detail["ns2:TCSServiceFault"]) {
+		if (!fault.detail?.["ns2:TCSServiceFault"]) {
 			return new FailedTransactionError(
 				"Pay.gov returned a fault without error details",
 			);

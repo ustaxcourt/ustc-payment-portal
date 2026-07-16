@@ -2,7 +2,6 @@ import { ForbiddenError } from "@errors/forbidden";
 import { NotFoundError } from "@errors/notFound";
 import { getDetails } from "@useCases/getDetails";
 import type { APIGatewayEvent } from "aws-lambda";
-import { getDetailsHandler } from "./getDetailsHandler";
 import {
 	mockHeaders,
 	mockRequestContext,
@@ -12,6 +11,13 @@ import {
 jest.mock("../useCases/getDetails", () => ({
 	getDetails: jest.fn(),
 }));
+
+// require (not a static import) so it can't be reordered ahead of the
+// handlerTestCommon import above, whose jest.mock calls must run first --
+// this pulls in the real (unmocked) transitive appContext/permissionsClient
+// modules otherwise. (Otherwise Biome will break this test anytime it tries to reorder imports.)
+const { getDetailsHandler } =
+	require("./getDetailsHandler") as typeof import("./getDetailsHandler");
 
 const mockGetDetails = getDetails as jest.MockedFunction<typeof getDetails>;
 

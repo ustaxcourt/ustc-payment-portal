@@ -23,7 +23,7 @@ describe("start-local-stack", () => {
 			on: jest.fn((event, cb) => {
 				handlers[event] = cb;
 			}),
-			emit: (event, ...args) => handlers[event] && handlers[event](...args),
+			emit: (event, ...args) => handlers[event]?.(...args),
 		};
 	}
 
@@ -53,7 +53,7 @@ describe("start-local-stack", () => {
 		jest.doMock("node:child_process", () => ({ spawn: mockSpawn }));
 		jest.doMock("./lib/log", () => ({ createLogger: () => mockLog }));
 		jest.doMock("./lib/parsePort", () => ({
-			parsePort: jest.fn((value, fallback) => fallback),
+			parsePort: jest.fn((_value, fallback) => fallback),
 		}));
 		jest.doMock("./lib/dbSetup", () => ({
 			setupConsumerDb: mockSetupConsumerDb,

@@ -68,7 +68,7 @@ export const initPayment: InitPayment = async (
 	);
 
 	const fee = await FeesModel.getActiveFeeByKey(feeKey);
-	if (!fee || !fee.tcsAppId) {
+	if (!fee?.tcsAppId) {
 		throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
 	}
 
@@ -144,6 +144,7 @@ export const initPayment: InitPayment = async (
 
 	// TODO: Add a unit test for a variable fee request (when we actually have one to support)
 	/* istanbul ignore next */
+	// biome-ignore lint/style/noNonNullAssertion: amount/fee.amount presence already validated above (variable fees require amount, fixed fees always have fee.amount)
 	const transactionAmount = fee.isVariable ? amount! : fee.amount!;
 	const agencyTrackingId = generateAgencyTrackingId();
 

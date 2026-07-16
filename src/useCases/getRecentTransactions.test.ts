@@ -30,6 +30,7 @@ describe("getRecentTransactions", () => {
 	it("normalizes Date timestamps to ISO strings", async () => {
 		jest
 			.spyOn(TransactionModel, "getAll")
+			// biome-ignore lint/suspicious/noExplicitAny: intentional Date/string mismatch to test normalization
 			.mockResolvedValue([transactionRow as any]);
 
 		const result = await getRecentTransactions(appContext);

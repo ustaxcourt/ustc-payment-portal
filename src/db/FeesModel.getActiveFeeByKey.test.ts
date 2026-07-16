@@ -1,3 +1,5 @@
+// biome-ignore-all lint/suspicious/noExplicitAny: Test Only, low risk.
+// There's a planned refactor of this test coming up that may fix it.
 jest.mock("./knex", () => ({
 	__esModule: true,
 	getKnex: jest.fn().mockResolvedValue({}),
@@ -37,7 +39,7 @@ describe("FeesModel.getActiveFeeByKey", () => {
 		);
 		expect(cutoffCall).toBeDefined();
 
-		const cutoff = cutoffCall![2] as string;
+		const cutoff = cutoffCall?.[2] as string;
 		expect(cutoff >= before && cutoff <= after).toBe(true);
 	});
 

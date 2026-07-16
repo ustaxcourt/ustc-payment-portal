@@ -1,3 +1,5 @@
+// biome-ignore-all lint/suspicious/noExplicitAny: Test Only, low risk.
+// There's a planned refactor of this test coming up that may fix it.
 let mockTransaction: any = null;
 
 jest.mock("./TransactionModel", () => {
@@ -117,9 +119,6 @@ jest.mock("./TransactionModel", () => {
 							: undefined,
 					),
 			);
-			constructor() {
-				// intentionally left blank
-			}
 			$parseDatabaseJson(json: Record<string, unknown>) {
 				return MockTransactionModel.$parseDatabaseJson(json);
 			}

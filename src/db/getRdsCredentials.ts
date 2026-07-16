@@ -1,7 +1,7 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { rootCertificates } from "node:tls";
 import { getSecretString } from "@clients/secretsClient";
-import { existsSync, readFileSync } from "fs";
-import { join } from "path";
-import { rootCertificates } from "tls";
 
 export interface RdsConnectionConfig {
 	host: string;
@@ -28,7 +28,7 @@ export function parseRdsEndpoint(endpoint: string): {
 		throw new Error(`RDS_ENDPOINT has unexpected format: "${endpoint}"`);
 	const host = endpoint.slice(0, colonIdx);
 	const port = parseInt(endpoint.slice(colonIdx + 1), 10);
-	if (isNaN(port))
+	if (Number.isNaN(port))
 		throw new Error(`could not parse port from RDS_ENDPOINT: "${endpoint}"`);
 	return { host, port };
 }
