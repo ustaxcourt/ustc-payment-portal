@@ -6,6 +6,8 @@ on:
 jobs:
   paygov-e2e:
     runs-on: ubuntu-latest
+    environment:
+      name: staging
 
     permissions:
       id-token: write
@@ -18,7 +20,7 @@ jobs:
       PAYGOV_QA_CC_SUCCESS_EXP: ${{ secrets.PAYGOV_QA_CC_SUCCESS_EXP }}
       PAYGOV_QA_CC_SUCCESS_CVV: ${{ secrets.PAYGOV_QA_CC_SUCCESS_CVV }}
       PAYGOV_QA_CC_SUCCESS_NAME: ${{ secrets.PAYGOV_QA_CC_SUCCESS_NAME }}
-      PAYMENT_PORTAL_EMAIL: franz.tanglao.ctr+random-string@ustaxcourt.gov
+      PAYMENT_PORTAL_EMAIL: franz.tanglao.ctr+${{ github.run_id }}@ustaxcourt.gov
 
     steps:
       - uses: actions/checkout@v4
