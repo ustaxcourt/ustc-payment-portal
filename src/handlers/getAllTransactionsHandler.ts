@@ -16,7 +16,7 @@ export const getAllTransactionsHandler = async (
 			.getRecentTransactions(appContext);
 		return dashboardOk(result);
 	} catch (err) {
-		console.error("[Dashboard] getAllTransactions error:", err);
+		appContext.logger.error("[Dashboard] getAllTransactions error", { err });
 		return dashboardError(500, "Internal server error");
 	}
 };

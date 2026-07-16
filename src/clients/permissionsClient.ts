@@ -1,6 +1,7 @@
 import type { ClientPermission } from "@appTypes/ClientPermission";
 import { ForbiddenError } from "@errors/forbidden";
 import { ServerError } from "@errors/serverError";
+import { logger } from "@utils/logger";
 import { LOCAL_DEV_ROLE_ARN } from "../extractCallerArn";
 import { getSecretString } from "./secretsClient";
 
@@ -105,10 +106,10 @@ export const getClientPermissions = async (): Promise<ClientPermission[]> => {
 		};
 
 		return permissions;
-	} catch (error) {
-		console.error(
+	} catch (err) {
+		logger.error(
+			{ err },
 			"Failed to fetch client permissions from Secrets Manager",
-			error,
 		);
 		throw new ServerError("Failed to fetch client permissions");
 	}

@@ -7,6 +7,7 @@ import {
 import Knex from "knex";
 import { knexSnakeCaseMappers } from "objection";
 import { parseRdsEndpoint } from "./db/getRdsCredentials";
+import { logger } from "./utils/logger";
 
 type Command =
 	| "create-db"
@@ -166,15 +167,17 @@ const getMigrationsDirectory = (): string => {
 	const bundledDirectory = path.join(__dirname, "db", "migrations");
 
 	if (fs.existsSync(bundledDirectory)) {
-		console.log(
-			`[migrationHandler] using bundled migrations directory: ${bundledDirectory}`,
+		logger.info(
+			{ bundledDirectory },
+			"[migrationHandler] using bundled migrations directory",
 		);
 		return bundledDirectory;
 	}
 
 	const sourceDirectory = path.join(__dirname, "..", "db", "migrations");
-	console.log(
-		`[migrationHandler] using source migrations directory: ${sourceDirectory}`,
+	logger.info(
+		{ sourceDirectory },
+		"[migrationHandler] using source migrations directory",
 	);
 	return sourceDirectory;
 };
@@ -452,7 +455,7 @@ const gcDbs = async (
 			if (openPrNumbers.includes(prNumber)) continue;
 			await knex.raw(`DROP DATABASE IF EXISTS ?? WITH (FORCE)`, [datname]);
 			dropped.push(datname);
-			console.log(`[migrationHandler] gc-dbs: dropped ${datname}`);
+			logger.info({ datname }, "[migrationHandler] gc-dbs: dropped");
 		}
 	} finally {
 		await knex.destroy();
@@ -484,12 +487,13 @@ const gcRoles = async (
 			try {
 				await knex.raw(`DROP ROLE IF EXISTS ??`, [rolname]);
 				dropped.push(rolname);
-				console.log(`[migrationHandler] gc-roles: dropped ${rolname}`);
+				logger.info({ rolname }, "[migrationHandler] gc-roles: dropped");
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
 				failed.push({ rolname, error: message });
-				console.error(
-					`[migrationHandler] gc-roles: failed to drop ${rolname}: ${message}`,
+				logger.error(
+					{ rolname, error: message },
+					"[migrationHandler] gc-roles: failed to drop",
 				);
 			}
 		}
@@ -508,10 +512,9 @@ export const migrationHandler = async (
 ): Promise<MigrationHandlerResult> => {
 	const command: Command = event?.command ?? "migrate";
 
-	console.log(
-		`[migrationHandler] command=${command} db=${
-			process.env.RDS_DB_NAME ?? "(local)"
-		}`,
+	logger.info(
+		{ command, db: process.env.RDS_DB_NAME ?? "(local)" },
+		"[migrationHandler] running command",
 	);
 
 	if (command === "create-db") return createDb();

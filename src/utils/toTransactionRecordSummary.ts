@@ -1,13 +1,19 @@
+import type { AppContext } from "@appTypes/AppContext";
 import type { TransactionRecordSummary } from "@schemas/TransactionRecord.schema";
 import type TransactionModel from "../db/TransactionModel";
 import { toApiPaymentMethod } from "./toApiPaymentMethod";
 
 export const toTransactionRecordSummary = (
+	appContext: AppContext,
 	row: TransactionModel,
 ): TransactionRecordSummary => {
 	if (!row.transactionStatus) {
-		console.error(
-			`For ${row.transactionReferenceId}: Transaction Attempt ${row.agencyTrackingId} has null transactionStatus — defaulting to 'received'. This indicates corrupt data.`,
+		appContext.logger.error(
+			"Transaction Attempt has null transactionStatus — defaulting to 'received'. This indicates corrupt data.",
+			{
+				transactionReferenceId: row.transactionReferenceId,
+				agencyTrackingId: row.agencyTrackingId,
+			},
 		);
 	}
 	return {

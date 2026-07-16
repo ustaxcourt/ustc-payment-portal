@@ -216,7 +216,9 @@ export const processPayment: ProcessPayment = async (
 
 			return {
 				paymentStatus: "failed" as const,
-				transactions: failedRows.map((row) => toTransactionRecordSummary(row)),
+				transactions: failedRows.map((row) =>
+					toTransactionRecordSummary(appContext, row),
+				),
 			};
 		}
 
@@ -325,6 +327,8 @@ export const processPayment: ProcessPayment = async (
 
 	return {
 		paymentStatus,
-		transactions: allRows.map((row) => toTransactionRecordSummary(row)),
+		transactions: allRows.map((row) =>
+			toTransactionRecordSummary(appContext, row),
+		),
 	};
 };

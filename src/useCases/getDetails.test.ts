@@ -297,9 +297,6 @@ describe("getDetails", () => {
 		});
 
 		it("logs and defaults to 'received' when a row has a null transactionStatus (corrupt data)", async () => {
-			const consoleErrorSpy = jest
-				.spyOn(console, "error")
-				.mockImplementation(jest.fn());
 			TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
 				buildRow({
 					agencyTrackingId: "corrupt-row",
@@ -315,13 +312,12 @@ describe("getDetails", () => {
 			});
 
 			expect(result.transactions[0].transactionStatus).toBe("received");
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
+			expect(appContext.logger.error).toHaveBeenCalledWith(
 				expect.stringContaining(
-					"Transaction Attempt corrupt-row has null transactionStatus",
+					"Transaction Attempt has null transactionStatus",
 				),
+				expect.objectContaining({ agencyTrackingId: "corrupt-row" }),
 			);
-
-			consoleErrorSpy.mockRestore();
 		});
 	});
 

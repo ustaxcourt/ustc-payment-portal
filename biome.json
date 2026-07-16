@@ -12,11 +12,26 @@
 			"complexity": {
 				"noExcessiveCognitiveComplexity": "warn"
 			},
+			"suspicious": {
+				"noConsole": "error"
+			},
 			"nursery": {
 				"noFloatingPromises": "warn"
 			}
 		}
 	},
+	"overrides": [
+		{
+			"includes": ["scripts/**", "bin/**"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsole": "off"
+					}
+				}
+			}
+		}
+	],
 	"formatter": {
 		"enabled": true
 	},

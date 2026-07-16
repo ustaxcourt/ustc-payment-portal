@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noConsole: Test only, won't be run by AWS directly
 import { randomUUID } from "node:crypto";
 import { signedFetch } from "./sigv4Helper";
 

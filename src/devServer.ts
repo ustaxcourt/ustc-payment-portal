@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noConsole: Console logs are permitted in the local development environment.
 import "dotenv/config";
 import path from "node:path";
 import type { TransactionsByStatusPathParams } from "@appTypes/TransactionsByStatus";
