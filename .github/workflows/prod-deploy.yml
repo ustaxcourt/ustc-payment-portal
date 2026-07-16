@@ -65,7 +65,7 @@ jobs:
           set -euo pipefail
           SHA='${{ steps.select.outputs.sha}}'
           echo "Validating artifacts for $SHA in s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
-          for f in initPayment processPayment getDetails testCert; do
+          for f in initPayment processPayment getDetails testCert migrationRunner; do
             KEY="artifacts/dev/${SHA}/${f}.zip"
             aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "$KEY" >/dev/null 2>&1 || {
               echo "Missing $KEY" >&2; exit 1; }
@@ -112,6 +112,7 @@ jobs:
           echo "processPayment=${PREFIX}/processPayment.zip" >> $GITHUB_OUTPUT
           echo "getDetails=${PREFIX}/getDetails.zip" >> $GITHUB_OUTPUT
           echo "testCert=${PREFIX}/testCert.zip" >> $GITHUB_OUTPUT
+          echo "migrationRunner=${PREFIX}/migrationRunner.zip" >> $GITHUB_OUTPUT
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
@@ -132,6 +133,7 @@ jobs:
           TF_VAR_processPayment_s3_key: ${{ steps.artifacts.outputs.processPayment }}
           TF_VAR_getDetails_s3_key: ${{ steps.artifacts.outputs.getDetails }}
           TF_VAR_testCert_s3_key: ${{ steps.artifacts.outputs.testCert }}
+          TF_VAR_migrationRunner_s3_key: ${{ steps.artifacts.outputs.migrationRunner }}
           # AWS Chatbot → Microsoft Teams routing. Missing secrets disable Teams routing (enable_teams=false).
           TF_VAR_teams_tenant_id: ${{ secrets.PROD_TEAMS_TENANT_ID }}
           TF_VAR_teams_team_id: ${{ secrets.PROD_TEAMS_TEAM_ID }}
@@ -155,8 +157,31 @@ jobs:
         working-directory: terraform/environments/prod
         run: |
           API_URL=$(terraform output -raw api_gateway_url)
+          MIGRATION_FN=$(terraform output -raw migration_runner_function_name)
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "migration_fn=$MIGRATION_FN" >> $GITHUB_OUTPUT
           echo "API Gateway URL: $API_URL"
+          echo "Migration runner: $MIGRATION_FN"
+
+      - name: Run DB migrations (idempotent via knex_migrations table)
+        if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
+        env:
+          MIGRATION_FN: ${{ steps.tf_outputs.outputs.migration_fn }}
+        run: |
+          set -euo pipefail
+          echo "Running migrations via: $MIGRATION_FN"
+          aws lambda invoke \
+            --function-name "$MIGRATION_FN" \
+            --payload '{"command":"migrate"}' \
+            --cli-binary-format raw-in-base64-out \
+            --log-type Tail \
+            --cli-read-timeout 130 \
+            response.json | tee invoke-meta.json
+          cat response.json
+          if jq -e '.FunctionError' invoke-meta.json > /dev/null 2>&1; then
+            echo "ERROR: migrate Lambda reported a function error" >&2
+            exit 1
+          fi
 
       # - name: Smoke test /init and redirect reachability
       #   shell: bash
