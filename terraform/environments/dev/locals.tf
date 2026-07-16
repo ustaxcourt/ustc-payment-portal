@@ -75,6 +75,7 @@ locals {
     processPayment              = local.lambda_env_payment
     getDetails                  = local.lambda_env_payment
     testCert                    = local.lambda_env_payment
+    healthCheck                 = local.lambda_env_payment
     getAllTransactions          = local.lambda_env_dashboard
     getTransactionsByStatus     = local.lambda_env_dashboard
     getTransactionPaymentStatus = local.lambda_env_dashboard

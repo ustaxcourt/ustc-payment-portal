@@ -39,6 +39,7 @@ describe("runDeployHealthCheck", () => {
     expect(
       Object.values(report.checks).every((c) => c.status === "ok"),
     ).toBe(true);
+    expect(mockRaw).toHaveBeenCalledWith("SELECT 1 FROM transactions LIMIT 1");
   });
 
   it("fails the secrets check when no mTLS agent is configured", async () => {
@@ -76,6 +77,33 @@ describe("runDeployHealthCheck", () => {
     const report = await runDeployHealthCheck(appContext);
 
     expect(report.checks.payGov.status).toBe("failed");
+  });
+
+  it("fails more than one check while leaving the rest ok", async () => {
+    mockRaw.mockRejectedValue(new Error("connection refused"));
+    mockProbe.mockResolvedValue({ ok: false, latencyMs: 1, body: "" });
+
+    const report = await runDeployHealthCheck(appContext);
+
+    expect(report.status).toBe("unhealthy");
+    expect(report.checks.rds.status).toBe("failed");
+    expect(report.checks.payGov.status).toBe("failed");
+    expect(report.checks.secrets.status).toBe("ok");
+    expect(report.checks.ssm.status).toBe("ok");
+  });
+
+  it("reports unhealthy with every check failed when all dependencies are down", async () => {
+    (appContext.getHttpsAgent as jest.Mock).mockResolvedValue(undefined);
+    delete process.env.MONITORING_SUBSCRIBERS_PARAMETER_NAME;
+    mockRaw.mockRejectedValue(new Error("connection refused"));
+    mockProbe.mockResolvedValue({ ok: false, latencyMs: 1, body: "" });
+
+    const report = await runDeployHealthCheck(appContext);
+
+    expect(report.status).toBe("unhealthy");
+    expect(
+      Object.values(report.checks).every((c) => c.status === "failed"),
+    ).toBe(true);
   });
 
   it("stringifies non-Error rejections", async () => {

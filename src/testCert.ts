@@ -1,48 +1,20 @@
 import { getSecretString } from "@clients/secretsClient";
-import { runDeployHealthCheck } from "@useCases/runDeployHealthCheck";
-import { logger } from "@utils/logger";
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "./appContext";
-import { getKnex } from "./db/knex";
 import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
 import { probePayGovWsdl } from "./health/probePayGovWsdl";
 
-void getKnex().catch((err) =>
-  logger.error({ err }, "[testCert] getKnex prewarm failed"),
-);
+export { healthHandler } from "./healthCheckHandler";
 
 type TestCertEvent = { healthProbe?: boolean } | APIGatewayProxyEvent;
 
 export const handler = async (
   event?: TestCertEvent,
 ): Promise<APIGatewayProxyResult> => {
-  if (event && "requestContext" in event) {
-    const route = event.resource ?? event.path ?? "";
-    if (route.endsWith("/health")) {
-      return runDeployHealth(event);
-    }
-  }
-
   const isScheduledProbe =
     !!event && "healthProbe" in event && event.healthProbe === true;
   return runWsdlProbe(isScheduledProbe);
 };
-
-async function runDeployHealth(
-  event: APIGatewayProxyEvent,
-): Promise<APIGatewayProxyResult> {
-  const appContext = createAppContext({ lambdaRequest: event });
-  const releaseTag = Object.entries(event.headers ?? {}).find(
-    ([name]) => name.toLowerCase() === "x-deploy-tag",
-  )?.[1];
-  const report = await runDeployHealthCheck(appContext, releaseTag);
-  appContext.logger.info("deploy health check", { checks: report.checks });
-  return {
-    statusCode: report.status === "healthy" ? 200 : 503,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(report),
-  };
-}
 
 async function runWsdlProbe(
   isScheduledProbe: boolean,

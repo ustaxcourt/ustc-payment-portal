@@ -30,6 +30,7 @@ locals {
     processPayment = local.lambda_env_payment
     getDetails     = local.lambda_env_payment
     testCert       = local.lambda_env_payment
+    healthCheck    = local.lambda_env_payment
   }
   github_oidc_provider_arn = "arn:aws:iam::802939326821:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"

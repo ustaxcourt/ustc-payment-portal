@@ -41,6 +41,7 @@ locals {
     processPayment  = local.lambda_env_payment
     getDetails      = local.lambda_env_payment
     testCert        = local.lambda_env_payment
+    healthCheck     = local.lambda_env_payment
     migrationRunner = local.lambda_env_migration
   }
   github_oidc_provider_arn = "arn:aws:iam::747103385969:oidc-provider/token.actions.githubusercontent.com"

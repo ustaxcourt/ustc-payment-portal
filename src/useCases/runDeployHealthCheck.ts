@@ -53,7 +53,7 @@ export async function runDeployHealthCheck(
     }),
     timed(async () => {
       const knex = await getKnex();
-      await knex.raw("SELECT 1");
+      await knex.raw("SELECT 1 FROM transactions LIMIT 1");
     }),
     timed(async () => {
       const agent = await appContext.getHttpsAgent();

@@ -22,8 +22,9 @@ Context for all items: [`deploy-pre-golive.md`](runbooks/deploy/deploy-pre-goliv
 
 - **Priority:** High
 - **Delivered:** `prod-deploy.yml` runs a SigV4-signed `GET /health` after apply.
-  The route hits the `testCert` Lambda, which probes Secrets Manager, SSM, RDS
-  (`SELECT 1`), and Pay.gov (WSDL) server-side and returns a JSON report; the job
+  The route hits the `healthCheck` Lambda, which probes Secrets Manager, SSM, RDS
+  (`SELECT 1 FROM transactions LIMIT 1`), and Pay.gov (WSDL) server-side and
+  returns a JSON report; the job
   fails on any unhealthy check. Read-only and synthetic — no Pay.gov transaction,
   no payment state. Staging runs the same gate for burn-in.
 - **Effort:** M

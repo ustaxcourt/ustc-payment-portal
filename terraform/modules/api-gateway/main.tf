@@ -420,7 +420,7 @@ resource "aws_api_gateway_integration" "health_integration" {
   http_method             = aws_api_gateway_method.health_get.http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["testCert"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["healthCheck"]}/invocations"
 }
 
 #Deployment
@@ -632,7 +632,7 @@ resource "aws_lambda_permission" "test_permissions" {
 resource "aws_lambda_permission" "health_permissions" {
   statement_id  = "AllowAPIGatewayInvokeHealth"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_function_arns["testCert"]
+  function_name = var.lambda_function_arns["healthCheck"]
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/health"
 }
