@@ -79,7 +79,7 @@ describe("runDeployHealthCheck", () => {
     expect(report.checks.payGov.status).toBe("failed");
   });
 
-  it("fails more than one check while leaving the rest ok", async () => {
+  it("reports unhealthy when more than one check fails, leaving passing checks ok", async () => {
     mockRaw.mockRejectedValue(new Error("connection refused"));
     mockProbe.mockResolvedValue({ ok: false, latencyMs: 1, body: "" });
 
