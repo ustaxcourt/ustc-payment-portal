@@ -152,7 +152,7 @@ jobs:
         run: terraform apply -auto-approve tfplan
 
       - name: Get Terraform Outputs (for integration tests)
-        if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
+        if: ${{ (github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only) }}
         id: tf_outputs
         working-directory: terraform/environments/prod
         run: |
@@ -164,7 +164,7 @@ jobs:
           echo "Migration runner: $MIGRATION_FN"
 
       - name: Run DB migrations (idempotent via knex_migrations table)
-        if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
+        if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) }}
         env:
           MIGRATION_FN: ${{ steps.tf_outputs.outputs.migration_fn }}
         run: |
