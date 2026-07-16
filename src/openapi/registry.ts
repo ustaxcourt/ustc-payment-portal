@@ -1,6 +1,6 @@
 import {
   OpenAPIRegistry,
-  OpenApiGeneratorV31,
+  OpenApiGeneratorV32,
 } from "@asteasolutions/zod-to-openapi";
 import {
   InitPaymentRequestSchema,
@@ -488,10 +488,10 @@ registry.registerPath({
 // Generate OpenAPI Document
 // ============================================
 export const generateOpenAPIDocument = () => {
-  const generator = new OpenApiGeneratorV31(registry.definitions);
+  const generator = new OpenApiGeneratorV32(registry.definitions);
 
   return generator.generateDocument({
-    openapi: "3.1.0",
+    openapi: "3.2.0",
     info: {
       title: "USTC Payment Portal API",
       version: "1.0.1",
