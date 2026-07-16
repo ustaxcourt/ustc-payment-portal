@@ -1,10 +1,10 @@
 import type {
-  InitPaymentRequest,
-  InitPaymentResponse,
-  ProcessPaymentRequest,
-  ProcessPaymentResponse,
-  GetDetailsPathParams,
-  GetDetailsResponse,
+	GetDetailsPathParams,
+	GetDetailsResponse,
+	InitPaymentRequest,
+	InitPaymentResponse,
+	ProcessPaymentRequest,
+	ProcessPaymentResponse,
 } from "../dist/index";
 
 /*
@@ -15,10 +15,10 @@ import type {
  * Run after `npm run build` via `npm run test:types`
  */
 export type PublicTypes = {
-  initPaymentRequest: InitPaymentRequest;
-  initPaymentResponse: InitPaymentResponse;
-  processPaymentRequest: ProcessPaymentRequest;
-  processPaymentResponse: ProcessPaymentResponse;
-  getDetailsPathParams: GetDetailsPathParams;
-  getDetailsResponse: GetDetailsResponse;
+	initPaymentRequest: InitPaymentRequest;
+	initPaymentResponse: InitPaymentResponse;
+	processPaymentRequest: ProcessPaymentRequest;
+	processPaymentResponse: ProcessPaymentResponse;
+	getDetailsPathParams: GetDetailsPathParams;
+	getDetailsResponse: GetDetailsResponse;
 };

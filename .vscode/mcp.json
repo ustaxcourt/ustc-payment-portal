@@ -1,9 +1,9 @@
 {
-  "servers": {
-    "aws-knowledge-mcp": {
-      "type": "http",
-      "url": "https://knowledge-mcp.global.api.aws"
-    }
-  },
-  "inputs": []
+	"servers": {
+		"aws-knowledge-mcp": {
+			"type": "http",
+			"url": "https://knowledge-mcp.global.api.aws"
+		}
+	},
+	"inputs": []
 }

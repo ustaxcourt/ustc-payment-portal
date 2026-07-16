@@ -14,5 +14,5 @@ import { generateFees } from "./data/fees";
  * To remove a fee, write a migration — this seed does not delete rows.
  */
 export async function seed(knex: Knex): Promise<void> {
-  await knex("fees").insert(generateFees()).onConflict("fee_id").merge();
+	await knex("fees").insert(generateFees()).onConflict("fee_id").merge();
 }

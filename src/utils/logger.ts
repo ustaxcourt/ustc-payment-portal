@@ -1,99 +1,99 @@
+import type { AppContextLogger } from "@appTypes/AppContext";
 import pino from "pino";
 import { getAppEnv, isLocal } from "../config/appEnv";
-import type { AppContextLogger } from "@appTypes/AppContext";
 
 type RuntimeEnv = "test" | "development" | "production";
 
 const VALID_LEVELS = new Set([
-  "trace",
-  "debug",
-  "info",
-  "warn",
-  "error",
-  "fatal",
-  "silent",
+	"trace",
+	"debug",
+	"info",
+	"warn",
+	"error",
+	"fatal",
+	"silent",
 ]);
 
 const DEFAULT_LEVEL_BY_ENV: Record<RuntimeEnv, string> = {
-  test: "error",
-  development: "debug",
-  production: "info",
+	test: "error",
+	development: "debug",
+	production: "info",
 };
 
 const SENSITIVE_KEYS = new Set([
-  "authorization",
-  "token",
-  "password",
-  "secret",
-  "certpassphrase",
+	"authorization",
+	"token",
+	"password",
+	"secret",
+	"certpassphrase",
 ]);
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Object.prototype.toString.call(value) === "[object Object]";
+	return Object.prototype.toString.call(value) === "[object Object]";
 }
 
 function redactSensitiveFields(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(redactSensitiveFields);
-  }
+	if (Array.isArray(value)) {
+		return value.map(redactSensitiveFields);
+	}
 
-  if (!isPlainObject(value)) {
-    return value;
-  }
+	if (!isPlainObject(value)) {
+		return value;
+	}
 
-  return Object.fromEntries(
-    Object.entries(value).map(([key, nestedValue]) => {
-      if (SENSITIVE_KEYS.has(key.toLowerCase())) {
-        return [key, "[Redacted]"];
-      }
+	return Object.fromEntries(
+		Object.entries(value).map(([key, nestedValue]) => {
+			if (SENSITIVE_KEYS.has(key.toLowerCase())) {
+				return [key, "[Redacted]"];
+			}
 
-      return [key, redactSensitiveFields(nestedValue)];
-    }),
-  );
+			return [key, redactSensitiveFields(nestedValue)];
+		}),
+	);
 }
 
 function resolveNodeEnv(raw?: string): RuntimeEnv {
-  const normalizedEnv = raw?.toLowerCase();
+	const normalizedEnv = raw?.toLowerCase();
 
-  if (
-    normalizedEnv === "test" ||
-    normalizedEnv === "development" ||
-    normalizedEnv === "production"
-  ) {
-    return normalizedEnv;
-  }
+	if (
+		normalizedEnv === "test" ||
+		normalizedEnv === "development" ||
+		normalizedEnv === "production"
+	) {
+		return normalizedEnv;
+	}
 
-  /* istanbul ignore next: This branch is for misconfigured environments, which are rare in normal operation */
-  if (raw) {
-    process.stderr.write(
-      `[logger] Invalid NODE_ENV="${raw}"; falling back to development\n`,
-    );
-  }
+	/* istanbul ignore next: This branch is for misconfigured environments, which are rare in normal operation */
+	if (raw) {
+		process.stderr.write(
+			`[logger] Invalid NODE_ENV="${raw}"; falling back to development\n`,
+		);
+	}
 
-  return "development";
+	return "development";
 }
 
 function resolveLogLevel(
-  runtimeEnv: RuntimeEnv,
-  configuredLevel?: string,
+	runtimeEnv: RuntimeEnv,
+	configuredLevel?: string,
 ): string {
-  const normalizedLevel = configuredLevel?.toLowerCase();
+	const normalizedLevel = configuredLevel?.toLowerCase();
 
-  if (normalizedLevel && VALID_LEVELS.has(normalizedLevel)) {
-    return normalizedLevel;
-  }
+	if (normalizedLevel && VALID_LEVELS.has(normalizedLevel)) {
+		return normalizedLevel;
+	}
 
-  if (
-    configuredLevel &&
-    (!normalizedLevel || !VALID_LEVELS.has(normalizedLevel))
-  ) {
-    // One startup warning if LOG_LEVEL is invalid.
-    process.stderr.write(
-      `[logger] Invalid LOG_LEVEL="${configuredLevel}"; falling back to ${DEFAULT_LEVEL_BY_ENV[runtimeEnv]}\n`,
-    );
-  }
+	if (
+		configuredLevel &&
+		(!normalizedLevel || !VALID_LEVELS.has(normalizedLevel))
+	) {
+		// One startup warning if LOG_LEVEL is invalid.
+		process.stderr.write(
+			`[logger] Invalid LOG_LEVEL="${configuredLevel}"; falling back to ${DEFAULT_LEVEL_BY_ENV[runtimeEnv]}\n`,
+		);
+	}
 
-  return DEFAULT_LEVEL_BY_ENV[runtimeEnv];
+	return DEFAULT_LEVEL_BY_ENV[runtimeEnv];
 }
 
 const nodeEnv = resolveNodeEnv(process.env.NODE_ENV);
@@ -103,83 +103,83 @@ const level = resolveLogLevel(nodeEnv, process.env.LOG_LEVEL);
 const usePretty = isLocal();
 
 export const logger = pino({
-  level,
-  hooks: {
-    logMethod(inputArgs, method) {
-      method.apply(
-        this,
-        inputArgs.map((arg) => redactSensitiveFields(arg)) as Parameters<
-          typeof method
-        >,
-      );
-    },
-  },
-  // Emit string level labels ("info") instead of numbers (30) in JSON output.
-  formatters: {
-    level(label) {
-      return { level: label };
-    },
-  },
-  // Use ISO timestamp for CloudWatch compatibility.
-  timestamp: pino.stdTimeFunctions.isoTime,
-  // Suppress pid/hostname in deployed environments to reduce noise.
-  base: usePretty
-    ? { pid: process.pid }
-    : {
-        service: "ustc-payment-portal",
-        nodeEnv,
-        appEnv,
-      },
-  // Redact sensitive keys before serialization.
-  redact: {
-    paths: [
-      "authorization",
-      "*.authorization",
-      "token",
-      "*.token",
-      "password",
-      "*.password",
-      "secret",
-      "*.secret",
-      "certPassphrase",
-      "*.certPassphrase",
-    ],
-    censor: "[Redacted]",
-  },
-  // Route to pino-pretty for local/development, raw stdout otherwise.
-  transport: usePretty
-    ? {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          translateTime: "SYS:standard",
-          ignore: "pid,hostname",
-        },
-      }
-    : undefined,
+	level,
+	hooks: {
+		logMethod(inputArgs, method) {
+			method.apply(
+				this,
+				inputArgs.map((arg) => redactSensitiveFields(arg)) as Parameters<
+					typeof method
+				>,
+			);
+		},
+	},
+	// Emit string level labels ("info") instead of numbers (30) in JSON output.
+	formatters: {
+		level(label) {
+			return { level: label };
+		},
+	},
+	// Use ISO timestamp for CloudWatch compatibility.
+	timestamp: pino.stdTimeFunctions.isoTime,
+	// Suppress pid/hostname in deployed environments to reduce noise.
+	base: usePretty
+		? { pid: process.pid }
+		: {
+				service: "ustc-payment-portal",
+				nodeEnv,
+				appEnv,
+			},
+	// Redact sensitive keys before serialization.
+	redact: {
+		paths: [
+			"authorization",
+			"*.authorization",
+			"token",
+			"*.token",
+			"password",
+			"*.password",
+			"secret",
+			"*.secret",
+			"certPassphrase",
+			"*.certPassphrase",
+		],
+		censor: "[Redacted]",
+	},
+	// Route to pino-pretty for local/development, raw stdout otherwise.
+	transport: usePretty
+		? {
+				target: "pino-pretty",
+				options: {
+					colorize: true,
+					translateTime: "SYS:standard",
+					ignore: "pid,hostname",
+				},
+			}
+		: undefined,
 });
 
 // Add global context when not using pretty (base already included above for pretty).
 // For staging/production, default meta is embedded in the base option above.
 
 export function createRequestLogger(context: {
-  awsRequestId?: string;
-  path?: string;
-  httpMethod?: string;
-  clientArn?: string;
-  transactionReferenceId?: string;
+	awsRequestId?: string;
+	path?: string;
+	httpMethod?: string;
+	clientArn?: string;
+	transactionReferenceId?: string;
 }): AppContextLogger {
-  const requestLogger = logger.child(context);
+	const requestLogger = logger.child(context);
 
-  /* istanbul ignore next: This branch is for Pay.gov communication failures, which are rare in normal operation */
-  return {
-    debug: (message: string, additionalFields?: Record<string, unknown>) =>
-      requestLogger.debug(additionalFields ?? {}, message),
-    error: (message: string, additionalFields?: Record<string, unknown>) =>
-      requestLogger.error(additionalFields ?? {}, message),
-    info: (message: string, additionalFields?: Record<string, unknown>) =>
-      requestLogger.info(additionalFields ?? {}, message),
-    warn: (message: string, additionalFields?: Record<string, unknown>) =>
-      requestLogger.warn(additionalFields ?? {}, message),
-  };
+	/* istanbul ignore next: This branch is for Pay.gov communication failures, which are rare in normal operation */
+	return {
+		debug: (message: string, additionalFields?: Record<string, unknown>) =>
+			requestLogger.debug(additionalFields ?? {}, message),
+		error: (message: string, additionalFields?: Record<string, unknown>) =>
+			requestLogger.error(additionalFields ?? {}, message),
+		info: (message: string, additionalFields?: Record<string, unknown>) =>
+			requestLogger.info(additionalFields ?? {}, message),
+		warn: (message: string, additionalFields?: Record<string, unknown>) =>
+			requestLogger.warn(additionalFields ?? {}, message),
+	};
 }

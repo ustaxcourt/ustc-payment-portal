@@ -7,31 +7,31 @@ import { TransactionRecordSummarySchema } from "./TransactionRecord.schema";
 extendZodWithOpenApi(z);
 
 export const ProcessPaymentRequestSchema = z
-  .object({
-    token: z.string().length(32).openapi({
-      description:
-        "The payment token received from Pay.gov after user completes payment form. Must be exactly 32 characters long.",
-      example: "abcdefghijklmnopqrstuvwxyz123456",
-    }),
-  })
-  .strict()
-  .openapi("ProcessPaymentRequest");
+	.object({
+		token: z.string().length(32).openapi({
+			description:
+				"The payment token received from Pay.gov after user completes payment form. Must be exactly 32 characters long.",
+			example: "abcdefghijklmnopqrstuvwxyz123456",
+		}),
+	})
+	.strict()
+	.openapi("ProcessPaymentRequest");
 
 export type ProcessPaymentRequest = z.infer<typeof ProcessPaymentRequestSchema>;
 
 export const ProcessPaymentResponseSchema = z
-  .object({
-    paymentStatus: PaymentStatusSchema.openapi({
-      description:
-        "Overall payment status representing the current state of the payment",
-    }),
-    transactions: z.array(TransactionRecordSummarySchema).openapi({
-      description:
-        "Array of all transaction records associated with this payment reference",
-    }),
-  })
-  .openapi("ProcessPaymentResponse");
+	.object({
+		paymentStatus: PaymentStatusSchema.openapi({
+			description:
+				"Overall payment status representing the current state of the payment",
+		}),
+		transactions: z.array(TransactionRecordSummarySchema).openapi({
+			description:
+				"Array of all transaction records associated with this payment reference",
+		}),
+	})
+	.openapi("ProcessPaymentResponse");
 
 export type ProcessPaymentResponse = z.infer<
-  typeof ProcessPaymentResponseSchema
+	typeof ProcessPaymentResponseSchema
 >;

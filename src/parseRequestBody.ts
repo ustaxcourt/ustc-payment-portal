@@ -1,6 +1,6 @@
-import type { Request } from "express";
-import { ZodType } from "zod";
 import { InvalidRequestError } from "@errors/invalidRequest";
+import type { Request } from "express";
+import type { ZodType } from "zod";
 
 /**
  * Mirrors lambdaHandler.ts's parseAndValidate so the dev server produces the
@@ -11,13 +11,13 @@ import { InvalidRequestError } from "@errors/invalidRequest";
  * caller's existing try/catch can route the error through handleError.
  */
 export const parseRequestBody = <T>(
-  req: Pick<Request, "body" | "headers">,
-  schema: ZodType<T>,
+	req: Pick<Request, "body" | "headers">,
+	schema: ZodType<T>,
 ): T => {
-  const isJsonRequest =
-    req.headers["content-type"]?.includes("application/json") ?? false;
-  if (!isJsonRequest && Object.keys(req.body ?? {}).length === 0) {
-    throw new InvalidRequestError("missing body");
-  }
-  return schema.parse(req.body);
+	const isJsonRequest =
+		req.headers["content-type"]?.includes("application/json") ?? false;
+	if (!isJsonRequest && Object.keys(req.body ?? {}).length === 0) {
+		throw new InvalidRequestError("missing body");
+	}
+	return schema.parse(req.body);
 };

@@ -1,27 +1,31 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.16/schema.json",
-  "vcs": {
-    "enabled": true,
-    "clientKind": "git",
-    "useIgnoreFile": true
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true,
-      "suspicious": {
-        "noImplicitAnyLet": "warn",
-        "useIterableCallbackReturn": "warn"
-      },
-      "nursery": {
-        "noFloatingPromises": "warn"
-      }
-    }
-  },
-  "formatter": {
-    "enabled": false
-  },
-  "files": {
-    "includes": ["**"]
-  }
+	"$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"complexity": {
+				"noExcessiveCognitiveComplexity": "warn"
+			},
+			"nursery": {
+				"noFloatingPromises": "warn"
+			}
+		}
+	},
+	"formatter": {
+		"enabled": true
+	},
+	"files": {
+		"includes": [
+			"**",
+			"!docs/openapi.json",
+			"!docs/openapi.yaml",
+			"!src/health/emf.ts"
+		]
+	}
 }

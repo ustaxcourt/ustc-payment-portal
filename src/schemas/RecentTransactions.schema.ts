@@ -6,17 +6,17 @@ import { DashboardTransactionSchema } from "./TransactionDashboard.schema";
 extendZodWithOpenApi(z);
 
 export const RecentTransactionsResponseSchema = z
-  .object({
-    data: z.array(DashboardTransactionSchema).openapi({
-      description: "Up to 100 most recent transactions",
-    }),
-    total: z.number().int().nonnegative().openapi({
-      description: "Total number of transactions returned in this response",
-      example: 100,
-    }),
-  })
-  .openapi("RecentTransactionsResponse");
+	.object({
+		data: z.array(DashboardTransactionSchema).openapi({
+			description: "Up to 100 most recent transactions",
+		}),
+		total: z.number().int().nonnegative().openapi({
+			description: "Total number of transactions returned in this response",
+			example: 100,
+		}),
+	})
+	.openapi("RecentTransactionsResponse");
 
 export type RecentTransactionsResponse = z.infer<
-  typeof RecentTransactionsResponseSchema
+	typeof RecentTransactionsResponseSchema
 >;

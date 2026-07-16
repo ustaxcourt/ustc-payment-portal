@@ -1,43 +1,67 @@
 {
-  "files.insertFinalNewline": true,
-  "files.trimTrailingWhitespace": true,
-  "editor.formatOnSave": true,
-  "editor.tabSize": 2,
-  "chat.tools.terminal.autoApprove": {
-    // Git write operations - block
-    "/^git\\s+commit/": false,
-    "/^git\\s+push/": false,
-    "/^git\\s+reset/": false,
-    "/^git\\s+clean/": false,
-    "/^git\\s+revert/": false,
-    "/^git\\s+merge/": false,
-    "/^git\\s+rebase/": false,
-    "/^git\\s+cherry-pick/": false,
-    "/^git\\s+tag/": false,
-    "/^git\\s+stash/": false,
+	"files.insertFinalNewline": true,
+	"files.trimTrailingWhitespace": true,
 
-    // Destructive file operations - block
-    "rm": false,
-    "rmdir": false,
-    "del": false,
-    "/^rm\\s+-rf/": false,
+	"editor.formatOnSave": true,
+	"editor.defaultFormatter": "biomejs.biome",
 
-    // System/permission changes - block
-    "sudo": false,
-    "chmod": false,
-    "chown": false,
-    "kill": false,
-    "killall": false,
+	// Use tabs in the editor
+	"editor.insertSpaces": false,
+	"editor.tabSize": 2,
 
-    // Network operations - block
-    "curl": false,
-    "wget": false,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.biome": "explicit",
+		"source.organizeImports.biome": "explicit"
+	},
 
-    // Dangerous execution - block
-    "eval": false,
+	"biome.gotoDefinition": true,
 
-    // PowerShell equivalents - block
-    "/^Remove-Item\\b/i": false,
-    "/^Stop-Process\\b/i": false
-  },
+	"[javascript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+
+	"[json]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+
+	"chat.tools.terminal.autoApprove": {
+		// Git write operations - block
+		"/^git\\s+commit/": false,
+		"/^git\\s+push/": false,
+		"/^git\\s+reset/": false,
+		"/^git\\s+clean/": false,
+		"/^git\\s+revert/": false,
+		"/^git\\s+merge/": false,
+		"/^git\\s+rebase/": false,
+		"/^git\\s+cherry-pick/": false,
+		"/^git\\s+tag/": false,
+		"/^git\\s+stash/": false,
+
+		// Destructive file operations - block
+		"rm": false,
+		"rmdir": false,
+		"del": false,
+		"/^rm\\s+-rf/": false,
+
+		// System/permission changes - block
+		"sudo": false,
+		"chmod": false,
+		"chown": false,
+		"kill": false,
+		"killall": false,
+
+		// Network operations - block
+		"curl": false,
+		"wget": false,
+
+		// Dangerous execution - block
+		"eval": false,
+
+		// PowerShell equivalents - block
+		"/^Remove-Item\\b/i": false,
+		"/^Stop-Process\\b/i": false
+	}
 }

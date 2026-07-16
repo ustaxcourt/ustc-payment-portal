@@ -1,6 +1,6 @@
-import { CompleteOnlineCollectionWithDetailsRequest } from "./CompleteOnlineCollectionWithDetailsRequest";
-import { testAppContext as appContext } from "../test/testAppContext";
 import { FailedTransactionError } from "@errors/failedTransaction";
+import { testAppContext as appContext } from "../test/testAppContext";
+import { CompleteOnlineCollectionWithDetailsRequest } from "./CompleteOnlineCollectionWithDetailsRequest";
 
 const mockToken = "test-token-12345";
 const mockPayGovTrackingId = "test-tracking-id-12345";
@@ -24,45 +24,45 @@ const mockSuccessResponse = `<?xml version="1.0" encoding="UTF-8"?>
 `;
 
 describe("CompleteOnlineCollectionWithDetailsRequest", () => {
-  it("constructs correctly with required parameters", () => {
-    const request = new CompleteOnlineCollectionWithDetailsRequest({
-      tcsAppId: "test-app-id",
-      token: mockToken,
-    });
+	it("constructs correctly with required parameters", () => {
+		const request = new CompleteOnlineCollectionWithDetailsRequest({
+			tcsAppId: "test-app-id",
+			token: mockToken,
+		});
 
-    expect(request).toBeDefined();
-    expect(request.token).toBe(mockToken);
-  });
+		expect(request).toBeDefined();
+		expect(request.token).toBe(mockToken);
+	});
 
-  describe("makeSoapRequest", () => {
-    it("returns transaction details for successful response", async () => {
-      appContext.postHttpRequest = jest
-        .fn()
-        .mockReturnValue(mockSuccessResponse);
+	describe("makeSoapRequest", () => {
+		it("returns transaction details for successful response", async () => {
+			appContext.postHttpRequest = jest
+				.fn()
+				.mockReturnValue(mockSuccessResponse);
 
-      const request = new CompleteOnlineCollectionWithDetailsRequest({
-        tcsAppId: "test-app-id",
-        token: mockToken,
-      });
+			const request = new CompleteOnlineCollectionWithDetailsRequest({
+				tcsAppId: "test-app-id",
+				token: mockToken,
+			});
 
-      const result = await request.makeSoapRequest(appContext);
+			const result = await request.makeSoapRequest(appContext);
 
-      expect(result.paygov_tracking_id).toBe(mockPayGovTrackingId);
-      expect(result.transaction_status).toBe("Success");
-      expect(result.agency_tracking_id).toBe("agency-tracking-token");
-      expect(result.transaction_amount).toBe(150);
-    });
+			expect(result.paygov_tracking_id).toBe(mockPayGovTrackingId);
+			expect(result.transaction_status).toBe("Success");
+			expect(result.agency_tracking_id).toBe("agency-tracking-token");
+			expect(result.transaction_amount).toBe(150);
+		});
 
-    describe("handleFault", () => {
-      it("throws FailedTransactionError when fault is undefined", () => {
-        const request = new CompleteOnlineCollectionWithDetailsRequest({
-          tcsAppId: "test-app-id",
-          token: mockToken,
-        });
+		describe("handleFault", () => {
+			it("throws FailedTransactionError when fault is undefined", () => {
+				const request = new CompleteOnlineCollectionWithDetailsRequest({
+					tcsAppId: "test-app-id",
+					token: mockToken,
+				});
 
-        const result = request.handleFault(undefined);
-        expect(result).toBeInstanceOf(FailedTransactionError);
-      });
-    });
-  });
+				const result = request.handleFault(undefined);
+				expect(result).toBeInstanceOf(FailedTransactionError);
+			});
+		});
+	});
 });

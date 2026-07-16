@@ -1,398 +1,468 @@
-
-
+// biome-ignore-all lint/suspicious/noExplicitAny: Test Only, low risk.
+// There's a planned refactor of this test coming up that may fix it.
 let mockTransaction: any = null;
 
 jest.mock("./TransactionModel", () => {
-  const actual = jest.requireActual("./TransactionModel");
-  return {
-    __esModule: true,
-    ...actual,
-    default: class MockTransactionModel {
-      static $parseDatabaseJson(json: Record<string, unknown>) {
-        return { ...json };
-      }
-      static getByPaymentStatus = jest.fn(() => Promise.resolve([]));
-      static getAll = jest.fn(() => Promise.resolve([]));
-      static getAggregatedPaymentStatus = jest.fn(() => Promise.resolve({
-        success: 4,
-        failed: 2,
-        pending: 3,
-        total: 100,
-      }));
-      static createReceived = jest.fn((data) => {
-        mockTransaction = {
-          ...data,
-          agencyTrackingId: data.agencyTrackingId || "MOCK-TRACKING-ID",
-          transactionStatus: "received",
-          paymentStatus: "pending",
-        };
-        return Promise.resolve(mockTransaction);
-      });
-      static updateToInitiated = jest.fn((agencyTrackingId, paygovToken) => {
-        if (mockTransaction && mockTransaction.agencyTrackingId === agencyTrackingId) {
-          mockTransaction.transactionStatus = "initiated";
-          mockTransaction.paygovToken = paygovToken;
-        }
-        return Promise.resolve();
-      });
-      static updateToFailed = jest.fn((agencyTrackingId, returnCode?, returnDetail?) => {
-        if (mockTransaction && mockTransaction.agencyTrackingId === agencyTrackingId) {
-          mockTransaction.transactionStatus = "failed";
-          mockTransaction.paymentStatus = "failed";
-          mockTransaction.returnCode = returnCode;
-          mockTransaction.returnDetail = returnDetail;
-        }
-        return Promise.resolve(mockTransaction);
-      });
-      static updateAfterPayGovResponse = jest.fn((
-        agencyTrackingId,
-        paygovTrackingId,
-        transactionStatus,
-        paymentStatus,
-        paymentMethod,
-        transactionDate,
-        paymentDate,
-      ) => {
-        if (mockTransaction && mockTransaction.agencyTrackingId === agencyTrackingId) {
-          mockTransaction.paygovTrackingId = paygovTrackingId;
-          mockTransaction.transactionStatus = transactionStatus;
-          mockTransaction.paymentStatus = paymentStatus;
-          mockTransaction.paymentMethod = paymentMethod;
-          mockTransaction.transactionDate = transactionDate;
-          mockTransaction.paymentDate = paymentDate;
-        }
-        return Promise.resolve(mockTransaction);
-      });
-      static query = jest.fn(() => ({
-        findById: (id: string) => Promise.resolve(id === mockTransaction?.agencyTrackingId ? mockTransaction : undefined),
-      }));
-      static findByPaygovToken = jest.fn((token: string) => Promise.resolve(token === mockTransaction?.paygovToken ? mockTransaction : undefined));
-      static findByPaygovTrackingId = jest.fn((paygovTrackingId: string) => Promise.resolve(paygovTrackingId === mockTransaction?.paygovTrackingId ? mockTransaction : undefined));
-      static findByReferenceId = jest.fn(
-        (transactionReferenceId: string) =>
-          Promise.resolve(
-            mockTransaction && mockTransaction.transactionReferenceId === transactionReferenceId
-              ? [mockTransaction]
-              : [],
-          ),
-      );
-      static findPendingOrProcessedByReferenceId = jest.fn(
-        (_clientName: string, referenceId: string, excludeToken: string) =>
-          Promise.resolve(
-            mockTransaction &&
-            mockTransaction.transactionReferenceId === referenceId &&
-            mockTransaction.paygovToken !== excludeToken &&
-            ['pending', 'processed'].includes(mockTransaction.transactionStatus)
-              ? mockTransaction
-              : undefined,
-          ),
-      );
-      constructor() {
-        // intentionally left blank
-      }
-      $parseDatabaseJson(json: Record<string, unknown>) {
-        return MockTransactionModel.$parseDatabaseJson(json);
-      }
-    },
-  };
+	const actual = jest.requireActual("./TransactionModel");
+	return {
+		__esModule: true,
+		...actual,
+		default: class MockTransactionModel {
+			static $parseDatabaseJson(json: Record<string, unknown>) {
+				return { ...json };
+			}
+			static getByPaymentStatus = jest.fn(() => Promise.resolve([]));
+			static getAll = jest.fn(() => Promise.resolve([]));
+			static getAggregatedPaymentStatus = jest.fn(() =>
+				Promise.resolve({
+					success: 4,
+					failed: 2,
+					pending: 3,
+					total: 100,
+				}),
+			);
+			static createReceived = jest.fn((data) => {
+				mockTransaction = {
+					...data,
+					agencyTrackingId: data.agencyTrackingId || "MOCK-TRACKING-ID",
+					transactionStatus: "received",
+					paymentStatus: "pending",
+				};
+				return Promise.resolve(mockTransaction);
+			});
+			static updateToInitiated = jest.fn((agencyTrackingId, paygovToken) => {
+				if (
+					mockTransaction &&
+					mockTransaction.agencyTrackingId === agencyTrackingId
+				) {
+					mockTransaction.transactionStatus = "initiated";
+					mockTransaction.paygovToken = paygovToken;
+				}
+				return Promise.resolve();
+			});
+			static updateToFailed = jest.fn(
+				(agencyTrackingId, returnCode?, returnDetail?) => {
+					if (
+						mockTransaction &&
+						mockTransaction.agencyTrackingId === agencyTrackingId
+					) {
+						mockTransaction.transactionStatus = "failed";
+						mockTransaction.paymentStatus = "failed";
+						mockTransaction.returnCode = returnCode;
+						mockTransaction.returnDetail = returnDetail;
+					}
+					return Promise.resolve(mockTransaction);
+				},
+			);
+			static updateAfterPayGovResponse = jest.fn(
+				(
+					agencyTrackingId,
+					paygovTrackingId,
+					transactionStatus,
+					paymentStatus,
+					paymentMethod,
+					transactionDate,
+					paymentDate,
+				) => {
+					if (
+						mockTransaction &&
+						mockTransaction.agencyTrackingId === agencyTrackingId
+					) {
+						mockTransaction.paygovTrackingId = paygovTrackingId;
+						mockTransaction.transactionStatus = transactionStatus;
+						mockTransaction.paymentStatus = paymentStatus;
+						mockTransaction.paymentMethod = paymentMethod;
+						mockTransaction.transactionDate = transactionDate;
+						mockTransaction.paymentDate = paymentDate;
+					}
+					return Promise.resolve(mockTransaction);
+				},
+			);
+			static query = jest.fn(() => ({
+				findById: (id: string) =>
+					Promise.resolve(
+						id === mockTransaction?.agencyTrackingId
+							? mockTransaction
+							: undefined,
+					),
+			}));
+			static findByPaygovToken = jest.fn((token: string) =>
+				Promise.resolve(
+					token === mockTransaction?.paygovToken ? mockTransaction : undefined,
+				),
+			);
+			static findByPaygovTrackingId = jest.fn((paygovTrackingId: string) =>
+				Promise.resolve(
+					paygovTrackingId === mockTransaction?.paygovTrackingId
+						? mockTransaction
+						: undefined,
+				),
+			);
+			static findByReferenceId = jest.fn((transactionReferenceId: string) =>
+				Promise.resolve(
+					mockTransaction &&
+						mockTransaction.transactionReferenceId === transactionReferenceId
+						? [mockTransaction]
+						: [],
+				),
+			);
+			static findPendingOrProcessedByReferenceId = jest.fn(
+				(_clientName: string, referenceId: string, excludeToken: string) =>
+					Promise.resolve(
+						mockTransaction &&
+							mockTransaction.transactionReferenceId === referenceId &&
+							mockTransaction.paygovToken !== excludeToken &&
+							["pending", "processed"].includes(
+								mockTransaction.transactionStatus,
+							)
+							? mockTransaction
+							: undefined,
+					),
+			);
+			$parseDatabaseJson(json: Record<string, unknown>) {
+				return MockTransactionModel.$parseDatabaseJson(json);
+			}
+		},
+	};
 });
 
-import TransactionModel, { PaymentMethod } from "./TransactionModel";
-
+import TransactionModel, { type PaymentMethod } from "./TransactionModel";
 
 describe("TransactionModel", () => {
-  let agencyTrackingId: string;
+	let agencyTrackingId: string;
 
-  afterEach(() => {
-    mockTransaction = null;
-  });
+	afterEach(() => {
+		mockTransaction = null;
+	});
 
-  describe("$parseDatabaseJson", () => {
-    // Uses the real (unmocked) class to exercise the load-bearing coercion:
-    // f.amount is returned as a decimal string by the pg driver and must be
-    // cast to a number before hitting DashboardTransactionSchema's z.number().
-    const ActualTransactionModel = (jest.requireActual("./TransactionModel") as any).default;
+	describe("$parseDatabaseJson", () => {
+		// Uses the real (unmocked) class to exercise the load-bearing coercion:
+		// f.amount is returned as a decimal string by the pg driver and must be
+		// cast to a number before hitting DashboardTransactionSchema's z.number().
+		const ActualTransactionModel = (
+			jest.requireActual("./TransactionModel") as any
+		).default;
 
-    it("casts transactionAmount from a Postgres decimal string to a number", () => {
-      const instance = new ActualTransactionModel();
-      const result = instance.$parseDatabaseJson({ transactionAmount: "60.50" });
-      expect(typeof result.transactionAmount).toBe("number");
-      expect(result.transactionAmount).toBe(60.5);
-    });
+		it("casts transactionAmount from a Postgres decimal string to a number", () => {
+			const instance = new ActualTransactionModel();
+			const result = instance.$parseDatabaseJson({
+				transactionAmount: "60.50",
+			});
+			expect(typeof result.transactionAmount).toBe("number");
+			expect(result.transactionAmount).toBe(60.5);
+		});
 
-    it("leaves transactionAmount null when the join produces null", () => {
-      const instance = new ActualTransactionModel();
-      const result = instance.$parseDatabaseJson({ transactionAmount: null });
-      expect(result.transactionAmount).toBeNull();
-    });
+		it("leaves transactionAmount null when the join produces null", () => {
+			const instance = new ActualTransactionModel();
+			const result = instance.$parseDatabaseJson({ transactionAmount: null });
+			expect(result.transactionAmount).toBeNull();
+		});
 
-    it("leaves transactionAmount absent when the column is not in the row", () => {
-      const instance = new ActualTransactionModel();
-      const result = instance.$parseDatabaseJson({ agencyTrackingId: "TEST-123" });
-      expect(result.transactionAmount).toBeUndefined();
-    });
-  });
+		it("leaves transactionAmount absent when the column is not in the row", () => {
+			const instance = new ActualTransactionModel();
+			const result = instance.$parseDatabaseJson({
+				agencyTrackingId: "TEST-123",
+			});
+			expect(result.transactionAmount).toBeUndefined();
+		});
+	});
 
-  describe("getAll", () => {
-    it("resolves without error and returns an array", async () => {
-      const result = await TransactionModel.getAll();
-      expect(Array.isArray(result)).toBe(true);
-    });
-  });
+	describe("getAll", () => {
+		it("resolves without error and returns an array", async () => {
+			const result = await TransactionModel.getAll();
+			expect(Array.isArray(result)).toBe(true);
+		});
+	});
 
+	describe("getAggregatedPaymentStatus", () => {
+		it("returns the expected totals object", async () => {
+			const totals = await TransactionModel.getAggregatedPaymentStatus();
+			expect(totals).toEqual({
+				success: 4,
+				failed: 2,
+				pending: 3,
+				total: 100,
+			});
+		});
+	});
 
-  describe("getAggregatedPaymentStatus", () => {
-    it("returns the expected totals object", async () => {
-      const totals = await TransactionModel.getAggregatedPaymentStatus();
-      expect(totals).toEqual({
-        success: 4,
-        failed: 2,
-        pending: 3,
-        total: 100,
-      });
-    });
-  });
+	describe("createReceived", () => {
+		it("should create a received transaction", async () => {
+			const data = {
+				agencyTrackingId: "TEST-123",
+				feeId: "PETITION_FILING_FEE",
+				clientName: "test-client",
+				transactionReferenceId: "TXN-REF-001",
+				paymentMethod: "plastic_card" as PaymentMethod,
+			};
 
-  describe("createReceived", () => {
-    it('should create a received transaction', async () => {
-      const data = {
-        agencyTrackingId: 'TEST-123',
-        feeId: 'PETITION_FILING_FEE',
-        clientName: 'test-client',
-        transactionReferenceId: 'TXN-REF-001',
-        paymentMethod: 'plastic_card' as PaymentMethod,
-      };
+			const transaction = await TransactionModel.createReceived(data);
 
-      const transaction = await TransactionModel.createReceived(data);
+			expect(transaction).toBeDefined();
+			expect(transaction.agencyTrackingId).toBe(data.agencyTrackingId);
+			expect(transaction.transactionStatus).toBe("received");
+			expect(transaction.paymentStatus).toBe("pending");
+			agencyTrackingId = transaction.agencyTrackingId;
+		});
+	});
 
-      expect(transaction).toBeDefined();
-      expect(transaction.agencyTrackingId).toBe(data.agencyTrackingId);
-      expect(transaction.transactionStatus).toBe('received');
-      expect(transaction.paymentStatus).toBe('pending');
-      agencyTrackingId = transaction.agencyTrackingId;
-    });
-  });
+	describe("updateToFailed", () => {
+		it("should set both transactionStatus and paymentStatus to failed", async () => {
+			await TransactionModel.createReceived({
+				agencyTrackingId: "TEST-123",
+				feeId: "PETITION_FILING_FEE",
+				clientName: "test-client",
+				transactionReferenceId: "TXN-REF-001",
+				paymentMethod: "plastic_card" as PaymentMethod,
+			});
 
-  describe("updateToFailed", () => {
-    it("should set both transactionStatus and paymentStatus to failed", async () => {
-      await TransactionModel.createReceived({
-        agencyTrackingId: "TEST-123",
-        feeId: "PETITION_FILING_FEE",
-        clientName: "test-client",
-        transactionReferenceId: "TXN-REF-001",
-        paymentMethod: 'plastic_card' as PaymentMethod,
-      });
+			await TransactionModel.updateToFailed("TEST-123");
 
-      await TransactionModel.updateToFailed("TEST-123");
+			const updated = await TransactionModel.query().findById("TEST-123");
+			expect(updated?.transactionStatus).toBe("failed");
+			expect(updated?.paymentStatus).toBe("failed");
+		});
 
-      const updated = await TransactionModel.query().findById("TEST-123");
-      expect(updated?.transactionStatus).toBe("failed");
-      expect(updated?.paymentStatus).toBe("failed");
-    });
+		it("should persist returnCode and returnDetail when provided", async () => {
+			await TransactionModel.createReceived({
+				agencyTrackingId: "TEST-FAIL-01",
+				feeId: "PETITION_FILING_FEE",
+				clientName: "test-client",
+				transactionReferenceId: "TXN-REF-FAIL",
+				paymentMethod: "plastic_card" as PaymentMethod,
+			});
 
-    it("should persist returnCode and returnDetail when provided", async () => {
-      await TransactionModel.createReceived({
-        agencyTrackingId: "TEST-FAIL-01",
-        feeId: "PETITION_FILING_FEE",
-        clientName: "test-client",
-        transactionReferenceId: "TXN-REF-FAIL",
-        paymentMethod: 'plastic_card' as PaymentMethod,
-      });
+			await TransactionModel.updateToFailed(
+				"TEST-FAIL-01",
+				3001,
+				"Card declined",
+			);
 
-      await TransactionModel.updateToFailed("TEST-FAIL-01", 3001, "Card declined");
+			const updated = await TransactionModel.query().findById("TEST-FAIL-01");
+			expect(updated?.returnCode).toBe(3001);
+			expect(updated?.returnDetail).toBe("Card declined");
+		});
+	});
 
-      const updated = await TransactionModel.query().findById("TEST-FAIL-01");
-      expect(updated?.returnCode).toBe(3001);
-      expect(updated?.returnDetail).toBe("Card declined");
-    });
-  });
+	describe("updateAfterPayGovResponse", () => {
+		it("persists paygovTrackingId, statuses, paymentMethod, and dates", async () => {
+			await TransactionModel.createReceived({
+				agencyTrackingId: "TEST-OK-01",
+				feeId: "PETITION_FILING_FEE",
+				clientName: "test-client",
+				transactionReferenceId: "TXN-REF-OK",
+				paymentMethod: null as unknown as PaymentMethod,
+			});
 
-  describe("updateAfterPayGovResponse", () => {
-    it("persists paygovTrackingId, statuses, paymentMethod, and dates", async () => {
-      await TransactionModel.createReceived({
-        agencyTrackingId: "TEST-OK-01",
-        feeId: "PETITION_FILING_FEE",
-        clientName: "test-client",
-        transactionReferenceId: "TXN-REF-OK",
-        paymentMethod: null as unknown as PaymentMethod,
-      });
+			await TransactionModel.updateAfterPayGovResponse(
+				"TEST-OK-01",
+				"25PC41EF",
+				"processed",
+				"success",
+				"plastic_card",
+				"2016-01-11T16:01:46",
+				"2016-01-11",
+			);
 
-      await TransactionModel.updateAfterPayGovResponse(
-        "TEST-OK-01",
-        "25PC41EF",
-        "processed",
-        "success",
-        "plastic_card",
-        "2016-01-11T16:01:46",
-        "2016-01-11",
-      );
+			const updated = await TransactionModel.query().findById("TEST-OK-01");
+			expect(updated?.paygovTrackingId).toBe("25PC41EF");
+			expect(updated?.transactionStatus).toBe("processed");
+			expect(updated?.paymentStatus).toBe("success");
+			expect(updated?.paymentMethod).toBe("plastic_card");
+			expect(updated?.transactionDate).toBe("2016-01-11T16:01:46");
+			expect(updated?.paymentDate).toBe("2016-01-11");
+		});
+	});
 
-      const updated = await TransactionModel.query().findById("TEST-OK-01");
-      expect(updated?.paygovTrackingId).toBe("25PC41EF");
-      expect(updated?.transactionStatus).toBe("processed");
-      expect(updated?.paymentStatus).toBe("success");
-      expect(updated?.paymentMethod).toBe("plastic_card");
-      expect(updated?.transactionDate).toBe("2016-01-11T16:01:46");
-      expect(updated?.paymentDate).toBe("2016-01-11");
-    });
-  });
+	describe("findByPaygovTrackingId", () => {
+		it("returns a TransactionModel when a matching paygovTrackingId exists", async () => {
+			await TransactionModel.createReceived({
+				agencyTrackingId: "TEST-LOOKUP-01",
+				feeId: "PETITION_FILING_FEE",
+				clientName: "test-client",
+				transactionReferenceId: "TXN-REF-LOOKUP",
+				paymentMethod: null as unknown as PaymentMethod,
+			});
+			await TransactionModel.updateAfterPayGovResponse(
+				"TEST-LOOKUP-01",
+				"TRACK-123",
+				"processed",
+				"success",
+				"ach",
+				"2026-04-20T10:00:00",
+				"2026-04-20",
+			);
 
-  describe("findByPaygovTrackingId", () => {
-    it("returns a TransactionModel when a matching paygovTrackingId exists", async () => {
-      await TransactionModel.createReceived({
-        agencyTrackingId: "TEST-LOOKUP-01",
-        feeId: "PETITION_FILING_FEE",
-        clientName: "test-client",
-        transactionReferenceId: "TXN-REF-LOOKUP",
-        paymentMethod: null as unknown as PaymentMethod,
-      });
-      await TransactionModel.updateAfterPayGovResponse(
-        "TEST-LOOKUP-01",
-        "TRACK-123",
-        "processed",
-        "success",
-        "ach",
-        "2026-04-20T10:00:00",
-        "2026-04-20",
-      );
+			const found = await TransactionModel.findByPaygovTrackingId("TRACK-123");
+			expect(found).toBeDefined();
+			expect(found?.paygovTrackingId).toBe("TRACK-123");
+			expect(found?.agencyTrackingId).toBe("TEST-LOOKUP-01");
+		});
 
-      const found = await TransactionModel.findByPaygovTrackingId("TRACK-123");
-      expect(found).toBeDefined();
-      expect(found?.paygovTrackingId).toBe("TRACK-123");
-      expect(found?.agencyTrackingId).toBe("TEST-LOOKUP-01");
-    });
+		it("returns undefined when no matching paygovTrackingId exists", async () => {
+			const found = await TransactionModel.findByPaygovTrackingId(
+				"NON-EXISTENT-TRACKING",
+			);
+			expect(found).toBeUndefined();
+		});
+	});
 
-    it("returns undefined when no matching paygovTrackingId exists", async () => {
-      const found = await TransactionModel.findByPaygovTrackingId("NON-EXISTENT-TRACKING");
-      expect(found).toBeUndefined();
-    });
-  });
+	describe("updateToInitiated", () => {
+		it("should update transaction to initiated", async () => {
+			const paygovToken = "TOKEN123456";
+			// Directly mock TransactionModel.query for this test
+			const mockFindById = jest.fn((id) =>
+				Promise.resolve(
+					id === agencyTrackingId
+						? {
+								agencyTrackingId,
+								transactionStatus: "initiated",
+								paygovToken,
+							}
+						: undefined,
+				),
+			);
+			const originalQuery = TransactionModel.query;
+			(TransactionModel as any).query = jest.fn(() => ({
+				findById: mockFindById,
+			}));
 
-  describe("updateToInitiated", () => {
-    it('should update transaction to initiated', async () => {
-      const paygovToken = 'TOKEN123456';
-      // Directly mock TransactionModel.query for this test
-      const mockFindById = jest.fn((id) => Promise.resolve(id === agencyTrackingId ? {
-        agencyTrackingId,
-        transactionStatus: 'initiated',
-        paygovToken,
-      } : undefined));
-      const originalQuery = TransactionModel.query;
-      (TransactionModel as any).query = jest.fn(() => ({ findById: mockFindById }));
+			await TransactionModel.updateToInitiated(agencyTrackingId, paygovToken);
 
-      await TransactionModel.updateToInitiated(agencyTrackingId, paygovToken);
+			const updated = await TransactionModel.query().findById(agencyTrackingId);
+			expect(updated).toBeDefined();
+			expect(updated?.transactionStatus).toBe("initiated");
+			expect(updated?.paygovToken).toBe(paygovToken);
 
-      const updated = await TransactionModel.query().findById(agencyTrackingId);
-      expect(updated).toBeDefined();
-      expect(updated?.transactionStatus).toBe('initiated');
-      expect(updated?.paygovToken).toBe(paygovToken);
+			// Restore original query after test
+			(TransactionModel as any).query = originalQuery;
+		});
+	});
 
-      // Restore original query after test
-      (TransactionModel as any).query = originalQuery;
-    });
-  });
+	describe("findByPaygovToken", () => {
+		it("should return a TransactionModel when a matching token exists", async () => {
+			const paygovToken = "PAYGOV-TOKEN-123";
+			await TransactionModel.createReceived({
+				agencyTrackingId: "TEST-456",
+				feeId: "PETITION_FILING_FEE",
+				clientName: "test-client",
+				transactionReferenceId: "TXN-REF-002",
+				paymentMethod: "plastic_card" as PaymentMethod,
+			});
 
-  describe("findByPaygovToken", () => {
-    it('should return a TransactionModel when a matching token exists', async () => {
-      const paygovToken = 'PAYGOV-TOKEN-123';
-      await TransactionModel.createReceived({
-        agencyTrackingId: 'TEST-456',
-        feeId: 'PETITION_FILING_FEE',
-        clientName: 'test-client',
-        transactionReferenceId: 'TXN-REF-002',
-        paymentMethod: 'plastic_card' as PaymentMethod,
-      });
+			await TransactionModel.updateToInitiated("TEST-456", paygovToken);
 
-      await TransactionModel.updateToInitiated('TEST-456', paygovToken);
+			const found = await TransactionModel.findByPaygovToken(paygovToken);
+			expect(found).toBeDefined();
+			expect(found?.paygovToken).toBe(paygovToken);
+			expect(found?.agencyTrackingId).toBe("TEST-456");
+		});
 
-      const found = await TransactionModel.findByPaygovToken(paygovToken);
-      expect(found).toBeDefined();
-      expect(found?.paygovToken).toBe(paygovToken);
-      expect(found?.agencyTrackingId).toBe('TEST-456');
-    });
+		it("should return undefined when no matching token exists", async () => {
+			const found =
+				await TransactionModel.findByPaygovToken("NON-EXISTENT-TOKEN");
+			expect(found).toBeUndefined();
+		});
+	});
 
-    it('should return undefined when no matching token exists', async () => {
-      const found = await TransactionModel.findByPaygovToken('NON-EXISTENT-TOKEN');
-      expect(found).toBeUndefined();
-    });
-  });
+	describe("findByReferenceId", () => {
+		const referenceId = "550e8400-e29b-41d4-a716-446655440000";
 
-  describe("findByReferenceId", () => {
-    const referenceId = "550e8400-e29b-41d4-a716-446655440000";
+		beforeEach(async () => {
+			await TransactionModel.createReceived({
+				agencyTrackingId: "TEST-REF-1",
+				feeId: "PETITION_FILING_FEE",
+				clientName: "test-client",
+				transactionReferenceId: referenceId,
+				paymentMethod: "plastic_card" as PaymentMethod,
+			});
+		});
 
-    beforeEach(async () => {
-      await TransactionModel.createReceived({
-        agencyTrackingId: "TEST-REF-1",
-        feeId: "PETITION_FILING_FEE",
-        clientName: "test-client",
-        transactionReferenceId: referenceId,
-        paymentMethod: "plastic_card" as PaymentMethod,
-      });
-    });
+		it("returns the matching transaction(s) when the reference id exists", async () => {
+			const found = await TransactionModel.findByReferenceId(referenceId);
+			expect(found).toHaveLength(1);
+			expect(found[0].transactionReferenceId).toBe(referenceId);
+		});
 
-    it("returns the matching transaction(s) when the reference id exists", async () => {
-      const found = await TransactionModel.findByReferenceId(referenceId);
-      expect(found).toHaveLength(1);
-      expect(found[0].transactionReferenceId).toBe(referenceId);
-    });
+		it("returns an empty array when the reference id is not found", async () => {
+			const found = await TransactionModel.findByReferenceId(
+				"00000000-0000-0000-0000-000000000000",
+			);
+			expect(found).toEqual([]);
+		});
+	});
 
-    it("returns an empty array when the reference id is not found", async () => {
-      const found = await TransactionModel.findByReferenceId("00000000-0000-0000-0000-000000000000");
-      expect(found).toEqual([]);
-    });
-  });
+	describe("findPendingOrProcessedByReferenceId", () => {
+		const clientName = "test-client";
+		const referenceId = "TXN-REF-001";
+		const paygovToken = "TOKEN-PENDING-123";
 
-  describe("findPendingOrProcessedByReferenceId", () => {
-    const clientName = "test-client";
-    const referenceId = "TXN-REF-001";
-    const paygovToken = "TOKEN-PENDING-123";
+		beforeEach(async () => {
+			await TransactionModel.createReceived({
+				agencyTrackingId: "TEST-789",
+				feeId: "PETITION_FILING_FEE",
+				clientName,
+				transactionReferenceId: referenceId,
+				paymentMethod: "plastic_card" as PaymentMethod,
+			});
+			await TransactionModel.updateToInitiated("TEST-789", paygovToken);
+		});
 
-    beforeEach(async () => {
-      await TransactionModel.createReceived({
-        agencyTrackingId: "TEST-789",
-        feeId: "PETITION_FILING_FEE",
-        clientName,
-        transactionReferenceId: referenceId,
-        paymentMethod: "plastic_card" as PaymentMethod,
-      });
-      await TransactionModel.updateToInitiated("TEST-789", paygovToken);
-    });
+		it("returns a transaction when status is pending and referenceId matches", async () => {
+			mockTransaction.transactionStatus = "pending";
 
-    it("returns a transaction when status is pending and referenceId matches", async () => {
-      mockTransaction.transactionStatus = "pending";
+			const found = await TransactionModel.findPendingOrProcessedByReferenceId(
+				clientName,
+				referenceId,
+				"OTHER-TOKEN",
+			);
+			expect(found).toBeDefined();
+			expect(found?.transactionReferenceId).toBe(referenceId);
+		});
 
-      const found = await TransactionModel.findPendingOrProcessedByReferenceId(clientName, referenceId, "OTHER-TOKEN");
-      expect(found).toBeDefined();
-      expect(found?.transactionReferenceId).toBe(referenceId);
-    });
+		it("returns a transaction when status is processed and referenceId matches", async () => {
+			mockTransaction.transactionStatus = "processed";
 
-    it("returns a transaction when status is processed and referenceId matches", async () => {
-      mockTransaction.transactionStatus = "processed";
+			const found = await TransactionModel.findPendingOrProcessedByReferenceId(
+				clientName,
+				referenceId,
+				"OTHER-TOKEN",
+			);
+			expect(found).toBeDefined();
+			expect(found?.transactionReferenceId).toBe(referenceId);
+		});
 
-      const found = await TransactionModel.findPendingOrProcessedByReferenceId(clientName, referenceId, "OTHER-TOKEN");
-      expect(found).toBeDefined();
-      expect(found?.transactionReferenceId).toBe(referenceId);
-    });
+		it("returns undefined when referenceId does not match", async () => {
+			mockTransaction.transactionStatus = "pending";
 
-    it("returns undefined when referenceId does not match", async () => {
-      mockTransaction.transactionStatus = "pending";
+			const found = await TransactionModel.findPendingOrProcessedByReferenceId(
+				clientName,
+				"DIFFERENT-REF",
+				"OTHER-TOKEN",
+			);
+			expect(found).toBeUndefined();
+		});
 
-      const found = await TransactionModel.findPendingOrProcessedByReferenceId(clientName, "DIFFERENT-REF", "OTHER-TOKEN");
-      expect(found).toBeUndefined();
-    });
+		it("returns undefined when the matching transaction is the excluded token", async () => {
+			mockTransaction.transactionStatus = "pending";
 
-    it("returns undefined when the matching transaction is the excluded token", async () => {
-      mockTransaction.transactionStatus = "pending";
+			const found = await TransactionModel.findPendingOrProcessedByReferenceId(
+				clientName,
+				referenceId,
+				paygovToken,
+			);
+			expect(found).toBeUndefined();
+		});
 
-      const found = await TransactionModel.findPendingOrProcessedByReferenceId(clientName, referenceId, paygovToken);
-      expect(found).toBeUndefined();
-    });
+		it("returns undefined when transaction status is not pending or processed", async () => {
+			mockTransaction.transactionStatus = "initiated";
 
-    it("returns undefined when transaction status is not pending or processed", async () => {
-      mockTransaction.transactionStatus = "initiated";
-
-      const found = await TransactionModel.findPendingOrProcessedByReferenceId(clientName, referenceId, "OTHER-TOKEN");
-      expect(found).toBeUndefined();
-    });
-  });
+			const found = await TransactionModel.findPendingOrProcessedByReferenceId(
+				clientName,
+				referenceId,
+				"OTHER-TOKEN",
+			);
+			expect(found).toBeUndefined();
+		});
+	});
 });

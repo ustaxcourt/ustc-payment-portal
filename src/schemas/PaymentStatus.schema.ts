@@ -5,10 +5,10 @@ import { z } from "zod";
 extendZodWithOpenApi(z);
 
 export const PaymentStatusSchema = z
-  .enum(["success", "failed", "pending"])
-  .openapi({
-    description: "The overall status of the payment",
-    example: "success",
-  });
+	.enum(["success", "failed", "pending"])
+	.openapi({
+		description: "The overall status of the payment",
+		example: "success",
+	});
 
 export type PaymentStatus = z.infer<typeof PaymentStatusSchema>;

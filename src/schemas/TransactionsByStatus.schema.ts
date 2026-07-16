@@ -7,22 +7,23 @@ import { RecentTransactionsResponseSchema } from "./RecentTransactions.schema";
 extendZodWithOpenApi(z);
 
 export const TransactionsByStatusPathParamsSchema = z
-  .object({
-    paymentStatus: PaymentStatusSchema.openapi({
-      description: "Filter transactions by overall payment status",
-      example: "pending",
-    }),
-  })
-  .openapi("TransactionsByStatusPathParams");
+	.object({
+		paymentStatus: PaymentStatusSchema.openapi({
+			description: "Filter transactions by overall payment status",
+			example: "pending",
+		}),
+	})
+	.openapi("TransactionsByStatusPathParams");
 
 export type TransactionsByStatusPathParams = z.infer<
-  typeof TransactionsByStatusPathParamsSchema
+	typeof TransactionsByStatusPathParamsSchema
 >;
 
-export const TransactionsByStatusResponseSchema = RecentTransactionsResponseSchema
-  .extend({})
-  .openapi("TransactionsByStatusResponse");
+export const TransactionsByStatusResponseSchema =
+	RecentTransactionsResponseSchema.extend({}).openapi(
+		"TransactionsByStatusResponse",
+	);
 
 export type TransactionsByStatusResponse = z.infer<
-  typeof TransactionsByStatusResponseSchema
+	typeof TransactionsByStatusResponseSchema
 >;

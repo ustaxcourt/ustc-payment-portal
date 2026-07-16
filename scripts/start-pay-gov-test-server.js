@@ -10,63 +10,63 @@ const PACKAGE_NAME = "@ustaxcourt/ustc-pay-gov-test-server";
 const DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN = "development-token";
 
 function resolveTestServerEntry() {
-  return require.resolve(`${PACKAGE_NAME}/dist/server.js`);
+	return require.resolve(`${PACKAGE_NAME}/dist/server.js`);
 }
 
 function resolveAccessToken(env = process.env) {
-  return (
-    env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN ||
-    DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN
-  );
+	return (
+		env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN ||
+		DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN
+	);
 }
 
 function resolvePayGovNodeEnv(env = process.env) {
-  return env.PAY_GOV_NODE_ENV || "local";
+	return env.PAY_GOV_NODE_ENV || "local";
 }
 
 function startPayGovTestServer() {
-  const port = parsePort(
-    process.env.PAY_GOV_TEST_SERVER_PORT,
-    3366,
-    "PAY_GOV_TEST_SERVER_PORT",
-  );
-  const token = resolveAccessToken();
-  const payGovNodeEnv = resolvePayGovNodeEnv();
+	const port = parsePort(
+		process.env.PAY_GOV_TEST_SERVER_PORT,
+		3366,
+		"PAY_GOV_TEST_SERVER_PORT",
+	);
+	const token = resolveAccessToken();
+	const payGovNodeEnv = resolvePayGovNodeEnv();
 
-  const entry = resolveTestServerEntry();
-  const packageDir = path.dirname(
-    require.resolve(`${PACKAGE_NAME}/package.json`),
-  );
+	const entry = resolveTestServerEntry();
+	const packageDir = path.dirname(
+		require.resolve(`${PACKAGE_NAME}/package.json`),
+	);
 
-  log.info(`starting on port ${port} with NODE_ENV=${payGovNodeEnv}`);
+	log.info(`starting on port ${port} with NODE_ENV=${payGovNodeEnv}`);
 
-  const child = spawn(process.execPath, [entry], {
-    cwd: packageDir,
-    stdio: "inherit",
-    env: {
-      ...process.env,
-      PORT: String(port),
-      ACCESS_TOKEN: token,
-      NODE_ENV: payGovNodeEnv,
-    },
-  });
+	const child = spawn(process.execPath, [entry], {
+		cwd: packageDir,
+		stdio: "inherit",
+		env: {
+			...process.env,
+			PORT: String(port),
+			ACCESS_TOKEN: token,
+			NODE_ENV: payGovNodeEnv,
+		},
+	});
 
-  wireChild(child);
+	wireChild(child);
 
-  child.on("error", (error) => {
-    log.error("failed to spawn:", error);
-    process.exit(1);
-  });
+	child.on("error", (error) => {
+		log.error("failed to spawn:", error);
+		process.exit(1);
+	});
 }
 
 if (require.main === module) {
-  startPayGovTestServer();
+	startPayGovTestServer();
 }
 
 module.exports = {
-  DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN,
-  resolveAccessToken,
-  resolvePayGovNodeEnv,
-  resolveTestServerEntry,
-  startPayGovTestServer,
+	DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN,
+	resolveAccessToken,
+	resolvePayGovNodeEnv,
+	resolveTestServerEntry,
+	startPayGovTestServer,
 };

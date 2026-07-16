@@ -1,26 +1,28 @@
-import type { PayGovTransactionStatus, TransactionStatus } from "@appTypes/TransactionStatus";
+import type {
+	PayGovTransactionStatus,
+	TransactionStatus,
+} from "@appTypes/TransactionStatus";
 
 export const parseTransactionStatus = (
-  status: PayGovTransactionStatus
+	status: PayGovTransactionStatus,
 ): TransactionStatus => {
-  switch (status) {
-    case "Pending":
-    case "Received":
-    case "Waiting":
-    case "Submitted":
-      return "pending";
+	switch (status) {
+		case "Pending":
+		case "Received":
+		case "Waiting":
+		case "Submitted":
+			return "pending";
 
-    case "Settled":
-    case "Success":
-      return "processed";
+		case "Settled":
+		case "Success":
+			return "processed";
 
-    case "Cancelled":
-    case "Failed":
-    case "Retired":
-      return "failed";
+		case "Cancelled":
+		case "Failed":
+		case "Retired":
+			return "failed";
 
-    default:
-      throw new Error(`Could not parse transaction status ${status}`);
-  }
+		default:
+			throw new Error(`Could not parse transaction status ${status}`);
+	}
 };
-

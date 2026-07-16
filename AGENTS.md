@@ -49,7 +49,7 @@ The portal is published as `@ustaxcourt/payment-portal` and serves two purposes:
 ### Running, Linting, and Testing the Application
 
 - **Local stack** (recommended one-command start): `npm run start:all`. This starts Docker/Postgres, the mock Pay.gov test server, and the Express dev server. See [running-locally.md](running-locally.md) for full details, port configuration, and advanced options.
-- **Lint**: `npm run lint` (currently TSLint; do not begin the Biome migration unless explicitly instructed).
+- **Lint**: `npm run lint`
 - **Type-check**: `npm run tsc`
 - **Build**: `npm run build`
 - **Unit tests** (Jest, Node): `npm test`

@@ -4,179 +4,183 @@ import { z } from "zod";
 // Extend Zod with OpenAPI support
 extendZodWithOpenApi(z);
 
-const ErrorDetailSchema = z.object({}).catchall(z.unknown()).openapi({
-  description: "A structured error detail object (for example a Zod validation issue)",
-  example: {
-    code: "invalid_type",
-    expected: "string",
-    received: "undefined",
-    path: ["urlSuccess"],
-    message: "Required",
-  },
-});
+const ErrorDetailSchema = z
+	.object({})
+	.catchall(z.unknown())
+	.openapi({
+		description:
+			"A structured error detail object (for example a Zod validation issue)",
+		example: {
+			code: "invalid_type",
+			expected: "string",
+			received: "undefined",
+			path: ["urlSuccess"],
+			message: "Required",
+		},
+	});
 
 const JsonErrorSchema = z.object({
-  message: z.string().openapi({
-    description: "Human-readable error summary",
-  }),
-  errors: z.array(ErrorDetailSchema).openapi({
-    description: "Additional error details",
-    example: [],
-  }),
+	message: z.string().openapi({
+		description: "Human-readable error summary",
+	}),
+	errors: z.array(ErrorDetailSchema).openapi({
+		description: "Additional error details",
+		example: [],
+	}),
 });
 
 export const BadRequestErrorSchema = z
-  .object(JsonErrorSchema.shape)
-  .openapi({
-    description:
-      "JSON error response for invalid requests (HTTP 400).\n\n" +
-      "Common error scenarios:\n" +
-      "- Missing required fields\n" +
-      "- Invalid field values\n" +
-      "- Schema validation failures\n" +
-      "- Fee not found\n" +
-      "- Missing amount for variable fees",
-    example: {
-      message: "Validation error",
-      errors: [
-        {
-          code: "invalid_type",
-          expected: "string",
-          received: "undefined",
-          path: ["urlSuccess"],
-          message: "Required",
-        },
-      ],
-    },
-  })
-  .openapi("BadRequestError");
+	.object(JsonErrorSchema.shape)
+	.openapi({
+		description:
+			"JSON error response for invalid requests (HTTP 400).\n\n" +
+			"Common error scenarios:\n" +
+			"- Missing required fields\n" +
+			"- Invalid field values\n" +
+			"- Schema validation failures\n" +
+			"- Fee not found\n" +
+			"- Missing amount for variable fees",
+		example: {
+			message: "Validation error",
+			errors: [
+				{
+					code: "invalid_type",
+					expected: "string",
+					received: "undefined",
+					path: ["urlSuccess"],
+					message: "Required",
+				},
+			],
+		},
+	})
+	.openapi("BadRequestError");
 
 export const ForbiddenErrorSchema = z
-  .object(JsonErrorSchema.shape)
-  .openapi({
-    description:
-      "JSON error response for authentication/authorization failures (HTTP 403).\n\n" +
-      "Common error scenarios:\n" +
-      "- Missing API key\n" +
-      "- Invalid API key\n" +
-      "- Unauthorized fee access: Client not authorized to charge the requested fee",
-    example: {
-      message: "Missing Authentication",
-      errors: [],
-    },
-  })
-  .openapi("ForbiddenError");
+	.object(JsonErrorSchema.shape)
+	.openapi({
+		description:
+			"JSON error response for authentication/authorization failures (HTTP 403).\n\n" +
+			"Common error scenarios:\n" +
+			"- Missing API key\n" +
+			"- Invalid API key\n" +
+			"- Unauthorized fee access: Client not authorized to charge the requested fee",
+		example: {
+			message: "Missing Authentication",
+			errors: [],
+		},
+	})
+	.openapi("ForbiddenError");
 
 export const ConflictErrorSchema = z
-  .object(JsonErrorSchema.shape)
-  .openapi({
-    description:
-      "JSON error response for request conflicts (HTTP 409).\n\n" +
-      "Returned when a payment session has already been initiated for the same transaction reference ID.",
-    example: {
-      message:
-        "A payment session is already initiated for this transactionReferenceId",
-      errors: [],
-    },
-  })
-  .openapi("ConflictError");
+	.object(JsonErrorSchema.shape)
+	.openapi({
+		description:
+			"JSON error response for request conflicts (HTTP 409).\n\n" +
+			"Returned when a payment session has already been initiated for the same transaction reference ID.",
+		example: {
+			message:
+				"A payment session is already initiated for this transactionReferenceId",
+			errors: [],
+		},
+	})
+	.openapi("ConflictError");
 
 export const ServerErrorSchema = z
-  .object(JsonErrorSchema.shape)
-  .openapi({
-    description:
-      "JSON error response for internal server errors (HTTP 500).\n\n" +
-      "Returned when an unexpected error occurs during request processing. " +
-      "If this error persists, contact support with the request details.",
-    example: {
-      message: "An unexpected error occurred while processing the request",
-      errors: [],
-    },
-  })
-  .openapi("ServerError");
+	.object(JsonErrorSchema.shape)
+	.openapi({
+		description:
+			"JSON error response for internal server errors (HTTP 500).\n\n" +
+			"Returned when an unexpected error occurs during request processing. " +
+			"If this error persists, contact support with the request details.",
+		example: {
+			message: "An unexpected error occurred while processing the request",
+			errors: [],
+		},
+	})
+	.openapi("ServerError");
 
 export const GatewayErrorSchema = z
-  .object({
-    ...JsonErrorSchema.shape,
-    message: z.string().openapi({
-      description: "Human-readable summary of the gateway failure",
-      example: "Error communicating with Pay.gov",
-    }),
-  })
-  .openapi({
-    description:
-      "JSON error response for Pay.gov communication failures (HTTP 504). " +
-      "Returned when the API cannot receive a timely response from Pay.gov.",
-    example: {
-      message: "Error communicating with Pay.gov",
-      errors: [],
-    },
-  })
-  .openapi("GatewayError");
+	.object({
+		...JsonErrorSchema.shape,
+		message: z.string().openapi({
+			description: "Human-readable summary of the gateway failure",
+			example: "Error communicating with Pay.gov",
+		}),
+	})
+	.openapi({
+		description:
+			"JSON error response for Pay.gov communication failures (HTTP 504). " +
+			"Returned when the API cannot receive a timely response from Pay.gov.",
+		example: {
+			message: "Error communicating with Pay.gov",
+			errors: [],
+		},
+	})
+	.openapi("GatewayError");
 
 export const NotFoundErrorSchema = z
-  .object(JsonErrorSchema.shape)
-  .openapi({
-    description:
-      "JSON error response for resource not found (HTTP 404).\n\n" +
-      "Returned when the supplied token cannot be found in the database.",
-    example: {
-      message:
-        "Transaction with token 'abcdefghijklmnopqrstuvwxyz123456' could not be found",
-      errors: [],
-    },
-  })
-  .openapi("NotFoundError");
+	.object(JsonErrorSchema.shape)
+	.openapi({
+		description:
+			"JSON error response for resource not found (HTTP 404).\n\n" +
+			"Returned when the supplied token cannot be found in the database.",
+		example: {
+			message:
+				"Transaction with token 'abcdefghijklmnopqrstuvwxyz123456' could not be found",
+			errors: [],
+		},
+	})
+	.openapi("NotFoundError");
 
 export const GoneErrorSchema = z
-  .object(JsonErrorSchema.shape)
-  .openapi({
-    description:
-      "JSON error response for gone/expired resources (HTTP 410).\n\n" +
-      "Returned when the supplied token is no longer valid for processing:\n" +
-      "- Another transaction for the same obligation is already pending or completed\n" +
-      "- The transaction associated with this token is not in an initiatable state",
-    example: {
-      message:
-        "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
-      errors: [],
-    },
-  })
-  .openapi("GoneError");
+	.object(JsonErrorSchema.shape)
+	.openapi({
+		description:
+			"JSON error response for gone/expired resources (HTTP 410).\n\n" +
+			"Returned when the supplied token is no longer valid for processing:\n" +
+			"- Another transaction for the same obligation is already pending or completed\n" +
+			"- The transaction associated with this token is not in an initiatable state",
+		example: {
+			message:
+				"This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.",
+			errors: [],
+		},
+	})
+	.openapi("GoneError");
 
 // Generic JSON error schema
 export const ErrorResponseSchema = z
-  .object(JsonErrorSchema.shape)
-  .openapi({
-    description: "Generic JSON error response",
-    example: {
-      message: "Invalid Request",
-      errors: [],
-    },
-  })
-  .openapi("ErrorResponse");
+	.object(JsonErrorSchema.shape)
+	.openapi({
+		description: "Generic JSON error response",
+		example: {
+			message: "Invalid Request",
+			errors: [],
+		},
+	})
+	.openapi("ErrorResponse");
 
 // JSON error envelope returned by handleError for validation failures and
 // thrown errors: `{ message, errors }`. Used for endpoints that run Zod
 // schema validation at the edge (e.g. POST /process).
 export const ValidationErrorResponseSchema = z
-  .object(JsonErrorSchema.shape)
-  .openapi({
-    description:
-      "JSON error response for request validation failures.\n\n" +
-      "'Validation error' for Zod failures; otherwise the thrown error's message " +
-      "(e.g. 'missing body', 'invalid JSON in request body'). " +
-      "For Zod failures the errors array contains ZodIssue objects with `path`, `message`, and `code`. " +
-      "Empty array for non-Zod errors.",
-    example: {
-      message: "Validation error",
-      errors: [
-        {
-          code: "invalid_type",
-          path: ["token"],
-          message: "Required",
-        },
-      ],
-    },
-  })
-  .openapi("ValidationErrorResponse");
+	.object(JsonErrorSchema.shape)
+	.openapi({
+		description:
+			"JSON error response for request validation failures.\n\n" +
+			"'Validation error' for Zod failures; otherwise the thrown error's message " +
+			"(e.g. 'missing body', 'invalid JSON in request body'). " +
+			"For Zod failures the errors array contains ZodIssue objects with `path`, `message`, and `code`. " +
+			"Empty array for non-Zod errors.",
+		example: {
+			message: "Validation error",
+			errors: [
+				{
+					code: "invalid_type",
+					path: ["token"],
+					message: "Required",
+				},
+			],
+		},
+	})
+	.openapi("ValidationErrorResponse");

@@ -1,3 +1,3 @@
 export interface ProcessPaymentRequest {
-  token: string;
+	token: string;
 }
