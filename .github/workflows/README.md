@@ -11,10 +11,14 @@
   - Runs integration tests against the PR API (`BASE_URL` from Terraform outputs).
   - Publishes test results and coverage as artifacts.
 
-- **PR Cleanup** (`pr_cleanup`)
-  - Trigger: Pull Request closed.
-  - Builds lambda bundles, runs `terraform plan -destroy`, then `terraform destroy`.
+- **PR Cleanup** (`pr-cleanup.yml`)
+  - Trigger: Pull Request closed (`pull_request_target`, base-repo context for OIDC/secrets).
+  - Runs `terraform plan -destroy` then `terraform apply -input=false tfplan-destroy` with `TF_VAR_namespace=pr-<number>`.
   - Deletes the `pr-<number>` workspace only if destroy succeeds.
+
+- **GC - Orphaned PR Databases and Roles** (`gc-pr-dbs.yml`)
+  - Trigger: Nightly (02:00 UTC) and manual `workflow_dispatch`.
+  - Drops PR Postgres databases and roles whose GitHub PR is no longer open.
 
 - **Deploy to Dev** (`deploy_dev`)
   - Trigger: Push to `main`.
