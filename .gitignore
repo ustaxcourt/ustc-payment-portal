@@ -21,3 +21,6 @@ dist/
 
 terraform/modules/**/.terraform/
 terraform/modules/**/.terraform.lock.hcl
+
+# Playwright test results
+failure-summary.json

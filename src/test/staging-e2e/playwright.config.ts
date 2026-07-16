@@ -1,19 +1,44 @@
+import dotenv from "dotenv";
 import { defineConfig } from "@playwright/test";
+
+dotenv.config({
+  path: ".env.staging.local",
+});
 
 export default defineConfig({
   testDir: __dirname,
-  testMatch: ["creditCardSuccess.spec.ts"],
-  timeout: 180_000,
-  expect: {
-    timeout: 30_000,
-  },
-  fullyParallel: false,
+  testMatch: ["*.spec.ts"],
+  timeout: 300_000,
+  retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: [
     ["list"],
-    ["html", { open: "never", outputFolder: "playwright-report" }],
+    [
+      "html",
+      {
+        open: "never",
+        outputFolder: "playwright-report",
+      },
+    ],
+    [
+      "json",
+      {
+        outputFile: "test-results/staging-e2e/results.json",
+      },
+    ],
   ],
+
   outputDir: "test-results/staging-e2e",
+
+  use: {
+    baseURL: process.env.BASE_URL,
+    viewport: {
+      width: 1440,
+      height: 1200,
+    },
+    ignoreHTTPSErrors: false,
+  },
+
   projects: [
     {
       name: "chromium",
@@ -27,9 +52,4 @@ export default defineConfig({
       },
     },
   ],
-  use: {
-    baseURL: process.env.BASE_URL,
-    ignoreHTTPSErrors: false,
-    viewport: { width: 1440, height: 1200 },
-  },
 });
