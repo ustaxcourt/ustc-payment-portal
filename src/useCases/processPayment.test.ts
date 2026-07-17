@@ -8,7 +8,7 @@ import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
 import TransactionModel from "../db/TransactionModel";
-import { getFeeById } from "../config/fees";
+import { getActiveFee } from "../config/fees";
 import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 
@@ -34,7 +34,7 @@ jest.mock("../db/TransactionModel", () => ({
 
 jest.mock("../config/fees", () => ({
   __esModule: true,
-  getFeeById: jest.fn(),
+  getActiveFee: jest.fn(),
 }));
 
 jest.mock("../health/payGovHealthMetric", () => ({
@@ -44,7 +44,7 @@ jest.mock("../health/payGovHealthMetric", () => ({
 const TransactionModelMock = TransactionModel as jest.Mocked<
   typeof TransactionModel
 >;
-const getFeeByIdMock = getFeeById as jest.Mock;
+const getActiveFeeMock = getActiveFee as jest.Mock;
 const emitErrorMock = emitPayGovErrorMetric as jest.MockedFunction<
   typeof emitPayGovErrorMetric
 >;
@@ -56,7 +56,7 @@ const mockClient: ClientPermission = {
 };
 
 const mockTransaction = {
-  feeId: "fee-123",
+  fee: "fee-123",
   agencyTrackingId: "agency-tracking-id-001",
   transactionReferenceId: "ref-123",
   transactionStatus: "processing",
@@ -243,9 +243,8 @@ describe("processPayment", () => {
       mockUpdatedTransaction(null),
     );
     TransactionModelMock.findByReferenceId.mockResolvedValue([]);
-    getFeeByIdMock.mockReturnValue({
-      feeId: "fee-123",
-      feeKey: "fee-123",
+    getActiveFeeMock.mockReturnValue({
+      fee: "fee-123",
       tcsAppId: "TCSUSTAXCOURTPETITION",
     });
   });
@@ -446,7 +445,7 @@ describe("processPayment", () => {
   });
 
   it("throws NotFoundError when fee is not found for the transaction", async () => {
-    getFeeByIdMock.mockReturnValueOnce(undefined);
+    getActiveFeeMock.mockReturnValueOnce(undefined);
 
     await expect(
       processPayment(appContext, {
@@ -463,24 +462,25 @@ describe("processPayment", () => {
   });
 
   it("does not claim the token when fee lookup throws", async () => {
-    const dbErr = new Error("connection refused");
-    FeesModelMock.getFeeById.mockRejectedValueOnce(dbErr);
+    const lookupErr = new Error("fee lookup boom");
+    getActiveFeeMock.mockImplementationOnce(() => {
+      throw lookupErr;
+    });
 
     await expect(
       processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       }),
-    ).rejects.toThrow(dbErr);
+    ).rejects.toThrow(lookupErr);
 
     expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
     expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
   });
 
   it("throws ServerError when fee has no tcsAppId", async () => {
-    getFeeByIdMock.mockReturnValueOnce({
-      feeId: "fee-123",
-      feeKey: "fee-123",
+    getActiveFeeMock.mockReturnValueOnce({
+      fee: "fee-123",
       tcsAppId: "",
     });
 
@@ -542,7 +542,7 @@ describe("processPayment", () => {
           agencyTrackingId: "agency-tracking-id-001",
           transactionReferenceId: "ref-123",
           clientName: "Test Client",
-          feeKey: "fee-123",
+          fee: "fee-123",
           metadata: {
             docketNumber: "2026-ABC-001",
           },
@@ -573,7 +573,7 @@ describe("processPayment", () => {
           agencyTrackingId: "agency-tracking-id-001",
           transactionReferenceId: "ref-123",
           clientName: "Test Client",
-          feeKey: "fee-123",
+          fee: "fee-123",
           payGovResponse: expect.objectContaining({
             paygov_tracking_id: mockPayGovTrackingId,
             transaction_status: "Success",
@@ -600,7 +600,7 @@ describe("processPayment", () => {
           agencyTrackingId: "agency-tracking-id-001",
           transactionReferenceId: "ref-123",
           clientName: "Test Client",
-          feeKey: "fee-123",
+          fee: "fee-123",
         }),
       );
     });
@@ -625,7 +625,7 @@ describe("processPayment", () => {
           agencyTrackingId: "agency-tracking-id-001",
           transactionReferenceId: "ref-123",
           clientName: "Test Client",
-          feeKey: "fee-123",
+          fee: "fee-123",
           paygovTrackingId: mockPayGovTrackingId,
         }),
       );

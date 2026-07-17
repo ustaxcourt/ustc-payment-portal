@@ -157,7 +157,7 @@ describe("TransactionModel", () => {
     it('should create a received transaction', async () => {
       const data = {
         agencyTrackingId: 'TEST-123',
-        feeId: 'PETITION_FILING_FEE',
+        fee: 'PETITION_FILING_FEE',
         clientName: 'test-client',
         transactionReferenceId: 'TXN-REF-001',
         paymentMethod: 'plastic_card' as PaymentMethod,
@@ -177,7 +177,7 @@ describe("TransactionModel", () => {
     it("should set both transactionStatus and paymentStatus to failed", async () => {
       await TransactionModel.createReceived({
         agencyTrackingId: "TEST-123",
-        feeId: "PETITION_FILING_FEE",
+        fee: "PETITION_FILING_FEE",
         clientName: "test-client",
         transactionReferenceId: "TXN-REF-001",
         paymentMethod: 'plastic_card' as PaymentMethod,
@@ -193,7 +193,7 @@ describe("TransactionModel", () => {
     it("should persist returnCode and returnDetail when provided", async () => {
       await TransactionModel.createReceived({
         agencyTrackingId: "TEST-FAIL-01",
-        feeId: "PETITION_FILING_FEE",
+        fee: "PETITION_FILING_FEE",
         clientName: "test-client",
         transactionReferenceId: "TXN-REF-FAIL",
         paymentMethod: 'plastic_card' as PaymentMethod,
@@ -211,7 +211,7 @@ describe("TransactionModel", () => {
     it("persists paygovTrackingId, statuses, paymentMethod, and dates", async () => {
       await TransactionModel.createReceived({
         agencyTrackingId: "TEST-OK-01",
-        feeId: "PETITION_FILING_FEE",
+        fee: "PETITION_FILING_FEE",
         clientName: "test-client",
         transactionReferenceId: "TXN-REF-OK",
         paymentMethod: null as unknown as PaymentMethod,
@@ -241,7 +241,7 @@ describe("TransactionModel", () => {
     it("returns a TransactionModel when a matching paygovTrackingId exists", async () => {
       await TransactionModel.createReceived({
         agencyTrackingId: "TEST-LOOKUP-01",
-        feeId: "PETITION_FILING_FEE",
+        fee: "PETITION_FILING_FEE",
         clientName: "test-client",
         transactionReferenceId: "TXN-REF-LOOKUP",
         paymentMethod: null as unknown as PaymentMethod,
@@ -297,7 +297,7 @@ describe("TransactionModel", () => {
       const paygovToken = 'PAYGOV-TOKEN-123';
       await TransactionModel.createReceived({
         agencyTrackingId: 'TEST-456',
-        feeId: 'PETITION_FILING_FEE',
+        fee: 'PETITION_FILING_FEE',
         clientName: 'test-client',
         transactionReferenceId: 'TXN-REF-002',
         paymentMethod: 'plastic_card' as PaymentMethod,
@@ -323,7 +323,7 @@ describe("TransactionModel", () => {
     beforeEach(async () => {
       await TransactionModel.createReceived({
         agencyTrackingId: "TEST-REF-1",
-        feeId: "PETITION_FILING_FEE",
+        fee: "PETITION_FILING_FEE",
         clientName: "test-client",
         transactionReferenceId: referenceId,
         paymentMethod: "plastic_card" as PaymentMethod,
@@ -350,7 +350,7 @@ describe("TransactionModel", () => {
     beforeEach(async () => {
       await TransactionModel.createReceived({
         agencyTrackingId: "TEST-789",
-        feeId: "PETITION_FILING_FEE",
+        fee: "PETITION_FILING_FEE",
         clientName,
         transactionReferenceId: referenceId,
         paymentMethod: "plastic_card" as PaymentMethod,

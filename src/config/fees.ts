@@ -1,8 +1,8 @@
 export interface StaticFees {
-  [index: string]: Fee;
+  [fee: string]: FeeDefinition;
 }
 
-export interface Fee {
+export interface FeeDefinition {
   name: string;
   tcsAppId: string;
   description?: string | null;
@@ -14,6 +14,16 @@ export type FeeVersion = {
   amount?: number | null;
   activationDate: string;
 };
+
+/**
+ * Fee resolved for a specific point in time. Merges the shared definition
+ * (`name`, `tcsAppId`, `description`) with the version active at the requested
+ * date, and includes the stable `fee` key used to look it up.
+ */
+export type ActiveFee = Omit<FeeDefinition, "versions"> &
+  FeeVersion & {
+    fee: string;
+  };
 
 export const staticFees: StaticFees = {
   PETITION_FILING_FEE: {
@@ -44,33 +54,52 @@ export const staticFees: StaticFees = {
 };
 
 /**
- * Returns all configured fees sorted by activationDate descending.
+ * Returns all configured fee definitions in the order declared in `staticFees`.
  */
-export const getAllFees = (): Fee[] => {
+export const getAllFees = (): FeeDefinition[] => {
   return Object.values(staticFees);
 };
 
 /**
- * Retrieves a fee by its unique versioned identifier (feeId).
+ * Resolves a fee by its stable key to the version active at the given date.
+ * Returns `undefined` when the key is unknown or no version has activated by
+ * the given date. Defaults to "now" when no date is supplied.
  */
-export const getFeeById = (feeId: string): Fee | undefined => {
-  return Object.values(staticFees).find((f) => f.feeId === feeId);
-};
-
-/**
- * Retrieves the currently active version of a fee by its stable key, as of the given date.
- */
-export const getActiveFeeByKey = (
-  feeKey: string,
+export const getActiveFee = (
+  fee: string,
   dateIsoString: string = new Date().toISOString(),
-): Fee | undefined => {
-
-  if (!staticFees[feeKey]) {
+): ActiveFee | undefined => {
+  const definition = staticFees[fee];
+  if (!definition) {
     return undefined;
   }
-  constr version = 
 
-  return staticFees[feeKey].versions
-    .filter((f) => f.activationDate <= dateIsoString)
-    .sort((a, b) => b.activationDate.localeCompare(a.activationDate))[0];
+  console.log("debugging the active version for a fee with a dateIsoString", {
+    fee,
+    dateIsoString,
+  });
+
+  const activeVersion = definition.versions
+    .filter((v) => v.activationDate <= dateIsoString)
+    .sort((a, b) => {
+      console.log("debugging", {
+        date: a.activationDate,
+        comparison: b.activationDate.localeCompare(a.activationDate),
+      });
+      return b.activationDate.localeCompare(a.activationDate);
+    })[0];
+
+  if (!activeVersion) {
+    return undefined;
+  }
+
+  return {
+    fee,
+    name: definition.name,
+    tcsAppId: definition.tcsAppId,
+    description: definition.description ?? null,
+    isVariable: activeVersion.isVariable,
+    amount: activeVersion.amount ?? null,
+    activationDate: activeVersion.activationDate,
+  };
 };

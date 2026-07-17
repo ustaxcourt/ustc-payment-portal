@@ -6,7 +6,7 @@ import {
 import { InvalidRequestError } from "@errors/invalidRequest";
 import { PayGovError } from "@errors/payGovError";
 import { ConflictError } from "@errors/conflict";
-import { getActiveFeeByKey } from "../config/fees";
+import { getActiveFee } from "../config/fees";
 import { generateAgencyTrackingId } from "@utils/generateTrackingId";
 import TransactionModel, {
   isStaleProcessingTransaction,
@@ -48,7 +48,7 @@ export const initPayment: InitPayment = async (
 
   appContext.logger.debug("Received initPayment request", {
     transactionReferenceId,
-    feeKey,
+    fee: feeKey,
     clientName,
     hasAmount: amount !== undefined,
     metadata: request.metadata,
@@ -63,11 +63,11 @@ export const initPayment: InitPayment = async (
     {
       transactionReferenceId,
       clientName,
-      feeKey,
+      fee: feeKey,
     },
   );
 
-  const fee = getActiveFeeByKey(feeKey);
+  const fee = getActiveFee(feeKey);
   if (!fee || !fee.tcsAppId) {
     throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
   }
@@ -159,7 +159,7 @@ export const initPayment: InitPayment = async (
     transactionReferenceId,
     agencyTrackingId,
     transactionAmount,
-    feeId: fee.feeId,
+    fee: feeKey,
     clientName,
   });
 
@@ -167,7 +167,7 @@ export const initPayment: InitPayment = async (
   try {
     await TransactionModel.createReceived({
       agencyTrackingId,
-      feeId: fee.feeId,
+      fee: feeKey,
       clientName,
       transactionReferenceId,
       metadata: request.metadata,
@@ -208,7 +208,7 @@ export const initPayment: InitPayment = async (
     transactionReferenceId,
     agencyTrackingId,
     transactionAmount,
-    feeId: fee.feeId,
+    fee: feeKey,
     clientName,
     metadata: request.metadata,
   });

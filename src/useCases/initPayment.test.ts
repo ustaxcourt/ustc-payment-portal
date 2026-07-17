@@ -19,20 +19,18 @@ jest.mock("../db/TransactionModel", () => {
 
 jest.mock("../config/fees", () => ({
   __esModule: true,
-  getActiveFeeByKey: jest.fn((feeKey) => {
-    if (feeKey === "PETITION_FILING_FEE") {
+  getActiveFee: jest.fn((fee) => {
+    if (fee === "PETITION_FILING_FEE") {
       return {
-        feeId: "PETITION_FILING_FEE",
-        feeKey: "PETITION_FILING_FEE",
+        fee: "PETITION_FILING_FEE",
         tcsAppId: "TCSUSTAXCOURTPETITION",
         amount: 250,
         isVariable: false,
       };
     }
-    if (feeKey === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
+    if (fee === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
       return {
-        feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
-        feeKey: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
         tcsAppId: "TCSUSTAXCOURTANAEF",
         amount: 250,
         isVariable: false,
@@ -128,7 +126,7 @@ describe("initPayment", () => {
     expect(result.paymentRedirect).toContain("test-token-123");
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTPETITION");
     expect(TransactionModel.createReceived).toHaveBeenCalledWith(
-      expect.objectContaining({ feeId: "PETITION_FILING_FEE" }),
+      expect.objectContaining({ fee: "PETITION_FILING_FEE" }),
     );
     expect(TransactionModel.updateToInitiated).toHaveBeenCalled();
   });
@@ -154,15 +152,14 @@ describe("initPayment", () => {
     expect(result.token).toBe("test-token-456");
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTANAEF");
     expect(TransactionModel.createReceived).toHaveBeenCalledWith(
-      expect.objectContaining({ feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE" }),
+      expect.objectContaining({ fee: "NONATTORNEY_EXAM_REGISTRATION_FEE" }),
     );
   });
 
   it("throws InvalidRequestError when amount is missing for a variable fee", async () => {
     const feesConfig = require("../config/fees");
-    feesConfig.getActiveFeeByKey.mockReturnValueOnce({
-      feeId: "PETITION_FILING_FEE",
-      feeKey: "PETITION_FILING_FEE",
+    feesConfig.getActiveFee.mockReturnValueOnce({
+      fee: "PETITION_FILING_FEE",
       tcsAppId: "TCSUSTAXCOURTPETITION",
       amount: 60,
       isVariable: true,
@@ -549,4 +546,3 @@ describe("initPayment", () => {
     expect(emitErrorMock).not.toHaveBeenCalled();
   });
 });
-

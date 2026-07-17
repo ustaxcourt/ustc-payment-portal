@@ -24,7 +24,7 @@ const baseRow = (): TransactionModel =>
     transactionReferenceId: "ref-123",
     transactionStatus: "initiated",
     paymentStatus: "pending",
-    feeId: "fee-123",
+    fee: "fee-123",
     lastUpdatedAt: new Date().toISOString(),
   }) as TransactionModel;
 

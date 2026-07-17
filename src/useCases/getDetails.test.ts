@@ -5,7 +5,7 @@ import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
 import TransactionModel from "../db/TransactionModel";
-import { getFeeById } from "../config/fees";
+import { getActiveFee } from "../config/fees";
 import { randomUUID } from "crypto";
 import { mockTrackingId } from "../test/utils/mocks";
 import { ForbiddenError } from "@errors/forbidden";
@@ -21,13 +21,13 @@ jest.mock("../db/TransactionModel", () => ({
 
 jest.mock("../config/fees", () => ({
   __esModule: true,
-  getFeeById: jest.fn(),
+  getActiveFee: jest.fn(),
 }));
 
 const TransactionModelMock = TransactionModel as jest.Mocked<
   typeof TransactionModel
 >;
-const getFeeByIdMock = getFeeById as jest.Mock;
+const getActiveFeeMock = getActiveFee as jest.Mock;
 
 const mockClient: ClientPermission = {
   clientName: "Test Client",
@@ -44,7 +44,7 @@ const buildRow = (
   ({
     agencyTrackingId: "agency-tracking-1",
     clientName: mockClient.clientName,
-    feeId: "PETITION_FILING_FEE",
+    fee: "PETITION_FILING_FEE",
     transactionReferenceId: mockTransactionReferenceId,
     transactionStatus: "processed",
     paymentStatus: "success",
@@ -121,9 +121,8 @@ describe("getDetails", () => {
           lastUpdatedAt: "2026-01-15T11:00:00.000Z",
         }),
     );
-    getFeeByIdMock.mockReturnValue({
-      feeId: "PETITION_FILING_FEE",
-      feeKey: "PETITION_FILING_FEE",
+    getActiveFeeMock.mockReturnValue({
+      fee: "PETITION_FILING_FEE",
       tcsAppId: "TCSUSTAXCOURTPETITION",
     });
   });
@@ -141,7 +140,7 @@ describe("getDetails", () => {
     );
   });
 
-  it("throws ForbiddenError when client is not authorized for the transaction's feeId", async () => {
+  it("throws ForbiddenError when client is not authorized for the transaction's fee", async () => {
     const loggerModule = await import("../utils/logger");
     const consoleInfoSpy = jest
       .spyOn(loggerModule.logger, "info")
@@ -160,7 +159,7 @@ describe("getDetails", () => {
   });
 
   it("throws ServerError when fee is not found for the transaction (data corruption)", async () => {
-    getFeeByIdMock.mockReturnValueOnce(undefined);
+    getActiveFeeMock.mockReturnValueOnce(undefined);
 
     await expect(
       getDetails(appContext, {
@@ -180,9 +179,8 @@ describe("getDetails", () => {
   });
 
   it("throws ServerError when fee has no tcsAppId", async () => {
-    getFeeByIdMock.mockReturnValueOnce({
-      feeId: "PETITION_FILING_FEE",
-      feeKey: "PETITION_FILING_FEE",
+    getActiveFeeMock.mockReturnValueOnce({
+      fee: "PETITION_FILING_FEE",
       tcsAppId: "",
     });
     TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
@@ -368,11 +366,14 @@ describe("getDetails", () => {
         }),
       ).rejects.toMatchObject({
         statusCode: 500,
-        message: "There was an error communicating with Pay.gov. Please retry your transaction.",
+        message:
+          "There was an error communicating with Pay.gov. Please retry your transaction.",
       });
 
       expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
-      expect(TransactionModelMock.updateAfterPayGovResponse).not.toHaveBeenCalled();
+      expect(
+        TransactionModelMock.updateAfterPayGovResponse,
+      ).not.toHaveBeenCalled();
       expect(appContext.logger.error).toHaveBeenCalledWith(
         "Failed to refresh Pay.gov status",
         expect.objectContaining({
@@ -425,7 +426,7 @@ describe("getDetails", () => {
           transactionReferenceId: mockTransactionReferenceId,
           agencyTrackingId: "agency-tracking-1",
           clientName: mockClient.clientName,
-          feeKey: "PETITION_FILING_FEE",
+          fee: "PETITION_FILING_FEE",
           paygovTrackingId: mockPayGovTrackingId,
         }),
       );
@@ -435,7 +436,7 @@ describe("getDetails", () => {
           transactionReferenceId: mockTransactionReferenceId,
           agencyTrackingId: "agency-tracking-1",
           clientName: mockClient.clientName,
-          feeKey: "PETITION_FILING_FEE",
+          fee: "PETITION_FILING_FEE",
           paygovTrackingId: mockPayGovTrackingId,
           refreshedTransactionStatus: "pending",
         }),
@@ -567,7 +568,8 @@ describe("getDetails", () => {
         }),
       ).rejects.toMatchObject({
         statusCode: 500,
-        message: "There was an error communicating with Pay.gov. Please retry your transaction.",
+        message:
+          "There was an error communicating with Pay.gov. Please retry your transaction.",
       });
 
       expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
@@ -733,4 +735,3 @@ describe("getDetails", () => {
     });
   });
 });
-

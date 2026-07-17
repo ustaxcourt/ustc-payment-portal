@@ -9,7 +9,7 @@ const transactionRow = {
   agencyTrackingId: "agency-1",
   paygovTrackingId: "paygov-1",
   feeName: "Filing Fee",
-  feeId: "PETITION_FILING_FEE",
+  fee: "PETITION_FILING_FEE",
   transactionAmount: 100,
   clientName: "payment-portal",
   transactionReferenceId: "ref-1",
@@ -28,7 +28,9 @@ describe("getRecentTransactions", () => {
   });
 
   it("normalizes Date timestamps to ISO strings", async () => {
-    jest.spyOn(TransactionModel, "getAll").mockResolvedValue([transactionRow as any]);
+    jest
+      .spyOn(TransactionModel, "getAll")
+      .mockResolvedValue([transactionRow as any]);
 
     const result = await getRecentTransactions(appContext);
 
