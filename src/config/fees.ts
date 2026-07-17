@@ -64,30 +64,26 @@ export const getAllFees = (): FeeDefinition[] => {
  * Resolves a fee by its stable key to the version active at the given date.
  * Returns `undefined` when the key is unknown or no version has activated by
  * the given date. Defaults to "now" when no date is supplied.
+ *
+ * Accepts either an ISO 8601 string or a `Date`. Objection/pg return
+ * `timestamptz` columns as `Date` objects at runtime even though our model
+ * types annotate them as `string`, so we coerce here rather than force every
+ * caller to normalise.
  */
 export const getActiveFee = (
   fee: string,
-  dateIsoString: string = new Date().toISOString(),
+  date: string | Date = new Date(),
 ): ActiveFee | undefined => {
+  const dateIsoString = typeof date === "string" ? date : date.toISOString();
+
   const definition = staticFees[fee];
   if (!definition) {
     return undefined;
   }
 
-  console.log("debugging the active version for a fee with a dateIsoString", {
-    fee,
-    dateIsoString,
-  });
-
   const activeVersion = definition.versions
     .filter((v) => v.activationDate <= dateIsoString)
-    .sort((a, b) => {
-      console.log("debugging", {
-        date: a.activationDate,
-        comparison: b.activationDate.localeCompare(a.activationDate),
-      });
-      return b.activationDate.localeCompare(a.activationDate);
-    })[0];
+    .sort((a, b) => b.activationDate.localeCompare(a.activationDate))[0];
 
   if (!activeVersion) {
     return undefined;
