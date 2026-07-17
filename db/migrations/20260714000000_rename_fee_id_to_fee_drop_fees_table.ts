@@ -65,6 +65,6 @@ export async function down(knex: Knex): Promise<void> {
   await knex.raw(`
     ALTER TABLE transactions
     ADD CONSTRAINT transactions_fee_id_foreign
-    FOREIGN KEY (fee_id) REFERENCES fees(fee_id)
+    FOREIGN KEY (fee_id) REFERENCES fees(fee_id) NOT VALID
   `);
 }
