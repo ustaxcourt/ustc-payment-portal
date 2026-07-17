@@ -2,7 +2,7 @@ name: CICD - Dev
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
   workflow_dispatch:
@@ -369,111 +369,6 @@ jobs:
           path: coverage/
           if-no-files-found: warn
           retention-days: 7
-
-  pr_cleanup:
-    needs: check_actor
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && needs.check_actor.outputs.is_dependabot != 'true'
-    name: PR Cleanup (Destroy Ephemeral Env)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: "1.15.8"
-          terraform_wrapper: false
-
-      - name: Configure AWS Credentials (OIDC - Dev)
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Terraform Init (dev backend)
-        working-directory: terraform/environments/dev
-        run: |
-          terraform init -input=false -backend-config=backend-pr.hcl
-
-      - name: Select PR Workspace (if exists)
-        id: ws
-        working-directory: terraform/environments/dev
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          WS="pr-${PR_NUMBER}"
-          (terraform workspace select "$WS" && echo "workspace=$WS" >> $GITHUB_OUTPUT) || echo "no_ws=true" >> $GITHUB_OUTPUT
-
-      - name: Deprovision PR database user (best-effort)
-        if: ${{ steps.ws.outputs.no_ws != 'true' }}
-        working-directory: terraform/environments/dev
-        run: |
-          FUNCTION_NAME=$(terraform output -raw migration_runner_function_name 2>/dev/null || true)
-          if [ -z "$FUNCTION_NAME" ]; then
-            echo "Could not resolve migration runner function name — skipping deprovision-user"
-          else
-            echo "Deprovisioning PR user via: $FUNCTION_NAME"
-            aws lambda invoke \
-              --function-name "$FUNCTION_NAME" \
-              --payload '{"command":"deprovision-user"}' \
-              --cli-binary-format raw-in-base64-out \
-              --log-type Tail \
-              --cli-read-timeout 130 \
-              response.json || true
-            cat response.json || true
-          fi
-
-      - name: Drop PR database (best-effort)
-        if: ${{ steps.ws.outputs.no_ws != 'true' }}
-        working-directory: terraform/environments/dev
-        run: |
-          FUNCTION_NAME=$(terraform output -raw migration_runner_function_name 2>/dev/null || true)
-          if [ -z "$FUNCTION_NAME" ]; then
-            echo "Could not resolve migration runner function name — skipping drop-db"
-          else
-            echo "Dropping database via: $FUNCTION_NAME"
-            aws lambda invoke \
-              --function-name "$FUNCTION_NAME" \
-              --payload '{"command":"drop-db"}' \
-              --cli-binary-format raw-in-base64-out \
-              --log-type Tail \
-              --cli-read-timeout 130 \
-              response.json || true
-            cat response.json || true
-          fi
-
-      - name: Terraform Plan Destroy (PR workspace)
-        if: ${{ steps.ws.outputs.no_ws != 'true' }}
-        working-directory: terraform/environments/dev
-        run: |
-          terraform plan -destroy -input=false -out=tfplan-destroy || exit 1
-          terraform show -no-color tfplan-destroy > tfplan-destroy.txt || true
-
-      - name: Upload destroy plan (text)
-        if: ${{ steps.ws.outputs.no_ws != 'true' }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: tfplan-destroy-text-${{ github.run_id }}
-          path: terraform/environments/dev/tfplan-destroy.txt
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Destroy PR Workspace Resources
-        if: ${{ steps.ws.outputs.no_ws != 'true' }}
-        working-directory: terraform/environments/dev
-        env:
-          TF_VAR_namespace: pr-${{ github.event.pull_request.number }}
-        run: |
-          terraform destroy -auto-approve
-
-      - name: Delete PR Workspace
-        if: ${{ steps.ws.outputs.no_ws != 'true' && success() }}
-        working-directory: terraform/environments/dev
-        run: |
-          terraform workspace select default || true
-          terraform workspace delete -force ${{ steps.ws.outputs.workspace }} || true
 
   deploy_dev:
     needs: check_actor

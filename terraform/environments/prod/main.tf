@@ -11,12 +11,12 @@ data "terraform_remote_state" "foundation" {
 }
 
 module "lambda" {
-  source                            = "../../modules/lambda"
-  function_name_prefix              = local.name_prefix
-  lambda_execution_role_arn         = data.terraform_remote_state.foundation.outputs.lambda_role_arn
-  subnet_ids                        = data.terraform_remote_state.foundation.outputs.private_subnet_ids
-  security_group_ids                = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
-  environment_variables_by_function = local.lambda_env_by_function
+  source                                 = "../../modules/lambda"
+  function_name_prefix                   = local.name_prefix
+  lambda_execution_role_arn              = data.terraform_remote_state.foundation.outputs.lambda_role_arn
+  subnet_ids                             = data.terraform_remote_state.foundation.outputs.private_subnet_ids
+  security_group_ids                     = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
+  environment_variables_by_function      = local.lambda_env_by_function
   payment_lambda_provisioned_concurrency = 1
 
   # Consume dev artifacts by SHA (keys and optional hashes passed from workflow)
@@ -26,12 +26,14 @@ module "lambda" {
     processPayment = var.processPayment_s3_key
     getDetails     = var.getDetails_s3_key
     testCert       = var.testCert_s3_key
+    healthCheck    = var.testCert_s3_key
   }
   source_code_hashes = {
     initPayment    = var.initPayment_source_code_hash
     processPayment = var.processPayment_source_code_hash
     getDetails     = var.getDetails_source_code_hash
     testCert       = var.testCert_source_code_hash
+    healthCheck    = var.testCert_source_code_hash
   }
 
   tags = {

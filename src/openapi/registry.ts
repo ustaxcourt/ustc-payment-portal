@@ -31,6 +31,7 @@ import {
   MetadataDawsonSchema,
   MetadataNonattorneyExamSchema,
   MetadataSchema,
+  DeployHealthReportSchema,
 } from "../schemas";
 
 export const registry = new OpenAPIRegistry();
@@ -479,6 +480,40 @@ registry.registerPath({
         "application/json": {
           schema: ServerErrorSchema,
         },
+      },
+    },
+  },
+});
+
+registry.register("DeployHealthReport", DeployHealthReportSchema);
+
+registry.registerPath({
+  method: "get",
+  path: "/health",
+  summary: "Post-deploy health check (synthetic, read-only)",
+  description:
+    "Synthetic, read-only verification that each infrastructure layer " +
+    "(Secrets Manager, SSM, RDS, Pay.gov) is reachable. Creates no payment state.",
+  tags: ["Payments"],
+  security: [{ sigv4: [] }],
+  responses: {
+    200: {
+      description: "All dependency checks passed",
+      content: {
+        "application/json": { schema: DeployHealthReportSchema },
+      },
+    },
+    503: {
+      description: "One or more dependency checks failed",
+      content: {
+        "application/json": { schema: DeployHealthReportSchema },
+      },
+    },
+    403: {
+      description:
+        "Forbidden - invalid SigV4 signature or client not authorized",
+      content: {
+        "application/json": { schema: ForbiddenErrorSchema },
       },
     },
   },

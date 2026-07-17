@@ -30,12 +30,12 @@ resource "aws_secretsmanager_secret_version" "rds_credentials" {
 }
 
 module "lambda" {
-  source                            = "../../modules/lambda"
-  function_name_prefix              = local.name_prefix
-  lambda_execution_role_arn         = data.terraform_remote_state.foundation.outputs.lambda_role_arn
-  subnet_ids                        = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
-  security_group_ids                = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
-  environment_variables_by_function = local.lambda_env_by_function
+  source                                 = "../../modules/lambda"
+  function_name_prefix                   = local.name_prefix
+  lambda_execution_role_arn              = data.terraform_remote_state.foundation.outputs.lambda_role_arn
+  subnet_ids                             = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
+  security_group_ids                     = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
+  environment_variables_by_function      = local.lambda_env_by_function
   payment_lambda_provisioned_concurrency = 0
 
   artifact_bucket = var.artifact_bucket
@@ -44,6 +44,7 @@ module "lambda" {
     processPayment              = var.processPayment_s3_key
     getDetails                  = var.getDetails_s3_key
     testCert                    = var.testCert_s3_key
+    healthCheck                 = var.testCert_s3_key
     migrationRunner             = var.migrationRunner_s3_key
     getAllTransactions          = var.getAllTransactions_s3_key
     getTransactionsByStatus     = var.getTransactionsByStatus_s3_key
@@ -54,6 +55,7 @@ module "lambda" {
     processPayment              = var.processPayment_source_code_hash
     getDetails                  = var.getDetails_source_code_hash
     testCert                    = var.testCert_source_code_hash
+    healthCheck                 = var.testCert_source_code_hash
     migrationRunner             = var.migrationRunner_source_code_hash
     getAllTransactions          = var.getAllTransactions_source_code_hash
     getTransactionsByStatus     = var.getTransactionsByStatus_source_code_hash

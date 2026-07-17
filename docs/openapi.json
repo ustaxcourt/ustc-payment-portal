@@ -977,6 +977,82 @@
           "failed",
           "total"
         ]
+      },
+      "DeployHealthReport": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "unhealthy"
+            ]
+          },
+          "environment": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "releaseTag": {
+            "type": "string"
+          },
+          "checks": {
+            "type": "object",
+            "properties": {
+              "secrets": {
+                "$ref": "#/components/schemas/HealthCheckResult"
+              },
+              "ssm": {
+                "$ref": "#/components/schemas/HealthCheckResult"
+              },
+              "rds": {
+                "$ref": "#/components/schemas/HealthCheckResult"
+              },
+              "payGov": {
+                "$ref": "#/components/schemas/HealthCheckResult"
+              }
+            },
+            "required": [
+              "secrets",
+              "ssm",
+              "rds",
+              "payGov"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "environment",
+          "timestamp",
+          "checks"
+        ]
+      },
+      "HealthCheckResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "failed"
+            ]
+          },
+          "latencyMs": {
+            "type": "number"
+          },
+          "error": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "status",
+          "latencyMs"
+        ]
       }
     },
     "parameters": {}
@@ -1423,6 +1499,52 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Post-deploy health check (synthetic, read-only)",
+        "description": "Synthetic, read-only verification that each infrastructure layer (Secrets Manager, SSM, RDS, Pay.gov) is reachable. Creates no payment state.",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "sigv4": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All dependency checks passed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeployHealthReport"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - invalid SigV4 signature or client not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "One or more dependency checks failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeployHealthReport"
                 }
               }
             }
