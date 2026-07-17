@@ -55,6 +55,12 @@ export async function down(knex: Knex): Promise<void> {
     WHERE t.fee_id = f.fee_id
   `);
 
+  // Fallback for rows that couldn't be matched to a fee record (e.g. empty
+  // fees table during a rollback from a later migration that dropped fee data).
+  await knex.raw(`
+    UPDATE transactions SET transaction_amount = 0 WHERE transaction_amount IS NULL
+  `);
+
   await knex.schema.alterTable('transactions', (t) => {
     t.decimal('transaction_amount', 12, 2).notNullable().alter();
   });
