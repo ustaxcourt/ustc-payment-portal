@@ -74,7 +74,8 @@ const loadAuthorizedContext = async (
   let fee: ActiveFee | undefined;
   try {
     appContext.logger.info("Looking up active fee for transaction", {
-      existingTransaction,
+      ...baseLogFields,
+      fee: existingTransaction.fee,
     });
 
     fee = getActiveFee(existingTransaction.fee, existingTransaction.createdAt);
