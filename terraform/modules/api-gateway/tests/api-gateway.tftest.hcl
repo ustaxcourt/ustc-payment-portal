@@ -11,6 +11,7 @@ run "non_dev_environment_skips_dashboard_routes" {
       processPayment = "arn:aws:lambda:us-east-1:123456789012:function:process"
       getDetails     = "arn:aws:lambda:us-east-1:123456789012:function:details"
       testCert       = "arn:aws:lambda:us-east-1:123456789012:function:test"
+      healthCheck    = "arn:aws:lambda:us-east-1:123456789012:function:health"
     }
   }
 
@@ -43,6 +44,7 @@ run "dev_environment_enables_dashboard_routes" {
       processPayment              = "arn:aws:lambda:us-east-1:123456789012:function:process"
       getDetails                  = "arn:aws:lambda:us-east-1:123456789012:function:details"
       testCert                    = "arn:aws:lambda:us-east-1:123456789012:function:test"
+      healthCheck                 = "arn:aws:lambda:us-east-1:123456789012:function:health"
       getAllTransactions          = "arn:aws:lambda:us-east-1:123456789012:function:get-all"
       getTransactionsByStatus     = "arn:aws:lambda:us-east-1:123456789012:function:get-by-status"
       getTransactionPaymentStatus = "arn:aws:lambda:us-east-1:123456789012:function:get-payment-status"
@@ -78,6 +80,7 @@ run "dev_routes_stay_private_without_public_dashboard_flag" {
       processPayment              = "arn:aws:lambda:us-east-1:123456789012:function:process"
       getDetails                  = "arn:aws:lambda:us-east-1:123456789012:function:details"
       testCert                    = "arn:aws:lambda:us-east-1:123456789012:function:test"
+      healthCheck                 = "arn:aws:lambda:us-east-1:123456789012:function:health"
       getAllTransactions          = "arn:aws:lambda:us-east-1:123456789012:function:get-all"
       getTransactionsByStatus     = "arn:aws:lambda:us-east-1:123456789012:function:get-by-status"
       getTransactionPaymentStatus = "arn:aws:lambda:us-east-1:123456789012:function:get-payment-status"
@@ -107,6 +110,7 @@ run "rejects_invalid_log_retention_days" {
       processPayment = "arn:aws:lambda:us-east-1:123456789012:function:process"
       getDetails     = "arn:aws:lambda:us-east-1:123456789012:function:details"
       testCert       = "arn:aws:lambda:us-east-1:123456789012:function:test"
+      healthCheck    = "arn:aws:lambda:us-east-1:123456789012:function:health"
     }
   }
 

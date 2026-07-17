@@ -111,6 +111,7 @@ depends on it.** (The repo already trends this way — see
   manual or forward-only today. A supported down-migration path (or a documented
   manual RDS procedure) is a backlog item, tied to building the Prod migration
   path.
-- **No automated Prod post-deploy verification** (smoke test commented out), so
-  detecting that a rollback is *needed* currently relies on manual checks /
-  alerts — see [`lambda-error-alerts.md`](../lambda-error-alerts.md).
+- **Automated Prod post-deploy verification**: `prod-deploy.yml` runs a
+  synthetic, read-only `GET /health` gate after apply; a failure fails the job
+  and is a rollback signal. Continue to watch alerts too — see
+  [`lambda-error-alerts.md`](../lambda-error-alerts.md).

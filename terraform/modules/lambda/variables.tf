@@ -27,9 +27,9 @@ variable "payment_lambda_provisioned_concurrency" {
   default     = 0
 
   validation {
-     condition     = var.payment_lambda_provisioned_concurrency >= 0 && floor(var.payment_lambda_provisioned_concurrency) == var.payment_lambda_provisioned_concurrency
-     error_message = "payment_lambda_provisioned_concurrency must be a non-negative integer."
-   }
+    condition     = var.payment_lambda_provisioned_concurrency >= 0 && floor(var.payment_lambda_provisioned_concurrency) == var.payment_lambda_provisioned_concurrency
+    error_message = "payment_lambda_provisioned_concurrency must be a non-negative integer."
+  }
 }
 
 

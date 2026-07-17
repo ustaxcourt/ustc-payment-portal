@@ -42,3 +42,8 @@ output "migration_runner_function_name" {
   description = "Name of the migration runner Lambda function"
   value       = module.lambda.function_names["migrationRunner"]
 }
+
+output "alerts_sns_topic_arn" {
+  value       = module.monitoring.sns_topic_arn
+  description = "ARN of the alerts SNS topic (Teams + email subscribers) used for deploy-failure notifications"
+}
