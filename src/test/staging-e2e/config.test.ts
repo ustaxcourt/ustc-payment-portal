@@ -12,28 +12,15 @@ const OPTIONAL_ENV_KEYS = [
   "PAYGOV_QA_CC_SUCCESS_NAME",
   "PAYGOV_URL_SUCCESS",
   "PAYGOV_URL_CANCEL",
-  "PAYGOV_QA_EMAIL",
 ] as const;
 
 describe("buildUniqueRunEmail", () => {
-  it("produces a unique, valid-looking address on the default base", () => {
+  it("produces a unique, well-formed address", () => {
     const first = buildUniqueRunEmail();
     const second = buildUniqueRunEmail();
 
-    expect(first).toMatch(/^staging-e2e\+e2e-[0-9a-f-]+@example\.com$/);
+    expect(first).toMatch(/^staging-e2e-[0-9a-f-]+@example\.com$/);
     expect(first).not.toBe(second);
-  });
-
-  it("injects the unique tag into an overridden base address", () => {
-    const email = buildUniqueRunEmail("user.name@example.gov");
-
-    expect(email).toMatch(/^user\.name\+e2e-[0-9a-f-]+@example\.gov$/);
-  });
-
-  it("falls back to the default domain when the override has no local@domain", () => {
-    const email = buildUniqueRunEmail("not-an-email");
-
-    expect(email).toMatch(/^staging-e2e\+e2e-[0-9a-f-]+@example\.com$/);
   });
 });
 

@@ -4,19 +4,12 @@ const FEE_KEY = "NONATTORNEY_EXAM_REGISTRATION_FEE" as const;
 const DEFAULT_URL_SUCCESS = "https://example.com/success";
 const DEFAULT_URL_CANCEL = "https://example.com/cancel";
 const PAY_GOV_HOST = "qa.pay.gov";
-const DEFAULT_EMAIL_BASE = "staging-e2e@example.com";
+const DEFAULT_EMAIL = "staging-e2e@example.com";
 
-// One Pay.gov obligation per email, so each run gets a unique "+tag" address.
-// Override the base with PAYGOV_QA_EMAIL for a real inbox.
-export const buildUniqueRunEmail = (base: string = DEFAULT_EMAIL_BASE): string => {
-  const uniqueTag = `e2e-${crypto.randomUUID()}`;
-  const atIndex = base.lastIndexOf("@");
-  const [local, domain] =
-    atIndex > 0
-      ? [base.slice(0, atIndex), base.slice(atIndex + 1)]
-      : DEFAULT_EMAIL_BASE.split("@");
-
-  return `${local}+${uniqueTag}@${domain}`;
+// Unique per run — Pay.gov allows one obligation per email.
+export const buildUniqueRunEmail = (): string => {
+  const [local, domain] = DEFAULT_EMAIL.split("@");
+  return `${local}-${crypto.randomUUID()}@${domain}`;
 };
 
 export type StagingE2EConfig = {
@@ -110,7 +103,7 @@ export const getStagingE2EConfig = (): StagingE2EConfig => {
     },
     feeKey: FEE_KEY,
     metadata: {
-      email: buildUniqueRunEmail(process.env.PAYGOV_QA_EMAIL?.trim()),
+      email: buildUniqueRunEmail(),
       fullName: "Staging E2E",
       accessCode: "STAGINGE2E",
     },
