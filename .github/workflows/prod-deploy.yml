@@ -158,10 +158,12 @@ jobs:
         run: |
           API_URL=$(terraform output -raw api_gateway_url)
           MIGRATION_FN=$(terraform output -raw migration_runner_function_name)
+          ALERTS_SNS_TOPIC_ARN=$(terraform output -raw alerts_sns_topic_arn)
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
           echo "migration_fn=$MIGRATION_FN" >> $GITHUB_OUTPUT
+          echo "alerts_sns_topic_arn=$ALERTS_SNS_TOPIC_ARN" >> $GITHUB_OUTPUT
           echo "API Gateway URL: $API_URL"
-          echo "Migration runner: $MIGRATION_FN"
+          echo "Migration runner: $MIGRATION_FN"  
 
       - name: Run DB migrations (idempotent via knex_migrations table)
         if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) }}
@@ -182,8 +184,6 @@ jobs:
             echo "ERROR: migrate Lambda reported a function error" >&2
             exit 1
           fi
-          ALERTS_SNS_TOPIC_ARN=$(terraform output -raw alerts_sns_topic_arn)
-          echo "alerts_sns_topic_arn=$ALERTS_SNS_TOPIC_ARN" >> $GITHUB_OUTPUT
 
       - name: Post-deploy health check (synthetic, read-only)
         if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
