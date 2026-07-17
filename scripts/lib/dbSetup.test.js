@@ -34,7 +34,7 @@ describe("dbSetup", () => {
     jest.restoreAllMocks();
   });
 
-  it("runs DROP SCHEMA → CREATE SCHEMA → migrate → seed in order", async () => {
+  it("runs DROP SCHEMA → CREATE SCHEMA → migrate in order", async () => {
     const callOrder = [];
     mockKnexInstance.raw.mockImplementation((sql) => {
       callOrder.push(sql);
@@ -42,10 +42,6 @@ describe("dbSetup", () => {
     });
     mockKnexInstance.migrate.latest.mockImplementation(() => {
       callOrder.push("migrate.latest");
-      return Promise.resolve();
-    });
-    mockKnexInstance.seed.run.mockImplementation(() => {
-      callOrder.push("seed.run");
       return Promise.resolve();
     });
 
@@ -56,8 +52,10 @@ describe("dbSetup", () => {
       "DROP SCHEMA public CASCADE",
       "CREATE SCHEMA public",
       "migrate.latest",
-      "seed.run",
     ]);
+    // Seeds are no longer part of the consumer bootstrap — fees are hardcoded
+    // in src/config/fees.ts and no reference data needs to be inserted.
+    expect(mockKnexInstance.seed.run).not.toHaveBeenCalled();
   });
 
   it("reads DB_PORT from the environment file override set by the package user", async () => {
