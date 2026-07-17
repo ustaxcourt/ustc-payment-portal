@@ -260,10 +260,12 @@ jobs:
           echo "Running smoke test against: $API_URL"
 
           TRANSACTION_REFERENCE_ID=$(uuidgen | tr 'A-Z' 'a-z')
-          DOCKET_NUMBER="999-99"
+          # Non-attorney fee is the only one registered against Pay.gov QA; unique
+          # email per run since Pay.gov allows one obligation per address.
+          SMOKE_EMAIL="staging-smoke+${TRANSACTION_REFERENCE_ID}@example.com"
 
-          echo "Using transactionReferenceId=$TRANSACTION_REFERENCE_ID docketNumber=$DOCKET_NUMBER"
-          printf '{"transactionReferenceId":"%s","fee":"PETITION_FILING_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com","metadata":{"docketNumber":"%s"}}' "$TRANSACTION_REFERENCE_ID" "$DOCKET_NUMBER" > body.json
+          echo "Using transactionReferenceId=$TRANSACTION_REFERENCE_ID"
+          printf '{"transactionReferenceId":"%s","fee":"NONATTORNEY_EXAM_REGISTRATION_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com","metadata":{"email":"%s","fullName":"Staging Smoke","accessCode":"STAGINGSMOKE"}}' "$TRANSACTION_REFERENCE_ID" "$SMOKE_EMAIL" > body.json
 
           # POST to /init — signed with AWS SigV4 (IAM auth replaced the old Bearer token)
           INIT_STATUS=$(curl -s -o init.json -w '%{http_code}' -X POST "$API_URL/init" \
@@ -291,3 +293,40 @@ jobs:
             echo "ERROR: Redirect returned $REDIRECT_STATUS (expected 302)" >&2
             exit 1
           fi
+
+      # Staging Pay.gov E2E gate (PAY-352): real QA card success through /init →
+      # hosted page → /process → /details. Reuses the job's OIDC AWS credentials;
+      # card values come from GitHub secrets. See src/test/staging-e2e/README.md.
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser (chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run staging Pay.gov E2E gate
+        env:
+          BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          PAYGOV_QA_CC_SUCCESS_PAN: ${{ secrets.PAYGOV_QA_CC_SUCCESS_PAN }}
+          PAYGOV_QA_CC_SUCCESS_EXP: ${{ secrets.PAYGOV_QA_CC_SUCCESS_EXP }}
+          PAYGOV_QA_CC_SUCCESS_CVV: ${{ secrets.PAYGOV_QA_CC_SUCCESS_CVV }}
+          PAYGOV_QA_CC_SUCCESS_NAME: ${{ secrets.PAYGOV_QA_CC_SUCCESS_NAME }}
+        run: npm run test:staging-e2e
+
+      - name: Upload staging E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: staging-e2e-artifacts
+          # Playwright writes under its config dir; failure-summary.json at repo root.
+          path: |
+            src/test/staging-e2e/test-results/**
+            src/test/staging-e2e/playwright-report/**
+            failure-summary.json
+          if-no-files-found: ignore
+          retention-days: 14

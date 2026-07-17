@@ -4,11 +4,25 @@ const FEE_KEY = "NONATTORNEY_EXAM_REGISTRATION_FEE" as const;
 const DEFAULT_URL_SUCCESS = "https://example.com/success";
 const DEFAULT_URL_CANCEL = "https://example.com/cancel";
 const PAY_GOV_HOST = "qa.pay.gov";
+const DEFAULT_EMAIL = "staging-e2e@example.com";
+
+// Unique per run — Pay.gov allows one obligation per email.
+export const buildUniqueRunEmail = (): string => {
+  const [local, domain] = DEFAULT_EMAIL.split("@");
+  return `${local}-${crypto.randomUUID()}@${domain}`;
+};
 
 export type StagingE2EConfig = {
   baseUrl: string;
+  billing: {
+    address: string;
+    city: string;
+    country: string;
+    state: string;
+    zip: string;
+  };
   card: {
-    cardholderName?: string;
+    cardholderName: string;
     cvv: string;
     expiration: string;
     pan: string;
@@ -72,16 +86,24 @@ export const getStagingE2EConfig = (): StagingE2EConfig => {
 
   return {
     baseUrl,
+    billing: {
+      address: process.env.PAYGOV_QA_BILLING_ADDRESS?.trim() || "400 Second Street NW",
+      city: process.env.PAYGOV_QA_BILLING_CITY?.trim() || "Washington",
+      country: process.env.PAYGOV_QA_BILLING_COUNTRY?.trim() || "United States",
+      // Full name to match the US State dropdown label (not "DC").
+      state: process.env.PAYGOV_QA_BILLING_STATE?.trim() || "District of Columbia",
+      zip: process.env.PAYGOV_QA_BILLING_ZIP?.trim() || "20217",
+    },
     card: {
       pan: readRequiredEnv("PAYGOV_QA_CC_SUCCESS_PAN"),
       expiration: readRequiredEnv("PAYGOV_QA_CC_SUCCESS_EXP"),
       cvv: readRequiredEnv("PAYGOV_QA_CC_SUCCESS_CVV"),
       cardholderName:
-        process.env.PAYGOV_QA_CC_SUCCESS_NAME?.trim() || undefined,
+        process.env.PAYGOV_QA_CC_SUCCESS_NAME?.trim() || "Staging E2E",
     },
     feeKey: FEE_KEY,
     metadata: {
-      email: "staging-e2e@example.com",
+      email: buildUniqueRunEmail(),
       fullName: "Staging E2E",
       accessCode: "STAGINGE2E",
     },
