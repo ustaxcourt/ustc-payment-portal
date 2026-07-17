@@ -4,6 +4,7 @@ jspm_packages
 
 .env*
 !.env.example
+!.env.staging.local.example
 
 
 /certs/**

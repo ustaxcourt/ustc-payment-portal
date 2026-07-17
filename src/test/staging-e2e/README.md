@@ -11,13 +11,21 @@ This suite is the thin staging-only Pay.gov gate. It signs portal requests with 
 
 ## Local Environment Configuration
 
-Create a local file named:
+Start from the checked-in example file:
+
+```bash
+cp .env.staging.local.example .env.staging.local
+```
+
+Then update `.env.staging.local` with your local staging values.
+
+The runtime file is:
 
 ```text
 .env.staging.local
 ```
 
-This file is loaded automatically by the Playwright configuration and should remain untracked by Git.
+This file is loaded automatically by the Playwright configuration and should remain untracked by Git. The committed template is `.env.staging.local.example`.
 
 Example:
 
@@ -117,12 +125,6 @@ npm run test:staging-e2e
 ```
 
 Useful Commands
-
-Launch the Playwright UI runner:
-
-```
-npm run test:staging-e2e:ui
-```
 
 Open the latest Playwright report:
 
