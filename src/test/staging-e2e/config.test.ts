@@ -1,22 +1,14 @@
 import { buildUniqueRunEmail, getStagingE2EConfig } from "./config";
 import { FAILURE_CODES, isStagingE2EError } from "./failureCodes";
 
-const {
-  BASE_URL,
-  PAYGOV_QA_CC_EMAIL,
-  PAYGOV_QA_CC_SUCCESS_NAME,
-  PAYGOV_QA_CC_SUCCESS_PAN,
-  PAYGOV_QA_CC_SUCCESS_EXP,
-  PAYGOV_QA_CC_SUCCESS_CVV,
-} = process.env;
-
 const REQUIRED_ENV = {
-  BASE_URL,
-  PAYGOV_QA_CC_EMAIL,
-  PAYGOV_QA_CC_SUCCESS_NAME,
-  PAYGOV_QA_CC_SUCCESS_PAN,
-  PAYGOV_QA_CC_SUCCESS_EXP,
-  PAYGOV_QA_CC_SUCCESS_CVV,
+  BASE_URL: "https://api.example.com/stg",
+  PAYGOV_QA_CC_EMAIL: "staging-e2e@example.com",
+  PAYGOV_QA_CC_SUCCESS_NAME: "Staging E2E",
+  PAYGOV_QA_CC_SUCCESS_PAN:
+    process.env.PAYGOV_QA_CC_SUCCESS_PAN ?? "4111111111111111",
+  PAYGOV_QA_CC_SUCCESS_EXP: process.env.PAYGOV_QA_CC_SUCCESS_EXP ?? "12/34",
+  PAYGOV_QA_CC_SUCCESS_CVV: process.env.PAYGOV_QA_CC_SUCCESS_CVV ?? "111",
 } as const;
 
 const OPTIONAL_ENV_KEYS = [
