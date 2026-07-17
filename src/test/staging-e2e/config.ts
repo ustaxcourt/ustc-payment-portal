@@ -4,12 +4,23 @@ const FEE_KEY = "NONATTORNEY_EXAM_REGISTRATION_FEE" as const;
 const DEFAULT_URL_SUCCESS = "https://example.com/success";
 const DEFAULT_URL_CANCEL = "https://example.com/cancel";
 const PAY_GOV_HOST = "qa.pay.gov";
-const DEFAULT_EMAIL = "staging-e2e@example.com";
 
 // Unique per run — Pay.gov allows one obligation per email.
-export const buildUniqueRunEmail = (): string => {
-  const [local, domain] = DEFAULT_EMAIL.split("@");
-  return `${local}-${crypto.randomUUID()}@${domain}`;
+export const buildUniqueRunEmail = (
+  baseEmail: string,
+  transactionReferenceId: string,
+): string => {
+  const [local, domain] = baseEmail.split("@");
+
+  if (!local || !domain) {
+    throw new StagingE2EError(
+      FAILURE_CODES.ENV_MISSING,
+      "PAYGOV_QA_CC_EMAIL must be a valid email address",
+      { step: "config" },
+    );
+  }
+
+  return `${local}+${transactionReferenceId}@${domain}`;
 };
 
 export type StagingE2EConfig = {
@@ -87,11 +98,13 @@ export const getStagingE2EConfig = (): StagingE2EConfig => {
   return {
     baseUrl,
     billing: {
-      address: process.env.PAYGOV_QA_BILLING_ADDRESS?.trim() || "400 Second Street NW",
+      address:
+        process.env.PAYGOV_QA_BILLING_ADDRESS?.trim() || "400 Second Street NW",
       city: process.env.PAYGOV_QA_BILLING_CITY?.trim() || "Washington",
       country: process.env.PAYGOV_QA_BILLING_COUNTRY?.trim() || "United States",
       // Full name to match the US State dropdown label (not "DC").
-      state: process.env.PAYGOV_QA_BILLING_STATE?.trim() || "District of Columbia",
+      state:
+        process.env.PAYGOV_QA_BILLING_STATE?.trim() || "District of Columbia",
       zip: process.env.PAYGOV_QA_BILLING_ZIP?.trim() || "20217",
     },
     card: {
@@ -103,7 +116,7 @@ export const getStagingE2EConfig = (): StagingE2EConfig => {
     },
     feeKey: FEE_KEY,
     metadata: {
-      email: buildUniqueRunEmail(),
+      email: readRequiredEnv("PAYGOV_QA_CC_EMAIL"),
       fullName: "Staging E2E",
       accessCode: "STAGINGE2E",
     },

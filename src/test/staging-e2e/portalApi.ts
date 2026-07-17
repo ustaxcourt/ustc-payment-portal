@@ -8,7 +8,7 @@ import {
   type ProcessPaymentResponse,
 } from "../../schemas/ProcessPayment.schema";
 import { signedFetch } from "../integration/sigv4Helper";
-import { getStagingE2EConfig } from "./config";
+import { buildUniqueRunEmail, getStagingE2EConfig } from "./config";
 import {
   FAILURE_CODES,
   StagingE2EError,
@@ -109,7 +109,13 @@ export const initNonAttorneyPayment = async (): Promise<InitPaymentResult> => {
       fee: config.feeKey,
       urlSuccess: config.urlSuccess,
       urlCancel: config.urlCancel,
-      metadata: config.metadata,
+      metadata: {
+        ...config.metadata,
+        email: buildUniqueRunEmail(
+          config.metadata.email,
+          transactionReferenceId,
+        ),
+      },
     }),
   });
 

@@ -3,6 +3,7 @@ import { FAILURE_CODES, isStagingE2EError } from "./failureCodes";
 
 const REQUIRED_ENV = {
   BASE_URL: "https://api.example.com/stg",
+  PAYGOV_QA_CC_EMAIL: "staging-e2e@example.com",
   PAYGOV_QA_CC_SUCCESS_NAME: "Staging E2E",
   PAYGOV_QA_CC_SUCCESS_PAN:
     process.env.PAYGOV_QA_CC_SUCCESS_PAN ?? "4111111111111111",
@@ -17,12 +18,21 @@ const OPTIONAL_ENV_KEYS = [
 ] as const;
 
 describe("buildUniqueRunEmail", () => {
-  it("produces a unique, well-formed address", () => {
-    const first = buildUniqueRunEmail();
-    const second = buildUniqueRunEmail();
+  it("formats the email using the transaction reference id", () => {
+    const email = buildUniqueRunEmail(
+      "staging-e2e@example.com",
+      "123e4567-e89b-12d3-a456-426614174000",
+    );
 
-    expect(first).toMatch(/^staging-e2e-[0-9a-f-]+@example\.com$/);
-    expect(first).not.toBe(second);
+    expect(email).toBe(
+      "staging-e2e+123e4567-e89b-12d3-a456-426614174000@example.com",
+    );
+  });
+
+  it("throws when the base email is invalid", () => {
+    expect(() => buildUniqueRunEmail("not-an-email", "txn-123")).toThrow(
+      /PAYGOV_QA_CC_EMAIL must be a valid email address/,
+    );
   });
 });
 
@@ -55,7 +65,7 @@ describe("getStagingE2EConfig", () => {
     expect(config.card.pan).toBe(REQUIRED_ENV.PAYGOV_QA_CC_SUCCESS_PAN);
     expect(config.card.cardholderName).toBe("Staging E2E");
     expect(config.billing.country).toBe("United States");
-    expect(config.metadata.email).toMatch(/@example\.com$/);
+    expect(config.metadata.email).toBe(REQUIRED_ENV.PAYGOV_QA_CC_EMAIL);
   });
 
   it("strips trailing slashes from BASE_URL", () => {
@@ -88,6 +98,14 @@ describe("getStagingE2EConfig", () => {
 
     expect(() => getStagingE2EConfig()).toThrow(
       /PAYGOV_QA_CC_SUCCESS_PAN is required/,
+    );
+  });
+
+  it("throws ENV_MISSING when PAYGOV_QA_CC_EMAIL is absent", () => {
+    delete process.env.PAYGOV_QA_CC_EMAIL;
+
+    expect(() => getStagingE2EConfig()).toThrow(
+      /PAYGOV_QA_CC_EMAIL is required/,
     );
   });
 
