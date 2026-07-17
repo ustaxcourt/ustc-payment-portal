@@ -4,11 +4,32 @@ const FEE_KEY = "NONATTORNEY_EXAM_REGISTRATION_FEE" as const;
 const DEFAULT_URL_SUCCESS = "https://example.com/success";
 const DEFAULT_URL_CANCEL = "https://example.com/cancel";
 const PAY_GOV_HOST = "qa.pay.gov";
+const DEFAULT_EMAIL_BASE = "staging-e2e@example.com";
+
+// One Pay.gov obligation per email, so each run gets a unique "+tag" address.
+// Override the base with PAYGOV_QA_EMAIL for a real inbox.
+export const buildUniqueRunEmail = (base: string = DEFAULT_EMAIL_BASE): string => {
+  const uniqueTag = `e2e-${crypto.randomUUID()}`;
+  const atIndex = base.lastIndexOf("@");
+  const [local, domain] =
+    atIndex > 0
+      ? [base.slice(0, atIndex), base.slice(atIndex + 1)]
+      : DEFAULT_EMAIL_BASE.split("@");
+
+  return `${local}+${uniqueTag}@${domain}`;
+};
 
 export type StagingE2EConfig = {
   baseUrl: string;
+  billing: {
+    address: string;
+    city: string;
+    country: string;
+    state: string;
+    zip: string;
+  };
   card: {
-    cardholderName?: string;
+    cardholderName: string;
     cvv: string;
     expiration: string;
     pan: string;
@@ -72,16 +93,24 @@ export const getStagingE2EConfig = (): StagingE2EConfig => {
 
   return {
     baseUrl,
+    billing: {
+      address: process.env.PAYGOV_QA_BILLING_ADDRESS?.trim() || "400 Second Street NW",
+      city: process.env.PAYGOV_QA_BILLING_CITY?.trim() || "Washington",
+      country: process.env.PAYGOV_QA_BILLING_COUNTRY?.trim() || "United States",
+      // Full name to match the US State dropdown label (not "DC").
+      state: process.env.PAYGOV_QA_BILLING_STATE?.trim() || "District of Columbia",
+      zip: process.env.PAYGOV_QA_BILLING_ZIP?.trim() || "20217",
+    },
     card: {
       pan: readRequiredEnv("PAYGOV_QA_CC_SUCCESS_PAN"),
       expiration: readRequiredEnv("PAYGOV_QA_CC_SUCCESS_EXP"),
       cvv: readRequiredEnv("PAYGOV_QA_CC_SUCCESS_CVV"),
       cardholderName:
-        process.env.PAYGOV_QA_CC_SUCCESS_NAME?.trim() || undefined,
+        process.env.PAYGOV_QA_CC_SUCCESS_NAME?.trim() || "Staging E2E",
     },
     feeKey: FEE_KEY,
     metadata: {
-      email: "staging-e2e@example.com",
+      email: buildUniqueRunEmail(process.env.PAYGOV_QA_EMAIL?.trim()),
       fullName: "Staging E2E",
       accessCode: "STAGINGE2E",
     },

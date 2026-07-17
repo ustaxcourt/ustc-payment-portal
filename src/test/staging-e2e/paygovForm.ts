@@ -1,105 +1,12 @@
-import type { Frame, Locator, Page } from "@playwright/test";
-import { getStagingE2EConfig } from "./config";
+import type { Frame, Page } from "@playwright/test";
+import { getStagingE2EConfig, type StagingE2EConfig } from "./config";
 import { FAILURE_CODES, StagingE2EError } from "./failureCodes";
 
 type SearchContext = Frame | Page;
-type LocatorFactory = (context: SearchContext) => Locator;
-
-const fieldCandidates = {
-  cardholderName: [
-    (context: SearchContext) =>
-      context.getByLabel(/name on card|cardholder name|name/i),
-    (context: SearchContext) =>
-      context.getByPlaceholder(/name on card|cardholder name|name/i),
-    (context: SearchContext) =>
-      context.locator('input[autocomplete="cc-name"]'),
-    (context: SearchContext) => context.locator('input[name*="name" i]'),
-  ],
-  cardNumber: [
-    (context: SearchContext) =>
-      context.getByLabel(/card number|account number/i),
-    (context: SearchContext) =>
-      context.getByPlaceholder(/card number|account number/i),
-    (context: SearchContext) =>
-      context.locator('input[autocomplete="cc-number"]'),
-    (context: SearchContext) =>
-      context.locator('input[name*="card" i][name*="number" i]'),
-    (context: SearchContext) => context.locator('input[inputmode="numeric"]'),
-  ],
-  cvv: [
-    (context: SearchContext) =>
-      context.getByLabel(/cvv|cvc|security code|card code/i),
-    (context: SearchContext) =>
-      context.getByPlaceholder(/cvv|cvc|security code|card code/i),
-    (context: SearchContext) => context.locator('input[autocomplete="cc-csc"]'),
-    (context: SearchContext) =>
-      context.locator('input[name*="cvv" i], input[name*="cvc" i]'),
-  ],
-  expiration: [
-    (context: SearchContext) =>
-      context.getByLabel(/expiration|expiry|exp date/i),
-    (context: SearchContext) =>
-      context.getByPlaceholder(/mm\/?yy|expiration|expiry|exp date/i),
-    (context: SearchContext) => context.locator('input[autocomplete="cc-exp"]'),
-    (context: SearchContext) => context.locator('input[name*="exp" i]'),
-  ],
-  submit: [
-    (context: SearchContext) =>
-      context.getByRole("button", { name: /submit|pay|continue|review|next/i }),
-    (context: SearchContext) =>
-      context.locator('button[type="submit"], input[type="submit"]'),
-  ],
-};
 
 const listSearchContexts = (page: Page): SearchContext[] => {
   const frames = page.frames().filter((frame) => frame !== page.mainFrame());
   return [page, ...frames];
-};
-
-const resolveLocator = async (
-  page: Page,
-  candidates: LocatorFactory[],
-  timeoutMs: number,
-): Promise<Locator> => {
-  const contexts = listSearchContexts(page);
-
-  for (const context of contexts) {
-    for (const candidate of candidates) {
-      const locator = candidate(context).first();
-
-      try {
-        if ((await locator.count()) === 0) {
-          continue;
-        }
-
-        await locator.waitFor({
-          state: "visible",
-          timeout: Math.min(timeoutMs, 2_500),
-        });
-        return locator;
-      } catch {
-        continue;
-      }
-    }
-  }
-
-  throw new StagingE2EError(
-    FAILURE_CODES.PAYGOV_FORM_FAILED,
-    "Could not locate a visible Pay.gov payment form field",
-    { step: "paygov" },
-  );
-};
-
-const tryResolveLocator = async (
-  page: Page,
-  candidates: LocatorFactory[],
-  timeoutMs: number,
-): Promise<Locator | undefined> => {
-  try {
-    return await resolveLocator(page, candidates, timeoutMs);
-  } catch {
-    return undefined;
-  }
 };
 
 const waitForHostedPageReady = async (
@@ -117,8 +24,16 @@ const waitForHostedPageReady = async (
       await candidate.waitFor({ state: "visible", timeout: 1_500 });
       return;
     } catch {
-      continue;
+      // try the next frame
     }
+  }
+};
+
+const hasLeftPayGov = (page: Page, payGovHost: string): boolean => {
+  try {
+    return new URL(page.url()).hostname.toLowerCase() !== payGovHost;
+  } catch {
+    return false;
   }
 };
 
@@ -149,6 +64,39 @@ const waitForSuccessState = async (
   }
 };
 
+const parseExpiration = (raw: string): { month: string; year: string } => {
+  const match = raw.trim().match(/^(\d{1,2})\s*\/\s*(\d{2}|\d{4})$/);
+  if (!match) {
+    throw new StagingE2EError(
+      FAILURE_CODES.PAYGOV_FORM_FAILED,
+      `Unrecognized card expiration "${raw}"; expected MM/YY or MM/YYYY`,
+      { step: "paygov" },
+    );
+  }
+
+  const month = match[1].padStart(2, "0");
+  const year = match[2].length === 2 ? `20${match[2]}` : match[2];
+  return { month, year };
+};
+
+// For the US the field is a <select> of full state names; otherwise a text box.
+const setStateOrProvince = async (
+  page: Page,
+  value: string,
+  timeoutMs: number,
+): Promise<void> => {
+  const dropdown = page.getByRole("combobox", { name: /state\/province/i });
+  if ((await dropdown.count()) > 0) {
+    await dropdown.selectOption({ label: value });
+    return;
+  }
+
+  const textbox = page.getByRole("textbox", { name: /state\/province/i });
+  if ((await textbox.count()) > 0) {
+    await textbox.fill(value, { timeout: timeoutMs });
+  }
+};
+
 export const navigateToHostedPaymentPage = async (
   page: Page,
   paymentRedirect: string,
@@ -172,42 +120,155 @@ export const navigateToHostedPaymentPage = async (
   }
 };
 
+// Pay.gov opens on a method-selection page; the card form renders only after
+// choosing "Debit or credit card" and continuing. No-ops if already on the form.
+const selectDebitOrCreditCard = async (page: Page): Promise<void> => {
+  const config = getStagingE2EConfig();
+  const cardOption = page.getByRole("radio", {
+    name: /debit or credit card/i,
+  });
+
+  if ((await cardOption.count()) === 0) {
+    return;
+  }
+
+  try {
+    await cardOption.check({ timeout: config.timeouts.navigationMs });
+  } catch {
+    // hidden input behind a clickable label — click the label instead
+    await page
+      .getByText(/debit or credit card/i)
+      .first()
+      .click({ timeout: config.timeouts.navigationMs });
+  }
+
+  const continueButton = page.getByRole("button", { name: /^continue$/i });
+  await continueButton.click({ timeout: config.timeouts.navigationMs });
+  await waitForHostedPageReady(page, config.timeouts.navigationMs);
+};
+
+const fillCardAndBillingForm = async (
+  page: Page,
+  config: StagingE2EConfig,
+): Promise<void> => {
+  const timeout = config.timeouts.navigationMs;
+
+  await page
+    .getByRole("textbox", { name: /cardholder name/i })
+    .fill(config.card.cardholderName, { timeout });
+  await page
+    .getByRole("textbox", { name: /cardholder billing address/i })
+    .fill(config.billing.address, { timeout });
+  // Selecting United States re-renders City/State/Province as required.
+  await page
+    .getByRole("combobox", { name: /country/i })
+    .selectOption({ label: config.billing.country });
+
+  await page
+    .getByRole("textbox", { name: /^\*?\s*city$/i })
+    .fill(config.billing.city, { timeout });
+  await setStateOrProvince(page, config.billing.state, timeout);
+  await page
+    .getByRole("textbox", { name: /zip\/postal code/i })
+    .fill(config.billing.zip, { timeout });
+
+  await page
+    .getByRole("textbox", { name: /card number/i })
+    .fill(config.card.pan, { timeout });
+
+  const { month, year } = parseExpiration(config.card.expiration);
+  await page
+    .getByRole("combobox", { name: /select month/i })
+    .selectOption({ label: month });
+  await page
+    .getByRole("combobox", { name: /select year/i })
+    .selectOption({ label: year });
+
+  await page
+    .getByRole("textbox", { name: /security code/i })
+    .fill(config.card.cvv, { timeout });
+};
+
+// Checks the review-page authorization box; hidden input, so fall back to the label.
+const acceptAuthorizationIfPresent = async (
+  page: Page,
+  timeoutMs: number,
+): Promise<void> => {
+  const checkbox = page
+    .getByRole("checkbox", {
+      name: /authorize|agree|acknowledge|consent|terms/i,
+    })
+    .first();
+
+  if ((await checkbox.count()) === 0) {
+    return;
+  }
+
+  if (await checkbox.isChecked().catch(() => false)) {
+    return;
+  }
+
+  const shortTimeout = Math.min(timeoutMs, 5_000);
+  try {
+    await checkbox.check({ timeout: shortTimeout });
+  } catch {
+    await page
+      .getByText(/i authorize a charge|authorize|i agree|acknowledge/i)
+      .first()
+      .click({ timeout: shortTimeout })
+      .catch(() => undefined);
+  }
+};
+
+// Card form → (review/authorization) → success redirect. Button label varies, so
+// click the advancing button until we leave qa.pay.gov. Bounded to avoid loops.
+const submitAndConfirm = async (
+  page: Page,
+  config: StagingE2EConfig,
+): Promise<void> => {
+  const maxAdvances = 4;
+
+  for (let attempt = 0; attempt < maxAdvances; attempt += 1) {
+    if (hasLeftPayGov(page, config.payGovHost)) {
+      return;
+    }
+
+    await acceptAuthorizationIfPresent(page, config.timeouts.navigationMs);
+
+    const advanceButton = page
+      .getByRole("button", {
+        name: /continue|submit payment|make payment|submit|confirm|authorize|pay now/i,
+      })
+      .first();
+
+    if ((await advanceButton.count()) === 0) {
+      break;
+    }
+
+    try {
+      await advanceButton.click({ timeout: config.timeouts.navigationMs });
+    } catch {
+      break;
+    }
+
+    await page
+      .waitForLoadState("domcontentloaded", {
+        timeout: config.timeouts.navigationMs,
+      })
+      .catch(() => undefined);
+  }
+
+  await waitForSuccessState(page, config.timeouts.submitMs);
+};
+
 export const completeSuccessfulPlasticCard = async (
   page: Page,
 ): Promise<void> => {
   const config = getStagingE2EConfig();
 
   try {
-    const cardNumber = await resolveLocator(
-      page,
-      fieldCandidates.cardNumber,
-      config.timeouts.navigationMs,
-    );
-    const expiration = await resolveLocator(
-      page,
-      fieldCandidates.expiration,
-      config.timeouts.navigationMs,
-    );
-    const cvv = await resolveLocator(
-      page,
-      fieldCandidates.cvv,
-      config.timeouts.navigationMs,
-    );
-    const nameField = config.card.cardholderName
-      ? await tryResolveLocator(
-          page,
-          fieldCandidates.cardholderName,
-          config.timeouts.navigationMs,
-        )
-      : undefined;
-
-    await cardNumber.fill(config.card.pan);
-    await expiration.fill(config.card.expiration);
-    await cvv.fill(config.card.cvv);
-
-    if (nameField && config.card.cardholderName) {
-      await nameField.fill(config.card.cardholderName);
-    }
+    await selectDebitOrCreditCard(page);
+    await fillCardAndBillingForm(page, config);
   } catch (error) {
     if (error instanceof StagingE2EError) {
       throw error;
@@ -223,13 +284,7 @@ export const completeSuccessfulPlasticCard = async (
   }
 
   try {
-    const submit = await resolveLocator(
-      page,
-      fieldCandidates.submit,
-      config.timeouts.navigationMs,
-    );
-    await submit.click();
-    await waitForSuccessState(page, config.timeouts.submitMs);
+    await submitAndConfirm(page, config);
   } catch (error) {
     if (error instanceof StagingE2EError) {
       throw error;

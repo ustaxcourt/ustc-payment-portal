@@ -5,7 +5,6 @@ import {
   FAILURE_CODES,
   logFailureCode,
   logStep,
-  redactToken,
   toStagingE2EError,
   type StagingE2EStep,
 } from "./failureCodes";
@@ -84,10 +83,6 @@ test("Credit Card - Success", async ({ page }) => {
       message: normalized.message,
       baseUrl,
     });
-
-    if (normalized.token ?? token) {
-      console.error(`token=${redactToken(normalized.token ?? token)}`);
-    }
 
     throw normalized;
   }

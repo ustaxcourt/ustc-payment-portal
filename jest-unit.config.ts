@@ -18,7 +18,8 @@ const config: Config = {
   testPathIgnorePatterns: [
     "/node_modules/",
     "/test/integration/",
-    "/test/staging-e2e/",
+    // Exclude the live Playwright spec; pure-helper *.test.ts still run.
+    "/test/staging-e2e/.*\\.spec\\.ts$",
     "/dist/",
     "/resources/",
   ],
@@ -27,6 +28,8 @@ const config: Config = {
     "/dist/",
     "/resources/",
     "src/test/testAppContext.ts",
+    // Browser/network E2E code isn't unit-covered.
+    "/test/staging-e2e/",
   ],
   moduleNameMapper,
 };
