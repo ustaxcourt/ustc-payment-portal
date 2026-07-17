@@ -134,7 +134,6 @@ export const createAppContext = (
           PAYGOV_REQUEST_TIMEOUT_MS,
         );
         try {
-          appContext.logger.info("trying to get the headers", headers);
           const result = await fetch(process.env.SOAP_URL as string, {
             method: "POST",
             headers,
