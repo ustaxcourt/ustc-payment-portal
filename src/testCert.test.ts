@@ -12,7 +12,7 @@ const mockLoggerError = jest.fn();
 jest.mock("./appContext", () => ({
   createAppContext: jest.fn(() => ({
     getHttpsAgent: jest.fn().mockReturnValue({ mockAgent: true }),
-    logger: { error: mockLoggerError },
+    logger: { error: mockLoggerError, info: jest.fn() },
   })),
 }));
 
@@ -191,6 +191,22 @@ describe("testCert handler", () => {
     expect(mockEmit).toHaveBeenCalledWith(false, -1);
   });
 
+  it("stringifies a non-Error rejection in the failure log", async () => {
+    mockFetch.mockRejectedValue("socket hang up");
+
+    const result = await handler();
+
+    expect(result.statusCode).toBe(500);
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      "Pay.gov health probe failed",
+      expect.objectContaining({
+        errorMessage: "socket hang up",
+        errorName: undefined,
+        errorStack: undefined,
+      }),
+    );
+  });
+
   it("does not emit a metric for on-demand /test calls (no scheduled payload)", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
@@ -221,5 +237,17 @@ describe("testCert handler", () => {
       "Pay.gov health probe failed",
       expect.objectContaining({ errorMessage: "Network error" })
     );
+  });
+
+  it("runs the WSDL probe for an API Gateway GET /test event", async () => {
+    mockFetch.mockResolvedValue({
+      text: jest.fn().mockResolvedValue("wsdl"),
+    } as any);
+
+    const result = await handler({ requestContext: {}, resource: "/test" } as any);
+
+    expect(result.statusCode).toBe(200);
+    expect(result.body).toBe("wsdl");
+    expect(mockEmit).not.toHaveBeenCalled();
   });
 });

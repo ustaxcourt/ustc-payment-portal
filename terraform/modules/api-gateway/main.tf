@@ -278,6 +278,13 @@ resource "aws_api_gateway_resource" "test" {
   path_part   = "test"
 }
 
+#GET /health
+resource "aws_api_gateway_resource" "health" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
+  path_part   = "health"
+}
+
 #GET /details/{transactionReferenceId}
 resource "aws_api_gateway_resource" "details" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
@@ -316,6 +323,13 @@ resource "aws_api_gateway_method" "test_get" {
 resource "aws_api_gateway_method" "details_get" {
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   resource_id   = aws_api_gateway_resource.details_tracking.id
+  http_method   = "GET"
+  authorization = "AWS_IAM"
+}
+
+resource "aws_api_gateway_method" "health_get" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.health.id
   http_method   = "GET"
   authorization = "AWS_IAM"
 }
@@ -400,6 +414,15 @@ resource "aws_api_gateway_integration" "details_integration" {
   uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getDetails"]}/invocations"
 }
 
+resource "aws_api_gateway_integration" "health_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.health.id
+  http_method             = aws_api_gateway_method.health_get.http_method
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["healthCheck"]}/invocations"
+}
+
 #Deployment
 
 resource "aws_api_gateway_deployment" "deployment" {
@@ -411,6 +434,7 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_resource.init.id,
       aws_api_gateway_resource.process.id,
       aws_api_gateway_resource.test.id,
+      aws_api_gateway_resource.health.id,
       aws_api_gateway_resource.details.id,
       aws_api_gateway_resource.details_tracking.id,
 
@@ -421,6 +445,7 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_method.init_post.id,
       aws_api_gateway_method.process_post.id,
       aws_api_gateway_method.test_get.id,
+      aws_api_gateway_method.health_get.id,
       aws_api_gateway_method.details_get.id,
 
       try(aws_api_gateway_method.transactions_get[0].id, ""),
@@ -434,11 +459,13 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_integration.init_integration.id,
       aws_api_gateway_integration.process_integration.id,
       aws_api_gateway_integration.test_integration.id,
+      aws_api_gateway_integration.health_integration.id,
       aws_api_gateway_integration.details_integration.id,
 
       aws_api_gateway_integration.init_integration.uri,
       aws_api_gateway_integration.process_integration.uri,
       aws_api_gateway_integration.test_integration.uri,
+      aws_api_gateway_integration.health_integration.uri,
       aws_api_gateway_integration.details_integration.uri,
 
       try(aws_api_gateway_integration.transactions_integration[0].id, ""),
@@ -469,6 +496,7 @@ resource "aws_api_gateway_deployment" "deployment" {
     aws_api_gateway_integration.init_integration,
     aws_api_gateway_integration.process_integration,
     aws_api_gateway_integration.test_integration,
+    aws_api_gateway_integration.health_integration,
     aws_api_gateway_integration.details_integration,
     aws_api_gateway_integration.transactions_integration,
     aws_api_gateway_integration.transactions_by_status_integration,
@@ -599,6 +627,14 @@ resource "aws_lambda_permission" "test_permissions" {
   function_name = var.lambda_function_arns["testCert"]
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/test"
+}
+
+resource "aws_lambda_permission" "health_permissions" {
+  statement_id  = "AllowAPIGatewayInvokeHealth"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_function_arns["healthCheck"]
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/health"
 }
 
 resource "aws_lambda_permission" "details_permissions" {
