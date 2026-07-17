@@ -8,7 +8,7 @@ every start.
 ## Prerequisites
 
 - **Docker** must be installed and running (`docker --version`).
-- **Node.js** `>=24.12.0 <25.0.0` (match the portal's engine requirement).
+- **Node.js** `>=24.18.0 <25.0.0` (match the portal's engine requirement).
 
 ## Install
 
@@ -105,7 +105,7 @@ Postgres is healthy (`docker ps`).
 
 ### Engine mismatch
 
-`@ustaxcourt/payment-portal` requires Node `>=24.12.0 <25.0.0`. Run
+`@ustaxcourt/payment-portal` requires Node `>=24.18.0 <25.0.0`. Run
 `node --version` to confirm. Use `nvm` or `volta` if you need to switch.
 
 ### `dist/devServer.js` not found

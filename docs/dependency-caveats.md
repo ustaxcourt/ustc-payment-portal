@@ -40,7 +40,7 @@ enough context that the next person doesn't have to re-derive the decision.
 
 - **Current:** `^24.13.3`. **Available latest:** `26.1.1`.
 - **Reason:** `@types/node` must track the runtime, not lead it. `engines.node`
-  is `>=24.12.0 <25.0.0` and `.nvmrc` pins `24.16.0`, so the ambient Node types
+  is `>=24.12.0 <25.0.0` and `.nvmrc` pins `24.18.0`, so the ambient Node types
   are intentionally held on the 24 line. Jumping to 26.x would type against APIs
   our Lambda/runtime doesn't provide and could mask incompatibilities. We took
   the in-range patch (24.13.2 → 24.13.3) and stopped there.
