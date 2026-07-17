@@ -74,7 +74,10 @@ export const getActiveFee = (
   fee: string,
   date: string | Date = new Date(),
 ): ActiveFee | undefined => {
-  const dateIsoString = typeof date === "string" ? date : date.toISOString();
+  const dateMs = typeof date === "string" ? Date.parse(date) : date.getTime();
+  if (Number.isNaN(dateMs)) {
+    return undefined;
+  }
 
   const definition = staticFees[fee];
   if (!definition) {
@@ -82,8 +85,11 @@ export const getActiveFee = (
   }
 
   const activeVersion = definition.versions
-    .filter((v) => v.activationDate <= dateIsoString)
-    .sort((a, b) => b.activationDate.localeCompare(a.activationDate))[0];
+    .filter((v) => {
+      const activationMs = Date.parse(v.activationDate);
+      return !Number.isNaN(activationMs) && activationMs <= dateMs;
+    })
+    .sort((a, b) => Date.parse(b.activationDate) - Date.parse(a.activationDate))[0];
 
   if (!activeVersion) {
     return undefined;
