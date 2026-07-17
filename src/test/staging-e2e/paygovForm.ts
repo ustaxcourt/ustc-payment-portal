@@ -15,18 +15,44 @@ const waitForHostedPageReady = async (
 ): Promise<void> => {
   await page.waitForLoadState("domcontentloaded", { timeout: timeoutMs });
 
-  const contexts = listSearchContexts(page);
-  for (const context of contexts) {
-    const candidate = context
-      .getByText(/card number|security code|expiration|expiry/i)
-      .first();
-    try {
-      await candidate.waitFor({ state: "visible", timeout: 1_500 });
+  const deadline = Date.now() + Math.min(timeoutMs, 10_000);
+
+  while (Date.now() < deadline) {
+    const cardMethodOption = page.getByRole("radio", {
+      name: /debit or credit card/i,
+    });
+    const canChooseCardMethod =
+      (await cardMethodOption.count()) > 0 &&
+      (await cardMethodOption.isVisible().catch(() => false));
+
+    if (canChooseCardMethod) {
       return;
-    } catch {
-      // try the next frame
     }
+
+    const contexts = listSearchContexts(page);
+    for (const context of contexts) {
+      const candidate = context
+        .getByLabel(/card number|security code|expiration|expiry/i)
+        .first();
+
+      if ((await candidate.count()) === 0) {
+        continue;
+      }
+
+      const isVisible = await candidate.isVisible().catch(() => false);
+      if (isVisible) {
+        return;
+      }
+    }
+
+    await page.waitForTimeout(250);
   }
+
+  throw new StagingE2EError(
+    FAILURE_CODES.PAYGOV_NAV_FAILED,
+    "Pay.gov page loaded but neither the card form nor the payment-method selector became visible",
+    { step: "paygov" },
+  );
 };
 
 const hasLeftPayGov = (page: Page, payGovHost: string): boolean => {
@@ -127,19 +153,23 @@ const selectDebitOrCreditCard = async (page: Page): Promise<void> => {
   const cardOption = page.getByRole("radio", {
     name: /debit or credit card/i,
   });
+  const cardOptionLabel = page.getByText(/debit or credit card/i).first();
 
   if ((await cardOption.count()) === 0) {
     return;
   }
 
-  try {
-    await cardOption.check({ timeout: config.timeouts.navigationMs });
-  } catch {
-    // hidden input behind a clickable label — click the label instead
-    await page
-      .getByText(/debit or credit card/i)
-      .first()
-      .click({ timeout: config.timeouts.navigationMs });
+  const canClickLabel =
+    (await cardOptionLabel.count()) > 0 &&
+    (await cardOptionLabel.isVisible().catch(() => false));
+
+  if (canClickLabel) {
+    await cardOptionLabel.click({ timeout: config.timeouts.navigationMs });
+  } else {
+    await cardOption.check({
+      timeout: config.timeouts.navigationMs,
+      force: true,
+    });
   }
 
   const continueButton = page.getByRole("button", { name: /^continue$/i });
@@ -199,6 +229,9 @@ const acceptAuthorizationIfPresent = async (
       name: /authorize|agree|acknowledge|consent|terms/i,
     })
     .first();
+  const checkboxLabel = page
+    .getByText(/i authorize a charge|authorize|i agree|acknowledge/i)
+    .first();
 
   if ((await checkbox.count()) === 0) {
     return;
@@ -209,15 +242,16 @@ const acceptAuthorizationIfPresent = async (
   }
 
   const shortTimeout = Math.min(timeoutMs, 5_000);
-  try {
-    await checkbox.check({ timeout: shortTimeout });
-  } catch {
-    await page
-      .getByText(/i authorize a charge|authorize|i agree|acknowledge/i)
-      .first()
-      .click({ timeout: shortTimeout })
-      .catch(() => undefined);
+  const canClickLabel =
+    (await checkboxLabel.count()) > 0 &&
+    (await checkboxLabel.isVisible().catch(() => false));
+
+  if (canClickLabel) {
+    await checkboxLabel.click({ timeout: shortTimeout });
+    return;
   }
+
+  await checkbox.check({ timeout: shortTimeout, force: true });
 };
 
 // Card form → (review/authorization) → success redirect. Button label varies, so
