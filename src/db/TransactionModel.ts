@@ -86,11 +86,7 @@ export default class TransactionModel extends Model {
       .orderBy("createdAt", "desc")
       .limit(100);
 
-    for (const row of rows) {
-      const activeFee = getActiveFee(row.fee, row.createdAt);
-      row.feeName = activeFee.name;
-    }
-    return rows;
+    return rows.map(TransactionModel.attachFeeName);
   }
 
   static async getAll(): Promise<TransactionModel[]> {
@@ -99,11 +95,13 @@ export default class TransactionModel extends Model {
       .orderBy("createdAt", "desc")
       .limit(100);
 
-    for (const row of rows) {
-      const activeFee = getActiveFee(row.fee, row.createdAt);
-      row.feeName = activeFee.name;
-    }
-    return rows;
+    return rows.map(TransactionModel.attachFeeName);
+  }
+
+  private static attachFeeName(row: TransactionModel): TransactionModel {
+    const activeFee = getActiveFee(row.fee, row.createdAt);
+    row.feeName = activeFee.name;
+    return row;
   }
 
   static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
