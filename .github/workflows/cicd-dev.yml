@@ -622,18 +622,26 @@ jobs:
           DEV_TAG="v${BASE_VERSION}-dev.${BUILD_NUM}"
 
 
+          # The tag must target the build SHA: staging/prod/rc resolve the dev tag to its commit to
+          # locate artifacts at artifacts/dev/<build-sha>/. A squash-merge orphans that commit from
+          # main and the shallow checkout omits it, so fetch the exact build commit (falling back to
+          # the PR head ref) before tagging, or `git tag` fails with "bad object type".
+          BUILD_SHA="${{ steps.resolve_deploy_sha.outputs.sha }}"
+          git fetch origin "$BUILD_SHA" \
+            || git fetch origin "refs/pull/${{ steps.extract_pr.outputs.pr_number }}/head"
+
           echo "Creating Dev Release Tag"
           echo "Tag: $DEV_TAG"
-          echo "Commit SHA: ${{ steps.resolve_deploy_sha.outputs.sha }}"
+          echo "Commit SHA: $BUILD_SHA"
           echo "PR Number: ${{ steps.extract_pr.outputs.pr_number }}"
-          echo "Artifacts Path: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/${{ steps.resolve_deploy_sha.outputs.sha }}/"
+          echo "Artifacts Path: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/$BUILD_SHA/"
 
           # Create and push tag
-          git tag -a "$DEV_TAG" "${{ steps.resolve_deploy_sha.outputs.sha }}" -m "Dev release $DEV_TAG
+          git tag -a "$DEV_TAG" "$BUILD_SHA" -m "Dev release $DEV_TAG
 
           Deployed from PR #${{ steps.extract_pr.outputs.pr_number }}
-          Commit: ${{ steps.resolve_deploy_sha.outputs.sha }}
-          Artifacts: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/${{ steps.resolve_deploy_sha.outputs.sha }}/
+          Commit: $BUILD_SHA
+          Artifacts: s3://${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}/artifacts/dev/$BUILD_SHA/
 
           Ready for staging promotion!"
 
