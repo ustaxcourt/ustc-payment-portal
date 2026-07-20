@@ -1,4 +1,5 @@
 import { getAllFees, getActiveFee } from "./fees";
+import { FeeConfigurationError } from "@errors/feeConfiguration";
 
 describe("fees config", () => {
   describe("getAllFees", () => {
@@ -14,8 +15,10 @@ describe("fees config", () => {
   });
 
   describe("getActiveFee", () => {
-    it("returns undefined if the fee key does not exist", () => {
-      expect(getActiveFee("NOT_EXISTING")).toBeUndefined();
+    it("throws FeeConfigurationError if the fee key does not exist", () => {
+      expect(() => getActiveFee("NOT_EXISTING")).toThrow(
+        new FeeConfigurationError("NOT_EXISTING"),
+      );
     });
 
     it("returns the active version merged with the definition and echoes the key back as fee", () => {
@@ -27,9 +30,16 @@ describe("fees config", () => {
       expect(fee?.isVariable).toBe(false);
     });
 
-    it("returns undefined when the requested date precedes every activation", () => {
-      const fee = getActiveFee("PETITION_FILING_FEE", "2020-01-01T00:00:00Z");
-      expect(fee).toBeUndefined();
+    it("throws FeeConfigurationError when the requested date precedes every activation", () => {
+      expect(() =>
+        getActiveFee("PETITION_FILING_FEE", "2020-01-01T00:00:00Z"),
+      ).toThrow(new FeeConfigurationError("PETITION_FILING_FEE"));
+    });
+
+    it("throws FeeConfigurationError when the requested date is invalid", () => {
+      expect(() => getActiveFee("PETITION_FILING_FEE", "not-a-date")).toThrow(
+        new FeeConfigurationError("PETITION_FILING_FEE"),
+      );
     });
   });
 });

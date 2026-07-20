@@ -88,11 +88,6 @@ export default class TransactionModel extends Model {
 
     for (const row of rows) {
       const activeFee = getActiveFee(row.fee, row.createdAt);
-      if (!activeFee) {
-        throw new Error(
-          `Fee configuration not found for transaction ${row.agencyTrackingId} (fee='${row.fee}')`,
-        );
-      }
       row.feeName = activeFee.name;
     }
     return rows;
@@ -106,9 +101,7 @@ export default class TransactionModel extends Model {
 
     for (const row of rows) {
       const activeFee = getActiveFee(row.fee, row.createdAt);
-      if (activeFee) {
-        row.feeName = activeFee.name;
-      }
+      row.feeName = activeFee.name;
     }
     return rows;
   }

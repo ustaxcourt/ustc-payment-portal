@@ -6,7 +6,7 @@ import {
 import { InvalidRequestError } from "@errors/invalidRequest";
 import { PayGovError } from "@errors/payGovError";
 import { ConflictError } from "@errors/conflict";
-import { getActiveFee } from "../config/fees";
+import { getActiveFee, type ActiveFee } from "../config/fees";
 import { generateAgencyTrackingId } from "@utils/generateTrackingId";
 import TransactionModel, {
   isStaleProcessingTransaction,
@@ -21,6 +21,7 @@ import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 import { ZodError } from "zod";
 import { FailedTransactionError } from "../errors/failedTransaction";
+import { FeeConfigurationError } from "@errors/feeConfiguration";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
@@ -67,9 +68,14 @@ export const initPayment: InitPayment = async (
     },
   );
 
-  const fee = getActiveFee(feeKey);
-  if (!fee || !fee.tcsAppId) {
-    throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
+  let fee: ActiveFee;
+  try {
+    fee = getActiveFee(feeKey);
+  } catch (error) {
+    if (error instanceof FeeConfigurationError) {
+      throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
+    }
+    throw error;
   }
 
   if (amount !== undefined && !fee.isVariable) {

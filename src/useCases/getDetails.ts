@@ -12,7 +12,7 @@ import {
 import { toPaymentMethod } from "@utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
 import TransactionModel from "../db/TransactionModel";
-import { getActiveFee } from "../config/fees";
+import { getActiveFee, type ActiveFee } from "../config/fees";
 import { authorizeClient } from "../authorizeClient";
 import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
@@ -65,8 +65,20 @@ export const getDetails: GetDetails = async (
   // Fee-invariance: all rows for a transactionReferenceId share the same fee key.
   // We resolve to the version that was active when the first attempt was created so
   // dashboards and Pay.gov calls stay consistent with the original obligation.
-  const fee = getActiveFee(feeKey, allRows[0].createdAt);
-  if (!fee || !fee.tcsAppId) {
+  let fee: ActiveFee;
+  try {
+    fee = getActiveFee(feeKey, allRows[0].createdAt);
+  } catch (error) {
+    appContext.logger.error("Fee misconfigured — aborting getDetails", {
+      transactionReferenceId,
+      agencyTrackingId: allRows[0].agencyTrackingId,
+      clientName: client.clientName,
+      fee: feeKey,
+      reason: "fee row missing",
+    });
+    throw new ServerError();
+  }
+  if (!fee.tcsAppId) {
     // Both branches indicate server-side data corruption: an unknown fee key can
     // only appear if the config was mutated after a transaction was written, and
     // tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
@@ -75,7 +87,7 @@ export const getDetails: GetDetails = async (
       agencyTrackingId: allRows[0].agencyTrackingId,
       clientName: client.clientName,
       fee: feeKey,
-      reason: !fee ? "fee row missing" : "tcsAppId missing",
+      reason: "tcsAppId missing",
     });
     throw new ServerError();
   }

@@ -9,6 +9,7 @@ import { getActiveFee } from "../config/fees";
 import { randomUUID } from "crypto";
 import { mockTrackingId } from "../test/utils/mocks";
 import { ForbiddenError } from "@errors/forbidden";
+import { FeeConfigurationError } from "@errors/feeConfiguration";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -159,7 +160,9 @@ describe("getDetails", () => {
   });
 
   it("throws ServerError when fee is not found for the transaction (data corruption)", async () => {
-    getActiveFeeMock.mockReturnValueOnce(undefined);
+    getActiveFeeMock.mockImplementationOnce(() => {
+      throw new FeeConfigurationError("PETITION_FILING_FEE");
+    });
 
     await expect(
       getDetails(appContext, {

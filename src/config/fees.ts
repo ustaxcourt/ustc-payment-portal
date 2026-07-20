@@ -1,3 +1,5 @@
+import { FeeConfigurationError } from "@errors/feeConfiguration";
+
 export interface StaticFees {
   [fee: string]: FeeDefinition;
 }
@@ -62,8 +64,9 @@ export const getAllFees = (): FeeDefinition[] => {
 
 /**
  * Resolves a fee by its stable key to the version active at the given date.
- * Returns `undefined` when the key is unknown or no version has activated by
- * the given date. Defaults to "now" when no date is supplied.
+ * Throws `FeeConfigurationError` when the key is unknown, the date is invalid,
+ * or no version has activated by the given date. Defaults to "now" when no
+ * date is supplied.
  *
  * Accepts either an ISO 8601 string or a `Date`. Objection/pg return
  * `timestamptz` columns as `Date` objects at runtime even though our model
@@ -73,15 +76,15 @@ export const getAllFees = (): FeeDefinition[] => {
 export const getActiveFee = (
   fee: string,
   date: string | Date = new Date(),
-): ActiveFee | undefined => {
+): ActiveFee => {
   const dateMs = typeof date === "string" ? Date.parse(date) : date.getTime();
   if (Number.isNaN(dateMs)) {
-    return undefined;
+    throw new FeeConfigurationError(fee);
   }
 
   const definition = staticFees[fee];
   if (!definition) {
-    return undefined;
+    throw new FeeConfigurationError(fee);
   }
 
   const activeVersion = definition.versions
@@ -89,10 +92,12 @@ export const getActiveFee = (
       const activationMs = Date.parse(v.activationDate);
       return !Number.isNaN(activationMs) && activationMs <= dateMs;
     })
-    .sort((a, b) => Date.parse(b.activationDate) - Date.parse(a.activationDate))[0];
+    .sort(
+      (a, b) => Date.parse(b.activationDate) - Date.parse(a.activationDate),
+    )[0];
 
   if (!activeVersion) {
-    return undefined;
+    throw new FeeConfigurationError(fee);
   }
 
   return {

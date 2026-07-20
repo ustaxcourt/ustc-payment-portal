@@ -36,7 +36,10 @@ jest.mock("../config/fees", () => ({
         isVariable: false,
       };
     }
-    return undefined;
+    const { FeeConfigurationError } = jest.requireActual(
+      "../errors/feeConfiguration",
+    );
+    throw new FeeConfigurationError(fee);
   }),
 }));
 

@@ -11,6 +11,7 @@ import TransactionModel from "../db/TransactionModel";
 import { getActiveFee } from "../config/fees";
 import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { FeeConfigurationError } from "@errors/feeConfiguration";
 
 const emitProcessPaymentConflictMetricMock =
   emitProcessPaymentConflictMetric as jest.MockedFunction<
@@ -444,15 +445,17 @@ describe("processPayment", () => {
     });
   });
 
-  it("throws NotFoundError when fee is not found for the transaction", async () => {
-    getActiveFeeMock.mockReturnValueOnce(undefined);
+  it("throws ServerError when fee is not found for the transaction", async () => {
+    getActiveFeeMock.mockImplementationOnce(() => {
+      throw new FeeConfigurationError(mockTransaction.fee);
+    });
 
     await expect(
       processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       }),
-    ).rejects.toThrow(NotFoundError);
+    ).rejects.toThrow(ServerError);
 
     expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
       mockTransaction.agencyTrackingId,
@@ -472,30 +475,10 @@ describe("processPayment", () => {
         client: mockClient,
         request: { token: "mock-token" },
       }),
-    ).rejects.toThrow(lookupErr);
-
-    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
-    expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
-  });
-
-  it("throws ServerError when fee has no tcsAppId", async () => {
-    getActiveFeeMock.mockReturnValueOnce({
-      fee: "fee-123",
-      tcsAppId: "",
-    });
-
-    await expect(
-      processPayment(appContext, {
-        client: mockClient,
-        request: { token: "mock-token" },
-      }),
     ).rejects.toThrow(ServerError);
 
-    expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
-      mockTransaction.agencyTrackingId,
-      undefined,
-      "Fee is missing tcsAppId configuration",
-    );
+    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+    expect(TransactionModelMock.updateToFailed).toHaveBeenCalled();
   });
 
   it("passes the fee's tcsAppId to the SOAP request", async () => {

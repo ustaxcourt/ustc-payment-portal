@@ -71,7 +71,7 @@ const loadAuthorizedContext = async (
 
   const baseLogFields = buildLogFields(request, existingTransaction);
 
-  let fee: ActiveFee | undefined;
+  let fee: ActiveFee;
   try {
     appContext.logger.info("Looking up active fee for transaction", {
       ...baseLogFields,
@@ -80,37 +80,18 @@ const loadAuthorizedContext = async (
 
     fee = getActiveFee(existingTransaction.fee, existingTransaction.createdAt);
   } catch (err) {
-    appContext.logger.error("Fee lookup failed", {
-      ...baseLogFields,
-      errorName: err instanceof Error ? err.name : undefined,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
-    throw err;
-  }
-  if (!fee) {
-    appContext.logger.error("Fee not found for transaction", {
-      ...baseLogFields,
-    });
     await safeUpdateToFailed(
       appContext,
       existingTransaction.agencyTrackingId,
       undefined,
       "Fee configuration not found for this transaction",
     );
-    throw new NotFoundError("Fee configuration not found for this transaction");
-  }
-  if (!fee.tcsAppId) {
-    appContext.logger.error("Fee is missing tcsAppId configuration", {
+    appContext.logger.error("Fee lookup failed", {
       ...baseLogFields,
-      fee: fee.fee,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
     });
-    await safeUpdateToFailed(
-      appContext,
-      existingTransaction.agencyTrackingId,
-      undefined,
-      "Fee is missing tcsAppId configuration",
-    );
-    throw new ServerError();
+    throw new ServerError("Fee configuration not found for this transaction");
   }
 
   authorizeClient(client, fee.fee);
