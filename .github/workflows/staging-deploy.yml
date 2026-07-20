@@ -124,12 +124,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: promote
-
-    outputs:
-      api_url: ${{ steps.tf_outputs.outputs.api_url }}
-
-    environment:
+    needs: promote environment:
       name: staging
 
     steps:
@@ -298,16 +293,39 @@ jobs:
             exit 1
           fi
 
-  staging-e2e:
-    needs: deploy
+      # Staging Pay.gov E2E gate (PAY-352): real QA card success through /init →
+      # hosted page → /process → /details. Reuses the job's OIDC AWS credentials;
+      # card values come from GitHub secrets. See src/test/staging-e2e/README.md.
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
 
-    uses: ./.github/workflows/staging-playwright.yml
+      - name: Install dependencies
+        run: npm ci
 
-    with:
-      api_url: ${{ needs.deploy.outputs.api_url }}
+      - name: Install Playwright browser (chromium)
+        run: npx playwright install --with-deps chromium
 
-    secrets:
-      PAYGOV_QA_CC_SUCCESS_PAN: ${{ secrets.PAYGOV_QA_CC_SUCCESS_PAN }}
-      PAYGOV_QA_CC_SUCCESS_EXP: ${{ secrets.PAYGOV_QA_CC_SUCCESS_EXP }}
-      PAYGOV_QA_CC_SUCCESS_CVV: ${{ secrets.PAYGOV_QA_CC_SUCCESS_CVV }}
-      PAYGOV_QA_CC_SUCCESS_NAME: ${{ secrets.PAYGOV_QA_CC_SUCCESS_NAME }}
+      - name: Run staging Pay.gov E2E gate
+        env:
+          BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          PAYGOV_QA_CC_SUCCESS_PAN: ${{ secrets.PAYGOV_QA_CC_SUCCESS_PAN }}
+          PAYGOV_QA_CC_SUCCESS_EXP: ${{ secrets.PAYGOV_QA_CC_SUCCESS_EXP }}
+          PAYGOV_QA_CC_SUCCESS_CVV: ${{ secrets.PAYGOV_QA_CC_SUCCESS_CVV }}
+          PAYGOV_QA_CC_SUCCESS_NAME: ${{ secrets.PAYGOV_QA_CC_SUCCESS_NAME }}
+        run: npm run test:staging-e2e
+
+      - name: Upload staging E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: staging-e2e-artifacts
+          # Playwright writes under its config dir; failure-summary.json at repo root.
+          path: |
+            src/test/staging-e2e/test-results/**
+            src/test/staging-e2e/playwright-report/**
+            failure-summary.json
+          if-no-files-found: ignore
+          retention-days: 14
