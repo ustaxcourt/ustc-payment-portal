@@ -170,6 +170,7 @@ export const initPayment: InitPayment = async (
       fee: feeKey,
       clientName,
       transactionReferenceId,
+      transactionAmount,
       metadata: request.metadata,
     });
   } catch (err) {

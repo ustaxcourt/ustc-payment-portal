@@ -37,7 +37,7 @@ const TOKEN_NO_LONGER_VALID_MESSAGE = "This token is no longer valid.";
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
-  fee!: string; // Stable fee key (e.g. "PETITION_FILING_FEE") — resolves to the active fee version via `getActiveFee(fee, createdAt)`.
+  fee!: string; // Stable fee key (e.g. "PETITION_FILING_FEE").
   feeName?: string;
   clientName!: string;
   transactionReferenceId!: string;
@@ -45,7 +45,7 @@ export default class TransactionModel extends Model {
   transactionStatus?: TransactionStatus | null;
   paygovToken?: string | null;
   paymentMethod?: PaymentMethod | null;
-  transactionAmount?: number | null;
+  transactionAmount!: number;
   transactionDate?: string | null;
   paymentDate?: string | null;
   returnCode?: number | null;
@@ -94,9 +94,6 @@ export default class TransactionModel extends Model {
         );
       }
       row.feeName = activeFee.name;
-      row.transactionAmount = activeFee.isVariable
-        ? row.transactionAmount
-        : activeFee.amount ?? null;
     }
     return rows;
   }
@@ -111,9 +108,6 @@ export default class TransactionModel extends Model {
       const activeFee = getActiveFee(row.fee, row.createdAt);
       if (activeFee) {
         row.feeName = activeFee.name;
-        row.transactionAmount = activeFee.isVariable
-          ? row.transactionAmount
-          : activeFee.amount ?? null;
       }
     }
     return rows;
@@ -154,7 +148,7 @@ export default class TransactionModel extends Model {
   }
 
   static async createReceived(
-    data: Partial<TransactionModel>,
+    data: Partial<TransactionModel> & { transactionAmount: number },
   ): Promise<TransactionModel> {
     await getKnex();
     const newTransaction = await this.query().insertAndFetch({

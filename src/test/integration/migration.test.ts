@@ -61,7 +61,7 @@ describeIfDeployed("database migration and seed verification", () => {
       expect(row).toHaveProperty("transactionReferenceId");
       expect(row).toHaveProperty("feeName");
       expect(row).toHaveProperty("fee");
-      expect(row).toHaveProperty("transactionAmount"); // derived from the active fee config
+      expect(row).toHaveProperty("transactionAmount");
       expect(row).toHaveProperty("clientName");
       expect(row).toHaveProperty("paymentStatus");
       expect(row).toHaveProperty("transactionStatus");

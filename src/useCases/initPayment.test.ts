@@ -126,7 +126,10 @@ describe("initPayment", () => {
     expect(result.paymentRedirect).toContain("test-token-123");
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTPETITION");
     expect(TransactionModel.createReceived).toHaveBeenCalledWith(
-      expect.objectContaining({ fee: "PETITION_FILING_FEE" }),
+      expect.objectContaining({
+        fee: "PETITION_FILING_FEE",
+        transactionAmount: 250,
+      }),
     );
     expect(TransactionModel.updateToInitiated).toHaveBeenCalled();
   });
@@ -152,7 +155,10 @@ describe("initPayment", () => {
     expect(result.token).toBe("test-token-456");
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTANAEF");
     expect(TransactionModel.createReceived).toHaveBeenCalledWith(
-      expect.objectContaining({ fee: "NONATTORNEY_EXAM_REGISTRATION_FEE" }),
+      expect.objectContaining({
+        fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        transactionAmount: 250,
+      }),
     );
   });
 
