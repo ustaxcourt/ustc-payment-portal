@@ -68,13 +68,11 @@ export const getDetails: GetDetails = async (
   let fee: ActiveFee;
   try {
     fee = getActiveFee(feeKey, allRows[0].createdAt);
-  } catch (error) {
-    appContext.logger.error("Fee misconfigured — aborting getDetails", {
-      transactionReferenceId,
-      agencyTrackingId: allRows[0].agencyTrackingId,
-      clientName: client.clientName,
+  } catch (err) {
+    appContext.logger.error("Fee lookup failed", {
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
       fee: feeKey,
-      reason: "fee row missing",
     });
     throw new ServerError();
   }

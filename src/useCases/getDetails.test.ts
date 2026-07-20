@@ -172,11 +172,11 @@ describe("getDetails", () => {
     ).rejects.toThrow(ServerError);
 
     expect(appContext.logger.error).toHaveBeenCalledWith(
-      "Fee misconfigured — aborting getDetails",
+      "Fee lookup failed",
       expect.objectContaining({
-        transactionReferenceId: mockTransactionReferenceId,
-        clientName: mockClient.clientName,
-        reason: "fee row missing",
+        errorName: "FeeConfigurationError",
+        errorMessage: "Fee configuration not found (fee='PETITION_FILING_FEE')",
+        fee: "PETITION_FILING_FEE",
       }),
     );
   });
