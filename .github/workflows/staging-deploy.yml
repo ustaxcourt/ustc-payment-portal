@@ -125,6 +125,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: promote
+
+    outputs:
+      api_url: ${{ steps.tf_outputs.outputs.api_url }}
+
     environment:
       name: staging
 
