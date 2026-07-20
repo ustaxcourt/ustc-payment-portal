@@ -1,6 +1,6 @@
 import { FAILURE_CODES, StagingE2EError } from "./failureCodes";
 
-const FEE_KEY = "PETITION_FILING_FEE" as const;
+const FEE_KEY = "NONATTORNEY_EXAM_REGISTRATION_FEE" as const;
 const DEFAULT_URL_SUCCESS = "https://example.com/success";
 const DEFAULT_URL_CANCEL = "https://example.com/cancel";
 const PAY_GOV_HOST = "qa.pay.gov";
@@ -87,13 +87,11 @@ export const getStagingE2EConfig = (): StagingE2EConfig => {
   return {
     baseUrl,
     billing: {
-      address:
-        process.env.PAYGOV_QA_BILLING_ADDRESS?.trim() || "400 Second Street NW",
+      address: process.env.PAYGOV_QA_BILLING_ADDRESS?.trim() || "400 Second Street NW",
       city: process.env.PAYGOV_QA_BILLING_CITY?.trim() || "Washington",
       country: process.env.PAYGOV_QA_BILLING_COUNTRY?.trim() || "United States",
       // Full name to match the US State dropdown label (not "DC").
-      state:
-        process.env.PAYGOV_QA_BILLING_STATE?.trim() || "District of Columbia",
+      state: process.env.PAYGOV_QA_BILLING_STATE?.trim() || "District of Columbia",
       zip: process.env.PAYGOV_QA_BILLING_ZIP?.trim() || "20217",
     },
     card: {
