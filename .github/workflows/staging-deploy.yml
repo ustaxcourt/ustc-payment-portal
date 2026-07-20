@@ -303,6 +303,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Configure AWS Credentials (OIDC - Stg)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.STAGING_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
