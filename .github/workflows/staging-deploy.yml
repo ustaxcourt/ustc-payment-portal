@@ -291,9 +291,12 @@ jobs:
             echo "Signed /init reached Lambda but returned HTTP $INIT_STATUS; continuing so the Playwright E2E gate can capture the full Pay.gov flow failure if it persists."
           fi
 
-      # Staging Pay.gov E2E gate (PAY-352): real QA card success through /init →
-      # hosted page → /process → /details. Reuses the job's OIDC AWS credentials;
-      # card values come from GitHub secrets. See src/test/staging-e2e/README.md.
+  staging-e2e:
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+    needs: deploy
+    steps:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
