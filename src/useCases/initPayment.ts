@@ -230,10 +230,7 @@ export const initPayment: InitPayment = async (
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
     });
-    if (
-      !(err instanceof ZodError) &&
-      !(err instanceof FailedTransactionError)
-    ) {
+    if (!(err instanceof ZodError || err instanceof FailedTransactionError)) {
       emitPayGovErrorMetric();
     }
     await safeUpdateToFailed(
