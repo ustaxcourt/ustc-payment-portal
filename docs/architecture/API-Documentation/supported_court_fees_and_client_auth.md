@@ -201,16 +201,17 @@ export const staticFees: StaticFees = {
 
 ### Resolution API
 
-```ts
+~~~ts
 export const getActiveFee = (
   fee: string,
   date: string | Date = new Date(),
-): ActiveFee | undefined
-```
+): ActiveFee
+~~~
 
 - `fee` — the stable key (e.g. `"PETITION_FILING_FEE"`)
 - `date` — the point in time to resolve against. Callers pass the transaction's `createdAt` so historical rows always reflect the version that was in effect **when the transaction was created**, even after a future version has activated.
-- Returns a merged `ActiveFee` (definition fields + the winning `FeeVersion` fields + the echoed `fee` key), or `undefined` if the key is unknown or no version has activated by `date`.
+- Returns a merged `ActiveFee` (definition fields + the winning `FeeVersion` fields + the echoed `fee` key).
+- Throws `FeeConfigurationError` if the key is unknown, the date is invalid, or no version has activated by `date`.
 
 The resolution rule: filter versions with `activationDate <= date`, pick the one with the most recent `activationDate`. Ties are prevented by convention — no two versions of the same key should share an `activationDate`.
 
