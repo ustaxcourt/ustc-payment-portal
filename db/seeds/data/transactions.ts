@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
 import dayjs from "dayjs";
+import { getActiveFee, staticFees } from "../../../src/config/fees";
 import { generateAgencyTrackingId } from "../../../src/utils/generateTrackingId";
-import { staticFees } from "../../../src/config/fees";
 
 type GenerateTransactionsParams = {
   successTransactions: number;
@@ -20,6 +20,7 @@ type TransactionRow = {
   transaction_status: string | null;
   paygov_token: string | null;
   payment_method: string | null;
+  transaction_amount: number;
   transaction_date: string | null;
   payment_date: string | null;
   return_code: number | null;
@@ -92,6 +93,13 @@ export const generateTransactions = async ({
       .add(faker.number.int({ min: 0, max: 5 }), "day")
       .add(faker.number.int({ min: 0, max: 3600 }), "second")
       .toISOString();
+    const activeFee = getActiveFee(fee, createdAt);
+    const transactionAmount = activeFee.isVariable
+      ? faker.number.float({ min: 1, max: 1_000, fractionDigits: 2 })
+      : activeFee.amount;
+    if (transactionAmount === null || transactionAmount === undefined) {
+      throw new Error(`Fixed fee '${fee}' is missing an amount`);
+    }
     const maybeMetadata = {
       accountHolder: faker.person.fullName(),
       agencyId,
@@ -121,6 +129,7 @@ export const generateTransactions = async ({
       payment_status,
       transaction_status: getTransactionStatus(payment_status),
       payment_method: faker.helpers.arrayElement(paymentMethods),
+      transaction_amount: transactionAmount,
       paygov_token: faker.datatype.boolean()
         ? faker.string.uuid().replace(/-/g, "")
         : null,
