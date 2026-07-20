@@ -317,7 +317,7 @@ jobs:
 
       - name: Run staging Pay.gov E2E gate
         env:
-          BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          BASE_URL: ${{ needs.deploy.outputs.api_url }}
           PAYGOV_QA_CC_SUCCESS_PAN: ${{ secrets.PAYGOV_QA_CC_SUCCESS_PAN }}
           PAYGOV_QA_CC_SUCCESS_EXP: ${{ secrets.PAYGOV_QA_CC_SUCCESS_EXP }}
           PAYGOV_QA_CC_SUCCESS_CVV: ${{ secrets.PAYGOV_QA_CC_SUCCESS_CVV }}
