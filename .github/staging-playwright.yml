@@ -1,0 +1,72 @@
+# .github/workflows/staging-e2e.yml
+
+name: Staging E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Staging API Gateway URL"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    environment:
+      name: staging
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Configure AWS Credentials (OIDC - Staging)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.STAGING_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS caller identity
+        run: aws sts get-caller-identity
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser (chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run staging Pay.gov E2E gate
+        env:
+          BASE_URL: ${{ inputs.api_url }}
+          PAYGOV_QA_CC_SUCCESS_PAN: ${{ secrets.PAYGOV_QA_CC_SUCCESS_PAN }}
+          PAYGOV_QA_CC_SUCCESS_EXP: ${{ secrets.PAYGOV_QA_CC_SUCCESS_EXP }}
+          PAYGOV_QA_CC_SUCCESS_CVV: ${{ secrets.PAYGOV_QA_CC_SUCCESS_CVV }}
+          PAYGOV_QA_CC_SUCCESS_NAME: ${{ secrets.PAYGOV_QA_CC_SUCCESS_NAME }}
+        run: npm run test:staging-e2e
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: staging-e2e-artifacts
+          path: |
+            src/test/staging-e2e/test-results/**
+            src/test/staging-e2e/playwright-report/**
+            failure-summary.json
+          if-no-files-found: ignore
+          retention-days: 14
