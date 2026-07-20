@@ -46,6 +46,7 @@ test("Credit Card - Success", async ({ page }) => {
     step = "process";
     logStep("process");
     const processResult = await processPayment(initialized.token);
+    console.log("processResult", processResult);
     expect(processResult.paymentStatus).toBe("success");
 
     step = "details";
