@@ -297,6 +297,8 @@ jobs:
       name: staging
     needs: deploy
     steps:
+      - uses: actions/checkout@v6
+
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
