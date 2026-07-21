@@ -93,7 +93,10 @@ export const getActiveFee = (
   const activeVersion = [...definition.versions]
     .filter((v) => {
       const activationMs = Date.parse(v.activationDate);
-      return !Number.isNaN(activationMs) && activationMs <= dateMs;
+      if (Number.isNaN(activationMs)) {
+        throw new FeeConfigurationError(fee);
+      }
+      return activationMs <= dateMs;
     })
     .sort(
       (a, b) => Date.parse(b.activationDate) - Date.parse(a.activationDate),
