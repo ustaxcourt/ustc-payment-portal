@@ -2,7 +2,7 @@
 
 This directory contains the Artillery scenarios, traffic profiles, processor hooks, and saved result artifacts used for load testing the payment portal.
 
-The six `npm run artillery:*` scripts in [package.json](../package.json) all execute [scripts/run-artillery-lambda.js](../scripts/run-artillery-lambda.js), which wraps `artillery run-lambda`. These runbooks are therefore for Lambda-backed Artillery runs against deployed or otherwise network-reachable targets, not for hitting a developer's local `localhost` stack.
+The six `npm run test:performance:*` scripts in [package.json](../../../../package.json) execute [scripts/run-performance-test.sh](../../../../scripts/run-performance-test.sh), which builds the paths and wraps `artillery run-lambda`. These runbooks are therefore for Lambda-backed Artillery runs against deployed or otherwise network-reachable targets, not for hitting a developer's local `localhost` stack.
 
 ## Files
 
@@ -17,32 +17,32 @@ The six `npm run artillery:*` scripts in [package.json](../package.json) all exe
 
 ## Script Map
 
-These repository scripts create `artillery/results/` if needed and then run one Lambda-backed Artillery test:
+These repository scripts create a timestamped directory under `src/test/performance/artillery/results/` if needed and then run one Lambda-backed Artillery test:
 
-- `npm run artillery:1000:init`
-  - Scenario: `artillery/scenarios/init-only.yml`
-  - Config: `artillery/environments/1000-rpm.yml`
-  - Output: `artillery/results/1000-rpm-init-results.json`
-- `npm run artillery:1000:full`
-  - Scenario: `artillery/scenarios/full-flow.yml`
-  - Config: `artillery/environments/1000-rpm.yml`
-  - Output: `artillery/results/1000-rpm-full-results.json`
-- `npm run artillery:10000:init`
-  - Scenario: `artillery/scenarios/init-only.yml`
-  - Config: `artillery/environments/10000-rpm.yml`
-  - Output: `artillery/results/10000-rpm-init-results.json`
-- `npm run artillery:10000:full`
-  - Scenario: `artillery/scenarios/full-flow.yml`
-  - Config: `artillery/environments/10000-rpm.yml`
-  - Output: `artillery/results/10000-rpm-full-results.json`
-- `npm run artillery:10000ramp:init`
-  - Scenario: `artillery/scenarios/init-only.yml`
-  - Config: `artillery/environments/10000-rpm-ramp.yml`
-  - Output: `artillery/results/10000ramp-rpm-init-results.json`
-- `npm run artillery:10000ramp:full`
-  - Scenario: `artillery/scenarios/full-flow.yml`
-  - Config: `artillery/environments/10000-rpm-ramp.yml`
-  - Output: `artillery/results/10000ramp-rpm-full-results.json`
+- `npm run test:performance:1000:init`
+  - Scenario: `scenarios/init-only.yml`
+  - Config: `environments/1000-rpm.yml`
+  - Output: `results/<timestamp>/1000-rpm-init-results.json`
+- `npm run test:performance:1000:full`
+  - Scenario: `scenarios/full-flow.yml`
+  - Config: `environments/1000-rpm.yml`
+  - Output: `results/<timestamp>/1000-rpm-full-results.json`
+- `npm run test:performance:10000:init`
+  - Scenario: `scenarios/init-only.yml`
+  - Config: `environments/10000-rpm.yml`
+  - Output: `results/<timestamp>/10000-rpm-init-results.json`
+- `npm run test:performance:10000:full`
+  - Scenario: `scenarios/full-flow.yml`
+  - Config: `environments/10000-rpm.yml`
+  - Output: `results/<timestamp>/10000-rpm-full-results.json`
+- `npm run test:performance:10000ramp:init`
+  - Scenario: `scenarios/init-only.yml`
+  - Config: `environments/10000-rpm-ramp.yml`
+  - Output: `results/<timestamp>/10000ramp-rpm-init-results.json`
+- `npm run test:performance:10000ramp:full`
+  - Scenario: `scenarios/full-flow.yml`
+  - Config: `environments/10000-rpm-ramp.yml`
+  - Output: `results/<timestamp>/10000ramp-rpm-full-results.json`
 
 ## Naming Caveat
 
@@ -54,24 +54,24 @@ The `1000-rpm` and `10000-rpm` names are approximate scenario-start rates, not l
 
 ## How The Wrapper Works
 
-[scripts/run-artillery-lambda.js](../scripts/run-artillery-lambda.js) does the following before invoking Artillery:
+[scripts/run-performance-test.sh](../../../../scripts/run-performance-test.sh) does the following before invoking Artillery:
 
-- Loads `artillery/.env` with `override: true`.
+- Sources and exports values from `src/test/performance/artillery/.env`.
 - Requires `ARTILLERY_LAMBDA_ROLE_ARN` to be present.
-- Uses `ARTILLERY_TARGET` from `artillery/.env`, defaulting to a deployed payments URL if unset.
+- Uses `ARTILLERY_TARGET` from `src/test/performance/artillery/.env`, defaulting to a deployed payments URL if unset.
 - Uses `ARTILLERY_LAMBDA_REGION`, `AWS_REGION`, or `AWS_DEFAULT_REGION` for the Lambda worker region, defaulting to `us-east-1`.
 - Uses `ARTILLERY_LAMBDA_COUNT`, defaulting to `1`.
-- Appends `--dotenv artillery/.env`, `--target <ARTILLERY_TARGET>`, `--region <lambda-region>`, `--count <lambda-count>`, and `--lambda-role-arn <ARTILLERY_LAMBDA_ROLE_ARN>` to the `artillery run-lambda` command.
+- Appends the matching `--dotenv`, `--target`, `--region`, `--count`, and `--lambda-role-arn` options to the `artillery run-lambda` command.
 
 Operational implications:
 
-- Do not rely on passing `--target ...` after `npm run artillery:*`; the wrapper appends its own `--target` afterward, so `ARTILLERY_TARGET` in `artillery/.env` is the effective source of truth.
+- Do not rely on passing `--target ...` after `npm run test:performance:*`; the wrapper appends its own `--target` afterward, so `ARTILLERY_TARGET` in `src/test/performance/artillery/.env` is the effective source of truth.
 - These scripts are intended for targets reachable from the Lambda worker. A developer's local `http://localhost:8080` stack is not a valid target for this wrapper.
-- If the API's SigV4 signing region differs from the Lambda execution region, set `SIGV4_REGION` in `artillery/.env` for request signing.
+- If the API's SigV4 signing region differs from the Lambda execution region, set `SIGV4_REGION` in `src/test/performance/artillery/.env` for request signing.
 
 ## Prerequisites
 
-1. Copy `artillery/.env.example` to `artillery/.env`.
+1. Copy `src/test/performance/artillery/.env.example` to `src/test/performance/artillery/.env`.
 2. Set `ARTILLERY_TARGET` to the API base URL you intend to load test.
 3. Set `ARTILLERY_LAMBDA_ROLE_ARN` to the IAM role ARN used by `artillery run-lambda`.
 4. Set `PAY_GOV_DEV_SERVER_ACCESS_TOKEN` for `full-flow` runs.
@@ -79,7 +79,7 @@ Operational implications:
 6. Set `ARTILLERY_LAMBDA_REGION` if the load generator should run outside the default region.
 7. Set `SIGV4_REGION` if the API Gateway signing region differs from the Lambda worker region.
 
-Example `artillery/.env` values with placeholders only:
+Example `src/test/performance/artillery/.env` values with placeholders only:
 
 ```dotenv
 ARTILLERY_TARGET=https://your-payments-api.example.gov
@@ -132,22 +132,22 @@ Run these commands from the repository root.
 ### Baseline profile
 
 ```bash
-npm run artillery:1000:init
-npm run artillery:1000:full
+npm run test:performance:1000:init
+npm run test:performance:1000:full
 ```
 
 ### Stress profile
 
 ```bash
-npm run artillery:10000:init
-npm run artillery:10000:full
-npm run artillery:10000ramp:init
-npm run artillery:10000ramp:full
+npm run test:performance:10000:init
+npm run test:performance:10000:full
+npm run test:performance:10000ramp:init
+npm run test:performance:10000ramp:full
 ```
 
 ## Results And Interpretation
 
-- Result files are written to `artillery/results/` using the filenames baked into each `npm run artillery:*` script.
+- Result files are written to timestamped directories under `src/test/performance/artillery/results/` using names derived by the Bash wrapper.
 - Read request-level metrics such as `http.codes.200`, `http.codes.429`, and `http.codes.500` separately from flow-level metrics such as `vusers.completed` and `vusers.failed`.
 - A run can show many successful individual requests while still having poor end-to-end flow completion.
 - `environments/1000-rpm.yml` sets `ensure.maxErrorRate` to `10`.
@@ -156,7 +156,7 @@ npm run artillery:10000ramp:full
 
 ## Debugging Notes
 
-- Set `ARTILLERY_DEBUG_RESPONSES=1` in `artillery/.env` to log every response payload during a run.
+- Set `ARTILLERY_DEBUG_RESPONSES=1` in `src/test/performance/artillery/.env` to log every response payload during a run.
 - Failed responses are already logged by default.
-- If you need to change the target, update `ARTILLERY_TARGET` in `artillery/.env` before rerunning the script.
+- If you need to change the target, update `ARTILLERY_TARGET` in `src/test/performance/artillery/.env` before rerunning the script.
 - If you need to inspect the raw scenario definitions or hooks, see [init-only.yml](./scenarios/init-only.yml), [full-flow.yml](./scenarios/full-flow.yml), and [processor.js](./processor.js).

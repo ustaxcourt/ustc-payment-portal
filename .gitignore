@@ -17,7 +17,7 @@ dist/
 .DS_Store
 
 # Artillery
-artillery/results/**/*.json
+src/test/performance/artillery/results/**/*.json
 
 # Terraform
 terraform/modules/**/.terraform/
