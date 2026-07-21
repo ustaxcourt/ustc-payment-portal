@@ -1,4 +1,5 @@
 import { FeeConfigurationError } from "@errors/feeConfiguration";
+import { FeeNotFoundError } from "@errors/feeNotFound";
 
 export interface StaticFees {
   [fee: string]: FeeDefinition;
@@ -64,9 +65,9 @@ export const getAllFees = (): FeeDefinition[] => {
 
 /**
  * Resolves a fee by its stable key to the version active at the given date.
- * Throws `FeeConfigurationError` when the key is unknown, the date is invalid,
- * or no version has activated by the given date. Defaults to "now" when no
- * date is supplied.
+ * Throws `FeeNotFoundError` when no fee version matches the lookup parameters,
+ * and `FeeConfigurationError` when a configured fee is malformed. Defaults to
+ * "now" when no date is supplied.
  *
  * Accepts either an ISO 8601 string or a `Date`. Objection/pg return
  * `timestamptz` columns as `Date` objects at runtime even though our model
@@ -75,26 +76,33 @@ export const getAllFees = (): FeeDefinition[] => {
  */
 export const getActiveFee = (
   fee: string,
-  date: string | Date = new Date(),
+  date?: string | Date,
 ): ActiveFee => {
-  const dateMs = typeof date === "string" ? Date.parse(date) : date.getTime();
+  const resolutionDate = date ?? new Date();
+  const dateMs =
+    typeof resolutionDate === "string"
+      ? Date.parse(resolutionDate)
+      : resolutionDate.getTime();
   if (Number.isNaN(dateMs)) {
-    throw new FeeConfigurationError(fee);
+    throw new FeeNotFoundError(fee, date);
   }
 
   const definition = staticFees[fee];
   if (!definition) {
-    throw new FeeConfigurationError(fee);
+    throw new FeeNotFoundError(fee, date);
   }
   if (!definition.tcsAppId) {
-    throw new FeeConfigurationError(fee);
+    throw new FeeConfigurationError(fee, "tcsAppId is required");
   }
 
   const activeVersion = [...definition.versions]
     .filter((v) => {
       const activationMs = Date.parse(v.activationDate);
       if (Number.isNaN(activationMs)) {
-        throw new FeeConfigurationError(fee);
+        throw new FeeConfigurationError(
+          fee,
+          `Invalid activationDate '${v.activationDate}'`,
+        );
       }
       return activationMs <= dateMs;
     })
@@ -103,14 +111,17 @@ export const getActiveFee = (
     )[0];
 
   if (!activeVersion) {
-    throw new FeeConfigurationError(fee);
+    throw new FeeNotFoundError(fee, date);
   }
 
   if (
     !activeVersion.isVariable &&
     (activeVersion.amount === null || activeVersion.amount === undefined)
   ) {
-    throw new FeeConfigurationError(fee);
+    throw new FeeConfigurationError(
+      fee,
+      "A fixed fee version must define an amount",
+    );
   }
 
   return {

@@ -1,17 +1,17 @@
-import { processPayment } from "./processPayment";
-import { testAppContext as appContext } from "../test/testAppContext";
 import type { ClientPermission } from "@appTypes/ClientPermission";
 import { ConflictError } from "@errors/conflict";
+import { FeeNotFoundError } from "@errors/feeNotFound";
 import { ForbiddenError } from "@errors/forbidden";
 import { GoneError } from "@errors/gone";
 import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
-import TransactionModel from "../db/TransactionModel";
 import { getActiveFee } from "../config/fees";
-import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
+import TransactionModel from "../db/TransactionModel";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
-import { FeeConfigurationError } from "@errors/feeConfiguration";
+import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
+import { testAppContext as appContext } from "../test/testAppContext";
+import { processPayment } from "./processPayment";
 
 const emitProcessPaymentConflictMetricMock =
   emitProcessPaymentConflictMetric as jest.MockedFunction<
@@ -447,7 +447,7 @@ describe("processPayment", () => {
 
   it("throws ServerError when fee is not found for the transaction", async () => {
     getActiveFeeMock.mockImplementationOnce(() => {
-      throw new FeeConfigurationError(mockTransaction.fee);
+      throw new FeeNotFoundError(mockTransaction.fee);
     });
 
     await expect(

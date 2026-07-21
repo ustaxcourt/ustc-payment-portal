@@ -36,10 +36,10 @@ jest.mock("../config/fees", () => ({
         isVariable: false,
       };
     }
-    const { FeeConfigurationError } = jest.requireActual(
-      "../errors/feeConfiguration",
+    const { FeeNotFoundError } = jest.requireActual(
+      "../errors/feeNotFound",
     );
-    throw new FeeConfigurationError(fee);
+    throw new FeeNotFoundError(fee);
   }),
 }));
 
@@ -51,16 +51,16 @@ jest.mock("../health/initPaymentConcurrencyMetric", () => ({
   emitInitPaymentConflictMetric: jest.fn(),
 }));
 
-import { initPayment } from "./initPayment";
-import { testAppContext as appContext } from "../test/testAppContext";
-import { InitPaymentRequest } from "@schemas/InitPayment.schema";
 import * as SoapRequestModule from "@entities/StartOnlineCollectionRequest";
+import type { InitPaymentRequest } from "@schemas/InitPayment.schema";
 import { ZodError } from "zod";
 import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
-import { ClientPermission } from "../types/ClientPermission";
-import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
+import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { testAppContext as appContext } from "../test/testAppContext";
+import type { ClientPermission } from "../types/ClientPermission";
+import { initPayment } from "./initPayment";
 
 const emitErrorMock = emitPayGovErrorMetric as jest.MockedFunction<
   typeof emitPayGovErrorMetric

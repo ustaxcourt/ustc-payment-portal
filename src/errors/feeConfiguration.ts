@@ -1,6 +1,9 @@
 export class FeeConfigurationError extends Error {
-  constructor(public readonly fee: string) {
-    super(`Fee configuration not found (fee='${fee}')`);
+  constructor(
+    public readonly fee: string,
+    public readonly reason: string,
+  ) {
+    super(`Invalid fee configuration (fee='${fee}'): ${reason}`);
     this.name = "FeeConfigurationError";
   }
 }

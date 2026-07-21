@@ -1,15 +1,15 @@
-import { getDetails } from "./getDetails";
-import { testAppContext as appContext } from "../test/testAppContext";
 import type { ClientPermission } from "@appTypes/ClientPermission";
+import { FeeNotFoundError } from "@errors/feeNotFound";
+import { ForbiddenError } from "@errors/forbidden";
 import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
-import TransactionModel from "../db/TransactionModel";
-import { getActiveFee } from "../config/fees";
 import { randomUUID } from "crypto";
+import { getActiveFee } from "../config/fees";
+import TransactionModel from "../db/TransactionModel";
+import { testAppContext as appContext } from "../test/testAppContext";
 import { mockTrackingId } from "../test/utils/mocks";
-import { ForbiddenError } from "@errors/forbidden";
-import { FeeConfigurationError } from "@errors/feeConfiguration";
+import { getDetails } from "./getDetails";
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
@@ -161,7 +161,7 @@ describe("getDetails", () => {
 
   it("throws ServerError when fee is not found for the transaction (data corruption)", async () => {
     getActiveFeeMock.mockImplementationOnce(() => {
-      throw new FeeConfigurationError("PETITION_FILING_FEE");
+      throw new FeeNotFoundError("PETITION_FILING_FEE");
     });
 
     await expect(
@@ -174,8 +174,8 @@ describe("getDetails", () => {
     expect(appContext.logger.error).toHaveBeenCalledWith(
       "Fee lookup failed",
       expect.objectContaining({
-        errorName: "FeeConfigurationError",
-        errorMessage: "Fee configuration not found (fee='PETITION_FILING_FEE')",
+        errorName: "FeeNotFoundError",
+        errorMessage: "No active fee found (fee='PETITION_FILING_FEE')",
         fee: "PETITION_FILING_FEE",
       }),
     );

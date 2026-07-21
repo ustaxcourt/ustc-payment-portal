@@ -1,5 +1,6 @@
-import { getAllFees, getActiveFee } from "./fees";
 import { FeeConfigurationError } from "@errors/feeConfiguration";
+import { FeeNotFoundError } from "@errors/feeNotFound";
+import { getActiveFee, getAllFees, staticFees } from "./fees";
 
 describe("fees config", () => {
   describe("getAllFees", () => {
@@ -15,9 +16,13 @@ describe("fees config", () => {
   });
 
   describe("getActiveFee", () => {
-    it("throws FeeConfigurationError if the fee key does not exist", () => {
+    afterEach(() => {
+      delete staticFees.TEST_FEE;
+    });
+
+    it("throws FeeNotFoundError if the fee key does not exist", () => {
       expect(() => getActiveFee("NOT_EXISTING")).toThrow(
-        new FeeConfigurationError("NOT_EXISTING"),
+        new FeeNotFoundError("NOT_EXISTING"),
       );
     });
 
@@ -38,15 +43,76 @@ describe("fees config", () => {
       expect(fee.amount).toBe(60);
     });
 
-    it("throws FeeConfigurationError when the requested date precedes every activation", () => {
+    it("throws FeeNotFoundError when the requested date precedes every activation", () => {
       expect(() =>
         getActiveFee("PETITION_FILING_FEE", "2020-01-01T00:00:00Z"),
-      ).toThrow(new FeeConfigurationError("PETITION_FILING_FEE"));
+      ).toThrow(
+        new FeeNotFoundError("PETITION_FILING_FEE", "2020-01-01T00:00:00Z"),
+      );
     });
 
-    it("throws FeeConfigurationError when the requested date is invalid", () => {
+    it("throws FeeNotFoundError when the requested date is invalid", () => {
       expect(() => getActiveFee("PETITION_FILING_FEE", "not-a-date")).toThrow(
-        new FeeConfigurationError("PETITION_FILING_FEE"),
+        new FeeNotFoundError("PETITION_FILING_FEE", "not-a-date"),
+      );
+    });
+
+    it("throws FeeConfigurationError when tcsAppId is missing", () => {
+      staticFees.TEST_FEE = {
+        name: "Test Fee",
+        tcsAppId: "",
+        versions: [
+          {
+            isVariable: false,
+            amount: 10,
+            activationDate: "2026-01-01T00:00:00Z",
+          },
+        ],
+      };
+
+      expect(() => getActiveFee("TEST_FEE")).toThrow(
+        new FeeConfigurationError("TEST_FEE", "tcsAppId is required"),
+      );
+    });
+
+    it("throws FeeConfigurationError when an activation date is invalid", () => {
+      staticFees.TEST_FEE = {
+        name: "Test Fee",
+        tcsAppId: "TEST_APP",
+        versions: [
+          {
+            isVariable: false,
+            amount: 10,
+            activationDate: "not-a-date",
+          },
+        ],
+      };
+
+      expect(() => getActiveFee("TEST_FEE")).toThrow(
+        new FeeConfigurationError(
+          "TEST_FEE",
+          "Invalid activationDate 'not-a-date'",
+        ),
+      );
+    });
+
+    it("throws FeeConfigurationError when a fixed fee has no amount", () => {
+      staticFees.TEST_FEE = {
+        name: "Test Fee",
+        tcsAppId: "TEST_APP",
+        versions: [
+          {
+            isVariable: false,
+            activationDate: "2026-01-01T00:00:00Z",
+          },
+        ],
+      };
+
+      expect(() => getActiveFee("TEST_FEE")).toThrow(
+        new FeeConfigurationError(
+          "TEST_FEE",
+          "A fixed fee version must define an amount",
+        ),
       );
     });
   });
