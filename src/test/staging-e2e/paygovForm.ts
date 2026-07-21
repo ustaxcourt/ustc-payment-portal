@@ -68,26 +68,30 @@ const waitForSuccessState = async (
   timeoutMs: number,
 ): Promise<void> => {
   const config = getStagingE2EConfig();
-  const redirectPromise = page.waitForURL(
-    (url) => url.hostname.toLowerCase() !== config.payGovHost,
-    { timeout: timeoutMs },
-  );
-  const confirmationPromise = page
-    .getByText(/thank you|payment complete|confirmation|receipt|success/i)
-    .first()
-    .waitFor({ state: "visible", timeout: timeoutMs });
+  const deadline = Date.now() + timeoutMs;
 
-  const outcomes = await Promise.allSettled([
-    redirectPromise,
-    confirmationPromise,
-  ]);
-  if (outcomes.every((outcome) => outcome.status === "rejected")) {
-    throw new StagingE2EError(
-      FAILURE_CODES.PAYGOV_SUBMIT_FAILED,
-      "Pay.gov submit did not reach a success redirect or confirmation state",
-      { step: "paygov" },
-    );
+  while (Date.now() < deadline) {
+    if (hasLeftPayGov(page, config.payGovHost)) {
+      return;
+    }
+
+    const confirmed = await page
+      .getByText(/thank you|payment complete|confirmation|receipt|success/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (confirmed) {
+      return;
+    }
+
+    await page.waitForTimeout(500);
   }
+
+  throw new StagingE2EError(
+    FAILURE_CODES.PAYGOV_SUBMIT_FAILED,
+    "Pay.gov submit did not reach a success redirect or confirmation state",
+    { step: "paygov" },
+  );
 };
 
 const parseExpiration = (raw: string): { month: string; year: string } => {

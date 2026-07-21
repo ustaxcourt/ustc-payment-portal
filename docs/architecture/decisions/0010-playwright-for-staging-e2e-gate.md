@@ -38,6 +38,5 @@ The team accepted **Playwright** on July 15, 2026 as the browser automation tool
 
 ## References
 
-- Implementation plan: [`../proposals/staging-e2e-gate-implementation-plan.md`](../proposals/staging-e2e-gate-implementation-plan.md)
 - Stage 3 (manual today): [`../../runbooks/deploy/deploy-pre-golive.md`](../../runbooks/deploy/deploy-pre-golive.md)
 - Playwright docs: https://playwright.dev/docs/intro
