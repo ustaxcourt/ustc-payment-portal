@@ -339,7 +339,8 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "sns:UntagResource",
           "sns:Subscribe",
           "sns:ConfirmSubscription",
-          "sns:ListSubscriptionsByTopic"
+          "sns:ListSubscriptionsByTopic",
+          "sns:Publish"
         ],
         Resource = "arn:aws:sns:${local.aws_region}:${data.aws_caller_identity.current.account_id}:${var.lambda_name_prefix}-*"
       },

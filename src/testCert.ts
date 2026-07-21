@@ -1,26 +1,29 @@
-import fetch from "node-fetch";
-
-import type { APIGatewayProxyResult } from "aws-lambda";
-import { createAppContext } from "./appContext";
 import { getSecretString } from "@clients/secretsClient";
+import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { createAppContext } from "./appContext";
 import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
+import { probePayGovWsdl } from "./health/probePayGovWsdl";
 
-type TestCertEvent = { healthProbe?: boolean };
+export { healthHandler } from "./healthCheckHandler";
 
-// Handler for the /test endpoint. Also serves as the scheduled Pay.gov health
-// probe: an EventBridge rule invokes it every ~15 min, and each scheduled run
-// publishes a PayGovHealthy CloudWatch metric (healthy = the WSDL probe returned
-// a 2xx). The HTTP response is unchanged for on-demand callers; EventBridge ignores it.
+type TestCertEvent = { healthProbe?: boolean } | APIGatewayProxyEvent;
+
 export const handler = async (
   event?: TestCertEvent,
 ): Promise<APIGatewayProxyResult> => {
+  const isScheduledProbe =
+    !!event && "healthProbe" in event && event.healthProbe === true;
+  return runWsdlProbe(isScheduledProbe);
+};
+
+async function runWsdlProbe(
+  isScheduledProbe: boolean,
+): Promise<APIGatewayProxyResult> {
   const appContext = createAppContext();
-  const isScheduledProbe = event?.healthProbe === true;
   try {
     const httpsAgent = await appContext.getHttpsAgent();
 
     const headers: { Authorization?: string; Authentication?: string } = {};
-
     const tokenId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
     if (tokenId) {
       try {
@@ -32,25 +35,16 @@ export const handler = async (
       }
     }
 
-    const startedAt = Date.now();
-    const result = await fetch(`${process.env.SOAP_URL}?wsdl`, {
-      agent: httpsAgent,
-      headers,
-    });
-
-    const resultText = await result.text();
-
-    // Healthy = Pay.gov's server responded to the WSDL probe with a 2xx.
+    const { ok, latencyMs, body } = await probePayGovWsdl(httpsAgent, headers);
     if (isScheduledProbe) {
-      emitPayGovHealthMetric(result.ok, Date.now() - startedAt);
+      emitPayGovHealthMetric(ok, latencyMs);
     }
 
     return {
       statusCode: 200,
-      body: resultText,
+      body,
     };
   } catch (err) {
-    /* istanbul ignore next: This is a health probe, so we don't expect to hit this branch in normal operation */
     appContext.logger.error("Pay.gov health probe failed", {
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
@@ -65,4 +59,4 @@ export const handler = async (
       body: "not ok",
     };
   }
-};
+}
