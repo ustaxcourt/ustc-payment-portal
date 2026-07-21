@@ -70,22 +70,11 @@ export const getDetails: GetDetails = async (
     fee = getActiveFee(feeKey, allRows[0].createdAt);
   } catch (err) {
     appContext.logger.error("Fee lookup failed", {
+      clientName: client.clientName,
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
       fee: feeKey,
-    });
-    throw new ServerError();
-  }
-  if (!fee.tcsAppId) {
-    // Both branches indicate server-side data corruption: an unknown fee key can
-    // only appear if the config was mutated after a transaction was written, and
-    // tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
-    appContext.logger.error("Fee misconfigured — aborting getDetails", {
       transactionReferenceId,
-      agencyTrackingId: allRows[0].agencyTrackingId,
-      clientName: client.clientName,
-      fee: feeKey,
-      reason: "tcsAppId missing",
     });
     throw new ServerError();
   }

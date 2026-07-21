@@ -181,36 +181,6 @@ describe("getDetails", () => {
     );
   });
 
-  it("throws ServerError when fee has no tcsAppId", async () => {
-    getActiveFeeMock.mockReturnValueOnce({
-      fee: "PETITION_FILING_FEE",
-      tcsAppId: "",
-    });
-    TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
-      buildRow({
-        transactionStatus: "pending",
-        paymentStatus: "pending",
-        paygovTrackingId: mockPayGovTrackingId,
-      }),
-    ]);
-
-    await expect(
-      getDetails(appContext, {
-        client: mockClient,
-        request: { transactionReferenceId: mockTransactionReferenceId },
-      }),
-    ).rejects.toThrow(ServerError);
-
-    expect(appContext.logger.error).toHaveBeenCalledWith(
-      "Fee misconfigured — aborting getDetails",
-      expect.objectContaining({
-        transactionReferenceId: mockTransactionReferenceId,
-        clientName: mockClient.clientName,
-        reason: "tcsAppId missing",
-      }),
-    );
-  });
-
   it("passes the fee's tcsAppId to the SOAP request when refreshing a pending attempt", async () => {
     appContext.postHttpRequest = jest
       .fn()
