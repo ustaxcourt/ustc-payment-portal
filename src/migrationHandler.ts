@@ -16,6 +16,7 @@ type Command =
   | "show-users"
   | "show-databases"
   | "migrate"
+  | "rollback"
   | "seed"
   | "verify"
   | "gc-dbs"
@@ -24,6 +25,9 @@ type Command =
 type MigrationHandlerEvent = {
   command?: Command;
   openPrNumbers?: number[];
+  // Required for the destructive `rollback` command; must be true or the
+  // handler refuses to roll back. Guards against accidental invocation.
+  confirm?: boolean;
 };
 
 type MigrationHandlerResult = {
@@ -563,6 +567,19 @@ export const migrationHandler = async (
         statusCode: 200,
         body: JSON.stringify({ message: "Seeds completed" }),
       };
+    }
+
+    if (command === "rollback") {
+      if (event?.confirm !== true) {
+        throw new Error(
+          `rollback requires confirm:true — refusing to roll back the last batch ` +
+            `on "${connection.database}" without explicit confirmation`,
+        );
+      }
+      // Roll back only the last batch (= the most recent deploy that applied
+      // migrations). `false` disables all-history rollback intentionally.
+      const [batchNo, migrations] = await knex.migrate.rollback(undefined, false);
+      return { statusCode: 200, body: JSON.stringify({ batchNo, migrations }) };
     }
 
     const [batchNo, migrations] = await knex.migrate.latest();
