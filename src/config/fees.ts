@@ -74,10 +74,7 @@ export const getAllFees = (): FeeDefinition[] => {
  * types annotate them as `string`, so we coerce here rather than force every
  * caller to normalise.
  */
-export const getActiveFee = (
-  fee: string,
-  date?: string | Date,
-): ActiveFee => {
+export const getActiveFee = (fee: string, date?: string | Date): ActiveFee => {
   const resolutionDate = date ?? new Date();
   const dateMs =
     typeof resolutionDate === "string"
@@ -96,7 +93,7 @@ export const getActiveFee = (
   }
 
   const activeVersion = [...definition.versions]
-    .filter((v) => {
+    .map((v) => {
       const activationMs = Date.parse(v.activationDate);
       if (Number.isNaN(activationMs)) {
         throw new FeeConfigurationError(
@@ -104,11 +101,15 @@ export const getActiveFee = (
           `Invalid activationDate '${v.activationDate}'`,
         );
       }
-      return activationMs <= dateMs;
+      return {
+        ...v,
+        activationMs,
+      };
     })
-    .sort(
-      (a, b) => Date.parse(b.activationDate) - Date.parse(a.activationDate),
-    )[0];
+    .filter((v) => {
+      return v.activationMs <= dateMs;
+    })
+    .sort((a, b) => b.activationMs - a.activationMs)[0];
 
   if (!activeVersion) {
     throw new FeeNotFoundError(fee, date);
