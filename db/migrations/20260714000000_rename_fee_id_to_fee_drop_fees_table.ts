@@ -13,6 +13,33 @@ export async function up(knex: Knex): Promise<void> {
     DROP CONSTRAINT IF EXISTS transactions_fee_id_foreign
   `);
 
+  // Restore transaction_amount (dropped in 20260515000001_add_fee_versioning)
+  // and backfill it (and the stable fee key) while the fees table still exists.
+  await knex.schema.alterTable("transactions", (t) => {
+    t.decimal("transaction_amount", 12, 2)
+      .nullable()
+      .comment("Actual amount charged for this transaction (USD)");
+  });
+
+  await knex.raw(`
+    UPDATE transactions t
+    SET
+      transaction_amount = f.amount,
+      fee_id = f.fee_key
+    FROM fees f
+    WHERE t.fee_id = f.fee_id
+  `);
+
+  await knex.schema.alterTable("transactions", (t) => {
+    t.decimal("transaction_amount", 12, 2).notNullable().alter();
+  });
+
+  await knex.raw(`
+    ALTER TABLE transactions
+    ADD CONSTRAINT transactions_transaction_amount_nonneg
+    CHECK (transaction_amount >= 0)
+  `);
+
   await knex.schema.alterTable("transactions", (t) => {
     t.renameColumn("fee_id", "fee");
   });
