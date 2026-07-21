@@ -86,8 +86,11 @@ export const getActiveFee = (
   if (!definition) {
     throw new FeeConfigurationError(fee);
   }
+  if (!definition.tcsAppId) {
+    throw new FeeConfigurationError(fee);
+  }
 
-  const activeVersion = definition.versions
+  const activeVersion = [...definition.versions]
     .filter((v) => {
       const activationMs = Date.parse(v.activationDate);
       return !Number.isNaN(activationMs) && activationMs <= dateMs;
@@ -97,6 +100,13 @@ export const getActiveFee = (
     )[0];
 
   if (!activeVersion) {
+    throw new FeeConfigurationError(fee);
+  }
+
+  if (
+    !activeVersion.isVariable &&
+    (activeVersion.amount === null || activeVersion.amount === undefined)
+  ) {
     throw new FeeConfigurationError(fee);
   }
 
