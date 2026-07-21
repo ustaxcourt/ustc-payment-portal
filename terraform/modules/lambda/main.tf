@@ -19,6 +19,10 @@ locals {
     testCert = {
       handler = "lambdaHandler.handler"
     }
+    healthCheck = {
+      handler = "lambdaHandler.healthHandler"
+      timeout = 15
+    }
     getAllTransactions = {
       handler = "getAllTransactionsHandler.getAllTransactionsHandler"
     }
