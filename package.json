@@ -51,12 +51,10 @@
     "seed:run": "npm run knex -- seed:run",
     "docker": "docker compose up",
     "docker:migration": "MIGRATION_MODE=1 docker compose up",
-    "test:performance:1000:full": "scripts/run-performance-test.sh 1000 full",
-    "test:performance:10000:full": "scripts/run-performance-test.sh 10000 full",
-    "test:performance:10000ramp:full": "scripts/run-performance-test.sh 10000ramp full",
-    "test:performance:1000:init": "scripts/run-performance-test.sh 1000 init",
-    "test:performance:10000:init": "scripts/run-performance-test.sh 10000 init",
-    "test:performance:10000ramp:init": "scripts/run-performance-test.sh 10000ramp init"
+    "test:performance:stress:full": "scripts/run-performance-test.sh stress full",
+    "test:performance:stress:init": "scripts/run-performance-test.sh stress init",
+    "test:performance:load:full": "scripts/run-performance-test.sh load full",
+    "test:performance:load:init": "scripts/run-performance-test.sh load init"
   },
   "keywords": [],
   "author": "",

@@ -2,15 +2,14 @@
 
 This directory contains the Artillery scenarios, traffic profiles, processor hooks, and saved result artifacts used for load testing the payment portal.
 
-The six `npm run test:performance:*` scripts in [package.json](../../../../package.json) execute [scripts/run-performance-test.sh](../../../../scripts/run-performance-test.sh), which builds the paths and wraps `artillery run-lambda`. These runbooks are therefore for Lambda-backed Artillery runs against deployed or otherwise network-reachable targets, not for hitting a developer's local `localhost` stack.
+The four `npm run test:performance:*` scripts in [package.json](../../../../package.json) execute [scripts/run-performance-test.sh](../../../../scripts/run-performance-test.sh), which builds the paths and wraps `artillery run-lambda`. These runbooks are therefore for Lambda-backed Artillery runs against deployed or otherwise network-reachable targets, not for hitting a developer's local `localhost` stack.
 
 ## Files
 
 - `scenarios/init-only.yml` exercises `POST /init` only.
 - `scenarios/full-flow.yml` exercises `/init`, the simulated Pay.gov payment step, `/process`, and `/details/{transactionReferenceId}`.
-- `environments/1000-rpm.yml` launches `17` new virtual users per second for `300` seconds.
-- `environments/10000-rpm.yml` launches `167` new virtual users per second for `300` seconds.
-- `environments/10000-rpm-ramp.yml` ramps from `33` to `167` new virtual users per second over five one-minute phases.
+- `environments/load-test.yml` launches `10` new virtual users per second for `120` seconds.
+- `environments/stress-test.yml` increases traffic from `16` to `167` new virtual users per second over five one-minute phases.
 - `processor.js` builds request payloads, conditionally applies SigV4, selects payment outcomes, and logs failed responses with auth values redacted.
 - `results/*.json` stores Artillery JSON output.
 - `.env.example` shows the environment variables expected by the Lambda wrapper and processor.
@@ -19,37 +18,26 @@ The six `npm run test:performance:*` scripts in [package.json](../../../../packa
 
 These repository scripts create a timestamped directory under `src/test/performance/artillery/results/` if needed and then run one Lambda-backed Artillery test:
 
-- `npm run test:performance:1000:init`
+- `npm run test:performance:load:init`
   - Scenario: `scenarios/init-only.yml`
-  - Config: `environments/1000-rpm.yml`
-  - Output: `results/<timestamp>/1000-rpm-init-results.json`
-- `npm run test:performance:1000:full`
+  - Config: `environments/load-test.yml`
+  - Output: `results/<timestamp>/load-test-init-results.json`
+- `npm run test:performance:load:full`
   - Scenario: `scenarios/full-flow.yml`
-  - Config: `environments/1000-rpm.yml`
-  - Output: `results/<timestamp>/1000-rpm-full-results.json`
-- `npm run test:performance:10000:init`
+  - Config: `environments/load-test.yml`
+  - Output: `results/<timestamp>/load-test-full-results.json`
+- `npm run test:performance:stress:init`
   - Scenario: `scenarios/init-only.yml`
-  - Config: `environments/10000-rpm.yml`
-  - Output: `results/<timestamp>/10000-rpm-init-results.json`
-- `npm run test:performance:10000:full`
+  - Config: `environments/stress-test.yml`
+  - Output: `results/<timestamp>/stress-test-init-results.json`
+- `npm run test:performance:stress:full`
   - Scenario: `scenarios/full-flow.yml`
-  - Config: `environments/10000-rpm.yml`
-  - Output: `results/<timestamp>/10000-rpm-full-results.json`
-- `npm run test:performance:10000ramp:init`
-  - Scenario: `scenarios/init-only.yml`
-  - Config: `environments/10000-rpm-ramp.yml`
-  - Output: `results/<timestamp>/10000ramp-rpm-init-results.json`
-- `npm run test:performance:10000ramp:full`
-  - Scenario: `scenarios/full-flow.yml`
-  - Config: `environments/10000-rpm-ramp.yml`
-  - Output: `results/<timestamp>/10000ramp-rpm-full-results.json`
+  - Config: `environments/stress-test.yml`
+  - Output: `results/<timestamp>/stress-test-full-results.json`
 
-## Naming Caveat
+## Arrival Rates
 
-The `1000-rpm` and `10000-rpm` names are approximate scenario-start rates, not literal HTTP requests per minute.
-
-- `17` arrivals per second is about `1,020` scenario starts per minute.
-- `167` arrivals per second is about `10,020` scenario starts per minute.
+- The configured arrival rates represent scenario starts, not literal HTTP requests per second.
 - A successful `full-flow` user can emit up to four HTTP requests and includes three one-second think times, so request-per-minute numbers will differ from scenario-start rate.
 
 ## How The Wrapper Works
@@ -129,20 +117,18 @@ Use this scenario to measure end-to-end flow completion, downstream dependency b
 
 Run these commands from the repository root.
 
-### Baseline profile
+### Load profile
 
 ```bash
-npm run test:performance:1000:init
-npm run test:performance:1000:full
+npm run test:performance:load:init
+npm run test:performance:load:full
 ```
 
 ### Stress profile
 
 ```bash
-npm run test:performance:10000:init
-npm run test:performance:10000:full
-npm run test:performance:10000ramp:init
-npm run test:performance:10000ramp:full
+npm run test:performance:stress:init
+npm run test:performance:stress:full
 ```
 
 ## Results And Interpretation
@@ -150,9 +136,8 @@ npm run test:performance:10000ramp:full
 - Result files are written to timestamped directories under `src/test/performance/artillery/results/` using names derived by the Bash wrapper.
 - Read request-level metrics such as `http.codes.200`, `http.codes.429`, and `http.codes.500` separately from flow-level metrics such as `vusers.completed` and `vusers.failed`.
 - A run can show many successful individual requests while still having poor end-to-end flow completion.
-- `environments/1000-rpm.yml` sets `ensure.maxErrorRate` to `10`.
-- `environments/10000-rpm.yml` sets `ensure.maxErrorRate` to `100`.
-- `environments/10000-rpm-ramp.yml` sets `ensure.maxErrorRate` to `100` and ramps traffic to the same peak arrival rate as the steady `10000-rpm` profile.
+- Both profiles set `ensure.maxErrorRate` to `10`.
+- `load-test.yml` holds a steady arrival rate, while `stress-test.yml` increases the arrival rate in one-minute steps.
 
 ## Debugging Notes
 
