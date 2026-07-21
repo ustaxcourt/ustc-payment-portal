@@ -30,6 +30,14 @@ describe("fees config", () => {
       expect(fee?.isVariable).toBe(false);
     });
 
+    it("accepts a Date object for the resolution date", () => {
+      const fee = getActiveFee(
+        "PETITION_FILING_FEE",
+        new Date("2026-04-01T00:00:00Z"),
+      );
+      expect(fee.amount).toBe(60);
+    });
+
     it("throws FeeConfigurationError when the requested date precedes every activation", () => {
       expect(() =>
         getActiveFee("PETITION_FILING_FEE", "2020-01-01T00:00:00Z"),
