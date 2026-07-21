@@ -29,13 +29,13 @@ This file is loaded automatically by the Playwright configuration and should rem
 
 Example:
 
-# Staging API Gateway URL
+### Staging API Gateway URL
 
 ```
 BASE_URL=https://<staging-api-url>
 ```
 
-# Pay.gov QA test card
+### Pay.gov QA test card
 
 ```
 PAYGOV_QA_CC_SUCCESS_PAN=<provided-by-fiscal>
@@ -44,7 +44,7 @@ PAYGOV_QA_CC_SUCCESS_CVV=<provided-by-fiscal>
 PAYGOV_QA_CC_SUCCESS_NAME=Staging E2E
 ```
 
-# Optional redirect overrides
+### Optional redirect overrides
 
 ```
 PAYGOV_URL_SUCCESS=https://example.com
