@@ -1,0 +1,105 @@
+name: DB Migration Rollback (manual)
+
+# Manually reverts the LAST migration batch (= the most recent deploy that applied
+# migrations) in a selected environment, by invoking the migrationRunner Lambda with
+# {"command":"rollback","confirm":true}.
+#
+# This is a break-glass tool. Prefer fix-forward (a new corrective migration) for most
+# cases. See docs/db-migration-rollback.md.
+#
+# Guardrails:
+#   - workflow_dispatch only (never automatic)
+#   - the `confirm` input must equal the selected environment name
+#   - the Lambda itself refuses without confirm:true
+#   - prod runs through the `prod` GitHub Environment, which must be configured with
+#     required reviewers so a second person approves before it proceeds.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment whose last migration batch will be rolled back
+        type: choice
+        required: true
+        options:
+          - dev
+          - stg
+          - prod
+      confirm:
+        description: Type the environment name to confirm (e.g. "prod")
+        type: string
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  rollback:
+    name: Roll back last migration batch (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Routes prod through the protected `prod` GitHub Environment (required reviewer).
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Validate confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          if [ "$CONFIRM" != "$ENVIRONMENT" ]; then
+            echo "::error::Confirmation input did not match the selected environment. Aborting." >&2
+            exit 1
+          fi
+          echo "Confirmed rollback for environment: $ENVIRONMENT"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          # Select the environment-appropriate deployer role.
+          role-to-assume: ${{ inputs.environment == 'prod' && secrets.PROD_AWS_DEPLOYER_ROLE_ARN || inputs.environment == 'stg' && secrets.STAGING_AWS_DEPLOYER_ROLE_ARN || secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Init
+        working-directory: terraform/environments/${{ inputs.environment }}
+        run: terraform init -input=false -backend-config=backend.hcl -reconfigure
+
+      - name: Resolve migration runner function name
+        id: fn
+        working-directory: terraform/environments/${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          FN=$(terraform output -raw migration_runner_function_name)
+          echo "name=$FN" >> "$GITHUB_OUTPUT"
+          echo "Migration runner: $FN"
+
+      - name: Invoke rollback (last batch)
+        env:
+          FN: ${{ steps.fn.outputs.name }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          echo "Rolling back the last migration batch in $ENVIRONMENT via: $FN"
+          aws lambda invoke \
+            --function-name "$FN" \
+            --payload '{"command":"rollback","confirm":true}' \
+            --cli-binary-format raw-in-base64-out \
+            --log-type Tail \
+            --cli-read-timeout 130 \
+            response.json | tee invoke-meta.json
+          cat response.json
+          if jq -e '.FunctionError' invoke-meta.json > /dev/null 2>&1; then
+            echo "::error::rollback Lambda reported a function error" >&2
+            exit 1
+          fi
+          echo "Rollback complete for $ENVIRONMENT."
