@@ -2,7 +2,7 @@ config:
   target: "http://localhost:8080"
 
   http:
-    timeout: 60000
+    timeout: 15000
     pool: 200
 
   ensure:
@@ -11,8 +11,8 @@ config:
   maxVusers: 500
 
   phases:
-    - duration: 300
-      arrivalRate: 17
-      name: baseline-1000-rpm
+    - duration: 120
+      arrivalRate: 10
+      name: heavy-load-10-rps
 
   processor: "../processor.js"

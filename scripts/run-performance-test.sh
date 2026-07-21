@@ -3,7 +3,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 {1000|10000|10000ramp} {full|init}" >&2
+  echo "Usage: $0 {stress|load} {full|init}" >&2
 }
 
 if [[ $# -ne 2 ]]; then
@@ -15,13 +15,9 @@ profile="$1"
 flow="$2"
 
 case "$profile" in
-  1000|10000)
-    config_name="${profile}-rpm"
-    result_name="${profile}-rpm"
-    ;;
-  10000ramp)
-    config_name="10000-rpm-ramp"
-    result_name="10000ramp-rpm"
+  stress|load)
+    config_name="${profile}-test"
+    result_name="${profile}-test"
     ;;
   *)
     usage
@@ -46,8 +42,14 @@ repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 artillery_dir="src/test/performance/artillery"
 result_dir="$artillery_dir/results/$(date +%Y%m%d%H%M%S)"
 dotenv_path="$repo_root/$artillery_dir/.env"
+artillery_bin="$repo_root/node_modules/.bin/artillery"
 
 cd "$repo_root"
+
+if [[ ! -x "$artillery_bin" ]]; then
+  echo "Artillery is not installed. Run npm install and try again." >&2
+  exit 1
+fi
 
 if [[ -f "$dotenv_path" ]]; then
   set -a
@@ -74,7 +76,7 @@ export AWS_DEFAULT_REGION="$aws_region"
 
 mkdir -p "$result_dir"
 
-exec artillery run-lambda \
+exec "$artillery_bin" run-lambda \
   "$artillery_dir/scenarios/${scenario_name}.yml" \
   --config="$artillery_dir/environments/${config_name}.yml" \
   --output "$result_dir/${result_name}-${flow}-results.json" \

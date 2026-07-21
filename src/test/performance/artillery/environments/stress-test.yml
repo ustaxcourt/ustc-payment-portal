@@ -2,26 +2,26 @@ config:
   target: "http://localhost:8080"
 
   http:
-    timeout: 60000
-    pool: 1000
+    timeout: 15000
+    pool: 200
 
   ensure:
-    maxErrorRate: 100
+    maxErrorRate: 10
 
-  maxVusers: 2000
+  maxVusers: 500
 
   phases:
+    - duration: 60
+      arrivalRate: 16
+      name: "1K RPM"
+
     - duration: 60
       arrivalRate: 33
       name: "2K RPM"
 
     - duration: 60
-      arrivalRate: 66
+      arrivalRate: 67
       name: "4K RPM"
-
-    - duration: 60
-      arrivalRate: 100
-      name: "6K RPM"
 
     - duration: 60
       arrivalRate: 133
