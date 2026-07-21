@@ -297,6 +297,9 @@ jobs:
 
   staging-e2e:
     runs-on: ubuntu-latest
+    # Job typically finishes in ~1 min; 15 covers a slow-QA run hitting the
+    # Playwright 5-min test timeout with the CI retry, plus setup overhead.
+    timeout-minutes: 15
     environment:
       name: staging
     needs: deploy
