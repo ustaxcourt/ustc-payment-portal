@@ -125,6 +125,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: promote
+
+    outputs:
+      api_url: ${{ steps.tf_outputs.outputs.api_url }}
+
     environment:
       name: staging
 
@@ -250,20 +254,22 @@ jobs:
             exit 1
           fi
 
-      - name: Smoke test /init and redirect reachability
+      - name: Smoke test signed /init authorization
         shell: bash
         env:
           API_URL: ${{ steps.tf_outputs.outputs.api_url }}
         run: |
           set -euo pipefail
           trap 'echo "Smoke test FAILED"; [ -f init.json ] && { echo "--- init.json ---"; cat init.json; echo "-----------------"; } || true' ERR
-          echo "Running smoke test against: $API_URL"
+          echo "Running signed /init smoke test against: $API_URL"
 
           TRANSACTION_REFERENCE_ID=$(uuidgen | tr 'A-Z' 'a-z')
-          DOCKET_NUMBER="999-99"
+          # Non-attorney fee is the only one registered against Pay.gov QA; unique
+          # email per run since Pay.gov allows one obligation per address.
+          SMOKE_EMAIL="staging-smoke+${TRANSACTION_REFERENCE_ID}@example.com"
 
-          echo "Using transactionReferenceId=$TRANSACTION_REFERENCE_ID docketNumber=$DOCKET_NUMBER"
-          printf '{"transactionReferenceId":"%s","fee":"PETITION_FILING_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com","metadata":{"docketNumber":"%s"}}' "$TRANSACTION_REFERENCE_ID" "$DOCKET_NUMBER" > body.json
+          echo "Using transactionReferenceId=$TRANSACTION_REFERENCE_ID"
+          printf '{"transactionReferenceId":"%s","fee":"NONATTORNEY_EXAM_REGISTRATION_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com","metadata":{"email":"%s","fullName":"Staging Smoke","accessCode":"STAGINGSMOKE"}}' "$TRANSACTION_REFERENCE_ID" "$SMOKE_EMAIL" > body.json
 
           # POST to /init — signed with AWS SigV4 (IAM auth replaced the old Bearer token)
           INIT_STATUS=$(curl -s -o init.json -w '%{http_code}' -X POST "$API_URL/init" \
@@ -273,21 +279,69 @@ jobs:
             -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
             --data-binary @body.json)
           echo "INIT_STATUS=$INIT_STATUS" && cat init.json
-          test "$INIT_STATUS" = "200"
 
-          # Verify token present
-          TOKEN=$(jq -r '.token // empty' init.json)
-          REDIRECT=$(jq -r '.paymentRedirect // empty' init.json)
-          [ -n "$TOKEN" ] || { echo "Missing token in /init response" >&2; exit 1; }
-          [ -n "$REDIRECT" ] || { echo "Missing paymentRedirect in /init response" >&2; exit 1; }
-          echo "Token present. Redirect=$REDIRECT"
-
-          # Ensure redirect URL is reachable (expect 302 redirect from Pay.gov)
-          REDIRECT_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$REDIRECT")
-          echo "REDIRECT_STATUS=$REDIRECT_STATUS"
-          if [ "$REDIRECT_STATUS" = "302" ]; then
-            echo "Redirect reachable ($REDIRECT_STATUS)."
-          else
-            echo "ERROR: Redirect returned $REDIRECT_STATUS (expected 302)" >&2
+          if [ "$INIT_STATUS" = "403" ]; then
+            echo "ERROR: Signed /init request was rejected by API Gateway or client authorization." >&2
             exit 1
           fi
+
+          if [ "$INIT_STATUS" = "200" ]; then
+            TOKEN=$(jq -r '.token // empty' init.json)
+            REDIRECT=$(jq -r '.paymentRedirect // empty' init.json)
+            [ -n "$TOKEN" ] || { echo "Missing token in /init response" >&2; exit 1; }
+            [ -n "$REDIRECT" ] || { echo "Missing paymentRedirect in /init response" >&2; exit 1; }
+            echo "Signed /init succeeded and returned a Pay.gov redirect."
+          else
+            echo "Signed /init reached Lambda but returned HTTP $INIT_STATUS; continuing so the Playwright E2E gate can capture the full Pay.gov flow failure if it persists."
+          fi
+
+  staging-e2e:
+    runs-on: ubuntu-latest
+    # Job typically finishes in ~1 min; 15 covers a slow-QA run hitting the
+    # Playwright 5-min test timeout with the CI retry, plus setup overhead.
+    timeout-minutes: 15
+    environment:
+      name: staging
+    needs: deploy
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS Credentials (OIDC - Stg)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.STAGING_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser (chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run staging Pay.gov E2E gate
+        env:
+          BASE_URL: ${{ needs.deploy.outputs.api_url }}
+          PAYGOV_QA_CC_SUCCESS_PAN: ${{ secrets.PAYGOV_QA_CC_SUCCESS_PAN }}
+          PAYGOV_QA_CC_SUCCESS_EXP: ${{ secrets.PAYGOV_QA_CC_SUCCESS_EXP }}
+          PAYGOV_QA_CC_SUCCESS_CVV: ${{ secrets.PAYGOV_QA_CC_SUCCESS_CVV }}
+          PAYGOV_QA_CC_SUCCESS_NAME: ${{ secrets.PAYGOV_QA_CC_SUCCESS_NAME }}
+        run: npm run test:staging-e2e
+
+      - name: Upload staging E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: staging-e2e-artifacts
+          # Playwright writes under its config dir; failure-summary.json at repo root.
+          path: |
+            src/test/staging-e2e/test-results/**
+            src/test/staging-e2e/playwright-report/**
+            failure-summary.json
+          if-no-files-found: ignore
+          retention-days: 14
