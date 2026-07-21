@@ -1,22 +1,22 @@
 import type { ClientPermission } from "@appTypes/ClientPermission";
 import { GetRequestRequest } from "@entities/GetDetailsRequest";
 import type { AppContext } from "@appTypes/AppContext";
-import { GetDetailsResponse } from "@schemas/GetDetails.schema";
-import { TransactionRecordSummary } from "@schemas/TransactionRecord.schema";
-import { TransactionStatus } from "@schemas/TransactionStatus.schema";
+import type { GetDetailsResponse } from "@schemas/GetDetails.schema";
+import type { TransactionRecordSummary } from "@schemas/TransactionRecord.schema";
+import type { TransactionStatus } from "@schemas/TransactionStatus.schema";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import {
   derivePaymentStatus,
   derivePaymentStatusFromSingleTransaction,
 } from "@utils/derivePaymentStatus";
 import { toPaymentMethod } from "@utils/toPaymentMethod";
+import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
 import TransactionModel from "../db/TransactionModel";
-import FeesModel from "../db/FeesModel";
+import { getActiveFee, type ActiveFee } from "../config/fees";
+import { authorizeClient } from "../authorizeClient";
 import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
-import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
 import { ServerError } from "@errors/serverError";
-import { authorizeClient } from "../authorizeClient";
 
 const PAYGOV_RETRY_MESSAGE =
   "There was an error communicating with Pay.gov. Please retry your transaction.";
@@ -60,24 +60,26 @@ export const getDetails: GetDetails = async (
     throw new NotFoundError("Transaction Reference Id was not found");
   }
 
-  const feeId = allRows[0].feeId;
+  const feeKey = allRows[0].fee;
 
-  // Fee-invariance: all rows for a transactionReferenceId share the same feeId.
-  const fee = await FeesModel.getFeeById(feeId);
-  if (!fee || !fee.tcsAppId) {
-    // Both branches indicate server-side data corruption: the FK prevents the first,
-    // and tcsAppId is required for any Pay.gov interaction. Neither is a client fault.
-    appContext.logger.error("Fee misconfigured — aborting getDetails", {
-      transactionReferenceId,
-      agencyTrackingId: allRows[0].agencyTrackingId,
+  // Fee-invariance: all rows for a transactionReferenceId share the same fee key.
+  // We resolve to the version that was active when the first attempt was created so
+  // dashboards and Pay.gov calls stay consistent with the original obligation.
+  let fee: ActiveFee;
+  try {
+    fee = getActiveFee(feeKey, allRows[0].createdAt);
+  } catch (err) {
+    appContext.logger.error("Fee lookup failed", {
       clientName: client.clientName,
-      feeId: allRows[0].feeId,
-      reason: !fee ? "fee row missing" : "tcsAppId missing",
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+      fee: feeKey,
+      transactionReferenceId,
     });
     throw new ServerError();
   }
 
-  authorizeClient(client, fee.feeKey);
+  authorizeClient(client, feeKey);
 
   const paymentStatus = derivePaymentStatus(allRows);
 
@@ -93,7 +95,7 @@ export const getDetails: GetDetails = async (
     allRows,
     fee.tcsAppId,
     client.clientName,
-    fee.feeKey,
+    feeKey,
   );
 };
 
@@ -137,7 +139,7 @@ const updatePendingAttemptFromPayGov = async (
           transactionReferenceId: row.transactionReferenceId,
           agencyTrackingId: row.agencyTrackingId,
           clientName,
-          feeKey,
+          fee: feeKey,
           metadata: row.metadata ?? undefined,
           paygovTrackingId: row.paygovTrackingId,
           errorName: err instanceof Error ? err.name : undefined,
@@ -150,7 +152,7 @@ const updatePendingAttemptFromPayGov = async (
         transactionReferenceId: row.transactionReferenceId,
         agencyTrackingId: row.agencyTrackingId,
         clientName,
-        feeKey,
+        fee: feeKey,
         metadata: row.metadata ?? undefined,
         paygovTrackingId: result.paygov_tracking_id,
         transactionStatus: result.transaction_status,
@@ -178,7 +180,7 @@ const updatePendingAttemptFromPayGov = async (
             transactionReferenceId: row.transactionReferenceId,
             agencyTrackingId: row.agencyTrackingId,
             clientName,
-            feeKey,
+            fee: feeKey,
             metadata: row.metadata ?? undefined,
             refreshedTransactionStatus: refreshedStatus,
             paygovTrackingId: result.paygov_tracking_id,
@@ -195,7 +197,7 @@ const updatePendingAttemptFromPayGov = async (
             transactionReferenceId: row.transactionReferenceId,
             agencyTrackingId: row.agencyTrackingId,
             clientName,
-            feeKey,
+            fee: feeKey,
             metadata: row.metadata ?? undefined,
             paygovTrackingId: row.paygovTrackingId,
             errorName: err instanceof Error ? err.name : undefined,

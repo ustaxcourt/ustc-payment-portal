@@ -810,9 +810,9 @@
             "description": "Human-readable fee name",
             "example": "Filing Fee"
           },
-          "feeId": {
+          "fee": {
             "type": "string",
-            "description": "Fee identifier",
+            "description": "Stable fee key (e.g. PETITION_FILING_FEE)",
             "example": "PETITION_FILING_FEE"
           },
           "transactionAmount": {
@@ -905,7 +905,7 @@
         "required": [
           "agencyTrackingId",
           "feeName",
-          "feeId",
+          "fee",
           "transactionAmount",
           "clientName",
           "transactionReferenceId",
