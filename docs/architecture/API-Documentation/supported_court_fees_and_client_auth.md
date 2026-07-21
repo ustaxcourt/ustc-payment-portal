@@ -149,7 +149,7 @@ The Payment Portal validates that the client-provided `fee` corresponds to a kno
 
 ## 3. Fee Catalog & Version Resolution
 
-Fees are hardcoded in [`src/config/fees.ts`](../../../src/config/fees.ts) as the single source of truth. There is **no** `fees` DB table; the catalog changes by opening a PR against this file and shipping a release. The `transactions` table stores only the stable `fee` key (plus `createdAt`) — amount, name, `tcsAppId`, and version metadata are re-derived from the catalog on every read.
+Fees are hardcoded in [`src/config/fees.ts`](../../../src/config/fees.ts) as the single source of truth. There is **no** `fees` DB table; the catalog changes by opening a PR against this file and shipping a release. The `transactions` table stores only the stable `fee` key and amount (plus `createdAt`) — name, `tcsAppId`, and version metadata are re-derived from the catalog on every read.
 
 ### Catalog shape
 
@@ -201,12 +201,12 @@ export const staticFees: StaticFees = {
 
 ### Resolution API
 
-~~~ts
+```ts
 export const getActiveFee = (
   fee: string,
   date: string | Date = new Date(),
 ): ActiveFee
-~~~
+```
 
 - `fee` — the stable key (e.g. `"PETITION_FILING_FEE"`)
 - `date` — the point in time to resolve against. Callers pass the transaction's `createdAt` so historical rows always reflect the version that was in effect **when the transaction was created**, even after a future version has activated.
