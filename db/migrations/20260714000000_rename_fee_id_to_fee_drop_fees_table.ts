@@ -54,7 +54,7 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   // Returning to database-backed fee configuration is unsupported. Recovery
   // requires restoring a pre-migration database snapshot or migrating forward.
-    await knex.schema.createTable("fees", (t) => {
+  await knex.schema.createTable("fees", (t) => {
     t.string("fee_id", 100).primary().comment("Fee Identifier");
     t.string("fee_key", 100)
       .notNullable()
@@ -86,6 +86,15 @@ export async function down(knex: Knex): Promise<void> {
 
   await knex.schema.alterTable("transactions", (t) => {
     t.renameColumn("fee", "fee_id");
+  });
+
+  await knex.schema.raw(`
+     ALTER TABLE transactions
+     DROP CONSTRAINT IF EXISTS transactions_transaction_amount_nonneg
+  `);
+
+  await knex.schema.alterTable("transactions", (t) => {
+    t.dropColumn("transaction_amount");
   });
 
   await knex.raw(`
