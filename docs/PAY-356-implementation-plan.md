@@ -148,7 +148,12 @@ Link it from wherever the docs index / README lists runbooks.
 
 ~**1.5 days**, single PR. No infra/IAM/foundation changes required.
 
-## Open decisions to confirm before build
+## Decisions (resolved)
 
-- **(a)** last-batch-only rollback vs. also exposing a single-step `down` — recommend last-batch-only.
-- **(b)** whether prod rollback should require a protected-Environment reviewer — recommend yes.
+- **(a) Rollback scope — DECIDED: last-batch-only.** `knex.migrate.rollback(undefined, false)`;
+  single-step `down` is not exposed (batch = deploy is the right unit; avoids untested
+  intermediate schema states).
+- **(b) Prod approval — DECIDED: yes.** Prod rollback routes through a protected `prod`
+  GitHub Environment (required reviewer).
+- **Workflow scope — DECIDED: all three environments** in one `workflow_dispatch`
+  (`.github/workflows/db-rollback.yml`); dev/stg run unattended, prod is gated by the reviewer.
