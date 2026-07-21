@@ -24,7 +24,7 @@ jest.mock("../config/fees", () => ({
       return {
         fee: "PETITION_FILING_FEE",
         tcsAppId: "TCSUSTAXCOURTPETITION",
-        amount: 250,
+        amount: 60,
         isVariable: false,
       };
     }
@@ -36,9 +36,7 @@ jest.mock("../config/fees", () => ({
         isVariable: false,
       };
     }
-    const { FeeNotFoundError } = jest.requireActual(
-      "../errors/feeNotFound",
-    );
+    const { FeeNotFoundError } = jest.requireActual("../errors/feeNotFound");
     throw new FeeNotFoundError(fee);
   }),
 }));
@@ -131,7 +129,7 @@ describe("initPayment", () => {
     expect(TransactionModel.createReceived).toHaveBeenCalledWith(
       expect.objectContaining({
         fee: "PETITION_FILING_FEE",
-        transactionAmount: 250,
+        transactionAmount: 60,
       }),
     );
     expect(TransactionModel.updateToInitiated).toHaveBeenCalled();
