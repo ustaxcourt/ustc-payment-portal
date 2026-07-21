@@ -8,7 +8,7 @@ import {
   type ProcessPaymentResponse,
 } from "../../schemas/ProcessPayment.schema";
 import { signedFetch } from "../integration/sigv4Helper";
-import { getStagingE2EConfig } from "./config";
+import type { StagingE2EConfig } from "./config";
 import {
   FAILURE_CODES,
   StagingE2EError,
@@ -97,8 +97,9 @@ const assertJsonObject = (
   );
 };
 
-export const initNonAttorneyPayment = async (): Promise<InitPaymentResult> => {
-  const config = getStagingE2EConfig();
+export const initNonAttorneyPayment = async (
+  config: StagingE2EConfig,
+): Promise<InitPaymentResult> => {
   const transactionReferenceId = crypto.randomUUID();
 
   const response = await signedFetch(`${config.baseUrl}/init`, {
@@ -160,9 +161,9 @@ export const initNonAttorneyPayment = async (): Promise<InitPaymentResult> => {
 };
 
 export const processPayment = async (
+  config: StagingE2EConfig,
   token: string,
 ): Promise<ProcessPaymentResponse> => {
-  const config = getStagingE2EConfig();
   const response = await signedFetch(`${config.baseUrl}/process`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -187,8 +188,10 @@ export const processPayment = async (
   return parsed.data;
 };
 
-export const getDetails = async (transactionReferenceId: string) => {
-  const config = getStagingE2EConfig();
+export const getDetails = async (
+  config: StagingE2EConfig,
+  transactionReferenceId: string,
+) => {
   const response = await signedFetch(
     `${config.baseUrl}/details/${transactionReferenceId}`,
     { method: "GET" },

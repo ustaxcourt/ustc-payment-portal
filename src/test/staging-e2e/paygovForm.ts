@@ -1,5 +1,5 @@
 import type { Frame, Page } from "@playwright/test";
-import { getStagingE2EConfig, type StagingE2EConfig } from "./config";
+import type { StagingE2EConfig } from "./config";
 import { FAILURE_CODES, StagingE2EError } from "./failureCodes";
 
 type SearchContext = Frame | Page;
@@ -65,9 +65,9 @@ const hasLeftPayGov = (page: Page, payGovHost: string): boolean => {
 
 const waitForSuccessState = async (
   page: Page,
+  config: StagingE2EConfig,
   timeoutMs: number,
 ): Promise<void> => {
-  const config = getStagingE2EConfig();
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
@@ -129,10 +129,9 @@ const setStateOrProvince = async (
 
 export const navigateToHostedPaymentPage = async (
   page: Page,
+  config: StagingE2EConfig,
   paymentRedirect: string,
 ): Promise<void> => {
-  const config = getStagingE2EConfig();
-
   try {
     await page.goto(paymentRedirect, {
       waitUntil: "domcontentloaded",
@@ -152,8 +151,10 @@ export const navigateToHostedPaymentPage = async (
 
 // Pay.gov opens on a method-selection page; the card form renders only after
 // choosing "Debit or credit card" and continuing. No-ops if already on the form.
-const selectDebitOrCreditCard = async (page: Page): Promise<void> => {
-  const config = getStagingE2EConfig();
+const selectDebitOrCreditCard = async (
+  page: Page,
+  config: StagingE2EConfig,
+): Promise<void> => {
   const cardOption = page.getByRole("radio", {
     name: /debit or credit card/i,
   });
@@ -296,16 +297,15 @@ const submitAndConfirm = async (
       .catch(() => undefined);
   }
 
-  await waitForSuccessState(page, config.timeouts.submitMs);
+  await waitForSuccessState(page, config, config.timeouts.submitMs);
 };
 
 export const completeSuccessfulPlasticCard = async (
   page: Page,
+  config: StagingE2EConfig,
 ): Promise<void> => {
-  const config = getStagingE2EConfig();
-
   try {
-    await selectDebitOrCreditCard(page);
+    await selectDebitOrCreditCard(page, config);
     await fillCardAndBillingForm(page, config);
   } catch (error) {
     if (error instanceof StagingE2EError) {

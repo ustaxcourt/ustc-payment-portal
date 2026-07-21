@@ -285,6 +285,11 @@ jobs:
             exit 1
           fi
 
+          if [ "$INIT_STATUS" -ge 500 ]; then
+            echo "ERROR: Signed /init returned HTTP $INIT_STATUS (server error); failing the smoke." >&2
+            exit 1
+          fi
+
           if [ "$INIT_STATUS" = "200" ]; then
             TOKEN=$(jq -r '.token // empty' init.json)
             REDIRECT=$(jq -r '.paymentRedirect // empty' init.json)

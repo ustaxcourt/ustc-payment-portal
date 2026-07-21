@@ -30,7 +30,7 @@ test("Credit Card - Success", async ({ page }) => {
 
     step = "init";
     logStep("init");
-    const initialized = await initNonAttorneyPayment();
+    const initialized = await initNonAttorneyPayment(config);
     token = initialized.token;
     transactionReferenceId = initialized.transactionReferenceId;
 
@@ -40,17 +40,17 @@ test("Credit Card - Success", async ({ page }) => {
 
     step = "paygov";
     logStep("paygov");
-    await navigateToHostedPaymentPage(page, initialized.paymentRedirect);
-    await completeSuccessfulPlasticCard(page);
+    await navigateToHostedPaymentPage(page, config, initialized.paymentRedirect);
+    await completeSuccessfulPlasticCard(page, config);
 
     step = "process";
     logStep("process");
-    const processResult = await processPayment(initialized.token);
+    const processResult = await processPayment(config, initialized.token);
     expect(processResult.paymentStatus).toBe("success");
 
     step = "details";
     logStep("details");
-    const details = await getDetails(initialized.transactionReferenceId);
+    const details = await getDetails(config, initialized.transactionReferenceId);
     expect(details.paymentStatus).toBe("success");
     expect(details.transactions.at(-1)?.transactionStatus).toBe("processed");
 
