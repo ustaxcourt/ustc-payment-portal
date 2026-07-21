@@ -1,61 +1,70 @@
-jest.mock("../db/TransactionModel", () => ({
-  __esModule: true,
-  default: {
-    findInFlightByReferenceId: jest.fn(() => Promise.resolve(undefined)),
-    createReceived: jest.fn((data) =>
-      Promise.resolve({
-        ...data,
-        agencyTrackingId: data.agencyTrackingId || "MOCK-TRACKING-ID",
-      }),
-    ),
-    updateToInitiated: jest.fn(() => Promise.resolve()),
-    updateToFailed: jest.fn(() => Promise.resolve()),
-  },
-}));
+jest.mock("../db/TransactionModel", () => {
+  const actual = jest.requireActual("../db/TransactionModel");
+  return {
+    __esModule: true,
+    ...actual,
+    default: {
+      findInFlightByReferenceId: jest.fn(() => Promise.resolve(undefined)),
+      createReceived: jest.fn((data) =>
+        Promise.resolve({
+          ...data,
+          agencyTrackingId: data.agencyTrackingId || "MOCK-TRACKING-ID",
+        }),
+      ),
+      updateToInitiated: jest.fn(() => Promise.resolve()),
+      updateToFailed: jest.fn(() => Promise.resolve()),
+    },
+  };
+});
 
-jest.mock("../db/FeesModel", () => ({
+jest.mock("../config/fees", () => ({
   __esModule: true,
-  default: {
-    getActiveFeeByKey: jest.fn((feeKey) => {
-      if (feeKey === "PETITION_FILING_FEE") {
-        return Promise.resolve({
-          feeId: "PETITION_FILING_FEE",
-          feeKey: "PETITION_FILING_FEE",
-          tcsAppId: "TCSUSTAXCOURTPETITION",
-          amount: 250,
-          isVariable: false,
-        });
-      }
-      if (feeKey === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
-        return Promise.resolve({
-          feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
-          feeKey: "NONATTORNEY_EXAM_REGISTRATION_FEE",
-          tcsAppId: "TCSUSTAXCOURTANAEF",
-          amount: 250,
-          isVariable: false,
-        });
-      }
-      return Promise.resolve(undefined);
-    }),
-  },
+  getActiveFee: jest.fn((fee) => {
+    if (fee === "PETITION_FILING_FEE") {
+      return {
+        fee: "PETITION_FILING_FEE",
+        tcsAppId: "TCSUSTAXCOURTPETITION",
+        amount: 60,
+        isVariable: false,
+      };
+    }
+    if (fee === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
+      return {
+        fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        tcsAppId: "TCSUSTAXCOURTANAEF",
+        amount: 250,
+        isVariable: false,
+      };
+    }
+    const { FeeNotFoundError } = jest.requireActual("../errors/feeNotFound");
+    throw new FeeNotFoundError(fee);
+  }),
 }));
 
 jest.mock("../health/payGovHealthMetric", () => ({
   emitPayGovErrorMetric: jest.fn(),
 }));
 
-import { initPayment } from "./initPayment";
-import { testAppContext as appContext } from "../test/testAppContext";
-import { InitPaymentRequest } from "@schemas/InitPayment.schema";
+jest.mock("../health/initPaymentConcurrencyMetric", () => ({
+  emitInitPaymentConflictMetric: jest.fn(),
+}));
+
 import * as SoapRequestModule from "@entities/StartOnlineCollectionRequest";
+import type { InitPaymentRequest } from "@schemas/InitPayment.schema";
 import { ZodError } from "zod";
 import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
-import { ClientPermission } from "../types/ClientPermission";
+import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { testAppContext as appContext } from "../test/testAppContext";
+import type { ClientPermission } from "../types/ClientPermission";
+import { initPayment } from "./initPayment";
 
 const emitErrorMock = emitPayGovErrorMetric as jest.MockedFunction<
   typeof emitPayGovErrorMetric
+>;
+const emitConflictMock = emitInitPaymentConflictMetric as jest.MockedFunction<
+  typeof emitInitPaymentConflictMetric
 >;
 
 const mockClient: ClientPermission = {
@@ -118,7 +127,10 @@ describe("initPayment", () => {
     expect(result.paymentRedirect).toContain("test-token-123");
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTPETITION");
     expect(TransactionModel.createReceived).toHaveBeenCalledWith(
-      expect.objectContaining({ feeId: "PETITION_FILING_FEE" }),
+      expect.objectContaining({
+        fee: "PETITION_FILING_FEE",
+        transactionAmount: 60,
+      }),
     );
     expect(TransactionModel.updateToInitiated).toHaveBeenCalled();
   });
@@ -144,15 +156,17 @@ describe("initPayment", () => {
     expect(result.token).toBe("test-token-456");
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTANAEF");
     expect(TransactionModel.createReceived).toHaveBeenCalledWith(
-      expect.objectContaining({ feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE" }),
+      expect.objectContaining({
+        fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        transactionAmount: 250,
+      }),
     );
   });
 
   it("throws InvalidRequestError when amount is missing for a variable fee", async () => {
-    const FeesModel = require("../db/FeesModel").default;
-    FeesModel.getActiveFeeByKey.mockResolvedValueOnce({
-      feeId: "PETITION_FILING_FEE",
-      feeKey: "PETITION_FILING_FEE",
+    const feesConfig = require("../config/fees");
+    feesConfig.getActiveFee.mockReturnValueOnce({
+      fee: "PETITION_FILING_FEE",
       tcsAppId: "TCSUSTAXCOURTPETITION",
       amount: 60,
       isVariable: true,
@@ -195,6 +209,61 @@ describe("initPayment", () => {
     expect(result.paymentRedirect).toContain("existing-token-abc");
     expect(TransactionModel.createReceived).not.toHaveBeenCalled();
     expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
+  });
+
+  it("throws ConflictError when an attempt is actively processing (POST /process in flight)", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "processing",
+      paygovToken: "processing-token-abc",
+      lastUpdatedAt: new Date().toISOString(),
+    });
+
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: ConflictError.PAYMENT_IN_FLIGHT_TRANSACTION_MESSAGE,
+    });
+
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+    expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
+    expect(emitConflictMock).toHaveBeenCalledWith("processing_in_flight");
+  });
+
+  it("marks stale processing in-flight transaction as failed and creates a new one", async () => {
+    const stalePaygovToken = crypto.randomUUID().replace(/-/g, "");
+    const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
+
+    mockSoapRequest(freshPaygovToken);
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "processing",
+      paygovToken: stalePaygovToken,
+      lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+    });
+
+    const result = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
+
+    expect(TransactionModel.updateToFailed).toHaveBeenCalledWith(
+      "existing-id",
+      5009,
+      "Existing token expired",
+    );
+    expect(TransactionModel.createReceived).toHaveBeenCalled();
+    expect(result.token).toBe(freshPaygovToken);
   });
 
   it("marks expired in-flight transaction as failed and creates a new one when token age >= 3 hours", async () => {
@@ -267,6 +336,7 @@ describe("initPayment", () => {
         request: validPetitionRequest,
       }),
     ).rejects.toThrow(ConflictError);
+    expect(emitConflictMock).toHaveBeenCalledWith("persist_race");
   });
 
   it("wraps non-unique-violation createReceived errors as a generic failure", async () => {
@@ -483,4 +553,3 @@ describe("initPayment", () => {
     expect(emitErrorMock).not.toHaveBeenCalled();
   });
 });
-

@@ -106,10 +106,10 @@ mandatory after go-live:
    > on the `production` environment is a prerequisite for this runbook**, tracked
    > in the [deploy backlog](../../deploy-backlog.md). Until then there is no
    > enforced approval gate — a human must self-discipline the plan-review step.
-2. **Post-deploy verification is required, not optional.** Prod has **no
-   automated smoke test** (it's commented out in `prod-deploy.yml`), so you must
-   verify by hand immediately after apply:
-   - Confirm the API responds (signed request to a known endpoint).
+2. **Post-deploy verification is automated and gating.** After a successful
+   apply, `prod-deploy.yml` runs a synthetic, read-only `GET /health` check that
+   probes Secrets Manager, SSM, RDS, and Pay.gov and fails the job if any check
+   is unhealthy. A red gate is a rollback trigger. Still watch by hand:
    - Watch the Lambda error alerts / dashboards for a few minutes — see
      [`lambda-error-alerts.md`](../lambda-error-alerts.md).
    - If anything looks wrong, go to rollback (below) **before** the window

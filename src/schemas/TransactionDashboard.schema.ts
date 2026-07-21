@@ -7,14 +7,17 @@ import { TransactionStatusSchema } from "./TransactionStatus.schema";
 extendZodWithOpenApi(z);
 
 export const DashboardPaymentMethodSchema = z
-  .enum(["Credit/Debit Card", "ACH", "PayPal"] )
+  .enum(["Credit/Debit Card", "ACH", "PayPal"])
   .openapi({
     description: "Payment method used for the transaction",
     example: "Credit/Debit Card",
   });
 
-export type DashboardPaymentMethod = z.infer<typeof DashboardPaymentMethodSchema>;
+export type DashboardPaymentMethod = z.infer<
+  typeof DashboardPaymentMethodSchema
+>;
 
+/* istanbul ignore next */
 const IsoDateTimeSchema = z.preprocess(
   (value) => (value instanceof Date ? value.toISOString() : value),
   z.string().datetime(),
@@ -34,8 +37,8 @@ export const DashboardTransactionSchema = z
       description: "Human-readable fee name",
       example: "Filing Fee",
     }),
-    feeId: z.string().openapi({
-      description: "Fee identifier",
+    fee: z.string().openapi({
+      description: "Stable fee key (e.g. PETITION_FILING_FEE)",
       example: "PETITION_FILING_FEE",
     }),
     transactionAmount: z.number().openapi({

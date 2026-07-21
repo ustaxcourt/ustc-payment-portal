@@ -29,16 +29,17 @@ locals {
   app_rds_endpoint = local.is_pr ? local.rds_endpoint : module.rds_proxy[0].endpoint
 
   lambda_env_payment = merge({
-    NODE_ENV                           = local.node_env
-    APP_ENV                            = local.app_env
-    PAYMENT_URL                        = local.payment_url
-    SOAP_URL                           = local.soap_url
-    CERT_PASSPHRASE_SECRET_ID          = module.secrets.cert_passphrase_secret_id
-    PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = module.secrets.paygov_dev_server_token_secret_id
-    CLIENT_PERMISSIONS_SECRET_ID       = module.secrets.client_permissions_secret_id
-    RDS_ENDPOINT                       = local.app_rds_endpoint
-    RDS_SECRET_ARN                     = local.app_rds_secret_arn
-    RDS_DB_NAME                        = local.rds_db_name
+    NODE_ENV                              = local.node_env
+    APP_ENV                               = local.app_env
+    PAYMENT_URL                           = local.payment_url
+    SOAP_URL                              = local.soap_url
+    CERT_PASSPHRASE_SECRET_ID             = module.secrets.cert_passphrase_secret_id
+    PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID    = module.secrets.paygov_dev_server_token_secret_id
+    CLIENT_PERMISSIONS_SECRET_ID          = module.secrets.client_permissions_secret_id
+    RDS_ENDPOINT                          = local.app_rds_endpoint
+    RDS_SECRET_ARN                        = local.app_rds_secret_arn
+    RDS_DB_NAME                           = local.rds_db_name
+    MONITORING_SUBSCRIBERS_PARAMETER_NAME = module.secrets.monitoring_subscribers_parameter_name
     }, local.mtls_enabled ? {
     PRIVATE_KEY_SECRET_ID = module.secrets.private_key_secret_id
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
@@ -78,6 +79,7 @@ locals {
     processPayment              = local.lambda_env_payment
     getDetails                  = local.lambda_env_payment
     testCert                    = local.lambda_env_payment
+    healthCheck                 = local.lambda_env_payment
     getAllTransactions          = local.lambda_env_dashboard
     getTransactionsByStatus     = local.lambda_env_dashboard
     getTransactionPaymentStatus = local.lambda_env_dashboard

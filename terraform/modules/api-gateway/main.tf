@@ -3,6 +3,16 @@
 ###############################
 locals {
   enable_dashboard_endpoints = var.environment == "dev" || startswith(var.environment, "pr-")
+
+  # Anonymous invoke paths added to the API resource policy when enable_public_dashboard is set.
+  public_dashboard_resource_arns = var.enable_public_dashboard ? [
+    "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transactions",
+    "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transactions/*",
+    "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transaction-payment-status",
+    "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transactions",
+    "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transactions/*",
+    "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transaction-payment-status",
+  ] : []
 }
 
 resource "aws_api_gateway_resource" "transactions" {
@@ -268,6 +278,13 @@ resource "aws_api_gateway_resource" "test" {
   path_part   = "test"
 }
 
+#GET /health
+resource "aws_api_gateway_resource" "health" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
+  path_part   = "health"
+}
+
 #GET /details/{transactionReferenceId}
 resource "aws_api_gateway_resource" "details" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
@@ -310,6 +327,13 @@ resource "aws_api_gateway_method" "details_get" {
   authorization = "AWS_IAM"
 }
 
+resource "aws_api_gateway_method" "health_get" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.health.id
+  http_method   = "GET"
+  authorization = "AWS_IAM"
+}
+
 # Resource policy — controls which AWS accounts can reach the API at all.
 # The deploying account is always included so same-account callers (CI/CD, smoke tests) work.
 # Client accounts are added via var.allowed_account_ids — never hardcoded.
@@ -333,7 +357,7 @@ data "aws_iam_policy_document" "api_resource_policy" {
   # Allow unauthenticated browser requests to dashboard endpoints only.
   # Scoped to GET and OPTIONS on the three dashboard paths — /init, /process, /details remain SigV4-only.
   dynamic "statement" {
-    for_each = var.enable_public_dashboard ? [1] : []
+    for_each = length(local.public_dashboard_resource_arns) > 0 ? [1] : []
 
     content {
       effect = "Allow"
@@ -341,15 +365,8 @@ data "aws_iam_policy_document" "api_resource_policy" {
         type        = "*"
         identifiers = ["*"]
       }
-      actions = ["execute-api:Invoke"]
-      resources = [
-        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transactions",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transactions/*",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/GET/transaction-payment-status",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transactions",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transactions/*",
-        "${aws_api_gateway_rest_api.rest.execution_arn}/${var.stage_name}/OPTIONS/transaction-payment-status",
-      ]
+      actions   = ["execute-api:Invoke"]
+      resources = local.public_dashboard_resource_arns
     }
   }
 }
@@ -397,6 +414,15 @@ resource "aws_api_gateway_integration" "details_integration" {
   uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getDetails"]}/invocations"
 }
 
+resource "aws_api_gateway_integration" "health_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.health.id
+  http_method             = aws_api_gateway_method.health_get.http_method
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["healthCheck"]}/invocations"
+}
+
 #Deployment
 
 resource "aws_api_gateway_deployment" "deployment" {
@@ -408,6 +434,7 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_resource.init.id,
       aws_api_gateway_resource.process.id,
       aws_api_gateway_resource.test.id,
+      aws_api_gateway_resource.health.id,
       aws_api_gateway_resource.details.id,
       aws_api_gateway_resource.details_tracking.id,
 
@@ -418,6 +445,7 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_method.init_post.id,
       aws_api_gateway_method.process_post.id,
       aws_api_gateway_method.test_get.id,
+      aws_api_gateway_method.health_get.id,
       aws_api_gateway_method.details_get.id,
 
       try(aws_api_gateway_method.transactions_get[0].id, ""),
@@ -431,11 +459,22 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_integration.init_integration.id,
       aws_api_gateway_integration.process_integration.id,
       aws_api_gateway_integration.test_integration.id,
+      aws_api_gateway_integration.health_integration.id,
       aws_api_gateway_integration.details_integration.id,
+
+      aws_api_gateway_integration.init_integration.uri,
+      aws_api_gateway_integration.process_integration.uri,
+      aws_api_gateway_integration.test_integration.uri,
+      aws_api_gateway_integration.health_integration.uri,
+      aws_api_gateway_integration.details_integration.uri,
 
       try(aws_api_gateway_integration.transactions_integration[0].id, ""),
       try(aws_api_gateway_integration.transactions_by_status_integration[0].id, ""),
       try(aws_api_gateway_integration.transaction_payment_status_integration[0].id, ""),
+
+      try(aws_api_gateway_integration.transactions_integration[0].uri, ""),
+      try(aws_api_gateway_integration.transactions_by_status_integration[0].uri, ""),
+      try(aws_api_gateway_integration.transaction_payment_status_integration[0].uri, ""),
 
       try(aws_api_gateway_integration.transactions_options_integration[0].id, ""),
       try(aws_api_gateway_integration.transactions_by_status_options_integration[0].id, ""),
@@ -457,6 +496,7 @@ resource "aws_api_gateway_deployment" "deployment" {
     aws_api_gateway_integration.init_integration,
     aws_api_gateway_integration.process_integration,
     aws_api_gateway_integration.test_integration,
+    aws_api_gateway_integration.health_integration,
     aws_api_gateway_integration.details_integration,
     aws_api_gateway_integration.transactions_integration,
     aws_api_gateway_integration.transactions_by_status_integration,
@@ -524,7 +564,7 @@ resource "aws_api_gateway_method_settings" "all" {
 
 # 100 req/min = 2 req/s
 resource "aws_api_gateway_method_settings" "init_throttle" {
-  count = var.enable_per_endpoint_throttling ? 1 : 0
+  count       = var.enable_per_endpoint_throttling ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
   stage_name  = aws_api_gateway_stage.stage.stage_name
   method_path = "init/POST"
@@ -537,7 +577,7 @@ resource "aws_api_gateway_method_settings" "init_throttle" {
 
 # 100 req/min = 2 req/s
 resource "aws_api_gateway_method_settings" "process_throttle" {
-  count = var.enable_per_endpoint_throttling ? 1 : 0
+  count       = var.enable_per_endpoint_throttling ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
   stage_name  = aws_api_gateway_stage.stage.stage_name
   method_path = "process/POST"
@@ -550,7 +590,7 @@ resource "aws_api_gateway_method_settings" "process_throttle" {
 
 # 5000 req/min = 84 req/s
 resource "aws_api_gateway_method_settings" "details_throttle" {
-  count = var.enable_per_endpoint_throttling ? 1 : 0
+  count       = var.enable_per_endpoint_throttling ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
   stage_name  = aws_api_gateway_stage.stage.stage_name
   method_path = "details~1{transactionReferenceId}/GET"
@@ -565,7 +605,8 @@ resource "aws_api_gateway_method_settings" "details_throttle" {
 resource "aws_lambda_permission" "init_permission" {
   statement_id  = "AllowAPIGatewayInvokeInit"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_function_arns["initPayment"]
+  function_name = trimsuffix(var.lambda_function_arns["initPayment"], ":live")
+  qualifier     = "live"
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/POST/init"
 }
@@ -573,7 +614,8 @@ resource "aws_lambda_permission" "init_permission" {
 resource "aws_lambda_permission" "process_permissions" {
   statement_id  = "AllowAPIGatewayInvokeProcess"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_function_arns["processPayment"]
+  function_name = trimsuffix(var.lambda_function_arns["processPayment"], ":live")
+  qualifier     = "live"
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/POST/process"
 }
@@ -586,10 +628,19 @@ resource "aws_lambda_permission" "test_permissions" {
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/test"
 }
 
+resource "aws_lambda_permission" "health_permissions" {
+  statement_id  = "AllowAPIGatewayInvokeHealth"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_function_arns["healthCheck"]
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/health"
+}
+
 resource "aws_lambda_permission" "details_permissions" {
   statement_id  = "AllowAPIGatewayInvokeDetails"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_function_arns["getDetails"]
+  function_name = trimsuffix(var.lambda_function_arns["getDetails"], ":live")
+  qualifier     = "live"
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/details/*"
 }

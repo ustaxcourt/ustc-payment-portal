@@ -30,6 +30,8 @@ KNEX_EXTERNALS=(
   --external:sqlite3
   --external:mysql
   --external:mysql2
+  --external:mariadb
+  --external:mariadb/callback
   --external:tedious
   --external:pg-query-stream
   --external:better-sqlite3
@@ -171,8 +173,9 @@ echo "Downloading RDS CA bundle..."
 curl -sSf -o /tmp/rds-ca-bundle.pem \
   https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 
-# Copy CA bundle to all Lambda functions that connect to RDS
-for func in initPayment processPayment getDetails migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
+# Copy CA bundle to all Lambda functions that connect to RDS (testCert included:
+# its bundle is reused by healthCheck, whose RDS check must validate the CA).
+for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
   cp /tmp/rds-ca-bundle.pem "dist/${func}/rds-ca-bundle.pem"
 done
 

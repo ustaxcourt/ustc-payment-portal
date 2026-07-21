@@ -217,9 +217,6 @@ Production deploys from a **final (non-pre-release) GitHub Release** on the
 
 ### Known gaps to be aware of at this stage (pre-go-live)
 
-- **Prod has no post-deploy smoke test today** — the smoke-test step in
-  `prod-deploy.yml` is commented out. After a Prod apply, manually confirm the
-  API responds. (Tracked in the [deploy backlog](../../deploy-backlog.md).)
 - **Prod does not auto-run DB migrations** in the deploy workflow the way
   Staging does. If your change includes a migration, coordinate how it gets
   applied to the Prod database **before** promoting.

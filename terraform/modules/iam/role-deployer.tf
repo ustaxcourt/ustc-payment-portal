@@ -69,7 +69,15 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "lambda:AddPermission",
           "lambda:RemovePermission",
           "lambda:TagResource",
-          "lambda:UntagResource"
+          "lambda:UntagResource",
+          "lambda:CreateAlias",
+          "lambda:UpdateAlias",
+          "lambda:DeleteAlias",
+          "lambda:GetAlias",
+          "lambda:ListAliases",
+          "lambda:PutProvisionedConcurrencyConfig",
+          "lambda:GetProvisionedConcurrencyConfig",
+          "lambda:DeleteProvisionedConcurrencyConfig"
         ],
         Resource = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.lambda_name_prefix}*"
       },
@@ -331,7 +339,8 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
           "sns:UntagResource",
           "sns:Subscribe",
           "sns:ConfirmSubscription",
-          "sns:ListSubscriptionsByTopic"
+          "sns:ListSubscriptionsByTopic",
+          "sns:Publish"
         ],
         Resource = "arn:aws:sns:${local.aws_region}:${data.aws_caller_identity.current.account_id}:${var.lambda_name_prefix}-*"
       },
@@ -345,16 +354,20 @@ resource "aws_iam_role_policy" "github_actions_permissions" {
         Resource = "*"
       },
       {
-        Effect = "Allow", # CloudWatch alarms — scoped to project-prefixed alarms
+        Effect = "Allow",
         Action = [
           "cloudwatch:PutMetricAlarm",
-          "cloudwatch:PutCompositeAlarm",
           "cloudwatch:DeleteAlarms",
           "cloudwatch:ListTagsForResource",
           "cloudwatch:TagResource",
           "cloudwatch:UntagResource"
         ],
         Resource = "arn:aws:cloudwatch:${local.aws_region}:${data.aws_caller_identity.current.account_id}:alarm:${var.lambda_name_prefix}-*"
+      },
+      {
+        Effect   = "Allow",
+        Action   = ["cloudwatch:PutCompositeAlarm"],
+        Resource = "arn:aws:cloudwatch:${local.aws_region}:${data.aws_caller_identity.current.account_id}:alarm:*"
       },
       {
         Effect   = "Allow",

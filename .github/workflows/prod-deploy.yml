@@ -65,7 +65,7 @@ jobs:
           set -euo pipefail
           SHA='${{ steps.select.outputs.sha}}'
           echo "Validating artifacts for $SHA in s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
-          for f in initPayment processPayment getDetails testCert; do
+          for f in initPayment processPayment getDetails testCert migrationRunner; do
             KEY="artifacts/dev/${SHA}/${f}.zip"
             aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "$KEY" >/dev/null 2>&1 || {
               echo "Missing $KEY" >&2; exit 1; }
@@ -112,11 +112,12 @@ jobs:
           echo "processPayment=${PREFIX}/processPayment.zip" >> $GITHUB_OUTPUT
           echo "getDetails=${PREFIX}/getDetails.zip" >> $GITHUB_OUTPUT
           echo "testCert=${PREFIX}/testCert.zip" >> $GITHUB_OUTPUT
+          echo "migrationRunner=${PREFIX}/migrationRunner.zip" >> $GITHUB_OUTPUT
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: "1.14.6"
+          terraform_version: "1.15.8"
           terraform_wrapper: false
 
       - name: Terraform init
@@ -132,6 +133,7 @@ jobs:
           TF_VAR_processPayment_s3_key: ${{ steps.artifacts.outputs.processPayment }}
           TF_VAR_getDetails_s3_key: ${{ steps.artifacts.outputs.getDetails }}
           TF_VAR_testCert_s3_key: ${{ steps.artifacts.outputs.testCert }}
+          TF_VAR_migrationRunner_s3_key: ${{ steps.artifacts.outputs.migrationRunner }}
           # AWS Chatbot → Microsoft Teams routing. Missing secrets disable Teams routing (enable_teams=false).
           TF_VAR_teams_tenant_id: ${{ secrets.PROD_TEAMS_TENANT_ID }}
           TF_VAR_teams_team_id: ${{ secrets.PROD_TEAMS_TEAM_ID }}
@@ -150,52 +152,86 @@ jobs:
         run: terraform apply -auto-approve tfplan
 
       - name: Get Terraform Outputs (for integration tests)
-        if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
+        if: ${{ (github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only) }}
         id: tf_outputs
         working-directory: terraform/environments/prod
         run: |
           API_URL=$(terraform output -raw api_gateway_url)
+          MIGRATION_FN=$(terraform output -raw migration_runner_function_name)
+          ALERTS_SNS_TOPIC_ARN=$(terraform output -raw alerts_sns_topic_arn)
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "migration_fn=$MIGRATION_FN" >> $GITHUB_OUTPUT
+          echo "alerts_sns_topic_arn=$ALERTS_SNS_TOPIC_ARN" >> $GITHUB_OUTPUT
           echo "API Gateway URL: $API_URL"
+          echo "Migration runner: $MIGRATION_FN"  
 
-      # - name: Smoke test /init and redirect reachability
-      #   shell: bash
-      #   env:
-      #     API_URL: ${{ steps.tf_outputs.outputs.api_url }}
-      #   run: |
-      #     set -euo pipefail
-      #     trap 'echo "Smoke test FAILED"; [ -f init.json ] && { echo "--- init.json ---"; cat init.json; echo "-----------------"; } || true' ERR
-      #     echo "Running smoke test against: $API_URL"
+      - name: Run DB migrations (idempotent via knex_migrations table)
+        if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) }}
+        env:
+          MIGRATION_FN: ${{ steps.tf_outputs.outputs.migration_fn }}
+        run: |
+          set -euo pipefail
+          echo "Running migrations via: $MIGRATION_FN"
+          aws lambda invoke \
+            --function-name "$MIGRATION_FN" \
+            --payload '{"command":"migrate"}' \
+            --cli-binary-format raw-in-base64-out \
+            --log-type Tail \
+            --cli-read-timeout 130 \
+            response.json | tee invoke-meta.json
+          cat response.json
+          if jq -e '.FunctionError' invoke-meta.json > /dev/null 2>&1; then
+            echo "ERROR: migrate Lambda reported a function error" >&2
+            exit 1
+          fi
 
-      #     AMOUNT="6.00"
-      #     TRACKING="prod-smoke-$(date +%s)"
+      - name: Post-deploy health check (synthetic, read-only)
+        if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
+        shell: bash
+        env:
+          API_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          DEPLOY_TAG: ${{ needs.promote.outputs.tag }}
+        run: |
+          set -euo pipefail
+          trap 'echo "::error::Post-deploy health check FAILED"; [ -f health.json ] && cat health.json || true' ERR
+          echo "Health check against: $API_URL/health"
 
-      #     echo "Using AMOUNT=$AMOUNT TRACKING_ID=$TRACKING"
-      #     printf '{"trackingId":"%s","fee":"PETITION_FILING_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com"}' "$TRACKING" "$AMOUNT" > body.json
+          STATUS=$(curl -s -o health.json -w '%{http_code}' --retry 3 --retry-delay 5 --max-time 30 \
+            -X GET "$API_URL/health" \
+            --aws-sigv4 "aws:amz:${AWS_REGION}:execute-api" \
+            --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+            -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+            -H "X-Deploy-Tag: $DEPLOY_TAG")
 
-      #     # POST to /init — signed with AWS SigV4 (IAM auth replaced the old Bearer token)
-      #     INIT_STATUS=$(curl -s -o init.json -w '%{http_code}' -X POST "$API_URL/init" \
-      #       -H 'Content-Type: application/json' \
-      #       --aws-sigv4 "aws:amz:us-east-1:execute-api" \
-      #       --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-      #       -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
-      #       --data-binary @body.json)
-      #     echo "INIT_STATUS=$INIT_STATUS" && cat init.json
-      #     test "$INIT_STATUS" = "200"
+          echo "HTTP_STATUS=$STATUS"
+          jq . health.json || cat health.json
 
-      #     # Verify token present
-      #     TOKEN=$(jq -r '.token // empty' init.json)
-      #     REDIRECT=$(jq -r '.paymentRedirect // empty' init.json)
-      #     [ -n "$TOKEN" ] || { echo "Missing token in /init response" >&2; exit 1; }
-      #     [ -n "$REDIRECT" ] || { echo "Missing paymentRedirect in /init response" >&2; exit 1; }
-      #     echo "Token present. Redirect=$REDIRECT"
+          test "$STATUS" = "200"
+          test "$(jq -r '.status' health.json)" = "healthy"
+          echo "Post-deploy health check PASSED"
 
-      #     # Ensure redirect URL is reachable (expect 302 redirect from Pay.gov)
-      #     REDIRECT_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$REDIRECT")
-      #     echo "REDIRECT_STATUS=$REDIRECT_STATUS"
-      #     if [ "$REDIRECT_STATUS" = "302" ]; then
-      #       echo "Redirect reachable ($REDIRECT_STATUS)."
-      #     else
-      #       echo "ERROR: Redirect returned $REDIRECT_STATUS (expected 302)" >&2
-      #       exit 1
-      #     fi
+      - name: Upload health check diagnostics on failure
+        if: ${{ failure() && steps.tf_outputs.outputs.api_url != '' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: prod-deploy-health-failure-${{ github.run_id }}
+          path: health.json
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Notify on deploy failure (SNS -> Teams/email)
+        if: ${{ failure() && steps.tf_outputs.outputs.alerts_sns_topic_arn != '' }}
+        run: |
+          set -uo pipefail
+          SUMMARY="No /health response was captured; the failure may have occurred before the health check ran."
+          if [ -f health.json ]; then
+            FAILED=$(jq -r '.checks | to_entries | map(select(.value.status == "failed") | "\(.key)=\(.value.error // "failed")") | join("; ")' health.json 2>/dev/null || true)
+            [ -n "$FAILED" ] && SUMMARY="Failing checks: $FAILED"
+          fi
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          MSG=$(printf 'Production deployment %s failed.\n%s\nRun: %s\nDiagnostics: download the prod-deploy-health-failure-%s artifact.' \
+            "${{ needs.promote.outputs.tag }}" "$SUMMARY" "$RUN_URL" "${{ github.run_id }}")
+          aws sns publish \
+            --topic-arn "${{ steps.tf_outputs.outputs.alerts_sns_topic_arn }}" \
+            --subject "Prod deploy FAILED - ${{ needs.promote.outputs.tag }}" \
+            --message "$MSG"

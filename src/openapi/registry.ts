@@ -1,6 +1,6 @@
 import {
   OpenAPIRegistry,
-  OpenApiGeneratorV31,
+  OpenApiGeneratorV32,
 } from "@asteasolutions/zod-to-openapi";
 import {
   InitPaymentRequestSchema,
@@ -31,6 +31,7 @@ import {
   MetadataDawsonSchema,
   MetadataNonattorneyExamSchema,
   MetadataSchema,
+  DeployHealthReportSchema,
 } from "../schemas";
 
 export const registry = new OpenAPIRegistry();
@@ -143,7 +144,10 @@ registry.registerPath({
     },
     409: {
       description:
-        "Conflict - a payment session is already initiated for this transaction reference ID",
+        "Returned when a prior attempt is still `initiated` (awaiting redirect) or is actively " +
+        "being finalized by an in-flight POST /process. The duplicate request does not call Pay.gov. " +
+        "Retry with backoff; once the in-flight attempt finishes, a subsequent POST /init returns 200 " +
+        "with the payment redirect (or a fresh session if the prior attempt expired or was abandoned).",
       content: {
         "application/json": {
           schema: ConflictErrorSchema,
@@ -242,6 +246,8 @@ registry.registerPath({
   description:
     "Completes a payment transaction after the user has submitted payment information on Pay.gov. " +
     "This endpoint must be called regardless of payment type used to finalize the transaction. " +
+    "Concurrent requests for the same token are serialized: only one Pay.gov complete call proceeds; " +
+    "duplicates receive HTTP 409 Conflict. " +
     "Note: When the transaction reaches Pay.gov, both approved and declined outcomes return HTTP 200 — " +
     "check the transactionStatus field to determine the outcome.",
   tags: ["Payments"],
@@ -295,11 +301,25 @@ registry.registerPath({
         },
       },
     },
+    409: {
+      description:
+        "Conflict - this token is already being processed by another in-flight POST /process request. " +
+        "The duplicate request does not call Pay.gov. " +
+        "Retry with backoff while responses are 409; once the in-flight request finishes, a retry returns " +
+        "200 (success/failure/pending), 410 (token no longer valid), or 404.",
+      content: {
+        "application/json": {
+          schema: ConflictErrorSchema,
+        },
+      },
+    },
     410: {
       description:
         "Gone - the token is no longer valid for processing. " +
-        "Either another transaction is already fulfilling the same obligation (check getDetails), " +
-        "or the transaction associated with this token is not in an initiatable state.",
+        "Another transaction may already be fulfilling the same obligation (check getDetails), " +
+        "the transaction is not in an initiatable state (e.g. already processed), " +
+        "or a prior POST /process claim was abandoned and marked failed after the processing timeout. " +
+        "This is not returned for concurrent in-flight requests on the same token (see 409).",
       content: {
         "application/json": {
           schema: GoneErrorSchema,
@@ -465,14 +485,48 @@ registry.registerPath({
   },
 });
 
+registry.register("DeployHealthReport", DeployHealthReportSchema);
+
+registry.registerPath({
+  method: "get",
+  path: "/health",
+  summary: "Post-deploy health check (synthetic, read-only)",
+  description:
+    "Synthetic, read-only verification that each infrastructure layer " +
+    "(Secrets Manager, SSM, RDS, Pay.gov) is reachable. Creates no payment state.",
+  tags: ["Payments"],
+  security: [{ sigv4: [] }],
+  responses: {
+    200: {
+      description: "All dependency checks passed",
+      content: {
+        "application/json": { schema: DeployHealthReportSchema },
+      },
+    },
+    503: {
+      description: "One or more dependency checks failed",
+      content: {
+        "application/json": { schema: DeployHealthReportSchema },
+      },
+    },
+    403: {
+      description:
+        "Forbidden - invalid SigV4 signature or client not authorized",
+      content: {
+        "application/json": { schema: ForbiddenErrorSchema },
+      },
+    },
+  },
+});
+
 // ============================================
 // Generate OpenAPI Document
 // ============================================
 export const generateOpenAPIDocument = () => {
-  const generator = new OpenApiGeneratorV31(registry.definitions);
+  const generator = new OpenApiGeneratorV32(registry.definitions);
 
   return generator.generateDocument({
-    openapi: "3.1.0",
+    openapi: "3.2.0",
     info: {
       title: "USTC Payment Portal API",
       version: "1.0.1",

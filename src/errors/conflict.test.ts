@@ -24,4 +24,11 @@ describe("ConflictError", () => {
     );
     expect(error.statusCode).toBe(409);
   });
+
+  it("exposes static messages for payment concurrency conflicts", () => {
+    expect(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE).toBe(
+      "A payment is already being processed for this token",
+    );
+    expect(ConflictError.PERSIST_RACE_MESSAGE).toContain("getDetails");
+  });
 });
