@@ -45,6 +45,7 @@ const PR_USER_SECRET = JSON.stringify({
 describe("migrationHandler", () => {
   let mockSend: jest.Mock;
   let mockLatest: jest.Mock;
+  let mockRollback: jest.Mock;
   let mockCurrentVersion: jest.Mock;
   let mockSeedRun: jest.Mock;
   let mockRaw: jest.Mock;
@@ -69,6 +70,9 @@ describe("migrationHandler", () => {
 
     mockSend = jest.fn().mockResolvedValue({ SecretString: RDS_SECRET });
     mockLatest = jest.fn().mockResolvedValue([3, []]);
+    mockRollback = jest
+      .fn()
+      .mockResolvedValue([3, ["20260629120000_add_processing_transaction_status"]]);
     mockCurrentVersion = jest.fn().mockResolvedValue("20260305195503_init_db");
     mockSeedRun = jest.fn().mockResolvedValue(undefined);
     mockRaw = jest.fn();
@@ -79,7 +83,11 @@ describe("migrationHandler", () => {
       (input: { SecretId: string }) => input,
     );
     mockKnex.mockReturnValue({
-      migrate: { latest: mockLatest, currentVersion: mockCurrentVersion },
+      migrate: {
+        latest: mockLatest,
+        rollback: mockRollback,
+        currentVersion: mockCurrentVersion,
+      },
       seed: { run: mockSeedRun },
       raw: mockRaw,
       destroy: mockDestroy,
@@ -196,6 +204,30 @@ describe("migrationHandler", () => {
       statusCode: 200,
       body: JSON.stringify({ message: "Seeds completed" }),
     });
+  });
+
+  it("rollback with confirm:true rolls back the last batch", async () => {
+    const result = await migrationHandler({ command: "rollback", confirm: true });
+
+    expect(mockRollback).toHaveBeenCalledTimes(1);
+    expect(mockRollback).toHaveBeenCalledWith(undefined, false);
+    expect(mockLatest).not.toHaveBeenCalled();
+    expect(mockDestroy).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      statusCode: 200,
+      body: JSON.stringify({
+        batchNo: 3,
+        migrations: ["20260629120000_add_processing_transaction_status"],
+      }),
+    });
+  });
+
+  it("rollback without confirm throws and does not roll back", async () => {
+    await expect(migrationHandler({ command: "rollback" })).rejects.toThrow(
+      "rollback requires confirm:true",
+    );
+    expect(mockRollback).not.toHaveBeenCalled();
+    expect(mockDestroy).toHaveBeenCalledTimes(1);
   });
 
   it("create-db creates the database when it does not exist", async () => {
