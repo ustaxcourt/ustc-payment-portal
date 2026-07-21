@@ -1,5 +1,5 @@
 import Knex from 'knex';
-import { Model, knexSnakeCaseMappers } from 'objection';
+import { knexSnakeCaseMappers, Model } from 'objection';
 import { getRdsCredentials } from './getRdsCredentials';
 
 const {

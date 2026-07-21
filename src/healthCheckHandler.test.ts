@@ -1,7 +1,7 @@
-import { healthHandler } from "./healthCheckHandler";
 import { runDeployHealthCheck } from "@useCases/runDeployHealthCheck";
-import { createAppContext } from "./appContext";
 import type { APIGatewayProxyEvent } from "aws-lambda";
+import { createAppContext } from "./appContext";
+import { healthHandler } from "./healthCheckHandler";
 
 const mockInfo = jest.fn();
 jest.mock("./appContext", () => ({

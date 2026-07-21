@@ -1,7 +1,7 @@
-import TransactionModel from "../db/TransactionModel";
-import { TransactionPaymentStatusResponseSchema } from "@schemas/TransactionPaymentStatus.schema";
 import type { AppContext } from "@appTypes/AppContext";
 import type { TransactionPaymentStatusResponse } from "@appTypes/TransactionPaymentStatus";
+import { TransactionPaymentStatusResponseSchema } from "@schemas/TransactionPaymentStatus.schema";
+import TransactionModel from "../db/TransactionModel";
 
 export type GetTransactionPaymentStatus = (
   appContext: AppContext

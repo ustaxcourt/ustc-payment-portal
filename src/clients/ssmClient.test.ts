@@ -1,4 +1,4 @@
-import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
 import { getParameterString } from "./ssmClient";
 
 jest.mock("@aws-sdk/client-ssm", () => {

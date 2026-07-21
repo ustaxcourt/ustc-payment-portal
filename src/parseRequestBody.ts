@@ -1,6 +1,6 @@
-import type { Request } from "express";
-import { ZodType } from "zod";
 import { InvalidRequestError } from "@errors/invalidRequest";
+import type { Request } from "express";
+import type { ZodType } from "zod";
 
 /**
  * Mirrors lambdaHandler.ts's parseAndValidate so the dev server produces the

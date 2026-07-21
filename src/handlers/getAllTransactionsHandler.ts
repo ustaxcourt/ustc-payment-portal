@@ -1,6 +1,6 @@
-import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
+import { dashboardError, dashboardOk } from "@utils/dashboardHandlerUtils";
+import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "../appContext";
-import { dashboardOk, dashboardError } from "@utils/dashboardHandlerUtils";
 
 /**
  * GET /transactions

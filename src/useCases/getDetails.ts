@@ -1,22 +1,22 @@
+import type { AppContext } from "@appTypes/AppContext";
 import type { ClientPermission } from "@appTypes/ClientPermission";
 import { GetRequestRequest } from "@entities/GetDetailsRequest";
-import type { AppContext } from "@appTypes/AppContext";
-import { GetDetailsResponse } from "@schemas/GetDetails.schema";
-import { TransactionRecordSummary } from "@schemas/TransactionRecord.schema";
-import { TransactionStatus } from "@schemas/TransactionStatus.schema";
-import { parseTransactionStatus } from "./parseTransactionStatus";
+import { NotFoundError } from "@errors/notFound";
+import { PayGovError } from "@errors/payGovError";
+import { ServerError } from "@errors/serverError";
+import type { GetDetailsResponse } from "@schemas/GetDetails.schema";
+import type { TransactionRecordSummary } from "@schemas/TransactionRecord.schema";
+import type { TransactionStatus } from "@schemas/TransactionStatus.schema";
 import {
   derivePaymentStatus,
   derivePaymentStatusFromSingleTransaction,
 } from "@utils/derivePaymentStatus";
 import { toPaymentMethod } from "@utils/toPaymentMethod";
-import TransactionModel from "../db/TransactionModel";
-import FeesModel from "../db/FeesModel";
-import { NotFoundError } from "@errors/notFound";
-import { PayGovError } from "@errors/payGovError";
 import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
-import { ServerError } from "@errors/serverError";
 import { authorizeClient } from "../authorizeClient";
+import FeesModel from "../db/FeesModel";
+import TransactionModel from "../db/TransactionModel";
+import { parseTransactionStatus } from "./parseTransactionStatus";
 
 const PAYGOV_RETRY_MESSAGE =
   "There was an error communicating with Pay.gov. Please retry your transaction.";

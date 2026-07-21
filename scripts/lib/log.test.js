@@ -1,4 +1,4 @@
-"use strict";
+
 
 const { createLogger } = require("./log");
 

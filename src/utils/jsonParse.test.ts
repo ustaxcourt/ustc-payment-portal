@@ -1,5 +1,5 @@
-import { jsonParse } from "./jsonParse";
 import { InvalidRequestError } from "@errors/invalidRequest";
+import { jsonParse } from "./jsonParse";
 
 describe("jsonParse", () => {
   it("returns parsed JSON for a valid body", () => {

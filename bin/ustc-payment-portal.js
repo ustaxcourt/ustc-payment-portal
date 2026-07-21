@@ -3,7 +3,7 @@
 // Usage:
 //   payment-portal start  (portal + pay-gov + db)
 //   payment-portal stop   (tear down docker)
-"use strict";
+
 
 const path = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
