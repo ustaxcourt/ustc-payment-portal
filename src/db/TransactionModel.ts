@@ -1,10 +1,10 @@
-import { Model } from 'objection';
-import FeesModel from './FeesModel';
-import type { PaymentStatus } from '@schemas/PaymentStatus.schema';
-import type { TransactionStatus as SchemaTransactionStatus } from '@schemas/TransactionStatus.schema';
-import { ConflictError } from '@errors/conflict';
-import { GoneError } from '@errors/gone';
-import { getKnex } from './knex';
+import { Model } from "objection";
+import { getActiveFee } from "../config/fees";
+import type { PaymentStatus } from "@schemas/PaymentStatus.schema";
+import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/TransactionStatus.schema";
+import { ConflictError } from "@errors/conflict";
+import { GoneError } from "@errors/gone";
+import { getKnex } from "./knex";
 
 export type TransactionStatus = SchemaTransactionStatus;
 export type { PaymentStatus };
@@ -18,12 +18,10 @@ export type PaymentMethod = "plastic_card" | "ach" | "paypal";
 /** Max age before a stuck `processing` row is treated as abandoned (Lambda timeout, crash). */
 export const PROCESSING_STALE_MS = 600_000;
 
-export const isStaleProcessingTransaction = (
-  row: {
-    transactionStatus?: SchemaTransactionStatus | null;
-    lastUpdatedAt: string;
-  },
-): boolean => {
+export const isStaleProcessingTransaction = (row: {
+  transactionStatus?: SchemaTransactionStatus | null;
+  lastUpdatedAt: string;
+}): boolean => {
   if (row.transactionStatus !== "processing") {
     return false;
   }
@@ -39,7 +37,7 @@ const TOKEN_NO_LONGER_VALID_MESSAGE = "This token is no longer valid.";
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
-  feeId!: string; // e.g. "PETITION_FILING_FEE_2026_03_05" — the specific fee version in effect at the time of the transaction attempt. FK to FeesModel.
+  fee!: string; // Stable fee key (e.g. "PETITION_FILING_FEE").
   feeName?: string;
   clientName!: string;
   transactionReferenceId!: string;
@@ -47,7 +45,7 @@ export default class TransactionModel extends Model {
   transactionStatus?: TransactionStatus | null;
   paygovToken?: string | null;
   paymentMethod?: PaymentMethod | null;
-  transactionAmount?: number | null;
+  transactionAmount!: number;
   transactionDate?: string | null;
   paymentDate?: string | null;
   returnCode?: number | null;
@@ -66,19 +64,6 @@ export default class TransactionModel extends Model {
     return "agencyTrackingId";
   }
 
-  static get relationMappings() {
-    return {
-      fee: {
-        relation: Model.BelongsToOneRelation,
-        modelClass: FeesModel,
-        join: {
-          from: "transactions.feeId",
-          to: "fees.feeId",
-        },
-      },
-    };
-  }
-
   $parseDatabaseJson(json: Record<string, unknown>): Record<string, unknown> {
     const parsed = super.$parseDatabaseJson(json);
     if (
@@ -90,29 +75,33 @@ export default class TransactionModel extends Model {
     return parsed;
   }
 
-  // Fees from Fee Table will never be deleted, new ones are versioned according
-  // to FeeKey & activation date, with the latest date accepted as the active fee.
+  // Fees are hardcoded into the codebase, new ones are versioned according
+  // to fee key & activation date, with the latest date accepted as the active fee.
   static async getByPaymentStatus(
     paymentStatus: PaymentStatus,
   ): Promise<TransactionModel[]> {
     await getKnex();
-    return TransactionModel.query()
-      .alias("t")
-      .join("fees as f", "t.feeId", "f.feeId")
-      .select("t.*", "f.name as feeName", "f.amount as transactionAmount")
-      .where("t.paymentStatus", paymentStatus)
-      .orderBy("t.createdAt", "desc")
+    const rows = await TransactionModel.query()
+      .where("paymentStatus", paymentStatus)
+      .orderBy("createdAt", "desc")
       .limit(100);
+
+    return rows.map(TransactionModel.attachFeeName);
   }
 
   static async getAll(): Promise<TransactionModel[]> {
     await getKnex();
-    return TransactionModel.query()
-      .alias("t")
-      .join("fees as f", "t.feeId", "f.feeId")
-      .select("t.*", "f.name as feeName", "f.amount as transactionAmount")
-      .orderBy("t.createdAt", "desc")
+    const rows = await TransactionModel.query()
+      .orderBy("createdAt", "desc")
       .limit(100);
+
+    return rows.map(TransactionModel.attachFeeName);
+  }
+
+  private static attachFeeName(row: TransactionModel): TransactionModel {
+    const activeFee = getActiveFee(row.fee, row.createdAt);
+    row.feeName = activeFee.name;
+    return row;
   }
 
   static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
@@ -150,7 +139,7 @@ export default class TransactionModel extends Model {
   }
 
   static async createReceived(
-    data: Partial<TransactionModel>,
+    data: Partial<TransactionModel> & { transactionAmount: number },
   ): Promise<TransactionModel> {
     await getKnex();
     const newTransaction = await this.query().insertAndFetch({
@@ -194,7 +183,7 @@ export default class TransactionModel extends Model {
   ): Promise<TransactionModel[]> {
     await getKnex();
     // Order ascending by createdAt: getDetails relies on rows[0] being the earliest attempt
-    // for the Fee-invariance lookup (all attempts share the same feeId, but rows[0]'s timestamp
+    // for the Fee-invariance lookup (all attempts share the same fee, but rows[0]'s timestamp
     // is also implicitly the obligation's first-attempt timestamp).
     return TransactionModel.query()
       .where({ transactionReferenceId })

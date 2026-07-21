@@ -55,6 +55,18 @@ export async function down(knex: Knex): Promise<void> {
     WHERE t.fee_id = f.fee_id
   `);
 
+  // Fallback for rows that couldn't be matched to a fee record — this happens
+  // when rolling back from a later migration (20260714000000) that dropped the
+  // fees table: that migration's down() restores the table structure but not
+  // the data, so the JOIN above matches nothing and leaves transaction_amount
+  // NULL. 0 is a safe sentinel here because this path only runs in CI
+  // migration-check (migrate:latest → seed → migrate:rollback --all), not in
+  // production; production would never roll back past the point where fee data
+  // exists.
+  await knex.raw(`
+    UPDATE transactions SET transaction_amount = 0 WHERE transaction_amount IS NULL
+  `);
+
   await knex.schema.alterTable('transactions', (t) => {
     t.decimal('transaction_amount', 12, 2).notNullable().alter();
   });
