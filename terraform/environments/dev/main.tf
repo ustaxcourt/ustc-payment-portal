@@ -344,10 +344,17 @@ resource "aws_iam_role_policy" "artillery_load_test" {
         Resource = "${module.api.api_gateway_execution_arn}/*"
       },
       {
-        Effect   = "Allow"
-        Action   = ["sqs:*"]
+        Effect = "Allow"
+        Action = [
+          "sqs:ChangeMessageVisibility",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:GetQueueUrl",
+          "sqs:ReceiveMessage",
+          "sqs:SendMessage",
+        ]
         Resource = "arn:aws:sqs:*:${data.aws_caller_identity.current.account_id}:artilleryio*"
-      },
+      }
       {
         Effect = "Allow"
         Action = [
