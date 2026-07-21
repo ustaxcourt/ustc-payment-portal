@@ -1,10 +1,10 @@
-import * as https from "https";
-import { InitPayment } from "@useCases/initPayment";
-import { ProcessPayment } from "@useCases/processPayment";
-import { GetDetails } from "@useCases/getDetails";
-import { GetRecentTransactions } from "@useCases/getRecentTransactions";
-import { GetTransactionPaymentStatus } from "@useCases/getTransactionPaymentStatus";
-import { GetTransactionsByStatus } from "@useCases/getTransactionsByStatus";
+import type { GetDetails } from "@useCases/getDetails";
+import type { GetRecentTransactions } from "@useCases/getRecentTransactions";
+import type { GetTransactionPaymentStatus } from "@useCases/getTransactionPaymentStatus";
+import type { GetTransactionsByStatus } from "@useCases/getTransactionsByStatus";
+import type { InitPayment } from "@useCases/initPayment";
+import type { ProcessPayment } from "@useCases/processPayment";
+import type * as https from "https";
 
 export type AppContextLogger = {
   debug: (message: string, additionalFields?: Record<string, unknown>) => void;

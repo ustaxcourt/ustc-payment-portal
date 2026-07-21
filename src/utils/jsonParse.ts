@@ -1,5 +1,5 @@
-import { InvalidRequestError } from "@errors/invalidRequest";
 import type { ParseResult } from "@appTypes/ParseResult";
+import { InvalidRequestError } from "@errors/invalidRequest";
 
 export const jsonParse = <T = any>(
   body: string | null | undefined,

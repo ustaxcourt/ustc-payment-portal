@@ -1,4 +1,4 @@
-"use strict";
+
 
 // start-local-stack.js runs module-level setup (parsePort, createLogger) and
 // then calls main() asynchronously. Tests mock all deps, require the script,

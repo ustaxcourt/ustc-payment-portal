@@ -1,8 +1,8 @@
-import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
-import { createAppContext } from "../appContext";
-import { isValidPaymentStatus } from "@useCases/getTransactionsByStatus";
 import { PaymentStatusSchema } from "@schemas/PaymentStatus.schema";
-import { dashboardOk, dashboardError } from "@utils/dashboardHandlerUtils";
+import { isValidPaymentStatus } from "@useCases/getTransactionsByStatus";
+import { dashboardError, dashboardOk } from "@utils/dashboardHandlerUtils";
+import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
+import { createAppContext } from "../appContext";
 
 /**
  * GET /transactions/{paymentStatus}

@@ -1,8 +1,8 @@
-import { runDeployHealthCheck } from "./runDeployHealthCheck";
-import { getParameterString } from "@clients/ssmClient";
-import { probePayGovWsdl } from "../health/probePayGovWsdl";
-import { getKnex } from "../db/knex";
 import type { AppContext } from "@appTypes/AppContext";
+import { getParameterString } from "@clients/ssmClient";
+import { getKnex } from "../db/knex";
+import { probePayGovWsdl } from "../health/probePayGovWsdl";
+import { runDeployHealthCheck } from "./runDeployHealthCheck";
 
 jest.mock("@clients/ssmClient");
 jest.mock("../health/probePayGovWsdl", () => ({ probePayGovWsdl: jest.fn() }));

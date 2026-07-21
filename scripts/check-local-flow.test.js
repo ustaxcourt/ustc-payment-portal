@@ -1,4 +1,4 @@
-"use strict";
+
 
 // check-local-flow.js auto-runs main() on require. All tests mock global.fetch
 // and spy on process.exit, then flush the microtask queue after requiring so

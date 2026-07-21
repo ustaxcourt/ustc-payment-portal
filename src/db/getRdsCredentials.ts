@@ -1,7 +1,7 @@
+import { getSecretString } from "@clients/secretsClient";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { rootCertificates } from "tls";
-import { getSecretString } from "@clients/secretsClient";
 
 export interface RdsConnectionConfig {
   host: string;
