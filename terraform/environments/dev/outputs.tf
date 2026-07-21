@@ -62,8 +62,8 @@ output "test_unauthorized_role_arn" {
 }
 
 output "artillery_load_test_role_arn" {
-  value       = local.environment == "dev" ? aws_iam_role.artillery_load_test[0].arn : null
-  description = "IAM role ARN for Artillery run-lambda (--lambda-role-arn)"
+  value       = local.enable_artillery_load_test ? aws_iam_role.artillery_load_test[0].arn : null
+  description = "IAM role ARN for Artillery run-lambda in the active dev or PR workspace (--lambda-role-arn)"
 }
 
 output "migration_runner_function_name" {

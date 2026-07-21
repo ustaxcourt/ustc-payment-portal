@@ -22,6 +22,8 @@ locals {
   is_pr   = local.environment != "dev"
   pr_role = local.is_pr ? "pr_user_${replace(local.environment, "-", "_")}" : null
 
+  enable_artillery_load_test = local.environment == "dev" || startswith(local.environment, "pr-")
+
   # Payment + dashboard Lambdas use the PR-scoped secret in PR workspaces;
   # everywhere else they keep using the admin secret.
   app_rds_secret_arn = local.is_pr ? aws_secretsmanager_secret.pr_user[0].arn : local.rds_secret_arn

@@ -301,7 +301,7 @@ resource "aws_iam_role_policy" "test_unauthorized_api_invoke" {
 # Register this role ARN in client-permissions before load testing.
 
 resource "aws_iam_role" "artillery_load_test" {
-  count = local.environment == "dev" ? 1 : 0
+  count = local.enable_artillery_load_test ? 1 : 0
   name  = "${local.name_prefix}-artillery-load-test-role"
 
   assume_role_policy = jsonencode({
@@ -325,13 +325,13 @@ resource "aws_iam_role" "artillery_load_test" {
 }
 
 resource "aws_iam_role_policy_attachment" "artillery_load_test_basic_execution" {
-  count      = local.environment == "dev" ? 1 : 0
+  count      = local.enable_artillery_load_test ? 1 : 0
   role       = aws_iam_role.artillery_load_test[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 resource "aws_iam_role_policy" "artillery_load_test" {
-  count = local.environment == "dev" ? 1 : 0
+  count = local.enable_artillery_load_test ? 1 : 0
   name  = "artillery-load-test"
   role  = aws_iam_role.artillery_load_test[0].id
 
