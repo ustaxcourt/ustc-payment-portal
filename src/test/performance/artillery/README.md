@@ -60,7 +60,7 @@ The `1000-rpm` and `10000-rpm` names are approximate scenario-start rates, not l
 - Requires `ARTILLERY_LAMBDA_ROLE_ARN` to be present.
 - Uses `ARTILLERY_TARGET` from `src/test/performance/artillery/.env`, defaulting to a deployed payments URL if unset.
 - Uses `ARTILLERY_LAMBDA_REGION`, `AWS_REGION`, or `AWS_DEFAULT_REGION` for the Lambda worker region, defaulting to `us-east-1`.
-- Uses `ARTILLERY_LAMBDA_COUNT`, defaulting to `1`.
+- Uses `ARTILLERY_LAMBDA_COUNT`, defaulting to `1`. Each Lambda worker runs the configured `arrivalRate`, so the approximate aggregate arrival rate is `arrivalRate * ARTILLERY_LAMBDA_COUNT`. For example, `arrivalRate: 10` with `ARTILLERY_LAMBDA_COUNT=5` produces approximately 50 arrivals per second.
 - Appends the matching `--dotenv`, `--target`, `--region`, `--count`, and `--lambda-role-arn` options to the `artillery run-lambda` command.
 
 Operational implications:
@@ -75,7 +75,7 @@ Operational implications:
 2. Set `ARTILLERY_TARGET` to the API base URL you intend to load test.
 3. Set `ARTILLERY_LAMBDA_ROLE_ARN` to the IAM role ARN used by `artillery run-lambda`.
 4. Set `PAY_GOV_DEV_SERVER_ACCESS_TOKEN` for `full-flow` runs.
-5. Set `ARTILLERY_LAMBDA_COUNT` if you want more than one Lambda worker.
+5. Set `ARTILLERY_LAMBDA_COUNT` if you want more than one Lambda worker, accounting for its multiplication of the configured `arrivalRate`.
 6. Set `ARTILLERY_LAMBDA_REGION` if the load generator should run outside the default region.
 7. Set `SIGV4_REGION` if the API Gateway signing region differs from the Lambda worker region.
 
