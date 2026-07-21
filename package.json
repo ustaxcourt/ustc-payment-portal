@@ -50,7 +50,10 @@
     "seed:make": "npm run knex -- seed:make $1",
     "seed:run": "npm run knex -- seed:run",
     "docker": "docker compose up",
-    "docker:migration": "MIGRATION_MODE=1 docker compose up"
+    "docker:migration": "MIGRATION_MODE=1 docker compose up",
+    "deps:review": "./bin/review-dependencies.sh",
+    "deps:update": "./bin/update-dependencies.sh",
+    "deps:update:prod": "INCLUDE_PROD=true ./bin/update-dependencies.sh"
   },
   "keywords": [],
   "author": "",
