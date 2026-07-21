@@ -25,12 +25,24 @@ locals {
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
   } : {})
 
+  # Migration Lambda: migrationRunner
+  # Needs RDS only — no payment secrets. Connects directly, not via proxy (CREATE/DROP DATABASE breaks through a proxy).
+  lambda_env_migration = {
+    NODE_ENV              = local.node_env
+    APP_ENV               = local.app_env
+    RDS_ENDPOINT          = module.rds.endpoint
+    RDS_SECRET_ARN        = module.rds.master_user_secret_arn
+    RDS_MASTER_SECRET_ARN = module.rds.master_user_secret_arn
+    RDS_DB_NAME           = local.rds_db_name
+  }
+
   lambda_env_by_function = {
-    initPayment    = local.lambda_env_payment
-    processPayment = local.lambda_env_payment
-    getDetails     = local.lambda_env_payment
-    testCert       = local.lambda_env_payment
-    healthCheck    = local.lambda_env_payment
+    initPayment     = local.lambda_env_payment
+    processPayment  = local.lambda_env_payment
+    getDetails      = local.lambda_env_payment
+    testCert        = local.lambda_env_payment
+    healthCheck     = local.lambda_env_payment
+    migrationRunner = local.lambda_env_migration
   }
   github_oidc_provider_arn = "arn:aws:iam::802939326821:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"
