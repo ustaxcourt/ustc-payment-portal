@@ -22,18 +22,20 @@ module "lambda" {
   # Consume dev artifacts by SHA (keys and optional hashes passed from workflow)
   artifact_bucket = var.artifact_bucket
   artifact_s3_keys = {
-    initPayment    = var.initPayment_s3_key
-    processPayment = var.processPayment_s3_key
-    getDetails     = var.getDetails_s3_key
-    testCert       = var.testCert_s3_key
-    healthCheck    = var.testCert_s3_key
+    initPayment     = var.initPayment_s3_key
+    processPayment  = var.processPayment_s3_key
+    getDetails      = var.getDetails_s3_key
+    testCert        = var.testCert_s3_key
+    healthCheck     = var.testCert_s3_key
+    migrationRunner = var.migrationRunner_s3_key
   }
   source_code_hashes = {
-    initPayment    = var.initPayment_source_code_hash
-    processPayment = var.processPayment_source_code_hash
-    getDetails     = var.getDetails_source_code_hash
-    testCert       = var.testCert_source_code_hash
-    healthCheck    = var.testCert_source_code_hash
+    initPayment     = var.initPayment_source_code_hash
+    processPayment  = var.processPayment_source_code_hash
+    getDetails      = var.getDetails_source_code_hash
+    testCert        = var.testCert_source_code_hash
+    healthCheck     = var.testCert_source_code_hash
+    migrationRunner = var.migrationRunner_source_code_hash
   }
 
   tags = {
@@ -167,11 +169,13 @@ module "monitoring" {
 
   proxy_name = module.rds_proxy.proxy_name
 
+  # migrationRunner: uncaught-error alarm only (no HTTP response = no 5xx concept).
   lambda_functions = {
-    initPayment    = module.lambda.function_names["initPayment"]
-    processPayment = module.lambda.function_names["processPayment"]
-    getDetails     = module.lambda.function_names["getDetails"]
-    testCert       = module.lambda.function_names["testCert"]
+    initPayment     = module.lambda.function_names["initPayment"]
+    processPayment  = module.lambda.function_names["processPayment"]
+    getDetails      = module.lambda.function_names["getDetails"]
+    testCert        = module.lambda.function_names["testCert"]
+    migrationRunner = module.lambda.function_names["migrationRunner"]
   }
 
   lambda_log_group_names = {

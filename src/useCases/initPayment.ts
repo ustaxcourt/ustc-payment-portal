@@ -1,26 +1,27 @@
 import type { AppContext } from "@appTypes/AppContext";
-import {
+import type { ClientPermission } from "@appTypes/ClientPermission";
+import { StartOnlineCollectionRequest } from "@entities/StartOnlineCollectionRequest";
+import { ConflictError } from "@errors/conflict";
+import { FeeNotFoundError } from "@errors/feeNotFound";
+import { InvalidRequestError } from "@errors/invalidRequest";
+import { PayGovError } from "@errors/payGovError";
+import { ServerError } from "@errors/serverError";
+import type {
   InitPaymentRequest,
   InitPaymentResponse,
 } from "@schemas/InitPayment.schema";
-import { InvalidRequestError } from "@errors/invalidRequest";
-import { ConflictError } from "@errors/conflict";
-import FeesModel from "../db/FeesModel";
 import { generateAgencyTrackingId } from "@utils/generateTrackingId";
+import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
+import { ZodError } from "zod";
+import { authorizeClient } from "../authorizeClient";
+import { type ActiveFee, getActiveFee } from "../config/fees";
+import { isUniqueViolation } from "../db/pgErrors";
 import TransactionModel, {
   isStaleProcessingTransaction,
 } from "../db/TransactionModel";
-import { isUniqueViolation } from "../db/pgErrors";
-import { PayGovError } from "@errors/payGovError";
-import { ServerError } from "@errors/serverError";
-import { StartOnlineCollectionRequest } from "@entities/StartOnlineCollectionRequest";
-import type { ClientPermission } from "@appTypes/ClientPermission";
-import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
-import { authorizeClient } from "../authorizeClient";
-import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
-import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
-import { ZodError } from "zod";
 import { FailedTransactionError } from "../errors/failedTransaction";
+import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
+import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 
 const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
@@ -48,7 +49,7 @@ export const initPayment: InitPayment = async (
 
   appContext.logger.debug("Received initPayment request", {
     transactionReferenceId,
-    feeKey,
+    fee: feeKey,
     clientName,
     hasAmount: amount !== undefined,
     metadata: request.metadata,
@@ -63,13 +64,18 @@ export const initPayment: InitPayment = async (
     {
       transactionReferenceId,
       clientName,
-      feeKey,
+      fee: feeKey,
     },
   );
 
-  const fee = await FeesModel.getActiveFeeByKey(feeKey);
-  if (!fee || !fee.tcsAppId) {
-    throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
+  let fee: ActiveFee;
+  try {
+    fee = getActiveFee(feeKey);
+  } catch (error) {
+    if (error instanceof FeeNotFoundError) {
+      throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
+    }
+    throw error;
   }
 
   if (amount !== undefined && !fee.isVariable) {
@@ -159,7 +165,7 @@ export const initPayment: InitPayment = async (
     transactionReferenceId,
     agencyTrackingId,
     transactionAmount,
-    feeId: fee.feeId,
+    fee: feeKey,
     clientName,
   });
 
@@ -167,9 +173,10 @@ export const initPayment: InitPayment = async (
   try {
     await TransactionModel.createReceived({
       agencyTrackingId,
-      feeId: fee.feeId,
+      fee: feeKey,
       clientName,
       transactionReferenceId,
+      transactionAmount,
       metadata: request.metadata,
     });
   } catch (err) {
@@ -198,7 +205,8 @@ export const initPayment: InitPayment = async (
 
     /* istanbul ignore next */
     throw new Error(
-      `Failed to record received transaction: ${err instanceof Error ? err.message : String(err)
+      `Failed to record received transaction: ${
+        err instanceof Error ? err.message : String(err)
       }`,
     );
   }
@@ -207,7 +215,7 @@ export const initPayment: InitPayment = async (
     transactionReferenceId,
     agencyTrackingId,
     transactionAmount,
-    feeId: fee.feeId,
+    fee: feeKey,
     clientName,
     metadata: request.metadata,
   });
@@ -222,7 +230,7 @@ export const initPayment: InitPayment = async (
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
     });
-    if (!(err instanceof ZodError) && !(err instanceof FailedTransactionError)) {
+    if (!(err instanceof ZodError || err instanceof FailedTransactionError)) {
       emitPayGovErrorMetric();
     }
     await safeUpdateToFailed(
@@ -263,4 +271,3 @@ export const initPayment: InitPayment = async (
     paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${fee.tcsAppId}`,
   };
 };
-
