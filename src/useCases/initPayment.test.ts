@@ -17,31 +17,28 @@ jest.mock("../db/TransactionModel", () => {
   };
 });
 
-jest.mock("../db/FeesModel", () => ({
+jest.mock("../config/fees", () => ({
   __esModule: true,
-  default: {
-    getActiveFeeByKey: jest.fn((feeKey) => {
-      if (feeKey === "PETITION_FILING_FEE") {
-        return Promise.resolve({
-          feeId: "PETITION_FILING_FEE",
-          feeKey: "PETITION_FILING_FEE",
-          tcsAppId: "TCSUSTAXCOURTPETITION",
-          amount: 250,
-          isVariable: false,
-        });
-      }
-      if (feeKey === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
-        return Promise.resolve({
-          feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE",
-          feeKey: "NONATTORNEY_EXAM_REGISTRATION_FEE",
-          tcsAppId: "TCSUSTAXCOURTANAEF",
-          amount: 250,
-          isVariable: false,
-        });
-      }
-      return Promise.resolve(undefined);
-    }),
-  },
+  getActiveFee: jest.fn((fee) => {
+    if (fee === "PETITION_FILING_FEE") {
+      return {
+        fee: "PETITION_FILING_FEE",
+        tcsAppId: "TCSUSTAXCOURTPETITION",
+        amount: 60,
+        isVariable: false,
+      };
+    }
+    if (fee === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
+      return {
+        fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        tcsAppId: "TCSUSTAXCOURTANAEF",
+        amount: 250,
+        isVariable: false,
+      };
+    }
+    const { FeeNotFoundError } = jest.requireActual("../errors/feeNotFound");
+    throw new FeeNotFoundError(fee);
+  }),
 }));
 
 jest.mock("../health/payGovHealthMetric", () => ({
@@ -52,16 +49,16 @@ jest.mock("../health/initPaymentConcurrencyMetric", () => ({
   emitInitPaymentConflictMetric: jest.fn(),
 }));
 
-import { initPayment } from "./initPayment";
-import { testAppContext as appContext } from "../test/testAppContext";
-import { InitPaymentRequest } from "@schemas/InitPayment.schema";
 import * as SoapRequestModule from "@entities/StartOnlineCollectionRequest";
+import type { InitPaymentRequest } from "@schemas/InitPayment.schema";
 import { ZodError } from "zod";
 import { ConflictError } from "../errors/conflict";
 import { PayGovError } from "../errors/payGovError";
-import { ClientPermission } from "../types/ClientPermission";
-import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
+import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { testAppContext as appContext } from "../test/testAppContext";
+import type { ClientPermission } from "../types/ClientPermission";
+import { initPayment } from "./initPayment";
 
 const emitErrorMock = emitPayGovErrorMetric as jest.MockedFunction<
   typeof emitPayGovErrorMetric
@@ -130,7 +127,10 @@ describe("initPayment", () => {
     expect(result.paymentRedirect).toContain("test-token-123");
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTPETITION");
     expect(TransactionModel.createReceived).toHaveBeenCalledWith(
-      expect.objectContaining({ feeId: "PETITION_FILING_FEE" }),
+      expect.objectContaining({
+        fee: "PETITION_FILING_FEE",
+        transactionAmount: 60,
+      }),
     );
     expect(TransactionModel.updateToInitiated).toHaveBeenCalled();
   });
@@ -156,15 +156,17 @@ describe("initPayment", () => {
     expect(result.token).toBe("test-token-456");
     expect(result.paymentRedirect).toContain("TCSUSTAXCOURTANAEF");
     expect(TransactionModel.createReceived).toHaveBeenCalledWith(
-      expect.objectContaining({ feeId: "NONATTORNEY_EXAM_REGISTRATION_FEE" }),
+      expect.objectContaining({
+        fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+        transactionAmount: 250,
+      }),
     );
   });
 
   it("throws InvalidRequestError when amount is missing for a variable fee", async () => {
-    const FeesModel = require("../db/FeesModel").default;
-    FeesModel.getActiveFeeByKey.mockResolvedValueOnce({
-      feeId: "PETITION_FILING_FEE",
-      feeKey: "PETITION_FILING_FEE",
+    const feesConfig = require("../config/fees");
+    feesConfig.getActiveFee.mockReturnValueOnce({
+      fee: "PETITION_FILING_FEE",
       tcsAppId: "TCSUSTAXCOURTPETITION",
       amount: 60,
       isVariable: true,
@@ -551,4 +553,3 @@ describe("initPayment", () => {
     expect(emitErrorMock).not.toHaveBeenCalled();
   });
 });
-

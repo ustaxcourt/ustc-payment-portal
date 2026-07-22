@@ -37,8 +37,8 @@ export const DashboardTransactionSchema = z
       description: "Human-readable fee name",
       example: "Filing Fee",
     }),
-    feeId: z.string().openapi({
-      description: "Fee identifier",
+    fee: z.string().openapi({
+      description: "Stable fee key (e.g. PETITION_FILING_FEE)",
       example: "PETITION_FILING_FEE",
     }),
     transactionAmount: z.number().openapi({

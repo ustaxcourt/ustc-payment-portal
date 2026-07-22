@@ -13,11 +13,11 @@ import { parseTransactionStatus } from "./parseTransactionStatus";
 import { derivePaymentStatusFromSingleTransaction } from "@utils/derivePaymentStatus";
 import type { ClientPermission } from "@appTypes/ClientPermission";
 import TransactionModel from "../db/TransactionModel";
-import FeesModel from "../db/FeesModel";
-import { getPostgresErrorCode, isClaimContentionError } from "../db/pgErrors";
+import { getActiveFee, type ActiveFee } from "../config/fees";
 import { toPaymentMethod } from "@utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
 import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
+import { getPostgresErrorCode, isClaimContentionError } from "../db/pgErrors";
 import { authorizeClient } from "../authorizeClient";
 import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
@@ -42,7 +42,7 @@ type ProcessPaymentLogFields = {
 };
 
 type AuthorizedProcessPaymentContext = {
-  fee: NonNullable<Awaited<ReturnType<typeof FeesModel.getFeeById>>>;
+  fee: ActiveFee;
   baseLogFields: ProcessPaymentLogFields;
 };
 
@@ -71,44 +71,30 @@ const loadAuthorizedContext = async (
 
   const baseLogFields = buildLogFields(request, existingTransaction);
 
-  let fee: Awaited<ReturnType<typeof FeesModel.getFeeById>>;
+  let fee: ActiveFee;
   try {
-    fee = await FeesModel.getFeeById(existingTransaction.feeId);
+    appContext.logger.info("Looking up active fee for transaction", {
+      ...baseLogFields,
+      fee: existingTransaction.fee,
+    });
+
+    fee = getActiveFee(existingTransaction.fee, existingTransaction.createdAt);
   } catch (err) {
-    appContext.logger.error("Fee lookup failed", {
-      ...baseLogFields,
-      errorName: err instanceof Error ? err.name : undefined,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
-    throw err;
-  }
-  if (!fee) {
-    appContext.logger.error("Fee not found for transaction", {
-      ...baseLogFields,
-    });
     await safeUpdateToFailed(
       appContext,
       existingTransaction.agencyTrackingId,
       undefined,
       "Fee configuration not found for this transaction",
     );
-    throw new NotFoundError("Fee configuration not found for this transaction");
-  }
-  if (!fee.tcsAppId) {
-    appContext.logger.error("Fee is missing tcsAppId configuration", {
+    appContext.logger.error("Fee lookup failed", {
       ...baseLogFields,
-      feeKey: fee.feeKey,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
     });
-    await safeUpdateToFailed(
-      appContext,
-      existingTransaction.agencyTrackingId,
-      undefined,
-      "Fee is missing tcsAppId configuration",
-    );
-    throw new ServerError();
+    throw new ServerError("Fee configuration not found for this transaction");
   }
 
-  authorizeClient(client, fee.feeKey);
+  authorizeClient(client, fee.fee);
 
   return { fee, baseLogFields };
 };
@@ -172,7 +158,7 @@ export const processPayment: ProcessPayment = async (
 
   appContext.logger.info("Loaded processPayment request context", {
     ...baseLogFields,
-    feeKey: fee.feeKey,
+    fee: fee.fee,
     requestParameters: {
       token: request.token,
     },
@@ -187,7 +173,7 @@ export const processPayment: ProcessPayment = async (
     "Calling Pay.gov completeOnlineCollectionWithDetails",
     {
       ...baseLogFields,
-      feeKey: fee.feeKey,
+      fee: fee.fee,
       tcsAppId: fee.tcsAppId,
     },
   );
@@ -199,7 +185,7 @@ export const processPayment: ProcessPayment = async (
     if (err instanceof FailedTransactionError) {
       appContext.logger.error("Pay.gov returned failed transaction", {
         ...baseLogFields,
-        feeKey: fee.feeKey,
+        fee: fee.fee,
         returnCode: err.code,
         returnDetail: err.message,
       });
@@ -223,7 +209,7 @@ export const processPayment: ProcessPayment = async (
     if (err instanceof ZodError) {
       appContext.logger.error("Pay.gov response failed schema validation", {
         ...baseLogFields,
-        feeKey: fee.feeKey,
+        fee: fee.fee,
         errorName: err.name,
         errorMessage: err.message,
       });
@@ -240,7 +226,7 @@ export const processPayment: ProcessPayment = async (
     /* istanbul ignore next: This branch is for Pay.gov communication failures, which are rare in normal operation */
     appContext.logger.error("Error communicating with Pay.gov", {
       ...baseLogFields,
-      feeKey: fee.feeKey,
+      fee: fee.fee,
       errorName: err instanceof Error ? err.name : undefined,
       errorMessage: err instanceof Error ? err.message : String(err),
     });
@@ -257,7 +243,7 @@ export const processPayment: ProcessPayment = async (
 
   appContext.logger.info("Received Pay.gov response", {
     ...baseLogFields,
-    feeKey: fee.feeKey,
+    fee: fee.fee,
     payGovResponse: result,
   });
 
@@ -280,7 +266,7 @@ export const processPayment: ProcessPayment = async (
       emitProcessPaymentConflictMetric("persist_race");
       appContext.logger.warn("Pay.gov response not persisted — state changed", {
         ...baseLogFields,
-        feeKey: fee.feeKey,
+        fee: fee.fee,
         paygovTrackingId: result.paygov_tracking_id,
         parsedStatus,
         paymentStatus,
@@ -291,7 +277,7 @@ export const processPayment: ProcessPayment = async (
     /* istanbul ignore next: This branch is for database failures, which are rare in normal operation */
     appContext.logger.error("Failed to persist Pay.gov response", {
       ...baseLogFields,
-      feeKey: fee.feeKey,
+      fee: fee.fee,
       paygovTrackingId: result.paygov_tracking_id,
       parsedStatus,
       paymentStatus,
@@ -316,7 +302,7 @@ export const processPayment: ProcessPayment = async (
 
   appContext.logger.info("Completed processPayment", {
     ...baseLogFields,
-    feeKey: fee.feeKey,
+    fee: fee.fee,
     paygovTrackingId: result.paygov_tracking_id,
     parsedStatus,
     paymentStatus,

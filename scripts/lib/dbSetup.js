@@ -44,9 +44,6 @@ async function setupConsumerDb() {
     log.info("Running migrations...");
     await knex.migrate.latest();
 
-    log.info("Running seeds...");
-    await knex.seed.run({ specific: "01_reference_data.ts" });
-
     log.info("Database ready.");
   } finally {
     await knex.destroy();

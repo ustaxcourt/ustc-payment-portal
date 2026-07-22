@@ -40,7 +40,7 @@ describe("check-local-flow", () => {
       parsePort: jest.fn((value, fallback) => fallback),
     }));
 
-    delete process.env.FEE_ID;
+    delete process.env.FEE;
     delete process.env.BASE_URL;
     delete process.env.PAYMENT_URL;
   });
@@ -152,8 +152,8 @@ describe("check-local-flow", () => {
     expect(processExitSpy).toHaveBeenCalledWith(1);
   });
 
-  it("exits with 1 when an unknown FEE_ID is set", async () => {
-    process.env.FEE_ID = "UNKNOWN_FEE";
+  it("exits with 1 when an unknown FEE is set", async () => {
+    process.env.FEE = "UNKNOWN_FEE";
 
     require("./check-local-flow");
     await flushPromises();

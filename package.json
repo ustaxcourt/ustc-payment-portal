@@ -21,7 +21,7 @@
     "dev": "nodemon --delay 2 --watch src -e ts,ejs --exec npm run dev:start",
     "tf:build": "npm run build:lambda",
     "tf:test": "bash terraform/scripts/run-module-tests.sh",
-    "start": "node .",
+    "start": "node -r dotenv/config .",
     "test": "npx jest --config jest-unit.config.ts",
     "test:coverage": "npm run test -- --coverage",
     "test:integration:dev": "APP_ENV=local npx jest ./src/test/integration/ --testPathIgnorePatterns=sigv4Smoke.test.ts --testPathIgnorePatterns=deployHealthSmoke.test.ts --testPathIgnorePatterns=/dist/ --testTimeout=30000",

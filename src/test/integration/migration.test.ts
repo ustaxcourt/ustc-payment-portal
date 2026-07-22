@@ -26,10 +26,7 @@ import { isLocal } from "../../config/appEnv";
 const TOTAL_SEEDED_ROWS = 270; // 200 success + 50 failed + 20 pending from 02_dummy_data.ts
 
 const baseUrl = process.env.BASE_URL;
-const isDeployed =
-  !!baseUrl &&
-  baseUrl.startsWith("https://") &&
-  !isLocal();
+const isDeployed = !!baseUrl && baseUrl.startsWith("https://") && !isLocal();
 
 // Skip the entire suite when not running against a deployed environment.
 const describeIfDeployed = isDeployed ? describe : describe.skip;
@@ -42,7 +39,11 @@ describeIfDeployed("database migration and seed verification", () => {
     beforeAll(async () => {
       const response = await fetch(`${baseUrl}/transactions`);
       if (!response.ok) {
-        throw new Error(`GET /transactions failed: ${response.status} ${await response.text()}`);
+        throw new Error(
+          `GET /transactions failed: ${
+            response.status
+          } ${await response.text()}`,
+        );
       }
       body = (await response.json()) as typeof body;
     });
@@ -59,8 +60,8 @@ describeIfDeployed("database migration and seed verification", () => {
       expect(row).toHaveProperty("agencyTrackingId");
       expect(row).toHaveProperty("transactionReferenceId");
       expect(row).toHaveProperty("feeName");
-      expect(row).toHaveProperty("feeId");
-      expect(row).toHaveProperty("transactionAmount"); // derived from fees.amount via join
+      expect(row).toHaveProperty("fee");
+      expect(row).toHaveProperty("transactionAmount");
       expect(row).toHaveProperty("clientName");
       expect(row).toHaveProperty("paymentStatus");
       expect(row).toHaveProperty("transactionStatus");
@@ -83,13 +84,13 @@ describeIfDeployed("database migration and seed verification", () => {
       }
     });
 
-    it("should contain only valid fee IDs from the seed data", () => {
-      const validFeeIds = [
+    it("should contain only valid fee keys from the seed data", () => {
+      const validFees = [
         "PETITION_FILING_FEE",
         "NONATTORNEY_EXAM_REGISTRATION_FEE",
       ];
       for (const row of body.data) {
-        expect(validFeeIds).toContain(row.feeId);
+        expect(validFees).toContain(row.fee);
       }
     });
 
@@ -99,18 +100,18 @@ describeIfDeployed("database migration and seed verification", () => {
       }
     });
 
-    it("reports the same transactionAmount for every row with the same feeId", () => {
-      const amountByFeeId = new Map<string, number>();
+    it("reports the same transactionAmount for every row with the same fee", () => {
+      const amountByFee = new Map<string, number>();
       for (const row of body.data) {
-        const feeId = row.feeId as string;
+        const fee = row.fee as string;
         const amount = Number(row.transactionAmount);
-        if (amountByFeeId.has(feeId)) {
-          expect(amount).toBe(amountByFeeId.get(feeId));
+        if (amountByFee.has(fee)) {
+          expect(amount).toBe(amountByFee.get(fee));
         } else {
-          amountByFeeId.set(feeId, amount);
+          amountByFee.set(fee, amount);
         }
       }
-      expect(amountByFeeId.size).toBeGreaterThan(0);
+      expect(amountByFee.size).toBeGreaterThan(0);
     });
   });
 
@@ -119,9 +120,7 @@ describeIfDeployed("database migration and seed verification", () => {
     it.each(["pending", "success", "failed"])(
       "should return rows for payment status '%s'",
       async (status) => {
-        const response = await fetch(
-          `${baseUrl}/transactions/${status}`,
-        );
+        const response = await fetch(`${baseUrl}/transactions/${status}`);
         expect(response.status).toBe(200);
 
         const body = (await response.json()) as {
@@ -141,9 +140,7 @@ describeIfDeployed("database migration and seed verification", () => {
     );
 
     it("should reject an invalid payment status with 400", async () => {
-      const response = await fetch(
-        `${baseUrl}/transactions/nonexistent`,
-      );
+      const response = await fetch(`${baseUrl}/transactions/nonexistent`);
       expect(response.status).toBe(400);
     });
   });
@@ -151,9 +148,7 @@ describeIfDeployed("database migration and seed verification", () => {
   // ── GET /transaction-payment-status ───────────────────────────────────────
   describe("GET /transaction-payment-status (aggregated counts)", () => {
     it("should return status counts that include the seeded total", async () => {
-      const response = await fetch(
-        `${baseUrl}/transaction-payment-status`,
-      );
+      const response = await fetch(`${baseUrl}/transaction-payment-status`);
       expect(response.status).toBe(200);
 
       const body = (await response.json()) as {
