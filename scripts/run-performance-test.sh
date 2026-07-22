@@ -71,12 +71,17 @@ fi
 target="${ARTILLERY_TARGET:-https://dev-payments.ustaxcourt.gov}"
 lambda_count="${ARTILLERY_LAMBDA_COUNT:-1}"
 aws_region="${ARTILLERY_LAMBDA_REGION:-${AWS_REGION:-${AWS_DEFAULT_REGION:-us-east-1}}}"
+artillery_architecture="arm64"
+artillery_version="$(node -p "require('./node_modules/artillery/package.json').version")"
+role_hash="$(printf '%s' "$role_arn" | shasum -a 256 | cut -c1-12)"
 
 echo "Running artillery with target: $target, region: $aws_region, lambda count: $lambda_count, role ARN: $role_arn"
 
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 export AWS_REGION="$aws_region"
 export AWS_DEFAULT_REGION="$aws_region"
+export LAMBDA_IMAGE_VERSION="${artillery_version}-${role_hash}"
+export WORKER_IMAGE_URL="248481025674.dkr.ecr.${aws_region}.amazonaws.com/artillery-worker:${artillery_version}-${artillery_architecture}"
 
 mkdir -p "$result_dir"
 
@@ -88,4 +93,5 @@ exec "$artillery_bin" run-lambda \
   --target "$target" \
   --region "$aws_region" \
   --count "$lambda_count" \
+  --architecture "$artillery_architecture" \
   --lambda-role-arn "$role_arn"

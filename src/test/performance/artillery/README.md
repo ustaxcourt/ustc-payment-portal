@@ -49,6 +49,7 @@ These repository scripts create a timestamped directory under `src/test/performa
 - Uses `ARTILLERY_TARGET` from `src/test/performance/artillery/.env`, defaulting to a deployed payments URL if unset.
 - Uses `ARTILLERY_LAMBDA_REGION`, `AWS_REGION`, or `AWS_DEFAULT_REGION` for the Lambda worker region, defaulting to `us-east-1`.
 - Uses `ARTILLERY_LAMBDA_COUNT`, defaulting to `1`. Each Lambda worker runs the configured `arrivalRate`, so the approximate aggregate arrival rate is `arrivalRate * ARTILLERY_LAMBDA_COUNT`. For example, `arrivalRate: 10` with `ARTILLERY_LAMBDA_COUNT=5` produces approximately 50 arrivals per second.
+- Namespaces Artillery's reusable worker Lambda by `ARTILLERY_LAMBDA_ROLE_ARN`. Artillery normally reuses one deterministic function for a version and architecture without updating its execution role, which can otherwise cause a dev run to reuse a function created with a PR role.
 - Appends the matching `--dotenv`, `--target`, `--region`, `--count`, and `--lambda-role-arn` options to the `artillery run-lambda` command.
 
 Operational implications:
