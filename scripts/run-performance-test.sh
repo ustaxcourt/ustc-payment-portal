@@ -51,12 +51,16 @@ if [[ ! -x "$artillery_bin" ]]; then
   exit 1
 fi
 
-if [[ -f "$dotenv_path" ]]; then
-  set -a
-  # shellcheck source=/dev/null
-  source "$dotenv_path"
-  set +a
+if [[ ! -f "$dotenv_path" ]]; then
+   echo "Missing $artillery_dir/.env. Copy $artillery_dir/.env.example to $artillery_dir/.env and set ARTILLERY_LAMBDA_ROLE_ARN (and other values) before running." >&2
+   exit 1
+
 fi
+
+set -a
+# shellcheck source=/dev/null
+source "$dotenv_path"
+set +a
 
 role_arn="${ARTILLERY_LAMBDA_ROLE_ARN:-}"
 if [[ -z "$role_arn" ]]; then
