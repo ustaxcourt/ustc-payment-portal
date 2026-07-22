@@ -4,12 +4,16 @@ jspm_packages
 
 .env*
 !.env.example
+!.env.staging.local.example
 
 
 /certs/**
 /resources/**
 
 coverage/
+test-results/
+playwright-report/
+blob-report/
 
 dist/
 
@@ -18,3 +22,6 @@ dist/
 
 terraform/modules/**/.terraform/
 terraform/modules/**/.terraform.lock.hcl
+
+# Playwright test results
+failure-summary.json
