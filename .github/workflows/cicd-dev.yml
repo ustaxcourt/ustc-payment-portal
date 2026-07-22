@@ -480,6 +480,8 @@ jobs:
           TF_VAR_getAllTransactions_s3_key: ${{ steps.promote_artifacts.outputs.getAllTransactions_s3_key }}
           TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_s3_key }}
           TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_s3_key }}
+          TF_VAR_initRefGenerator_s3_key: ${{ steps.promote_artifacts.outputs.initRefGenerator_s3_key }}
+          TF_VAR_processTokenMinter_s3_key: ${{ steps.promote_artifacts.outputs.processTokenMinter_s3_key }}
           TF_VAR_initPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.initPayment_source_code_hash }}
           TF_VAR_processPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.processPayment_source_code_hash }}
           TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
@@ -488,6 +490,8 @@ jobs:
           TF_VAR_getAllTransactions_source_code_hash: ${{ steps.promote_artifacts.outputs.getAllTransactions_source_code_hash }}
           TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_source_code_hash }}
           TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_source_code_hash }}
+          TF_VAR_initRefGenerator_source_code_hash: ${{ steps.promote_artifacts.outputs.initRefGenerator_source_code_hash }}
+          TF_VAR_processTokenMinter_source_code_hash: ${{ steps.promote_artifacts.outputs.processTokenMinter_source_code_hash }}
         run: |
           terraform plan -input=false -out=tfplan
           terraform show -no-color tfplan > tfplan.txt || true
@@ -513,6 +517,8 @@ jobs:
           TF_VAR_getAllTransactions_s3_key: ${{ steps.promote_artifacts.outputs.getAllTransactions_s3_key }}
           TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_s3_key }}
           TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_s3_key }}
+          TF_VAR_initRefGenerator_s3_key: ${{ steps.promote_artifacts.outputs.initRefGenerator_s3_key }}
+          TF_VAR_processTokenMinter_s3_key: ${{ steps.promote_artifacts.outputs.processTokenMinter_s3_key }}
           TF_VAR_initPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.initPayment_source_code_hash }}
           TF_VAR_processPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.processPayment_source_code_hash }}
           TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
@@ -521,6 +527,8 @@ jobs:
           TF_VAR_getAllTransactions_source_code_hash: ${{ steps.promote_artifacts.outputs.getAllTransactions_source_code_hash }}
           TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_source_code_hash }}
           TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_source_code_hash }}
+          TF_VAR_initRefGenerator_source_code_hash: ${{ steps.promote_artifacts.outputs.initRefGenerator_source_code_hash }}
+          TF_VAR_processTokenMinter_source_code_hash: ${{ steps.promote_artifacts.outputs.processTokenMinter_source_code_hash }}
         run: terraform apply -auto-approve tfplan
 
       - name: Run DB migrations (dev)
