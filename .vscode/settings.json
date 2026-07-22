@@ -39,5 +39,5 @@
     // PowerShell equivalents - block
     "/^Remove-Item\\b/i": false,
     "/^Stop-Process\\b/i": false
-  },
+  }
 }

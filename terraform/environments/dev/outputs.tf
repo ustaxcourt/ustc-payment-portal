@@ -61,6 +61,11 @@ output "test_unauthorized_role_arn" {
   description = "ARN of the test role for Lambda-level authorization testing (intentionally NOT in client-permissions)"
 }
 
+output "artillery_load_test_role_arn" {
+  value       = local.enable_artillery_load_test ? aws_iam_role.artillery_load_test[0].arn : null
+  description = "IAM role ARN for Artillery run-lambda in the active dev or PR workspace (--lambda-role-arn)"
+}
+
 output "migration_runner_function_name" {
   description = "Name of the migration runner Lambda function"
   value       = module.lambda.function_names["migrationRunner"]

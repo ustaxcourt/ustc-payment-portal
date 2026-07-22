@@ -1,0 +1,34 @@
+config:
+  target: "http://localhost:8080"
+
+  http:
+    timeout: 15000
+    pool: 200
+
+  ensure:
+    maxErrorRate: 10
+
+  maxVusers: 500
+
+  phases:
+    - duration: 60
+      arrivalRate: 16
+      name: "1K RPM"
+
+    - duration: 60
+      arrivalRate: 33
+      name: "2K RPM"
+
+    - duration: 60
+      arrivalRate: 67
+      name: "4K RPM"
+
+    - duration: 60
+      arrivalRate: 133
+      name: "8K RPM"
+
+    - duration: 60
+      arrivalRate: 167
+      name: "10K RPM"
+
+  processor: "../processor.js"

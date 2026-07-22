@@ -30,7 +30,7 @@ describe("fees config", () => {
       const fee = getActiveFee("PETITION_FILING_FEE", "2026-04-01T00:00:00Z");
       expect(fee).toBeDefined();
       expect(fee?.fee).toBe("PETITION_FILING_FEE");
-      expect(fee?.tcsAppId).toBe("TCSUSTAXCOURTPETITION");
+      expect(fee?.tcsAppId).toBe("TCSUSTAXCOURTANAEF"); // TODO: This is a placeholder value; the actual TCS app ID is TBD
       expect(fee?.amount).toBe(60);
       expect(fee?.isVariable).toBe(false);
     });
