@@ -46,6 +46,7 @@ describe("migrationHandler", () => {
   let mockSend: jest.Mock;
   let mockLatest: jest.Mock;
   let mockRollback: jest.Mock;
+  let mockForceFreeMigrationsLock: jest.Mock;
   let mockCurrentVersion: jest.Mock;
   let mockSeedRun: jest.Mock;
   let mockRaw: jest.Mock;
@@ -73,6 +74,7 @@ describe("migrationHandler", () => {
     mockRollback = jest
       .fn()
       .mockResolvedValue([3, ["20260629120000_add_processing_transaction_status"]]);
+    mockForceFreeMigrationsLock = jest.fn().mockResolvedValue(undefined);
     mockCurrentVersion = jest.fn().mockResolvedValue("20260305195503_init_db");
     mockSeedRun = jest.fn().mockResolvedValue(undefined);
     mockRaw = jest.fn();
@@ -86,6 +88,7 @@ describe("migrationHandler", () => {
       migrate: {
         latest: mockLatest,
         rollback: mockRollback,
+        forceFreeMigrationsLock: mockForceFreeMigrationsLock,
         currentVersion: mockCurrentVersion,
       },
       seed: { run: mockSeedRun },
@@ -218,6 +221,22 @@ describe("migrationHandler", () => {
       body: JSON.stringify({
         batchNo: 3,
         migrations: ["20260629120000_add_processing_transaction_status"],
+        message: "Rolled back batch 3",
+      }),
+    });
+  });
+
+  it("rollback signals a no-op when there is nothing to revert", async () => {
+    mockRollback.mockResolvedValueOnce([0, []]);
+
+    const result = await migrationHandler({ command: "rollback", confirm: true });
+
+    expect(result).toEqual({
+      statusCode: 200,
+      body: JSON.stringify({
+        batchNo: 0,
+        migrations: [],
+        message: "No migration batch to roll back",
       }),
     });
   });
@@ -227,6 +246,25 @@ describe("migrationHandler", () => {
       "rollback requires confirm:true",
     );
     expect(mockRollback).not.toHaveBeenCalled();
+    expect(mockDestroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("unlock with confirm:true force-frees the migration lock", async () => {
+    const result = await migrationHandler({ command: "unlock", confirm: true });
+
+    expect(mockForceFreeMigrationsLock).toHaveBeenCalledTimes(1);
+    expect(mockDestroy).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      statusCode: 200,
+      body: JSON.stringify({ message: "Migration lock cleared" }),
+    });
+  });
+
+  it("unlock without confirm throws and does not free the lock", async () => {
+    await expect(migrationHandler({ command: "unlock" })).rejects.toThrow(
+      "unlock requires confirm:true",
+    );
+    expect(mockForceFreeMigrationsLock).not.toHaveBeenCalled();
     expect(mockDestroy).toHaveBeenCalledTimes(1);
   });
 

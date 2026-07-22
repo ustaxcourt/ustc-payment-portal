@@ -41,6 +41,29 @@ Function names: `ustc-payment-processor-migrationRunner` (dev),
 Returns `{ batchNo, migrations }` — the batch rolled back and the files reverted. An empty
 `migrations` list means there was nothing to roll back.
 
+## Stale lock recovery
+
+Knex serializes migration runs with a lock (`knex_migrations_lock`). A run that ends
+normally — success *or* error — releases it. A run that is **killed abruptly** (Lambda
+timeout, crash) does not, leaving the lock held; the next `migrate`/`rollback` then fails
+with **"Migration table is already locked."**
+
+To clear it, invoke the `unlock` command:
+
+```bash
+aws lambda invoke \
+  --function-name "<env>-migrationRunner" \
+  --payload '{"command":"unlock","confirm":true}' \
+  --cli-binary-format raw-in-base64-out \
+  response.json
+```
+
+> **Confirm the interrupted run is actually dead first.** Unlocking while a migration is
+> still running lets a second run start concurrently and risks corruption. Since Lambda has
+> a hard max timeout, wait past it (or confirm no in-flight execution in CloudWatch) before
+> unlocking. Afterward, run `{"command":"verify"}` to check the current version and whether
+> the interrupted batch partially applied, then decide re-run vs. fix-forward.
+
 ## If rollback can't recover it
 
 If a migration destroyed data, the only true undo is an **RDS point-in-time restore** to

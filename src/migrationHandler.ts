@@ -17,6 +17,7 @@ type Command =
   | "show-databases"
   | "migrate"
   | "rollback"
+  | "unlock"
   | "seed"
   | "verify"
   | "gc-dbs"
@@ -579,7 +580,41 @@ export const migrationHandler = async (
       // Roll back only the last batch (= the most recent deploy that applied
       // migrations). `false` disables all-history rollback intentionally.
       const [batchNo, migrations] = await knex.migrate.rollback(undefined, false);
-      return { statusCode: 200, body: JSON.stringify({ batchNo, migrations }) };
+      // Knex returns [0, []] when there is nothing to revert. Signal that no-op
+      // explicitly rather than leaving the caller to infer it from an empty list.
+      const message =
+        migrations.length === 0
+          ? "No migration batch to roll back"
+          : `Rolled back batch ${batchNo}`;
+      // Audit line: names exactly what was reverted (or that nothing was).
+      console.log(
+        migrations.length === 0
+          ? `[migrationHandler] rollback: nothing to revert`
+          : `[migrationHandler] rollback: reverted batch ${batchNo} — ${migrations.join(
+              ", ",
+            )}`,
+      );
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ batchNo, migrations, message }),
+      };
+    }
+
+    if (command === "unlock") {
+      if (event?.confirm !== true) {
+        throw new Error(
+          `unlock requires confirm:true — refusing to force-free the migration lock ` +
+            `on "${connection.database}" without explicit confirmation. Confirm the ` +
+            `interrupted run is actually dead first; unlocking a live run risks corruption.`,
+        );
+      }
+      // Force-clears a stale knex_migrations_lock left behind by an abruptly-killed
+      // run (e.g. a Lambda timeout), which otherwise blocks all future migrate/rollback.
+      await knex.migrate.forceFreeMigrationsLock();
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ message: "Migration lock cleared" }),
+      };
     }
 
     const [batchNo, migrations] = await knex.migrate.latest();
