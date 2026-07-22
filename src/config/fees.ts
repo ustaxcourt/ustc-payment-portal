@@ -31,7 +31,7 @@ export type ActiveFee = Omit<FeeDefinition, "versions"> &
 export const staticFees: StaticFees = {
   PETITION_FILING_FEE: {
     name: "Petition Filing Fee",
-    tcsAppId: "TCSUSTAXCOURTPETITION",
+    tcsAppId: "TCSUSTAXCOURTANAEF", // This is a placeholder value; the actual TCS app ID is TBD
     versions: [
       {
         isVariable: false,
