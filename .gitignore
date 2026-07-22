@@ -20,6 +20,10 @@ dist/
 *.tgz
 .DS_Store
 
+# Artillery
+src/test/performance/artillery/results/**/*.json
+
+# Terraform
 terraform/modules/**/.terraform/
 terraform/modules/**/.terraform.lock.hcl
 

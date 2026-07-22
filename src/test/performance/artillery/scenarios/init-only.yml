@@ -1,0 +1,18 @@
+scenarios:
+  - name: init-only
+    weight: 70
+    flow:
+      - function: "setTransactionReferenceId"
+
+      # STEP 1
+      - post:
+          url: "/init"
+          beforeRequest:
+            - "setSignedInitBody"
+            - "signWithSigV4IfNeeded"
+          afterResponse: "logResponse"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: $.token
+              as: "paymentToken"
