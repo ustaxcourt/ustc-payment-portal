@@ -17,12 +17,14 @@
 # wildcard would let the tuner reach PR / dashboard / migration functions too.
 #
 # To honor the intended exact scoping we pass a permissions boundary
-# (`aws_iam_policy.power_tuning_boundary`) applied to every helper Lambda role.
-# The effective permission is the intersection of the wildcard `lambdaResource`
-# and the boundary, which reduces the tuner's reach to EXACTLY the five dev
-# functions we intend to tune (plus their version/alias qualifiers). PR,
-# dashboard, and migrationRunner functions are outside the boundary and cannot
-# be touched even though they match the prefix.
+# (`aws_iam_policy.power_tuning_boundary`) applied to EVERY IAM role the SAR
+# template creates — the helper Lambda roles AND the state machine's own
+# execution role. The effective permission is the intersection of the wildcard
+# `lambdaResource` and the boundary, which reduces the tuner's reach to EXACTLY
+# the five dev functions we intend to tune (plus their version/alias
+# qualifiers), the two dev-only preProcessors, and the SAR stack's own internal
+# orchestration Lambdas. PR, dashboard, and migrationRunner functions are
+# outside the boundary and cannot be touched even though they match the prefix.
 
 locals {
   power_tuning_account_id = data.aws_caller_identity.current.account_id
@@ -107,6 +109,21 @@ resource "aws_iam_policy" "power_tuning_boundary" {
         Effect   = "Allow"
         Action   = ["lambda:InvokeFunction"]
         Resource = local.power_tuning_preprocessor_arns
+      },
+      {
+        # The SAR template applies this SAME permissionsBoundary to every IAM role
+        # it creates — not just the helper Lambda roles, but the state machine's
+        # own execution role too. The state machine invokes its own internal
+        # orchestration Lambdas (initializer/publisher/executor/cleaner/analyzer/
+        # optimizer) directly via ASL Task states, so the boundary must allow that
+        # or every execution fails immediately with an AccessDenied invoking its
+        # own initializer. Their physical names carry a random CFN suffix, so this
+        # is scoped by the "serverlessrepo-<our-stack-name>" prefix instead of
+        # exact ARNs — unique to this SAR deployment, not a blanket wildcard.
+        Sid      = "InvokeSarInternalHelpers"
+        Effect   = "Allow"
+        Action   = ["lambda:InvokeFunction"]
+        Resource = "arn:aws:lambda:${local.aws_region}:${local.power_tuning_account_id}:function:serverlessrepo-ustc-payment-processor*"
       },
     ]
   })

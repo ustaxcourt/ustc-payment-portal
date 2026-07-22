@@ -1,0 +1,185 @@
+name: Power Tuning (Dev)
+
+# Manually run aws-lambda-power-tuning against a single dev Lambda target.
+# DEV-ONLY: the state machine, preProcessor Lambdas, and IAM scoping in
+# terraform/environments/foundation/dev-networking/power-tuning.tf only exist
+# in the dev account. See docs on that file / src/powerTuning/ for the full
+# design (preProcessors mint fresh state per-invocation for initPayment and
+# processPayment; the rest use static fixtures).
+on:
+  workflow_dispatch:
+    inputs:
+      function:
+        description: "Lambda target to tune"
+        required: true
+        type: choice
+        options:
+          - initPayment
+          - processPayment
+          - getDetails
+          - testCert
+          - healthCheck
+      num:
+        description: "Invocations per power value (pilot with 10, then 30)"
+        required: false
+        default: "10"
+        type: string
+      power_values:
+        description: "Comma-separated memory values (MB) to test"
+        required: false
+        default: "128,256,512,768,1024,1536"
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  tune:
+    name: Tune ${{ inputs.function }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure AWS Credentials (OIDC - Dev)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve state machine and target ARNs
+        id: resolve
+        env:
+          TUNE_FUNCTION: ${{ inputs.function }}
+        run: |
+          set -euo pipefail
+
+          STATE_MACHINE_ARN=$(aws stepfunctions list-state-machines \
+            --query "stateMachines[?starts_with(name, 'powerTuningStateMachine')].stateMachineArn | [0]" \
+            --output text)
+          if [ -z "$STATE_MACHINE_ARN" ] || [ "$STATE_MACHINE_ARN" == "None" ]; then
+            echo "ERROR: could not find the power-tuning state machine. Has foundation/dev-networking been applied?" >&2
+            exit 1
+          fi
+          echo "state_machine_arn=$STATE_MACHINE_ARN" >> "$GITHUB_OUTPUT"
+
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+          LAMBDA_ARN="arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:ustc-payment-processor-${TUNE_FUNCTION}"
+          echo "lambda_arn=$LAMBDA_ARN" >> "$GITHUB_OUTPUT"
+
+          # Only initPayment and processPayment need a preProcessor (they mint
+          # fresh per-invocation state); the others replay a static fixture.
+          case "$TUNE_FUNCTION" in
+            initPayment)
+              PRE_PROCESSOR_ARN="arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:ustc-payment-processor-tuner-init-refgen"
+              ;;
+            processPayment)
+              PRE_PROCESSOR_ARN="arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:ustc-payment-processor-tuner-token-minter"
+              ;;
+            *)
+              PRE_PROCESSOR_ARN=""
+              ;;
+          esac
+          echo "pre_processor_arn=$PRE_PROCESSOR_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Build execution input
+        id: build_input
+        env:
+          TUNE_FUNCTION: ${{ inputs.function }}
+          TUNE_NUM: ${{ inputs.num }}
+          TUNE_POWER_VALUES: ${{ inputs.power_values }}
+          LAMBDA_ARN: ${{ steps.resolve.outputs.lambda_arn }}
+          PRE_PROCESSOR_ARN: ${{ steps.resolve.outputs.pre_processor_arn }}
+        run: |
+          set -euo pipefail
+
+          PAYLOAD=$(jq -c . "src/powerTuning/fixtures/${TUNE_FUNCTION}.fixture.json")
+          POWER_VALUES_JSON=$(echo "$TUNE_POWER_VALUES" | jq -c -R 'split(",") | map(tonumber)')
+
+          INPUT=$(jq -n \
+            --arg lambdaARN "$LAMBDA_ARN" \
+            --argjson powerValues "$POWER_VALUES_JSON" \
+            --argjson num "$TUNE_NUM" \
+            --argjson payload "$PAYLOAD" \
+            --arg preProcessorARN "$PRE_PROCESSOR_ARN" \
+            '{
+               lambdaARN: $lambdaARN,
+               powerValues: $powerValues,
+               num: $num,
+               payload: $payload,
+               parallelInvocation: true,
+               strategy: "balanced",
+               autoOptimize: false
+             } + (if $preProcessorARN != "" then {preProcessorARN: $preProcessorARN} else {} end)')
+
+          echo "Execution input:"
+          echo "$INPUT" | jq .
+
+          # Multiline GITHUB_OUTPUT values need the heredoc form, not key=value.
+          {
+            echo "input<<TUNING_INPUT_EOF"
+            echo "$INPUT"
+            echo "TUNING_INPUT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Start tuning execution
+        id: start
+        env:
+          STATE_MACHINE_ARN: ${{ steps.resolve.outputs.state_machine_arn }}
+          EXECUTION_INPUT: ${{ steps.build_input.outputs.input }}
+        run: |
+          set -euo pipefail
+
+          EXECUTION_ARN=$(aws stepfunctions start-execution \
+            --state-machine-arn "$STATE_MACHINE_ARN" \
+            --input "$EXECUTION_INPUT" \
+            --query executionArn --output text)
+
+          echo "Started execution: $EXECUTION_ARN"
+          echo "execution_arn=$EXECUTION_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Poll execution until complete
+        id: poll
+        env:
+          EXECUTION_ARN: ${{ steps.start.outputs.execution_arn }}
+        run: |
+          set -euo pipefail
+
+          STATUS="RUNNING"
+
+          while [ "$STATUS" == "RUNNING" ]; do
+            sleep 15
+            STATUS=$(aws stepfunctions describe-execution \
+              --execution-arn "$EXECUTION_ARN" \
+              --query status --output text)
+            echo "Status: $STATUS"
+          done
+
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+
+          if [ "$STATUS" != "SUCCEEDED" ]; then
+            echo "Execution did not succeed: $STATUS" >&2
+            aws stepfunctions describe-execution --execution-arn "$EXECUTION_ARN" \
+              --query "{status: status, error: error, cause: cause}" --output json >&2 || true
+            exit 1
+          fi
+
+          aws stepfunctions describe-execution --execution-arn "$EXECUTION_ARN" \
+            --query output --output text | jq . > power-tuning-results.json
+          cat power-tuning-results.json
+
+      - name: Upload results
+        if: always() && steps.start.outputs.execution_arn != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: power-tuning-${{ inputs.function }}-${{ github.run_id }}
+          path: power-tuning-results.json
+          if-no-files-found: ignore
+          retention-days: 30
