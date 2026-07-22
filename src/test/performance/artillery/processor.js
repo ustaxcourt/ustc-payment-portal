@@ -145,9 +145,10 @@ module.exports = {
        (res.statusCode ?? 0) >= 400
      ) {
        const headers = { ...(req.headers ?? {}) };
-       if (headers.authorization) headers.authorization = "[Redacted]";
-       if (headers.Authorization) headers.Authorization = "[Redacted]";
-       if (headers["x-amz-security-token"]) headers["x-amz-security-token"] = "[Redacted]";
+        if (headers.authorization) headers.authorization = "[Redacted]";
+        if (headers.Authorization) headers.Authorization = "[Redacted]";
+        if (headers["x-amz-security-token"]) headers["x-amz-security-token"] = "[Redacted]";
+        if (headers["X-Amz-Security-Token"]) headers["X-Amz-Security-Token"] = "[Redacted]";
        console.log("REQUEST:", req.method, req.url, req.body, req.json, headers);
        console.log("RESPONSE:", res.statusCode, res.body, res.headers);
      }
