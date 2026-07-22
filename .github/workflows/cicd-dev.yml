@@ -169,30 +169,33 @@ jobs:
           echo "Workspace:" $(terraform workspace show)
           echo "State resources:" && terraform state list || true
 
-      - name: Get Terraform Outputs (if available)
+      - name: Get Terraform Outputs (fail closed if missing)
         id: tf_outputs
         working-directory: terraform/environments/dev
         run: |
-          # Check if outputs exist before trying to read them
-          if terraform output api_gateway_url &>/dev/null; then
-            API_URL=$(terraform output -raw api_gateway_url)
-            TEST_UNAUTHORIZED_ROLE_ARN=$(terraform output -raw test_unauthorized_role_arn 2>/dev/null || echo "")
-
-            # Validate outputs are actual values (not warning text)
-            if [[ "$API_URL" == https://* ]]; then
-              echo "api_url=$API_URL" >> $GITHUB_OUTPUT
-              echo "test_unauthorized_role_arn=$TEST_UNAUTHORIZED_ROLE_ARN" >> $GITHUB_OUTPUT
-              echo "has_outputs=true" >> $GITHUB_OUTPUT
-              echo "API Gateway URL: $API_URL"
-              echo "Test Unauthorized Role ARN: $TEST_UNAUTHORIZED_ROLE_ARN"
-            else
-              echo "has_outputs=false" >> $GITHUB_OUTPUT
-              echo "Outputs exist but appear invalid; skipping integration tests."
-            fi
-          else
-            echo "has_outputs=false" >> $GITHUB_OUTPUT
-            echo "PR workspace not yet provisioned; skipping integration tests until outputs exist."
+          set -euo pipefail
+          # Fail closed: a missing output means apply didn't complete. Skipping the
+          # integration tests here would report success and satisfy the required gate.
+          if ! terraform output api_gateway_url &>/dev/null; then
+            echo "::error::PR environment has no api_gateway_url output — Terraform apply did not complete. Failing closed so integration tests cannot be silently skipped."
+            exit 1
           fi
+
+          API_URL=$(terraform output -raw api_gateway_url)
+          TEST_UNAUTHORIZED_ROLE_ARN=$(terraform output -raw test_unauthorized_role_arn 2>/dev/null || echo "")
+
+          if [[ "$API_URL" != https://* ]]; then
+            echo "::error::api_gateway_url output is not a valid URL ('$API_URL'). Failing closed so integration tests cannot be silently skipped."
+            exit 1
+          fi
+
+          {
+            echo "api_url=$API_URL"
+            echo "test_unauthorized_role_arn=$TEST_UNAUTHORIZED_ROLE_ARN"
+            echo "has_outputs=true"
+          } >> "$GITHUB_OUTPUT"
+          echo "API Gateway URL: $API_URL"
+          echo "Test Unauthorized Role ARN: $TEST_UNAUTHORIZED_ROLE_ARN"
 
       - name: Create PR database
         if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
@@ -364,6 +367,33 @@ jobs:
           path: coverage/
           if-no-files-found: warn
           retention-days: 7
+
+  # Single status check required by the `main-tests` ruleset. Always runs and posts a
+  # real red/green (a skipped required job would leave the PR stuck on "expected").
+  # Dependabot is exempt here by policy; the ruleset itself has no bypass.
+  integration_gate:
+    name: Integration Gate
+    needs: [check_actor, pr_build_test_deploy]
+    if: ${{ always() && github.event_name == 'pull_request' && github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require integration tests to have passed
+        env:
+          BUILD_RESULT: ${{ needs.pr_build_test_deploy.result }}
+          IS_DEPENDABOT: ${{ needs.check_actor.outputs.is_dependabot }}
+        run: |
+          echo "pr_build_test_deploy result: '$BUILD_RESULT' (dependabot=$IS_DEPENDABOT)"
+          if [ "$IS_DEPENDABOT" = "true" ]; then
+            echo "Dependabot PR — exempt from the integration gate by policy. Passing."
+            exit 0
+          fi
+          if [ "$BUILD_RESULT" = "success" ]; then
+            echo "Integration tests passed — merge permitted."
+            exit 0
+          fi
+          echo "::error::Integration Gate FAILED — pr_build_test_deploy did not succeed (result='$BUILD_RESULT'). Merging to main is blocked until integration tests pass."
+          exit 1
 
   deploy_dev:
     needs: check_actor
@@ -580,6 +610,16 @@ jobs:
           path: coverage/
           if-no-files-found: warn
           retention-days: 7
+
+      # Health-check the deployed build before tagging. Auto-tag is `if: success()`,
+      # so a failure here stops the tag and blocks staging/prod promotion.
+      - name: Integration health gate (dev)
+        env:
+          BASE_URL: ${{ steps.tf_outputs_dev.outputs.api_url }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          echo "Health-checking deployed dev build before tagging for promotion: $BASE_URL"
+          npm run test:deploy-health
 
       - name: Cleanup PR artifacts (soft delete)
         if: ${{ success() }}
