@@ -43,7 +43,7 @@ resource "aws_iam_role" "tuner_init_refgen" {
   tags = {
     Env     = local.environment
     Project = "ustc-payment-portal"
-    Purpose = "Power tuning pre-processor (initPayment)"
+    Purpose = "Power tuning pre-processor - initPayment"
   }
 }
 
@@ -105,7 +105,7 @@ resource "aws_iam_role" "tuner_token_minter" {
   tags = {
     Env     = local.environment
     Project = "ustc-payment-portal"
-    Purpose = "Power tuning pre-processor (processPayment)"
+    Purpose = "Power tuning pre-processor - processPayment"
   }
 }
 
