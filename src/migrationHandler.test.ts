@@ -241,12 +241,14 @@ describe("migrationHandler", () => {
     });
   });
 
-  it("rollback without confirm throws and does not roll back", async () => {
+  it("rollback without confirm bails before touching Secrets Manager or the pool", async () => {
     await expect(migrationHandler({ command: "rollback" })).rejects.toThrow(
       "rollback requires confirm:true",
     );
     expect(mockRollback).not.toHaveBeenCalled();
-    expect(mockDestroy).toHaveBeenCalledTimes(1);
+    expect(mockSend).not.toHaveBeenCalled();
+    expect(mockKnex).not.toHaveBeenCalled();
+    expect(mockDestroy).not.toHaveBeenCalled();
   });
 
   it("unlock with confirm:true force-frees the migration lock", async () => {
@@ -260,12 +262,14 @@ describe("migrationHandler", () => {
     });
   });
 
-  it("unlock without confirm throws and does not free the lock", async () => {
+  it("unlock without confirm bails before touching Secrets Manager or the pool", async () => {
     await expect(migrationHandler({ command: "unlock" })).rejects.toThrow(
       "unlock requires confirm:true",
     );
     expect(mockForceFreeMigrationsLock).not.toHaveBeenCalled();
-    expect(mockDestroy).toHaveBeenCalledTimes(1);
+    expect(mockSend).not.toHaveBeenCalled();
+    expect(mockKnex).not.toHaveBeenCalled();
+    expect(mockDestroy).not.toHaveBeenCalled();
   });
 
   it("create-db creates the database when it does not exist", async () => {

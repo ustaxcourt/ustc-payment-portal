@@ -118,9 +118,8 @@ const getDatabaseConnection = async (): Promise<DatabaseConnection> => {
   if (!secretArn || !endpoint) {
     throw new Error(
       `Misconfiguration: RDS_SECRET_ARN and RDS_ENDPOINT must both be set or both be unset. ` +
-        `RDS_SECRET_ARN=${secretArn ? "set" : "unset"}, RDS_ENDPOINT=${
-          endpoint ? "set" : "unset"
-        }`,
+      `RDS_SECRET_ARN=${secretArn ? "set" : "unset"}, RDS_ENDPOINT=${endpoint ? "set" : "unset"
+      }`,
     );
   }
 
@@ -515,8 +514,7 @@ export const migrationHandler = async (
   const command: Command = event?.command ?? "migrate";
 
   console.log(
-    `[migrationHandler] command=${command} db=${
-      process.env.RDS_DB_NAME ?? "(local)"
+    `[migrationHandler] command=${command} db=${process.env.RDS_DB_NAME ?? "(local)"
     }`,
   );
 
@@ -542,6 +540,22 @@ export const migrationHandler = async (
   }
   if (command === "show-users") return showUsers();
   if (command === "show-databases") return showDatabases();
+
+
+  const dbLabel = process.env.RDS_DB_NAME ?? "(local)";
+  if (command === "rollback" && event?.confirm !== true) {
+    throw new Error(
+      `rollback requires confirm:true — refusing to roll back the last batch on ` +
+      `"${dbLabel}" without explicit confirmation`,
+    );
+  }
+  if (command === "unlock" && event?.confirm !== true) {
+    throw new Error(
+      `unlock requires confirm:true — refusing to force-free the migration lock on ` +
+      `"${dbLabel}" without explicit confirmation. Confirm the interrupted run is ` +
+      `actually dead first; unlocking a live run risks corruption.`,
+    );
+  }
 
   const connection = await getDatabaseConnection();
 
@@ -571,12 +585,7 @@ export const migrationHandler = async (
     }
 
     if (command === "rollback") {
-      if (event?.confirm !== true) {
-        throw new Error(
-          `rollback requires confirm:true — refusing to roll back the last batch ` +
-            `on "${connection.database}" without explicit confirmation`,
-        );
-      }
+      // Confirmation is validated up front, before the connection is built.
       // Roll back only the last batch (= the most recent deploy that applied
       // migrations). `false` disables all-history rollback intentionally.
       const [batchNo, migrations] = await knex.migrate.rollback(undefined, false);
@@ -591,8 +600,8 @@ export const migrationHandler = async (
         migrations.length === 0
           ? `[migrationHandler] rollback: nothing to revert`
           : `[migrationHandler] rollback: reverted batch ${batchNo} — ${migrations.join(
-              ", ",
-            )}`,
+            ", ",
+          )}`,
       );
       return {
         statusCode: 200,
@@ -601,13 +610,7 @@ export const migrationHandler = async (
     }
 
     if (command === "unlock") {
-      if (event?.confirm !== true) {
-        throw new Error(
-          `unlock requires confirm:true — refusing to force-free the migration lock ` +
-            `on "${connection.database}" without explicit confirmation. Confirm the ` +
-            `interrupted run is actually dead first; unlocking a live run risks corruption.`,
-        );
-      }
+      // Confirmation is validated up front, before the connection is built.
       // Force-clears a stale knex_migrations_lock left behind by an abruptly-killed
       // run (e.g. a Lambda timeout), which otherwise blocks all future migrate/rollback.
       await knex.migrate.forceFreeMigrationsLock();
