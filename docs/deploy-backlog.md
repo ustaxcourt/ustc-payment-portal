@@ -122,12 +122,15 @@ in the same backlog.
   environments, with appropriate access control.
 - **Effort:** M
 
-### G6. Remove the `aws sts get-caller-identity` debug steps
+### G6. Remove the `aws sts get-caller-identity` debug steps — DONE
 
 - **Priority:** Low / cleanup
-- **Why:** Both `staging-deploy.yml` and `prod-deploy.yml` contain
-  `Verify AWS caller identity` steps explicitly labelled "to be removed later".
-- **Build:** delete the debug steps from both workflows.
+- **Why:** `Verify AWS caller identity` debug steps explicitly labelled
+  "to be removed later" / "can be deleted later" caused confusion in the pipeline.
+- **Delivered:** removed the standalone debug step from `staging-deploy.yml` and
+  `cicd-dev.yml` (PAY-359). `prod-deploy.yml` never contained one, contrary to the
+  original note. The functional `aws sts get-caller-identity` in `cicd-dev.yml`
+  (derives the deployer role ARN to seed the PR test env) was deliberately kept.
 - **Effort:** S
 
 ### G7. Gate the Dev deploy on integration tests + prevent admin bypass
