@@ -20,7 +20,7 @@ on:
           - testCert
           - healthCheck
       num:
-        description: "Invocations per power value (pilot with 10, then 30)"
+        description: "Invocations per power value, minimum 5 (pilot with 10, then 30)"
         required: false
         default: "10"
         type: string
@@ -99,6 +99,13 @@ jobs:
           PRE_PROCESSOR_ARN: ${{ steps.resolve.outputs.pre_processor_arn }}
         run: |
           set -euo pipefail
+
+          # aws-lambda-power-tuning's initializer rejects num < 5 with a generic
+          # Step Functions failure; fail fast here with a clearer message instead.
+          if [ "$TUNE_NUM" -lt 5 ]; then
+            echo "ERROR: num must be >= 5 (got $TUNE_NUM). The tuner's initializer rejects anything lower." >&2
+            exit 1
+          fi
 
           PAYLOAD=$(jq -c . "src/powerTuning/fixtures/${TUNE_FUNCTION}.fixture.json")
           POWER_VALUES_JSON=$(echo "$TUNE_POWER_VALUES" | jq -c -R 'split(",") | map(tonumber)')
