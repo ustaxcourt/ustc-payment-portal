@@ -354,7 +354,7 @@ resource "aws_iam_role_policy" "artillery_load_test" {
           "sqs:SendMessage",
         ]
         Resource = "arn:aws:sqs:*:${data.aws_caller_identity.current.account_id}:artilleryio*"
-      }
+      },
       {
         Effect = "Allow"
         Action = [
