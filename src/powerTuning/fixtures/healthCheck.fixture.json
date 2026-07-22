@@ -1,0 +1,9 @@
+{
+  "headers": {},
+  "httpMethod": "GET",
+  "path": "/health",
+  "requestContext": {
+    "requestId": "power-tuning-healthcheck",
+    "identity": {}
+  }
+}

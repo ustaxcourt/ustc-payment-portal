@@ -1,0 +1,10 @@
+{
+  "pathParameters": {
+    "transactionReferenceId": "8477ecbe-25bc-45de-a22b-0e5ef5d56d47"
+  },
+  "requestContext": {
+    "identity": {
+      "userArn": "arn:aws:sts::723609007960:assumed-role/ustc-power-tuning/tuning"
+    }
+  }
+}
