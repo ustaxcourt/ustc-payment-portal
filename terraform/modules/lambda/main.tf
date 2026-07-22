@@ -51,7 +51,8 @@ resource "aws_lambda_function" "functions" {
   role          = var.lambda_execution_role_arn
   handler       = local.lambda_functions[each.key].handler
 
-  timeout = try(local.lambda_functions[each.key].timeout, null)
+  timeout     = try(local.lambda_functions[each.key].timeout, null)
+  memory_size = try(var.lambda_memory_sizes[each.key], 128)
 
   runtime = var.runtime
   publish = contains(local.payment_flow_lambdas, each.key)

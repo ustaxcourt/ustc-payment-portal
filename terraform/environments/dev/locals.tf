@@ -81,6 +81,21 @@ locals {
     getTransactionPaymentStatus = local.lambda_env_dashboard
     migrationRunner             = local.lambda_env_migration
   }
+
+  # Lambda Power Tuning (PAY-361) will overwrite the payment-flow + testCert/healthCheck
+  # values below once a tuning run picks a winner (Phase 5). Dashboard Lambdas and
+  # migrationRunner are NOT power-tuned; their values are a fixed, permanent choice.
+  lambda_memory_sizes = {
+    initPayment                 = 128
+    processPayment              = 128
+    getDetails                  = 128
+    testCert                    = 128
+    healthCheck                 = 128
+    getAllTransactions          = 512
+    getTransactionsByStatus     = 512
+    getTransactionPaymentStatus = 512
+    migrationRunner             = 1024
+  }
   github_oidc_provider_arn = "arn:aws:iam::723609007960:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"
   github_repo              = "ustc-payment-portal"
