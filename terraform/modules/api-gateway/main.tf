@@ -504,6 +504,7 @@ resource "aws_api_gateway_deployment" "deployment" {
     aws_api_gateway_integration.transactions_options_integration,
     aws_api_gateway_integration.transactions_by_status_options_integration,
     aws_api_gateway_integration.transaction_payment_status_options_integration,
+    aws_api_gateway_rest_api_policy.policy,
   ]
 }
 
