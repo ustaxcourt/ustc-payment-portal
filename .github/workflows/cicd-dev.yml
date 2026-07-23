@@ -46,6 +46,10 @@ jobs:
     name: PR Build/Test and Ephemeral Deploy (Dev Account)
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      api_url: ${{ steps.tf_outputs.outputs.api_url }}
+      test_unauthorized_role_arn: ${{ steps.tf_outputs.outputs.test_unauthorized_role_arn }}
+      has_outputs: ${{ steps.tf_outputs.outputs.has_outputs }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -337,16 +341,6 @@ jobs:
           echo "All secret values copied successfully"
         working-directory: terraform/environments/dev
 
-      - name: Integration tests (PR environment)
-        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
-        env:
-          TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
-          BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
-        run: |
-          npm ci
-          echo "Running integration tests against: $BASE_URL"
-          npm run test:integration
-
       - name: SigV4 Smoke Test (PR environment)
         if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
         env:
@@ -368,31 +362,65 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  integration_test:
+    name: Integration Tests (PR environment)
+    needs: [check_actor, pr_build_test_deploy]
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && needs.check_actor.outputs.is_dependabot != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Integration tests hit SigV4-protected endpoints, so the job needs signing creds.
+      - name: Configure AWS Credentials (OIDC - Dev)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Integration tests (PR environment)
+        env:
+          TEST_NAMESPACE: pr-${{ github.event.pull_request.number }}
+          BASE_URL: ${{ needs.pr_build_test_deploy.outputs.api_url }}
+        run: |
+          echo "Running integration tests against: $BASE_URL"
+          npm run test:integration
+
   # Single status check required by the `main-tests` ruleset. Always runs and posts a
   # real red/green (a skipped required job would leave the PR stuck on "expected").
-  # Dependabot is exempt here by policy; the ruleset itself has no bypass.
+  # Keys off integration_test; Dependabot is exempt by policy (the ruleset has no bypass).
   integration_gate:
     name: Integration Gate
-    needs: [check_actor, pr_build_test_deploy]
+    needs: [check_actor, integration_test]
     if: ${{ always() && github.event_name == 'pull_request' && github.event.action != 'closed' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require integration tests to have passed
         env:
-          BUILD_RESULT: ${{ needs.pr_build_test_deploy.result }}
+          TESTS_RESULT: ${{ needs.integration_test.result }}
           IS_DEPENDABOT: ${{ needs.check_actor.outputs.is_dependabot }}
         run: |
-          echo "pr_build_test_deploy result: '$BUILD_RESULT' (dependabot=$IS_DEPENDABOT)"
+          echo "integration_test result: '$TESTS_RESULT' (dependabot=$IS_DEPENDABOT)"
           if [ "$IS_DEPENDABOT" = "true" ]; then
             echo "Dependabot PR — exempt from the integration gate by policy. Passing."
             exit 0
           fi
-          if [ "$BUILD_RESULT" = "success" ]; then
+          if [ "$TESTS_RESULT" = "success" ]; then
             echo "Integration tests passed — merge permitted."
             exit 0
           fi
-          echo "::error::Integration Gate FAILED — pr_build_test_deploy did not succeed (result='$BUILD_RESULT'). Merging to main is blocked until integration tests pass."
+          echo "::error::Integration Gate FAILED — integration_test did not succeed (result='$TESTS_RESULT'). Merging to main is blocked until integration tests pass."
           exit 1
 
   deploy_dev:
@@ -620,6 +648,14 @@ jobs:
         run: |
           echo "Health-checking deployed dev build before tagging for promotion: $BASE_URL"
           npm run test:deploy-health
+
+      - name: Integration tests (dev)
+        env:
+          BASE_URL: ${{ steps.tf_outputs_dev.outputs.api_url }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          echo "Running dev-safe integration suite against: $BASE_URL"
+          npm run test:integration:deployed
 
       - name: Cleanup PR artifacts (soft delete)
         if: ${{ success() }}
