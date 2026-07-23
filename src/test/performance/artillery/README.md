@@ -8,8 +8,8 @@ The four `npm run test:performance:*` scripts in [package.json](../../../../pack
 
 - `scenarios/init-only.yml` exercises `POST /init` only.
 - `scenarios/full-flow.yml` exercises `/init`, the simulated Pay.gov payment step, `/process`, and `/details/{transactionReferenceId}`.
-- `environments/load-test.yml` launches `10` new virtual users per second for `120` seconds.
-- `environments/stress-test.yml` increases traffic from `16` to `167` new virtual users per second over five one-minute phases.
+- `environments/load-test.yml` launches `7` new virtual users per second per worker for `300` seconds. With two workers, `full-flow` produces approximately `42` payment-portal requests per second.
+- `environments/stress-test.yml` increases traffic from `5` to `15` new virtual users per second per worker over five one-minute phases.
 - `processor.js` builds request payloads, conditionally applies SigV4, selects payment outcomes, and logs failed responses with auth values redacted.
 - `results/*.json` stores Artillery JSON output.
 - `.env.example` shows the environment variables expected by the Lambda wrapper and processor.
@@ -38,7 +38,8 @@ These repository scripts create a timestamped directory under `src/test/performa
 ## Arrival Rates
 
 - The configured arrival rates represent scenario starts, not literal HTTP requests per second.
-- A successful `full-flow` user can emit up to four HTTP requests and includes three one-second think times, so request-per-minute numbers will differ from scenario-start rate.
+- A successful `full-flow` user emits three payment-portal requests plus one request to the simulated Pay.gov server and includes three one-second think times.
+- The load profile verifies the demonstrated-safe rate only when `ARTILLERY_LAMBDA_COUNT=2`: `7` scenario starts per second per worker × `2` workers × `3` payment-portal requests = approximately `42` payment-portal requests per second for five minutes.
 
 ## How The Wrapper Works
 
@@ -137,7 +138,7 @@ npm run test:performance:stress:full
 - Result files are written to timestamped directories under `src/test/performance/artillery/results/` using names derived by the Bash wrapper.
 - Read request-level metrics such as `http.codes.200`, `http.codes.429`, and `http.codes.500` separately from flow-level metrics such as `vusers.completed` and `vusers.failed`.
 - A run can show many successful individual requests while still having poor end-to-end flow completion.
-- Both profiles set `ensure.maxErrorRate` to `10`.
+- The load profile requires a zero-percent error rate; the stress profile allows up to a ten-percent error rate while finding the target's limit.
 - `load-test.yml` holds a steady arrival rate, while `stress-test.yml` increases the arrival rate in one-minute steps.
 
 ## Debugging Notes

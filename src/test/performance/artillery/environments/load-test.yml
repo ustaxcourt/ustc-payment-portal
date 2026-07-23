@@ -2,17 +2,17 @@ config:
   target: "http://localhost:8080"
 
   http:
-    timeout: 15000
+    timeout: 26.5
     pool: 200
 
   ensure:
-    maxErrorRate: 10
+    maxErrorRate: 0
 
   maxVusers: 500
 
   phases:
-    - duration: 30
-      arrivalRate: 10
-      name: heavy-load-10-rps
+    - duration: 300
+      arrivalRate: 7
+      name: "demonstrated-safe-42-portal-rps-with-2-workers"
 
   processor: "../processor.js"
