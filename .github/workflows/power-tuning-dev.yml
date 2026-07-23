@@ -34,15 +34,6 @@ permissions:
   id-token: write
   contents: read
 
-# Serialize ALL runs of this workflow, regardless of which function is
-# selected — never cancel an in-progress run, just queue the new one.
-# processPayment's token-minter preProcessor directly invokes initPayment, so
-# tuning both at once floods initPayment with concurrent invocations from two
-# sources at once and throttles/skews results (confirmed: a concurrent run
-# measured initPayment at 128MB/11.6s, while running alone it measured
-# 512MB/138ms — an 80x difference from contention alone). A single shared
-# group protects against this and any other pair sharing downstream resources
-# (RDS Proxy connections, mock Pay.gov, Lambda account concurrency).
 concurrency:
   group: power-tuning-dev
   cancel-in-progress: false
@@ -237,12 +228,6 @@ jobs:
           retention-days: 30
 
       - name: Clean up power-tuning transactions
-        # Runs even if the execution failed partway — tuning initPayment
-        # invokes it directly, and processPayment's preProcessor mints tokens
-        # via initPayment too, so either can leave rows behind before a failure.
-        # Calls the dedicated tuner-cleanup Lambda (src/powerTuning/powerTuningCleanUp.ts)
-        # rather than migrationRunner, which also handles real DDL migrations
-        # in staging and prod — this cleanup stays fully isolated to dev.
         if: always() && steps.start.outputs.execution_arn != ''
         run: |
           set -euo pipefail
