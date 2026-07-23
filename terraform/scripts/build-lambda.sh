@@ -193,6 +193,23 @@ npx esbuild src/powerTuning/processTokenMinter.ts \
   --minify \
   --keep-names
 
+# powerTuningCleanUp needs real RDS access (via the shared src/db/knex.ts), so
+# it's bundled like the payment Lambdas: @aws-sdk/* externalized (managed
+# runtime ships it) and gets the RDS CA bundle copied in below.
+echo "Bundling powerTuningCleanUp..."
+mkdir -p dist/powerTuningCleanUp
+npx esbuild src/powerTuning/powerTuningCleanUp.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/powerTuningCleanUp/powerTuningCleanUp.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
+
 # Copy certificate files if they exist
 if [ -d "certs" ]; then
     echo "Copying certificate files..."
@@ -210,7 +227,7 @@ curl -sSf -o /tmp/rds-ca-bundle.pem \
 
 # Copy CA bundle to all Lambda functions that connect to RDS (testCert included:
 # its bundle is reused by healthCheck, whose RDS check must validate the CA).
-for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
+for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus powerTuningCleanUp; do
   cp /tmp/rds-ca-bundle.pem "dist/${func}/rds-ca-bundle.pem"
 done
 

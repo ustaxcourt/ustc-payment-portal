@@ -179,3 +179,109 @@ resource "aws_cloudwatch_log_group" "tuner_token_minter" {
     create_before_destroy = true
   }
 }
+
+# --- powerTuningCleanUp: deletes transactions created by tuning runs ---------
+# Invoked directly by .github/workflows/power-tuning-dev.yml after each run.
+# Its own dedicated Lambda (not a migrationRunner command) so this dev-only
+# cleanup can never run against the migrationRunner Lambda that also handles
+# real DDL migrations in staging and prod.
+resource "aws_iam_role" "tuner_cleanup" {
+  count = local.power_tuning_preprocessors_enabled
+  name  = "${local.name_prefix}-tuner-cleanup-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+    Purpose = "Power tuning cleanup - deletes power-tuning-tagged transactions"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "tuner_cleanup_logs" {
+  count      = local.power_tuning_preprocessors_enabled
+  role       = aws_iam_role.tuner_cleanup[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# Needed to attach an ENI in the VPC so this function can reach the RDS Proxy.
+resource "aws_iam_role_policy_attachment" "tuner_cleanup_vpc" {
+  count      = local.power_tuning_preprocessors_enabled
+  role       = aws_iam_role.tuner_cleanup[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+# Scoped to exactly the RDS credentials secret this function needs to read —
+# same secret the payment Lambdas use (local.app_rds_secret_arn), not the
+# migration Lambda's master secret.
+resource "aws_iam_role_policy" "tuner_cleanup_rds_secret" {
+  count = local.power_tuning_preprocessors_enabled
+  name  = "read-rds-secret"
+  role  = aws_iam_role.tuner_cleanup[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "ReadRdsCredentials"
+      Effect   = "Allow"
+      Action   = "secretsmanager:GetSecretValue"
+      Resource = local.app_rds_secret_arn
+    }]
+  })
+}
+
+resource "aws_lambda_function" "tuner_cleanup" {
+  count = local.power_tuning_preprocessors_enabled
+
+  s3_bucket        = var.artifact_bucket
+  s3_key           = var.powerTuningCleanUp_s3_key
+  source_code_hash = var.powerTuningCleanUp_source_code_hash
+
+  function_name = "${local.name_prefix}-tuner-cleanup"
+  role          = aws_iam_role.tuner_cleanup[0].arn
+  handler       = "powerTuningCleanUp.handler"
+  runtime       = "nodejs22.x"
+  timeout       = 30
+  memory_size   = 128
+
+  # Needs the RDS Proxy — same VPC placement as the payment Lambdas.
+  vpc_config {
+    subnet_ids         = [data.terraform_remote_state.foundation.outputs.private_subnet_id]
+    security_group_ids = [data.terraform_remote_state.foundation.outputs.lambda_security_group_id]
+  }
+
+  environment {
+    variables = {
+      RDS_ENDPOINT   = local.app_rds_endpoint
+      RDS_SECRET_ARN = local.app_rds_secret_arn
+      RDS_DB_NAME    = local.rds_db_name
+    }
+  }
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "tuner_cleanup" {
+  count             = local.power_tuning_preprocessors_enabled
+  name              = "/aws/lambda/${local.name_prefix}-tuner-cleanup"
+  retention_in_days = 14
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}

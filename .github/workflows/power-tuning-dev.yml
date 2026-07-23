@@ -34,6 +34,19 @@ permissions:
   id-token: write
   contents: read
 
+# Serialize ALL runs of this workflow, regardless of which function is
+# selected — never cancel an in-progress run, just queue the new one.
+# processPayment's token-minter preProcessor directly invokes initPayment, so
+# tuning both at once floods initPayment with concurrent invocations from two
+# sources at once and throttles/skews results (confirmed: a concurrent run
+# measured initPayment at 128MB/11.6s, while running alone it measured
+# 512MB/138ms — an 80x difference from contention alone). A single shared
+# group protects against this and any other pair sharing downstream resources
+# (RDS Proxy connections, mock Pay.gov, Lambda account concurrency).
+concurrency:
+  group: power-tuning-dev
+  cancel-in-progress: false
+
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
 
@@ -136,6 +149,20 @@ jobs:
             echo "TUNING_INPUT_EOF"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Snapshot existing Lambda versions
+        id: snapshot
+        env:
+          TUNE_FUNCTION: ${{ inputs.function }}
+        run: |
+          set -euo pipefail
+
+          # Captured so the post-run cleanup step can delete ONLY versions this
+          # run creates, never pre-existing deploy history.
+          BEFORE_VERSIONS=$(aws lambda list-versions-by-function \
+            --function-name "ustc-payment-processor-${TUNE_FUNCTION}" \
+            --query "Versions[?Version!='\$LATEST'].Version" --output text)
+          echo "before_versions=$BEFORE_VERSIONS" >> "$GITHUB_OUTPUT"
+
       - name: Start tuning execution
         id: start
         env:
@@ -202,9 +229,79 @@ jobs:
 
       - name: Upload results
         if: always() && steps.start.outputs.execution_arn != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: power-tuning-${{ inputs.function }}-${{ github.run_id }}
           path: power-tuning-results.json
           if-no-files-found: ignore
           retention-days: 30
+
+      - name: Clean up power-tuning transactions
+        # Runs even if the execution failed partway — tuning initPayment
+        # invokes it directly, and processPayment's preProcessor mints tokens
+        # via initPayment too, so either can leave rows behind before a failure.
+        # Calls the dedicated tuner-cleanup Lambda (src/powerTuning/powerTuningCleanUp.ts)
+        # rather than migrationRunner, which also handles real DDL migrations
+        # in staging and prod — this cleanup stays fully isolated to dev.
+        if: always() && steps.start.outputs.execution_arn != ''
+        run: |
+          set -euo pipefail
+
+          # Read the protected reference ID from the fixture itself (single
+          # source of truth) rather than duplicating it as a literal here —
+          # this is the one seeded transaction the getDetails fixture depends on.
+          PRESERVE_ID=$(jq -r '.pathParameters.transactionReferenceId' \
+            src/powerTuning/fixtures/getDetails.fixture.json)
+
+          PAYLOAD=$(jq -nc --arg id "$PRESERVE_ID" \
+            '{preserveReferenceIds: [$id]}')
+
+          aws lambda invoke \
+            --function-name ustc-payment-processor-tuner-cleanup \
+            --payload "$PAYLOAD" \
+            --cli-binary-format raw-in-base64-out \
+            gc-power-tuning-response.json
+          cat gc-power-tuning-response.json
+
+      - name: Clean up unused Lambda versions created by this run
+        if: always() && steps.start.outputs.execution_arn != ''
+        env:
+          TUNE_FUNCTION: ${{ inputs.function }}
+          BEFORE_VERSIONS: ${{ steps.snapshot.outputs.before_versions }}
+        run: |
+          set -euo pipefail
+          FUNCTION_NAME="ustc-payment-processor-${TUNE_FUNCTION}"
+
+          AFTER_VERSIONS=$(aws lambda list-versions-by-function \
+            --function-name "$FUNCTION_NAME" \
+            --query "Versions[?Version!='\$LATEST'].Version" --output text)
+
+          # Versions still referenced by an alias (e.g. Terraform's "live" alias
+          # for initPayment/processPayment/getDetails) must never be deleted.
+          # Shouldn't normally trigger — the tuner deletes its own temporary
+          # aliases before finishing — but kept as defense in depth alongside
+          # the before/after diff, which is the primary safety mechanism here.
+          ALIASED_VERSIONS=$(aws lambda list-aliases \
+            --function-name "$FUNCTION_NAME" \
+            --query "Aliases[].FunctionVersion" --output text)
+
+          DELETED=0
+          for VERSION in $AFTER_VERSIONS; do
+            # Only delete versions that did NOT exist before this run started —
+            # never touch pre-existing deploy history.
+            if echo "$BEFORE_VERSIONS" | grep -qw "$VERSION"; then
+              continue
+            fi
+            if echo "$ALIASED_VERSIONS" | grep -qw "$VERSION"; then
+              echo "Skipping new version $VERSION (referenced by an alias)"
+              continue
+            fi
+            echo "Deleting version $VERSION of $FUNCTION_NAME (created by this tuning run)"
+            if aws lambda delete-function --function-name "$FUNCTION_NAME" --qualifier "$VERSION"; then
+              DELETED=$((DELETED + 1))
+            else
+              echo "Warning: failed to delete version $VERSION (continuing)" >&2
+            fi
+          done
+
+          echo "Deleted $DELETED unused version(s)."

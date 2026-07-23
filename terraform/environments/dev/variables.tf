@@ -137,4 +137,16 @@ variable "processTokenMinter_source_code_hash" {
   default     = ""
 }
 
+variable "powerTuningCleanUp_s3_key" {
+  description = "S3 key for the powerTuningCleanUp power-tuning cleanup artifact"
+  type        = string
+  default     = ""
+}
+
+variable "powerTuningCleanUp_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for the powerTuningCleanUp artifact"
+  type        = string
+  default     = ""
+}
+
 

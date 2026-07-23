@@ -195,6 +195,16 @@ resource "aws_iam_policy" "power_tuning_deployer" {
           }
         }
       },
+      {
+        # power-tuning-dev.yml invokes the powerTuningCleanUp Lambda directly
+        # after each run (see environments/dev/power-tuning-preprocessors.tf).
+        # The deployer's broad InvokeFunction grant only covers *-migrationRunner,
+        # so this dev-only cleanup Lambda needs its own explicit grant.
+        Sid      = "InvokePowerTuningCleanUp"
+        Effect   = "Allow"
+        Action   = ["lambda:InvokeFunction"]
+        Resource = "arn:aws:lambda:${local.aws_region}:${local.power_tuning_account_id}:function:ustc-payment-processor-tuner-cleanup"
+      },
     ]
   })
 }
