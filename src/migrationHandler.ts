@@ -585,7 +585,6 @@ export const migrationHandler = async (
     }
 
     if (command === "rollback") {
-      // Confirmation is validated up front, before the connection is built.
       // Roll back only the last batch (= the most recent deploy that applied
       // migrations). `false` disables all-history rollback intentionally.
       const [batchNo, migrations] = await knex.migrate.rollback(undefined, false);
@@ -595,7 +594,6 @@ export const migrationHandler = async (
         migrations.length === 0
           ? "No migration batch to roll back"
           : `Rolled back batch ${batchNo}`;
-      // Audit line: names exactly what was reverted (or that nothing was).
       console.log(
         migrations.length === 0
           ? `[migrationHandler] rollback: nothing to revert`
@@ -610,9 +608,6 @@ export const migrationHandler = async (
     }
 
     if (command === "unlock") {
-      // Confirmation is validated up front, before the connection is built.
-      // Force-clears a stale knex_migrations_lock left behind by an abruptly-killed
-      // run (e.g. a Lambda timeout), which otherwise blocks all future migrate/rollback.
       await knex.migrate.forceFreeMigrationsLock();
       return {
         statusCode: 200,
