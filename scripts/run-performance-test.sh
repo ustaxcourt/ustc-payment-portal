@@ -73,7 +73,7 @@ lambda_count="${ARTILLERY_LAMBDA_COUNT:-1}"
 aws_region="${ARTILLERY_LAMBDA_REGION:-${AWS_REGION:-${AWS_DEFAULT_REGION:-us-east-1}}}"
 artillery_architecture="arm64"
 artillery_version="$(node -p "require('./node_modules/artillery/package.json').version")"
-role_hash="$(printf '%s' "$role_arn" | shasum -a 256 | cut -c1-12)"
+role_hash="$(ROLE_ARN="$role_arn" node -p "require('crypto').createHash('sha256').update(process.env.ROLE_ARN).digest('hex').slice(0,12)")"
 
 echo "Running artillery with target: $target, region: $aws_region, lambda count: $lambda_count, role ARN: $role_arn"
 

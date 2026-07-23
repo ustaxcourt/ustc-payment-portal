@@ -11,7 +11,7 @@ config:
   maxVusers: 500
 
   phases:
-    - duration: 30
+    - duration: 120
       arrivalRate: 10
       name: heavy-load-10-rps
 
