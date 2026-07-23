@@ -167,6 +167,8 @@ module "api" {
   enable_public_dashboard        = startswith(local.environment, "pr-") || local.environment == "dev"
   enable_access_logging          = false
   enable_per_endpoint_throttling = false
+  stage_throttling_rate_limit    = local.api_stage_throttling_rate_limit
+  stage_throttling_burst_limit   = local.api_stage_throttling_burst_limit
 
   depends_on = [module.secrets, aws_acm_certificate_validation.this]
 }
@@ -288,6 +290,84 @@ resource "aws_iam_role_policy" "test_unauthorized_api_invoke" {
         Effect   = "Allow"
         Action   = "execute-api:Invoke"
         Resource = "${module.api.api_gateway_execution_arn}/*"
+      }
+    ]
+  })
+}
+
+# =============================================================================
+# Artillery Load Test Role (run-lambda worker + API SigV4 signing)
+# =============================================================================
+# Register this role ARN in client-permissions before load testing.
+
+resource "aws_iam_role" "artillery_load_test" {
+  count = local.enable_artillery_load_test ? 1 : 0
+  name  = "${local.name_prefix}-artillery-load-test-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Purpose = "Artillery run-lambda load testing"
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "artillery_load_test_basic_execution" {
+  count      = local.enable_artillery_load_test ? 1 : 0
+  role       = aws_iam_role.artillery_load_test[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy" "artillery_load_test" {
+  count = local.enable_artillery_load_test ? 1 : 0
+  name  = "artillery-load-test"
+  role  = aws_iam_role.artillery_load_test[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "execute-api:Invoke"
+        Resource = "${module.api.api_gateway_execution_arn}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:ChangeMessageVisibility",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:GetQueueUrl",
+          "sqs:ReceiveMessage",
+          "sqs:SendMessage",
+        ]
+        Resource = "arn:aws:sqs:*:${data.aws_caller_identity.current.account_id}:artilleryio*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:HeadObject",
+          "s3:PutObject",
+          "s3:ListBucket",
+          "s3:GetObject",
+          "s3:GetObjectAttributes",
+        ]
+        Resource = [
+          "arn:aws:s3:::artilleryio-test-data*",
+          "arn:aws:s3:::artilleryio-test-data*/*",
+        ]
       }
     ]
   })

@@ -1,0 +1,53 @@
+scenarios:
+  - name: full-flow
+    weight: 30
+    flow:
+      - function: "setTransactionReferenceId"
+
+      # STEP 1
+      - post:
+          url: "/init"
+          beforeRequest:
+            - "setSignedInitBody"
+            - "signWithSigV4IfNeeded"
+          afterResponse: "logResponse"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: $.token
+              as: "paymentToken"
+
+      - think: 1
+      - function: "setPaymentOutcome"
+
+      # STEP 2
+      - post:
+          url: "{{ PAY_GOV_URL }}/pay/{{ choiceMethod }}/{{ choiceStatus }}?token={{ paymentToken }}"
+          beforeRequest:
+            - "setTokenHeader"
+          afterResponse: "logResponse"
+          expect:
+            - statusCode: 200
+
+      - think: 1
+
+      # STEP 3
+      - post:
+          url: "/process"
+          beforeRequest:
+            - "setSignedProcessBody"
+            - "signWithSigV4IfNeeded"
+          afterResponse: "logResponse"
+          expect:
+            - statusCode: 200
+
+      - think: 1
+
+      # STEP 4
+      - get:
+          url: "/details/{{ transactionReferenceId }}"
+          beforeRequest:
+            - "signWithSigV4IfNeeded"
+          afterResponse: "logResponse"
+          expect:
+            - statusCode: 200
