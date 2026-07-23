@@ -1,15 +1,19 @@
-# GitHub branch rulesets (main)
+# GitHub branch ruleset (main) — integration-test gate
 
-Terraform-managed protection for `main`: two rulesets — `main-tests` (no bypass;
-requires a PR + the "Integration Gate" check) and `main-review` (1 review; admins
-and Dependabot bypass). Rationale and policy matrix live in the PR that introduced
-this.
+Terraform-managed `main-tests` ruleset. It adds the **required "Integration Gate"
+check** to `main` (pinned to the GitHub Actions app), requires a PR, and blocks
+force-push/deletion — with **no bypass**, so nobody, admins included, can merge with
+failing integration tests.
+
+The **review** requirement (1 approval) is enforced by the separate, hand-managed
+**`merge to main`** ruleset. GitHub stacks rulesets, so the two combine: PR + review
+(`merge to main`) + tests (`main-tests`). This root does not manage `merge to main`.
 
 ## ⚠️ Apply order
 
 The `integration_gate` job in `.github/workflows/cicd-dev.yml` must be on `main`
-**before** you apply, or the rulesets require a check that never posts and block
-every PR. Merge the workflow first, then apply.
+**before** you enforce, or the ruleset requires a check that never posts and blocks
+every PR. Merge the workflow first, then apply with `enforcement=active`.
 
 ## Prerequisites
 
@@ -22,15 +26,11 @@ every PR. Merge the workflow first, then apply.
 cd terraform/environments/foundation/github
 terraform init -backend-config=backend.hcl -reconfigure
 terraform plan
-terraform apply
+terraform apply -var="enforcement=evaluate"   # dry-run: logs violations, blocks nothing
+terraform apply                               # enforcement=active (after the workflow is on main)
 ```
 
-Optional cautious rollout — dry-run, watch **Settings → Rules → insights**, then enforce:
-
-```bash
-terraform apply -var="enforcement=evaluate"   # logs violations, blocks nothing
-terraform apply                               # enforcement=active
-```
+Watch would-be violations at **Settings → Rules → insights** before enforcing.
 
 ## Rollback
 
