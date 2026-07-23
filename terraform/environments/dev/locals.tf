@@ -13,10 +13,16 @@ locals {
 
   proxy_max_connections_percent = 75
 
+  # Keep PR workspaces at the legacy stage throttling while allowing higher limits in dev for load testing.
+  api_stage_throttling_rate_limit  = local.environment == "dev" ? 200 : 10
+  api_stage_throttling_burst_limit = local.environment == "dev" ? 400 : 20
+
   # PR-scoped DB user (PAY-276). The dev workspace itself uses admin creds; PR
   # workspaces get an isolated user that can only see their own database.
   is_pr   = local.environment != "dev"
   pr_role = local.is_pr ? "pr_user_${replace(local.environment, "-", "_")}" : null
+
+  enable_artillery_load_test = local.environment == "dev" || startswith(local.environment, "pr-")
 
   # Payment + dashboard Lambdas use the PR-scoped secret in PR workspaces;
   # everywhere else they keep using the admin secret.
