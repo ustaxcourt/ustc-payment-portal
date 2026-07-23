@@ -78,6 +78,7 @@ The portal is published as `@ustaxcourt/payment-portal` and serves two purposes:
 - `TransactionModel.createReceived` always enforces `paymentStatus='pending'` and `transactionStatus='received'` internally. Do not pass these fields in the call — they will be ignored, and doing so signals a misunderstanding of the model contract.
 - **OpenAPI spec**: generated via `npm run generate:openapi` from [`src/openapi/registry.ts`](src/openapi/registry.ts).
 - **Logger**: [`src/utils/logger.ts`](src/utils/logger.ts) — prefer `AppContext.logger` over `console` in production code paths (avoid adding new `console.*` calls).
+- **GitHub Actions `uses:` pinning**: before adding or editing a `uses:` line, search [`.github/workflows/`](.github/workflows/) for the same action (the name before the `@`) and pin to the version already used there — don't adopt a newer release, or default to the version you were trained on, just because one exists. Introduce a new version only deliberately; when you do, flag the now-out-of-sync workflows and ask the developer before updating them.
 
 ## Security Requirements
 

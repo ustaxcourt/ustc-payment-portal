@@ -1,4 +1,3 @@
-
 # Runbook: API Gateway throttle (429) alerts
 
 You were sent here by an alert. This runbook tells you what to check, in what order, and when to escalate.
@@ -11,21 +10,21 @@ The alert is `ustc-payment-portal-{env}-api-gateway-429-critical`. It fires when
 
 Per-endpoint limits (sustained rate / burst):
 
-| Route | Sustained | Burst |
-|---|---|---|
-| `POST /init` | 100 req/min (~2 req/s) | 10 |
-| `POST /process` | 100 req/min (~2 req/s) | 10 |
-| `GET /details/{transactionReferenceId}` | 5,000 req/min (~84 req/s) | 150 |
+| Route                                   | Sustained              | Burst |
+| --------------------------------------- | ---------------------- | ----- |
+| `POST /init`                            | 600 req/min (10 req/s) | 20    |
+| `POST /process`                         | 600 req/min (10 req/s) | 20    |
+| `GET /details/{transactionReferenceId}` | 600 req/min (10 req/s) | 20    |
 
 A single burst (e.g., a CI run firing multiple `/init` requests back-to-back) can exhaust the burst bucket and produce a 429 without sustained overload. See [How the detection works](#how-the-detection-works) for the distinction.
 
 ## User-facing impact
 
-| Throttled route | What the user sees |
-|---|---|
-| `POST /init` | Cannot start a new payment session. The calling application receives 429 instead of a Pay.gov redirect URL. |
-| `POST /process` | Pay.gov callback cannot complete. Transaction status may stay in `initiated`. |
-| `GET /details/{transactionReferenceId}` | Status polling is rate-limited. Front end sees stale data until the rate window clears. |
+| Throttled route                         | What the user sees                                                                                          |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `POST /init`                            | Cannot start a new payment session. The calling application receives 429 instead of a Pay.gov redirect URL. |
+| `POST /process`                         | Pay.gov callback cannot complete. Transaction status may stay in `initiated`.                               |
+| `GET /details/{transactionReferenceId}` | Status polling is rate-limited. Front end sees stale data until the rate window clears.                     |
 
 ## First three things to check
 
@@ -44,6 +43,7 @@ aws logs filter-log-events \
 ```
 
 Look for:
+
 - Which `resourcePath` is generating 429s — `/init`, `/process`, or `/details`
 - Whether a single `ip` accounts for most of the volume
 - Whether 429s are clustered (burst) or distributed across the window (sustained rate exceeded)
@@ -81,17 +81,17 @@ If you see a high and sustained count (not a single spike), investigate whether 
 
 This list grows as incidents happen. Update it after each incident.
 
-| Date | Symptom | Root cause | Fix |
-|---|---|---|---|
-| (none yet) | — | — | — |
+| Date       | Symptom | Root cause | Fix |
+| ---------- | ------- | ---------- | --- |
+| (none yet) | —       | —          | —   |
 
 ## Escalation
 
-| Level | Who | When |
-|---|---|---|
-| L1 | On-call engineer (you) | First 30 min |
-| L2 | Payments tech lead | If a legitimate client is consistently hitting limits and limits need tuning |
-| L3 | PO + client team | If the throttled caller is an external consumer that needs coordination |
+| Level | Who                    | When                                                                         |
+| ----- | ---------------------- | ---------------------------------------------------------------------------- |
+| L1    | On-call engineer (you) | First 30 min                                                                 |
+| L2    | Payments tech lead     | If a legitimate client is consistently hitting limits and limits need tuning |
+| L3    | PO + client team       | If the throttled caller is an external consumer that needs coordination      |
 
 Contact info: see team page (link to be added).
 
@@ -140,4 +140,4 @@ The alarm fires when the `Sum` of that metric reaches ≥ 1 in any single 5-minu
 
 **Throttling is best-effort**: AWS applies limits on a best-effort basis — they are targets, not hard ceilings. A request may be throttled slightly before or after the configured limit depending on account-level load. Treat the limits as approximate guides, not precise trip-points.
 
-**Burst vs. sustained**: API Gateway uses a token-bucket algorithm. The burst value is the initial bucket depth (e.g., 10 for `/init`). A client can send up to 10 requests instantaneously without throttling; thereafter it is limited to the sustained rate (~2 req/s). A bursty-but-legitimate caller (CI, client that queues requests) can drain the burst bucket and see a 429 even though it would pass a sustained-rate check. If this alarm fires consistently on CI runs, consider raising the burst limits via the `throttle_burst_limit` variable in the api-gateway module.
+**Burst vs. sustained**: API Gateway uses a token-bucket algorithm. The burst value is the initial bucket depth. A client can send up to 20 requests instantaneously without throttling; thereafter it is limited to the sustained rate of 10 req/s. A bursty-but-legitimate caller (CI, client that queues requests) can drain the burst bucket and see a 429 even though it would pass a sustained-rate check. If this alarm fires consistently on CI runs, review the per-endpoint limits in the API Gateway module.

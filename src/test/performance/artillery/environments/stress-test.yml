@@ -2,7 +2,7 @@ config:
   target: "http://localhost:8080"
 
   http:
-    timeout: 15000
+    timeout: 26.5
     pool: 200
 
   ensure:
@@ -12,23 +12,23 @@ config:
 
   phases:
     - duration: 60
-      arrivalRate: 16
-      name: "1K RPM"
+      arrivalRate: 5
+      name: "600 RPM"
 
     - duration: 60
-      arrivalRate: 33
-      name: "2K RPM"
+      arrivalRate: 7
+      name: "900 RPM"
 
     - duration: 60
-      arrivalRate: 67
-      name: "4K RPM"
+      arrivalRate: 10
+      name: "1.2K RPM"
 
     - duration: 60
-      arrivalRate: 133
-      name: "8K RPM"
+      arrivalRate: 12
+      name: "1.5K RPM"
 
     - duration: 60
-      arrivalRate: 167
-      name: "10K RPM"
+      arrivalRate: 15
+      name: "1.8K RPM"
 
   processor: "../processor.js"
