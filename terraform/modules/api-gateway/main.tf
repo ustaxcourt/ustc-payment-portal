@@ -563,7 +563,8 @@ resource "aws_api_gateway_method_settings" "all" {
 # throttling_rate_limit  = sustained fill rate of the token bucket (req/s)
 # throttling_burst_limit = max bucket capacity (instantaneous spike headroom)
 
-# 100 req/min = 2 req/s
+# The five-minute sustained load test demonstrated 14 req/s per payment endpoint.
+# Keep production and staging below that rate with burst capacity for brief spikes.
 resource "aws_api_gateway_method_settings" "init_throttle" {
   count       = var.enable_per_endpoint_throttling ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
@@ -571,12 +572,11 @@ resource "aws_api_gateway_method_settings" "init_throttle" {
   method_path = "init/POST"
 
   settings {
-    throttling_burst_limit = 10
-    throttling_rate_limit  = 1.67
+    throttling_burst_limit = 20
+    throttling_rate_limit  = 10
   }
 }
 
-# 100 req/min = 2 req/s
 resource "aws_api_gateway_method_settings" "process_throttle" {
   count       = var.enable_per_endpoint_throttling ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
@@ -584,12 +584,11 @@ resource "aws_api_gateway_method_settings" "process_throttle" {
   method_path = "process/POST"
 
   settings {
-    throttling_burst_limit = 10
-    throttling_rate_limit  = 1.67
+    throttling_burst_limit = 20
+    throttling_rate_limit  = 10
   }
 }
 
-# 5000 req/min = 84 req/s
 resource "aws_api_gateway_method_settings" "details_throttle" {
   count       = var.enable_per_endpoint_throttling ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
@@ -597,8 +596,8 @@ resource "aws_api_gateway_method_settings" "details_throttle" {
   method_path = "details~1{transactionReferenceId}/GET"
 
   settings {
-    throttling_burst_limit = 150
-    throttling_rate_limit  = 84
+    throttling_burst_limit = 20
+    throttling_rate_limit  = 10
   }
 }
 
