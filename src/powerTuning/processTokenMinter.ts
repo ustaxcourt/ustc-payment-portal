@@ -5,15 +5,9 @@ import { logger } from "@utils/logger";
 
 /**
  * Power-tuning pre-processor for the `processPayment` target. DEV-ONLY tuning
- * helper.
- *
- * Why this exists: aws-lambda-power-tuning replays the SAME base payload N times
- * per power value, but `processPayment` is single-use per token —
- * `TransactionModel.claimForProcessing` performs an atomic compare-and-swap
- * (`initiated` -> `processing`), so only the FIRST replay of a given token does
- * real work; every subsequent replay is rejected (Conflict / Gone / NotFound).
- * To make each tuned `processPayment` invocation representative, this
- * pre-processor mints a FRESH, ready-to-process token on every invocation.
+ * helper. This function directly invokes `initPayment` so that tuner has a fresh
+ * token to work with. Get's replayed N times per power value during the tuner's
+ * run. In short, call initPayment once before each processPayment invoke.
  *
  * How it mints a token (no SigV4 / no API Gateway):
  *   1. Directly invoke the dev `initPayment` Lambda with a crafted
@@ -28,13 +22,6 @@ import { logger } from "@utils/logger";
  *
  * The row is deliberately left in `initiated` (NOT `processing`) so the tuner's
  * `processPayment` invocation is the one that performs the claim CAS.
- *
- * Contract (aws-lambda-power-tuning): the tuner invokes this function with the
- * base `processPayment` payload before each iteration and uses the returned
- * value as that iteration's payload. The base event's
- * `requestContext.identity.userArn` (which drives `processPayment`'s auth chain
- * on direct invocation) is passed through unchanged; only the request body's
- * `token` is replaced with the freshly minted one.
  */
 
 const INIT_PAYMENT_FUNCTION_NAME =
