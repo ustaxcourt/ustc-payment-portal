@@ -863,5 +863,4 @@ describe("migrationHandler", () => {
       });
     });
   });
-
 });

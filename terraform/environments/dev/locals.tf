@@ -92,11 +92,11 @@ locals {
   # values below once a tuning run picks a winner (Phase 5). Dashboard Lambdas and
   # migrationRunner are NOT power-tuned; their values are a fixed, permanent choice.
   lambda_memory_sizes = {
-    initPayment                 = 128
-    processPayment              = 128
-    getDetails                  = 128
-    testCert                    = 128
-    healthCheck                 = 128
+    initPayment                 = 512
+    processPayment              = 256
+    getDetails                  = 512
+    testCert                    = 768
+    healthCheck                 = 768
     getAllTransactions          = 512
     getTransactionsByStatus     = 512
     getTransactionPaymentStatus = 512
