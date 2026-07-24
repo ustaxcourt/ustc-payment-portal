@@ -140,6 +140,15 @@ jobs:
             exit 1
           fi
 
+          # Guard against runaway runs: each invocation publishes a version + a
+          # real target invocation (and, for initPayment/processPayment, a
+          # preProcessor invocation too) per power value, so num > 100 multiplies
+          # into a large number of Lambda invocations very quickly.
+          if [ "$TUNE_NUM" -gt 100 ]; then
+            echo "ERROR: num must be <= 100 (got $TUNE_NUM). Refusing to start the tuner." >&2
+            exit 1
+          fi
+
           PAYLOAD=$(jq -c . "src/powerTuning/fixtures/${TUNE_FUNCTION}.fixture.json")
           POWER_VALUES_JSON=$(echo "$TUNE_POWER_VALUES" | jq -c -R 'split(",") | map(tonumber)')
 
