@@ -10,19 +10,12 @@
 #     directly invoking the dev initPayment Lambda and completing the payment on
 #     the mock Pay.gov server. Needs lambda:InvokeFunction on dev initPayment.
 #
-# Both are guarded to the real `dev` workspace: the environments/dev root module
-# is also applied for every ephemeral PR workspace in the same account, and PR
-# stacks must not spin up their own tuning helpers.
-#
-# FOUNDATION DEPENDENCY: the shared dev CI deployer role can create roles named
-# `ustc-payment-processor-*`, but its iam:PassRole is scoped to the shared Lambda
-# execution role only. foundation/dev-networking/power-tuning.tf grants the
-# deployer iam:PassRole for the `ustc-payment-processor-tuner-*` roles below.
-# That foundation apply must land before this stack can create + pass them.
+# Both are guarded to the real `dev` workspace, PR environments leave them at
+# their empty default (see variables.tf).
 
 locals {
   power_tuning_preprocessors_enabled = local.environment == "dev" ? 1 : 0
-
+  
   init_payment_function_arn = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor-initPayment"
 }
 

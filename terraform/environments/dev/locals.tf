@@ -88,9 +88,9 @@ locals {
     migrationRunner             = local.lambda_env_migration
   }
 
-  # Lambda Power Tuning (PAY-361) will overwrite the payment-flow + testCert/healthCheck
-  # values below once a tuning run picks a winner (Phase 5). Dashboard Lambdas and
-  # migrationRunner are NOT power-tuned; their values are a fixed, permanent choice.
+  # Use power-tuning-dev.yml to tune the payment, test, and health functions.
+  # The result of the run will tell you what memory size to set for each function.
+  # migrationRunner and get functions are static and not run by the tuner.
   lambda_memory_sizes = {
     initPayment                 = 512
     processPayment              = 256
