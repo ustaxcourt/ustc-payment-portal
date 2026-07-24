@@ -138,10 +138,6 @@ framework.
 5. **Repo scaffolding ownership** — which ticket seeds the dashboard repo's `main`.
 
 ## References
-
-- Spike proposal: [`../proposals/dashboard-technology-stack.md`](../proposals/dashboard-technology-stack.md)
-- Existing house-stack dashboards: `ustaxcourt/ustc-zendesk-dashboard`,
-  `ustaxcourt/library-koha-uploader`
 - Epic PAY-268 (Figma designs linked on the epic)
 - TanStack Table — https://tanstack.com/table
 - TanStack Query — https://tanstack.com/query
