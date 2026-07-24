@@ -1,0 +1,8 @@
+{
+  "body": "{\"transactionReferenceId\":\"placeholder\",\"fee\":\"PETITION_FILING_FEE\",\"urlSuccess\":\"http://example.com/success\",\"urlCancel\":\"http://example.com/cancel\",\"metadata\":{\"docketNumber\":\"power-tuning\"}}",
+  "requestContext": {
+    "identity": {
+      "userArn": "arn:aws:sts::723609007960:assumed-role/ustc-power-tuning/tuning"
+    }
+  }
+}

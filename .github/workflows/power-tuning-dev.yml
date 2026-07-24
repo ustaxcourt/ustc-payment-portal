@@ -1,0 +1,292 @@
+name: Power Tuning (Dev)
+
+# Manually run aws-lambda-power-tuning against a single dev Lambda target.
+# DEV-ONLY: the state machine, preProcessor Lambdas, and IAM scoping in
+# terraform/environments/foundation/dev-networking/power-tuning.tf only exist
+# in the dev account. See docs on that file / src/powerTuning/ for the full
+# design (preProcessors mint fresh state per-invocation for initPayment and
+# processPayment; the rest use static fixtures).
+on:
+  workflow_dispatch:
+    inputs:
+      function:
+        description: "Lambda target to tune"
+        required: true
+        type: choice
+        options:
+          - initPayment
+          - processPayment
+          - getDetails
+          - testCert
+          - healthCheck
+      num:
+        description: "Invocations per power value, minimum 5 (pilot with 10, then 30)"
+        required: false
+        default: "10"
+        type: string
+      power_values:
+        description: "Comma-separated memory values (MB) to test"
+        required: false
+        default: "128,256,512,768,1024,1536"
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: power-tuning-dev
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  tune:
+    name: Tune ${{ inputs.function }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure AWS Credentials (OIDC - Dev)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.DEV_AWS_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve state machine and target ARNs
+        id: resolve
+        env:
+          TUNE_FUNCTION: ${{ inputs.function }}
+        run: |
+          set -euo pipefail
+
+          STATE_MACHINE_ARN=$(aws stepfunctions list-state-machines \
+            --query "stateMachines[?starts_with(name, 'powerTuningStateMachine')].stateMachineArn | [0]" \
+            --output text)
+          if [ -z "$STATE_MACHINE_ARN" ] || [ "$STATE_MACHINE_ARN" == "None" ]; then
+            echo "ERROR: could not find the power-tuning state machine. Has foundation/dev-networking been applied?" >&2
+            exit 1
+          fi
+          echo "state_machine_arn=$STATE_MACHINE_ARN" >> "$GITHUB_OUTPUT"
+
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+          LAMBDA_ARN="arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:ustc-payment-processor-${TUNE_FUNCTION}"
+          echo "lambda_arn=$LAMBDA_ARN" >> "$GITHUB_OUTPUT"
+
+          # Only initPayment and processPayment need a preProcessor (they mint
+          # fresh per-invocation state); the others replay a static fixture.
+          case "$TUNE_FUNCTION" in
+            initPayment)
+              PRE_PROCESSOR_ARN="arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:ustc-payment-processor-tuner-init-refgen"
+              ;;
+            processPayment)
+              PRE_PROCESSOR_ARN="arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:ustc-payment-processor-tuner-token-minter"
+              ;;
+            *)
+              PRE_PROCESSOR_ARN=""
+              ;;
+          esac
+          echo "pre_processor_arn=$PRE_PROCESSOR_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Build execution input
+        id: build_input
+        env:
+          TUNE_FUNCTION: ${{ inputs.function }}
+          TUNE_NUM: ${{ inputs.num }}
+          TUNE_POWER_VALUES: ${{ inputs.power_values }}
+          LAMBDA_ARN: ${{ steps.resolve.outputs.lambda_arn }}
+          PRE_PROCESSOR_ARN: ${{ steps.resolve.outputs.pre_processor_arn }}
+        run: |
+          set -euo pipefail
+
+          # aws-lambda-power-tuning's initializer rejects num < 5 with a generic
+          # Step Functions failure; fail fast here with a clearer message instead.
+          if [ "$TUNE_NUM" -lt 5 ]; then
+            echo "ERROR: num must be >= 5 (got $TUNE_NUM). The tuner's initializer rejects anything lower." >&2
+            exit 1
+          fi
+
+          PAYLOAD=$(jq -c . "src/powerTuning/fixtures/${TUNE_FUNCTION}.fixture.json")
+          POWER_VALUES_JSON=$(echo "$TUNE_POWER_VALUES" | jq -c -R 'split(",") | map(tonumber)')
+
+          INPUT=$(jq -n \
+            --arg lambdaARN "$LAMBDA_ARN" \
+            --argjson powerValues "$POWER_VALUES_JSON" \
+            --argjson num "$TUNE_NUM" \
+            --argjson payload "$PAYLOAD" \
+            --arg preProcessorARN "$PRE_PROCESSOR_ARN" \
+            '{
+               lambdaARN: $lambdaARN,
+               powerValues: $powerValues,
+               num: $num,
+               payload: $payload,
+               parallelInvocation: true,
+               strategy: "balanced",
+               autoOptimize: false
+             } + (if $preProcessorARN != "" then {preProcessorARN: $preProcessorARN} else {} end)')
+
+          echo "Execution input:"
+          echo "$INPUT" | jq .
+
+          # Multiline GITHUB_OUTPUT values need the heredoc form, not key=value.
+          {
+            echo "input<<TUNING_INPUT_EOF"
+            echo "$INPUT"
+            echo "TUNING_INPUT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Snapshot existing Lambda versions
+        id: snapshot
+        env:
+          TUNE_FUNCTION: ${{ inputs.function }}
+        run: |
+          set -euo pipefail
+
+          # Captured so the post-run cleanup step can delete ONLY versions this
+          # run creates, never pre-existing deploy history.
+          BEFORE_VERSIONS=$(aws lambda list-versions-by-function \
+            --function-name "ustc-payment-processor-${TUNE_FUNCTION}" \
+            --query "Versions[?Version!='\$LATEST'].Version" --output text)
+          echo "before_versions=$BEFORE_VERSIONS" >> "$GITHUB_OUTPUT"
+
+      - name: Start tuning execution
+        id: start
+        env:
+          STATE_MACHINE_ARN: ${{ steps.resolve.outputs.state_machine_arn }}
+          EXECUTION_INPUT: ${{ steps.build_input.outputs.input }}
+        run: |
+          set -euo pipefail
+
+          EXECUTION_ARN=$(aws stepfunctions start-execution \
+            --state-machine-arn "$STATE_MACHINE_ARN" \
+            --input "$EXECUTION_INPUT" \
+            --query executionArn --output text)
+
+          echo "Started execution: $EXECUTION_ARN"
+          echo "execution_arn=$EXECUTION_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Poll execution until complete
+        id: poll
+        env:
+          EXECUTION_ARN: ${{ steps.start.outputs.execution_arn }}
+        run: |
+          set -euo pipefail
+
+          STATUS="RUNNING"
+
+          while [ "$STATUS" == "RUNNING" ]; do
+            sleep 15
+            STATUS=$(aws stepfunctions describe-execution \
+              --execution-arn "$EXECUTION_ARN" \
+              --query status --output text)
+            echo "Status: $STATUS"
+          done
+
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+
+          if [ "$STATUS" != "SUCCEEDED" ]; then
+            echo "Execution did not succeed: $STATUS" >&2
+            aws stepfunctions describe-execution --execution-arn "$EXECUTION_ARN" \
+              --query "{status: status, error: error, cause: cause}" --output json >&2 || true
+            exit 1
+          fi
+
+          aws stepfunctions describe-execution --execution-arn "$EXECUTION_ARN" \
+            --query output --output text | jq . > power-tuning-results.json
+          cat power-tuning-results.json
+
+          # Surface the key numbers and the results.show visualization link
+          # directly in the run summary, instead of requiring a trip through
+          # the downloaded JSON artifact.
+          {
+            echo "### Power tuning results: ${{ inputs.function }}"
+            echo ""
+            echo "| Recommended power | Cost/invocation | Duration (ms) |"
+            echo "|---|---|---|"
+            echo "| $(jq -r '.power' power-tuning-results.json)MB | \$$(jq -r '.cost' power-tuning-results.json) | $(jq -r '.duration' power-tuning-results.json) |"
+            echo ""
+            VIZ_URL=$(jq -r '.stateMachine.visualization // empty' power-tuning-results.json)
+            if [ -n "$VIZ_URL" ]; then
+              echo "[View interactive chart]($VIZ_URL)"
+              echo ""
+              echo "_This link decodes results client-side in your browser (data is in the URL fragment, nothing is uploaded)._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: always() && steps.start.outputs.execution_arn != ''
+        uses: actions/upload-artifact@v6
+        with:
+          name: power-tuning-${{ inputs.function }}-${{ github.run_id }}
+          path: power-tuning-results.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Clean up power-tuning transactions
+        if: always() && steps.start.outputs.execution_arn != ''
+        run: |
+          set -euo pipefail
+
+          # Read the protected reference ID from the fixture itself (single
+          # source of truth) rather than duplicating it as a literal here —
+          # this is the one seeded transaction the getDetails fixture depends on.
+          PRESERVE_ID=$(jq -r '.pathParameters.transactionReferenceId' \
+            src/powerTuning/fixtures/getDetails.fixture.json)
+
+          PAYLOAD=$(jq -nc --arg id "$PRESERVE_ID" \
+            '{preserveReferenceIds: [$id]}')
+
+          aws lambda invoke \
+            --function-name ustc-payment-processor-tuner-cleanup \
+            --payload "$PAYLOAD" \
+            --cli-binary-format raw-in-base64-out \
+            gc-power-tuning-response.json
+          cat gc-power-tuning-response.json
+
+      - name: Clean up unused Lambda versions created by this run
+        if: always() && steps.start.outputs.execution_arn != ''
+        env:
+          TUNE_FUNCTION: ${{ inputs.function }}
+          BEFORE_VERSIONS: ${{ steps.snapshot.outputs.before_versions }}
+        run: |
+          set -euo pipefail
+          FUNCTION_NAME="ustc-payment-processor-${TUNE_FUNCTION}"
+
+          AFTER_VERSIONS=$(aws lambda list-versions-by-function \
+            --function-name "$FUNCTION_NAME" \
+            --query "Versions[?Version!='\$LATEST'].Version" --output text)
+
+          # Versions still referenced by an alias (e.g. Terraform's "live" alias
+          # for initPayment/processPayment/getDetails) must never be deleted.
+          # Shouldn't normally trigger — the tuner deletes its own temporary
+          # aliases before finishing — but kept as defense in depth alongside
+          # the before/after diff, which is the primary safety mechanism here.
+          ALIASED_VERSIONS=$(aws lambda list-aliases \
+            --function-name "$FUNCTION_NAME" \
+            --query "Aliases[].FunctionVersion" --output text)
+
+          DELETED=0
+          for VERSION in $AFTER_VERSIONS; do
+            # Only delete versions that did NOT exist before this run started —
+            # never touch pre-existing deploy history.
+            if echo "$BEFORE_VERSIONS" | grep -qw "$VERSION"; then
+              continue
+            fi
+            if echo "$ALIASED_VERSIONS" | grep -qw "$VERSION"; then
+              echo "Skipping new version $VERSION (referenced by an alias)"
+              continue
+            fi
+            echo "Deleting version $VERSION of $FUNCTION_NAME (created by this tuning run)"
+            if aws lambda delete-function --function-name "$FUNCTION_NAME" --qualifier "$VERSION"; then
+              DELETED=$((DELETED + 1))
+            else
+              echo "Warning: failed to delete version $VERSION (continuing)" >&2
+            fi
+          done
+
+          echo "Deleted $DELETED unused version(s)."

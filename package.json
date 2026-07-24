@@ -63,6 +63,7 @@
   "license": "ISC",
   "devDependencies": {
     "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/client-lambda": "^3.1092.0",
     "@biomejs/biome": "^2.5.3",
     "@changesets/cli": "^2.31.0",
     "@faker-js/faker": "^10.5.0",

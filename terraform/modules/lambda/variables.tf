@@ -32,6 +32,19 @@ variable "payment_lambda_provisioned_concurrency" {
   }
 }
 
+variable "lambda_memory_sizes" {
+  description = "Per-function Lambda memory size (MB), keyed by function name. Functions omitted from this map default to 128 MB (the AWS Lambda default)."
+  type        = map(number)
+  default     = {}
+
+  validation {
+    condition = alltrue([
+      for size in values(var.lambda_memory_sizes) : size >= 128 && size <= 10240 && floor(size) == size
+    ])
+    error_message = "Each lambda_memory_sizes value must be an integer between 128 and 10240 (AWS Lambda's supported memory range, in MB)."
+  }
+}
+
 
 variable "subnet_ids" {
   description = "List of subnet IDs for Lambda VPC configuration"

@@ -44,6 +44,17 @@ locals {
     healthCheck     = local.lambda_env_payment
     migrationRunner = local.lambda_env_migration
   }
+
+  # Seeded from PAY-361's dev tuning results (aws-lambda-power-tuning against
+  # dev's mock Pay.gov server).
+  lambda_memory_sizes = {
+    initPayment     = 512
+    processPayment  = 256
+    getDetails      = 512
+    testCert        = 768
+    healthCheck     = 768
+    migrationRunner = 1024
+  }
   github_oidc_provider_arn = "arn:aws:iam::747103385969:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"
   github_repo              = "ustc-payment-portal"

@@ -1,0 +1,8 @@
+{
+  "body": "{}",
+  "requestContext": {
+    "identity": {
+      "userArn": "arn:aws:sts::723609007960:assumed-role/ustc-power-tuning/tuning"
+    }
+  }
+}
