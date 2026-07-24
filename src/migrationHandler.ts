@@ -1,11 +1,11 @@
-import fs from "node:fs";
-import path from "node:path";
 import {
   GetSecretValueCommand,
   SecretsManagerClient,
 } from "@aws-sdk/client-secrets-manager";
+import fs from "fs";
 import Knex from "knex";
 import { knexSnakeCaseMappers } from "objection";
+import path from "path";
 import { parseRdsEndpoint } from "./db/getRdsCredentials";
 
 type Command =
@@ -16,8 +16,6 @@ type Command =
   | "show-users"
   | "show-databases"
   | "migrate"
-  | "rollback"
-  | "unlock"
   | "seed"
   | "verify"
   | "gc-dbs"
@@ -26,9 +24,6 @@ type Command =
 type MigrationHandlerEvent = {
   command?: Command;
   openPrNumbers?: number[];
-  // Required for the destructive `rollback` command; must be true or the
-  // handler refuses to roll back. Guards against accidental invocation.
-  confirm?: boolean;
 };
 
 type MigrationHandlerResult = {
@@ -118,8 +113,9 @@ const getDatabaseConnection = async (): Promise<DatabaseConnection> => {
   if (!secretArn || !endpoint) {
     throw new Error(
       `Misconfiguration: RDS_SECRET_ARN and RDS_ENDPOINT must both be set or both be unset. ` +
-      `RDS_SECRET_ARN=${secretArn ? "set" : "unset"}, RDS_ENDPOINT=${endpoint ? "set" : "unset"
-      }`,
+        `RDS_SECRET_ARN=${secretArn ? "set" : "unset"}, RDS_ENDPOINT=${
+          endpoint ? "set" : "unset"
+        }`,
     );
   }
 
@@ -514,7 +510,8 @@ export const migrationHandler = async (
   const command: Command = event?.command ?? "migrate";
 
   console.log(
-    `[migrationHandler] command=${command} db=${process.env.RDS_DB_NAME ?? "(local)"
+    `[migrationHandler] command=${command} db=${
+      process.env.RDS_DB_NAME ?? "(local)"
     }`,
   );
 
@@ -541,22 +538,6 @@ export const migrationHandler = async (
   if (command === "show-users") return showUsers();
   if (command === "show-databases") return showDatabases();
 
-
-  const dbLabel = process.env.RDS_DB_NAME ?? "(local)";
-  if (command === "rollback" && event?.confirm !== true) {
-    throw new Error(
-      `rollback requires confirm:true — refusing to roll back the last batch on ` +
-      `"${dbLabel}" without explicit confirmation`,
-    );
-  }
-  if (command === "unlock" && event?.confirm !== true) {
-    throw new Error(
-      `unlock requires confirm:true — refusing to force-free the migration lock on ` +
-      `"${dbLabel}" without explicit confirmation. Confirm the interrupted run is ` +
-      `actually dead first; unlocking a live run risks corruption.`,
-    );
-  }
-
   const connection = await getDatabaseConnection();
 
   const knex = Knex({
@@ -581,37 +562,6 @@ export const migrationHandler = async (
       return {
         statusCode: 200,
         body: JSON.stringify({ message: "Seeds completed" }),
-      };
-    }
-
-    if (command === "rollback") {
-      // Roll back only the last batch (= the most recent deploy that applied
-      // migrations). `false` disables all-history rollback intentionally.
-      const [batchNo, migrations] = await knex.migrate.rollback(undefined, false);
-      // Knex returns [0, []] when there is nothing to revert. Signal that no-op
-      // explicitly rather than leaving the caller to infer it from an empty list.
-      const message =
-        migrations.length === 0
-          ? "No migration batch to roll back"
-          : `Rolled back batch ${batchNo}`;
-      console.log(
-        migrations.length === 0
-          ? `[migrationHandler] rollback: nothing to revert`
-          : `[migrationHandler] rollback: reverted batch ${batchNo} — ${migrations.join(
-            ", ",
-          )}`,
-      );
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ batchNo, migrations, message }),
-      };
-    }
-
-    if (command === "unlock") {
-      await knex.migrate.forceFreeMigrationsLock();
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ message: "Migration lock cleared" }),
       };
     }
 
