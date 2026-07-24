@@ -1,16 +1,16 @@
 name: Power Tuning (Dev)
 
 # Manually run aws-lambda-power-tuning against a single dev Lambda target.
-# DEV-ONLY: the state machine, preProcessor Lambdas, and IAM scoping in
-# terraform/environments/foundation/dev-networking/power-tuning.tf only exist
-# in the dev account. See docs on that file / src/powerTuning/ for the full
-# design (preProcessors mint fresh state per-invocation for initPayment and
-# processPayment; the rest use static fixtures).
+# This tests functions at each of the specified memory values, N times each, and produces a JSON
+# reporting recommended memory, cost per invocation, and duration.
+#
+# DEV-ONLY: the state machine, preProcessor Lambdas, and IAM scoping only exist in the dev environment.
+# For now we use the result to determine the memory size for Dev, Stg, and Prod.
 on:
   workflow_dispatch:
     inputs:
       function:
-        description: "Lambda target to tune"
+        description: "Lambda target to tune (ALL runs all 5, one at a time)"
         required: true
         type: choice
         options:
@@ -19,8 +19,9 @@ on:
           - getDetails
           - testCert
           - healthCheck
+          - ALL
       num:
-        description: "Invocations per power value, minimum 5 (pilot with 10, then 30)"
+        description: "Invocations per power value, minimum 10, recommended 100 for stable results"
         required: false
         default: "10"
         type: string
@@ -42,8 +43,36 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
 
 jobs:
+  resolve_functions:
+    runs-on: ubuntu-latest
+    outputs:
+      functions: ${{ steps.resolve.outputs.functions }}
+    steps:
+      - name: Resolve function matrix
+        id: resolve
+        env:
+          TUNE_FUNCTION: ${{ inputs.function }}
+        run: |
+          set -euo pipefail
+          if [ "$TUNE_FUNCTION" == "ALL" ]; then
+            FUNCTIONS='["initPayment","processPayment","getDetails","testCert","healthCheck"]'
+          else
+            FUNCTIONS=$(jq -nc --arg fn "$TUNE_FUNCTION" '[$fn]')
+          fi
+          echo "functions=$FUNCTIONS" >> "$GITHUB_OUTPUT"
+
   tune:
-    name: Tune ${{ inputs.function }}
+    needs: resolve_functions
+    strategy:
+      # One at a time, always — processPayment's preProcessor invokes
+      # initPayment directly, so tuning both concurrently throttles and skews
+      # results (confirmed empirically). Sequential also avoids stressing
+      # account-wide Lambda concurrency across unrelated function pairs.
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        function: ${{ fromJson(needs.resolve_functions.outputs.functions) }}
+    name: Tune ${{ matrix.function }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -59,7 +88,7 @@ jobs:
       - name: Resolve state machine and target ARNs
         id: resolve
         env:
-          TUNE_FUNCTION: ${{ inputs.function }}
+          TUNE_FUNCTION: ${{ matrix.function }}
         run: |
           set -euo pipefail
 
@@ -96,7 +125,7 @@ jobs:
       - name: Build execution input
         id: build_input
         env:
-          TUNE_FUNCTION: ${{ inputs.function }}
+          TUNE_FUNCTION: ${{ matrix.function }}
           TUNE_NUM: ${{ inputs.num }}
           TUNE_POWER_VALUES: ${{ inputs.power_values }}
           LAMBDA_ARN: ${{ steps.resolve.outputs.lambda_arn }}
@@ -143,7 +172,7 @@ jobs:
       - name: Snapshot existing Lambda versions
         id: snapshot
         env:
-          TUNE_FUNCTION: ${{ inputs.function }}
+          TUNE_FUNCTION: ${{ matrix.function }}
         run: |
           set -euo pipefail
 
@@ -204,7 +233,7 @@ jobs:
           # directly in the run summary, instead of requiring a trip through
           # the downloaded JSON artifact.
           {
-            echo "### Power tuning results: ${{ inputs.function }}"
+            echo "### Power tuning results: ${{ matrix.function }}"
             echo ""
             echo "| Recommended power | Cost/invocation | Duration (ms) |"
             echo "|---|---|---|"
@@ -222,7 +251,7 @@ jobs:
         if: always() && steps.start.outputs.execution_arn != ''
         uses: actions/upload-artifact@v6
         with:
-          name: power-tuning-${{ inputs.function }}-${{ github.run_id }}
+          name: power-tuning-${{ matrix.function }}-${{ github.run_id }}
           path: power-tuning-results.json
           if-no-files-found: ignore
           retention-days: 30
@@ -251,7 +280,7 @@ jobs:
       - name: Clean up unused Lambda versions created by this run
         if: always() && steps.start.outputs.execution_arn != ''
         env:
-          TUNE_FUNCTION: ${{ inputs.function }}
+          TUNE_FUNCTION: ${{ matrix.function }}
           BEFORE_VERSIONS: ${{ steps.snapshot.outputs.before_versions }}
         run: |
           set -euo pipefail
