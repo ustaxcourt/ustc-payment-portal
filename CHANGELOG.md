@@ -1,5 +1,28 @@
 # @ustaxcourt/payment-portal
 
+## 1.1.0
+
+### Minor Changes
+
+- 8f4a908: moved fees out of the database and into the codebase.
+
+### Patch Changes
+
+- 59469e4: Update runtime dependencies: knex 3.2.10 → 3.3.0, @aws-sdk/client-secrets-manager
+  and @aws-sdk/client-sts to 3.1084.0, tsx 4.22.4 → 4.23.0. No public API changes;
+  routine maintenance to keep the published package's dependencies current.
+- 0f091ce: Update dependency range: @asteasolutions/zod-to-openapi ^8.5.0 → ^9.0.0 and move
+  the generated OpenAPI spec from 3.1.0 to 3.2.0 (switches to the new
+  OpenApiGeneratorV32; the only change to the spec is the declared `openapi`
+  version — schema output is otherwise identical). Refreshed in-range patch
+  resolutions for @aws-sdk/\*, fast-xml-parser, and tsx (no range changes).
+- 5f61386: Serialize concurrent `POST /process` requests for the same checkout token so only one Pay.gov SOAP call proceeds; duplicate in-flight requests receive HTTP 409 Conflict.
+
+  - Add transient `processing` transaction status and extend `idx_transactions_unique_active` to treat it as in-flight.
+  - Add `TransactionModel.claimForProcessing` (row lock + atomic claim) and wire it into `processPayment`.
+  - Document 409 on `POST /process` in OpenAPI; add unit, handler, and integration concurrency tests.
+  - Fix local Pay.gov test server startup to use `PAY_GOV_TEST_SERVER_ACCESS_TOKEN` so it matches `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID`.
+
 ## 1.0.1
 
 ### Patch Changes
