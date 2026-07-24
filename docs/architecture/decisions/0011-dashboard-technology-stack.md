@@ -66,7 +66,7 @@ Finance dashboards:
 | Query state | **URL search params** (via `nuqs` or native) as the single source of truth |
 | Filter / sort / paginate / export | **server-side** against Postgres/Knex |
 | Components / styling | **shadcn/ui + Tailwind** |
-| Hosting | Our AWS account — **AWS Amplify** (default) or **OpenNext + Terraform** (open question) |
+| Hosting | Our AWS account, **Terraform-managed per-environment** — **AWS Amplify** or **OpenNext** (open question) |
 
 The core architectural commitment is **URL-as-single-source-of-truth with
 server-side data processing**: timeframe, filters, sort, and page all serialize
@@ -118,11 +118,19 @@ framework.
   design control, $0 licensing, and URL-state benefits; justified specifically by
   this dashboard's finance scale, coordination requirement, and shareable-view
   value (it would be over-engineering for a tiny static table).
-- **Cross-account hosting nuance.** Prod is a separate AWS account; an Amplify app
-  lives in one account, so dev/stg can share one Amplify app (branch-per-env,
-  subdomain-per-branch) while prod needs its own app in the prod account. OpenNext
-  + Terraform would handle the per-account split the same way the backend already
-  does. This informs the open hosting question below.
+- **Cross-account hosting is per-environment, managed in Terraform — not shared
+  apps.** All three environments are separate AWS accounts (dev `723609007960`,
+  stg `747103385969`, prod `802939326821`). An Amplify app is account-bound, so
+  there is no sharing across environments — each environment gets its own app in
+  its own account. Resolution: define the Amplify app itself in Terraform
+  (`aws_amplify_app` / `aws_amplify_branch` / `aws_amplify_domain_association`) and
+  apply it **per-environment with that account's OIDC role, exactly as Payment
+  Portal deploys today** (each `environments/{dev,stg,prod}` root against its own
+  account). This makes Amplify's cross-account story identical to OpenNext's and to
+  the existing backend; the "branch-per-env in one app" model is **not** used.
+  Remaining Amplify-specific differences (not cross-account): a GitHub source
+  connection must be authorized in each account, and builds run in Amplify's
+  managed CI rather than our GitHub Actions pipeline.
 
 ### Open questions to resolve alongside ratification
 
@@ -131,9 +139,12 @@ framework.
    ticket and backend endpoint depends on it.
 2. **Entra app registration** — schedule setup with James deVos; ensure the app
    emits **group/role claims** from day one, even before we enforce them.
-3. **Hosting** — Amplify (easier setup/maintenance) vs OpenNext + Terraform
-   (IaC consistency, cleaner cross-account story). Default to whatever
-   `ustc-zendesk-dashboard` already uses.
+3. **Hosting** — Amplify vs OpenNext, **both defined in Terraform and applied
+   per-environment/per-account like Payment Portal** (so cross-account is a
+   non-issue either way). The real difference is managed build (Amplify's CI +
+   a per-account GitHub connection) vs building in our GitHub Actions pipeline and
+   deploying artifacts (OpenNext). Default to whatever `ustc-zendesk-dashboard`
+   already uses.
 4. **next-auth v4 vs Auth.js v5** — default to v4 to match what already works.
 5. **Repo scaffolding ownership** — which ticket seeds the dashboard repo's `main`.
 
