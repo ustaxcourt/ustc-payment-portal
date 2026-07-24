@@ -64,6 +64,7 @@ resource "aws_lambda_function" "tuner_init_refgen" {
   role          = aws_iam_role.tuner_init_refgen[0].arn
   handler       = "initRefGenerator.handler"
   runtime       = "nodejs22.x"
+  architectures = ["arm64"]
   timeout       = 10
   memory_size   = 128
 
@@ -144,6 +145,7 @@ resource "aws_lambda_function" "tuner_token_minter" {
   role          = aws_iam_role.tuner_token_minter[0].arn
   handler       = "processTokenMinter.handler"
   runtime       = "nodejs22.x"
+  architectures = ["arm64"]
   timeout       = 30
   memory_size   = 256
 
@@ -248,6 +250,7 @@ resource "aws_lambda_function" "tuner_cleanup" {
   role          = aws_iam_role.tuner_cleanup[0].arn
   handler       = "powerTuningCleanUp.handler"
   runtime       = "nodejs22.x"
+  architectures = ["arm64"]
   timeout       = 30
   memory_size   = 128
 
