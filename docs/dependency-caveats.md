@@ -75,8 +75,6 @@ enough context that the next person doesn't have to re-derive the decision.
   dependency chain provides a version that resolves the vulnerable
   `shell-quote` dependency.
 
-<img src="images/accepted-dependencies-2026-07-20.png" alt="Accepted dependencies as of 2026-07-20" width="100%" />
-
 <!-- Format:
 ### <advisory-id> — <package>@<version> (<severity>)
 
