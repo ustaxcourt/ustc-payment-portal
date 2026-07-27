@@ -1,5 +1,3 @@
-# Power Tuning pre-processors — DEV ONLY.
-#
 # aws-lambda-power-tuning invokes a per-target "pre-processor" Lambda before each
 # tuning iteration and uses its return value as that iteration's payload. Two
 # targets need per-invocation freshness, so each gets a dedicated pre-processor:
@@ -15,7 +13,7 @@
 
 locals {
   power_tuning_preprocessors_enabled = local.environment == "dev" ? 1 : 0
-  
+
   init_payment_function_arn = "arn:aws:lambda:${local.aws_region}:${data.aws_caller_identity.current.account_id}:function:ustc-payment-processor-initPayment"
 }
 

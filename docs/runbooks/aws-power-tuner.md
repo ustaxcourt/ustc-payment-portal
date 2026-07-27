@@ -21,7 +21,7 @@ Third is the **Executor** function, where each of the functions we are tuning ar
 
 #### Pre-Processor Functions
 
-These are optional functions we can create to run prior the functions we are actually testing. In Payment Portal's case, we have two, `initRefGenerator.ts` and `processTokenMinter.ts`. You will need to build them out like normal lambda functions, making sure they are defined in `power-tuning-preprocessors.tf`
+These are optional functions we can create to run prior the functions we are actually testing. In Payment Portal's case, we have two, `initRefGenerator.ts` and `processTokenMinter.ts`. You will need to build them out like normal lambda functions, making sure they are defined in `power-tuning-processors.tf`
 
 ##### initRefGenerator
 

@@ -16,7 +16,7 @@ type PowerTuningCleanUpResult = {
  * keep (e.g. the one seeded transaction the getDetails fixture depends on).
  *
  * DEV-ONLY: deployed only in the real `dev` workspace (see
- * terraform/environments/dev/power-tuning-preprocessors.tf), invoked directly
+ * terraform/environments/dev/power-tuning-processors.tf), invoked directly
  * by .github/workflows/power-tuning-dev.yml after each tuning run. Kept as
  * its own dedicated Lambda rather than a command on migrationRunner so this
  * dev-only cleanup can never run against the migrationRunner Lambda that
