@@ -72,7 +72,13 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ## Accepted vulnerabilities
 
-_None yet._
+### GHSA-395f-4hp3-45gv — shell-quote (<1.8.5) (high)
+
+- **Reason it can't be fixed now:** The vulnerability is introduced through transitive dependencies (`concurrently`), and resolving it may require dependency upgrades outside the scope of this PR.
+- **Mitigation:** The affected package is used in development tooling only. Continue using trusted inputs and monitor dependency updates. Apply `npm audit fix` or upgrade dependent packages when a compatible version becomes available.
+- **Revisit:** During the next dependency update cycle or when `concurrently` and related dependencies provide a version that resolves the vulnerable `shell-quote` dependency.
+
+<img src="images/accepted-dependencies-2026-07-20.png" alt="Accepted dependencies as of 2026-07-20" width="100%" />
 
 <!-- Format:
 ### <advisory-id> — <package>@<version> (<severity>)
