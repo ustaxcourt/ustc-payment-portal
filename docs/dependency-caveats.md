@@ -36,9 +36,9 @@ enough context that the next person doesn't have to re-derive the decision.
   TS7 (upgrade `ts-jest`/`tsup`/`ts-node` first, then the compiler), and flag
   the PO. Not appropriate to bundle into recurring dependency maintenance.
 
-### @types/node 24.13.3 → 26.1.1 — deferred (2026-07-09)
+### @types/node@^24.13.3 → ^26.1.1 — deferred (2026-07-09)
 
-- **Current:** `^24.13.3`. **Available latest:** `26.1.1`.
+- **Current:** `@types/node@^24.13.3`. **Available latest:** `^26.1.1`.
 - **Reason:** `@types/node` must track the runtime, not lead it. `engines.node`
   is `>=24.12.0 <25.0.0` and `.nvmrc` pins `24.18.0`, so the ambient Node types
   are intentionally held on the 24 line. Jumping to 26.x would type against APIs
