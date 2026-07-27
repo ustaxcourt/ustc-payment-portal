@@ -1,8 +1,8 @@
 # AWS Lambda Power Tuner
 
-If you are here, it means that one of our primary Lambda functions has changed enough in purpose that we need to resize it for speed and cost again.
+If you are here, it means that one of our primary Lambda functions has changed enough that we need to resize it for speed and cost.
 
-## How does it work?
+## How does Power Tuner work?
 
 The Power Tuner works by spinning up a stateMachine on CloudFormation, whose step functions spin up versions of our Lambda functions at different memory sizes, then run a small load test against each one to get an average invocation time and cost. It then uses the average time and cost to recommend the best size to give each of our functions.
 
@@ -52,7 +52,7 @@ This is where we take the invocation time and average invocation cost from each 
 
 ### Optional: Optimizer
 
-If you set `autoOptimize` to true, the Optimizer function will run. This will automatically update each of the functions tuned to their optimal memory size based on the run.
+If you set `autoOptimize` to true, the Optimizer function will run after the Analyzer. This will automatically update each of the functions tuned to their optimal memory size based on the run.
 
 ## How do we use it in Payment Portal?
 
