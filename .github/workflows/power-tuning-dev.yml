@@ -136,7 +136,7 @@ jobs:
           # aws-lambda-power-tuning's initializer rejects num < 5 with a generic
           # Step Functions failure; fail fast here with a clearer message instead.
           if [ "$TUNE_NUM" -lt 5 ]; then
-            echo "ERROR: num must be >= 5 (got $TUNE_NUM). The tuner's initializer rejects anything lower." >&2
+            echo "ERROR: num must be >= 10 (got $TUNE_NUM). The tuner's initializer rejects anything lower." >&2
             exit 1
           fi
 
