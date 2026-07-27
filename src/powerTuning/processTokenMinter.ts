@@ -6,7 +6,7 @@ import { logger } from "@utils/logger";
 /**
  * Power-tuning pre-processor for the `processPayment` target. DEV-ONLY tuning
  * helper. This function directly invokes `initPayment` so that tuner has a fresh
- * token to work with. Get's replayed N times per power value during the tuner's
+ * token to work with. Gets replayed N times per power value during the tuner's
  * run. In short, call initPayment once before each processPayment invoke.
  *
  * How it mints a token (no SigV4 / no API Gateway):
