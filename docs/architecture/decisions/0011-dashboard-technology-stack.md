@@ -4,15 +4,14 @@ Date: 2026-07-24
 
 ## Status
 
-Proposed
+Accepted (2026-07-27)
 
-> This ADR is **Proposed**, not yet Accepted. It records the recommendation from
+> Approved by the Product Owner on 2026-07-27, ratifying the recommendation from
 > the dashboard technology spike
-> ([`../proposals/dashboard-technology-stack.md`](../proposals/dashboard-technology-stack.md))
-> so the team has a concrete decision to ratify. On ratification, change Status to
-> **Accepted** with the date, and only then seed the `ustc-payment-portal-dashboard`
-> repo's `main`. This ADR lives here for now because the dashboard repo is empty;
-> it should be copied to that repo (as its `0001`) once the repo is seeded.
+> ([`../proposals/dashboard-technology-stack.md`](../proposals/dashboard-technology-stack.md)).
+> This ADR currently lives in the payment-portal repo; **copy it to the
+> `ustc-payment-portal-dashboard` repo as its `0001`** when that repo is seeded
+> under the scaffolding ticket.
 
 ## Context
 
@@ -52,8 +51,8 @@ with a batteries-included grid (Option B) and other full-stack frameworks
 
 ## Decision
 
-The team adopts **Option A** — the Next.js house stack — for the Case Services &
-Finance dashboards:
+The Product Owner approved **Option A** — the Next.js house stack — on 2026-07-27
+for the Case Services & Finance dashboards:
 
 | Concern | Choice |
 | --- | --- |
