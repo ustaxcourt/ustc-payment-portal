@@ -150,8 +150,7 @@ jobs:
           fi
 
           PAYLOAD=$(jq -c . "src/powerTuning/fixtures/${TUNE_FUNCTION}.fixture.json")
-          POWER_VALUES_JSON=$(echo "$TUNE_POWER_VALUES" | jq -c -R 'split(",") | map(tonumber)')
-
+          POWER_VALUES_JSON=$(echo "$TUNE_POWER_VALUES" | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$"; "") | tonumber)')
           INPUT=$(jq -n \
             --arg lambdaARN "$LAMBDA_ARN" \
             --argjson powerValues "$POWER_VALUES_JSON" \
