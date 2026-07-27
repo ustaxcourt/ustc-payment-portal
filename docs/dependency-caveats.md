@@ -47,18 +47,13 @@ enough context that the next person doesn't have to re-derive the decision.
 - **Plan:** Revisit only when the Node runtime itself moves off 24 (new
   `engines`/`.nvmrc` floor); bump `@types/node` to match in the same change.
 
-### hashicorp/aws provider 5.100.0 → 6.x — deferred (2026-07-09)
+### hashicorp/aws provider 5.100.0 → 6.x — completed (2026-07-20)
 
-- **Current:** `~> 5.0` (locked `5.100.0`, the newest 5.x). **Available latest:** `6.x`.
-- **Reason:** The AWS provider 6.x is a major release with breaking changes
-  (removed/renamed attributes, altered defaults) that touch every module —
-  networking, RDS, RDS proxy, IAM, API Gateway, Lambda, monitoring. Upgrading
-  under recurring maintenance risks unreviewed resource diffs across dev/stg and
-  the dedicated prod account. `5.100.0` is the newest 5.x and carries no
-  outstanding advisories, so there is no security pressure to move now.
-- **Plan:** Cut a dedicated follow-up ticket to migrate to aws provider 6.x
-  (read the upgrade guide, bump `~> 6.0` per module, review `terraform plan` in
-  every environment), and flag the PO. Not appropriate to bundle here.
+- **Previous:** `~> 5.0` (locked `5.100.0`).
+- **Current:** `~> 6.0`.
+- **Outcome:** The AWS provider 6.x upgrade was completed. Terraform provider constraints were updated and validated, and the upgrade no longer requires a dedicated follow-up ticket.
+- **Changes:** Updated `required_providers` for AWS (`~> 6.0`), Archive (`~> 2.8`), and Random (`~> 3.9`).
+- **Status:** No longer deferred. Future upgrades will be handled through normal maintenance cycles.
 
 <!-- Format:
 ### <package> <current> → <available> — deferred (<date>)
