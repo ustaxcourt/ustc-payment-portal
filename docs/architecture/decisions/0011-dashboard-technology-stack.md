@@ -7,8 +7,7 @@ Date: 2026-07-24
 Accepted (2026-07-27)
 
 > Approved by the Product Owner on 2026-07-27, ratifying the recommendation from
-> the dashboard technology spike
-> ([`../proposals/dashboard-technology-stack.md`](../proposals/dashboard-technology-stack.md)).
+> the dashboard technology spike (PAY-349).
 > This ADR currently lives in the payment-portal repo; **copy it to the
 > `ustc-payment-portal-dashboard` repo as its `0001`** when that repo is seeded
 > under the scaffolding ticket.
@@ -47,7 +46,8 @@ Signals shaping the decision:
 
 The team compared this house-stack approach (Option A) against a client-only SPA
 with a batteries-included grid (Option B) and other full-stack frameworks
-(Option C). Full analysis in the spike proposal.
+(Option C); the alternatives are summarized under "Alternatives considered" below.
+Full write-up in the spike ticket (PAY-349).
 
 ## Decision
 
@@ -148,6 +148,8 @@ framework.
 5. **Repo scaffolding ownership** — which ticket seeds the dashboard repo's `main`.
 
 ## References
+
+- Spike ticket: PAY-349 (dashboard technology spike)
 - Epic PAY-268 (Figma designs linked on the epic)
 - TanStack Table — https://tanstack.com/table
 - TanStack Query — https://tanstack.com/query
