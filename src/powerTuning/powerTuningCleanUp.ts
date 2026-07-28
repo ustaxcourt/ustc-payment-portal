@@ -1,3 +1,4 @@
+import { logger } from "@utils/logger";
 import { getKnex } from "../db/knex";
 
 type PowerTuningCleanUpEvent = {
@@ -44,7 +45,10 @@ export const powerTuningCleanUp = async (
     ["power-tuning", ...preserveReferenceIds],
   );
 
-  console.log(`[powerTuningCleanUp] deleted ${result.rows.length} rows`);
+  logger.info(
+    { deletedCount: result.rows.length },
+    "powerTuningCleanUp: deleted power-tuning transactions",
+  );
   return {
     statusCode: 200,
     body: JSON.stringify({ deletedCount: result.rows.length }),
