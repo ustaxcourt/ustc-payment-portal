@@ -15,4 +15,8 @@ resource "aws_route53_record" "dashboard_dev_delegation" {
     "ns-1641.awsdns-13.co.uk",
     "ns-320.awsdns-40.com",
   ]
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
