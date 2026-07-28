@@ -11,11 +11,11 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ## How to use this file
 
-- **Deferred upgrade** → add an entry under [Deferred upgrades](#deferred-upgrades)
+- **Deferred upgrade** → add an entry under #deferred-upgrades
   with the package, current vs. available version, the reason for waiting, and a
   link to any follow-up ticket.
 - **Accepted vulnerability** → add an entry under
-  [Accepted vulnerabilities](#accepted-vulnerabilities) with the advisory ID,
+  #accepted-vulnerabilities with the advisory ID,
   severity, why it can't be fixed now, and any mitigation.
 - If an upgrade is involved enough to warrant its own ticket, cut the ticket,
   notify the PO, and reference it here.
@@ -36,29 +36,19 @@ enough context that the next person doesn't have to re-derive the decision.
   TS7 (upgrade `ts-jest`/`tsup`/`ts-node` first, then the compiler), and flag
   the PO. Not appropriate to bundle into recurring dependency maintenance.
 
-### @types/node 24.13.3 → 26.1.1 — deferred (2026-07-09)
+### @types/node@^24.13.3 → ^26.1.1 — deferred (2026-07-20)
 
-- **Current:** `^24.13.3`. **Available latest:** `26.1.1`.
+- **Current:** `@types/node@^24.13.3`. **Available latest:** `^26.1.1`.
 - **Reason:** `@types/node` must track the runtime, not lead it. `engines.node`
   is `>=24.12.0 <25.0.0` and `.nvmrc` pins `24.18.0`, so the ambient Node types
-  are intentionally held on the 24 line. Jumping to 26.x would type against APIs
-  our Lambda/runtime doesn't provide and could mask incompatibilities. We took
-  the in-range patch (24.13.2 → 24.13.3) and stopped there.
+  are intentionally held on the 24 line. A proposed upgrade to
+  `@types/node@^26.1.1` was reverted because it would expose Node 26 APIs in
+  TypeScript that are not available in the supported Node 24 runtime. This could
+  allow code to compile successfully while failing at runtime and may mask
+  compatibility issues. The Node type definitions must remain aligned with the
+  project's supported Node version.
 - **Plan:** Revisit only when the Node runtime itself moves off 24 (new
   `engines`/`.nvmrc` floor); bump `@types/node` to match in the same change.
-
-### hashicorp/aws provider 5.100.0 → 6.x — deferred (2026-07-09)
-
-- **Current:** `~> 5.0` (locked `5.100.0`, the newest 5.x). **Available latest:** `6.x`.
-- **Reason:** The AWS provider 6.x is a major release with breaking changes
-  (removed/renamed attributes, altered defaults) that touch every module —
-  networking, RDS, RDS proxy, IAM, API Gateway, Lambda, monitoring. Upgrading
-  under recurring maintenance risks unreviewed resource diffs across dev/stg and
-  the dedicated prod account. `5.100.0` is the newest 5.x and carries no
-  outstanding advisories, so there is no security pressure to move now.
-- **Plan:** Cut a dedicated follow-up ticket to migrate to aws provider 6.x
-  (read the upgrade guide, bump `~> 6.0` per module, review `terraform plan` in
-  every environment), and flag the PO. Not appropriate to bundle here.
 
 <!-- Format:
 ### <package> <current> → <available> — deferred (<date>)
@@ -72,7 +62,18 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ## Accepted vulnerabilities
 
-_None yet._
+### GHSA-395f-4hp3-45gv — shell-quote (<1.8.5) (high) — accepted (2026-07-20)
+
+- **Reason it can't be fixed now:** The vulnerability is introduced through a
+  transitive dependency and resolving it may require dependency upgrades outside
+  the scope of this PR.
+- **Mitigation:** The affected package is used in development tooling only.
+  Continue using trusted inputs and monitor dependency updates. Apply
+  `npm audit fix` or upgrade dependent packages when a compatible version becomes
+  available.
+- **Revisit:** During the next dependency update cycle or when the upstream
+  dependency chain provides a version that resolves the vulnerable
+  `shell-quote` dependency.
 
 <!-- Format:
 ### <advisory-id> — <package>@<version> (<severity>)
