@@ -77,6 +77,19 @@ run "creates_expected_payment_functions" {
     condition     = aws_lambda_function.functions["migrationRunner"].memory_size == 128
     error_message = "migrationRunner should also default to 128 MB when lambda_memory_sizes is not set"
   }
+
+  # All functions run on arm64 (Graviton2) for the cost/perf benefit; this is
+  # hardcoded in main.tf, not exposed as a variable, so guard against an
+  # accidental revert to the provider's x86_64 default.
+  assert {
+    condition     = aws_lambda_function.functions["initPayment"].architectures[0] == "arm64"
+    error_message = "lambda functions should run on arm64, not the default x86_64"
+  }
+
+  assert {
+    condition     = aws_lambda_function.functions["migrationRunner"].architectures[0] == "arm64"
+    error_message = "migrationRunner should also run on arm64"
+  }
 }
 
 run "supports_custom_memory_sizes" {
