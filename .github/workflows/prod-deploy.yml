@@ -97,8 +97,6 @@ jobs:
           done
           echo "All artifacts present"
 
-  # PAY-353: baseline for the migration scan = the prod release tag deployed before this one,
-  # so the scan flags only migrations new to this deploy.
   migration_baseline:
     needs: promote
     runs-on: ubuntu-latest

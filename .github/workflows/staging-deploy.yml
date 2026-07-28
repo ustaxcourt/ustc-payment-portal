@@ -123,8 +123,6 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # PAY-353: baseline for the migration scan = the RC tag deployed to staging before this
-  # one, so the scan flags only migrations new to this deploy.
   migration_baseline:
     needs: promote
     runs-on: ubuntu-latest
