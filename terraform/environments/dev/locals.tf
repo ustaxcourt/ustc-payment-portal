@@ -97,10 +97,10 @@ locals {
     getDetails                  = 512
     testCert                    = 768
     healthCheck                 = 768
-    getAllTransactions          = 512
-    getTransactionsByStatus     = 512
-    getTransactionPaymentStatus = 512
-    migrationRunner             = 1024
+    getAllTransactions          = 256
+    getTransactionsByStatus     = 256
+    getTransactionPaymentStatus = 256
+    migrationRunner             = 256
   }
   github_oidc_provider_arn = "arn:aws:iam::723609007960:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"

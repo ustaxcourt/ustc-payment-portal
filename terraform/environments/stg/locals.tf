@@ -53,7 +53,7 @@ locals {
     getDetails      = 512
     testCert        = 768
     healthCheck     = 768
-    migrationRunner = 1024
+    migrationRunner = 256
   }
   github_oidc_provider_arn = "arn:aws:iam::747103385969:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"
