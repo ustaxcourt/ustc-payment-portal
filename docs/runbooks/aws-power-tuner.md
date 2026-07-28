@@ -11,20 +11,23 @@ The state machine and its supporting Lambdas are provisioned via the [AWS Server
 
 ![stateMachine Diagram for Lambda Power Tuning](/docs/diagrams/state-machine-screenshot.png)
 
-The stateMachine is made up 5 lambda functions, the **Initializer, Publisher, isCountReached, Executor, Cleaner, Analyzer, and Optimizer.**
+The stateMachine is made up 7 lambda functions, the **Initializer, Publisher, isCountReached, Executor, Cleaner, Analyzer, and Optimizer.**
 
 ### Initializer
-The is our first stop, where versions and aliases are defined for each of the functions we are tuning. We will need these to keep track of which function is which at each memory size. The aliases will come into play later when we clean up from a tuning run. **This gets run once per tuning run.**
+This is our first stop, where versions and aliases are defined for each of the functions we are tuning. We will need these to keep track of which function is which at each memory size. The aliases will come into play later when we clean up from a tuning run. **This gets run once per tuning run.**
 
 ### Publisher
-This is where the versions and aliases defined in the Initializer are now created. **This function gets invoked in a loop, until all of the needed function versions and aliases are created.** After this function has run, each of the functions being tuned now exist at each of the memory sizes choosen at the start of the tuning run.
+This is where the versions and aliases defined in the Initializer are now created. **This function gets invoked in a loop, until all of the needed function versions and aliases are created.** After this function has run, each of the functions being tuned now exist at each of the memory sizes chosen at the start of the tuning run.
+
+### isCountReached
+This function acts as a gate, sending the run back to the Publisher until all expected function versions and aliases are created.
 
 ### Executor
-Third is the **Executor** function, where each of the functions we are tuning ar run **N** times as defined by the `num` value. This is also where we **extract invocation time from the logs and compute average invoke cost for each function/memory size.** The Executor function can also be invoked in parallel, for however many memory sizes were chosen at the start of the run. The `power-tuning-dev` workflow sets `parallelInvocation: true`. If it's set to false, the **Executor** will invoke each function version sequentially. One thing to note though, the Executor funciton is split into 3 steps, preProcessors, invoking the function we are tuning, and postProcessors.
+Third is the **Executor** function, where each of the functions we are tuning are run **N** times as defined by the `num` value. This is also where we **extract invocation time from the logs and compute average invoke cost for each function/memory size.** The Executor function can also be invoked in parallel, for however many memory sizes were chosen at the start of the run. The `power-tuning-dev` workflow sets `parallelInvocation: true`. If it's set to false, the **Executor** will invoke each function version sequentially. One thing to note though, the Executor function is split into 3 steps, preProcessors, invoking the function we are tuning, and postProcessors.
 
 #### Pre-Processor Functions
 
-These are optional functions we can create to run prior the functions we are actually testing. In Payment Portal's case, we have two, `initRefGenerator.ts` and `processTokenMinter.ts`. You will need to build them out like normal lambda functions, making sure they are defined in `power-tuning-processors.tf`
+These are optional functions we can create to run prior to the functions we are actually testing. In Payment Portal's case, we have two, `initRefGenerator.ts` and `processTokenMinter.ts`. You will need to build them out like normal lambda functions, making sure they are defined in `power-tuning-processors.tf`
 
 ##### initRefGenerator
 

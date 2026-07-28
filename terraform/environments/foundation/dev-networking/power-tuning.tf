@@ -50,7 +50,7 @@ locals {
   ])
 
   # DEV-ONLY power-tuning pre-processor helper Lambdas (defined in
-  # environments/dev/power-tuning-preprocessors.tf). The tuner's executor invokes
+  # environments/dev/power-tuning-processors.tf). The tuner's executor invokes
   # the per-target pre-processor before each iteration, so the helper roles need
   # lambda:InvokeFunction on these. They match the broad `lambdaResource` prefix
   # wildcard, so the boundary must ALSO allow them or the intersection would deny
