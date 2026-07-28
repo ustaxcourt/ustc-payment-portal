@@ -96,9 +96,69 @@ jobs:
           done
           echo "All artifacts present"
 
+  # PAY-353: baseline for the migration scan = the prod release tag deployed before this one,
+  # so the scan flags only migrations new to this deploy.
+  migration_baseline:
+    needs: promote
+    runs-on: ubuntu-latest
+    outputs:
+      baseline_ref: ${{ steps.compute.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: compute
+        env:
+          DEPLOY_SHA: ${{ needs.promote.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          # Most recent plain vX.Y.Z tag (no -dev/-rc suffix = a prod release) strictly before
+          # the deploy commit = the previously-deployed prod build. Fallback origin/main scopes
+          # to nothing new — acceptable because the PR check already enforced sign-off, so this
+          # only skips the *secondary* deploy pause. Confirm this choice (docs/migration-safety.md).
+          PREV=$(git describe --tags --abbrev=0 --match 'v*' --exclude '*-*' --first-parent "${DEPLOY_SHA}^" 2>/dev/null || true)
+          echo "ref=${PREV:-origin/main}" >> "$GITHUB_OUTPUT"
+          echo "Baseline ref: ${PREV:-origin/main (fallback)}"
+
+  # Report-only scan of the release commit; output drives the approval gate below.
+  migration_safety:
+    needs: [promote, migration_baseline]
+    uses: ./.github/workflows/migration-safety.yml
+    with:
+      ref: ${{ needs.promote.outputs.sha }}
+      baseline_ref: ${{ needs.migration_baseline.outputs.baseline_ref }}
+      fail_on_unacknowledged: false
+
+  # No-op job; pauses for a reviewer only when (a) a destructive migration is present AND
+  # (b) this run will actually apply/migrate (not a plan-only preview) — the same condition as
+  # the migrate step below. It sits behind the reviewer-gated `prod-migration-approval`
+  # environment. Until that environment has Required Reviewers configured, this passes through.
+  db_migration_approval:
+    needs: migration_safety
+    if: >-
+      needs.migration_safety.outputs.has_destructive == 'true' &&
+      ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only))
+    name: Approve destructive migration (Production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: prod-migration-approval
+    steps:
+      - name: Record approval
+        run: echo "Destructive migration approved for production deployment."
+
   deploy:
     runs-on: ubuntu-latest
-    needs: [promote]
+    needs: [promote, migration_safety, db_migration_approval]
+    # always(): db_migration_approval is skipped on plan-only / non-destructive runs, and a
+    # skipped `needs` would otherwise skip this job. Gate explicitly: promote and
+    # migration_safety must have succeeded, and the approval must have passed or been skipped.
+    # (terraform plan still runs on plan-only previews; apply/migrate remain step-gated below.)
+    if: >-
+      always() &&
+      needs.promote.result == 'success' &&
+      needs.migration_safety.result == 'success' &&
+      (needs.db_migration_approval.result == 'success' || needs.db_migration_approval.result == 'skipped')
     environment:
       name: production
     steps:

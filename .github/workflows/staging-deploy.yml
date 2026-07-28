@@ -122,9 +122,65 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # PAY-353: baseline for the migration scan = the RC tag deployed to staging before this
+  # one, so the scan flags only migrations new to this deploy.
+  migration_baseline:
+    needs: promote
+    runs-on: ubuntu-latest
+    outputs:
+      baseline_ref: ${{ steps.compute.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: compute
+        env:
+          DEPLOY_SHA: ${{ needs.promote.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          # Most recent v*-rc.* tag strictly before the deploy commit (first-parent main
+          # history) = the previously-deployed staging build. Fallback origin/main scopes to
+          # nothing new — acceptable because the PR check already enforced sign-off, so this
+          # only skips the *secondary* deploy pause. Confirm this choice (docs/migration-safety.md).
+          PREV_RC=$(git describe --tags --abbrev=0 --match 'v*-rc.*' --first-parent "${DEPLOY_SHA}^" 2>/dev/null || true)
+          echo "ref=${PREV_RC:-origin/main}" >> "$GITHUB_OUTPUT"
+          echo "Baseline ref: ${PREV_RC:-origin/main (fallback)}"
+
+  # Report-only scan of the promoted commit; output drives the approval gate below.
+  migration_safety:
+    needs: [promote, migration_baseline]
+    uses: ./.github/workflows/migration-safety.yml
+    with:
+      ref: ${{ needs.promote.outputs.sha }}
+      baseline_ref: ${{ needs.migration_baseline.outputs.baseline_ref }}
+      fail_on_unacknowledged: false
+
+  # No-op job; pauses for a reviewer only when a destructive migration is present, because it
+  # sits behind the reviewer-gated `stg-migration-approval` environment. Until that
+  # environment has Required Reviewers configured in repo settings, this passes through.
+  db_migration_approval:
+    needs: migration_safety
+    if: needs.migration_safety.outputs.has_destructive == 'true'
+    name: Approve destructive migration (Staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: stg-migration-approval
+    steps:
+      - name: Record approval
+        run: echo "Destructive migration approved for staging deployment."
+
   deploy:
     runs-on: ubuntu-latest
-    needs: promote
+    needs: [promote, migration_safety, db_migration_approval]
+    # always(): db_migration_approval is skipped on the non-destructive path, and a skipped
+    # `needs` would otherwise skip this job. Gate explicitly: promote and migration_safety must
+    # have succeeded, and the approval must have passed or been skipped (never failed/cancelled).
+    if: >-
+      always() &&
+      needs.promote.result == 'success' &&
+      needs.migration_safety.result == 'success' &&
+      (needs.db_migration_approval.result == 'success' || needs.db_migration_approval.result == 'skipped')
 
     outputs:
       api_url: ${{ steps.tf_outputs.outputs.api_url }}
