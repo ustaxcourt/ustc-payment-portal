@@ -423,10 +423,6 @@ jobs:
           echo "::error::Integration Gate FAILED — integration_test did not succeed (result='$TESTS_RESULT'). Merging to main is blocked until integration tests pass."
           exit 1
 
-  # PAY-353: scan the migrations this merge introduces for destructive ops.
-  # Report-only here (fail_on_unacknowledged: false) — the PR check enforces sign-off;
-  # this run only drives the approval gate below. Baseline = the main tip before this
-  # push, so it flags exactly the migrations new to this deploy.
   migration_safety:
     needs: check_actor
     if: needs.check_actor.outputs.is_dependabot != 'true' && (
@@ -440,33 +436,10 @@ jobs:
       baseline_ref: ${{ github.event.before || 'origin/main' }}
       fail_on_unacknowledged: false
 
-  # Pauses for a reviewer only when a destructive migration is present. The job body is a
-  # no-op — its sole purpose is to sit behind the reviewer-gated `dev-migration-approval`
-  # environment, so deploy_dev (which `needs:` it) waits for approval. Until that
-  # environment has Required Reviewers configured in repo settings, this passes through.
-  db_migration_approval:
-    needs: migration_safety
-    if: needs.migration_safety.outputs.has_destructive == 'true'
-    name: Approve destructive migration (Dev)
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    environment: dev-migration-approval
-    steps:
-      - name: Record approval
-        run: echo "Destructive migration approved for dev deployment."
-
   deploy_dev:
-    needs: [check_actor, migration_safety, db_migration_approval]
-    # always(): db_migration_approval is skipped on the non-destructive path, and a skipped
-    # `needs` would otherwise skip this job. Gate explicitly instead: migration_safety must
-    # have succeeded, and the approval must have either passed or been skipped (never failed/
-    # cancelled). The deploy-trigger conditions are unchanged from before.
-    if: >-
-      always() &&
-      needs.check_actor.outputs.is_dependabot != 'true' &&
-      needs.migration_safety.result == 'success' &&
-      (needs.db_migration_approval.result == 'success' || needs.db_migration_approval.result == 'skipped') &&
-      (
+    needs: [check_actor, migration_safety]
+
+    if: needs.check_actor.outputs.is_dependabot != 'true' && (
       github.event_name == 'workflow_dispatch' && inputs.deploy_to_dev ||
       (github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
@@ -476,6 +449,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      issues: write # trstringer/manual-approval opens an approval issue
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -594,6 +568,19 @@ jobs:
           path: terraform/environments/dev/tfplan.txt
           if-no-files-found: warn
           retention-days: 7
+
+      # Pause for a reviewer before applying when the scan found a destructive
+      # migration. Opens an approval issue; approvers come from the MIGRATION_APPROVERS repo
+      # variable. Skipped entirely when no destructive op is present.
+      - name: Manual approval for destructive migration
+        if: needs.migration_safety.outputs.has_destructive == 'true'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.token }}
+          approvers: ${{ vars.MIGRATION_APPROVERS }}
+          minimum-approvals: 1
+          issue-title: "Approve destructive DB migration — Dev deploy"
+          issue-body: "The migration-safety scan flagged a destructive migration in this dev deploy. Approve to continue with terraform apply + migrate, or deny to stop."
 
       - name: Terraform Apply (dev)
         working-directory: terraform/environments/dev

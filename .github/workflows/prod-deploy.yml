@@ -18,6 +18,7 @@ on:
 permissions:
   id-token: write
   contents: write
+  issues: write
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -130,35 +131,9 @@ jobs:
       baseline_ref: ${{ needs.migration_baseline.outputs.baseline_ref }}
       fail_on_unacknowledged: false
 
-  # No-op job; pauses for a reviewer only when (a) a destructive migration is present AND
-  # (b) this run will actually apply/migrate (not a plan-only preview) — the same condition as
-  # the migrate step below. It sits behind the reviewer-gated `prod-migration-approval`
-  # environment. Until that environment has Required Reviewers configured, this passes through.
-  db_migration_approval:
-    needs: migration_safety
-    if: >-
-      needs.migration_safety.outputs.has_destructive == 'true' &&
-      ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only))
-    name: Approve destructive migration (Production)
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    environment: prod-migration-approval
-    steps:
-      - name: Record approval
-        run: echo "Destructive migration approved for production deployment."
-
   deploy:
     runs-on: ubuntu-latest
-    needs: [promote, migration_safety, db_migration_approval]
-    # always(): db_migration_approval is skipped on plan-only / non-destructive runs, and a
-    # skipped `needs` would otherwise skip this job. Gate explicitly: promote and
-    # migration_safety must have succeeded, and the approval must have passed or been skipped.
-    # (terraform plan still runs on plan-only previews; apply/migrate remain step-gated below.)
-    if: >-
-      always() &&
-      needs.promote.result == 'success' &&
-      needs.migration_safety.result == 'success' &&
-      (needs.db_migration_approval.result == 'success' || needs.db_migration_approval.result == 'skipped')
+    needs: [promote, migration_safety]
     environment:
       name: production
     steps:
@@ -230,6 +205,16 @@ jobs:
           terraform show -no-color tfplan > tfplan.txt || true
           set -e
 
+      - name: Manual approval for destructive migration
+        if: ${{ needs.migration_safety.outputs.has_destructive == 'true' && ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) }}
+        uses: trstringer/manual-approval@v1 # TODO: pin to a full commit SHA (third-party action)
+        with:
+          secret: ${{ github.token }}
+          approvers: ${{ vars.MIGRATION_APPROVERS }}
+          minimum-approvals: 1
+          issue-title: "Approve destructive DB migration — PRODUCTION deploy"
+          issue-body: "The migration-safety scan flagged a destructive migration in this production deploy. Approve to continue with terraform apply + migrate, or deny to stop."
+
       - name: Terraform Apply (if required)
         if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/prod
@@ -247,7 +232,7 @@ jobs:
           echo "migration_fn=$MIGRATION_FN" >> $GITHUB_OUTPUT
           echo "alerts_sns_topic_arn=$ALERTS_SNS_TOPIC_ARN" >> $GITHUB_OUTPUT
           echo "API Gateway URL: $API_URL"
-          echo "Migration runner: $MIGRATION_FN"  
+          echo "Migration runner: $MIGRATION_FN"
 
       - name: Run DB migrations (idempotent via knex_migrations table)
         if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) }}
