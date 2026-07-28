@@ -57,9 +57,12 @@ deliberate human sign-off rather than sliding through with a normal deploy.
   Mode B needs a Postgres **service**, which is job-level and can't live in a composite
   action. The reusable workflow owns the service and returns `has_destructive` + findings as
   outputs.
-- **Approval is GitHub-native.** Deploy gate = **protected Environment with Required
-  Reviewers** (its pause→approve→continue behavior *is* AC2). PR sign-off = required status
-  check + review/label or an in-file acknowledgment marker.
+- **Deploy approval = `trstringer/manual-approval` step** (chosen for simplicity). A single
+  approval step, gated `if: has_destructive`, runs before `terraform apply` and opens an issue
+  that a reviewer must approve (its pause→approve→continue behavior *is* AC2). Chosen over a
+  native protected-Environment gate so the pause is conditional in one job with no extra
+  environments; the tradeoff is a **third-party action in the deploy path** (pin to a SHA). PR
+  sign-off = required status check + an in-file acknowledgment marker.
 - **Two layers, by design.** PR-level for early visibility; deploy-level for enforcement.
   Same detector powers both.
 
@@ -127,29 +130,26 @@ This naturally scopes to new, forward-only migrations and needs no TS parsing.
 
 - Add a `migration_safety` pre-job that calls the reusable workflow, exposing
   `has_destructive` (report-only: `fail_on_unacknowledged: false` — the PR check enforces).
-- **Chosen mechanism: a separate no-op approval-gate job** (`db_migration_approval`) bound to
-  a reviewer-gated environment, which the existing deploy job `needs:`. The migration runs as
-  a *step* inside a large deploy job (terraform apply, outputs, tests), so duplicating that
-  job (the original "two job variants" idea) is wrong — the gate-job pattern adds the pause
-  with **zero deploy-step duplication**. The gate job runs `if: has_destructive == 'true'`
-  and is skipped on the safe path; the deploy job uses `always()` + a result check so a
-  skipped gate doesn't skip the deploy.
+- **Chosen mechanism: a `trstringer/manual-approval` step** inside each deploy job, gated
+  `if: has_destructive == 'true'`, placed right before `terraform apply`. Being a *step*, its
+  `if:` makes the pause conditional with **no extra jobs or environments**; it opens an
+  approval issue and waits. Approvers come from the `MIGRATION_APPROVERS` repo variable. The
+  deploy job `needs: migration_safety` (fail-closed: a failed/skipped scan skips the deploy).
 - **Baseline / scanned commit**: dev scans the pushed commit, baseline `github.event.before`.
   Staging/prod deploy a *promoted tag*, so the reusable workflow gained a `ref` input to scan
   the deployed commit; staging baseline = the previous `v*-rc.*` tag, prod baseline = the
   previous plain `vX.Y.Z` tag (both computed in a `migration_baseline` job, falling back to
   `origin/main`).
 - **Prod plan-only nuance**: prod's deploy job runs `terraform plan` always but apply/migrate
-  only when not plan-only; the gate mirrors that condition so plan-only previews don't pause.
+  only when not plan-only; the approval step mirrors that condition so plan-only previews
+  don't pause.
 - **Status**: wired for **dev** (`cicd-dev.yml`), **staging** (`staging-deploy.yml`), and
-  **prod** (`prod-deploy.yml`). Confirmed the `production` environment has no Required
-  Reviewers, so the gate is what adds the destructive-migration pause for prod.
+  **prod** (`prod-deploy.yml`).
 
-### 6. GitHub Environments (ops, not code)
+### 6. Ops setup (not code)
 
-- Create the `dev-migration-approval`, `stg-migration-approval`, and `prod-migration-approval`
-  environments with **Required Reviewers**. Until an environment exists, its gate job passes
-  through (GitHub auto-creates it ungated on first reference), so that deploy will not pause.
+- Set the `MIGRATION_APPROVERS` repo variable to the approver usernames (empty = fail-closed).
+- Pin `trstringer/manual-approval` to a full commit SHA (currently `@v1` + `TODO`).
 - Confirm the plan supports required reviewers on environments (private repos need
   GitHub Team/Enterprise) — same prerequisite noted for `db-rollback`.
 
@@ -168,7 +168,7 @@ This naturally scopes to new, forward-only migrations and needs no TS parsing.
   exercise the two-phase apply end-to-end against the Postgres service.
 - **Manual verification**: open a scratch PR adding a `DROP COLUMN` migration → confirm the
   sticky comment appears and the status check fails; add the acknowledgment marker → confirm
-  it passes; then confirm the deploy job pauses on the protected environment.
+  it passes; then confirm the deploy opens the manual-approval issue and waits before apply.
 
 ## Risks & open decisions
 
@@ -176,7 +176,8 @@ This naturally scopes to new, forward-only migrations and needs no TS parsing.
   "migrations new since the last deploy to this env." Recommended: track a per-env deployed
   ref (a git tag like `deployed-<env>` updated on successful deploy, or the previous release
   tag for stg/prod) and diff against it. **Decision needed** on the exact source of truth.
-- **GitHub plan** must support Required Reviewers on environments for private repos.
+- **`MIGRATION_APPROVERS` must be set** (empty = fail-closed), and `trstringer/manual-approval`
+  is a third-party action in the deploy path — pin it to a full commit SHA.
 - **Editing an already-applied migration** (modified, not added) is itself unsafe (schema
   drift across envs) — the detector should flag modified migration files separately as a
   warning. **Confirm** we want this.
