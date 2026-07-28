@@ -5,7 +5,7 @@
 
 resource "aws_route53_record" "dashboard_dev_delegation" {
   zone_id = aws_route53_zone.this.zone_id
-  name    = "dev-dashboard.payments.ustaxcourt.gov"
+  name    = "dev-dashboard.${local.custom_domain}"
   type    = "NS"
   ttl     = 172800
 
