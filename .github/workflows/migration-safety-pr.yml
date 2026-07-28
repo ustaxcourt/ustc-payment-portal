@@ -1,0 +1,54 @@
+name: Migration Safety (PR)
+
+# PAY-353 AC1: on a PR that adds/edits migrations, detect destructive operations and
+# surface them on the PR. Fails (blocks merge) when a destructive op has no sign-off.
+# Make this a required status check in branch protection to enforce it.
+
+on:
+  pull_request:
+    paths:
+      - "db/migrations/**"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    uses: ./.github/workflows/migration-safety.yml
+    with:
+      baseline_ref: origin/${{ github.base_ref }}
+      fail_on_unacknowledged: true
+
+  comment:
+    needs: check
+    # Always comment — including when `check` failed on an unacknowledged op.
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download report
+        uses: actions/download-artifact@v6
+        with:
+          name: migration-safety-report
+        continue-on-error: true
+      - name: Ensure a report file exists
+        run: |
+          if [ ! -f migration-safety-report.md ]; then
+            printf '### Migration safety check\n\nReport unavailable (the check job may have errored before producing one).\n' \
+              > migration-safety-report.md
+          fi
+      - name: Find existing comment
+        uses: peter-evans/find-comment@v4
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: "github-actions[bot]"
+          body-includes: "Migration safety check"
+      - name: Upsert sticky comment
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: migration-safety-report.md
+          edit-mode: replace

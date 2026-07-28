@@ -1,0 +1,96 @@
+name: Migration Safety (reusable)
+
+# Reusable workflow (PAY-353): runs the newly-added migrations against an ephemeral
+# Postgres, captures the SQL they emit, and flags destructive / non-expand-contract
+# operations (drop column/table, rename, NOT NULL without default).
+#
+# Called by:
+#   - migration-safety-pr.yml (PR check + sticky comment)
+#   - the deploy workflows (report-only pre-job, output drives the approval gate)
+#
+# See docs/migration-safety.md.
+
+on:
+  workflow_call:
+    inputs:
+      baseline_ref:
+        description: "Git ref to diff newly-added migrations against"
+        required: false
+        type: string
+        default: "origin/main"
+      ref:
+        description: "Commit/ref to scan as HEAD (the code being deployed). Defaults to the triggering ref — set this when the deployed commit differs from it (e.g. staging/prod deploy a promoted tag)."
+        required: false
+        type: string
+        default: ""
+      fail_on_unacknowledged:
+        description: "Fail on unacknowledged destructive ops (PR check). Set false for report-only (deploy pre-job)."
+        required: false
+        type: boolean
+        default: true
+    outputs:
+      has_destructive:
+        description: "true if any destructive migration operation was detected"
+        value: ${{ jobs.scan.outputs.has_destructive }}
+      has_unacknowledged:
+        description: "true if a destructive operation lacks a sign-off marker"
+        value: ${{ jobs.scan.outputs.has_unacknowledged }}
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    outputs:
+      has_destructive: ${{ steps.scan.outputs.has_destructive }}
+      has_unacknowledged: ${{ steps.scan.outputs.has_unacknowledged }}
+    services:
+      # Mirrors ci.yml's migration-check service (postgres:14, port 5432).
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: mydb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_NAME: mydb
+      NODE_ENV: development
+      APP_ENV: test
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Scan the deployed commit when given (staging/prod promote a tag); otherwise the
+          # triggering ref (dev push, PR merge commit) — github.sha matches the old default.
+          ref: ${{ inputs.ref || github.sha }}
+          # Full history + tags so we can diff new migrations against the baseline ref.
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Scan new migrations for destructive operations
+        id: scan
+        env:
+          BASELINE_REF: ${{ inputs.baseline_ref }}
+          FAIL_ON_UNACKNOWLEDGED: ${{ inputs.fail_on_unacknowledged }}
+        run: npm run check:migration-safety
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: migration-safety-report
+          path: migration-safety-report.md
+          if-no-files-found: ignore
