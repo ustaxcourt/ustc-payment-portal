@@ -56,7 +56,7 @@ If you set `autoOptimize` to true, the Optimizer function will run after the Ana
 
 ## How do we use it in Payment Portal?
 
-You can trigger a tuning run by manually triggering the `Power Tuning (Dev)` workflow on GitHub Actions. You can find it under `.github/workflows/power-tuning-dev.yml`.
+You can trigger a tuning run by manually triggering the `Power Tuning (Dev)` workflow on GitHub Actions. You can find it under `.github/workflows/power-tuning-dev.yml`. By default, the workflow is set to ask for `balanced` (best time/best cost) recommendations from the tuner.
 
 1. Select the workflow, and choose which functions you want to be tested: `initPayment`, `processPayment`, `getDetails`, `testCert`, `healthCheck`, or `ALL`. Selecting ALL will run the tuner for all 5 of our primary functions.
 2. Next enter the number of invocations you want each function to run. **100 is the max number of invocations per function per size that can be run.** If left empty it will default to 10 per function per memory size.

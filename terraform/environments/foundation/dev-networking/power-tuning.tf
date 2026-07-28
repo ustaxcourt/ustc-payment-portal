@@ -146,8 +146,10 @@ resource "aws_serverlessapplicationrepository_cloudformation_stack" "power_tunin
     # Default power values used only when a run does not supply its own.
     PowerValues = "128,256,512,768,1024,1536"
 
-    # Deploy-time only (cannot be overridden at execution). Max headroom so large
-    # sequential tuning runs (high `num`) do not hit States.Timeout.
+    # Deploy-time only (cannot be overridden at execution). We always run with
+    # parallelInvocation (see power-tuning-dev.yml), so per the tool's own
+    # guidance the 300s default is normally sufficient. 900s is just extra
+    # headroom against States.Timeout at num=100, the max num this repo allows.
     totalExecutionTimeout = 900
   }
 }
