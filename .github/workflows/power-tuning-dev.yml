@@ -133,9 +133,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          # aws-lambda-power-tuning's initializer rejects num < 5 with a generic
+          # aws-lambda-power-tuning's initializer rejects num < 10 with a generic
           # Step Functions failure; fail fast here with a clearer message instead.
-          if [ "$TUNE_NUM" -lt 5 ]; then
+          if [ "$TUNE_NUM" -lt 10 ]; then
             echo "ERROR: num must be >= 10 (got $TUNE_NUM). The tuner's initializer rejects anything lower." >&2
             exit 1
           fi
@@ -284,6 +284,13 @@ jobs:
             --cli-binary-format raw-in-base64-out \
             gc-power-tuning-response.json
           cat gc-power-tuning-response.json
+
+          # If `aws lambda invoke` fails, exit 1 to have this step fail loudly.
+          FUNCTION_ERROR=$(jq -r '.FunctionError // empty' gc-power-tuning-response.json)
+          if [ -n "$FUNCTION_ERROR" ]; then
+            echo "ERROR: powerTuningCleanUp invocation failed ($FUNCTION_ERROR) — dev DB may still have power-tuning transactions from this run." >&2
+            exit 1
+          fi
 
       - name: Clean up unused Lambda versions created by this run
         if: always() && steps.start.outputs.execution_arn != ''
