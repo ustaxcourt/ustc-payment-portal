@@ -67,52 +67,51 @@ for reviewer approval (below).
 
 ## Before deployment (AC2)
 
-When a deploy contains a destructive migration, it **pauses for a human** before the deploy
-job runs — via a **protected GitHub Environment with Required Reviewers** (the same mechanism
-as `db-rollback`). **Wired into `cicd-dev.yml`, `staging-deploy.yml`, and `prod-deploy.yml`.**
+When a deploy contains a destructive migration, it **pauses for a human** before
+`terraform apply` runs — via the [`trstringer/manual-approval`](https://github.com/trstringer/manual-approval)
+action, which opens an approval issue and waits. **Wired into `cicd-dev.yml`,
+`staging-deploy.yml`, and `prod-deploy.yml`.**
 
-### Deploy integration pattern (approval-gate job)
+### Deploy integration pattern (manual-approval step)
 
-The migration in each deploy runs as a *step* inside a larger deploy job (terraform apply,
-outputs, tests). Rather than duplicating that job, we add a **separate no-op approval-gate
-job** bound to a reviewer-gated environment, and the deploy job simply `needs:` it. The gate
-job's only purpose is to sit behind the environment and pause; there is **no deploy-step
-duplication**.
+The `migration_safety` reusable workflow runs as a report-only pre-job and exposes
+`has_destructive`. Inside the deploy job, a single **approval step** — gated on that output —
+runs right before `terraform apply`. Because it's a *step*, its `if:` makes the pause
+conditional with no extra jobs or environments; on the safe path the step is simply skipped.
 
 ```yaml
 jobs:
-  # Report-only scan (the PR check enforces sign-off); output drives the gate.
+  # Report-only scan (the PR check enforces sign-off); output drives the approval step.
   migration_safety:
     uses: ./.github/workflows/migration-safety.yml
     with:
       baseline_ref: ${{ github.event.before || 'origin/main' }}  # dev: main tip before this push
       fail_on_unacknowledged: false
 
-  # No-op job; pauses only when destructive ops are present, because it sits behind a
-  # reviewer-gated environment. Skipped entirely on the safe path.
-  db_migration_approval:
-    needs: migration_safety
-    if: needs.migration_safety.outputs.has_destructive == 'true'
-    environment: dev-migration-approval
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Destructive migration approved."
-
   deploy_dev:
-    needs: [migration_safety, db_migration_approval]
-    # always(): the gate is *skipped* on the safe path, which would otherwise skip this job.
-    if: >-
-      always() &&
-      needs.migration_safety.result == 'success' &&
-      (needs.db_migration_approval.result == 'success' || needs.db_migration_approval.result == 'skipped')
-      # ... plus the existing deploy-trigger conditions ...
+    needs: [migration_safety]        # fail-closed: a failed/skipped scan skips the deploy
+    permissions:
+      issues: write                  # the action opens an approval issue
     steps:
-      # ... unchanged terraform apply + `aws lambda invoke '{"command":"migrate"}'` ...
+      # ... checkout, creds, terraform plan ...
+      - name: Manual approval for destructive migration
+        if: needs.migration_safety.outputs.has_destructive == 'true'
+        uses: trstringer/manual-approval@v1   # pin to a full SHA in prod paths
+        with:
+          secret: ${{ github.token }}
+          approvers: ${{ vars.MIGRATION_APPROVERS }}
+          minimum-approvals: 1
+      # ... terraform apply + `aws lambda invoke '{"command":"migrate"}'` ...
 ```
 
-The gate blocks the whole deploy job when destructive ops are present — approval happens
-before terraform apply *and* the migration. On the safe path `db_migration_approval` is
-skipped and the deploy runs unattended.
+The approval sits **before `terraform apply`**, so nothing is applied or migrated until a
+reviewer approves the issue. On the safe path the step is skipped and the deploy runs
+unattended. **prod** additionally gates the step on the apply-vs-plan-only condition, so a
+plan-only preview never pauses.
+
+> **Third-party action.** `trstringer/manual-approval` is a community action, not a GitHub- or
+> Atlassian-provided one — it runs in the deploy path, so pin it to a **full commit SHA** (the
+> workflows currently use `@v1` with a `TODO`) and review it before locking the pin.
 
 ### Baseline (and the commit scanned) per environment
 
@@ -129,10 +128,9 @@ triggering ref, which is correct for dev/PR).
   because the PR check already enforced sign-off, so only the *secondary* deploy pause is
   skipped. **Confirm this baseline choice.**
 - **prod** (`prod-deploy.yml`, deploys a release tag): `ref` = the release commit; baseline =
-  the previous plain `vX.Y.Z` tag (no `-dev`/`-rc` suffix), same fallback as staging. The gate
-  fires **only on runs that will actually apply/migrate** — plan-only previews are not paused
-  (the gate mirrors the migrate step's own condition). The `production` environment currently
-  has **no** Required Reviewers, so this gate is what adds a destructive-migration pause.
+  the previous plain `vX.Y.Z` tag (no `-dev`/`-rc` suffix), same fallback as staging. The
+  approval step fires **only on runs that will actually apply/migrate** — plan-only previews
+  are not paused (it mirrors the migrate step's own condition).
 
 > **Caveat — scanning old promoted tags.** Because the scan checks out the deployed commit
 > (`ref`), the detector and the `check:migration-safety` npm script also come from that commit.
@@ -145,11 +143,14 @@ triggering ref, which is correct for dev/PR).
 ## One-time setup (ops)
 
 - Add the PR `check` job as a **required status check** in branch protection.
-- Create the `dev-migration-approval`, `stg-migration-approval`, and `prod-migration-approval`
-  **Environments** with **Required Reviewers** (private repos need GitHub Team/Enterprise —
-  same prerequisite as `db-rollback`). **Until an environment exists, its gate job passes
-  through** (GitHub auto-creates the environment ungated on first reference), so that deploy
-  will not pause.
+- Set the **`MIGRATION_APPROVERS`** repo variable (Settings → Secrets and variables → Actions
+  → Variables) to a comma/newline-separated list of GitHub usernames who may approve. They
+  must have repo access. Individual usernames are simplest; team approvers require the token to
+  resolve team membership. **If this variable is empty the approval step fails closed** (the
+  deploy stops), so set it before the first destructive-migration deploy.
+- Pin `trstringer/manual-approval` to a **full commit SHA** (currently `@v1` with a `TODO`).
+- The deploy jobs already grant `issues: write` (the action opens the approval issue) — no
+  action needed, just noted.
 
 ## Extending the rules
 
