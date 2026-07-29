@@ -119,8 +119,8 @@ export const formatFindingsComment = (findings: readonly Finding[]): string => {
   lines.push(
     hasUnacknowledged(findings)
       ? "The following operations break backward compatibility (expand-contract). Sign off deliberate changes with a `" +
-          ACKNOWLEDGMENT_MARKER +
-          " — <reason>` comment in the migration, or split them into a later contract migration."
+      ACKNOWLEDGMENT_MARKER +
+      " — <reason>` comment in the migration, or split them into a later contract migration."
       : "All destructive operations below are acknowledged. The deploy will still pause for reviewer approval.",
     "",
   );

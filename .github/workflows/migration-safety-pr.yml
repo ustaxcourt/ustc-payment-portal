@@ -1,9 +1,5 @@
 name: Migration Safety (PR)
 
-# PAY-353 AC1: on a PR that adds/edits migrations, detect destructive operations and
-# surface them on the PR. Fails (blocks merge) when a destructive op has no sign-off.
-# Make this a required status check in branch protection to enforce it.
-
 on:
   pull_request:
     paths:

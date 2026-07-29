@@ -1,14 +1,8 @@
 name: Migration Safety (reusable)
 
-# Reusable workflow (PAY-353): runs the newly-added migrations against an ephemeral
-# Postgres, captures the SQL they emit, and flags destructive / non-expand-contract
+# Reusable workflow runs the newly-added migrations against an ephemeral
+# Postgres, captures the SQL they emit, and flags destructive
 # operations (drop column/table, rename, NOT NULL without default).
-#
-# Called by:
-#   - migration-safety-pr.yml (PR check + sticky comment)
-#   - the deploy workflows (report-only pre-job, output drives the approval gate)
-#
-# See docs/migration-safety.md.
 
 on:
   workflow_call:

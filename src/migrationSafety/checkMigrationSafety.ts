@@ -1,11 +1,5 @@
 /* istanbul ignore file -- I/O orchestration only; classification logic is in scanner.ts (unit-tested). */
-/**
- * Runtime harness for the migration-safety check (PAY-353): runs newly-added migrations
- * against an ephemeral Postgres and scans the SQL they emit. See docs/migration-safety.md.
- *
- * Env: BASELINE_REF (default origin/main), FAIL_ON_UNACKNOWLEDGED ("false" = report only),
- * GITHUB_OUTPUT / GITHUB_STEP_SUMMARY (optional).
- */
+
 import { execFileSync } from "node:child_process";
 import {
   appendFileSync,
@@ -47,7 +41,6 @@ const listMigrations = (baselineRef: string, filter: "A" | "M"): string[] => {
   return out ? out.split("\n").filter(Boolean) : [];
 };
 
-// Knex's own migration bookkeeping / transaction control is not part of the migration.
 const isBookkeeping = (sql: string): boolean =>
   /knex_migrations/i.test(sql) ||
   /^\s*(begin|commit|rollback|savepoint|release)\b/i.test(sql);
@@ -75,7 +68,6 @@ const captureNewMigrationSql = async (
     for (const { from, to } of moved) renameSync(from, to);
     await knex.migrate.latest();
 
-    // Restore the new files so they become the pending set.
     for (const { from, to } of moved) renameSync(to, from);
 
     // Phase 2 — Knex applies pending migrations in filename order, so setting currentFile
