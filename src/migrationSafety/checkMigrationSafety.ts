@@ -28,7 +28,10 @@ const REPORT_PATH = "migration-safety-report.md";
 const git = (...args: string[]): string =>
   execFileSync("git", args, { encoding: "utf8" }).trim();
 
-const listMigrations = (baselineRef: string, filter: "A" | "M"): string[] => {
+const listMigrations = (
+  baselineRef: string,
+  filter: "A" | "M" | "R",
+): string[] => {
   // `A...HEAD` diffs HEAD against the merge-base — the workflow must fetch BASELINE_REF.
   const out = git(
     "diff",
@@ -109,14 +112,19 @@ const main = async (): Promise<void> => {
   const failOnUnacknowledged = process.env.FAIL_ON_UNACKNOWLEDGED !== "false";
 
   const newFiles = listMigrations(baselineRef, "A").sort();
-  const modifiedFiles = listMigrations(baselineRef, "M");
+
+  const touchedApplied = [
+    ...listMigrations(baselineRef, "M"),
+    ...listMigrations(baselineRef, "R"),
+  ].sort();
 
   let modifiedWarning = "";
-  if (modifiedFiles.length > 0) {
+  if (touchedApplied.length > 0) {
     modifiedWarning =
-      "\n\n> Note: these already-committed migrations were **modified** — editing an applied " +
-      "migration causes drift across environments. Prefer a new migration:\n" +
-      modifiedFiles.map((f) => `> - \`${f}\``).join("\n");
+      "\n\n> Note: these already-committed migrations were **modified or renamed** — editing " +
+      "or renaming an applied migration causes drift across environments (Knex tracks " +
+      "migrations by filename). Prefer a new migration:\n" +
+      touchedApplied.map((f) => `> - \`${f}\``).join("\n");
   }
 
   if (newFiles.length === 0) {
