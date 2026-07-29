@@ -256,6 +256,7 @@ resource "aws_lambda_function" "tuner_cleanup" {
       RDS_ENDPOINT   = local.app_rds_endpoint
       RDS_SECRET_ARN = local.app_rds_secret_arn
       RDS_DB_NAME    = local.rds_db_name
+      APP_ENV        = "dev"
     }
   }
 

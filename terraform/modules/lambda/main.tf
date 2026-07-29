@@ -55,7 +55,7 @@ resource "aws_lambda_function" "functions" {
   memory_size = try(var.lambda_memory_sizes[each.key], 128)
 
   runtime       = var.runtime
-  architectures = ["arm64"]
+  architectures = ["x86_64"]
   publish       = contains(local.payment_flow_lambdas, each.key)
 
   vpc_config {
