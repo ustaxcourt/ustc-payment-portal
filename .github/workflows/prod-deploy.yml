@@ -205,7 +205,7 @@ jobs:
 
       - name: Manual approval for destructive migration
         if: ${{ needs.migration_safety.outputs.has_destructive == 'true' && ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) }}
-        uses: trstringer/manual-approval@v1 # TODO: pin to a full commit SHA (third-party action)
+        uses: trstringer/manual-approval@fa642940caf8412403569b28b2db4a1df08a83a3 # v1.13.1
         with:
           secret: ${{ github.token }}
           approvers: ${{ vars.MIGRATION_APPROVERS }}

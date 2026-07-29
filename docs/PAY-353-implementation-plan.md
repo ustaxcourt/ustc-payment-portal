@@ -149,7 +149,7 @@ This naturally scopes to new, forward-only migrations and needs no TS parsing.
 ### 6. Ops setup (not code)
 
 - Set the `MIGRATION_APPROVERS` repo variable to the approver usernames (empty = fail-closed).
-- Pin `trstringer/manual-approval` to a full commit SHA (currently `@v1` + `TODO`).
+- `trstringer/manual-approval` pinned to a full commit SHA (`fa64294…`, v1.13.1).
 - Confirm the plan supports required reviewers on environments (private repos need
   GitHub Team/Enterprise) — same prerequisite noted for `db-rollback`.
 

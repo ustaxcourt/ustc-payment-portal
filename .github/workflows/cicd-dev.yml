@@ -574,7 +574,7 @@ jobs:
       # variable. Skipped entirely when no destructive op is present.
       - name: Manual approval for destructive migration
         if: needs.migration_safety.outputs.has_destructive == 'true'
-        uses: trstringer/manual-approval@v1
+        uses: trstringer/manual-approval@fa642940caf8412403569b28b2db4a1df08a83a3 # v1.13.1
         with:
           secret: ${{ github.token }}
           approvers: ${{ vars.MIGRATION_APPROVERS }}

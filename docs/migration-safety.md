@@ -96,7 +96,7 @@ jobs:
       # ... checkout, creds, terraform plan ...
       - name: Manual approval for destructive migration
         if: needs.migration_safety.outputs.has_destructive == 'true'
-        uses: trstringer/manual-approval@v1   # pin to a full SHA in prod paths
+        uses: trstringer/manual-approval@<sha>   # pinned to a full commit SHA (v1.13.1)
         with:
           secret: ${{ github.token }}
           approvers: ${{ vars.MIGRATION_APPROVERS }}
@@ -110,8 +110,8 @@ unattended. **prod** additionally gates the step on the apply-vs-plan-only condi
 plan-only preview never pauses.
 
 > **Third-party action.** `trstringer/manual-approval` is a community action, not a GitHub- or
-> Atlassian-provided one — it runs in the deploy path, so pin it to a **full commit SHA** (the
-> workflows currently use `@v1` with a `TODO`) and review it before locking the pin.
+> Atlassian-provided one — it runs in the deploy path, so it's pinned to a **full commit SHA**
+> (`fa64294…`, v1.13.1). Re-review the action before bumping the pin.
 
 ### Baseline (and the commit scanned) per environment
 
@@ -124,9 +124,9 @@ triggering ref, which is correct for dev/PR).
 - **staging** (`staging-deploy.yml`, deploys a promoted dev tag): `ref` = the promoted
   commit (`needs.promote.outputs.sha`); baseline = the previous `v*-rc.*` tag before that
   commit (computed in the `migration_baseline` job). If none is found (e.g. first-ever
-  staging deploy) it falls back to `origin/main`, which scopes to nothing new — acceptable
-  because the PR check already enforced sign-off, so only the *secondary* deploy pause is
-  skipped. **Confirm this baseline choice.**
+  staging deploy) it falls back to `origin/main`, which scopes to nothing new. This
+  **fail-open** fallback is intentional: the PR check already enforced sign-off, so only the
+  *secondary* deploy pause is skipped on that rare edge (first deploy / lookup failure).
 - **prod** (`prod-deploy.yml`, deploys a release tag): `ref` = the release commit; baseline =
   the previous plain `vX.Y.Z` tag (no `-dev`/`-rc` suffix), same fallback as staging. The
   approval step fires **only on runs that will actually apply/migrate** — plan-only previews
@@ -148,7 +148,7 @@ triggering ref, which is correct for dev/PR).
   must have repo access. Individual usernames are simplest; team approvers require the token to
   resolve team membership. **If this variable is empty the approval step fails closed** (the
   deploy stops), so set it before the first destructive-migration deploy.
-- Pin `trstringer/manual-approval` to a **full commit SHA** (currently `@v1` with a `TODO`).
+- `trstringer/manual-approval` is pinned to a **full commit SHA** (`fa64294…`, v1.13.1) — done.
 - The deploy jobs already grant `issues: write` (the action opens the approval issue) — no
   action needed, just noted.
 
