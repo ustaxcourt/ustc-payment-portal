@@ -118,13 +118,17 @@ This naturally scopes to new, forward-only migrations and needs no TS parsing.
 
 ### 4. PR-level signal · `.github/workflows/migration-safety-pr.yml`
 
-- Trigger: `pull_request` with `paths: ['db/migrations/**']`.
-- Calls the reusable workflow (`baseline_ref: origin/${{ github.base_ref }}`).
+- Trigger: `pull_request` on **all** PRs (no `paths` filter — see the required-check note).
+- A `changes` job detects `db/migrations/**` edits; the reusable `check` (scan) runs only when
+  they changed (`baseline_ref: origin/${{ github.base_ref }}`), so no Postgres on normal PRs.
 - **Sticky comment** with the findings table, using the repo's existing
   `peter-evans/find-comment@v4` + `peter-evans/create-or-update-comment@v5` (match those
   pinned versions per `AGENTS.md`).
-- **Required status check**: fails when `has_unacknowledged == true` (destructive + no
-  acknowledgment marker / approval), so it blocks merge until signed off.
+- **Required status check = the `Migration Safety Gate` job**, which always runs and collapses
+  the result: green when no migrations changed, else the scan's pass/fail (fails on
+  unacknowledged destructive ops). It must run on every PR — a `paths`-filtered required check
+  never reports on unrelated PRs and wedges them on "Expected" (same reason as
+  `integration_gate`).
 
 ### 5. Deploy-level gate · `cicd-dev.yml` + `staging-deploy.yml` + `prod-deploy.yml` (done)
 

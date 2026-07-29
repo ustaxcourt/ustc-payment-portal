@@ -45,12 +45,17 @@ Exit code is non-zero when an **unacknowledged** destructive op is found (set
 
 ## On a PR (AC1)
 
-[`migration-safety-pr.yml`](../.github/workflows/migration-safety-pr.yml) runs on any PR
-touching `db/migrations/**`. It:
+[`migration-safety-pr.yml`](../.github/workflows/migration-safety-pr.yml) runs on **every**
+PR. A `changes` job detects whether `db/migrations/**` changed; only then does the Postgres
+`check` (scan) run. It:
 - posts/updates a **sticky comment** listing findings, and
 - **fails** (blocking merge) when a destructive op has no sign-off.
 
-Make the `check` job a **required status check** in branch protection to enforce it.
+The required status check is the **`Migration Safety Gate`** job — it always runs, so it
+reports green instantly on non-migration PRs and the scan's result on migration PRs. It runs
+on every PR (rather than being `paths`-filtered) precisely so it always reports: a required
+check that never reports would wedge unrelated PRs on "Expected". Add **`Migration Safety
+Gate`** — not `check`/`scan` — to the `main` ruleset's required checks.
 
 ### Signing off a deliberate destructive change
 
@@ -142,7 +147,9 @@ triggering ref, which is correct for dev/PR).
 
 ## One-time setup (ops)
 
-- Add the PR `check` job as a **required status check** in branch protection.
+- Add the **`Migration Safety Gate`** check to the `main` ruleset's required status checks
+  (Rules → Rulesets → `main-tests`). It only appears in the picker after the workflow has run
+  on at least one PR. Ensure the ruleset's enforcement is **Active** (not Evaluate).
 - Set the **`MIGRATION_APPROVERS`** repo variable (Settings → Secrets and variables → Actions
   → Variables) to a comma/newline-separated list of GitHub usernames who may approve. They
   must have repo access. Individual usernames are simplest; team approvers require the token to
