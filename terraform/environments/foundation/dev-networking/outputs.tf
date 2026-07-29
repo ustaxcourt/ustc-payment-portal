@@ -62,3 +62,8 @@ output "ci_read_only_role_arn" {
   value       = module.iam.read_only_role_arn
   description = "Read-only CI role ARN (used by terraform-plan workflow today)"
 }
+
+output "power_tuning_state_machine_arn" {
+  value       = aws_serverlessapplicationrepository_cloudformation_stack.power_tuning.outputs["StateMachineARN"]
+  description = "ARN of the Lambda Power Tuning Step Functions state machine (dev-only). Passed to the Phase 4 tuning workflow as the execution target."
+}

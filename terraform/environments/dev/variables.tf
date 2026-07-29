@@ -110,4 +110,43 @@ variable "migrationRunner_source_code_hash" {
   default     = ""
 }
 
+# Power Tuning pre-processors (DEV-ONLY). Consumed only in the real `dev`
+# workspace; PR workspaces leave these at their empty default since the
+# pre-processor Lambdas are guarded by `count = local.environment == "dev"`.
+variable "initRefGenerator_s3_key" {
+  description = "S3 key for the initRefGenerator power-tuning pre-processor artifact"
+  type        = string
+  default     = ""
+}
+
+variable "initRefGenerator_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for the initRefGenerator artifact"
+  type        = string
+  default     = ""
+}
+
+variable "processTokenMinter_s3_key" {
+  description = "S3 key for the processTokenMinter power-tuning pre-processor artifact"
+  type        = string
+  default     = ""
+}
+
+variable "processTokenMinter_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for the processTokenMinter artifact"
+  type        = string
+  default     = ""
+}
+
+variable "powerTuningCleanUp_s3_key" {
+  description = "S3 key for the powerTuningCleanUp power-tuning cleanup artifact"
+  type        = string
+  default     = ""
+}
+
+variable "powerTuningCleanUp_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for the powerTuningCleanUp artifact"
+  type        = string
+  default     = ""
+}
+
 

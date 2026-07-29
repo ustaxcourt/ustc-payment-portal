@@ -87,6 +87,21 @@ locals {
     getTransactionPaymentStatus = local.lambda_env_dashboard
     migrationRunner             = local.lambda_env_migration
   }
+
+  # Use power-tuning-dev.yml to tune the payment, test, and health functions.
+  # The result of the run will tell you what memory size to set for each function.
+  # migrationRunner and get functions are static and not run by the tuner.
+  lambda_memory_sizes = {
+    initPayment                 = 512
+    processPayment              = 256
+    getDetails                  = 512
+    testCert                    = 768
+    healthCheck                 = 768
+    getAllTransactions          = 256
+    getTransactionsByStatus     = 256
+    getTransactionPaymentStatus = 256
+    migrationRunner             = 256
+  }
   github_oidc_provider_arn = "arn:aws:iam::723609007960:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"
   github_repo              = "ustc-payment-portal"
