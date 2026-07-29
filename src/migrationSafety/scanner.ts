@@ -56,19 +56,21 @@ export const scanSql = (sql: string): Rule[] => {
   const s = normalize(sql);
   const rules: Rule[] = [];
 
-  if (/\bDROP\s+TABLE\b/i.test(s)) rules.push("drop-table");
-  if (/\bDROP\s+COLUMN\b/i.test(s)) rules.push("drop-column");
+  const isAlterTable = /\bALTER\s+TABLE\b/i.test(s);
 
-  // A rename is always ALTER TABLE ... RENAME ... (column or table form).
-  if (/\bALTER\s+TABLE\b/i.test(s) && /\bRENAME\b/i.test(s)) rules.push("rename");
+  if (/\bDROP\s+TABLE\b/i.test(s)) rules.push("drop-table");
+  if (isAlterTable && /\bDROP\s+COLUMN\b/i.test(s)) rules.push("drop-column");
+
+  if (isAlterTable && /\bRENAME\b/i.test(s)) rules.push("rename");
 
   // NOT NULL only breaks existing rows/old inserts on an EXISTING table (ADD COLUMN
   // without DEFAULT, or SET NOT NULL) — NOT NULL inside CREATE TABLE is fine.
   const addsNotNullColumn =
+    isAlterTable &&
     /\bADD\s+COLUMN\b/i.test(s) &&
     /\bNOT\s+NULL\b/i.test(s) &&
     !/\bDEFAULT\b/i.test(s);
-  const setsNotNull = /\bSET\s+NOT\s+NULL\b/i.test(s);
+  const setsNotNull = isAlterTable && /\bSET\s+NOT\s+NULL\b/i.test(s);
   if (addsNotNullColumn || setsNotNull) rules.push("not-null-without-default");
 
   return rules;

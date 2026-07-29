@@ -18,7 +18,6 @@ on:
 permissions:
   id-token: write
   contents: write
-  issues: write
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -132,6 +131,13 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: [promote, migration_safety]
+    # Scoped here (not workflow-level) so only this job — which runs the manual-approval step
+    # — gets issues: write. Job-level permissions replace the inherited set, so re-declare the
+    # OIDC (id-token) and checkout (contents) grants this job needs.
+    permissions:
+      id-token: write
+      contents: read
+      issues: write
     environment:
       name: production
     steps:

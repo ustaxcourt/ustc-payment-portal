@@ -71,6 +71,15 @@ describe("scanSql", () => {
       ["create index", 'create index "idx_t_c" on "t" ("c")'],
       ["drop index (not data-destructive)", 'drop index "idx_t_c"'],
       ["insert data", 'insert into "t" ("c") values (1)'],
+
+      [
+        "DROP COLUMN mentioned in a non-ALTER statement",
+        `insert into "audit" ("action") values ('drop column c')`,
+      ],
+      [
+        "SET NOT NULL mentioned in a non-ALTER statement",
+        `insert into "audit" ("action") values ('set not null')`,
+      ],
     ])("%s", (_desc, sql) => {
       expect(scanSql(sql)).toEqual([]);
     });
