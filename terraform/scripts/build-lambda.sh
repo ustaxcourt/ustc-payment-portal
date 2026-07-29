@@ -158,6 +158,58 @@ npx esbuild src/migrationHandler.ts \
   --minify \
   --keep-names
 
+# Bundle Power Tuning pre-processors (DEV-ONLY tuning helpers). These are only
+# wired into the real `dev` workspace (see terraform/environments/dev), but they
+# are built unconditionally so the artifact/manifest pipeline stays uniform.
+# No certs or RDS CA bundle: the ref-generator has zero AWS access and the
+# token-minter only invokes initPayment + calls the public mock over HTTP.
+echo "Bundling initRefGenerator..."
+mkdir -p dist/initRefGenerator
+npx esbuild src/powerTuning/initRefGenerator.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/initRefGenerator/initRefGenerator.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
+
+# NOTE: unlike the other bundles, @aws-sdk/* is NOT externalized here.
+# @aws-sdk/client-lambda is bundled in so the minter is self-contained and does
+# not depend on the specific SDK clients the managed runtime happens to ship.
+echo "Bundling processTokenMinter..."
+mkdir -p dist/processTokenMinter
+npx esbuild src/powerTuning/processTokenMinter.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/processTokenMinter/processTokenMinter.js \
+  --external:aws-sdk \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
+
+# powerTuningCleanUp needs real RDS access (via the shared src/db/knex.ts), so
+# it's bundled like the payment Lambdas: @aws-sdk/* externalized (managed
+# runtime ships it) and gets the RDS CA bundle copied in below.
+echo "Bundling powerTuningCleanUp..."
+mkdir -p dist/powerTuningCleanUp
+npx esbuild src/powerTuning/powerTuningCleanUp.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/powerTuningCleanUp/powerTuningCleanUp.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
+
 # Copy certificate files if they exist
 if [ -d "certs" ]; then
     echo "Copying certificate files..."
@@ -175,7 +227,7 @@ curl -sSf -o /tmp/rds-ca-bundle.pem \
 
 # Copy CA bundle to all Lambda functions that connect to RDS (testCert included:
 # its bundle is reused by healthCheck, whose RDS check must validate the CA).
-for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
+for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus powerTuningCleanUp; do
   cp /tmp/rds-ca-bundle.pem "dist/${func}/rds-ca-bundle.pem"
 done
 
