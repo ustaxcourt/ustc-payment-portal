@@ -7,7 +7,7 @@
     "payment-portal": "bin/ustc-payment-portal.js"
   },
   "engines": {
-    "node": ">=24.12.0 <25.0.0"
+    "node": ">=24.18.0 <25.0.0"
   },
   "scripts": {
     "clean": "rimraf dist/*",
@@ -144,6 +144,19 @@
     },
     "tsup": {
       "esbuild": "^0.28.1"
+    },
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.221.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.221.0",
+    "@opentelemetry/exporter-metrics-otlp-proto": "^0.221.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.221.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.221.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.221.0",
+    "babel-plugin-istanbul": "^8.0.2",
+    "test-exclude": "^8.0.0",
+    "ejs": "^6.0.1",
+    "glob": "^13.0.6",
+    "matcher-collection": {
+      "minimatch": "^10.2.2"
     }
   }
 }
