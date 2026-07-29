@@ -65,7 +65,9 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ![Dependencies](https://xkcd.com/2347)
 
-Sometimes we have to deal with vulnerabilities caused by transitive dependencies.
+
+Sometimes we have to deal with vulnerabilities caused by transitive dependencies. Be cautious doing overrides, we only want to resort to this in cases where our dependency is unlikely to fix them or take a long time to fix (like a transitive dependency not getting updated in order to support an old version of node). If you need to do an override, you'll add the transitive dependency in question to `overrides` at the bottom of `package.json`.
+
 ### GHSA-8988-4f7v-96qf — @opentelemetry/core (<2.8.0) (moderate) — resolved via override (2026-07-29)
 
 - **Override:** `@opentelemetry/exporter-{metrics,trace}-otlp-{grpc,http,proto}` pinned
