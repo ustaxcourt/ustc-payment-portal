@@ -166,6 +166,17 @@ resource "aws_iam_policy" "power_tuning_deployer" {
     Version = "2012-10-17"
     Statement = [
       {
+        # states:ListStateMachines has no resource-level permission support — AWS
+        # requires Resource "*" for it — so it can't be scoped down to the one
+        # state machine like the statements below. Needed because
+        # power-tuning-dev.yml discovers the state machine ARN by name (it isn't
+        # a stable, hardcoded ARN the workflow can reference directly).
+        Sid      = "DiscoverTuningStateMachine"
+        Effect   = "Allow"
+        Action   = ["states:ListStateMachines"]
+        Resource = "*"
+      },
+      {
         Sid      = "StartTuningExecutions"
         Effect   = "Allow"
         Action   = ["states:StartExecution"]

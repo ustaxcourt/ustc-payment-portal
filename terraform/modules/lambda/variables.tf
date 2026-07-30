@@ -45,7 +45,6 @@ variable "lambda_memory_sizes" {
   }
 }
 
-
 variable "subnet_ids" {
   description = "List of subnet IDs for Lambda VPC configuration"
   type        = list(string)
