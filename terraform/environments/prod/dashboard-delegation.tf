@@ -20,3 +20,42 @@ resource "aws_route53_record" "dashboard_dev_delegation" {
     prevent_destroy = true
   }
 }
+
+locals {
+  # Paste each environment's `dashboard_zone_name_servers` output here once that
+  # zone exists. A subdomain delegated to nameservers that do not host the zone
+  # resolves to SERVFAIL, so an empty list creates no record at all rather than
+  # a broken one. Filling the list is the whole change; nothing else to edit.
+  dashboard_stg_name_servers  = []
+  dashboard_prod_name_servers = []
+}
+
+resource "aws_route53_record" "dashboard_stg_delegation" {
+  count = length(local.dashboard_stg_name_servers) > 0 ? 1 : 0
+
+  zone_id = aws_route53_zone.this.zone_id
+  name    = "stg-dashboard.${local.custom_domain}"
+  type    = "NS"
+  ttl     = 172800
+
+  records = local.dashboard_stg_name_servers
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_route53_record" "dashboard_prod_delegation" {
+  count = length(local.dashboard_prod_name_servers) > 0 ? 1 : 0
+
+  zone_id = aws_route53_zone.this.zone_id
+  name    = "dashboard.${local.custom_domain}"
+  type    = "NS"
+  ttl     = 172800
+
+  records = local.dashboard_prod_name_servers
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
