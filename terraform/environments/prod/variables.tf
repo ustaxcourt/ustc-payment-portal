@@ -52,10 +52,11 @@ variable "dashboard_delegations" {
   description = <<-EOT
     NS delegation targets for the dashboard subdomains of payments.ustaxcourt.gov,
     keyed by subdomain label. Each value is the `dashboard_zone_name_servers`
-    output of the matching environment in ustc-payment-portal-dashboard; those
-    zones live in other accounts, so the values are carried here rather than read
-    from remote state. Override with TF_VAR_dashboard_delegations if a dashboard
-    hosted zone is ever recreated and its name servers change.
+    output of the matching environment in ustc-payment-portal-dashboard, which
+    owns those hosted zones. They are declared here rather than looked up so that
+    a plan of this configuration never depends on the dashboard zones existing.
+    Override with TF_VAR_dashboard_delegations if a dashboard hosted zone is ever
+    recreated and its name servers change.
   EOT
   type        = map(list(string))
 
