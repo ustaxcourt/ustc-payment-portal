@@ -182,7 +182,18 @@ app.get("/", (_req, res) => {
   res.send("hello world!");
 });
 
-app.get("/transactions", async (req, res, next) => {
+app.get("/transactions", async (_req, res, next) => {
+  try {
+    const result = await res.locals.appContext
+      .getUseCases()
+      .getRecentTransactions(res.locals.appContext);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get("/transaction-log", async (req, res, next) => {
   const query = TransactionLogQuerySchema.safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ message: query.error.issues[0].message });
