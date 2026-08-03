@@ -56,6 +56,14 @@ export const DashboardTransactionSchema = z
     paymentStatus: PaymentStatusSchema,
     transactionStatus: TransactionStatusSchema.nullable().optional(),
     paymentMethod: DashboardPaymentMethodSchema.nullable().optional(),
+    returnCode: z.number().int().nullable().optional().openapi({
+      description: "Pay.gov return code, set when a payment fails",
+      example: 102,
+    }),
+    returnDetail: z.string().nullable().optional().openapi({
+      description: "Pay.gov failure reason, set when a payment fails",
+      example: "Insufficient funds",
+    }),
     paygovToken: z.string().nullable().optional().openapi({
       description: "Pay.gov token associated with this transaction",
       example: "7f90d8de-e67f-4f8b-a12f-f429b675f2df",

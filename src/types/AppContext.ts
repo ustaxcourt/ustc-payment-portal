@@ -3,6 +3,7 @@ import { InitPayment } from "@useCases/initPayment";
 import { ProcessPayment } from "@useCases/processPayment";
 import { GetDetails } from "@useCases/getDetails";
 import { GetRecentTransactions } from "@useCases/getRecentTransactions";
+import { GetTransactionLog } from "@useCases/getTransactionLog";
 import { GetTransactionPaymentStatus } from "@useCases/getTransactionPaymentStatus";
 import { GetTransactionsByStatus } from "@useCases/getTransactionsByStatus";
 
@@ -21,6 +22,7 @@ export type AppContext = {
     processPayment: ProcessPayment;
     getDetails: GetDetails;
     getRecentTransactions: GetRecentTransactions;
+    getTransactionLog: GetTransactionLog;
     getTransactionPaymentStatus: GetTransactionPaymentStatus;
     getTransactionsByStatus: GetTransactionsByStatus;
   };
