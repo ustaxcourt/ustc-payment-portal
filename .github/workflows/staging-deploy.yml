@@ -122,9 +122,48 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  migration_baseline:
+    needs: promote
+    runs-on: ubuntu-latest
+    outputs:
+      baseline_ref: ${{ steps.compute.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: compute
+        env:
+          DEPLOY_SHA: ${{ needs.promote.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          # Most recent v*-rc.* tag strictly before the deploy commit (first-parent main
+          # history) = the previously-deployed staging build. Fallback origin/main scopes to
+          # nothing new — acceptable because the PR check already enforced sign-off, so this
+          # only skips the *secondary* deploy pause. Confirm this choice (docs/migration-safety.md).
+          PREV_RC=$(git describe --tags --abbrev=0 --match 'v*-rc.*' --first-parent "${DEPLOY_SHA}^" 2>/dev/null || true)
+          echo "ref=${PREV_RC:-origin/main}" >> "$GITHUB_OUTPUT"
+          echo "Baseline ref: ${PREV_RC:-origin/main (fallback)}"
+
+  # Report-only scan of the promoted commit; output drives the approval gate below.
+  migration_safety:
+    needs: [promote, migration_baseline]
+    uses: ./.github/workflows/migration-safety.yml
+    with:
+      ref: ${{ needs.promote.outputs.sha }}
+      baseline_ref: ${{ needs.migration_baseline.outputs.baseline_ref }}
+      fail_on_unacknowledged: false
+
   deploy:
     runs-on: ubuntu-latest
-    needs: promote
+    needs: [promote, migration_safety]
+    # Scoped here (not workflow-level) so only this job — which runs the manual-approval step
+    # — gets issues: write. Job-level permissions replace the inherited set, so re-declare the
+    # OIDC (id-token) and checkout (contents) grants this job needs.
+    permissions:
+      id-token: write
+      contents: read
+      issues: write
 
     outputs:
       api_url: ${{ steps.tf_outputs.outputs.api_url }}
@@ -215,6 +254,16 @@ jobs:
           echo "exitcode=$code" >> $GITHUB_OUTPUT
           terraform show -no-color tfplan > tfplan.txt || true
           set -e
+
+      - name: Manual approval for destructive migration
+        if: needs.migration_safety.outputs.has_destructive == 'true'
+        uses: trstringer/manual-approval@fa642940caf8412403569b28b2db4a1df08a83a3 # v1.13.1
+        with:
+          secret: ${{ github.token }}
+          approvers: ${{ vars.MIGRATION_APPROVERS }}
+          minimum-approvals: 1
+          issue-title: "Approve destructive DB migration — Staging deploy"
+          issue-body: "The migration-safety scan flagged a destructive migration in this staging deploy. Approve to continue with terraform apply + migrate, or deny to stop."
 
       - name: Terraform Apply (if required)
         if: ${{ steps.plan.outputs.exitcode == '2' }}

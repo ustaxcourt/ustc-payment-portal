@@ -423,9 +423,23 @@ jobs:
           echo "::error::Integration Gate FAILED — integration_test did not succeed (result='$TESTS_RESULT'). Merging to main is blocked until integration tests pass."
           exit 1
 
-  deploy_dev:
+  migration_safety:
     needs: check_actor
     if: needs.check_actor.outputs.is_dependabot != 'true' && (
+      github.event_name == 'workflow_dispatch' && inputs.deploy_to_dev ||
+      (github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      !contains(github.event.head_commit.message, 'changeset-release'))
+      )
+    uses: ./.github/workflows/migration-safety.yml
+    with:
+      baseline_ref: ${{ github.event.before || 'origin/main' }}
+      fail_on_unacknowledged: false
+
+  deploy_dev:
+    needs: [check_actor, migration_safety]
+
+    if: needs.check_actor.outputs.is_dependabot != 'true' && needs.migration_safety.result == 'success' && (
       github.event_name == 'workflow_dispatch' && inputs.deploy_to_dev ||
       (github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
@@ -435,6 +449,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      issues: write # trstringer/manual-approval opens an approval issue
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -559,6 +574,19 @@ jobs:
           path: terraform/environments/dev/tfplan.txt
           if-no-files-found: warn
           retention-days: 7
+
+      # Pause for a reviewer before applying when the scan found a destructive
+      # migration. Opens an approval issue; approvers come from the MIGRATION_APPROVERS repo
+      # variable. Skipped entirely when no destructive op is present.
+      - name: Manual approval for destructive migration
+        if: needs.migration_safety.outputs.has_destructive == 'true'
+        uses: trstringer/manual-approval@fa642940caf8412403569b28b2db4a1df08a83a3 # v1.13.1
+        with:
+          secret: ${{ github.token }}
+          approvers: ${{ vars.MIGRATION_APPROVERS }}
+          minimum-approvals: 1
+          issue-title: "Approve destructive DB migration — Dev deploy"
+          issue-body: "The migration-safety scan flagged a destructive migration in this dev deploy. Approve to continue with terraform apply + migrate, or deny to stop."
 
       - name: Terraform Apply (dev)
         working-directory: terraform/environments/dev

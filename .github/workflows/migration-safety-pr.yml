@@ -1,0 +1,103 @@
+name: Migration Safety (PR)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Cheap detection so the Postgres scan only runs when a migration actually changed.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      migrations: ${{ steps.detect.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if git diff --name-only "$BASE_SHA...$HEAD_SHA" -- db/migrations/ | grep -q .; then
+            CHANGED=true
+          else
+            CHANGED=false
+          fi
+          echo "migrations=$CHANGED" >> "$GITHUB_OUTPUT"
+          echo "Migration files changed: $CHANGED"
+
+  check:
+    needs: changes
+    if: needs.changes.outputs.migrations == 'true'
+    uses: ./.github/workflows/migration-safety.yml
+    with:
+      baseline_ref: origin/${{ github.base_ref }}
+      fail_on_unacknowledged: true
+
+  comment:
+    needs: check
+    # Comment whenever the scan ran (pass or fail); skip when it didn't (non-migration PR).
+    if: always() && needs.check.result != 'skipped'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download report
+        uses: actions/download-artifact@v6
+        with:
+          name: migration-safety-report
+        continue-on-error: true
+      - name: Ensure a report file exists
+        run: |
+          if [ ! -f migration-safety-report.md ]; then
+            printf '### Migration safety check\n\nReport unavailable (the check job may have errored before producing one).\n' \
+              > migration-safety-report.md
+          fi
+      - name: Find existing comment
+        uses: peter-evans/find-comment@v4
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: "github-actions[bot]"
+          body-includes: "Migration safety check"
+      - name: Upsert sticky comment
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: migration-safety-report.md
+          edit-mode: replace
+
+  # The single required status check. Always runs so every PR gets a result: green instantly
+  # on non-migration PRs, otherwise the scan's outcome. Add THIS check to branch protection.
+  gate:
+    name: Migration Safety Gate
+    needs: [changes, check]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require migration safety to pass
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          MIGRATIONS: ${{ needs.changes.outputs.migrations }}
+          CHECK_RESULT: ${{ needs.check.result }}
+        run: |
+          set -euo pipefail
+          if [ "$CHANGES_RESULT" != "success" ]; then
+            echo "::error::Could not determine whether migrations changed (changes job: $CHANGES_RESULT)."
+            exit 1
+          fi
+          if [ "$MIGRATIONS" != "true" ]; then
+            echo "No migration changes in this PR — nothing to check."
+            exit 0
+          fi
+          if [ "$CHECK_RESULT" = "success" ]; then
+            echo "Migration safety check passed."
+            exit 0
+          fi
+          echo "::error::Migration safety check did not pass (scan result: $CHECK_RESULT). See the PR comment for details."
+          exit 1
