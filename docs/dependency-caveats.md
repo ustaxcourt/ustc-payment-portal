@@ -65,7 +65,7 @@ enough context that the next person doesn't have to re-derive the decision.
 Be cautious about doing overrides — reserve them for cases where the dependency is unlikely to fix the issue, or would take a long time to (e.g., a transitive dependency that isn't updated because it needs to support an old version of Node). If you do need an override, add the transitive dependency in question to `overrides` at the bottom of `package.json`.
 
 ### GHSA-8988-4f7v-96qf — @opentelemetry/core (<2.8.0) (moderate) — resolved via override (2026-07-29)
-
+**From: Artillery**
 - **Override:** `@opentelemetry/exporter-{metrics,trace}-otlp-{grpc,http,proto}` pinned
   to `^0.221.0`.
 - **Why an override was needed:** pulled in via `artillery` →
@@ -81,7 +81,7 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   exporter range past `0.221.0`, this override can likely be dropped.
 
 ### GHSA-mh99-v99m-4gvg — brace-expansion (<=5.0.7) (high) — resolved via override (2026-07-29)
-
+**From: Jest**
 - **Override:** `babel-plugin-istanbul@^8.0.2`, `test-exclude@^8.0.0`,
   `glob@^13.0.6`, `ejs@^6.0.1`, and `matcher-collection` → `minimatch@^10.2.2`.
 - **Why an override was needed:** this single advisory was reached through three
