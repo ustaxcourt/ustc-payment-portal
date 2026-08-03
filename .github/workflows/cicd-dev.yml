@@ -439,7 +439,7 @@ jobs:
   deploy_dev:
     needs: [check_actor, migration_safety]
 
-    if: needs.check_actor.outputs.is_dependabot != 'true' && (
+    if: needs.check_actor.outputs.is_dependabot != 'true' && needs.migration_safety.result == 'success' && (
       github.event_name == 'workflow_dispatch' && inputs.deploy_to_dev ||
       (github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
