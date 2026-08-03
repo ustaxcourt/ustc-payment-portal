@@ -54,6 +54,25 @@ describe("scanSql", () => {
       expect(rules).toContain("drop-column");
       expect(rules).toContain("not-null-without-default");
     });
+
+    it("flags a NOT NULL column without a default even when a sibling column in the same batched ALTER TABLE has one", () => {
+      // Matches Knex's Postgres compiler, which batches every column from a single
+      // alterTable() call into one ALTER TABLE statement.
+      const sql =
+        'alter table "t" add column "a" integer default \'0\', add column "b" integer not null';
+      expect(scanSql(sql)).toContain("not-null-without-default");
+    });
+
+    it("flags DROP TABLE wherever it appears in the statement, not just as the leading command", () => {
+      // Deliberately over-inclusive: an unrelated statement that happens to contain the words
+      // "drop table" (e.g. a raw multi-statement call, or literal text in an INSERTed value)
+      // is a rare, low-cost false positive (an extra sign-off). Missing a real DROP TABLE
+      // because it wasn't the first token in the statement is the failure mode this check
+      // exists to prevent, so it isn't worth trading away.
+      expect(
+        scanSql(`insert into "audit_log" ("message") values ('ran DROP TABLE cleanup')`),
+      ).toContain("drop-table");
+    });
   });
 
   describe("does NOT flag safe / additive operations", () => {

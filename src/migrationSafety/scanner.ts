@@ -63,13 +63,20 @@ export const scanSql = (sql: string): Rule[] => {
 
   if (isAlterTable && /\bRENAME\b/i.test(s)) rules.push("rename");
 
-  // NOT NULL only breaks existing rows/old inserts on an EXISTING table (ADD COLUMN
-  // without DEFAULT, or SET NOT NULL) — NOT NULL inside CREATE TABLE is fine.
-  const addsNotNullColumn =
-    isAlterTable &&
-    /\bADD\s+COLUMN\b/i.test(s) &&
-    /\bNOT\s+NULL\b/i.test(s) &&
-    !/\bDEFAULT\b/i.test(s);
+  // NOT NULL only breaks existing rows on an EXISTING table (ADD COLUMN without DEFAULT, or
+  // SET NOT NULL) — fine inside CREATE TABLE. Knex batches multiple ADD COLUMNs from one
+  // alterTable() call into a single comma-joined statement, so DEFAULT/NOT NULL must be
+  // checked per clause — otherwise one column's DEFAULT masks another's missing one. Split
+  // only at commas preceding the next column action, so a comma inside a DEFAULT expression
+  // isn't mistaken for a clause boundary.
+  const addColumnClauses = isAlterTable
+    ? s
+      .split(/,\s*(?=ADD\s+COLUMN\b|ALTER\s+COLUMN\b|DROP\s+COLUMN\b)/i)
+      .filter((clause) => /\bADD\s+COLUMN\b/i.test(clause))
+    : [];
+  const addsNotNullColumn = addColumnClauses.some(
+    (clause) => /\bNOT\s+NULL\b/i.test(clause) && !/\bDEFAULT\b/i.test(clause),
+  );
   const setsNotNull = isAlterTable && /\bSET\s+NOT\s+NULL\b/i.test(s);
   if (addsNotNullColumn || setsNotNull) rules.push("not-null-without-default");
 
