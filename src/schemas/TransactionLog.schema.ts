@@ -44,6 +44,23 @@ export const TransactionLogQuerySchema = z
 
 export type TransactionLogQuery = z.infer<typeof TransactionLogQuerySchema>;
 
+/**
+ * The dashboard transaction plus the failure fields this log displays. Declared
+ * here rather than on DashboardTransactionSchema so the shape stays private to
+ * this endpoint: /transactions serves the dev dashboard, and Zod strips these
+ * keys from that response.
+ */
+export const TransactionLogEntrySchema = DashboardTransactionSchema.extend({
+  returnCode: z.number().int().nullable().optional().openapi({
+    description: "Pay.gov return code, set when a payment fails",
+    example: 102,
+  }),
+  returnDetail: z.string().nullable().optional().openapi({
+    description: "Pay.gov failure reason, set when a payment fails",
+    example: "Insufficient funds",
+  }),
+}).openapi("TransactionLogEntry");
+
 export const TransactionCountsSchema = z
   .object({
     all: z.number().int().nonnegative(),
@@ -58,7 +75,7 @@ export const TransactionCountsSchema = z
 
 export const TransactionLogResponseSchema = z
   .object({
-    data: z.array(DashboardTransactionSchema).openapi({
+    data: z.array(TransactionLogEntrySchema).openapi({
       description: "Rows for the requested page, newest lastUpdatedAt first",
     }),
     counts: TransactionCountsSchema,
