@@ -2,13 +2,8 @@ import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "../appContext";
 import { dashboardOk, dashboardError } from "@utils/dashboardHandlerUtils";
 
-/**
- * GET /transactions
- * Returns the 100 most recent transactions across all statuses.
- *
- * Consumed by ustc-payment-portal-dev-dashboard. Keep the response shape
- * stable; the Case Services & Finance log is served from /transaction-log.
- */
+/** GET /transactions — 100 most recent across all statuses.
+ *  Consumed by ustc-payment-portal-dev-dashboard; keep this shape stable. */
 export const getAllTransactionsHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {

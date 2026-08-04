@@ -3,13 +3,8 @@ import { createAppContext } from "../appContext";
 import { TransactionLogQuerySchema } from "@schemas/TransactionLog.schema";
 import { dashboardOk, dashboardError } from "@utils/dashboardHandlerUtils";
 
-/**
- * GET /transaction-log
- * Transaction log for a timeframe, defaulting to the current Court day.
- *
- * Separate from /transactions, which serves the dev dashboard on a different
- * contract and must keep its response shape.
- */
+/** GET /transaction-log — timeframe defaults to the current Court day.
+ *  Separate from /transactions, which the dev dashboard depends on. */
 export const getTransactionLogHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {

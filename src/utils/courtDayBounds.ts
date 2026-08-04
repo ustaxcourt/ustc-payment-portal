@@ -18,8 +18,7 @@ const partsInZone = (
     second: "2-digit",
   }).formatToParts(instant);
 
-  // Throws rather than yielding NaN: a missing part would otherwise produce an
-  // Invalid Date and silently scope the log to nothing.
+  // NaN here would become an Invalid Date and silently scope the log to nothing.
   const value = (type: Intl.DateTimeFormatPartTypes): number => {
     const parsed = Number(formatted.find((part) => part.type === type)?.value);
     if (Number.isNaN(parsed)) {
@@ -56,17 +55,13 @@ const startOfZoneDay = (
   timeZone: string,
 ): Date => {
   const naive = Date.UTC(year, month - 1, day);
-  // Re-derived once: the second pass settles DST-transition days, where the
-  // first guess lands on the wrong side of the change.
+  // Second pass settles DST-transition days, where the first guess lands wrong.
   const first = naive - zoneOffsetMs(new Date(naive), timeZone);
   return new Date(naive - zoneOffsetMs(new Date(first), timeZone));
 };
 
-/**
- * The Court-local calendar day containing `now`, as a half-open [start, end)
- * range of absolute instants. Bounds rather than a date predicate, because a
- * WHERE that wraps the column in AT TIME ZONE cannot use the timestamp indexes.
- */
+/** Court-local day containing `now`, as half-open [start, end) instants.
+ *  Bounds, not a date predicate: AT TIME ZONE in a WHERE skips the indexes. */
 export const courtDayBounds = (
   now: Date = new Date(),
 ): { start: Date; end: Date } => {

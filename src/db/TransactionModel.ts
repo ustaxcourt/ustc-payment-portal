@@ -106,11 +106,8 @@ export default class TransactionModel extends Model {
     return rows.map(TransactionModel.attachFeeName);
   }
 
-  /**
-   * One page of the transaction log, plus the count of everything matching the
-   * same filter. Ordered by lastUpdatedAt so the page agrees with the timeframe,
-   * which is also expressed against lastUpdatedAt.
-   */
+  /** One page plus the total matching the same filter. Ordered by
+   *  lastUpdatedAt, the column the timeframe also filters on. */
   static async queryLog(
     filter: TransactionLogFilter,
   ): Promise<{ rows: TransactionModel[]; total: number }> {
@@ -137,10 +134,8 @@ export default class TransactionModel extends Model {
     return { rows: rows.map(TransactionModel.attachFeeName), total };
   }
 
-  /**
-   * Counts per payment status within a timeframe. Deliberately takes no status
-   * filter: the dashboard shows all four tallies while one status is selected.
-   */
+  /** Counts per status in a timeframe. Takes no status filter: all four
+   *  tallies stay visible while one status is selected. */
   static async countsInRange(
     from: Date,
     to: Date,
