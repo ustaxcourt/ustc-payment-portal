@@ -18,8 +18,15 @@ const partsInZone = (
     second: "2-digit",
   }).formatToParts(instant);
 
-  const value = (type: Intl.DateTimeFormatPartTypes): number =>
-    Number(formatted.find((part) => part.type === type)?.value);
+  // Throws rather than yielding NaN: a missing part would otherwise produce an
+  // Invalid Date and silently scope the log to nothing.
+  const value = (type: Intl.DateTimeFormatPartTypes): number => {
+    const parsed = Number(formatted.find((part) => part.type === type)?.value);
+    if (Number.isNaN(parsed)) {
+      throw new Error(`No ${type} in ${timeZone} date parts`);
+    }
+    return parsed;
+  };
 
   return {
     year: value("year"),

@@ -508,10 +508,12 @@ resource "aws_api_gateway_deployment" "deployment" {
       try(aws_api_gateway_integration.transactions_integration[0].id, ""),
       try(aws_api_gateway_integration.transactions_by_status_integration[0].id, ""),
       try(aws_api_gateway_integration.transaction_payment_status_integration[0].id, ""),
+      try(aws_api_gateway_integration.transaction_log_integration[0].id, ""),
 
       try(aws_api_gateway_integration.transactions_integration[0].uri, ""),
       try(aws_api_gateway_integration.transactions_by_status_integration[0].uri, ""),
       try(aws_api_gateway_integration.transaction_payment_status_integration[0].uri, ""),
+      try(aws_api_gateway_integration.transaction_log_integration[0].uri, ""),
 
       try(aws_api_gateway_integration.transactions_options_integration[0].id, ""),
       try(aws_api_gateway_integration.transactions_by_status_options_integration[0].id, ""),

@@ -1,4 +1,4 @@
-import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
+import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "../appContext";
 import { TransactionLogQuerySchema } from "@schemas/TransactionLog.schema";
 import { dashboardOk, dashboardError } from "@utils/dashboardHandlerUtils";
@@ -28,7 +28,10 @@ export const getTransactionLogHandler = async (
       .getTransactionLog(appContext, query.data);
     return dashboardOk(result);
   } catch (err) {
-    console.error("[Dashboard] getTransactionLog error:", err);
+    appContext.logger.error("getTransactionLog failed", {
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
     return dashboardError(500, "Internal server error");
   }
 };
