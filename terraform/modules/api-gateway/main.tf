@@ -36,6 +36,15 @@ resource "aws_api_gateway_resource" "transaction_payment_status" {
   path_part   = "transaction-payment-status"
 }
 
+# Serves the Case Services & Finance log. Reached only by that dashboard's
+# server, never a browser, so it takes SigV4 and needs no CORS.
+resource "aws_api_gateway_resource" "transaction_log" {
+  count       = local.enable_dashboard_endpoints ? 1 : 0
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
+  path_part   = "transaction-log"
+}
+
 ###################
 # GET Methods
 ###################
@@ -62,6 +71,14 @@ resource "aws_api_gateway_method" "transaction_payment_status_get" {
   resource_id   = aws_api_gateway_resource.transaction_payment_status[0].id
   http_method   = "GET"
   authorization = "NONE"
+}
+
+resource "aws_api_gateway_method" "transaction_log_get" {
+  count         = local.enable_dashboard_endpoints ? 1 : 0
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.transaction_log[0].id
+  http_method   = "GET"
+  authorization = "AWS_IAM"
 }
 
 ###################
@@ -96,6 +113,16 @@ resource "aws_api_gateway_integration" "transaction_payment_status_integration" 
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
   uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionPaymentStatus"]}/invocations"
+}
+
+resource "aws_api_gateway_integration" "transaction_log_integration" {
+  count                   = local.enable_dashboard_endpoints ? 1 : 0
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.transaction_log[0].id
+  http_method             = aws_api_gateway_method.transaction_log_get[0].http_method
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionLog"]}/invocations"
 }
 
 ###################
@@ -241,6 +268,14 @@ resource "aws_lambda_permission" "transaction_payment_status_permission" {
   statement_id  = "AllowAPIGatewayInvokeTransactionPaymentStatus"
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_arns["getTransactionPaymentStatus"]
+  principal     = "apigateway.amazonaws.com"
+}
+
+resource "aws_lambda_permission" "transaction_log_permission" {
+  count         = local.enable_dashboard_endpoints ? 1 : 0
+  statement_id  = "AllowAPIGatewayInvokeTransactionLog"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_function_arns["getTransactionLog"]
   principal     = "apigateway.amazonaws.com"
 }
 data "aws_region" "current" {}
@@ -441,6 +476,7 @@ resource "aws_api_gateway_deployment" "deployment" {
       try(aws_api_gateway_resource.transactions[0].id, ""),
       try(aws_api_gateway_resource.transactions_by_status[0].id, ""),
       try(aws_api_gateway_resource.transaction_payment_status[0].id, ""),
+      try(aws_api_gateway_resource.transaction_log[0].id, ""),
 
       aws_api_gateway_method.init_post.id,
       aws_api_gateway_method.process_post.id,
@@ -451,6 +487,7 @@ resource "aws_api_gateway_deployment" "deployment" {
       try(aws_api_gateway_method.transactions_get[0].id, ""),
       try(aws_api_gateway_method.transactions_by_status_get[0].id, ""),
       try(aws_api_gateway_method.transaction_payment_status_get[0].id, ""),
+      try(aws_api_gateway_method.transaction_log_get[0].id, ""),
 
       try(aws_api_gateway_method.transactions_options[0].id, ""),
       try(aws_api_gateway_method.transactions_by_status_options[0].id, ""),

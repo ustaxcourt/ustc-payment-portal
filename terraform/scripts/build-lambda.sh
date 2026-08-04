@@ -113,6 +113,21 @@ npx esbuild src/handlers/getAllTransactionsHandler.ts \
   --minify \
   --keep-names
 
+# Bundle getTransactionLog Lambda
+echo "Bundling getTransactionLog..."
+mkdir -p dist/getTransactionLog
+npx esbuild src/handlers/getTransactionLogHandler.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/getTransactionLog/getTransactionLogHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
+
 # Bundle getTransactionsByStatus Lambda
 echo "Bundling getTransactionsByStatus..."
 mkdir -p dist/getTransactionsByStatus

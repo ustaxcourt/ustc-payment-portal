@@ -83,6 +83,7 @@ locals {
     testCert                    = local.lambda_env_payment
     healthCheck                 = local.lambda_env_payment
     getAllTransactions          = local.lambda_env_dashboard
+    getTransactionLog           = local.lambda_env_dashboard
     getTransactionsByStatus     = local.lambda_env_dashboard
     getTransactionPaymentStatus = local.lambda_env_dashboard
     migrationRunner             = local.lambda_env_migration
@@ -98,6 +99,7 @@ locals {
     testCert                    = 768
     healthCheck                 = 768
     getAllTransactions          = 256
+    getTransactionLog           = 256
     getTransactionsByStatus     = 256
     getTransactionPaymentStatus = 256
     migrationRunner             = 256
