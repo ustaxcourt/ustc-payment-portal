@@ -32,6 +32,9 @@ locals {
     getTransactionPaymentStatus = {
       handler = "getTransactionPaymentStatusHandler.getTransactionPaymentStatusHandler"
     }
+    getTransactionLog = {
+      handler = "getTransactionLogHandler.getTransactionLogHandler"
+    }
     migrationRunner = {
       handler           = "lambdaHandler.migrationHandler"
       timeout           = 120

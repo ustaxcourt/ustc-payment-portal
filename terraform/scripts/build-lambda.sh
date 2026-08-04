@@ -228,7 +228,7 @@ npx esbuild src/powerTuning/powerTuningCleanUp.ts \
 # Copy certificate files if they exist
 if [ -d "certs" ]; then
     echo "Copying certificate files..."
-    for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus; do
+    for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog; do
         if [ -d "dist/$func" ]; then
             cp -r certs dist/$func/
         fi
@@ -242,7 +242,7 @@ curl -sSf -o /tmp/rds-ca-bundle.pem \
 
 # Copy CA bundle to all Lambda functions that connect to RDS (testCert included:
 # its bundle is reused by healthCheck, whose RDS check must validate the CA).
-for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus powerTuningCleanUp; do
+for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog powerTuningCleanUp; do
   cp /tmp/rds-ca-bundle.pem "dist/${func}/rds-ca-bundle.pem"
 done
 
@@ -275,12 +275,13 @@ echo "  - dist/testCert/lambdaHandler.js"
 echo "  - dist/getAllTransactions/getAllTransactionsHandler.js"
 echo "  - dist/getTransactionsByStatus/getTransactionsByStatusHandler.js"
 echo "  - dist/getTransactionPaymentStatus/getTransactionPaymentStatusHandler.js"
+echo "  - dist/getTransactionLog/getTransactionLogHandler.js"
 echo "  - dist/migrationRunner/lambdaHandler.js"
 
 # Show file sizes
 echo ""
 echo "Bundle sizes:"
-for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus migrationRunner; do
+for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog migrationRunner; do
   output_file="lambdaHandler.js"
   if [ "$func" = "initPayment" ]; then
     output_file="initPaymentHandler.js"
@@ -294,6 +295,8 @@ for func in initPayment processPayment getDetails testCert getAllTransactions ge
     output_file="getTransactionsByStatusHandler.js"
   elif [ "$func" = "getTransactionPaymentStatus" ]; then
     output_file="getTransactionPaymentStatusHandler.js"
+  elif [ "$func" = "getTransactionLog" ]; then
+    output_file="getTransactionLogHandler.js"
   fi
 
   if [ -f "dist/$func/$output_file" ]; then

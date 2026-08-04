@@ -47,7 +47,8 @@ locals {
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
   } : {})
 
-  # Dashboard Lambdas: getAllTransactions, getTransactionsByStatus, getTransactionPaymentStatus
+  # Dashboard Lambdas: getAllTransactions, getTransactionsByStatus,
+  # getTransactionPaymentStatus, getTransactionLog
   # authorization=NONE — must not receive payment secrets.
   lambda_env_dashboard = {
     NODE_ENV                 = local.node_env
