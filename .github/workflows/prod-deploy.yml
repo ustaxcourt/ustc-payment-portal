@@ -96,9 +96,48 @@ jobs:
           done
           echo "All artifacts present"
 
+  migration_baseline:
+    needs: promote
+    runs-on: ubuntu-latest
+    outputs:
+      baseline_ref: ${{ steps.compute.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: compute
+        env:
+          DEPLOY_SHA: ${{ needs.promote.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          # Most recent plain vX.Y.Z tag (no -dev/-rc suffix = a prod release) strictly before
+          # the deploy commit = the previously-deployed prod build. Fallback origin/main scopes
+          # to nothing new — acceptable because the PR check already enforced sign-off, so this
+          # only skips the *secondary* deploy pause. Confirm this choice (docs/migration-safety.md).
+          PREV=$(git describe --tags --abbrev=0 --match 'v*' --exclude '*-*' --first-parent "${DEPLOY_SHA}^" 2>/dev/null || true)
+          echo "ref=${PREV:-origin/main}" >> "$GITHUB_OUTPUT"
+          echo "Baseline ref: ${PREV:-origin/main (fallback)}"
+
+  # Report-only scan of the release commit; output drives the approval gate below.
+  migration_safety:
+    needs: [promote, migration_baseline]
+    uses: ./.github/workflows/migration-safety.yml
+    with:
+      ref: ${{ needs.promote.outputs.sha }}
+      baseline_ref: ${{ needs.migration_baseline.outputs.baseline_ref }}
+      fail_on_unacknowledged: false
+
   deploy:
     runs-on: ubuntu-latest
-    needs: [promote]
+    needs: [promote, migration_safety]
+    # Scoped here (not workflow-level) so only this job — which runs the manual-approval step
+    # — gets issues: write. Job-level permissions replace the inherited set, so re-declare the
+    # OIDC (id-token) and checkout (contents) grants this job needs.
+    permissions:
+      id-token: write
+      contents: read
+      issues: write
     environment:
       name: production
     steps:
@@ -170,6 +209,16 @@ jobs:
           terraform show -no-color tfplan > tfplan.txt || true
           set -e
 
+      - name: Manual approval for destructive migration
+        if: ${{ needs.migration_safety.outputs.has_destructive == 'true' && ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) }}
+        uses: trstringer/manual-approval@fa642940caf8412403569b28b2db4a1df08a83a3 # v1.13.1
+        with:
+          secret: ${{ github.token }}
+          approvers: ${{ vars.MIGRATION_APPROVERS }}
+          minimum-approvals: 1
+          issue-title: "Approve destructive DB migration — PRODUCTION deploy"
+          issue-body: "The migration-safety scan flagged a destructive migration in this production deploy. Approve to continue with terraform apply + migrate, or deny to stop."
+
       - name: Terraform Apply (if required)
         if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) && steps.tf_plan.outputs.exitcode == '2' }}
         working-directory: terraform/environments/prod
@@ -187,7 +236,7 @@ jobs:
           echo "migration_fn=$MIGRATION_FN" >> $GITHUB_OUTPUT
           echo "alerts_sns_topic_arn=$ALERTS_SNS_TOPIC_ARN" >> $GITHUB_OUTPUT
           echo "API Gateway URL: $API_URL"
-          echo "Migration runner: $MIGRATION_FN"  
+          echo "Migration runner: $MIGRATION_FN"
 
       - name: Run DB migrations (idempotent via knex_migrations table)
         if: ${{ ((github.event_name == 'release' && github.event.release.prerelease == false) || (!inputs.plan_only)) }}
