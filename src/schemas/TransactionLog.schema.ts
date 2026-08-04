@@ -36,6 +36,10 @@ export const TransactionLogQuerySchema = z
       .default(TRANSACTION_LOG_DEFAULT_PAGE_SIZE)
       .openapi({ description: "Rows per page", example: 50 }),
   })
+  .refine((query) => (query.from === undefined) === (query.to === undefined), {
+    message: "`from` and `to` must be supplied together",
+    path: ["from"],
+  })
   .refine((query) => !query.from || !query.to || query.from < query.to, {
     message: "`from` must be earlier than `to`",
     path: ["from"],
