@@ -12,5 +12,6 @@ export * from "./Error.schema";
 export * from "./TransactionDashboard.schema";
 export * from "./RecentTransactions.schema";
 export * from "./TransactionsByStatus.schema";
+export * from "./TransactionLog.schema";
 export * from "./TransactionPaymentStatus.schema";
 export * from "./DeployHealthReport.schema";

@@ -28,6 +28,8 @@ import {
   TransactionPaymentStatusResponseSchema,
   TransactionsByStatusPathParamsSchema,
   TransactionsByStatusResponseSchema,
+  TransactionLogQuerySchema,
+  TransactionLogResponseSchema,
   MetadataDawsonSchema,
   MetadataNonattorneyExamSchema,
   MetadataSchema,
@@ -371,6 +373,61 @@ registry.registerPath({
       content: {
         "application/json": {
           schema: RecentTransactionsResponseSchema,
+        },
+      },
+    },
+    403: {
+      description:
+        "Forbidden - invalid SigV4 signature or client not authorized",
+      content: {
+        "application/json": {
+          schema: ForbiddenErrorSchema,
+        },
+      },
+    },
+    500: {
+      description: "Internal server error",
+      content: {
+        "application/json": {
+          schema: ServerErrorSchema,
+        },
+      },
+    },
+  },
+});
+
+// ============================================
+// GET /transaction-log - Transaction Log
+// ============================================
+registry.registerPath({
+  method: "get",
+  path: "/transaction-log",
+  summary: "Get the transaction log",
+  description:
+    "Transaction log for the Case Services & Finance dashboard. Filters on " +
+    "lastUpdatedAt, defaulting to the current Court day in America/New_York, " +
+    "and returns rows newest first alongside aggregate counts. The counts " +
+    "cover the whole timeframe and ignore the status filter, so the tallies " +
+    "stay stable while the caller filters.",
+  tags: ["Payments"],
+  security: [{ sigv4: [] }],
+  request: {
+    query: TransactionLogQuerySchema,
+  },
+  responses: {
+    200: {
+      description: "Transaction log retrieved successfully",
+      content: {
+        "application/json": {
+          schema: TransactionLogResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: "Invalid timeframe, status, or pagination parameters",
+      content: {
+        "application/json": {
+          schema: BadRequestErrorSchema,
         },
       },
     },

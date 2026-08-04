@@ -47,7 +47,8 @@ locals {
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
   } : {})
 
-  # Dashboard Lambdas: getAllTransactions, getTransactionsByStatus, getTransactionPaymentStatus
+  # Dashboard Lambdas: getAllTransactions, getTransactionsByStatus,
+  # getTransactionPaymentStatus, getTransactionLog
   # authorization=NONE — must not receive payment secrets.
   lambda_env_dashboard = {
     NODE_ENV                 = local.node_env
@@ -83,6 +84,7 @@ locals {
     testCert                    = local.lambda_env_payment
     healthCheck                 = local.lambda_env_payment
     getAllTransactions          = local.lambda_env_dashboard
+    getTransactionLog           = local.lambda_env_dashboard
     getTransactionsByStatus     = local.lambda_env_dashboard
     getTransactionPaymentStatus = local.lambda_env_dashboard
     migrationRunner             = local.lambda_env_migration
@@ -98,6 +100,7 @@ locals {
     testCert                    = 768
     healthCheck                 = 768
     getAllTransactions          = 256
+    getTransactionLog           = 256
     getTransactionsByStatus     = 256
     getTransactionPaymentStatus = 256
     migrationRunner             = 256

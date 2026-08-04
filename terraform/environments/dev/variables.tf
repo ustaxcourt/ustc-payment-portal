@@ -54,6 +54,12 @@ variable "getTransactionPaymentStatus_s3_key" {
   default     = ""
 }
 
+variable "getTransactionLog_s3_key" {
+  description = "S3 key for getTransactionLog Lambda artifact"
+  type        = string
+  default     = ""
+}
+
 variable "getAllTransactions_source_code_hash" {
   description = "Base64-encoded SHA256 hash for getAllTransactions artifact"
   type        = string
@@ -70,6 +76,12 @@ variable "getTransactionsByStatus_source_code_hash" {
 
 variable "getTransactionPaymentStatus_source_code_hash" {
   description = "Base64-encoded SHA256 hash for getTransactionPaymentStatus artifact"
+  type        = string
+  default     = ""
+}
+
+variable "getTransactionLog_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for getTransactionLog artifact"
   type        = string
   default     = ""
 }
