@@ -4,6 +4,23 @@ const hoursBetween = (start: Date, end: Date): number =>
   (end.getTime() - start.getTime()) / 3_600_000;
 
 describe("courtDayBounds", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("throws when a date part is missing rather than scoping to nothing", () => {
+    jest.spyOn(Intl, "DateTimeFormat").mockImplementation(
+      () =>
+        ({
+          formatToParts: () => [{ type: "year", value: "2026" }],
+        }) as unknown as Intl.DateTimeFormat,
+    );
+
+    expect(() => courtDayBounds(new Date("2026-08-03T15:00:00.000Z"))).toThrow(
+      "No month in America/New_York date parts",
+    );
+  });
+
   it("brackets a summer day at EDT midnight (UTC-4)", () => {
     const { start, end } = courtDayBounds(new Date("2026-08-03T15:00:00.000Z"));
 
