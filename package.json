@@ -35,6 +35,7 @@
     "test:types": "tsc --project tsconfig.test-types.json",
     "ci:publish": "npm run build && changeset publish",
     "generate:openapi": "ts-node src/openapi/generate.ts",
+    "check:migration-safety": "ts-node src/migrationSafety/checkMigrationSafety.ts",
     "start:dev-server": "node scripts/start-dev-server-runtime.js",
     "start:all": "node -r dotenv/config scripts/start-local-stack.js",
     "start:server:autokill": "AUTO_KILL_PORTS=true node -r dotenv/config scripts/start-local-stack.js",
