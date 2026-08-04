@@ -1053,6 +1053,109 @@
           "status",
           "latencyMs"
         ]
+      },
+      "TransactionLogResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionLogEntry"
+            },
+            "description": "Rows for the requested page, newest lastUpdatedAt first"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/TransactionCounts"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Resolved lower bound actually queried"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Resolved upper bound actually queried"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Rows matching the timeframe and status filter, across all pages"
+          }
+        },
+        "required": [
+          "data",
+          "counts",
+          "from",
+          "to",
+          "page",
+          "pageSize",
+          "total"
+        ]
+      },
+      "TransactionLogEntry": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardTransaction"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "returnCode": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Pay.gov return code, set when a payment fails",
+                "example": 102
+              },
+              "returnDetail": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Pay.gov failure reason, set when a payment fails",
+                "example": "Insufficient funds"
+              }
+            }
+          }
+        ]
+      },
+      "TransactionCounts": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "success": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "failed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pending": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "all",
+          "success",
+          "failed",
+          "pending"
+        ],
+        "description": "Totals for the requested timeframe, unaffected by the status filter so the tallies stay stable as the user filters."
       }
     },
     "parameters": {}
@@ -1359,6 +1462,137 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecentTransactionsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - invalid SigV4 signature or client not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transaction-log": {
+      "get": {
+        "summary": "Get the transaction log",
+        "description": "Transaction log for the Case Services & Finance dashboard. Filters on lastUpdatedAt, defaulting to the current Court day in America/New_York, and returns rows newest first alongside aggregate counts. The counts cover the whole timeframe and ignore the status filter, so the tallies stay stable while the caller filters.",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "sigv4": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time",
+              "description": "Inclusive lower bound on lastUpdatedAt. Defaults with `to` to the current Court day.",
+              "example": "2026-08-03T04:00:00.000Z"
+            },
+            "required": false,
+            "description": "Inclusive lower bound on lastUpdatedAt. Defaults with `to` to the current Court day.",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time",
+              "description": "Exclusive upper bound on lastUpdatedAt.",
+              "example": "2026-08-04T04:00:00.000Z"
+            },
+            "required": false,
+            "description": "Exclusive upper bound on lastUpdatedAt.",
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "success",
+                "failed",
+                "pending"
+              ],
+              "description": "Restricts rows to one payment status. Aggregate counts ignore it.",
+              "example": "failed"
+            },
+            "required": false,
+            "description": "Restricts rows to one payment status. Aggregate counts ignore it.",
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "description": "1-indexed page number",
+              "example": 1
+            },
+            "required": false,
+            "description": "1-indexed page number",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "description": "Rows per page",
+              "example": 50
+            },
+            "required": false,
+            "description": "Rows per page",
+            "name": "pageSize",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction log retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionLogResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid timeframe, status, or pagination parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
                 }
               }
             }
