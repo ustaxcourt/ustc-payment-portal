@@ -370,41 +370,7 @@ describe("TransactionModel", () => {
     const referenceId = "TXN-REF-001";
     const paygovToken = "TOKEN-PENDING-123";
 
-    // FLAGGED: findPendingOrProcessedByReferenceId is one linear query-builder chain --
-    // filtering by status/referenceId/excludeToken happens in Postgres, not in JS. Under
-    // mocking, whether first() resolves to a row is whatever we tell it to, not something
-    // derived from applying the real predicate. Against the old stateful fake, these 5 cases
-    // differed by mutating `mockTransaction.transactionStatus`, which the fake's own
-    // reimplemented filter actually checked -- so they were "real" branches of the fake, but
-    // not of the production code (there is no per-status branch in the real method). Kept at
-    // 5 tests per your instruction; each now asserts the specific where/whereIn/whereNot
-    // argument relevant to its scenario so it's verifying argument-passing, not just an
-    // outcome we told the mock to produce. Note "pending" vs "processed" (the first two
-    // below) end up mechanically identical either way -- there's no argument or call
-    // difference between them to assert on, since the real method never inspects
-    // transactionStatus itself, it only ever passes the constant ["pending","processed"] to
-    // whereIn. Worth deciding whether that pair should stay as true duplicates or be
-    // rethought.
-    it("returns a transaction when status is pending and referenceId matches", async () => {
-      const builder = spyOnQuery();
-      const row = { agencyTrackingId: "TEST-789", transactionReferenceId: referenceId };
-      builder.first.mockResolvedValueOnce(row);
-
-      const found = await TransactionModel.findPendingOrProcessedByReferenceId(
-        clientName,
-        referenceId,
-        "OTHER-TOKEN",
-      );
-
-      expect(builder.whereIn).toHaveBeenCalledWith("transactionStatus", [
-        "pending",
-        "processed",
-      ]);
-      expect(found).toBeDefined();
-      expect(found?.transactionReferenceId).toBe(referenceId);
-    });
-
-    it("returns a transaction when status is processed and referenceId matches", async () => {
+    it("returns a transaction when status is pending/processed and referenceId matches", async () => {
       const builder = spyOnQuery();
       const row = { agencyTrackingId: "TEST-789", transactionReferenceId: referenceId };
       builder.first.mockResolvedValueOnce(row);
