@@ -34,6 +34,9 @@ export type ProcessPayment = (
 const PAYGOV_RETRY_MESSAGE =
   "We could not complete this transaction with Pay.gov. Please retry the request.";
 
+const TOKEN_EXPIRED_MESSAGE =
+  "Transaction token has expired. Retry POST /init with the same transactionReferenceId to obtain a new token.";
+
 type ProcessPaymentLogFields = {
   token: string;
   agencyTrackingId: string;
@@ -74,7 +77,7 @@ const loadAuthorizedContext = async (
       new Date(existingTransaction.lastUpdatedAt).getTime();
 
   if (tokenAgeMs > MAX_TOKEN_AGE_MS) {
-    throw new GoneError("Transaction token has expired, please retry the request");
+    throw new GoneError(TOKEN_EXPIRED_MESSAGE);
   }
 
   const baseLogFields = buildLogFields(request, existingTransaction);

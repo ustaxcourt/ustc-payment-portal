@@ -278,13 +278,16 @@ describe("processPayment", () => {
       lastUpdatedAt: "2026-01-15T07:00:00Z", // 4 hours before the frozen system time
     } as unknown as TransactionModel);
 
-    await expect(
-      processPayment(appContext, {
-        client: mockClient,
-        request: { token: "mock-token" },
-      }),
-    ).rejects.toThrow(GoneError);
+    const err = await processPayment(appContext, {
+      client: mockClient,
+      request: { token: "mock-token" },
+    }).catch((e) => e);
 
+    expect(err).toBeInstanceOf(GoneError);
+    expect(err.statusCode).toBe(410);
+    expect(err.message).toBe(
+      "Transaction token has expired. Retry POST /init with the same transactionReferenceId to obtain a new token.",
+    );
     expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
   });
 
