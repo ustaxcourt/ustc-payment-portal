@@ -1,3 +1,4 @@
+import { ConflictError } from "@errors/conflict";
 import { getKnex } from "./knex";
 import TransactionModel, { isStaleProcessingTransaction, type PaymentMethod } from "./TransactionModel";
 
@@ -272,6 +273,23 @@ describe("TransactionModel", () => {
       expect(updated?.paymentMethod).toBe("plastic_card");
       expect(updated?.transactionDate).toBe("2016-01-11T16:01:46");
       expect(updated?.paymentDate).toBe("2016-01-11");
+    });
+
+    it("throws ConflictError when no row is returned (race with another writer)", async () => {
+      const builder = spyOnQuery();
+      builder.patchAndFetchById.mockResolvedValueOnce(undefined);
+
+      await expect(
+        TransactionModel.updateAfterPayGovResponse(
+          "TEST-MISSING",
+          "TRACK-3",
+          "processed",
+          "success",
+          "ach",
+          undefined,
+          undefined,
+        ),
+      ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
     });
   });
 
