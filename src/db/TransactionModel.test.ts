@@ -1,5 +1,5 @@
 import { getKnex } from "./knex";
-import TransactionModel, { type PaymentMethod } from "./TransactionModel";
+import TransactionModel, { isStaleProcessingTransaction, type PaymentMethod } from "./TransactionModel";
 
 jest.mock("./knex", () => ({
   getKnex: jest.fn(),
@@ -114,12 +114,6 @@ describe("TransactionModel", () => {
   });
 
   describe("getAggregatedPaymentStatus", () => {
-    // FLAGGED: main's expectation (total: 100) came from a fully hardcoded mock and never
-    // reconciled with success+failed+pending (9) -- there was no real data behind "100".
-    // Reproducing it faithfully would require injecting a row with an unrecognized
-    // paymentStatus that feeds the reduce-based total but not a bucket, which is exactly the
-    // branch we just marked `/* istanbul ignore next */` as ambiguous and out of scope. Using
-    // reconciling data here instead; flagging in case "100" needs to come from somewhere else.
     it("returns the expected totals object", async () => {
       const builder = spyOnQuery();
       builder.resolvesTo = [
@@ -435,6 +429,37 @@ describe("TransactionModel", () => {
         "processed",
       ]);
       expect(found).toBeUndefined();
+    });
+  });
+
+  describe("isStaleProcessingTransaction", () => {
+    it("returns true for a transaction with status 'processing' and lastUpdatedAt older than 10 minutes", () => {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000 - 1);
+      const transaction = {
+        transactionStatus: "processing",
+        lastUpdatedAt: tenMinutesAgo.toISOString(),
+      } as TransactionModel;
+      const result = isStaleProcessingTransaction(transaction);
+      expect(result).toBe(true);
+    });
+
+    it("returns false for a transaction with status 'processing' and lastUpdatedAt within 10 minutes", () => {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const transaction = {
+        transactionStatus: "processing",
+        lastUpdatedAt: fiveMinutesAgo.toISOString(),
+      } as TransactionModel;
+      const result = isStaleProcessingTransaction(transaction);
+      expect(result).toBe(false);
+    });
+
+    it("returns false for a transaction with status other than 'processing'", () => {
+      const transaction = {
+        transactionStatus: "pending",
+        lastUpdatedAt: new Date().toISOString(),
+      } as TransactionModel;
+      const result = isStaleProcessingTransaction(transaction);
+      expect(result).toBe(false);
     });
   });
 });
