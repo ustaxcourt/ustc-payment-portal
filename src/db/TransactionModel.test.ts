@@ -534,6 +534,37 @@ describe("TransactionModel", () => {
     });
   });
 
+  describe("findInFlightByReferenceId", () => {
+    it("filters by transactionReferenceId and the initiated/processing statuses", async () => {
+      const builder = spyOnQuery();
+      const row = { agencyTrackingId: "TEST-INFLIGHT" };
+      builder.first.mockResolvedValueOnce(row);
+
+      const found =
+        await TransactionModel.findInFlightByReferenceId("TXN-REF-001");
+
+      expect(builder.where).toHaveBeenCalledWith(
+        "transactionReferenceId",
+        "TXN-REF-001",
+      );
+      expect(builder.whereIn).toHaveBeenCalledWith("transactionStatus", [
+        "initiated",
+        "processing",
+      ]);
+      expect(found).toBe(row);
+    });
+
+    it("returns undefined when there is no in-flight attempt", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+
+      const found =
+        await TransactionModel.findInFlightByReferenceId("NO-MATCH");
+
+      expect(found).toBeUndefined();
+    });
+  });
+
   describe("isStaleProcessingTransaction", () => {
     it("returns true for a transaction with status 'processing' and lastUpdatedAt older than 10 minutes", () => {
       const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000 - 1);
