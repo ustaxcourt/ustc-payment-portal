@@ -291,6 +291,60 @@ describe("TransactionModel", () => {
         ),
       ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
     });
+
+    it("patches conditionally on the current transactionStatus and returns the updated row when the guard matches", async () => {
+      const builder = spyOnQuery();
+      const updatedRow = { agencyTrackingId: "TEST-OK-03" };
+      builder.first.mockResolvedValueOnce(updatedRow);
+
+      const result = await TransactionModel.updateAfterPayGovResponse(
+        "TEST-OK-03",
+        "TRACK-4",
+        "processed",
+        "success",
+        "ach",
+        undefined,
+        undefined,
+        "processing",
+      );
+
+      expect(builder.patch).toHaveBeenCalledWith({
+        paygovTrackingId: "TRACK-4",
+        transactionStatus: "processed",
+        paymentStatus: "success",
+        paymentMethod: "ach",
+      });
+      expect(builder.where).toHaveBeenNthCalledWith(
+        1,
+        "agencyTrackingId",
+        "TEST-OK-03",
+      );
+      expect(builder.where).toHaveBeenNthCalledWith(
+        2,
+        "transactionStatus",
+        "processing",
+      );
+      expect(builder.returning).toHaveBeenCalledWith("*");
+      expect(result).toBe(updatedRow);
+    });
+
+    it("throws ConflictError when the guarded transactionStatus no longer matches", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+
+      await expect(
+        TransactionModel.updateAfterPayGovResponse(
+          "TEST-STALE",
+          "TRACK-5",
+          "processed",
+          "success",
+          "ach",
+          undefined,
+          undefined,
+          "processing",
+        ),
+      ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
+    });
   });
 
   describe("findByPaygovTrackingId", () => {
