@@ -231,6 +231,11 @@ const mockInitiatedTransaction = {
 
 describe("processPayment", () => {
   beforeEach(() => {
+    jest.useFakeTimers();
+    // Keeps `Date.now()` close to the fixtures' hardcoded `lastUpdatedAt`
+    // values so the MAX_TOKEN_AGE_MS check in loadAuthorizedContext doesn't
+    // treat every mock transaction as expired.
+    jest.setSystemTime(new Date("2026-01-15T11:00:00Z"));
     jest.clearAllMocks();
     TransactionModelMock.findByPaygovToken.mockResolvedValue(
       mockInitiatedTransaction,
@@ -250,6 +255,10 @@ describe("processPayment", () => {
     });
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("throws NotFoundError when token is not in the database", async () => {
     TransactionModelMock.findByPaygovToken.mockResolvedValueOnce(undefined);
 
@@ -259,6 +268,22 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       }),
     ).rejects.toThrow(NotFoundError);
+
+    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+  });
+
+  it("throws GoneError when the token is older than MAX_TOKEN_AGE_MS", async () => {
+    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce({
+      ...mockInitiatedTransaction,
+      lastUpdatedAt: "2026-01-15T07:00:00Z", // 4 hours before the frozen system time
+    } as unknown as TransactionModel);
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(GoneError);
 
     expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
   });
