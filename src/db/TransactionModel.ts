@@ -13,6 +13,14 @@ export type AggregatedPaymentStatus = Record<PaymentStatus, number> & {
   total: number;
 };
 
+export type TransactionLogFilter = {
+  from: Date;
+  to: Date;
+  status?: PaymentStatus;
+  limit: number;
+  offset: number;
+};
+
 export type PaymentMethod = "plastic_card" | "ach" | "paypal";
 
 /** Max age before a stuck `processing` row is treated as abandoned (Lambda timeout, crash). */
@@ -96,6 +104,77 @@ export default class TransactionModel extends Model {
       .limit(100);
 
     return rows.map(TransactionModel.attachFeeName);
+  }
+
+  /** One page plus the total matching the same filter. Ordered by
+   *  lastUpdatedAt, the column the timeframe also filters on. */
+  static async queryLog(
+    filter: TransactionLogFilter,
+  ): Promise<{ rows: TransactionModel[]; total: number }> {
+    await getKnex();
+
+    const base = () => {
+      const query = TransactionModel.query()
+        .where("lastUpdatedAt", ">=", filter.from)
+        .andWhere("lastUpdatedAt", "<", filter.to);
+
+      return filter.status
+        ? query.andWhere("paymentStatus", filter.status)
+        : query;
+    };
+
+    const [rows, total] = await Promise.all([
+      base()
+        .orderBy("lastUpdatedAt", "desc")
+        .limit(filter.limit)
+        .offset(filter.offset),
+      base().resultSize(),
+    ]);
+
+    return { rows: rows.map(TransactionModel.attachFeeName), total };
+  }
+
+  /** Counts per status in a timeframe. Takes no status filter: all four
+   *  tallies stay visible while one status is selected. */
+  static async countsInRange(
+    from: Date,
+    to: Date,
+  ): Promise<AggregatedPaymentStatus> {
+    await getKnex();
+    const rows = await TransactionModel.query()
+      .select("paymentStatus")
+      .count("* as count")
+      .where("lastUpdatedAt", ">=", from)
+      .andWhere("lastUpdatedAt", "<", to)
+      .groupBy("paymentStatus");
+
+    return TransactionModel.tallyByStatus(rows);
+  }
+
+  private static tallyByStatus(
+    rows: Array<{ paymentStatus?: string; count?: unknown }>,
+  ): AggregatedPaymentStatus {
+    const totals: AggregatedPaymentStatus = {
+      success: 0,
+      failed: 0,
+      pending: 0,
+      total: 0,
+    };
+
+    rows.forEach((row) => {
+      const paymentStatus = row.paymentStatus;
+      if (
+        paymentStatus === "success" ||
+        paymentStatus === "failed" ||
+        paymentStatus === "pending"
+      ) {
+        const count = Number(row.count ?? 0);
+        totals[paymentStatus] = count;
+        totals.total += count;
+      }
+    });
+
+    return totals;
   }
 
   private static attachFeeName(row: TransactionModel): TransactionModel {

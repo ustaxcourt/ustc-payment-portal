@@ -38,4 +38,19 @@ describe("getRecentTransactions", () => {
     expect(result.data[0].createdAt).toBe(createdAt.toISOString());
     expect(result.data[0].lastUpdatedAt).toBe(lastUpdatedAt.toISOString());
   });
+
+  it("omits the failure fields that belong to the transaction log", async () => {
+    jest
+      .spyOn(TransactionModel, "getAll")
+      .mockResolvedValue([
+        { ...transactionRow, returnCode: 102, returnDetail: "Declined" } as any,
+      ]);
+
+    const result = await getRecentTransactions(appContext);
+
+    // This response is the dev dashboard's contract; the log's extra fields
+    // live on TransactionLogEntrySchema and must not leak into it.
+    expect(result.data[0]).not.toHaveProperty("returnCode");
+    expect(result.data[0]).not.toHaveProperty("returnDetail");
+  });
 });

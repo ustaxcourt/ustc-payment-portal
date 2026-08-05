@@ -84,7 +84,8 @@ export const signedFetchWithCredentials = async (
   const request = new HttpRequest({
     method: (options.method ?? "GET").toUpperCase(),
     hostname: urlObj.hostname,
-    path: urlObj.pathname + urlObj.search,
+    path: urlObj.pathname,
+    query: Object.fromEntries(urlObj.searchParams),
     headers: {
       host: urlObj.hostname,
       ...(options.headers as Record<string, string>),
@@ -122,7 +123,8 @@ export const signRequest = async (
   const request = new HttpRequest({
     method: (options.method ?? "GET").toUpperCase(),
     hostname: urlObj.hostname,
-    path: urlObj.pathname + urlObj.search,
+    path: urlObj.pathname,
+    query: Object.fromEntries(urlObj.searchParams),
     headers: {
       host: urlObj.hostname,
       ...(options.headers as Record<string, string>),
@@ -167,7 +169,8 @@ export const signedFetch = async (
   const request = new HttpRequest({
     method: (options.method ?? "GET").toUpperCase(),
     hostname: urlObj.hostname,
-    path: urlObj.pathname + urlObj.search,
+    path: urlObj.pathname,
+    query: Object.fromEntries(urlObj.searchParams),
     headers: {
       // "host" header is required for SigV4 signing.
       host: urlObj.hostname,

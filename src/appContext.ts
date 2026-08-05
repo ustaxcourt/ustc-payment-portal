@@ -5,6 +5,7 @@ import { getDetails } from "@useCases/getDetails";
 import { initPayment } from "@useCases/initPayment";
 import { processPayment } from "@useCases/processPayment";
 import { getRecentTransactions } from "@useCases/getRecentTransactions";
+import { getTransactionLog } from "@useCases/getTransactionLog";
 import { getTransactionsByStatus } from "@useCases/getTransactionsByStatus";
 import { getTransactionPaymentStatus } from "@useCases/getTransactionPaymentStatus";
 import * as https from "https";
@@ -174,6 +175,7 @@ export const createAppContext = (
       processPayment,
       getDetails,
       getRecentTransactions,
+      getTransactionLog,
       getTransactionPaymentStatus,
       getTransactionsByStatus,
     }),
