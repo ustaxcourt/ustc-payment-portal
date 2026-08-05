@@ -102,6 +102,36 @@ describe("TransactionModel", () => {
     });
   });
 
+  describe("getByPaymentStatus", () => {
+    it("queries by paymentStatus, orders by createdAt desc, limits to 100, and attaches feeName", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [
+        {
+          agencyTrackingId: "TEST-1",
+          fee: "PETITION_FILING_FEE",
+          createdAt: "2026-04-01T00:00:00Z",
+        },
+      ];
+
+      const result = await TransactionModel.getByPaymentStatus("pending");
+
+      expect(builder.where).toHaveBeenCalledWith("paymentStatus", "pending");
+      expect(builder.orderBy).toHaveBeenCalledWith("createdAt", "desc");
+      expect(builder.limit).toHaveBeenCalledWith(100);
+      expect(result).toHaveLength(1);
+      expect(result[0].feeName).toBe("Petition Filing Fee");
+    });
+
+    it("returns an empty array when no transactions match the given paymentStatus", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      const result = await TransactionModel.getByPaymentStatus("failed");
+
+      expect(result).toEqual([]);
+    });
+  });
+
   describe("getAll", () => {
     it("resolves without error and returns an array", async () => {
       const builder = spyOnQuery();
