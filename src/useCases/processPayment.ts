@@ -9,6 +9,7 @@ import { GoneError } from "@errors/gone";
 import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
+import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { derivePaymentStatusFromSingleTransaction } from "@utils/derivePaymentStatus";
 import type { ClientPermission } from "@appTypes/ClientPermission";
@@ -67,6 +68,13 @@ const loadAuthorizedContext = async (
   );
   if (!existingTransaction) {
     throw new NotFoundError("Transaction could not be found");
+  }
+  const tokenAgeMs =
+      Date.now() -
+      new Date(existingTransaction.lastUpdatedAt).getTime();
+
+  if (tokenAgeMs > MAX_TOKEN_AGE_MS) {
+    throw new GoneError("Transaction token has expired, please retry the request");
   }
 
   const baseLogFields = buildLogFields(request, existingTransaction);
