@@ -275,7 +275,7 @@ describe("processPayment", () => {
   it("throws GoneError when the token is older than MAX_TOKEN_AGE_MS", async () => {
     TransactionModelMock.findByPaygovToken.mockResolvedValueOnce({
       ...mockInitiatedTransaction,
-      lastUpdatedAt: "2026-01-15T07:00:00Z", // 4 hours before the frozen system time
+      createdAt: "2026-01-15T07:00:00Z", // 4 hours before the frozen system time
     } as unknown as TransactionModel);
 
     const err = await processPayment(appContext, {
@@ -288,6 +288,22 @@ describe("processPayment", () => {
     expect(err.message).toBe(
       "Transaction token has expired. Retry POST /init with the same transactionReferenceId to obtain a new token.",
     );
+    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+  });
+
+  it("throws ForbiddenError, not GoneError, when the client lacks fee access and the token has expired", async () => {
+    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce({
+      ...mockInitiatedTransaction,
+      createdAt: "2026-01-15T07:00:00Z", // 4 hours before the frozen system time
+    } as unknown as TransactionModel);
+
+    await expect(
+      processPayment(appContext, {
+        client: { ...mockClient, allowedFeeKeys: ["some-other-fee"] },
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(ForbiddenError);
+
     expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
   });
 
@@ -466,7 +482,7 @@ describe("processPayment", () => {
   it("does not treat a stale non-initiated transaction as an expired token", async () => {
     TransactionModelMock.findByPaygovToken.mockResolvedValueOnce({
       ...mockTransaction, // transactionStatus: "processing"
-      lastUpdatedAt: "2026-01-15T07:00:00Z", // 4 hours before the frozen system time
+      createdAt: "2026-01-15T07:00:00Z", // 4 hours before the frozen system time
     } as unknown as TransactionModel);
     TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
       new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),

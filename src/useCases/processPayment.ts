@@ -72,13 +72,6 @@ const loadAuthorizedContext = async (
   if (!existingTransaction) {
     throw new NotFoundError("Transaction could not be found");
   }
-  const tokenAgeMs =
-      Date.now() -
-      new Date(existingTransaction.lastUpdatedAt).getTime();
-
-  if (existingTransaction.transactionStatus === "initiated" && tokenAgeMs > MAX_TOKEN_AGE_MS) {
-    throw new GoneError(TOKEN_EXPIRED_MESSAGE);
-  }
 
   const baseLogFields = buildLogFields(request, existingTransaction);
 
@@ -107,6 +100,14 @@ const loadAuthorizedContext = async (
   }
 
   authorizeClient(client, fee.fee);
+
+  const tokenAgeMs =
+      Date.now() -
+      new Date(existingTransaction.createdAt).getTime();
+
+  if (existingTransaction.transactionStatus === "initiated" && tokenAgeMs > MAX_TOKEN_AGE_MS) {
+    throw new GoneError(TOKEN_EXPIRED_MESSAGE);
+  }
 
   return { fee, baseLogFields };
 };
