@@ -463,6 +463,26 @@ describe("processPayment", () => {
     expect(emitProcessPaymentConflictMetricMock).not.toHaveBeenCalled();
   });
 
+  it("does not treat a stale non-initiated transaction as an expired token", async () => {
+    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce({
+      ...mockTransaction, // transactionStatus: "processing"
+      lastUpdatedAt: "2026-01-15T07:00:00Z", // 4 hours before the frozen system time
+    } as unknown as TransactionModel);
+    TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
+    );
+
+    const err = await processPayment(appContext, {
+      client: mockClient,
+      request: { token: "mock-token" },
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(ConflictError);
+    expect(TransactionModelMock.claimForProcessing).toHaveBeenCalledWith(
+      "mock-token",
+    );
+  });
+
   describe("pre-claim authorization", () => {
     it("loads the token and authorizes the client before claiming processing", async () => {
       appContext.postHttpRequest = jest

@@ -76,7 +76,7 @@ const loadAuthorizedContext = async (
       Date.now() -
       new Date(existingTransaction.lastUpdatedAt).getTime();
 
-  if (tokenAgeMs > MAX_TOKEN_AGE_MS) {
+  if (existingTransaction.transactionStatus === "initiated" && tokenAgeMs > MAX_TOKEN_AGE_MS) {
     throw new GoneError(TOKEN_EXPIRED_MESSAGE);
   }
 
