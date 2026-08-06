@@ -14,7 +14,7 @@ import { generateAgencyTrackingId } from "@utils/generateTrackingId";
 import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { ZodError } from "zod";
 import { authorizeClient } from "../authorizeClient";
-import { type ActiveFee, getActiveFee } from "../config/fees";
+import { type ActiveFee, getActiveFee } from "@/config/fees";
 import { isUniqueViolation } from "../db/pgErrors";
 import TransactionModel, {
   isStaleProcessingTransaction,
