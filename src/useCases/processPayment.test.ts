@@ -433,6 +433,36 @@ describe("processPayment", () => {
     );
   });
 
+  it("throws NotFoundError when claimForProcessing finds no matching row", async () => {
+    TransactionModelMock.claimForProcessing.mockResolvedValueOnce(undefined);
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(NotFoundError);
+
+    expect(TransactionModelMock.claimForProcessing).toHaveBeenCalledWith(
+      "mock-token",
+    );
+  });
+
+  it("rethrows an unrecognized error from claimForProcessing unchanged", async () => {
+    const unexpectedErr = new Error("connection reset");
+    TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
+      unexpectedErr,
+    );
+
+    const err = await processPayment(appContext, {
+      client: mockClient,
+      request: { token: "mock-token" },
+    }).catch((e) => e);
+
+    expect(err).toBe(unexpectedErr);
+    expect(emitProcessPaymentConflictMetricMock).not.toHaveBeenCalled();
+  });
+
   describe("pre-claim authorization", () => {
     it("loads the token and authorizes the client before claiming processing", async () => {
       appContext.postHttpRequest = jest
