@@ -1,4 +1,5 @@
 import { Model } from "objection";
+import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { getActiveFee } from "../config/fees";
 import type { PaymentStatus } from "@schemas/PaymentStatus.schema";
 import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/TransactionStatus.schema";
@@ -41,6 +42,9 @@ const SIBLING_GONE_MESSAGE =
   "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.";
 
 const TOKEN_NO_LONGER_VALID_MESSAGE = "This token is no longer valid.";
+
+const TOKEN_EXPIRED_MESSAGE =
+  "Transaction token has expired. Retry POST /init with the same transactionReferenceId to obtain a new token.";
 
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
@@ -368,20 +372,24 @@ export default class TransactionModel extends Model {
       }
 
       if (row.transactionStatus === "processing") {
-        if (isStaleProcessingTransaction(row)) {
-          // Stale claim: re-touch the row so last_updated_at refreshes (DB trigger) and
-          // this request owns the in-flight completion attempt.
-          return this.query(trx).patchAndFetchById(row.agencyTrackingId, {
-            transactionStatus: "processing",
-          });
+        if (!isStaleProcessingTransaction(row)) {
+          throw new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE);
         }
-        throw new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE);
-      }
-
-      if (row.transactionStatus !== "initiated") {
+      } else if (row.transactionStatus !== "initiated") {
         throw new GoneError(TOKEN_NO_LONGER_VALID_MESSAGE);
       }
 
+      // Reached only for a fresh `initiated` row or a stale `processing` reclaim.
+      // Pay.gov's token TTL applies uniformly to both regardless of our internal
+      // transactionStatus — checked once here, after all more-specific Gone/Conflict
+      // reasons have had priority.
+      const tokenAgeMs = Date.now() - new Date(row.createdAt).getTime();
+      if (tokenAgeMs > MAX_TOKEN_AGE_MS) {
+        throw new GoneError(TOKEN_EXPIRED_MESSAGE);
+      }
+
+      // Re-touch the row so last_updated_at refreshes (DB trigger) and this request
+      // owns the completion attempt.
       return this.query(trx).patchAndFetchById(row.agencyTrackingId, {
         transactionStatus: "processing",
       });

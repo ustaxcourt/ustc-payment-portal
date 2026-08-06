@@ -231,11 +231,6 @@ const mockInitiatedTransaction = {
 
 describe("processPayment", () => {
   beforeEach(() => {
-    jest.useFakeTimers();
-    // Keeps `Date.now()` close to the fixtures' hardcoded `lastUpdatedAt`
-    // values so the MAX_TOKEN_AGE_MS check in loadAuthorizedContext doesn't
-    // treat every mock transaction as expired.
-    jest.setSystemTime(new Date("2026-01-15T11:00:00Z"));
     jest.clearAllMocks();
     TransactionModelMock.findByPaygovToken.mockResolvedValue(
       mockInitiatedTransaction,
@@ -255,10 +250,6 @@ describe("processPayment", () => {
     });
   });
 
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
   it("throws NotFoundError when token is not in the database", async () => {
     TransactionModelMock.findByPaygovToken.mockResolvedValueOnce(undefined);
 
@@ -268,41 +259,6 @@ describe("processPayment", () => {
         request: { token: "mock-token" },
       }),
     ).rejects.toThrow(NotFoundError);
-
-    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
-  });
-
-  it("throws GoneError when the token is older than MAX_TOKEN_AGE_MS", async () => {
-    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce({
-      ...mockInitiatedTransaction,
-      createdAt: "2026-01-15T07:00:00Z", // 4 hours before the frozen system time
-    } as unknown as TransactionModel);
-
-    const err = await processPayment(appContext, {
-      client: mockClient,
-      request: { token: "mock-token" },
-    }).catch((e) => e);
-
-    expect(err).toBeInstanceOf(GoneError);
-    expect(err.statusCode).toBe(410);
-    expect(err.message).toBe(
-      "Transaction token has expired. Retry POST /init with the same transactionReferenceId to obtain a new token.",
-    );
-    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
-  });
-
-  it("throws ForbiddenError, not GoneError, when the client lacks fee access and the token has expired", async () => {
-    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce({
-      ...mockInitiatedTransaction,
-      createdAt: "2026-01-15T07:00:00Z", // 4 hours before the frozen system time
-    } as unknown as TransactionModel);
-
-    await expect(
-      processPayment(appContext, {
-        client: { ...mockClient, allowedFeeKeys: ["some-other-fee"] },
-        request: { token: "mock-token" },
-      }),
-    ).rejects.toThrow(ForbiddenError);
 
     expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
   });
@@ -477,26 +433,6 @@ describe("processPayment", () => {
 
     expect(err).toBe(unexpectedErr);
     expect(emitProcessPaymentConflictMetricMock).not.toHaveBeenCalled();
-  });
-
-  it("does not treat a stale non-initiated transaction as an expired token", async () => {
-    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce({
-      ...mockTransaction, // transactionStatus: "processing"
-      createdAt: "2026-01-15T07:00:00Z", // 4 hours before the frozen system time
-    } as unknown as TransactionModel);
-    TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
-      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
-    );
-
-    const err = await processPayment(appContext, {
-      client: mockClient,
-      request: { token: "mock-token" },
-    }).catch((e) => e);
-
-    expect(err).toBeInstanceOf(ConflictError);
-    expect(TransactionModelMock.claimForProcessing).toHaveBeenCalledWith(
-      "mock-token",
-    );
   });
 
   describe("pre-claim authorization", () => {

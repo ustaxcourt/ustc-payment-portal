@@ -9,7 +9,6 @@ import { GoneError } from "@errors/gone";
 import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
-import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 import { derivePaymentStatusFromSingleTransaction } from "@utils/derivePaymentStatus";
 import type { ClientPermission } from "@appTypes/ClientPermission";
@@ -33,9 +32,6 @@ export type ProcessPayment = (
 
 const PAYGOV_RETRY_MESSAGE =
   "We could not complete this transaction with Pay.gov. Please retry the request.";
-
-const TOKEN_EXPIRED_MESSAGE =
-  "Transaction token has expired. Retry POST /init with the same transactionReferenceId to obtain a new token.";
 
 type ProcessPaymentLogFields = {
   token: string;
@@ -100,14 +96,6 @@ const loadAuthorizedContext = async (
   }
 
   authorizeClient(client, fee.fee);
-
-  const tokenAgeMs =
-      Date.now() -
-      new Date(existingTransaction.createdAt).getTime();
-
-  if (existingTransaction.transactionStatus === "initiated" && tokenAgeMs > MAX_TOKEN_AGE_MS) {
-    throw new GoneError(TOKEN_EXPIRED_MESSAGE);
-  }
 
   return { fee, baseLogFields };
 };
