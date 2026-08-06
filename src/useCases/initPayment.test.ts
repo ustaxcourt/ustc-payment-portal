@@ -193,11 +193,11 @@ describe("initPayment", () => {
   });
 
   it.each([
-    ["processed", "success"],
-    ["pending", "pending"],
+    ["processed", "success", ConflictError.ALREADY_PAID_MESSAGE],
+    ["pending", "pending", ConflictError.PAYMENT_SETTLING_MESSAGE],
   ])(
     "throws ConflictError when the obligation already has a %s attempt",
-    async (transactionStatus, paymentStatus) => {
+    async (transactionStatus, paymentStatus, expectedMessage) => {
       const TransactionModel = require("../db/TransactionModel").default;
       TransactionModel.findPendingOrProcessedByReferenceId.mockResolvedValueOnce(
         {
@@ -218,7 +218,7 @@ describe("initPayment", () => {
         }),
       ).rejects.toMatchObject({
         statusCode: 409,
-        message: ConflictError.ALREADY_PAID_MESSAGE,
+        message: expectedMessage,
       });
 
       expect(TransactionModel.createReceived).not.toHaveBeenCalled();

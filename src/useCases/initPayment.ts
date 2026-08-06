@@ -107,7 +107,11 @@ export const initPayment: InitPayment = async (
       paymentStatus: alreadyPaid.paymentStatus,
     });
     emitInitPaymentConflictMetric("already_paid");
-    throw new ConflictError(ConflictError.ALREADY_PAID_MESSAGE);
+    throw new ConflictError(
+      alreadyPaid.transactionStatus === "pending"
+        ? ConflictError.PAYMENT_SETTLING_MESSAGE
+        : ConflictError.ALREADY_PAID_MESSAGE,
+    );
   };
 
   await rejectIfAlreadyPaid();

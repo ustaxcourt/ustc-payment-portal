@@ -105,7 +105,11 @@ jest.mock("./TransactionModel", () => {
         ),
       );
       static findPendingOrProcessedByReferenceId = jest.fn(
-        (_clientName: string, referenceId: string, excludeToken?: string) =>
+        (
+          _clientName: string,
+          referenceId: string,
+          { excludeToken }: { excludeToken?: string } = {},
+        ) =>
           Promise.resolve(
             mockTransaction &&
               mockTransaction.transactionReferenceId === referenceId &&
@@ -425,7 +429,7 @@ describe("TransactionModel", () => {
       const found = await TransactionModel.findPendingOrProcessedByReferenceId(
         clientName,
         referenceId,
-        "OTHER-TOKEN",
+        { excludeToken: "OTHER-TOKEN" },
       );
       expect(found).toBeDefined();
       expect(found?.transactionReferenceId).toBe(referenceId);
@@ -437,7 +441,7 @@ describe("TransactionModel", () => {
       const found = await TransactionModel.findPendingOrProcessedByReferenceId(
         clientName,
         referenceId,
-        "OTHER-TOKEN",
+        { excludeToken: "OTHER-TOKEN" },
       );
       expect(found).toBeDefined();
       expect(found?.transactionReferenceId).toBe(referenceId);
@@ -449,7 +453,7 @@ describe("TransactionModel", () => {
       const found = await TransactionModel.findPendingOrProcessedByReferenceId(
         clientName,
         "DIFFERENT-REF",
-        "OTHER-TOKEN",
+        { excludeToken: "OTHER-TOKEN" },
       );
       expect(found).toBeUndefined();
     });
@@ -470,7 +474,7 @@ describe("TransactionModel", () => {
       const found = await TransactionModel.findPendingOrProcessedByReferenceId(
         clientName,
         referenceId,
-        paygovToken,
+        { excludeToken: paygovToken },
       );
       expect(found).toBeUndefined();
     });
@@ -481,7 +485,7 @@ describe("TransactionModel", () => {
       const found = await TransactionModel.findPendingOrProcessedByReferenceId(
         clientName,
         referenceId,
-        "OTHER-TOKEN",
+        { excludeToken: "OTHER-TOKEN" },
       );
       expect(found).toBeUndefined();
     });

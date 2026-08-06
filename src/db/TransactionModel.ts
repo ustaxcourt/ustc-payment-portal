@@ -315,13 +315,15 @@ export default class TransactionModel extends Model {
   }
 
   // Returns an already-paid attempt ('pending' = settling, 'processed' = settled) for the
-  // obligation. 'failed' is excluded so a customer can retry after a decline. Callers with a
-  // token pass `excludeToken` to find a sibling row rather than themselves.
+  // obligation. 'failed' is excluded so a customer can retry after a decline. `excludeToken`
+  // finds a sibling row under a different token — omit it when the caller has no token yet.
   static async findPendingOrProcessedByReferenceId(
     clientName: string,
     transactionReferenceId: string,
-    excludeToken?: string,
-    trx?: Knex.Transaction,
+    {
+      excludeToken,
+      trx,
+    }: { excludeToken?: string; trx?: Knex.Transaction } = {},
   ): Promise<TransactionModel | undefined> {
     await getKnex();
     const query = TransactionModel.query(trx)
@@ -368,8 +370,7 @@ export default class TransactionModel extends Model {
       const sibling = await this.findPendingOrProcessedByReferenceId(
         row.clientName,
         row.transactionReferenceId,
-        paygovToken,
-        trx,
+        { excludeToken: paygovToken, trx },
       );
 
       if (sibling) {
