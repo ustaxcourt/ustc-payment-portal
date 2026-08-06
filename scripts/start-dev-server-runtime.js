@@ -11,17 +11,18 @@ const srcServerPath = path.join(packageRoot, "src", "devServer.ts");
 
 let child;
 
-if (fs.existsSync(distServerPath)) {
-  // Handles running the built dev server (`npx @ustaxcourt/payment-portal`) )
-  child = spawn(process.execPath, [distServerPath], {
+if (fs.existsSync(srcServerPath)) {
+  // In a repo checkout, prefer source so local scripts don't depend on whatever
+  // happens to be in dist (for example after a plain `npm run tsc`).
+  const tsxCli = require.resolve("tsx/cli");
+  child = spawn(process.execPath, [tsxCli, srcServerPath], {
     stdio: "inherit",
     env: process.env,
     cwd: packageRoot,
   });
 } else {
-  // Local dev fallback: dist hasn't been built yet, run source via tsx.
-  const tsxCli = require.resolve("tsx/cli");
-  child = spawn(process.execPath, [tsxCli, srcServerPath], {
+  // Installed package runtime: source is absent, so execute the built server.
+  child = spawn(process.execPath, [distServerPath], {
     stdio: "inherit",
     env: process.env,
     cwd: packageRoot,
