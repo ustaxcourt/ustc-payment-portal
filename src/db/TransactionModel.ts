@@ -1,9 +1,10 @@
-import { Model } from "objection";
-import { getActiveFee } from "../config/fees";
-import type { PaymentStatus } from "@schemas/PaymentStatus.schema";
-import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/TransactionStatus.schema";
 import { ConflictError } from "@errors/conflict";
 import { GoneError } from "@errors/gone";
+import type { PaymentStatus } from "@schemas/PaymentStatus.schema";
+import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/TransactionStatus.schema";
+import type { Knex } from "knex";
+import { Model } from "objection";
+import { getActiveFee } from "../config/fees";
 import { getKnex } from "./knex";
 
 export type TransactionStatus = SchemaTransactionStatus;
@@ -313,18 +314,28 @@ export default class TransactionModel extends Model {
     return updated;
   }
 
+  // Returns an already-paid attempt ('pending' = settling, 'processed' = settled) for the
+  // obligation. 'failed' is excluded so a customer can retry after a decline. Callers with a
+  // token pass `excludeToken` to find a sibling row rather than themselves.
   static async findPendingOrProcessedByReferenceId(
     clientName: string,
     transactionReferenceId: string,
-    excludeToken: string,
+    excludeToken?: string,
+    trx?: Knex.Transaction,
   ): Promise<TransactionModel | undefined> {
     await getKnex();
-    return TransactionModel.query()
+    const query = TransactionModel.query(trx)
       .whereIn("transactionStatus", ["pending", "processed"])
       .where("clientName", clientName)
-      .where("transactionReferenceId", transactionReferenceId)
-      .whereNot("paygovToken", excludeToken)
-      .first();
+      .where("transactionReferenceId", transactionReferenceId);
+
+    if (excludeToken !== undefined) {
+      query.whereNot("paygovToken", excludeToken);
+    }
+
+    // The index permits only one such row; ordering keeps the logged attempt deterministic
+    // for any pre-migration data that predates the constraint.
+    return query.orderBy("createdAt", "asc").first();
   }
 
   /**
@@ -354,14 +365,12 @@ export default class TransactionModel extends Model {
         return undefined;
       }
 
-      const sibling = await this.query(trx)
-        .whereIn("transactionStatus", ["pending", "processed"])
-        .where({
-          clientName: row.clientName,
-          transactionReferenceId: row.transactionReferenceId,
-        })
-        .whereNot("paygovToken", paygovToken)
-        .first();
+      const sibling = await this.findPendingOrProcessedByReferenceId(
+        row.clientName,
+        row.transactionReferenceId,
+        paygovToken,
+        trx,
+      );
 
       if (sibling) {
         throw new GoneError(SIBLING_GONE_MESSAGE);
@@ -388,16 +397,16 @@ export default class TransactionModel extends Model {
     });
   }
 
-  // Returns the in-flight attempt for the given transactionReferenceId, if one exists.
-  // Checks 'initiated' and 'processing' explicitly. The partial unique index
-  // `idx_transactions_unique_active` also covers 'received', 'initiated', 'processing', and
-  // 'pending' — 'received' and 'pending' are intentionally not checked here; the index is the
-  // sole guard for those windows.
+  // Returns the in-flight attempt for the obligation, if one exists. Scoped by clientName to
+  // match `idx_transactions_unique_active`, which is the actual enforcement mechanism; 'received'
+  // is not checked here because the index is the sole guard for that window.
   static async findInFlightByReferenceId(
+    clientName: string,
     transactionReferenceId: string,
   ): Promise<TransactionModel | undefined> {
     await getKnex();
     return TransactionModel.query()
+      .where("clientName", clientName)
       .where("transactionReferenceId", transactionReferenceId)
       .whereIn("transactionStatus", ["initiated", "processing"])
       .first();

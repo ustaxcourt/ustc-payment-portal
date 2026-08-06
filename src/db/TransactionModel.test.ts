@@ -105,11 +105,12 @@ jest.mock("./TransactionModel", () => {
         ),
       );
       static findPendingOrProcessedByReferenceId = jest.fn(
-        (_clientName: string, referenceId: string, excludeToken: string) =>
+        (_clientName: string, referenceId: string, excludeToken?: string) =>
           Promise.resolve(
             mockTransaction &&
               mockTransaction.transactionReferenceId === referenceId &&
-              mockTransaction.paygovToken !== excludeToken &&
+              (excludeToken === undefined ||
+                mockTransaction.paygovToken !== excludeToken) &&
               ["pending", "processed"].includes(
                 mockTransaction.transactionStatus,
               )
@@ -451,6 +452,16 @@ describe("TransactionModel", () => {
         "OTHER-TOKEN",
       );
       expect(found).toBeUndefined();
+    });
+
+    it("matches the row itself when no token is excluded (initPayment has no token yet)", async () => {
+      mockTransaction.transactionStatus = "processed";
+
+      const found = await TransactionModel.findPendingOrProcessedByReferenceId(
+        clientName,
+        referenceId,
+      );
+      expect(found?.paygovToken).toBe(paygovToken);
     });
 
     it("returns undefined when the matching transaction is the excluded token", async () => {

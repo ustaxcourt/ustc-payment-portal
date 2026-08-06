@@ -5,6 +5,9 @@ jest.mock("../db/TransactionModel", () => {
     ...actual,
     default: {
       findInFlightByReferenceId: jest.fn(() => Promise.resolve(undefined)),
+      findPendingOrProcessedByReferenceId: jest.fn(() =>
+        Promise.resolve(undefined),
+      ),
       createReceived: jest.fn((data) =>
         Promise.resolve({
           ...data,
@@ -189,6 +192,110 @@ describe("initPayment", () => {
     ).rejects.toThrow("does not allow variable amounts");
   });
 
+  it.each([
+    ["processed", "success"],
+    ["pending", "pending"],
+  ])(
+    "throws ConflictError when the obligation already has a %s attempt",
+    async (transactionStatus, paymentStatus) => {
+      const TransactionModel = require("../db/TransactionModel").default;
+      TransactionModel.findPendingOrProcessedByReferenceId.mockResolvedValueOnce(
+        {
+          agencyTrackingId: "paid-id",
+          clientName: mockClient.clientName,
+          transactionReferenceId: validPetitionRequest.transactionReferenceId,
+          transactionStatus,
+          paymentStatus,
+          paygovToken: "paid-token-abc",
+          lastUpdatedAt: new Date().toISOString(),
+        },
+      );
+
+      await expect(
+        initPayment(appContext, {
+          client: mockClient,
+          request: validPetitionRequest,
+        }),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        message: ConflictError.ALREADY_PAID_MESSAGE,
+      });
+
+      expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+      expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
+      expect(emitConflictMock).toHaveBeenCalledWith("already_paid");
+    },
+  );
+
+  it("checks the paid guard before the in-flight guard so a paid obligation is never re-tokenized", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findPendingOrProcessedByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "paid-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "processed",
+      paymentStatus: "success",
+      lastUpdatedAt: new Date().toISOString(),
+    });
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "stale-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "initiated",
+      paygovToken: "stale-token",
+      lastUpdatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    });
+
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toThrow(ConflictError.ALREADY_PAID_MESSAGE);
+
+    expect(TransactionModel.findInFlightByReferenceId).not.toHaveBeenCalled();
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+  });
+
+  it("scopes both reference-id lookups to the requesting client", async () => {
+    mockSoapRequest(crypto.randomUUID().replace(/-/g, ""));
+    const TransactionModel = require("../db/TransactionModel").default;
+
+    await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
+
+    expect(
+      TransactionModel.findPendingOrProcessedByReferenceId,
+    ).toHaveBeenCalledWith(
+      mockClient.clientName,
+      validPetitionRequest.transactionReferenceId,
+    );
+    expect(TransactionModel.findInFlightByReferenceId).toHaveBeenCalledWith(
+      mockClient.clientName,
+      validPetitionRequest.transactionReferenceId,
+    );
+  });
+
+  it("allows a retry when the only prior attempt failed", async () => {
+    const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
+    mockSoapRequest(freshPaygovToken);
+    const TransactionModel = require("../db/TransactionModel").default;
+    // A 'failed' row is excluded by the model query, so the guard sees nothing.
+    TransactionModel.findPendingOrProcessedByReferenceId.mockResolvedValueOnce(
+      undefined,
+    );
+
+    const result = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
+
+    expect(result.token).toBe(freshPaygovToken);
+    expect(TransactionModel.createReceived).toHaveBeenCalled();
+  });
+
   it("returns the existing token when an in-flight transaction has a fresh token (age < 3 hours)", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
     TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
@@ -337,6 +444,42 @@ describe("initPayment", () => {
       }),
     ).rejects.toThrow(ConflictError);
     expect(emitConflictMock).toHaveBeenCalledWith("persist_race");
+  });
+
+  it("reports already-paid, not a race, when processPayment wins the createReceived race", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    // TOCTOU: the guard read a clean slate, then a concurrent /process landed on 'processed'
+    // and the partial unique index rejected our insert.
+    TransactionModel.findPendingOrProcessedByReferenceId
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        agencyTrackingId: "paid-id",
+        clientName: mockClient.clientName,
+        transactionReferenceId: validPetitionRequest.transactionReferenceId,
+        transactionStatus: "processed",
+        paymentStatus: "success",
+        lastUpdatedAt: new Date().toISOString(),
+      });
+    TransactionModel.createReceived.mockRejectedValueOnce(
+      Object.assign(
+        new Error(
+          'duplicate key value violates unique constraint "idx_transactions_unique_active"',
+        ),
+        { code: "23505" },
+      ),
+    );
+
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: ConflictError.ALREADY_PAID_MESSAGE,
+    });
+    expect(emitConflictMock).toHaveBeenCalledWith("already_paid");
+    expect(emitConflictMock).not.toHaveBeenCalledWith("persist_race");
   });
 
   it("wraps non-unique-violation createReceived errors as a generic failure", async () => {

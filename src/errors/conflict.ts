@@ -5,6 +5,9 @@ export class ConflictError extends Error {
   public static readonly PAYMENT_IN_FLIGHT_TRANSACTION_MESSAGE =
     "A payment is already being processed for this transaction. Wait for it to finish before initiating a new payment.";
 
+  public static readonly ALREADY_PAID_MESSAGE =
+    "This transaction has already been paid. Use the getDetails API to check the current status.";
+
   public static readonly PERSIST_RACE_MESSAGE =
     "Could not record the payment result because the transaction state changed. Use getDetails to check the current status.";
 
