@@ -21,11 +21,32 @@ function resolveTsxCliPath(resolveModulePath = require.resolve) {
   }
 }
 
-function startDevServerRuntime(options = {}) {
-  const { resolveTsxCli = resolveTsxCliPath } = options;
-  let child;
+function resolveServerEntryPath(existsSync = fs.existsSync) {
+  if (existsSync(srcServerPath)) {
+    return { type: "src", path: srcServerPath };
+  }
 
-  if (fs.existsSync(srcServerPath)) {
+  if (existsSync(distServerPath)) {
+    return { type: "dist", path: distServerPath };
+  }
+
+  console.error(
+    `[start-dev-server] Could not find a dev server entrypoint. Expected either ${srcServerPath} or ${distServerPath}. Build the project or install dependencies before running \`npm run start:dev-server\`.`,
+  );
+  process.exit(1);
+  return null;
+}
+
+function startDevServerRuntime(options = {}) {
+  const { resolveTsxCli = resolveTsxCliPath, resolveEntryPath = resolveServerEntryPath } = options;
+  let child;
+  const entrypoint = resolveEntryPath();
+
+  if (!entrypoint) {
+    return;
+  }
+
+  if (entrypoint.type === "src") {
     // In a repo checkout, prefer source so local scripts don't depend on whatever
     // happens to be in dist (for example after a plain `npm run tsc`).
     const tsxCli = resolveTsxCli();
@@ -33,14 +54,14 @@ function startDevServerRuntime(options = {}) {
       return;
     }
 
-    child = spawn(process.execPath, [tsxCli, srcServerPath], {
+    child = spawn(process.execPath, [tsxCli, entrypoint.path], {
       stdio: "inherit",
       env: process.env,
       cwd: packageRoot,
     });
   } else {
     // Installed package runtime: source is absent, so execute the built server.
-    child = spawn(process.execPath, [distServerPath], {
+    child = spawn(process.execPath, [entrypoint.path], {
       stdio: "inherit",
       env: process.env,
       cwd: packageRoot,
@@ -60,6 +81,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  resolveServerEntryPath,
   resolveTsxCliPath,
   startDevServerRuntime,
 };

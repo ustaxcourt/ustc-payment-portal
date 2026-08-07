@@ -63,6 +63,23 @@ describe("start-dev-server-runtime", () => {
     expect(mockWireChild).not.toHaveBeenCalled();
   });
 
+  it("logs a targeted message and exits when neither src nor dist entrypoint exists", () => {
+    mockExistsSync.mockReturnValue(false);
+
+    const { resolveServerEntryPath } = require("./start-dev-server-runtime");
+
+    const entrypoint = resolveServerEntryPath();
+
+    expect(entrypoint).toBeNull();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Could not find a dev server entrypoint"),
+    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("npm run start:dev-server"),
+    );
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+  });
+
   it("spawns the source runtime through tsx when available in a repo checkout", () => {
     mockExistsSync.mockReturnValue(true);
     mockSpawn.mockReturnValue(makeChildProcess());
