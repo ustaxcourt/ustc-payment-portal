@@ -474,7 +474,7 @@ describe("TransactionModel", () => {
       const found = await TransactionModel.findPendingOrProcessedByReferenceId(
         clientName,
         referenceId,
-        "OTHER-TOKEN",
+        { excludeToken: "OTHER-TOKEN" },
       );
 
       expect(builder.whereIn).toHaveBeenCalledWith("transactionStatus", [
@@ -492,7 +492,7 @@ describe("TransactionModel", () => {
       const found = await TransactionModel.findPendingOrProcessedByReferenceId(
         clientName,
         "DIFFERENT-REF",
-        "OTHER-TOKEN",
+        { excludeToken: "OTHER-TOKEN" },
       );
 
       expect(builder.where).toHaveBeenCalledWith(
@@ -502,6 +502,20 @@ describe("TransactionModel", () => {
       expect(found).toBeUndefined();
     });
 
+    it("skips the token exclusion when no token is given (initPayment has none yet)", async () => {
+      const builder = spyOnQuery();
+      const row = { agencyTrackingId: "TEST-789", paygovToken };
+      builder.first.mockResolvedValueOnce(row);
+
+      const found = await TransactionModel.findPendingOrProcessedByReferenceId(
+        clientName,
+        referenceId,
+      );
+
+      expect(builder.whereNot).not.toHaveBeenCalled();
+      expect(found).toBe(row);
+    });
+
     it("returns undefined when the matching transaction is the excluded token", async () => {
       const builder = spyOnQuery();
       builder.first.mockResolvedValueOnce(undefined);
@@ -509,7 +523,7 @@ describe("TransactionModel", () => {
       const found = await TransactionModel.findPendingOrProcessedByReferenceId(
         clientName,
         referenceId,
-        paygovToken,
+        { excludeToken: paygovToken },
       );
 
       expect(builder.whereNot).toHaveBeenCalledWith("paygovToken", paygovToken);
@@ -523,7 +537,7 @@ describe("TransactionModel", () => {
       const found = await TransactionModel.findPendingOrProcessedByReferenceId(
         clientName,
         referenceId,
-        "OTHER-TOKEN",
+        { excludeToken: "OTHER-TOKEN" },
       );
 
       expect(builder.whereIn).toHaveBeenCalledWith("transactionStatus", [
@@ -535,14 +549,17 @@ describe("TransactionModel", () => {
   });
 
   describe("findInFlightByReferenceId", () => {
-    it("filters by transactionReferenceId and the initiated/processing statuses", async () => {
+    it("filters by clientName, transactionReferenceId and the initiated/processing statuses", async () => {
       const builder = spyOnQuery();
       const row = { agencyTrackingId: "TEST-INFLIGHT" };
       builder.first.mockResolvedValueOnce(row);
 
-      const found =
-        await TransactionModel.findInFlightByReferenceId("TXN-REF-001");
+      const found = await TransactionModel.findInFlightByReferenceId(
+        "test-client",
+        "TXN-REF-001",
+      );
 
+      expect(builder.where).toHaveBeenCalledWith("clientName", "test-client");
       expect(builder.where).toHaveBeenCalledWith(
         "transactionReferenceId",
         "TXN-REF-001",
@@ -558,8 +575,10 @@ describe("TransactionModel", () => {
       const builder = spyOnQuery();
       builder.first.mockResolvedValueOnce(undefined);
 
-      const found =
-        await TransactionModel.findInFlightByReferenceId("NO-MATCH");
+      const found = await TransactionModel.findInFlightByReferenceId(
+        "test-client",
+        "NO-MATCH",
+      );
 
       expect(found).toBeUndefined();
     });
