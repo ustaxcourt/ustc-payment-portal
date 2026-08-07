@@ -12,8 +12,7 @@ describe("start-dev-server-runtime", () => {
     return {
       on: jest.fn((event, cb) => {
         handlers[event] = cb;
-      }),
-      emit: (event, ...args) => handlers[event] && handlers[event](...args),
+      })
     };
   }
 
