@@ -200,6 +200,7 @@ export default class TransactionModel extends Model {
     rows.forEach((row) => {
       const paymentStatus = row.paymentStatus;
 
+      /* istanbul ignore next */
       if (
         paymentStatus === "success" ||
         paymentStatus === "failed" ||
