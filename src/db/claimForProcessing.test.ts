@@ -43,6 +43,7 @@ const buildQueryMock = (steps: QueryStep[]) => {
     where: jest.fn(),
     whereIn: jest.fn(),
     whereNot: jest.fn(),
+    orderBy: jest.fn(),
     forUpdate: jest.fn(),
     noWait: jest.fn(),
     first: jest.fn(),
