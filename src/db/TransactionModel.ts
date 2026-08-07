@@ -6,6 +6,9 @@ import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/Tran
 import type { Knex } from "knex";
 import { Model } from "objection";
 import { getActiveFee } from "../config/fees";
+import type { Knex } from "knex";
+import { Model } from "objection";
+import { getActiveFee } from "../config/fees";
 import { getKnex } from "./knex";
 
 export type TransactionStatus = SchemaTransactionStatus;
