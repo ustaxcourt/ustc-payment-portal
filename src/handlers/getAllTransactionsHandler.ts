@@ -1,11 +1,12 @@
+import { TransactionsQuerySchema } from "@schemas/TransactionsQuery.schema";
+import { dashboardError, dashboardOk } from "@utils/dashboardHandlerUtils";
 import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "../appContext";
-import { TransactionsQuerySchema } from "@schemas/TransactionsQuery.schema";
-import { dashboardOk, dashboardError } from "@utils/dashboardHandlerUtils";
 
 /**
  * GET /transactions
- * Returns the 100 most recent transactions across all statuses.
+ * Returns the legacy recent-transactions payload with no query string,
+ * or the paginated transaction log when timeframe/filter query params are present.
  */
 export const getAllTransactionsHandler = async (
   event: APIGatewayEvent,
