@@ -491,6 +491,7 @@ describe("processPayment", () => {
       mockTransaction.agencyTrackingId,
       undefined,
       "Fee configuration not found for this transaction",
+      mockInitiatedTransaction,
     );
   });
 
@@ -865,6 +866,7 @@ describe("processPayment", () => {
         "agency-tracking-id-001",
         3001,
         "The card has been declined, the transaction will not be processed.",
+        mockTransaction,
       );
     });
 
@@ -986,6 +988,7 @@ describe("processPayment", () => {
         "agency-tracking-id-001",
         undefined,
         "Pay.gov returned a fault without error details",
+        mockTransaction,
       );
     });
   });
@@ -1008,6 +1011,7 @@ describe("processPayment", () => {
         "agency-tracking-id-001",
         undefined,
         "Pay.gov returned a response that failed schema validation",
+        mockTransaction,
       );
       expect(
         TransactionModelMock.updateAfterPayGovResponse,
@@ -1032,6 +1036,7 @@ describe("processPayment", () => {
         "agency-tracking-id-001",
         undefined,
         "Error communicating with Pay.gov",
+        mockTransaction,
       );
       expect(
         TransactionModelMock.updateAfterPayGovResponse,
@@ -1059,6 +1064,7 @@ describe("processPayment", () => {
         "agency-tracking-id-001",
         undefined,
         "Failed to persist Pay.gov response",
+        mockTransaction,
       );
     });
 

@@ -234,6 +234,60 @@ describe("TransactionModel", () => {
       expect(updated?.returnCode).toBe(3001);
       expect(updated?.returnDetail).toBe("Card declined");
     });
+
+    it("accepts the caller's row directly, guards on both transactionStatus and lastUpdatedAt, and returns the updated row when the guard matches", async () => {
+      const builder = spyOnQuery();
+      const updatedRow = { agencyTrackingId: "TEST-GUARD-01" };
+      builder.first.mockResolvedValueOnce(updatedRow);
+      const existingRow = {
+        agencyTrackingId: "TEST-GUARD-01",
+        transactionStatus: "processing",
+        lastUpdatedAt: "2026-08-10T00:00:00.000Z",
+      } as TransactionModel;
+
+      const result = await TransactionModel.updateToFailed(
+        "TEST-GUARD-01",
+        5009,
+        "Existing token expired",
+        existingRow,
+      );
+
+      expect(builder.patch).toHaveBeenCalledWith({
+        transactionStatus: "failed",
+        paymentStatus: "failed",
+        returnCode: 5009,
+        returnDetail: "Existing token expired",
+      });
+      expect(builder.where).toHaveBeenNthCalledWith(
+        1,
+        "agencyTrackingId",
+        "TEST-GUARD-01",
+      );
+      expect(builder.where).toHaveBeenNthCalledWith(
+        2,
+        "transactionStatus",
+        "processing",
+      );
+      expect(builder.where).toHaveBeenNthCalledWith(
+        3,
+        "lastUpdatedAt",
+        "2026-08-10T00:00:00.000Z",
+      );
+      expect(builder.returning).toHaveBeenCalledWith("*");
+      expect(result).toBe(updatedRow);
+    });
+
+    it("throws ConflictError when the guarded state no longer matches (row was reclaimed or completed)", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+
+      await expect(
+        TransactionModel.updateToFailed("TEST-STALE", undefined, undefined, {
+          transactionStatus: "processing",
+          lastUpdatedAt: "2026-08-10T00:00:00.000Z",
+        } as TransactionModel),
+      ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
+    });
   });
 
   describe("updateAfterPayGovResponse", () => {
