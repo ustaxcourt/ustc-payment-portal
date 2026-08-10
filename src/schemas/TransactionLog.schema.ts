@@ -2,21 +2,48 @@ import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 import { DashboardTransactionSchema } from "./TransactionDashboard.schema";
 import { PaymentStatusSchema } from "./PaymentStatus.schema";
+import {
+  courtDayBoundsForDateString,
+  parseMonthDayYearDate,
+} from "@utils/courtDayBounds";
 
 extendZodWithOpenApi(z);
 
 export const TRANSACTION_LOG_DEFAULT_PAGE_SIZE = 50;
 export const TRANSACTION_LOG_MAX_PAGE_SIZE = 200;
 
+const TRANSACTION_LOG_DATE_FORMAT_MESSAGE =
+  "Date must be a valid ISO datetime or MM/DD/YYYY value";
+
+const isValidIsoDateTime = (value: string): boolean =>
+  !Number.isNaN(new Date(value).getTime()) && value.includes("T");
+
+const parseTransactionLogDate = (
+  value: string,
+  side: "from" | "to",
+): Date | undefined => {
+  const courtDayBounds = courtDayBoundsForDateString(value);
+  if (courtDayBounds) {
+    return side === "from" ? courtDayBounds.start : courtDayBounds.end;
+  }
+
+  if (isValidIsoDateTime(value)) {
+    return new Date(value);
+  }
+
+  return undefined;
+};
+
 export const TransactionLogQuerySchema = z
   .object({
-    from: z.coerce.date().optional().openapi({
+    from: z.string().optional().openapi({
       description:
-        "Inclusive lower bound on lastUpdatedAt. Defaults with `to` to the current Court day.",
+        "Inclusive lower bound on lastUpdatedAt. Accepts either an ISO timestamp or MM/DD/YYYY. Defaults with `to` to the current Court day.",
       example: "2026-08-03T04:00:00.000Z",
     }),
-    to: z.coerce.date().optional().openapi({
-      description: "Exclusive upper bound on lastUpdatedAt.",
+    to: z.string().optional().openapi({
+      description:
+        "Upper bound on lastUpdatedAt. ISO timestamps stay exact; MM/DD/YYYY expands to the end of that Court day.",
       example: "2026-08-04T04:00:00.000Z",
     }),
     status: PaymentStatusSchema.optional().openapi({
@@ -36,13 +63,71 @@ export const TransactionLogQuerySchema = z
       .default(TRANSACTION_LOG_DEFAULT_PAGE_SIZE)
       .openapi({ description: "Rows per page", example: 50 }),
   })
-  .refine((query) => (query.from === undefined) === (query.to === undefined), {
-    message: "`from` and `to` must be supplied together",
-    path: ["from"],
+  .superRefine((query, context) => {
+    if ((query.from === undefined) !== (query.to === undefined)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "`from` and `to` must be supplied together",
+        path: ["from"],
+      });
+      return;
+    }
+
+    if (!query.from || !query.to) {
+      return;
+    }
+
+    if (!parseTransactionLogDate(query.from, "from")) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: TRANSACTION_LOG_DATE_FORMAT_MESSAGE,
+        path: ["from"],
+      });
+    }
+
+    if (!parseTransactionLogDate(query.to, "to")) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: TRANSACTION_LOG_DATE_FORMAT_MESSAGE,
+        path: ["to"],
+      });
+    }
   })
-  .refine((query) => !query.from || !query.to || query.from < query.to, {
-    message: "`from` must be earlier than `to`",
-    path: ["from"],
+  .transform((query, context) => {
+    if (!query.from || !query.to) {
+      return {
+        status: query.status,
+        page: query.page,
+        pageSize: query.pageSize,
+      };
+    }
+
+    const from = parseTransactionLogDate(query.from, "from");
+    const to = parseTransactionLogDate(query.to, "to");
+
+    if (!from || !to) {
+      return z.NEVER;
+    }
+
+    if (!(from < to)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          parseMonthDayYearDate(query.from) || parseMonthDayYearDate(query.to)
+            ? "`from` must be on or before `to`"
+            : "`from` must be earlier than `to`",
+        path: ["from"],
+      });
+      return z.NEVER;
+    }
+
+    return {
+      from,
+      to,
+      status: query.status,
+      page: query.page,
+      pageSize: query.pageSize,
+    };
   })
   .openapi("TransactionLogQuery");
 
