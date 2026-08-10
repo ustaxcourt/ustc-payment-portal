@@ -25,6 +25,7 @@ const labelCaseSql = (
   labels: Record<string, string>,
 ): { sql: string; bindings: string[] } | null => {
   const entries = Object.entries(labels);
+  /* istanbul ignore next: both catalogues are non-empty compile-time constants, so this guards against a malformed CASE rather than a reachable state */
   if (entries.length === 0) {
     return null;
   }

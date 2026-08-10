@@ -77,6 +77,14 @@ describe("transactionLogOrderBy", () => {
       expect(sql).toContain("end desc nulls last");
     });
 
+    it("builds each label expression once and reuses it", () => {
+      const [first] = transactionLogOrderBy("feeName", "asc");
+      const [second] = transactionLogOrderBy("feeName", "desc");
+
+      // Same bindings array, so the CASE was cached rather than rebuilt.
+      expect(raw(first).bindings).toBe(raw(second).bindings);
+    });
+
     // Guards the reason the CASE exists. If this ever passes, the mapping has
     // become order-preserving and the CASE will look like dead weight.
     it("is not equivalent to ordering on the stored value", () => {
