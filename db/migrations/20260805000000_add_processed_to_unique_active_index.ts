@@ -41,9 +41,9 @@ export async function up(knex: Knex): Promise<void> {
     );
   }
 
-  // Retire abandoned attempts that lost to a sibling, matching how initPayment already fails them.
-  // The CTE carries each row's prior status through so the change is auditable after the fact —
-  // this rewrites payment rows and `down` cannot restore them.
+  // Retire abandoned non-terminal attempts that were superseded by another attempt for the same
+  // obligation. The CTE carries each row's prior status through so the change is auditable after
+  // the fact — these rows are rewritten and `down` cannot restore them.
   const superseded = await knex.raw<{ rows: SupersededRow[] }>(`
     WITH candidates AS (
       SELECT t.agency_tracking_id, t.transaction_status AS prior_status
