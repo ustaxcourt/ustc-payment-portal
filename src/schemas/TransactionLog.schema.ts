@@ -8,9 +8,7 @@ extendZodWithOpenApi(z);
 export const TRANSACTION_LOG_DEFAULT_PAGE_SIZE = 50;
 export const TRANSACTION_LOG_MAX_PAGE_SIZE = 200;
 
-/** The columns the dashboard offers as sort options, and the only values the
- *  query layer will order by. A closed list rather than a free-text column
- *  name: nothing from the query string reaches SQL as an identifier. */
+/** A closed list, so nothing from the query string reaches SQL as an identifier. */
 export const TRANSACTION_LOG_SORT_FIELDS = [
   "createdAt",
   "lastUpdatedAt",
@@ -26,7 +24,6 @@ export const TRANSACTION_LOG_SORT_FIELDS = [
 
 export const SORT_ORDERS = ["asc", "desc"] as const;
 
-/** Preserves the pre-sorting behaviour when the caller asks for nothing. */
 export const TRANSACTION_LOG_DEFAULT_SORT = "lastUpdatedAt";
 export const TRANSACTION_LOG_DEFAULT_ORDER = "desc";
 

@@ -1,12 +1,8 @@
 import type { PaymentMethod as DbPaymentMethod } from "../db/TransactionModel";
 import type { PaymentMethod as ApiPaymentMethod } from "@schemas/PaymentMethod.schema";
 
-/**
- * Maps a stored value to the label the API returns. Exported as data rather than kept
- * inside the function so SQL can order by the label without a second copy of
- * the mapping drifting out of sync. The `Record` makes a missing method a
- * compile error if `DbPaymentMethod` gains a member.
- */
+/** Maps a stored value to the label the API returns. Exported as data so SQL can
+ *  order by the label without a second copy of the mapping drifting out of sync. */
 export const PAYMENT_METHOD_LABELS: Record<DbPaymentMethod, ApiPaymentMethod> =
   {
     plastic_card: "Credit/Debit Card",

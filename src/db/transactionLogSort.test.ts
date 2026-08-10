@@ -4,8 +4,8 @@ import { PAYMENT_METHOD_LABELS } from "@utils/toApiPaymentMethod";
 import { getFeeNamesByKey } from "../config/fees";
 import { type OrderByClause, transactionLogOrderBy } from "./transactionLogSort";
 
-/** Renders SQL without a database. Configured exactly like the real connection
- *  so the identifier mapping under test is the one production uses. */
+/** Renders SQL without a database, configured like the real connection so the
+ *  identifier mapping under test is the one production uses. */
 const renderer = knexFactory({ client: "pg", ...knexSnakeCaseMappers() });
 
 afterAll(async () => {
@@ -77,10 +77,8 @@ describe("transactionLogOrderBy", () => {
       expect(sql).toContain("end desc nulls last");
     });
 
-    // Guards the reason the CASE exists: ordering on the raw column would put
-    // PayPal before Credit/Debit Card. If this ever passes, the mapping has
-    // become order-preserving and someone will be tempted to drop the CASE --
-    // which would silently break again the next time a label is added.
+    // Guards the reason the CASE exists. If this ever passes, the mapping has
+    // become order-preserving and the CASE will look like dead weight.
     it("is not equivalent to ordering on the stored value", () => {
       const byStoredValue = Object.keys(PAYMENT_METHOD_LABELS)
         .sort()
