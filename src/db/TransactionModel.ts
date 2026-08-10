@@ -422,11 +422,6 @@ export default class TransactionModel extends Model {
       .first();
   }
 
-  // Guards a failure write against a state change that happened after the caller's
-  // read — pass the row the caller already has in scope. Both transactionStatus and
-  // lastUpdatedAt are required (not just status): claimForProcessing's stale reclaim
-  // re-touches transactionStatus to the same "processing" value, so a status-only
-  // guard can't detect that a new owner took over — pinning lastUpdatedAt closes that gap.
   static async updateToFailed(
     agencyTrackingId: string,
     returnCode?: number,
@@ -445,9 +440,6 @@ export default class TransactionModel extends Model {
       return this.query().patchAndFetchById(agencyTrackingId, patch);
     }
 
-    // Every row is created with a status (createReceived always sets one) and moves
-    // forward from there — a row reachable via the model's finder methods always has
-    // a real transactionStatus, despite the field's nullable declaration.
     const updated = (await this.query()
       .patch(patch)
       .where("agencyTrackingId", agencyTrackingId)
