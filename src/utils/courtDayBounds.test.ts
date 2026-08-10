@@ -1,4 +1,8 @@
-import { courtDayBounds } from "./courtDayBounds";
+import {
+  courtDayBounds,
+  courtDayBoundsForDateString,
+  parseMonthDayYearDate,
+} from "./courtDayBounds";
 
 const hoursBetween = (start: Date, end: Date): number =>
   (end.getTime() - start.getTime()) / 3_600_000;
@@ -13,7 +17,7 @@ describe("courtDayBounds", () => {
       () =>
         ({
           formatToParts: () => [{ type: "year", value: "2026" }],
-        }) as unknown as Intl.DateTimeFormat,
+        } as unknown as Intl.DateTimeFormat),
     );
 
     expect(() => courtDayBounds(new Date("2026-08-03T15:00:00.000Z"))).toThrow(
@@ -77,5 +81,33 @@ describe("courtDayBounds", () => {
 
     expect(start.toISOString()).toBe("2026-12-31T05:00:00.000Z");
     expect(end.toISOString()).toBe("2027-01-01T05:00:00.000Z");
+  });
+});
+
+describe("parseMonthDayYearDate", () => {
+  it("accepts valid MM/DD/YYYY dates", () => {
+    expect(parseMonthDayYearDate("08/10/2026")).toEqual({
+      year: 2026,
+      month: 8,
+      day: 10,
+    });
+  });
+
+  it("rejects invalid calendar dates", () => {
+    expect(parseMonthDayYearDate("02/30/2026")).toBeUndefined();
+    expect(parseMonthDayYearDate("2026-08-10")).toBeUndefined();
+  });
+});
+
+describe("courtDayBoundsForDateString", () => {
+  it("returns the full Court-local day for a summer date", () => {
+    const bounds = courtDayBoundsForDateString("08/10/2026");
+
+    expect(bounds?.start.toISOString()).toBe("2026-08-10T04:00:00.000Z");
+    expect(bounds?.end.toISOString()).toBe("2026-08-11T04:00:00.000Z");
+  });
+
+  it("returns undefined for invalid input", () => {
+    expect(courtDayBoundsForDateString("8/10/2026")).toBeUndefined();
   });
 });
