@@ -322,7 +322,9 @@ registry.registerPath({
         "Gone - the token is no longer valid for processing. " +
         "Another transaction may already be fulfilling the same obligation (check getDetails), " +
         "the transaction is not in an initiatable state (e.g. already processed), " +
-        "or a prior POST /process claim was abandoned and marked failed after the processing timeout. " +
+        "a prior POST /process claim was abandoned and marked failed after the processing timeout, " +
+        "or the token has exceeded its maximum age. " +
+        "For an expired token, retry POST /init with the same transactionReferenceId to obtain a new token. " +
         "This is not returned for concurrent in-flight requests on the same token (see 409).",
       content: {
         "application/json": {
