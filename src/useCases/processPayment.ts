@@ -86,6 +86,7 @@ const loadAuthorizedContext = async (
       undefined,
       "Fee configuration not found for this transaction",
     );
+    /* istanbul ignore next */
     appContext.logger.error("Fee lookup failed", {
       ...baseLogFields,
       errorName: err instanceof Error ? err.name : undefined,
