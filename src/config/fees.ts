@@ -64,6 +64,21 @@ export const getAllFees = (): FeeDefinition[] => {
 };
 
 /**
+ * Stable fee key to display name, for every configured fee. `name` lives on the
+ * definition rather than the version, so it never depends on a resolution date
+ * the way `amount` does. That is what lets SQL order by fee name: the mapping is
+ * static, and generating the ordering from here keeps it from drifting as the
+ * catalog grows.
+ */
+export const getFeeNamesByKey = (): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(staticFees).map(([fee, definition]) => [
+      fee,
+      definition.name,
+    ]),
+  );
+
+/**
  * Resolves a fee by its stable key to the version active at the given date.
  * Throws `FeeNotFoundError` when no fee version matches the lookup parameters,
  * and `FeeConfigurationError` when a configured fee is malformed. Defaults to

@@ -1,11 +1,16 @@
 import { ConflictError } from "@errors/conflict";
 import { GoneError } from "@errors/gone";
 import type { PaymentStatus } from "@schemas/PaymentStatus.schema";
+import type {
+  SortOrder,
+  TransactionLogSortField,
+} from "@schemas/TransactionLog.schema";
 import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/TransactionStatus.schema";
 import type { Knex } from "knex";
 import { Model } from "objection";
 import { getActiveFee } from "../config/fees";
 import { getKnex } from "./knex";
+import { transactionLogOrderBy } from "./transactionLogSort";
 
 export type TransactionStatus = SchemaTransactionStatus;
 export type { PaymentStatus };
@@ -18,6 +23,8 @@ export type TransactionLogFilter = {
   from: Date;
   to: Date;
   status?: PaymentStatus;
+  sort: TransactionLogSortField;
+  order: SortOrder;
   limit: number;
   offset: number;
 };
@@ -107,8 +114,9 @@ export default class TransactionModel extends Model {
     return rows.map(TransactionModel.attachFeeName);
   }
 
-  /** One page plus the total matching the same filter. Ordered by
-   *  lastUpdatedAt, the column the timeframe also filters on. */
+  /** One page plus the total matching the same filter. Ordered by the caller's
+   *  sort, defaulting to lastUpdatedAt — the column the timeframe also filters
+   *  on — and always broken by the primary key so the order is total. */
   static async queryLog(
     filter: TransactionLogFilter,
   ): Promise<{ rows: TransactionModel[]; total: number }> {
@@ -124,11 +132,16 @@ export default class TransactionModel extends Model {
         : query;
     };
 
+    const ordered = transactionLogOrderBy(filter.sort, filter.order).reduce(
+      (query, clause) =>
+        clause.kind === "raw"
+          ? query.orderByRaw(clause.sql, clause.bindings)
+          : query.orderBy(clause.column, clause.order),
+      base(),
+    );
+
     const [rows, total] = await Promise.all([
-      base()
-        .orderBy("lastUpdatedAt", "desc")
-        .limit(filter.limit)
-        .offset(filter.offset),
+      ordered.limit(filter.limit).offset(filter.offset),
       base().resultSize(),
     ]);
 

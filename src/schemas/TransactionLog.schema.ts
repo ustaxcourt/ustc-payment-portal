@@ -8,6 +8,39 @@ extendZodWithOpenApi(z);
 export const TRANSACTION_LOG_DEFAULT_PAGE_SIZE = 50;
 export const TRANSACTION_LOG_MAX_PAGE_SIZE = 200;
 
+/** The columns the dashboard offers as sort options, and the only values the
+ *  query layer will order by. A closed list rather than a free-text column
+ *  name: nothing from the query string reaches SQL as an identifier. */
+export const TRANSACTION_LOG_SORT_FIELDS = [
+  "createdAt",
+  "lastUpdatedAt",
+  "feeName",
+  "transactionAmount",
+  "paymentMethod",
+  "paymentStatus",
+  "returnDetail",
+  "transactionStatus",
+  "clientName",
+  "transactionReferenceId",
+] as const;
+
+export const SORT_ORDERS = ["asc", "desc"] as const;
+
+/** Preserves the pre-sorting behaviour when the caller asks for nothing. */
+export const TRANSACTION_LOG_DEFAULT_SORT = "lastUpdatedAt";
+export const TRANSACTION_LOG_DEFAULT_ORDER = "desc";
+
+export const TransactionLogSortFieldSchema = z
+  .enum(TRANSACTION_LOG_SORT_FIELDS)
+  .openapi("TransactionLogSortField");
+
+export const SortOrderSchema = z.enum(SORT_ORDERS).openapi("SortOrder");
+
+export type TransactionLogSortField = z.infer<
+  typeof TransactionLogSortFieldSchema
+>;
+export type SortOrder = z.infer<typeof SortOrderSchema>;
+
 export const TransactionLogQuerySchema = z
   .object({
     from: z.coerce.date().optional().openapi({
@@ -35,6 +68,20 @@ export const TransactionLogQuerySchema = z
       .max(TRANSACTION_LOG_MAX_PAGE_SIZE)
       .default(TRANSACTION_LOG_DEFAULT_PAGE_SIZE)
       .openapi({ description: "Rows per page", example: 50 }),
+    sort: TransactionLogSortFieldSchema.default(
+      TRANSACTION_LOG_DEFAULT_SORT,
+    ).openapi({
+      description:
+        "Column to order by. `feeName` and `paymentMethod` order by the label " +
+        "the response returns, not the value stored in the column.",
+      example: "createdAt",
+    }),
+    order: SortOrderSchema.default(TRANSACTION_LOG_DEFAULT_ORDER).openapi({
+      description:
+        "Direction for `sort`. Rows with no value for the sorted column are " +
+        "listed last in both directions.",
+      example: "desc",
+    }),
   })
   .refine((query) => (query.from === undefined) === (query.to === undefined), {
     message: "`from` and `to` must be supplied together",
@@ -76,7 +123,8 @@ export const TransactionCountsSchema = z
 export const TransactionLogResponseSchema = z
   .object({
     data: z.array(TransactionLogEntrySchema).openapi({
-      description: "Rows for the requested page, newest lastUpdatedAt first",
+      description:
+        "Rows for the requested page, ordered by the resolved `sort`/`order`",
     }),
     counts: TransactionCountsSchema,
     from: z.string().datetime().openapi({
@@ -87,6 +135,12 @@ export const TransactionLogResponseSchema = z
     }),
     page: z.number().int().min(1),
     pageSize: z.number().int().min(1),
+    sort: TransactionLogSortFieldSchema.openapi({
+      description: "Sort column actually applied, echoed like the timeframe",
+    }),
+    order: SortOrderSchema.openapi({
+      description: "Sort direction actually applied",
+    }),
     total: z.number().int().nonnegative().openapi({
       description:
         "Rows matching the timeframe and status filter, across all pages",
