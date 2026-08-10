@@ -32,9 +32,13 @@ export const TRANSACTION_LOG_DEFAULT_ORDER = "desc";
 
 export const TransactionLogSortFieldSchema = z
   .enum(TRANSACTION_LOG_SORT_FIELDS)
-  .openapi("TransactionLogSortField");
+  .openapi("TransactionLogSortField", {
+    description: "Column the transaction log is ordered by",
+  });
 
-export const SortOrderSchema = z.enum(SORT_ORDERS).openapi("SortOrder");
+export const SortOrderSchema = z.enum(SORT_ORDERS).openapi("SortOrder", {
+  description: "Direction the transaction log is ordered in",
+});
 
 export type TransactionLogSortField = z.infer<
   typeof TransactionLogSortFieldSchema
@@ -135,12 +139,9 @@ export const TransactionLogResponseSchema = z
     }),
     page: z.number().int().min(1),
     pageSize: z.number().int().min(1),
-    sort: TransactionLogSortFieldSchema.openapi({
-      description: "Sort column actually applied, echoed like the timeframe",
-    }),
-    order: SortOrderSchema.openapi({
-      description: "Sort direction actually applied",
-    }),
+    // Echoed back like the timeframe, so the caller can confirm what was applied.
+    sort: TransactionLogSortFieldSchema,
+    order: SortOrderSchema,
     total: z.number().int().nonnegative().openapi({
       description:
         "Rows matching the timeframe and status filter, across all pages",
