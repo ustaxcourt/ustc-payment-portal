@@ -66,7 +66,7 @@ export const TransactionsQuerySchema = z
   .superRefine((query, context) => {
     if ((query.from === undefined) !== (query.to === undefined)) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "`from` and `to` must be supplied together",
         path: ["from"],
       });
@@ -79,7 +79,7 @@ export const TransactionsQuerySchema = z
 
     if (!parseMonthDayYearDate(query.from)) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: TRANSACTION_DATE_FORMAT_MESSAGE,
         path: ["from"],
       });
@@ -87,7 +87,7 @@ export const TransactionsQuerySchema = z
 
     if (!parseMonthDayYearDate(query.to)) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: TRANSACTION_DATE_FORMAT_MESSAGE,
         path: ["to"],
       });
@@ -95,7 +95,7 @@ export const TransactionsQuerySchema = z
 
     if (compareDateInputs(query.from, query.to) > 0) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "`from` must be on or before `to`",
         path: ["from"],
       });
@@ -115,7 +115,7 @@ export const TransactionsQuerySchema = z
 
     if (!fromBounds || !toBounds) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: TRANSACTION_DATE_FORMAT_MESSAGE,
       });
       return z.NEVER;
