@@ -385,8 +385,8 @@ registry.registerPath({
         "application/json": {
           schema: {
             oneOf: [
-              RecentTransactionsResponseSchema,
-              TransactionLogResponseSchema,
+              { $ref: "#/components/schemas/RecentTransactionsResponse" },
+              { $ref: "#/components/schemas/TransactionLogResponse" },
             ],
           },
         },
