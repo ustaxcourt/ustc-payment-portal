@@ -132,6 +132,7 @@ describe("testCert handler", () => {
   });
 
   it("includes Authorization header when PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID is set and secret is retrieved successfully", async () => {
+    process.env.APP_ENV = "dev";
     process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "token-secret-id";
     mockGetSecretString.mockResolvedValueOnce("secret-token-from-aws");
 
@@ -157,6 +158,7 @@ describe("testCert handler", () => {
     expect(result.body).toBe(mockWsdlContent);
 
     delete process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
+    delete (process.env as Record<string, string | undefined>).APP_ENV;
   });
 
   it("emits a healthy metric when the scheduled probe returns a 2xx", async () => {
