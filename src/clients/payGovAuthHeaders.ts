@@ -1,5 +1,5 @@
 import { getSecretString } from "@clients/secretsClient";
-import { isLocal } from "../config/appEnv";
+import { getAppEnv } from "../config/appEnv";
 import type { AppContextLogger } from "@appTypes/AppContext";
 
 // Dev's SOAP_URL points at the mock ustc-pay-gov-test-server, which authenticates
@@ -8,9 +8,13 @@ export async function getPayGovAuthHeaders(
   logger: AppContextLogger,
 ): Promise<{ Authorization?: string; Authentication?: string }> {
   const tokenSecretId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
-  if (!tokenSecretId) return {};
+  const env = getAppEnv();
 
-  if (isLocal()) {
+  if (!tokenSecretId) return {};
+  
+  if (env !== "dev" && env !== "local") {
+    return {};
+  } else if (env === "local") {
     const bearer = `Bearer ${tokenSecretId}`;
     return { Authorization: bearer, Authentication: bearer };
   }

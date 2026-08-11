@@ -83,4 +83,17 @@ describe("getPayGovAuthHeaders", () => {
       },
     );
   });
+
+  it.each<Array<"stg" | "prod">>([["stg"], ["prod"]])(
+    "returns no headers on %s even when the token secret id is set",
+    async (env) => {
+      process.env.APP_ENV = env;
+      process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "token-secret-id";
+
+      const headers = await getPayGovAuthHeaders(logger);
+
+      expect(headers).toEqual({});
+      expect(mockGetSecretString).not.toHaveBeenCalled();
+    },
+  );
 });
