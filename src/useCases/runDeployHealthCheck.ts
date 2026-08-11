@@ -1,4 +1,5 @@
 import type { AppContext } from "@appTypes/AppContext";
+import { getPayGovAuthHeaders } from "@clients/payGovAuthHeaders";
 import { getParameterString } from "@clients/ssmClient";
 import type {
   DeployHealthReport,
@@ -25,21 +26,36 @@ export async function runDeployHealthCheck(
   appContext: AppContext,
   releaseTag?: string,
 ): Promise<DeployHealthReport> {
+  // mTLS is only configured for environments that call the real Pay.gov (stg/prod).
+  // Dev's SOAP_URL points at the mock ustc-pay-gov-test-server, which authenticates
+  // via PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID instead - see getPayGovAuthHeaders.
+  const mtlsConfigured = Boolean(
+    process.env.PRIVATE_KEY_SECRET_ID && process.env.CERTIFICATE_SECRET_ID,
+  );
+
   const [secrets, ssm, rds, payGov] = await Promise.all([
     timed(async () => {
+      if (!mtlsConfigured) {
+        if (!process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID) {
+          throw new Error("PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID not set");
+        }
+        return;
+      }
       const agent = await appContext.getHttpsAgent();
       if (!agent) throw new Error("mTLS agent (Secrets Manager) not configured");
     }).then((result) =>
       result.status === "ok"
         ? {
             ...result,
-            details: {
-              privateKey: true,
-              certificate: true,
-              passphraseConfigured: Boolean(
-                process.env.CERT_PASSPHRASE_SECRET_ID,
-              ),
-            },
+            details: mtlsConfigured
+              ? {
+                  privateKey: true,
+                  certificate: true,
+                  passphraseConfigured: Boolean(
+                    process.env.CERT_PASSPHRASE_SECRET_ID,
+                  ),
+                }
+              : { mtlsEnabled: false },
           }
         : result,
     ),
@@ -57,7 +73,8 @@ export async function runDeployHealthCheck(
     }),
     timed(async () => {
       const agent = await appContext.getHttpsAgent();
-      const { ok } = await probePayGovWsdl(agent);
+      const headers = await getPayGovAuthHeaders(appContext.logger);
+      const { ok } = await probePayGovWsdl(agent, headers);
       if (!ok) throw new Error("Pay.gov WSDL probe returned non-2xx");
     }),
   ]);
