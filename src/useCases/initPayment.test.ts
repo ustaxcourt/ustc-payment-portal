@@ -374,7 +374,6 @@ describe("initPayment", () => {
       "existing-id",
       5009,
       "Existing token expired",
-      staleInFlightTransaction,
     );
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(result.token).toBe(freshPaygovToken);
@@ -512,7 +511,6 @@ describe("initPayment", () => {
       "existing-id",
       5009,
       "Existing token expired",
-      expiredInFlightTransaction,
     );
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(result.token).toBe(freshPaygovToken);

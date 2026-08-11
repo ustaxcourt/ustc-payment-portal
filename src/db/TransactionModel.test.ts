@@ -15,6 +15,7 @@ const CHAINABLE_METHODS = [
   "where",
   "whereIn",
   "whereNot",
+  "whereNotIn",
   "orderBy",
   "limit",
   "count",
@@ -191,29 +192,39 @@ describe("TransactionModel", () => {
   });
 
   describe("updateToFailed", () => {
-    it("should set both transactionStatus and paymentStatus to failed", async () => {
+    it("sets both transactionStatus and paymentStatus to failed, excluding processed/pending rows", async () => {
       const builder = spyOnQuery();
-      builder.patchAndFetchById.mockResolvedValueOnce({
+      const updatedRow = {
         agencyTrackingId: "TEST-123",
         transactionStatus: "failed",
         paymentStatus: "failed",
-      });
+      };
+      builder.first.mockResolvedValueOnce(updatedRow);
 
       const updated = await TransactionModel.updateToFailed("TEST-123");
 
-      expect(builder.patchAndFetchById).toHaveBeenCalledWith("TEST-123", {
+      expect(builder.patch).toHaveBeenCalledWith({
         transactionStatus: "failed",
         paymentStatus: "failed",
         returnCode: undefined,
         returnDetail: undefined,
       });
+      expect(builder.where).toHaveBeenCalledWith(
+        "agencyTrackingId",
+        "TEST-123",
+      );
+      expect(builder.whereNotIn).toHaveBeenCalledWith("transactionStatus", [
+        "processed",
+        "pending",
+      ]);
+      expect(builder.returning).toHaveBeenCalledWith("*");
       expect(updated?.transactionStatus).toBe("failed");
       expect(updated?.paymentStatus).toBe("failed");
     });
 
-    it("should persist returnCode and returnDetail when provided", async () => {
+    it("persists returnCode and returnDetail when provided", async () => {
       const builder = spyOnQuery();
-      builder.patchAndFetchById.mockResolvedValueOnce({
+      builder.first.mockResolvedValueOnce({
         agencyTrackingId: "TEST-FAIL-01",
         returnCode: 3001,
         returnDetail: "Card declined",
@@ -225,7 +236,7 @@ describe("TransactionModel", () => {
         "Card declined",
       );
 
-      expect(builder.patchAndFetchById).toHaveBeenCalledWith("TEST-FAIL-01", {
+      expect(builder.patch).toHaveBeenCalledWith({
         transactionStatus: "failed",
         paymentStatus: "failed",
         returnCode: 3001,
@@ -235,57 +246,12 @@ describe("TransactionModel", () => {
       expect(updated?.returnDetail).toBe("Card declined");
     });
 
-    it("accepts the caller's row directly, guards on both transactionStatus and lastUpdatedAt, and returns the updated row when the guard matches", async () => {
-      const builder = spyOnQuery();
-      const updatedRow = { agencyTrackingId: "TEST-GUARD-01" };
-      builder.first.mockResolvedValueOnce(updatedRow);
-      const existingRow = {
-        agencyTrackingId: "TEST-GUARD-01",
-        transactionStatus: "processing",
-        lastUpdatedAt: "2026-08-10T00:00:00.000Z",
-      } as TransactionModel;
-
-      const result = await TransactionModel.updateToFailed(
-        "TEST-GUARD-01",
-        5009,
-        "Existing token expired",
-        existingRow,
-      );
-
-      expect(builder.patch).toHaveBeenCalledWith({
-        transactionStatus: "failed",
-        paymentStatus: "failed",
-        returnCode: 5009,
-        returnDetail: "Existing token expired",
-      });
-      expect(builder.where).toHaveBeenNthCalledWith(
-        1,
-        "agencyTrackingId",
-        "TEST-GUARD-01",
-      );
-      expect(builder.where).toHaveBeenNthCalledWith(
-        2,
-        "transactionStatus",
-        "processing",
-      );
-      expect(builder.where).toHaveBeenNthCalledWith(
-        3,
-        "lastUpdatedAt",
-        "2026-08-10T00:00:00.000Z",
-      );
-      expect(builder.returning).toHaveBeenCalledWith("*");
-      expect(result).toBe(updatedRow);
-    });
-
-    it("throws ConflictError when the guarded state no longer matches (row was reclaimed or completed)", async () => {
+    it("throws ConflictError when the row is already processed or pending (guard blocked the write)", async () => {
       const builder = spyOnQuery();
       builder.first.mockResolvedValueOnce(undefined);
 
       await expect(
-        TransactionModel.updateToFailed("TEST-STALE", undefined, undefined, {
-          transactionStatus: "processing",
-          lastUpdatedAt: "2026-08-10T00:00:00.000Z",
-        } as TransactionModel),
+        TransactionModel.updateToFailed("TEST-ALREADY-PAID"),
       ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
     });
   });

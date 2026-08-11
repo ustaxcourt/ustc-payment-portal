@@ -6,15 +6,9 @@ export const safeUpdateToFailed = async (
   agencyTrackingId: string,
   code?: number,
   detail?: string,
-  expected?: TransactionModel,
 ): Promise<void> => {
   try {
-    await TransactionModel.updateToFailed(
-      agencyTrackingId,
-      code,
-      detail,
-      expected,
-    );
+    await TransactionModel.updateToFailed(agencyTrackingId, code, detail);
   } catch (err) {
     /* istanbul ignore next: This branch is for DB persistence failures, which are rare in normal operation */
     appContext.logger.error(

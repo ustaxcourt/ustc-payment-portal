@@ -22,7 +22,6 @@ describe("safeUpdateToFailed", () => {
       "agency-123",
       5009,
       "some detail",
-      undefined,
     );
   });
 
@@ -33,43 +32,16 @@ describe("safeUpdateToFailed", () => {
       "agency-123",
       undefined,
       undefined,
-      undefined,
     );
   });
 
-  it("forwards the expected guard when provided", async () => {
-    const transaction = {
-      transactionStatus: "processing",
-      lastUpdatedAt: "2026-08-10T00:00:00.000Z",
-    } as unknown as TransactionModel;
-
-    await safeUpdateToFailed(
-      appContext,
-      "agency-123",
-      5009,
-      "some detail",
-      transaction,
-    );
-
-    expect(TransactionModelMock.updateToFailed).toHaveBeenCalledWith(
-      "agency-123",
-      5009,
-      "some detail",
-      transaction,
-    );
-  });
-
-  it("does not throw when updateToFailed rejects with ConflictError from a lost guard", async () => {
+  it("does not throw when updateToFailed rejects with ConflictError because the row is already processed/pending", async () => {
     TransactionModelMock.updateToFailed.mockRejectedValueOnce(
       new ConflictError(ConflictError.PERSIST_RACE_MESSAGE),
     );
-    const transaction = {
-      transactionStatus: "processing",
-      lastUpdatedAt: "2026-08-10T00:00:00.000Z",
-    } as unknown as TransactionModel;
 
     await expect(
-      safeUpdateToFailed(appContext, "agency-123", undefined, undefined, transaction),
+      safeUpdateToFailed(appContext, "agency-123"),
     ).resolves.toBeUndefined();
   });
 

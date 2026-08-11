@@ -85,7 +85,6 @@ const loadAuthorizedContext = async (
       existingTransaction.agencyTrackingId,
       undefined,
       "Fee configuration not found for this transaction",
-      existingTransaction,
     );
     /* istanbul ignore next */
     appContext.logger.error("Fee lookup failed", {
@@ -196,7 +195,6 @@ export const processPayment: ProcessPayment = async (
         transaction.agencyTrackingId,
         err.code,
         err.message,
-        transaction,
       );
 
       const failedRows = await TransactionModel.findByReferenceId(
@@ -222,7 +220,6 @@ export const processPayment: ProcessPayment = async (
         transaction.agencyTrackingId,
         undefined,
         "Pay.gov returned a response that failed schema validation",
-        transaction,
       );
       throw new PayGovError(PAYGOV_RETRY_MESSAGE, 502);
     }
@@ -241,7 +238,6 @@ export const processPayment: ProcessPayment = async (
       transaction.agencyTrackingId,
       undefined,
       "Error communicating with Pay.gov",
-      transaction,
     );
     throw new PayGovError(PAYGOV_RETRY_MESSAGE);
   }
@@ -295,7 +291,6 @@ export const processPayment: ProcessPayment = async (
       transaction.agencyTrackingId,
       undefined,
       "Failed to persist Pay.gov response",
-      transaction,
     );
     throw new ServerError(
       "Failed to record the payment result. Please retry the request.",
