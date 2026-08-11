@@ -40,7 +40,7 @@ enough context that the next person doesn't have to re-derive the decision.
 
 - **Current:** `@types/node@^24.13.3`. **Available latest:** `^26.1.1`.
 - **Reason:** `@types/node` must track the runtime, not lead it. `engines.node`
-  is `>=24.12.0 <25.0.0` and `.nvmrc` pins `24.18.0`, so the ambient Node types
+  is `>=24.19.0 <25.0.0` and `.nvmrc` pins `24.19.0`, so the ambient Node types
   are intentionally held on the 24 line. A proposed upgrade to
   `@types/node@^26.1.1` was reverted because it would expose Node 26 APIs in
   TypeScript that are not available in the supported Node 24 runtime. This could
@@ -91,7 +91,7 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
     `glob@11+`/`test-exclude@8` require Node `>=20`, and jest 30 still
     officially supports Node `18.14.0+`. Not a bug on jest's part, just a
     Node-floor jest can't be forced to drop, but doesn't apply to us (`.nvmrc`
-    pins `24.18.0`).
+    pins `24.19.0`).
   - `@oclif/core` (via `artillery`) pins `ejs@^3.1.10`; `ejs@5.0.1+` dropped its
     `jake` dependency entirely (which was only ever needed for `ejs`'s own test
     script, never required at runtime — confirmed no runtime `require('jake')`
