@@ -1,7 +1,7 @@
 /** Observes DST, unlike a fixed -05:00 "EST" offset. */
 export const COURT_TIME_ZONE = "America/New_York";
 
-export type CourtDayParts = { year: number; month: number; day: number };
+type CourtDayParts = { year: number; month: number; day: number };
 
 const MONTH_DAY_YEAR_DATE_PATTERN =
   /^(?<month>\d{2})\/(?<day>\d{2})\/(?<year>\d{4})$/;
