@@ -369,7 +369,8 @@ registry.registerPath({
   summary: "Get transactions",
   description:
     "Without query parameters, returns up to 100 most recent transactions " +
-    "across all payment statuses. With `from` and `to`, returns the " +
+    "across all payment statuses. With any supported transaction query " +
+    "parameter (`from`, `to`, `status`, `page`, or `pageSize`), returns the " +
     "transaction log for the inclusive MM/DD/YYYY date range, plus aggregate " +
     "counts for that timeframe.",
   tags: ["Payments"],

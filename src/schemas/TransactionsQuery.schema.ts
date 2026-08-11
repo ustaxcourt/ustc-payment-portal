@@ -13,6 +13,13 @@ import {
 extendZodWithOpenApi(z);
 
 const TRANSACTION_DATE_FORMAT_MESSAGE = "Date must be a valid MM/DD/YYYY value";
+export const TRANSACTIONS_QUERY_PARAM_KEYS = [
+  "from",
+  "to",
+  "status",
+  "page",
+  "pageSize",
+] as const;
 
 const compareDateInputs = (from: string, to: string): number => {
   const fromDate = parseMonthDayYearDate(from);
@@ -94,7 +101,7 @@ export const TransactionsQuerySchema = z
       });
     }
   })
-  .transform((query) => {
+  .transform((query, context) => {
     if (!query.from || !query.to) {
       return {
         status: query.status,
@@ -107,9 +114,11 @@ export const TransactionsQuerySchema = z
     const toBounds = courtDayBoundsForDateString(query.to);
 
     if (!fromBounds || !toBounds) {
-      throw new Error(
-        "TransactionsQuerySchema transform received invalid dates",
-      );
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: TRANSACTION_DATE_FORMAT_MESSAGE,
+      });
+      return z.NEVER;
     }
 
     return {

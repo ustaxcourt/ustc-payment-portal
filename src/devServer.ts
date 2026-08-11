@@ -13,7 +13,10 @@ import { parseRequestBody } from "./parseRequestBody";
 import { InitPaymentRequestSchema } from "@schemas/InitPayment.schema";
 import { ProcessPaymentRequestSchema } from "@schemas/ProcessPayment.schema";
 import { TransactionLogQuerySchema } from "@schemas/TransactionLog.schema";
-import { TransactionsQuerySchema } from "@schemas/TransactionsQuery.schema";
+import {
+  TRANSACTIONS_QUERY_PARAM_KEYS,
+  TransactionsQuerySchema,
+} from "@schemas/TransactionsQuery.schema";
 import "./db/knex";
 import type { ClientPermission } from "@appTypes/ClientPermission";
 
@@ -184,9 +187,11 @@ app.get("/", (_req, res) => {
 });
 
 app.get("/transactions", async (req, res, next) => {
-  const hasQuery = Object.keys(req.query).length > 0;
+  const hasSupportedQueryParam = TRANSACTIONS_QUERY_PARAM_KEYS.some(
+    (queryKey) => req.query[queryKey] !== undefined,
+  );
 
-  if (hasQuery) {
+  if (hasSupportedQueryParam) {
     const query = TransactionsQuerySchema.safeParse(req.query);
     if (!query.success) {
       res.status(400).json({ message: query.error.issues[0].message });

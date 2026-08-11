@@ -84,4 +84,18 @@ describe("getAllTransactionsHandler", () => {
     expect(getRecentTransactions).not.toHaveBeenCalled();
     expect(getTransactionLog).not.toHaveBeenCalled();
   });
+
+  it("keeps legacy behavior for unknown query params", async () => {
+    getRecentTransactions.mockResolvedValue({ data: [{ id: 2 }], total: 1 });
+
+    const result = await getAllTransactionsHandler({
+      queryStringParameters: { v: "1" },
+      requestContext: { requestId: "req-4", identity: {} },
+    } as unknown as APIGatewayEvent);
+
+    expect(result.statusCode).toBe(200);
+    expect(getRecentTransactions).toHaveBeenCalledWith(appContext);
+    expect(getTransactionLog).not.toHaveBeenCalled();
+    expect(JSON.parse(result.body)).toEqual({ data: [{ id: 2 }], total: 1 });
+  });
 });
