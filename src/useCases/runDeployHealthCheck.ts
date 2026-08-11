@@ -5,8 +5,11 @@ import type {
   DeployHealthReport,
   HealthCheckResult,
 } from "@schemas/DeployHealthReport.schema";
+import { getAppEnv } from "../config/appEnv";
 import { getKnex } from "../db/knex";
 import { probePayGovWsdl } from "../health/probePayGovWsdl";
+
+const MTLS_OPTIONAL_ENVS = new Set(["dev", "local"]);
 
 async function timed(fn: () => Promise<void>): Promise<HealthCheckResult> {
   const startedAt = Date.now();
@@ -36,13 +39,17 @@ export async function runDeployHealthCheck(
   const [secrets, ssm, rds, payGov] = await Promise.all([
     timed(async () => {
       if (!mtlsConfigured) {
+        if (!MTLS_OPTIONAL_ENVS.has(getAppEnv())) {
+          throw new Error("mTLS agent (Secrets Manager) not configured");
+        }
         if (!process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID) {
           throw new Error("PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID not set");
         }
         return;
       }
       const agent = await appContext.getHttpsAgent();
-      if (!agent) throw new Error("mTLS agent (Secrets Manager) not configured");
+      if (!agent)
+        throw new Error("mTLS agent (Secrets Manager) not configured");
     }).then((result) =>
       result.status === "ok"
         ? {
@@ -61,7 +68,8 @@ export async function runDeployHealthCheck(
     ),
     timed(async () => {
       const name = process.env.MONITORING_SUBSCRIBERS_PARAMETER_NAME;
-      if (!name) throw new Error("MONITORING_SUBSCRIBERS_PARAMETER_NAME not set");
+      if (!name)
+        throw new Error("MONITORING_SUBSCRIBERS_PARAMETER_NAME not set");
       const raw = await getParameterString(name);
       if (!Array.isArray(JSON.parse(raw))) {
         throw new Error("monitoring-subscribers parameter is not a JSON array");

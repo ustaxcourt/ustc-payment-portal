@@ -163,9 +163,50 @@ describe("runDeployHealthCheck", () => {
 
   describe("when mTLS is not configured (e.g. dev, which uses the mock Pay.gov test server)", () => {
     beforeEach(() => {
+      process.env.APP_ENV = "dev";
       delete process.env.PRIVATE_KEY_SECRET_ID;
       delete process.env.CERTIFICATE_SECRET_ID;
       process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "paygov-token-id";
+    });
+
+    it.each(["stg", "prod"] as const)(
+      "still fails the secrets check in %s, which must not fall back to the token",
+      async (appEnv) => {
+        process.env.APP_ENV = appEnv;
+        (appContext.getHttpsAgent as jest.Mock).mockResolvedValue(undefined);
+
+        const report = await runDeployHealthCheck(appContext);
+
+        expect(report.status).toBe("unhealthy");
+        expect(report.checks.secrets).toMatchObject({
+          status: "failed",
+          error: "mTLS agent (Secrets Manager) not configured",
+        });
+      },
+    );
+
+    it("fails the secrets check on a typo'd APP_ENV instead of falling back to the token", async () => {
+      (process.env as Record<string, string>).APP_ENV = "prd";
+      (appContext.getHttpsAgent as jest.Mock).mockResolvedValue(undefined);
+
+      const report = await runDeployHealthCheck(appContext);
+
+      expect(report.checks.secrets).toMatchObject({
+        status: "failed",
+        error: expect.stringContaining('Invalid APP_ENV "prd"'),
+      });
+    });
+
+    it("does not treat the jest 'test' env as an mTLS-optional environment", async () => {
+      delete (process.env as Record<string, string | undefined>).APP_ENV;
+      (appContext.getHttpsAgent as jest.Mock).mockResolvedValue(undefined);
+
+      const report = await runDeployHealthCheck(appContext);
+
+      expect(report.checks.secrets).toMatchObject({
+        status: "failed",
+        error: "mTLS agent (Secrets Manager) not configured",
+      });
     });
 
     it("passes the secrets check without requiring an mTLS agent", async () => {
