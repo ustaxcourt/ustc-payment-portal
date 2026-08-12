@@ -1,4 +1,8 @@
-import { TransactionLogQuerySchema } from "./TransactionLog.schema";
+import {
+  SORT_ORDERS,
+  TRANSACTION_LOG_SORT_FIELDS,
+  TransactionLogQuerySchema,
+} from "./TransactionLog.schema";
 
 const parse = (query: Record<string, string>) =>
   TransactionLogQuerySchema.safeParse(query);
@@ -43,5 +47,35 @@ describe("TransactionLogQuerySchema", () => {
 
   it("rejects a page size beyond the cap", () => {
     expect(parse({ pageSize: "9999" }).success).toBe(false);
+  });
+
+  describe("sorting", () => {
+    it("defaults to the newest activity first", () => {
+      expect(parse({}).data).toMatchObject({
+        sort: "lastUpdatedAt",
+        order: "desc",
+      });
+    });
+
+    it("accepts every column the dashboard offers", () => {
+      for (const sort of TRANSACTION_LOG_SORT_FIELDS) {
+        for (const order of SORT_ORDERS) {
+          expect(parse({ sort, order }).data).toMatchObject({ sort, order });
+        }
+      }
+    });
+
+    // The whitelist is what keeps a column name out of SQL, so an unknown
+    // field has to fail parsing rather than fall through to a default.
+    it("rejects a column that is not on the whitelist", () => {
+      expect(parse({ sort: "paygovToken" }).success).toBe(false);
+      expect(parse({ sort: "createdAt; drop table transactions" }).success).toBe(
+        false,
+      );
+    });
+
+    it("rejects a direction that is not asc or desc", () => {
+      expect(parse({ order: "sideways" }).success).toBe(false);
+    });
   });
 });

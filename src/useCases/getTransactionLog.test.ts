@@ -2,6 +2,10 @@ import TransactionModel from "../db/TransactionModel";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { getTransactionLog } from "./getTransactionLog";
 import type { TransactionLogQuery } from "@appTypes/TransactionLog";
+import {
+  TRANSACTION_LOG_DEFAULT_ORDER,
+  TRANSACTION_LOG_DEFAULT_SORT,
+} from "@schemas/TransactionLog.schema";
 
 const createdAt = new Date("2026-08-03T12:00:00.000Z");
 const lastUpdatedAt = new Date("2026-08-03T13:00:00.000Z");
@@ -25,8 +29,15 @@ const failedRow = {
 
 const counts = { success: 40, failed: 4, pending: 3, total: 47 };
 
+// Mirrors what the schema hands the use case, defaults already applied.
 const query = (overrides: Partial<TransactionLogQuery> = {}) =>
-  ({ page: 1, pageSize: 50, ...overrides }) as TransactionLogQuery;
+  ({
+    page: 1,
+    pageSize: 50,
+    sort: TRANSACTION_LOG_DEFAULT_SORT,
+    order: TRANSACTION_LOG_DEFAULT_ORDER,
+    ...overrides,
+  }) as TransactionLogQuery;
 
 describe("getTransactionLog", () => {
   let queryLog: jest.SpyInstance;
@@ -90,6 +101,25 @@ describe("getTransactionLog", () => {
     await getTransactionLog(appContext, query({ page: 3, pageSize: 25 }));
 
     expect(queryLog.mock.calls[0][0]).toMatchObject({ limit: 25, offset: 50 });
+  });
+
+  it("passes the requested sort down and echoes it back", async () => {
+    const result = await getTransactionLog(
+      appContext,
+      query({ sort: "clientName", order: "asc" }),
+    );
+
+    expect(queryLog.mock.calls[0][0]).toMatchObject({
+      sort: "clientName",
+      order: "asc",
+    });
+    expect(result).toMatchObject({ sort: "clientName", order: "asc" });
+  });
+
+  it("defaults to the newest activity first", async () => {
+    const result = await getTransactionLog(appContext, query());
+
+    expect(result).toMatchObject({ sort: "lastUpdatedAt", order: "desc" });
   });
 
   it("returns the failure reason and the display payment method", async () => {
