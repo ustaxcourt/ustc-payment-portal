@@ -28,6 +28,8 @@ export const getTransactionLog: GetTransactionLog = async (
       from,
       to,
       status: query.status,
+      sort: query.sort,
+      order: query.order,
       limit: query.pageSize,
       offset: (query.page - 1) * query.pageSize,
     }),
@@ -49,6 +51,8 @@ export const getTransactionLog: GetTransactionLog = async (
     to: to.toISOString(),
     page: query.page,
     pageSize: query.pageSize,
+    sort: query.sort,
+    order: query.order,
     total: page.total,
   });
 };

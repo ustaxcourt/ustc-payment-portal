@@ -153,7 +153,7 @@ describe("postHttpRequest", () => {
 
   it("should include authentication header when PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID is set and secret is retrieved successfully", async () => {
     process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "token-secret-id";
-    process.env.APP_ENV = "test";
+    process.env.APP_ENV = "dev";
     mockGetSecretString.mockResolvedValueOnce("secret-token-from-aws");
 
     const appContext = createAppContext();
@@ -239,7 +239,7 @@ describe("postHttpRequest", () => {
 
   it("should proceed without auth headers and log a warning when Secrets Manager fetch fails", async () => {
     process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "token-secret-id";
-    process.env.APP_ENV = "test";
+    process.env.APP_ENV = "dev";
     const fetchError = Object.assign(new Error("AccessDenied"), {
       name: "AccessDeniedException",
     });
