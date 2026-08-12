@@ -254,6 +254,56 @@ describe("TransactionModel", () => {
         TransactionModel.updateToFailed("TEST-ALREADY-PAID"),
       ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
     });
+
+    it("does not add a lastUpdatedAt guard when expectedLastUpdatedAt is omitted", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce({
+        agencyTrackingId: "TEST-123",
+        transactionStatus: "failed",
+      });
+
+      await TransactionModel.updateToFailed("TEST-123");
+
+      expect(builder.where).not.toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        expect.anything(),
+      );
+    });
+
+    it("adds a lastUpdatedAt guard when expectedLastUpdatedAt is provided, to catch a row reclaimed by claimForProcessing in the interim", async () => {
+      const builder = spyOnQuery();
+      const staleLastUpdatedAt = "2026-04-01T00:00:00.000Z";
+      builder.first.mockResolvedValueOnce({
+        agencyTrackingId: "TEST-123",
+        transactionStatus: "failed",
+      });
+
+      await TransactionModel.updateToFailed(
+        "TEST-123",
+        undefined,
+        undefined,
+        staleLastUpdatedAt,
+      );
+
+      expect(builder.where).toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        staleLastUpdatedAt,
+      );
+    });
+
+    it("throws ConflictError when the row's lastUpdatedAt no longer matches (reclaimed by a concurrent claimForProcessing)", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+
+      await expect(
+        TransactionModel.updateToFailed(
+          "TEST-RECLAIMED",
+          undefined,
+          undefined,
+          "2026-04-01T00:00:00.000Z",
+        ),
+      ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
+    });
   });
 
   describe("updateAfterPayGovResponse", () => {

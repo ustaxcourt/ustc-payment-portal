@@ -176,6 +176,7 @@ export const initPayment: InitPayment = async (
           existingInFlightTransaction.agencyTrackingId,
           EXISTING_TOKEN_ERROR_CODE,
           "Existing token expired",
+          existingInFlightTransaction.lastUpdatedAt,
         );
       } catch (err) {
         if (!(err instanceof ConflictError)) {

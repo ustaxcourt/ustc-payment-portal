@@ -374,6 +374,7 @@ describe("initPayment", () => {
       "existing-id",
       5009,
       "Existing token expired",
+      staleLastUpdatedAt,
     );
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(result.token).toBe(freshPaygovToken);
@@ -418,6 +419,61 @@ describe("initPayment", () => {
 
     expect(TransactionModel.createReceived).not.toHaveBeenCalled();
     expect(emitConflictMock).toHaveBeenCalledWith("stale_supersede_race");
+  });
+
+  it("does not overwrite a row reclaimed by a concurrent claimForProcessing: rejects as in-flight rather than marking an active attempt failed", async () => {
+    // The row looked stale to us, but a concurrent processPayment also saw it as stale
+    // and legitimately reclaimed it (transactionStatus stays "processing", but
+    // claimForProcessing refreshed lastUpdatedAt). Our updateToFailed call passes the
+    // *stale* lastUpdatedAt we read, so the DB-level guard no-ops and throws
+    // ConflictError instead of stomping the active attempt.
+    const staleLastUpdatedAt = new Date(
+      Date.now() - 11 * 60 * 1000,
+    ).toISOString();
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "existing-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "processing",
+      paygovToken: "stale-token",
+      lastUpdatedAt: staleLastUpdatedAt,
+    });
+    TransactionModel.updateToFailed.mockRejectedValueOnce(
+      new ConflictError(ConflictError.PERSIST_RACE_MESSAGE),
+    );
+    // The reclaiming processPayment hasn't finished yet, so it's neither pending
+    // nor processed — both re-checks (top-level guard, catch-block re-check) come
+    // up empty, and we fall through to attempt a fresh createReceived.
+    TransactionModel.findPendingOrProcessedByReferenceId
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined);
+    // The reclaimed row is still genuinely active, so our own createReceived loses
+    // to the partial unique index.
+    TransactionModel.createReceived.mockRejectedValueOnce(
+      Object.assign(
+        new Error(
+          'duplicate key value violates unique constraint "idx_transactions_unique_active"',
+        ),
+        { code: "23505" },
+      ),
+    );
+
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toThrow(ConflictError);
+
+    expect(TransactionModel.updateToFailed).toHaveBeenCalledWith(
+      "existing-id",
+      5009,
+      "Existing token expired",
+      staleLastUpdatedAt,
+    );
+    expect(emitConflictMock).toHaveBeenCalledWith("stale_supersede_race");
+    expect(emitConflictMock).toHaveBeenCalledWith("persist_race");
   });
 
   it("falls through to create a new transaction when the guarded updateToFailed loses the race but the row resolved to failed on its own", async () => {
@@ -511,6 +567,7 @@ describe("initPayment", () => {
       "existing-id",
       5009,
       "Existing token expired",
+      expiredLastUpdatedAt,
     );
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(result.token).toBe(freshPaygovToken);

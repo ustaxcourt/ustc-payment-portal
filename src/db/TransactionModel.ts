@@ -426,9 +426,10 @@ export default class TransactionModel extends Model {
     agencyTrackingId: string,
     returnCode?: number,
     returnDetail?: string,
+    expectedLastUpdatedAt?: string,
   ): Promise<TransactionModel> {
     await getKnex();
-    const updated = (await this.query()
+    const query = this.query()
       .patch({
         transactionStatus: "failed" as const,
         paymentStatus: "failed" as const,
@@ -436,7 +437,13 @@ export default class TransactionModel extends Model {
         returnDetail,
       })
       .where("agencyTrackingId", agencyTrackingId)
-      .whereNotIn("transactionStatus", ["processed", "pending"])
+      .whereNotIn("transactionStatus", ["processed", "pending"]);
+
+    if (expectedLastUpdatedAt !== undefined) {
+      query.where("lastUpdatedAt", expectedLastUpdatedAt);
+    }
+
+    const updated = (await query
       .returning("*")
       .first()) as TransactionModel | undefined;
 
