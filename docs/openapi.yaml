@@ -966,7 +966,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TransactionLogEntry'
-          description: Rows for the requested page, newest lastUpdatedAt first
+          description: Rows for the requested page, ordered by the resolved `sort`/`order`
         counts:
           $ref: '#/components/schemas/TransactionCounts'
         from:
@@ -983,6 +983,10 @@ components:
         pageSize:
           type: integer
           minimum: 1
+        sort:
+          $ref: '#/components/schemas/TransactionLogSortField'
+        order:
+          $ref: '#/components/schemas/SortOrder'
         total:
           type: integer
           minimum: 0
@@ -994,6 +998,8 @@ components:
         - to
         - page
         - pageSize
+        - sort
+        - order
         - total
     TransactionLogEntry:
       allOf:
@@ -1035,6 +1041,26 @@ components:
       description: >-
         Totals for the requested timeframe, unaffected by the status filter so
         the tallies stay stable as the user filters.
+    TransactionLogSortField:
+      type: string
+      enum:
+        - createdAt
+        - lastUpdatedAt
+        - feeName
+        - transactionAmount
+        - paymentMethod
+        - paymentStatus
+        - returnDetail
+        - transactionStatus
+        - clientName
+        - transactionReferenceId
+      description: Column the transaction log is ordered by
+    SortOrder:
+      type: string
+      enum:
+        - asc
+        - desc
+      description: Direction the transaction log is ordered in
   parameters: {}
 paths:
   /init:
@@ -1345,9 +1371,11 @@ paths:
       description: >-
         Transaction log for the Case Services & Finance dashboard. Filters on
         lastUpdatedAt, defaulting to the current Court day in America/New_York,
-        and returns rows newest first alongside aggregate counts. The counts
-        cover the whole timeframe and ignore the status filter, so the tallies
-        stay stable while the caller filters.
+        and returns rows alongside aggregate counts. The counts cover the whole
+        timeframe and ignore the status filter, so the tallies stay stable while
+        the caller filters. Ordering follows `sort`/`order`, defaulting to
+        newest lastUpdatedAt first, and is always broken by the primary key so
+        the order is stable across identical requests.
       tags:
         - Payments
       security:
@@ -1411,6 +1439,33 @@ paths:
           required: false
           description: Rows per page
           name: pageSize
+          in: query
+        - schema:
+            allOf:
+              - $ref: '#/components/schemas/TransactionLogSortField'
+              - description: >-
+                  Column to order by. `feeName` and `paymentMethod` order by the
+                  label the response returns, not the value stored in the
+                  column.
+                example: createdAt
+          required: false
+          description: >-
+            Column to order by. `feeName` and `paymentMethod` order by the label
+            the response returns, not the value stored in the column.
+          name: sort
+          in: query
+        - schema:
+            allOf:
+              - $ref: '#/components/schemas/SortOrder'
+              - description: >-
+                  Direction for `sort`. Rows with no value for the sorted column
+                  are listed last in both directions.
+                example: desc
+          required: false
+          description: >-
+            Direction for `sort`. Rows with no value for the sorted column are
+            listed last in both directions.
+          name: order
           in: query
       responses:
         '200':

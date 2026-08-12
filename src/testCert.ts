@@ -1,4 +1,4 @@
-import { getSecretString } from "@clients/secretsClient";
+import { getPayGovAuthHeaders } from "@clients/payGovAuthHeaders";
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "./appContext";
 import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
@@ -22,18 +22,7 @@ async function runWsdlProbe(
   const appContext = createAppContext();
   try {
     const httpsAgent = await appContext.getHttpsAgent();
-
-    const headers: { Authorization?: string; Authentication?: string } = {};
-    const tokenId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
-    if (tokenId) {
-      try {
-        const token = await getSecretString(tokenId);
-        headers.Authorization = `Bearer ${token}`;
-        headers.Authentication = headers.Authorization;
-      } catch {
-        // Proceed without Authorization header if token fetch fails
-      }
-    }
+    const headers = await getPayGovAuthHeaders(appContext.logger);
 
     const { ok, latencyMs, body } = await probePayGovWsdl(httpsAgent, headers);
     if (isScheduledProbe) {

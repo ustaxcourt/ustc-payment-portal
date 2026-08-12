@@ -7,7 +7,7 @@
     "payment-portal": "bin/ustc-payment-portal.js"
   },
   "engines": {
-    "node": ">=24.18.0 <25.0.0"
+    "node": ">=24.19.0 <25.0.0"
   },
   "scripts": {
     "clean": "rimraf dist/*",

@@ -1,11 +1,11 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
-import { z } from "zod";
-import { DashboardTransactionSchema } from "./TransactionDashboard.schema";
-import { PaymentStatusSchema } from "./PaymentStatus.schema";
 import {
   courtDayBoundsForDateString,
   parseMonthDayYearDate,
 } from "@utils/courtDayBounds";
+import { z } from "zod";
+import { PaymentStatusSchema } from "./PaymentStatus.schema";
+import { DashboardTransactionSchema } from "./TransactionDashboard.schema";
 
 extendZodWithOpenApi(z);
 
@@ -33,6 +33,39 @@ const parseTransactionLogDate = (
 
   return undefined;
 };
+/** A closed list, so nothing from the query string reaches SQL as an identifier. */
+export const TRANSACTION_LOG_SORT_FIELDS = [
+  "createdAt",
+  "lastUpdatedAt",
+  "feeName",
+  "transactionAmount",
+  "paymentMethod",
+  "paymentStatus",
+  "returnDetail",
+  "transactionStatus",
+  "clientName",
+  "transactionReferenceId",
+] as const;
+
+export const SORT_ORDERS = ["asc", "desc"] as const;
+
+export const TRANSACTION_LOG_DEFAULT_SORT = "lastUpdatedAt";
+export const TRANSACTION_LOG_DEFAULT_ORDER = "desc";
+
+export const TransactionLogSortFieldSchema = z
+  .enum(TRANSACTION_LOG_SORT_FIELDS)
+  .openapi("TransactionLogSortField", {
+    description: "Column the transaction log is ordered by",
+  });
+
+export const SortOrderSchema = z.enum(SORT_ORDERS).openapi("SortOrder", {
+  description: "Direction the transaction log is ordered in",
+});
+
+export type TransactionLogSortField = z.infer<
+  typeof TransactionLogSortFieldSchema
+>;
+export type SortOrder = z.infer<typeof SortOrderSchema>;
 
 export const TransactionLogQuerySchema = z
   .object({
@@ -62,6 +95,20 @@ export const TransactionLogQuerySchema = z
       .max(TRANSACTION_LOG_MAX_PAGE_SIZE)
       .default(TRANSACTION_LOG_DEFAULT_PAGE_SIZE)
       .openapi({ description: "Rows per page", example: 50 }),
+    sort: TransactionLogSortFieldSchema.default(
+      TRANSACTION_LOG_DEFAULT_SORT,
+    ).openapi({
+      description:
+        "Column to order by. `feeName` and `paymentMethod` order by the label " +
+        "the response returns, not the value stored in the column.",
+      example: "createdAt",
+    }),
+    order: SortOrderSchema.default(TRANSACTION_LOG_DEFAULT_ORDER).openapi({
+      description:
+        "Direction for `sort`. Rows with no value for the sorted column are " +
+        "listed last in both directions.",
+      example: "desc",
+    }),
   })
   .superRefine((query, context) => {
     if ((query.from === undefined) !== (query.to === undefined)) {
@@ -161,7 +208,8 @@ export const TransactionCountsSchema = z
 export const TransactionLogResponseSchema = z
   .object({
     data: z.array(TransactionLogEntrySchema).openapi({
-      description: "Rows for the requested page, newest lastUpdatedAt first",
+      description:
+        "Rows for the requested page, ordered by the resolved `sort`/`order`",
     }),
     counts: TransactionCountsSchema,
     from: z.string().datetime().openapi({
@@ -172,6 +220,9 @@ export const TransactionLogResponseSchema = z
     }),
     page: z.number().int().min(1),
     pageSize: z.number().int().min(1),
+    // Echoed back like the timeframe, so the caller can confirm what was applied.
+    sort: TransactionLogSortFieldSchema,
+    order: SortOrderSchema,
     total: z.number().int().nonnegative().openapi({
       description:
         "Rows matching the timeframe and status filter, across all pages",

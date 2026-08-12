@@ -422,9 +422,11 @@ registry.registerPath({
   description:
     "Transaction log for the Case Services & Finance dashboard. Filters on " +
     "lastUpdatedAt, defaulting to the current Court day in America/New_York, " +
-    "and returns rows newest first alongside aggregate counts. The counts " +
-    "cover the whole timeframe and ignore the status filter, so the tallies " +
-    "stay stable while the caller filters.",
+    "and returns rows alongside aggregate counts. The counts cover the whole " +
+    "timeframe and ignore the status filter, so the tallies stay stable while " +
+    "the caller filters. Ordering follows `sort`/`order`, defaulting to " +
+    "newest lastUpdatedAt first, and is always broken by the primary key so " +
+    "the order is stable across identical requests.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   request: {
