@@ -1,5 +1,5 @@
 import { getSecretString } from "@clients/secretsClient";
-import { isLocal } from "./config/appEnv";
+import { getPayGovAuthHeaders } from "@clients/payGovAuthHeaders";
 import type { AppContext } from "@appTypes/AppContext";
 import { getDetails } from "@useCases/getDetails";
 import { initPayment } from "@useCases/initPayment";
@@ -100,32 +100,8 @@ export const createAppContext = (
         Authentication?: string;
       } = {
         "Content-type": "application/soap+xml",
+        ...(await getPayGovAuthHeaders(appContext.logger)),
       };
-
-      const tokenSecretId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
-
-      if (tokenSecretId) {
-        if (isLocal()) {
-          headers.Authorization = `Bearer ${tokenSecretId}`;
-          headers.Authentication = headers.Authorization;
-        } else {
-          try {
-            const token = await getSecretString(tokenSecretId);
-            headers.Authorization = `Bearer ${token}`;
-            headers.Authentication = headers.Authorization;
-          } catch (err: any) {
-            appContext.logger.warn(
-              "Failed to read token from Secrets Manager",
-              {
-                secretId: tokenSecretId,
-                errorName: err?.name,
-                errorMessage: err?.message,
-              },
-            );
-            // Proceed without Authorization header if token fetch fails
-          }
-        }
-      }
 
       let lastError: unknown;
       for (let attempt = 1; attempt <= PAYGOV_MAX_ATTEMPTS; attempt++) {
