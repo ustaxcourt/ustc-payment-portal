@@ -29,7 +29,7 @@ enough context that the next person doesn't have to re-derive the decision.
 - **Current:** `^6.0.3`. **Available latest:** `7.0.2`.
 - **Reason:** TypeScript 7 is a major release. Our toolchain still targets the
   6.x line — `ts-jest@^29.4.11`, `tsup@^8.5.1`, `ts-node@^10.9.2`, and
-  `@biomejs/biome@^2.5.3` — and none are confirmed compatible with the TS7
+  `@biomejs/biome@^2.5.7` — and none are confirmed compatible with the TS7
   compiler/API. A blind bump risks breaking type-check, the Jest transform, and
   the build in one step, with a blast radius across the whole package.
 - **Plan:** Cut a dedicated follow-up ticket to validate the toolchain against
@@ -40,7 +40,7 @@ enough context that the next person doesn't have to re-derive the decision.
 
 - **Current:** `@types/node@^24.13.3`. **Available latest:** `^26.1.1`.
 - **Reason:** `@types/node` must track the runtime, not lead it. `engines.node`
-  is `>=24.12.0 <25.0.0` and `.nvmrc` pins `24.18.0`, so the ambient Node types
+  is `>=24.19.0 <25.0.0` and `.nvmrc` pins `24.19.0`, so the ambient Node types
   are intentionally held on the 24 line. A proposed upgrade to
   `@types/node@^26.1.1` was reverted because it would expose Node 26 APIs in
   TypeScript that are not available in the supported Node 24 runtime. This could
@@ -49,6 +49,38 @@ enough context that the next person doesn't have to re-derive the decision.
   project's supported Node version.
 - **Plan:** Revisit only when the Node runtime itself moves off 24 (new
   `engines`/`.nvmrc` floor); bump `@types/node` to match in the same change.
+
+### @changesets/cli@^2.31.0 → 3.0.0 — deferred (2026-08-12)
+
+- **Current:** `@changesets/cli@^2.31.0` (resolved `2.31.1`).
+  **Available latest:** `3.0.0`, published 2026-08-11.
+- **Reason:** not a drop-in bump — it is a publish-pipeline change, not a
+  dependency bump.
+  - `.github/workflows/publish.yml` uses `changesets/action@v1`, which upstream
+    documents as the Changesets **v2** line; `changesets/action@v2` is the
+    branch "compatible with Changesets v3". The CLI and the action have to move
+    together, and the action bump is subject to the `uses:` pinning rule in
+    `AGENTS.md`.
+  - v3 changes `changeset version` to exit `1` when there are no unreleased
+    changesets (previously `0`). `publish.yml` runs on every push to `main`, so
+    ordinary merges with no pending changesets would start failing the publish
+    job until this is handled.
+  - v3 is ESM-only (`type: module`) and requires Node `^22.11 || ^24 || >=26`
+    and npm `>=10.9.0`. Both are satisfied here, and the
+    `@changesets/cli/changelog` subpath this repo's config uses is still in the
+    3.0.0 exports map — so these are not blockers, just context.
+  - Other v3 breaking changes were checked and do **not** apply: `prettier` →
+    `format` config option (not set), `changeset tag` → `git-tag` (unused),
+    removed `--updateChangelog`/`--isPublic`/`--skipCI`/`--commit` flags
+    (unused), `--sinceMaster` (unused), `privatePackages` default flip (single
+    public package), and the prerelease `pre.json` restructure (prerelease mode
+    not in use). Existing changeset files are unaffected — the file format did
+    not change.
+- **Plan:** Dedicated follow-up ticket to move `@changesets/cli` to v3 and
+  `changesets/action` to v2 together, handle the new exit-code behavior, and
+  verify end to end with a dry-run publish before merging. Upstream has moved
+  the 2.x line to a `maintenance-v2` dist-tag, so `^2.31.0` remains a supported
+  place to sit in the meantime. Follow-up ticket: **PAY-###**.
 
 <!-- Format:
 ### <package> <current> → <available> — deferred (<date>)
@@ -91,7 +123,7 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
     `glob@11+`/`test-exclude@8` require Node `>=20`, and jest 30 still
     officially supports Node `18.14.0+`. Not a bug on jest's part, just a
     Node-floor jest can't be forced to drop, but doesn't apply to us (`.nvmrc`
-    pins `24.18.0`).
+    pins `24.19.0`).
   - `@oclif/core` (via `artillery`) pins `ejs@^3.1.10`; `ejs@5.0.1+` dropped its
     `jake` dependency entirely (which was only ever needed for `ejs`'s own test
     script, never required at runtime — confirmed no runtime `require('jake')`
