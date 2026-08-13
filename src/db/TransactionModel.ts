@@ -439,6 +439,10 @@ export default class TransactionModel extends Model {
       .where("agencyTrackingId", agencyTrackingId)
       .whereNotIn("transactionStatus", ["processed", "pending"]);
 
+      // Case Handle for Pending failed?
+
+      // We should never make it here if we are `processing` status
+
     if (expectedLastUpdatedAt !== undefined) {
       query.where("lastUpdatedAt", expectedLastUpdatedAt);
     }
