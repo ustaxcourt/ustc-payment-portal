@@ -46,6 +46,21 @@ describe("TransactionLogQuerySchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("preserves explicit sort/order when timeframe is transformed", () => {
+    const result = parse({
+      from: "08/10/2026",
+      to: "08/10/2026",
+      sort: "clientName",
+      order: "asc",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toMatchObject({
+      sort: "clientName",
+      order: "asc",
+    });
+  });
+
   it.each([
     ["from", { from: FROM }],
     ["to", { to: TO }],

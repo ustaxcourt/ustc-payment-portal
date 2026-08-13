@@ -146,6 +146,8 @@ export const TransactionLogQuerySchema = z
         status: query.status,
         page: query.page,
         pageSize: query.pageSize,
+        sort: query.sort,
+        order: query.order,
       };
     }
 
@@ -174,6 +176,8 @@ export const TransactionLogQuerySchema = z
       status: query.status,
       page: query.page,
       pageSize: query.pageSize,
+      sort: query.sort,
+      order: query.order,
     };
   })
   .openapi("TransactionLogQuery");
