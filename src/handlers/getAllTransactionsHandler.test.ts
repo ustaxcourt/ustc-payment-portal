@@ -1,5 +1,9 @@
 import type { APIGatewayEvent } from "aws-lambda";
 import type { AppContext } from "@appTypes/AppContext";
+import {
+  TRANSACTION_LOG_DEFAULT_ORDER,
+  TRANSACTION_LOG_DEFAULT_SORT,
+} from "@schemas/TransactionLog.schema";
 import { createAppContext } from "../appContext";
 import { getAllTransactionsHandler } from "./getAllTransactionsHandler";
 import { testAppContext } from "../test/testAppContext";
@@ -64,6 +68,8 @@ describe("getAllTransactionsHandler", () => {
         status: "pending",
         page: 1,
         pageSize: 200,
+        sort: TRANSACTION_LOG_DEFAULT_SORT,
+        order: TRANSACTION_LOG_DEFAULT_ORDER,
         from: new Date("2026-08-10T04:00:00.000Z"),
         to: new Date("2026-08-11T04:00:00.000Z"),
       }),

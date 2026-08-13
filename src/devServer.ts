@@ -17,8 +17,13 @@ import {
   TRANSACTIONS_QUERY_PARAM_KEYS,
   TransactionsQuerySchema,
 } from "@schemas/TransactionsQuery.schema";
+import {
+  TRANSACTION_LOG_DEFAULT_ORDER,
+  TRANSACTION_LOG_DEFAULT_SORT,
+} from "@schemas/TransactionLog.schema";
 import "./db/knex";
 import type { ClientPermission } from "@appTypes/ClientPermission";
+import type { TransactionLogQuery } from "@appTypes/TransactionLog";
 
 const app = express();
 
@@ -199,9 +204,14 @@ app.get("/transactions", async (req, res, next) => {
     }
 
     try {
+      const transactionLogQuery: TransactionLogQuery = {
+        ...query.data,
+        sort: TRANSACTION_LOG_DEFAULT_SORT,
+        order: TRANSACTION_LOG_DEFAULT_ORDER,
+      };
       const result = await res.locals.appContext
         .getUseCases()
-        .getTransactionLog(res.locals.appContext, query.data);
+        .getTransactionLog(res.locals.appContext, transactionLogQuery);
       res.json(result);
     } catch (err) {
       next(err);

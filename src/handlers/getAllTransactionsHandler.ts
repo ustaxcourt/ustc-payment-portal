@@ -2,6 +2,11 @@ import {
   TRANSACTIONS_QUERY_PARAM_KEYS,
   TransactionsQuerySchema,
 } from "@schemas/TransactionsQuery.schema";
+import {
+  TRANSACTION_LOG_DEFAULT_ORDER,
+  TRANSACTION_LOG_DEFAULT_SORT,
+} from "@schemas/TransactionLog.schema";
+import type { TransactionLogQuery } from "@appTypes/TransactionLog";
 import { dashboardError, dashboardOk } from "@utils/dashboardHandlerUtils";
 import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "../appContext";
@@ -26,10 +31,15 @@ export const getAllTransactionsHandler = async (
       if (!parsedQuery.success) {
         return dashboardError(400, parsedQuery.error.issues[0].message);
       }
+      const transactionLogQuery: TransactionLogQuery = {
+        ...parsedQuery.data,
+        sort: TRANSACTION_LOG_DEFAULT_SORT,
+        order: TRANSACTION_LOG_DEFAULT_ORDER,
+      };
 
       const result = await appContext
         .getUseCases()
-        .getTransactionLog(appContext, parsedQuery.data);
+        .getTransactionLog(appContext, transactionLogQuery);
       return dashboardOk(result);
     }
 

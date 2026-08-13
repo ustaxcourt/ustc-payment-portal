@@ -1,5 +1,9 @@
 import TransactionModel from "../db/TransactionModel";
-import { TransactionLogResponseSchema } from "@schemas/TransactionLog.schema";
+import {
+  TRANSACTION_LOG_DEFAULT_ORDER,
+  TRANSACTION_LOG_DEFAULT_SORT,
+  TransactionLogResponseSchema,
+} from "@schemas/TransactionLog.schema";
 import type { AppContext } from "@appTypes/AppContext";
 import type {
   TransactionLogQuery,
@@ -20,6 +24,8 @@ export const getTransactionLog: GetTransactionLog = async (
   const today = courtDayBounds();
   const from = query.from ?? today.start;
   const to = query.to ?? today.end;
+  const sort = query.sort ?? TRANSACTION_LOG_DEFAULT_SORT;
+  const order = query.order ?? TRANSACTION_LOG_DEFAULT_ORDER;
 
   // Counts span the timeframe only, so the tallies hold steady while the user
   // switches between statuses.
@@ -28,8 +34,8 @@ export const getTransactionLog: GetTransactionLog = async (
       from,
       to,
       status: query.status,
-      sort: query.sort,
-      order: query.order,
+      sort,
+      order,
       limit: query.pageSize,
       offset: (query.page - 1) * query.pageSize,
     }),
@@ -51,8 +57,8 @@ export const getTransactionLog: GetTransactionLog = async (
     to: to.toISOString(),
     page: query.page,
     pageSize: query.pageSize,
-    sort: query.sort,
-    order: query.order,
+    sort,
+    order,
     total: page.total,
   });
 };
