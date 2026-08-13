@@ -1,4 +1,8 @@
 import {
+  TRANSACTION_LOG_DEFAULT_ORDER,
+  TRANSACTION_LOG_DEFAULT_SORT,
+} from "@schemas/TransactionLog.schema";
+import {
   TRANSACTIONS_QUERY_PARAM_KEYS,
   TransactionsQuerySchema,
 } from "@schemas/TransactionsQuery.schema";
@@ -29,7 +33,11 @@ export const getAllTransactionsHandler = async (
 
       const result = await appContext
         .getUseCases()
-        .getTransactionLog(appContext, parsedQuery.data);
+        .getTransactionLog(appContext, {
+          ...parsedQuery.data,
+          sort: TRANSACTION_LOG_DEFAULT_SORT,
+          order: TRANSACTION_LOG_DEFAULT_ORDER,
+        });
       return dashboardOk(result);
     }
 

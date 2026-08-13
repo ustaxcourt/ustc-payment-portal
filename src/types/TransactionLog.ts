@@ -1,7 +1,10 @@
 import { z } from "zod";
-import { TransactionLogResponseSchema } from "@schemas/TransactionLog.schema";
+import {
+  TransactionLogQuerySchema,
+  TransactionLogResponseSchema,
+} from "@schemas/TransactionLog.schema";
 
-export type { TransactionLogQuery } from "@schemas/TransactionLog.schema";
+export type TransactionLogQuery = z.infer<typeof TransactionLogQuerySchema>;
 
 export type TransactionLogResponse = z.infer<
   typeof TransactionLogResponseSchema
