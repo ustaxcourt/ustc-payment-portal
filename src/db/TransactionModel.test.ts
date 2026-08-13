@@ -15,6 +15,7 @@ const CHAINABLE_METHODS = [
   "where",
   "whereIn",
   "whereNot",
+  "whereNotIn",
   "orderBy",
   "limit",
   "count",
@@ -191,29 +192,39 @@ describe("TransactionModel", () => {
   });
 
   describe("updateToFailed", () => {
-    it("should set both transactionStatus and paymentStatus to failed", async () => {
+    it("sets both transactionStatus and paymentStatus to failed, excluding processed/pending rows", async () => {
       const builder = spyOnQuery();
-      builder.patchAndFetchById.mockResolvedValueOnce({
+      const updatedRow = {
         agencyTrackingId: "TEST-123",
         transactionStatus: "failed",
         paymentStatus: "failed",
-      });
+      };
+      builder.first.mockResolvedValueOnce(updatedRow);
 
       const updated = await TransactionModel.updateToFailed("TEST-123");
 
-      expect(builder.patchAndFetchById).toHaveBeenCalledWith("TEST-123", {
+      expect(builder.patch).toHaveBeenCalledWith({
         transactionStatus: "failed",
         paymentStatus: "failed",
         returnCode: undefined,
         returnDetail: undefined,
       });
+      expect(builder.where).toHaveBeenCalledWith(
+        "agencyTrackingId",
+        "TEST-123",
+      );
+      expect(builder.whereNotIn).toHaveBeenCalledWith("transactionStatus", [
+        "processed",
+        "pending",
+      ]);
+      expect(builder.returning).toHaveBeenCalledWith("*");
       expect(updated?.transactionStatus).toBe("failed");
       expect(updated?.paymentStatus).toBe("failed");
     });
 
-    it("should persist returnCode and returnDetail when provided", async () => {
+    it("persists returnCode and returnDetail when provided", async () => {
       const builder = spyOnQuery();
-      builder.patchAndFetchById.mockResolvedValueOnce({
+      builder.first.mockResolvedValueOnce({
         agencyTrackingId: "TEST-FAIL-01",
         returnCode: 3001,
         returnDetail: "Card declined",
@@ -225,7 +236,7 @@ describe("TransactionModel", () => {
         "Card declined",
       );
 
-      expect(builder.patchAndFetchById).toHaveBeenCalledWith("TEST-FAIL-01", {
+      expect(builder.patch).toHaveBeenCalledWith({
         transactionStatus: "failed",
         paymentStatus: "failed",
         returnCode: 3001,
@@ -233,6 +244,65 @@ describe("TransactionModel", () => {
       });
       expect(updated?.returnCode).toBe(3001);
       expect(updated?.returnDetail).toBe("Card declined");
+    });
+
+    it("throws ConflictError when the row is already processed or pending (guard blocked the write)", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+
+      await expect(
+        TransactionModel.updateToFailed("TEST-ALREADY-PAID"),
+      ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
+    });
+
+    it("does not add a lastUpdatedAt guard when expectedLastUpdatedAt is omitted", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce({
+        agencyTrackingId: "TEST-123",
+        transactionStatus: "failed",
+      });
+
+      await TransactionModel.updateToFailed("TEST-123");
+
+      expect(builder.where).not.toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        expect.anything(),
+      );
+    });
+
+    it("adds a lastUpdatedAt guard when expectedLastUpdatedAt is provided, to catch a row reclaimed by claimForProcessing in the interim", async () => {
+      const builder = spyOnQuery();
+      const staleLastUpdatedAt = "2026-04-01T00:00:00.000Z";
+      builder.first.mockResolvedValueOnce({
+        agencyTrackingId: "TEST-123",
+        transactionStatus: "failed",
+      });
+
+      await TransactionModel.updateToFailed(
+        "TEST-123",
+        undefined,
+        undefined,
+        staleLastUpdatedAt,
+      );
+
+      expect(builder.where).toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        staleLastUpdatedAt,
+      );
+    });
+
+    it("throws ConflictError when the row's lastUpdatedAt no longer matches (reclaimed by a concurrent claimForProcessing)", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+
+      await expect(
+        TransactionModel.updateToFailed(
+          "TEST-RECLAIMED",
+          undefined,
+          undefined,
+          "2026-04-01T00:00:00.000Z",
+        ),
+      ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
     });
   });
 

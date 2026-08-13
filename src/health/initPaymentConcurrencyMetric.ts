@@ -3,7 +3,8 @@ import { writeEmf } from "./emf";
 export type InitPaymentConflictReason =
   | "processing_in_flight"
   | "already_paid"
-  | "persist_race";
+  | "persist_race"
+  | "stale_supersede_race";
 
 export function emitInitPaymentConflictMetric(
   reason: InitPaymentConflictReason,

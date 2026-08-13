@@ -865,7 +865,7 @@ describe("processPayment", () => {
         "agency-tracking-id-001",
         3001,
         "The card has been declined, the transaction will not be processed.",
-      );
+        );
     });
 
     it("does not emit a PayGovError metric for a declined card (healthy Pay.gov)", async () => {
@@ -986,7 +986,7 @@ describe("processPayment", () => {
         "agency-tracking-id-001",
         undefined,
         "Pay.gov returned a fault without error details",
-      );
+        );
     });
   });
 
@@ -1008,7 +1008,7 @@ describe("processPayment", () => {
         "agency-tracking-id-001",
         undefined,
         "Pay.gov returned a response that failed schema validation",
-      );
+        );
       expect(
         TransactionModelMock.updateAfterPayGovResponse,
       ).not.toHaveBeenCalled();
@@ -1032,7 +1032,7 @@ describe("processPayment", () => {
         "agency-tracking-id-001",
         undefined,
         "Error communicating with Pay.gov",
-      );
+        );
       expect(
         TransactionModelMock.updateAfterPayGovResponse,
       ).not.toHaveBeenCalled();
@@ -1059,7 +1059,7 @@ describe("processPayment", () => {
         "agency-tracking-id-001",
         undefined,
         "Failed to persist Pay.gov response",
-      );
+        );
     });
 
     it("throws ConflictError without marking failed when updateAfterPayGovResponse detects a persist race", async () => {
