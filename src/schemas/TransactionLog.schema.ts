@@ -67,7 +67,7 @@ export type TransactionLogSortField = z.infer<
 >;
 export type SortOrder = z.infer<typeof SortOrderSchema>;
 
-export const TransactionLogQuerySchema = z
+const TransactionLogQueryObject = z
   .object({
     from: z.string().optional().openapi({
       description:
@@ -109,7 +109,9 @@ export const TransactionLogQuerySchema = z
         "listed last in both directions.",
       example: "desc",
     }),
-  })
+  });
+
+export const TransactionLogQuerySchema = TransactionLogQueryObject
   .superRefine((query, context) => {
     if ((query.from === undefined) !== (query.to === undefined)) {
       context.addIssue({
@@ -178,7 +180,7 @@ export const TransactionLogQuerySchema = z
   })
   .openapi("TransactionLogQuery");
 
-export type TransactionLogQuery = z.infer<typeof TransactionLogQuerySchema>;
+export type TransactionLogQuery = z.infer<typeof TransactionLogQueryObject>;
 
 /** Kept off DashboardTransactionSchema so Zod strips these from /transactions,
  *  which the dev dashboard depends on. */
