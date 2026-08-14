@@ -21,7 +21,7 @@ permissions:
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
-  DEV_ARTIFACT_BUCKET: ${{ vars.DEV_ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}
+  ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET || 'ustc-payment-portal-build-artifacts' }}
 
 jobs:
   guard:
@@ -92,10 +92,10 @@ jobs:
         run: |
           set -euo pipefail
           SHA='${{ steps.select.outputs.sha}}'
-          echo "Validating artifacts for $SHA in s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
+          echo "Validating artifacts for $SHA in s3://${ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
           for f in initPayment processPayment getDetails testCert migrationRunner; do
             KEY="artifacts/dev/${SHA}/${f}.zip"
-            aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "$KEY" >/dev/null 2>&1 || {
+            aws s3api head-object --bucket "${ARTIFACT_BUCKET}" --key "$KEY" >/dev/null 2>&1 || {
               echo "Missing $KEY" >&2; exit 1; }
           done
           echo "All artifacts present"
@@ -158,7 +158,7 @@ jobs:
 
       - name: Export artifact bucket (env)
         run: |
-          echo "Dev bucket: $DEV_ARTIFACT_BUCKET"
+          echo "Artifact bucket: $ARTIFACT_BUCKET"
           echo "Event: ${{ github.event_name }}"
           echo "Ref: ${{ github.ref }}"
 
@@ -195,7 +195,7 @@ jobs:
         id: tf_plan
         working-directory: terraform/environments/prod
         env:
-          TF_VAR_artifact_bucket: ${{ env.DEV_ARTIFACT_BUCKET }}
+          TF_VAR_artifact_bucket: ${{ env.ARTIFACT_BUCKET }}
           TF_VAR_initPayment_s3_key: ${{ steps.artifacts.outputs.initPayment }}
           TF_VAR_processPayment_s3_key: ${{ steps.artifacts.outputs.processPayment }}
           TF_VAR_getDetails_s3_key: ${{ steps.artifacts.outputs.getDetails }}
