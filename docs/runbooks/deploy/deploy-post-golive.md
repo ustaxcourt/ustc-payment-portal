@@ -9,7 +9,7 @@ use [`deploy-pre-golive.md`](deploy-pre-golive.md) instead.
 > same commit SHA forward, never rebuild. What changes after go-live is the
 > **discipline around it**: a change window, client notification, a formal
 > go/no-go, an approved Prod apply, and explicit post-deploy verification.
-> This doc describes only the *deltas*. For the mechanics of each stage and the
+> This doc describes only the _deltas_. For the mechanics of each stage and the
 > command reference, read the pre-go-live runbook alongside it.
 
 **At go-live, fold pre-go-live in.** This doc references the pre-go-live runbook
@@ -21,14 +21,14 @@ then delete pre-go-live so nothing dangles.
 
 ## What is different after go-live
 
-| Concern | Pre-go-live | **Post-go-live** |
-|---------|-------------|------------------|
-| Cadence | deploy any time | deploy inside an **agreed change window** |
-| Clients | none | **notify client integrators before Prod** |
-| Staging→Prod | promote when you're ready | promote only after a **formal go/no-go** |
-| Prod apply | review plan, apply | review plan, **`production` Environment reviewer approves** *(reviewer not yet configured — see Stage 4)*, apply |
-| Post-deploy | confirm API responds | **mandatory** post-deploy verification + monitoring watch |
-| Failure | leave broken, fix forward | follow [`deploy-rollback.md`](deploy-rollback.md); time-bound the decision |
+| Concern      | Pre-go-live               | **Post-go-live**                                                                                                 |
+| ------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Cadence      | deploy any time           | deploy inside an **agreed change window**                                                                        |
+| Clients      | none                      | **notify client integrators before Prod**                                                                        |
+| Staging→Prod | promote when you're ready | promote only after a **formal go/no-go**                                                                         |
+| Prod apply   | review plan, apply        | review plan, **`production` Environment reviewer approves** _(reviewer not yet configured — see Stage 4)_, apply |
+| Post-deploy  | confirm API responds      | **mandatory** post-deploy verification + monitoring watch                                                        |
+| Failure      | leave broken, fix forward | follow [`deploy-rollback.md`](deploy-rollback.md); time-bound the decision                                       |
 
 ---
 
@@ -37,11 +37,11 @@ then delete pre-go-live so nothing dangles.
 In addition to the pre-go-live prerequisites (green Dev run + 5 artifacts):
 
 1. **Change window scheduled.** Deploys to Prod happen inside an agreed window,
-   not ad hoc. *(Exact window cadence is a team policy — agree it and record it
-   here: `<TBD: e.g. business-day mornings, avoid filing deadlines>`.)*
+   not ad hoc. _(Exact window cadence is a team policy — agree it and record it
+   here: `<TBD: e.g. business-day mornings, avoid filing deadlines>`.)_
 2. **Client integrators notified.** Tell downstream consumers (DAWSON and any
-   other integrators) what is deploying and when, before you touch Prod. *(Notify
-   via `<TBD: channel / distribution list>`.)*
+   other integrators) what is deploying and when, before you touch Prod. _(Notify
+   via `<TBD: channel / distribution list>`.)_
 3. **Migration review (see blocker below).** If the release contains **any**
    database migration, stop and read "Database migrations after go-live" before
    proceeding — there is currently no supported path to migrate Prod.
@@ -99,13 +99,13 @@ mandatory after go-live:
    verified SHA. The intended authorization gate is a **required reviewer on the
    `production` GitHub Environment** who must approve the run before the apply
    executes.
-   > **BLOCKER — the gate is not configured yet.** Verified via the GitHub API:
-   > the `production` environment currently has **no protection rules** (no
-   > required reviewer). The `environment: production` block in `prod-deploy.yml`
-   > is only a label until a reviewer is added. **Configuring a required reviewer
-   > on the `production` environment is a prerequisite for this runbook**, tracked
-   > in the [deploy backlog](../../deploy-backlog.md). Until then there is no
-   > enforced approval gate — a human must self-discipline the plan-review step.
+   > The `production` environment is configured with a required reviewer. Every
+   > prod deploy pauses at the environment gate until an authorized reviewer
+   > either approves or rejects it. The destructive-migration approval step in
+   > `prod-deploy.yml` is a second, conditional gate that only appears when the
+   > migration safety scan flags destructive work. The environment policy allows
+   > `main` for `workflow_dispatch` runs and `v*` tags for release-triggered
+   > prod deploys.
 2. **Post-deploy verification is automated and gating.** After a successful
    apply, `prod-deploy.yml` runs a synthetic, read-only `GET /health` check that
    probes Secrets Manager, SSM, RDS, and Pay.gov and fails the job if any check
@@ -142,7 +142,7 @@ Consequences and rules:
 - Until the Prod migration path is built, **schema-only releases must be planned
   with the team** and applied through whatever mechanism the team agrees on:
   `<TBD: deploy migrationRunner to Prod for parity, or define an approved
-  one-off>`.
+one-off>`.
 
 ---
 
@@ -165,12 +165,12 @@ Post-go-live, a bad Prod deploy is an **incident**, not a practice run. Follow
 
 ## Quick reference
 
-| Stage | Workflow | Trigger | Added post-go-live gate |
-|-------|----------|---------|-------------------------|
-| Dev | `cicd-dev.yml` | auto on push to `main` | (none) |
-| Staging | `staging-deploy.yml` | manual dispatch | smoke test is a hard stop |
-| Verify | — | manual | formal go/no-go checklist |
-| Prod | `prod-deploy.yml` | Release published / manual | Environment reviewer approval *(reviewer must be configured first)* + required post-deploy verification |
+| Stage   | Workflow             | Trigger                    | Added post-go-live gate                                                                                 |
+| ------- | -------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Dev     | `cicd-dev.yml`       | auto on push to `main`     | (none)                                                                                                  |
+| Staging | `staging-deploy.yml` | manual dispatch            | smoke test is a hard stop                                                                               |
+| Verify  | —                    | manual                     | formal go/no-go checklist                                                                               |
+| Prod    | `prod-deploy.yml`    | Release published / manual | Environment reviewer approval _(reviewer must be configured first)_ + required post-deploy verification |
 
 > Items marked `<TBD>` are deliberate placeholders for decisions the team must
 > agree on. Replace them with the agreed policy and remove this note.

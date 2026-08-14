@@ -18,7 +18,7 @@ Context for all items: [`deploy-pre-golive.md`](runbooks/deploy/deploy-pre-goliv
 
 ## Part 1 — Automated tests to build
 
-### T1. Prod post-deploy smoke / health check *(synthetic, read-only)* — DONE
+### T1. Prod post-deploy smoke / health check _(synthetic, read-only)_ — DONE
 
 - **Priority:** High
 - **Delivered:** `prod-deploy.yml` runs a SigV4-signed `GET /health` after apply.
@@ -61,7 +61,7 @@ Context for all items: [`deploy-pre-golive.md`](runbooks/deploy/deploy-pre-goliv
   currently unverified by integration tests.
 - **Build:** ephemeral-RDS integration tests covering `migrate`/`verify` (and the
   DB/role admin commands) per the existing TODO in the handler.
-- **Effort:** L *(depends on ephemeral RDS provisioning)*
+- **Effort:** L _(depends on ephemeral RDS provisioning)_
 
 ---
 
@@ -104,12 +104,13 @@ in the same backlog.
 ### G4. Configure a required reviewer on the `production` GitHub Environment
 
 - **Priority:** High
-- **Why:** Verified via the GitHub API — the `production` environment has
-  **no protection rules**. The `environment: production` block in
-  `prod-deploy.yml` is only a label; there is **no enforced approval gate** on
-  Prod applies today.
-- **Build:** add a required reviewer (and any branch policy) to the `production`
-  environment. Prerequisite for the post-go-live approval gate.
+- **Status:** Delivered via PAY-358.
+- **Why:** Prod deploys now pause on the native GitHub Environment review gate
+  before jobs targeting `environment: production` can proceed.
+- **Build:** configured a required reviewer and deployment branch/tag policy on
+  the `production` environment; `prod-deploy.yml` continues to use that native
+  gate plus the separate destructive-migration approval step when needed. The
+  deployment policy allows branch `main` and tags matching `v*`.
 - **Effort:** S
 
 ### G5. Add a transaction read-view for Staging/Prod
