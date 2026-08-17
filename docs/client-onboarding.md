@@ -160,6 +160,12 @@ Verify the role ARN is at the root path — no custom path segment between `role
 ### Step 2 — Update the client permissions secret
 
 Add the new client entry to the `ustc/pay-gov/{env}/client-permissions` secret in AWS Secrets Manager. This does not require a code change or deployment.
+```bash
+# Get current value
+aws secretsmanager get-secret-value \
+  --secret-id ustc/pay-gov/{env}/client-permissions \
+  --query SecretString --output text
+```
 
 ```json
 [
