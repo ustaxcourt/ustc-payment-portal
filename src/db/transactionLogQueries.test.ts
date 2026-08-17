@@ -97,6 +97,33 @@ describe("TransactionModel.queryLog", () => {
     expect(countQuery.limit).not.toHaveBeenCalled();
   });
 
+  it("skips the COUNT query entirely when withTotal is false", async () => {
+    const chains = stubQuery([], 7);
+
+    const result = await TransactionModel.queryLog({
+      ...page,
+      withTotal: false,
+    });
+
+    // Only the page query runs; no second chain is ever built for the count.
+    expect(chains).toHaveLength(1);
+    expect(chains[0].resultSize).not.toHaveBeenCalled();
+    expect(result.total).toBeUndefined();
+    expect(result.rows).toEqual([]);
+  });
+
+  it("still counts when withTotal is explicitly true", async () => {
+    const chains = stubQuery([], 12);
+
+    const result = await TransactionModel.queryLog({
+      ...page,
+      withTotal: true,
+    });
+
+    expect(chains).toHaveLength(2);
+    expect(result.total).toBe(12);
+  });
+
   it("applies a requested status to both the page and its count", async () => {
     const chains = stubQuery([], 4);
 
