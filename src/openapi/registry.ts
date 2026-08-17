@@ -25,7 +25,6 @@ import {
   GoneErrorSchema,
   FeeKeySchema,
   RecentTransactionsResponseSchema,
-  TransactionsQuerySchema,
   TransactionPaymentStatusResponseSchema,
   TransactionsByStatusPathParamsSchema,
   TransactionsByStatusResponseSchema,
@@ -70,7 +69,6 @@ registry.register(
   "RecentTransactionsResponse",
   RecentTransactionsResponseSchema,
 );
-registry.register("TransactionsQuery", TransactionsQuerySchema);
 registry.register(
   "TransactionsByStatusPathParams",
   TransactionsByStatusPathParamsSchema,
@@ -366,29 +364,17 @@ registry.registerPath({
 registry.registerPath({
   method: "get",
   path: "/transactions",
-  summary: "Get transactions",
+  summary: "Get recent transactions",
   description:
-    "Without query parameters, returns up to 100 most recent transactions " +
-    "across all payment statuses. With any supported transaction query " +
-    "parameter (`from`, `to`, `status`, `page`, or `pageSize`), returns the " +
-    "transaction log for the inclusive MM/DD/YYYY date range, plus aggregate " +
-    "counts for that timeframe.",
+    "Returns up to 100 most recent transactions across all payment statuses.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
-  request: {
-    query: TransactionsQuerySchema,
-  },
   responses: {
     200: {
-      description: "Transactions retrieved successfully",
+      description: "Recent transactions retrieved successfully",
       content: {
         "application/json": {
-          schema: {
-            oneOf: [
-              { $ref: "#/components/schemas/RecentTransactionsResponse" },
-              { $ref: "#/components/schemas/TransactionLogResponse" },
-            ],
-          },
+          schema: RecentTransactionsResponseSchema,
         },
       },
     },

@@ -1,4 +1,5 @@
-import { APIGatewayProxyResult } from "aws-lambda";
+import type { APIGatewayProxyResult } from "aws-lambda";
+import type { ZodIssue } from "zod";
 
 export const getDashboardCorsHeaders = () => {
   const origin = process.env.DASHBOARD_ALLOWED_ORIGIN;
@@ -25,4 +26,15 @@ export const dashboardError = (
   statusCode,
   headers: { "Content-Type": "application/json", ...getDashboardCorsHeaders() },
   body: JSON.stringify({ message }),
+});
+
+export const dashboardValidationError = (
+  issues: ZodIssue[],
+): APIGatewayProxyResult => ({
+  statusCode: 400,
+  headers: { "Content-Type": "application/json", ...getDashboardCorsHeaders() },
+  body: JSON.stringify({
+    message: "Validation error",
+    errors: issues,
+  }),
 });

@@ -4,5 +4,5 @@
 
 Add timeframe query support for dashboard transaction retrieval.
 
-- `GET /transactions` now accepts `from`, `to`, `status`, `page`, and `pageSize` query parameters. When a timeframe is supplied, the endpoint returns the paginated transaction log and aggregate counts for that range; without query parameters it preserves the legacy "recent transactions" response.
-- Dashboard timeframe filters now accept inclusive `MM/DD/YYYY` date inputs and normalize them to Court-local day bounds. The direct `GET /transaction-log` handler also accepts the same date format alongside ISO datetimes.
+- `GET /transaction-log` now accepts dashboard timeframe filters using inclusive `MM/DD/YYYY` dates, plus status and pagination controls, and returns aggregate counts for the requested range.
+- Dashboard timeframe inputs are normalized to Court-local day bounds. The transaction-log API also continues to accept ISO datetimes, now requiring an explicit timezone offset.

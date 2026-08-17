@@ -39,5 +39,8 @@
     // PowerShell equivalents - block
     "/^Remove-Item\\b/i": false,
     "/^Stop-Process\\b/i": false
+  },
+  "yaml.schemas": {
+    "https://www.artillery.io/schema.json": []
   }
 }

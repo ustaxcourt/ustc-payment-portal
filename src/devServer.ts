@@ -12,18 +12,10 @@ import { InvalidRequestError } from "@errors/invalidRequest";
 import { parseRequestBody } from "./parseRequestBody";
 import { InitPaymentRequestSchema } from "@schemas/InitPayment.schema";
 import { ProcessPaymentRequestSchema } from "@schemas/ProcessPayment.schema";
-import {
-  TRANSACTION_LOG_DEFAULT_ORDER,
-  TRANSACTION_LOG_DEFAULT_SORT,
-  TransactionLogQuerySchema,
-} from "@schemas/TransactionLog.schema";
-import {
-  TRANSACTIONS_QUERY_PARAM_KEYS,
-  TransactionsQuerySchema,
-} from "@schemas/TransactionsQuery.schema";
+import { TransactionLogQuerySchema } from "@schemas/TransactionLog.schema";
 import "./db/knex";
 import type { ClientPermission } from "@appTypes/ClientPermission";
-import type { TransactionLogQuery } from "@appTypes/TransactionLog";
+import type { ZodIssue } from "zod";
 
 const app = express();
 
@@ -192,33 +184,6 @@ app.get("/", (_req, res) => {
 });
 
 app.get("/transactions", async (req, res, next) => {
-  const hasSupportedQueryParam = TRANSACTIONS_QUERY_PARAM_KEYS.some(
-    (queryKey) => req.query[queryKey] !== undefined,
-  );
-
-  if (hasSupportedQueryParam) {
-    const query = TransactionsQuerySchema.safeParse(req.query);
-    if (!query.success) {
-      res.status(400).json({ message: query.error.issues[0].message });
-      return;
-    }
-
-    try {
-      const transactionLogQuery: TransactionLogQuery = {
-        ...query.data,
-        sort: TRANSACTION_LOG_DEFAULT_SORT,
-        order: TRANSACTION_LOG_DEFAULT_ORDER,
-      };
-      const result = await res.locals.appContext
-        .getUseCases()
-        .getTransactionLog(res.locals.appContext, transactionLogQuery);
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-    return;
-  }
-
   try {
     const result = await res.locals.appContext
       .getUseCases()
@@ -232,7 +197,10 @@ app.get("/transactions", async (req, res, next) => {
 app.get("/transaction-log", async (req, res, next) => {
   const query = TransactionLogQuerySchema.safeParse(req.query);
   if (!query.success) {
-    res.status(400).json({ message: query.error.issues[0].message });
+    res.status(400).json({
+      message: "Validation error",
+      errors: query.error.issues as ZodIssue[],
+    });
     return;
   }
 

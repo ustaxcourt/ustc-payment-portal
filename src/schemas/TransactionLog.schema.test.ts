@@ -100,6 +100,18 @@ describe("TransactionLogQuerySchema", () => {
     );
   });
 
+  it("rejects an ISO datetime without an explicit offset", () => {
+    const result = parse({
+      from: "2026-08-10T00:00:00",
+      to: "2026-08-11T00:00:00",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe(
+      "Date must be a valid ISO datetime or MM/DD/YYYY value",
+    );
+  });
+
   it("rejects a page size beyond the cap", () => {
     expect(parse({ pageSize: "9999" }).success).toBe(false);
   });
@@ -124,9 +136,9 @@ describe("TransactionLogQuerySchema", () => {
     // field has to fail parsing rather than fall through to a default.
     it("rejects a column that is not on the whitelist", () => {
       expect(parse({ sort: "paygovToken" }).success).toBe(false);
-      expect(parse({ sort: "createdAt; drop table transactions" }).success).toBe(
-        false,
-      );
+      expect(
+        parse({ sort: "createdAt; drop table transactions" }).success,
+      ).toBe(false);
     });
 
     it("rejects a direction that is not asc or desc", () => {

@@ -58,15 +58,15 @@ describe("getTransactionLogHandler", () => {
     const result = await getTransactionLogHandler({
       queryStringParameters: {
         from: "2026-08-10",
-        to: "08/10/2026",
+        to: "08-10-2026",
       },
       requestContext: { requestId: "req-2", identity: {} },
     } as unknown as APIGatewayEvent);
 
     expect(result.statusCode).toBe(400);
-    expect(JSON.parse(result.body)).toEqual({
-      message: "Date must be a valid ISO datetime or MM/DD/YYYY value",
-    });
+    const body = JSON.parse(result.body);
+    expect(body.message).toBe("Validation error");
+    expect(body.errors).toHaveLength(2);
     expect(getTransactionLog).not.toHaveBeenCalled();
   });
 });

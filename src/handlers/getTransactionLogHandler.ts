@@ -1,7 +1,11 @@
 import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "../appContext";
 import { TransactionLogQuerySchema } from "@schemas/TransactionLog.schema";
-import { dashboardOk, dashboardError } from "@utils/dashboardHandlerUtils";
+import {
+  dashboardOk,
+  dashboardError,
+  dashboardValidationError,
+} from "@utils/dashboardHandlerUtils";
 
 /** GET /transaction-log — timeframe defaults to the current Court day.
  *  Separate from /transactions, which the dev dashboard depends on. */
@@ -14,7 +18,7 @@ export const getTransactionLogHandler = async (
     event.queryStringParameters ?? {},
   );
   if (!query.success) {
-    return dashboardError(400, query.error.issues[0].message);
+    return dashboardValidationError(query.error.issues);
   }
 
   try {

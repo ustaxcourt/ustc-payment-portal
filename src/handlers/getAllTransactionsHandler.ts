@@ -1,48 +1,17 @@
-import {
-  TRANSACTIONS_QUERY_PARAM_KEYS,
-  TransactionsQuerySchema,
-} from "@schemas/TransactionsQuery.schema";
-import {
-  TRANSACTION_LOG_DEFAULT_ORDER,
-  TRANSACTION_LOG_DEFAULT_SORT,
-} from "@schemas/TransactionLog.schema";
-import type { TransactionLogQuery } from "@appTypes/TransactionLog";
 import { dashboardError, dashboardOk } from "@utils/dashboardHandlerUtils";
 import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "../appContext";
 
 /**
  * GET /transactions
- * Returns the legacy recent-transactions payload with no query string,
- * or the paginated transaction log when timeframe/filter query params are present.
+ * Returns the 100 most recent transactions across all statuses.
  */
 export const getAllTransactionsHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
   const appContext = createAppContext({ lambdaRequest: event });
-  const query = event.queryStringParameters ?? {};
-  const hasSupportedQueryParam = TRANSACTIONS_QUERY_PARAM_KEYS.some(
-    (queryKey) => query[queryKey] !== undefined,
-  );
 
   try {
-    if (hasSupportedQueryParam) {
-      const parsedQuery = TransactionsQuerySchema.safeParse(query);
-      if (!parsedQuery.success) {
-        return dashboardError(400, parsedQuery.error.issues[0].message);
-      }
-      const transactionLogQuery: TransactionLogQuery = {
-        ...parsedQuery.data,
-        sort: TRANSACTION_LOG_DEFAULT_SORT,
-        order: TRANSACTION_LOG_DEFAULT_ORDER,
-      };
-
-      const result = await appContext
-        .getUseCases()
-        .getTransactionLog(appContext, transactionLogQuery);
-      return dashboardOk(result);
-    }
-
     const result = await appContext
       .getUseCases()
       .getRecentTransactions(appContext);

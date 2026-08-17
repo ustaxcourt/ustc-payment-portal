@@ -1,8 +1,5 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
-import {
-  courtDayBoundsForDateString,
-  parseMonthDayYearDate,
-} from "@utils/courtDayBounds";
+import { courtDayBoundsForDateString } from "@utils/courtDayBounds";
 import { z } from "zod";
 import { PaymentStatusSchema } from "./PaymentStatus.schema";
 import { DashboardTransactionSchema } from "./TransactionDashboard.schema";
@@ -15,20 +12,26 @@ export const TRANSACTION_LOG_MAX_PAGE_SIZE = 200;
 const TRANSACTION_LOG_DATE_FORMAT_MESSAGE =
   "Date must be a valid ISO datetime or MM/DD/YYYY value";
 
-const isValidIsoDateTime = (value: string): boolean =>
-  !Number.isNaN(new Date(value).getTime()) && value.includes("T");
+const IsoDateTimeStringSchema = z.iso.datetime({ offset: true });
 
 const parseTransactionLogDate = (
   value: string,
   side: "from" | "to",
-): Date | undefined => {
+): { date: Date; kind: "court-day" | "iso" } | undefined => {
   const courtDayBounds = courtDayBoundsForDateString(value);
   if (courtDayBounds) {
-    return side === "from" ? courtDayBounds.start : courtDayBounds.end;
+    return {
+      date: side === "from" ? courtDayBounds.start : courtDayBounds.end,
+      kind: "court-day",
+    };
   }
 
-  if (isValidIsoDateTime(value)) {
-    return new Date(value);
+  const isoDateTime = IsoDateTimeStringSchema.safeParse(value);
+  if (isoDateTime.success) {
+    return {
+      date: new Date(isoDateTime.data),
+      kind: "iso",
+    };
   }
 
   return undefined;
@@ -123,22 +126,6 @@ export const TransactionLogQuerySchema = z
     if (!query.from || !query.to) {
       return;
     }
-
-    if (!parseTransactionLogDate(query.from, "from")) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: TRANSACTION_LOG_DATE_FORMAT_MESSAGE,
-        path: ["from"],
-      });
-    }
-
-    if (!parseTransactionLogDate(query.to, "to")) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: TRANSACTION_LOG_DATE_FORMAT_MESSAGE,
-        path: ["to"],
-      });
-    }
   })
   .transform((query, context) => {
     if (!query.from || !query.to) {
@@ -154,15 +141,31 @@ export const TransactionLogQuerySchema = z
     const from = parseTransactionLogDate(query.from, "from");
     const to = parseTransactionLogDate(query.to, "to");
 
+    if (!from) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: TRANSACTION_LOG_DATE_FORMAT_MESSAGE,
+        path: ["from"],
+      });
+    }
+
+    if (!to) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: TRANSACTION_LOG_DATE_FORMAT_MESSAGE,
+        path: ["to"],
+      });
+    }
+
     if (!from || !to) {
       return z.NEVER;
     }
 
-    if (!(from < to)) {
+    if (!(from.date < to.date)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          parseMonthDayYearDate(query.from) || parseMonthDayYearDate(query.to)
+          from.kind === "court-day" || to.kind === "court-day"
             ? "`from` must be on or before `to`"
             : "`from` must be earlier than `to`",
         path: ["from"],
@@ -171,8 +174,8 @@ export const TransactionLogQuerySchema = z
     }
 
     return {
-      from,
-      to,
+      from: from.date,
+      to: to.date,
       status: query.status,
       page: query.page,
       pageSize: query.pageSize,

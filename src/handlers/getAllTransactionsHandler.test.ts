@@ -1,9 +1,5 @@
 import type { APIGatewayEvent } from "aws-lambda";
 import type { AppContext } from "@appTypes/AppContext";
-import {
-  TRANSACTION_LOG_DEFAULT_ORDER,
-  TRANSACTION_LOG_DEFAULT_SORT,
-} from "@schemas/TransactionLog.schema";
 import { createAppContext } from "../appContext";
 import { getAllTransactionsHandler } from "./getAllTransactionsHandler";
 import { testAppContext } from "../test/testAppContext";
@@ -48,8 +44,8 @@ describe("getAllTransactionsHandler", () => {
     expect(JSON.parse(result.body)).toEqual({ data: [{ id: 1 }], total: 1 });
   });
 
-  it("routes queried requests to the transaction log use case", async () => {
-    getTransactionLog.mockResolvedValue({ data: [], counts: {}, total: 0 });
+  it("keeps the legacy recent-transactions response even when query params are supplied", async () => {
+    getRecentTransactions.mockResolvedValue({ data: [{ id: 3 }], total: 1 });
 
     const result = await getAllTransactionsHandler({
       queryStringParameters: {
@@ -62,33 +58,9 @@ describe("getAllTransactionsHandler", () => {
     } as unknown as APIGatewayEvent);
 
     expect(result.statusCode).toBe(200);
-    expect(getTransactionLog).toHaveBeenCalledWith(
-      appContext,
-      expect.objectContaining({
-        status: "pending",
-        page: 1,
-        pageSize: 200,
-        sort: TRANSACTION_LOG_DEFAULT_SORT,
-        order: TRANSACTION_LOG_DEFAULT_ORDER,
-        from: new Date("2026-08-10T04:00:00.000Z"),
-        to: new Date("2026-08-11T04:00:00.000Z"),
-      }),
-    );
-    expect(getRecentTransactions).not.toHaveBeenCalled();
-  });
-
-  it("rejects malformed date ranges with 400", async () => {
-    const result = await getAllTransactionsHandler({
-      queryStringParameters: { from: "2026-08-10", to: "08/10/2026" },
-      requestContext: { requestId: "req-3", identity: {} },
-    } as unknown as APIGatewayEvent);
-
-    expect(result.statusCode).toBe(400);
-    expect(JSON.parse(result.body)).toEqual({
-      message: "Date must be a valid MM/DD/YYYY value",
-    });
-    expect(getRecentTransactions).not.toHaveBeenCalled();
+    expect(getRecentTransactions).toHaveBeenCalledWith(appContext);
     expect(getTransactionLog).not.toHaveBeenCalled();
+    expect(JSON.parse(result.body)).toEqual({ data: [{ id: 3 }], total: 1 });
   });
 
   it("keeps legacy behavior for unknown query params", async () => {
