@@ -2,6 +2,7 @@ import {
   SORT_ORDERS,
   TRANSACTION_LOG_SORT_FIELDS,
   TransactionLogQuerySchema,
+  TransactionLogResponseSchema,
 } from "./TransactionLog.schema";
 
 const parse = (query: Record<string, string>) =>
@@ -77,5 +78,91 @@ describe("TransactionLogQuerySchema", () => {
     it("rejects a direction that is not asc or desc", () => {
       expect(parse({ order: "sideways" }).success).toBe(false);
     });
+  });
+
+  describe("includeTotals", () => {
+    it("stays off when it is not asked for", () => {
+      expect(parse({}).data?.includeTotals).toBe(false);
+    });
+
+    it('turns on for the string "true"', () => {
+      expect(parse({ includeTotals: "true" }).data?.includeTotals).toBe(true);
+    });
+
+    // z.coerce.boolean() would switch totals *on* here.
+    it('stays off for the string "false"', () => {
+      expect(parse({ includeTotals: "false" }).data?.includeTotals).toBe(false);
+    });
+
+    it("rejects a value that is neither true nor false", () => {
+      expect(parse({ includeTotals: "yes" }).success).toBe(false);
+    });
+  });
+});
+
+describe("TransactionLogResponseSchema", () => {
+  const window = {
+    from: "2026-08-17T04:00:00.000Z",
+    to: "2026-08-17T15:00:00.000Z",
+    total: 12450,
+  };
+
+  const response = {
+    data: [],
+    counts: { all: 0, success: 0, failed: 0, pending: 0 },
+    from: FROM,
+    to: TO,
+    page: 1,
+    pageSize: 50,
+    sort: "lastUpdatedAt",
+    order: "desc",
+    total: 0,
+  };
+
+  it("parses without totals, so existing callers are unaffected", () => {
+    const result = TransactionLogResponseSchema.safeParse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.data).not.toHaveProperty("totals");
+  });
+
+  it("parses with a total for each of the five windows", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      totals: {
+        day: window,
+        week: window,
+        month: window,
+        quarter: window,
+        fiscalYear: window,
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.totals?.fiscalYear.total).toBe(12450);
+  });
+
+  it("rejects totals missing a window", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      totals: { day: window },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a negative total", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      totals: {
+        day: { ...window, total: -1 },
+        week: window,
+        month: window,
+        quarter: window,
+        fiscalYear: window,
+      },
+    });
+
+    expect(result.success).toBe(false);
   });
 });

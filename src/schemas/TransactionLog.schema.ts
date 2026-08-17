@@ -83,6 +83,18 @@ export const TransactionLogQuerySchema = z
         "listed last in both directions.",
       example: "desc",
     }),
+    // Not z.coerce.boolean(): that is Boolean(value), so the non-empty string
+    // "false" would switch totals on.
+    includeTotals: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true")
+      .openapi({
+        description:
+          "Adds `totals` to the response. Fixed windows to date; ignores " +
+          "`from`/`to` and `status`.",
+        example: "true",
+      }),
   })
   .refine((query) => (query.from === undefined) === (query.to === undefined), {
     message: "`from` and `to` must be supplied together",
@@ -121,6 +133,36 @@ export const TransactionCountsSchema = z
       "Totals for the requested timeframe, unaffected by the status filter so the tallies stay stable as the user filters.",
   });
 
+export const TransactionTotalWindowSchema = z
+  .object({
+    from: z.string().datetime().openapi({
+      description: "Court-local midnight the window opened at",
+    }),
+    to: z.string().datetime().openapi({
+      description: "Instant the window was totalled at — now, not period end",
+    }),
+    total: z.number().nonnegative().openapi({
+      description: "Summed transaction amounts in USD",
+    }),
+  })
+  .openapi("TransactionTotalWindow");
+
+export const TransactionTotalsSchema = z
+  .object({
+    day: TransactionTotalWindowSchema,
+    week: TransactionTotalWindowSchema,
+    month: TransactionTotalWindowSchema,
+    quarter: TransactionTotalWindowSchema,
+    fiscalYear: TransactionTotalWindowSchema,
+  })
+  .openapi("TransactionTotals", {
+    description:
+      "Successful payments only, in fixed windows to date. Unaffected by the " +
+      "timeframe and status filters, so the figures stay stable as the user " +
+      "filters. Windows open at Court-local midnight; the week opens on " +
+      "Sunday, and the quarter and year are fiscal — the year opens on Oct 1.",
+  });
+
 export const TransactionLogResponseSchema = z
   .object({
     data: z.array(TransactionLogEntrySchema).openapi({
@@ -143,9 +185,12 @@ export const TransactionLogResponseSchema = z
       description:
         "Rows matching the timeframe and status filter, across all pages",
     }),
+    totals: TransactionTotalsSchema.optional(),
   })
   .openapi("TransactionLogResponse");
 
 export type TransactionLogResponse = z.infer<
   typeof TransactionLogResponseSchema
 >;
+
+export type TransactionTotals = z.infer<typeof TransactionTotalsSchema>;
