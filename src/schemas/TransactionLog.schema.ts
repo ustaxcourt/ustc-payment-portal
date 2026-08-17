@@ -81,7 +81,10 @@ export const TransactionLogQuerySchema = z
         description:
           "Marks an export request: raises the `pageSize` ceiling to 5000, " +
           "and pages after the first omit `counts` and `total` (the caller " +
-          "already has them from page 1).",
+          "already has them from page 1). Pages are not a consistent " +
+          "snapshot: a row updated between page requests can shift page " +
+          "boundaries, so export clients should verify their assembled row " +
+          "count against page 1's `total` and refetch on a mismatch.",
         example: "true",
       })
       .default("false")
