@@ -21,6 +21,9 @@ export const getTransactionLog: GetTransactionLog = async (
   const from = query.from ?? today.start;
   const to = query.to ?? today.end;
 
+  // Export pages after the first skip the COUNTs; the caller has them from page 1.
+  const withTotals = !query.export || query.page === 1;
+
   // Counts span the timeframe only, so the tallies hold steady while the user
   // switches between statuses.
   const [page, counts] = await Promise.all([
@@ -32,8 +35,9 @@ export const getTransactionLog: GetTransactionLog = async (
       order: query.order,
       limit: query.pageSize,
       offset: (query.page - 1) * query.pageSize,
+      withTotal: withTotals,
     }),
-    TransactionModel.countsInRange(from, to),
+    withTotals ? TransactionModel.countsInRange(from, to) : undefined,
   ]);
 
   return TransactionLogResponseSchema.parse({
@@ -41,18 +45,20 @@ export const getTransactionLog: GetTransactionLog = async (
       ...row,
       paymentMethod: toApiPaymentMethod(row.paymentMethod),
     })),
-    counts: {
-      all: counts.total,
-      success: counts.success,
-      failed: counts.failed,
-      pending: counts.pending,
-    },
+    ...(counts && {
+      counts: {
+        all: counts.total,
+        success: counts.success,
+        failed: counts.failed,
+        pending: counts.pending,
+      },
+    }),
     from: from.toISOString(),
     to: to.toISOString(),
     page: query.page,
     pageSize: query.pageSize,
     sort: query.sort,
     order: query.order,
-    total: page.total,
+    ...(page.total !== undefined && { total: page.total }),
   });
 };

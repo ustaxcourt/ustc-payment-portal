@@ -49,6 +49,37 @@ describe("TransactionLogQuerySchema", () => {
     expect(parse({ pageSize: "9999" }).success).toBe(false);
   });
 
+  describe("export", () => {
+    it("defaults to a non-export request", () => {
+      expect(parse({}).data).toMatchObject({ export: false });
+    });
+
+    it("accepts an export page size the dashboard cap would refuse", () => {
+      const result = parse({ export: "true", pageSize: "5000" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({ export: true, pageSize: 5000 });
+    });
+
+    it("rejects a large page size without the export flag", () => {
+      const result = parse({ pageSize: "5000" });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0].message).toBe(
+        "`pageSize` above 200 requires `export=true`",
+      );
+    });
+
+    it("caps export pages too", () => {
+      expect(parse({ export: "true", pageSize: "5001" }).success).toBe(false);
+    });
+
+    it("rejects anything but true or false", () => {
+      expect(parse({ export: "1" }).success).toBe(false);
+      expect(parse({ export: "yes" }).success).toBe(false);
+    });
+  });
+
   describe("sorting", () => {
     it("defaults to the newest activity first", () => {
       expect(parse({}).data).toMatchObject({

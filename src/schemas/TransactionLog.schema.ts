@@ -7,6 +7,8 @@ extendZodWithOpenApi(z);
 
 export const TRANSACTION_LOG_DEFAULT_PAGE_SIZE = 50;
 export const TRANSACTION_LOG_MAX_PAGE_SIZE = 200;
+/** `export=true` ceiling; one page (~1.7 MB) stays inside the 6 MB Lambda response limit. */
+export const TRANSACTION_LOG_MAX_EXPORT_PAGE_SIZE = 5000;
 
 /** A closed list, so nothing from the query string reaches SQL as an identifier. */
 export const TRANSACTION_LOG_SORT_FIELDS = [
@@ -66,9 +68,24 @@ export const TransactionLogQuerySchema = z
       .number()
       .int()
       .min(1)
-      .max(TRANSACTION_LOG_MAX_PAGE_SIZE)
+      .max(TRANSACTION_LOG_MAX_EXPORT_PAGE_SIZE)
       .default(TRANSACTION_LOG_DEFAULT_PAGE_SIZE)
-      .openapi({ description: "Rows per page", example: 50 }),
+      .openapi({
+        description:
+          "Rows per page. Capped at 200, or 5000 when `export=true`.",
+        example: 50,
+      }),
+    export: z
+      .enum(["true", "false"])
+      .openapi({
+        description:
+          "Marks an export request: raises the `pageSize` ceiling to 5000, " +
+          "and pages after the first omit `counts` and `total` (the caller " +
+          "already has them from page 1).",
+        example: "true",
+      })
+      .default("false")
+      .transform((value) => value === "true"),
     sort: TransactionLogSortFieldSchema.default(
       TRANSACTION_LOG_DEFAULT_SORT,
     ).openapi({
@@ -92,6 +109,13 @@ export const TransactionLogQuerySchema = z
     message: "`from` must be earlier than `to`",
     path: ["from"],
   })
+  .refine(
+    (query) => query.export || query.pageSize <= TRANSACTION_LOG_MAX_PAGE_SIZE,
+    {
+      message: `\`pageSize\` above ${TRANSACTION_LOG_MAX_PAGE_SIZE} requires \`export=true\``,
+      path: ["pageSize"],
+    },
+  )
   .openapi("TransactionLogQuery");
 
 export type TransactionLogQuery = z.infer<typeof TransactionLogQuerySchema>;
@@ -127,7 +151,9 @@ export const TransactionLogResponseSchema = z
       description:
         "Rows for the requested page, ordered by the resolved `sort`/`order`",
     }),
-    counts: TransactionCountsSchema,
+    counts: TransactionCountsSchema.optional().openapi({
+      description: "Omitted on export requests for pages after the first",
+    }),
     from: z.string().datetime().openapi({
       description: "Resolved lower bound actually queried",
     }),
@@ -139,9 +165,10 @@ export const TransactionLogResponseSchema = z
     // Echoed back like the timeframe, so the caller can confirm what was applied.
     sort: TransactionLogSortFieldSchema,
     order: SortOrderSchema,
-    total: z.number().int().nonnegative().openapi({
+    total: z.number().int().nonnegative().optional().openapi({
       description:
-        "Rows matching the timeframe and status filter, across all pages",
+        "Rows matching the timeframe and status filter, across all pages. " +
+        "Omitted on export requests for pages after the first.",
     }),
   })
   .openapi("TransactionLogResponse");

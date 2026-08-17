@@ -129,4 +129,43 @@ describe("getTransactionLog", () => {
     expect(result.data[0].returnDetail).toBe("Insufficient funds");
     expect(result.data[0].paymentMethod).toBe("Credit/Debit Card");
   });
+
+  describe("export requests", () => {
+    it("computes the totals on the first page", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 1, pageSize: 5000 }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({ withTotal: true });
+      expect(countsInRange).toHaveBeenCalled();
+      expect(result.total).toBe(4);
+      expect(result.counts).toBeDefined();
+    });
+
+    it("skips both COUNT queries on pages after the first", async () => {
+      queryLog.mockResolvedValue({ rows: [failedRow as any] });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 2, pageSize: 5000 }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        withTotal: false,
+        limit: 5000,
+        offset: 5000,
+      });
+      expect(countsInRange).not.toHaveBeenCalled();
+      expect(result.total).toBeUndefined();
+      expect(result.counts).toBeUndefined();
+    });
+
+    it("keeps the totals on every page of a non-export request", async () => {
+      await getTransactionLog(appContext, query({ page: 2 }));
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({ withTotal: true });
+      expect(countsInRange).toHaveBeenCalled();
+    });
+  });
 });
