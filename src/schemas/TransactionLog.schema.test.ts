@@ -2,6 +2,7 @@ import {
   SORT_ORDERS,
   TRANSACTION_LOG_SORT_FIELDS,
   TransactionLogQuerySchema,
+  TransactionLogResponseSchema,
 } from "./TransactionLog.schema";
 
 const parse = (query: Record<string, string>) =>
@@ -108,5 +109,35 @@ describe("TransactionLogQuerySchema", () => {
     it("rejects a direction that is not asc or desc", () => {
       expect(parse({ order: "sideways" }).success).toBe(false);
     });
+  });
+});
+
+describe("TransactionLogResponseSchema", () => {
+  const counts = { all: 47, success: 40, failed: 4, pending: 3 };
+  const page = {
+    data: [],
+    from: "2026-08-01T00:00:00.000Z",
+    to: "2026-08-02T00:00:00.000Z",
+    page: 2,
+    pageSize: 5000,
+    sort: "lastUpdatedAt",
+    order: "desc",
+  };
+
+  it("accepts the totals present together or omitted together", () => {
+    expect(
+      TransactionLogResponseSchema.safeParse({ ...page, counts, total: 47 })
+        .success,
+    ).toBe(true);
+    expect(TransactionLogResponseSchema.safeParse(page).success).toBe(true);
+  });
+
+  it("rejects one of the pair without the other", () => {
+    expect(
+      TransactionLogResponseSchema.safeParse({ ...page, counts }).success,
+    ).toBe(false);
+    expect(
+      TransactionLogResponseSchema.safeParse({ ...page, total: 47 }).success,
+    ).toBe(false);
   });
 });

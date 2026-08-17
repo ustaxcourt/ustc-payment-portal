@@ -162,7 +162,7 @@ describe("getTransactionLog", () => {
     });
 
     it("keeps the totals on every page of a non-export request", async () => {
-      await getTransactionLog(appContext, query({ page: 2 }));
+      await getTransactionLog(appContext, query({ export: false, page: 2 }));
 
       expect(queryLog.mock.calls[0][0]).toMatchObject({ withTotal: true });
       expect(countsInRange).toHaveBeenCalled();

@@ -174,6 +174,14 @@ export const TransactionLogResponseSchema = z
         "Omitted on export requests for pages after the first.",
     }),
   })
+  .refine(
+    (response) =>
+      (response.counts === undefined) === (response.total === undefined),
+    {
+      message: "`counts` and `total` must be omitted together",
+      path: ["counts"],
+    },
+  )
   .openapi("TransactionLogResponse");
 
 export type TransactionLogResponse = z.infer<

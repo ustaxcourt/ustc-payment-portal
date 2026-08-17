@@ -40,25 +40,31 @@ export const getTransactionLog: GetTransactionLog = async (
     withTotals ? TransactionModel.countsInRange(from, to) : undefined,
   ]);
 
+  // One spread, so the pair can only ever be omitted together.
+  const totals =
+    counts && page.total !== undefined
+      ? {
+          counts: {
+            all: counts.total,
+            success: counts.success,
+            failed: counts.failed,
+            pending: counts.pending,
+          },
+          total: page.total,
+        }
+      : {};
+
   return TransactionLogResponseSchema.parse({
     data: page.rows.map((row) => ({
       ...row,
       paymentMethod: toApiPaymentMethod(row.paymentMethod),
     })),
-    ...(counts && {
-      counts: {
-        all: counts.total,
-        success: counts.success,
-        failed: counts.failed,
-        pending: counts.pending,
-      },
-    }),
+    ...totals,
     from: from.toISOString(),
     to: to.toISOString(),
     page: query.page,
     pageSize: query.pageSize,
     sort: query.sort,
     order: query.order,
-    ...(page.total !== undefined && { total: page.total }),
   });
 };
