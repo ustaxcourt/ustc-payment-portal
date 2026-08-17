@@ -1006,7 +1006,10 @@ components:
         - success
         - failed
         - pending
-      description: Omitted on export requests for pages after the first
+      description: >-
+        Totals for the requested timeframe, unaffected by the status filter so
+        the tallies stay stable as the user filters. Omitted on export requests
+        for pages after the first.
     TransactionLogSortField:
       type: string
       enum:
