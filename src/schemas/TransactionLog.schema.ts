@@ -152,7 +152,10 @@ export const TransactionLogResponseSchema = z
         "Rows for the requested page, ordered by the resolved `sort`/`order`",
     }),
     counts: TransactionCountsSchema.optional().openapi({
-      description: "Omitted on export requests for pages after the first",
+      description:
+        "Totals for the requested timeframe, unaffected by the status filter " +
+        "so the tallies stay stable as the user filters. Omitted on export " +
+        "requests for pages after the first.",
     }),
     from: z.string().datetime().openapi({
       description: "Resolved lower bound actually queried",
