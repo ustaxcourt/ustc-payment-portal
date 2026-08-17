@@ -7,6 +7,7 @@ import type {
   TransactionLogSortField,
 } from "@schemas/TransactionLog.schema";
 import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/TransactionStatus.schema";
+import type { Bounds, CourtWindowName } from "@utils/courtDayBounds";
 import type { Knex } from "knex";
 import { Model } from "objection";
 import { getActiveFee } from "../config/fees";
@@ -167,6 +168,43 @@ export default class TransactionModel extends Model {
       .groupBy("paymentStatus");
 
     return TransactionModel.tallyByStatus(rows);
+  }
+
+  /** Summed `transactionAmount` per window, successful payments only. Bounds on
+   *  `lastUpdatedAt` to match queryLog/countsInRange, so a row falls in the same
+   *  window in the table and in the totals. One filtered SUM per window keeps it
+   *  to a single round trip. */
+  static async totalsToDate(
+    windows: Record<CourtWindowName, Bounds>,
+  ): Promise<Record<CourtWindowName, number>> {
+    const knex = await getKnex();
+    const names = Object.keys(windows) as CourtWindowName[];
+
+    // Identifiers go through ?? bindings so the snake_case mapper applies.
+    const sums = names.map((name) =>
+      knex.raw("coalesce(sum(??) filter (where ?? >= ? and ?? < ?), 0) as ??", [
+        "transactionAmount",
+        "lastUpdatedAt",
+        windows[name].start,
+        "lastUpdatedAt",
+        windows[name].end,
+        name,
+      ]),
+    );
+
+    const [row] = await TransactionModel.query()
+      .select(sums)
+      .where("paymentStatus", "success");
+
+    // decimal(12,2) arrives as a string from pg, as it does on the model itself.
+    const summed = row as unknown as Record<string, unknown>;
+    return names.reduce(
+      (totals, name) => {
+        totals[name] = Number(summed?.[name] ?? 0);
+        return totals;
+      },
+      {} as Record<CourtWindowName, number>,
+    );
   }
 
   private static tallyByStatus(

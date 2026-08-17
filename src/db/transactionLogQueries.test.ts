@@ -1,4 +1,5 @@
 import TransactionModel from "./TransactionModel";
+import { getKnex } from "./knex";
 
 jest.mock("./knex", () => ({ getKnex: jest.fn() }));
 
@@ -152,6 +153,114 @@ describe("TransactionModel.countsInRange", () => {
       failed: 3,
       pending: 0,
       total: 9,
+    });
+  });
+});
+
+describe("TransactionModel.totalsToDate", () => {
+  const NOW = new Date("2026-08-17T15:00:00.000Z");
+
+  const WINDOWS = {
+    day: { start: new Date("2026-08-17T04:00:00.000Z"), end: NOW },
+    week: { start: new Date("2026-08-16T04:00:00.000Z"), end: NOW },
+    month: { start: new Date("2026-08-01T04:00:00.000Z"), end: NOW },
+    quarter: { start: new Date("2026-07-01T04:00:00.000Z"), end: NOW },
+    fiscalYear: { start: new Date("2025-10-01T04:00:00.000Z"), end: NOW },
+  };
+
+  const SUM_SQL =
+    "coalesce(sum(??) filter (where ?? >= ? and ?? < ?), 0) as ??";
+
+  const stubRaw = () => {
+    const raw = jest.fn((sql: string, bindings: unknown[]) => ({
+      sql,
+      bindings,
+    }));
+    (getKnex as jest.Mock).mockResolvedValue({ raw });
+    return raw;
+  };
+
+  it("sums successful payments only", async () => {
+    stubRaw();
+    const chains = stubQuery([{}]);
+
+    await TransactionModel.totalsToDate(WINDOWS);
+    const [q] = chains;
+
+    expect(q.where).toHaveBeenCalledWith("paymentStatus", "success");
+  });
+
+  it("takes a single round trip for all five windows", async () => {
+    const raw = stubRaw();
+    const chains = stubQuery([{}]);
+
+    await TransactionModel.totalsToDate(WINDOWS);
+
+    expect(chains).toHaveLength(1);
+    expect(raw).toHaveBeenCalledTimes(5);
+    expect(chains[0].select).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ sql: SUM_SQL })]),
+    );
+  });
+
+  it("bounds each window on lastUpdatedAt, matching the log's timeframe", async () => {
+    const raw = stubRaw();
+    stubQuery([{}]);
+
+    await TransactionModel.totalsToDate(WINDOWS);
+
+    expect(raw).toHaveBeenCalledWith(SUM_SQL, [
+      "transactionAmount",
+      "lastUpdatedAt",
+      WINDOWS.fiscalYear.start,
+      "lastUpdatedAt",
+      NOW,
+      "fiscalYear",
+    ]);
+  });
+
+  it("returns numbers, not the strings pg sends back for decimals", async () => {
+    stubRaw();
+    stubQuery([
+      {
+        day: "120.50",
+        week: "1200.00",
+        month: "4800.00",
+        quarter: "14400.00",
+        fiscalYear: "57600.00",
+      },
+    ]);
+
+    expect(await TransactionModel.totalsToDate(WINDOWS)).toEqual({
+      day: 120.5,
+      week: 1200,
+      month: 4800,
+      quarter: 14400,
+      fiscalYear: 57600,
+    });
+  });
+
+  it("returns zero for a window with no successful payments", async () => {
+    stubRaw();
+    stubQuery([{ day: null, week: "0", month: "0", quarter: "0" }]);
+
+    expect(await TransactionModel.totalsToDate(WINDOWS)).toMatchObject({
+      day: 0,
+      week: 0,
+      fiscalYear: 0,
+    });
+  });
+
+  it("returns zero for every window when no row comes back", async () => {
+    stubRaw();
+    stubQuery([]);
+
+    expect(await TransactionModel.totalsToDate(WINDOWS)).toEqual({
+      day: 0,
+      week: 0,
+      month: 0,
+      quarter: 0,
+      fiscalYear: 0,
     });
   });
 });
