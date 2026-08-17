@@ -60,6 +60,17 @@ const startOfZoneDay = (
   return new Date(naive - zoneOffsetMs(new Date(first), timeZone));
 };
 
+export type Bounds = { start: Date; end: Date };
+
+export type CourtWindowName =
+  | "day"
+  | "week"
+  | "month"
+  | "quarter"
+  | "fiscalYear";
+
+const FISCAL_YEAR_START_MONTH = 10;
+
 /** Court-local day containing `now`, as half-open [start, end) instants.
  *  Bounds, not a date predicate: AT TIME ZONE in a WHERE skips the indexes. */
 export const courtDayBounds = (
@@ -80,5 +91,38 @@ export const courtDayBounds = (
       },
       COURT_TIME_ZONE,
     ),
+  };
+};
+
+/** The five revenue windows, each opening at Court-local midnight and running
+ *  to date — every `end` is `now`, not the end of the period. */
+export const courtWindowBounds = (
+  now: Date = new Date(),
+): Record<CourtWindowName, Bounds> => {
+  const { year, month, day } = partsInZone(now, COURT_TIME_ZONE);
+
+  // Read in UTC so the zone's clock time can't tip the date into a neighbouring day.
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  const quarterStartMonth = month - ((month - 1) % 3);
+  const fiscalYear = month >= FISCAL_YEAR_START_MONTH ? year : year - 1;
+
+  const end = new Date(now.getTime());
+  // Date.UTC normalises out-of-range days, so a Sunday in the previous month
+  // or year needs no special casing.
+  const openingAt = (parts: DayParts): Bounds => ({
+    start: startOfZoneDay(parts, COURT_TIME_ZONE),
+    end,
+  });
+
+  return {
+    day: openingAt({ year, month, day }),
+    week: openingAt({ year, month, day: day - weekday }),
+    month: openingAt({ year, month, day: 1 }),
+    quarter: openingAt({ year, month: quarterStartMonth, day: 1 }),
+    fiscalYear: openingAt({
+      year: fiscalYear,
+      month: FISCAL_YEAR_START_MONTH,
+      day: 1,
+    }),
   };
 };
