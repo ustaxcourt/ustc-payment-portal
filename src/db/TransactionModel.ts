@@ -7,7 +7,7 @@ import type {
   TransactionLogSortField,
 } from "@schemas/TransactionLog.schema";
 import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/TransactionStatus.schema";
-import type { Bounds, CourtWindowName } from "@utils/courtDayBounds";
+import type { Bounds, CourtPeriodName } from "@utils/courtDayBounds";
 import type { Knex } from "knex";
 import { Model } from "objection";
 import { getActiveFee } from "../config/fees";
@@ -170,24 +170,24 @@ export default class TransactionModel extends Model {
     return TransactionModel.tallyByStatus(rows);
   }
 
-  /** Summed `transactionAmount` per window, successful payments only. Bounds on
+  /** Summed `transactionAmount` per period, successful payments only. Bounds on
    *  `lastUpdatedAt` to match queryLog/countsInRange, so a row falls in the same
-   *  window in the table and in the totals. One filtered SUM per window keeps it
+   *  period in the table and in the totals. One filtered SUM per period keeps it
    *  to a single round trip. */
   static async totalsToDate(
-    windows: Record<CourtWindowName, Bounds>,
-  ): Promise<Record<CourtWindowName, number>> {
+    periods: Record<CourtPeriodName, Bounds>,
+  ): Promise<Record<CourtPeriodName, number>> {
     const knex = await getKnex();
-    const names = Object.keys(windows) as CourtWindowName[];
+    const names = Object.keys(periods) as CourtPeriodName[];
 
     // Identifiers go through ?? bindings so the snake_case mapper applies.
     const sums = names.map((name) =>
       knex.raw("coalesce(sum(??) filter (where ?? >= ? and ?? < ?), 0) as ??", [
         "transactionAmount",
         "lastUpdatedAt",
-        windows[name].start,
+        periods[name].start,
         "lastUpdatedAt",
-        windows[name].end,
+        periods[name].end,
         name,
       ]),
     );
@@ -203,7 +203,7 @@ export default class TransactionModel extends Model {
         totals[name] = Number(summed?.[name] ?? 0);
         return totals;
       },
-      {} as Record<CourtWindowName, number>,
+      {} as Record<CourtPeriodName, number>,
     );
   }
 

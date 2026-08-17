@@ -39,9 +39,18 @@ const query = (overrides: Partial<TransactionLogQuery> = {}) =>
     ...overrides,
   }) as TransactionLogQuery;
 
+const totals = {
+  day: 120,
+  week: 1200,
+  month: 4800,
+  quarter: 14400,
+  fiscalYear: 57600,
+};
+
 describe("getTransactionLog", () => {
   let queryLog: jest.SpyInstance;
   let countsInRange: jest.SpyInstance;
+  let totalsToDate: jest.SpyInstance;
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date("2026-08-03T15:00:00.000Z"));
@@ -51,6 +60,9 @@ describe("getTransactionLog", () => {
     countsInRange = jest
       .spyOn(TransactionModel, "countsInRange")
       .mockResolvedValue(counts);
+    totalsToDate = jest
+      .spyOn(TransactionModel, "totalsToDate")
+      .mockResolvedValue(totals);
   });
 
   afterEach(() => {
@@ -128,5 +140,58 @@ describe("getTransactionLog", () => {
     expect(result.data[0].returnCode).toBe(102);
     expect(result.data[0].returnDetail).toBe("Insufficient funds");
     expect(result.data[0].paymentMethod).toBe("Credit/Debit Card");
+  });
+
+  describe("totals", () => {
+    it("leaves them out — and does not query them — unless asked", async () => {
+      const result = await getTransactionLog(appContext, query());
+
+      expect(totalsToDate).not.toHaveBeenCalled();
+      expect(result).not.toHaveProperty("totals");
+    });
+
+    it("returns a total per period when asked", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true }),
+      );
+
+      expect(totalsToDate).toHaveBeenCalledTimes(1);
+      expect(result.totals?.day.total).toBe(120);
+      expect(result.totals?.fiscalYear.total).toBe(57600);
+    });
+
+    it("echoes the period each total was summed over", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true }),
+      );
+
+      expect(result.totals?.day).toMatchObject({
+        from: "2026-08-03T04:00:00.000Z",
+        to: "2026-08-03T15:00:00.000Z",
+      });
+      expect(result.totals?.fiscalYear.from).toBe("2025-10-01T04:00:00.000Z");
+      expect(totalsToDate.mock.calls[0][0].fiscalYear.start).toEqual(
+        new Date("2025-10-01T04:00:00.000Z"),
+      );
+    });
+
+    it("ignores the requested timeframe and status", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({
+          from: new Date("2026-07-01T00:00:00.000Z"),
+          to: new Date("2026-07-02T00:00:00.000Z"),
+          status: "failed",
+          includeTotals: true,
+        }),
+      );
+
+      expect(totalsToDate.mock.calls[0][0].day.start).toEqual(
+        new Date("2026-08-03T04:00:00.000Z"),
+      );
+      expect(result.totals?.day.total).toBe(120);
+    });
   });
 });

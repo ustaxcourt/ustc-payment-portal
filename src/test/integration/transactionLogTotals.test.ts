@@ -5,7 +5,7 @@ import { signedFetch } from "./sigv4Helper";
 /**
  * Totals against a real database. The aggregate is raw SQL, so a renamed column
  * or an unsupported FILTER clause surfaces here even against an empty database.
- * Amounts are asserted as relationships between the windows rather than as
+ * Amounts are asserted as relationships between the periods rather than as
  * figures, since the local database holds whatever previous runs left behind.
  */
 
@@ -13,7 +13,7 @@ import { signedFetch } from "./sigv4Helper";
 const FROM = "2020-01-01T00:00:00Z";
 const TO = "2030-01-01T00:00:00Z";
 
-const WINDOWS = ["day", "week", "month", "quarter", "fiscalYear"] as const;
+const PERIODS = ["day", "week", "month", "quarter", "fiscalYear"] as const;
 
 describe("GET /transaction-log totals", () => {
   jest.setTimeout(60_000);
@@ -64,20 +64,20 @@ describe("GET /transaction-log totals", () => {
     expect(body).not.toHaveProperty("totals");
   });
 
-  it("returns a total for each of the five windows", async () => {
+  it("returns a total for each of the five periods", async () => {
     const totals = await fetchTotals();
 
-    for (const window of WINDOWS) {
-      expect(totals[window].total).toBeGreaterThanOrEqual(0);
+    for (const period of PERIODS) {
+      expect(totals[period].total).toBeGreaterThanOrEqual(0);
     }
   });
 
-  it("returns each window as a half-open range ending now", async () => {
+  it("returns each period as a half-open range ending now", async () => {
     const requestedAt = Date.now();
     const totals = await fetchTotals();
 
-    for (const window of WINDOWS) {
-      const { from, to } = totals[window];
+    for (const period of PERIODS) {
+      const { from, to } = totals[period];
 
       expect(new Date(from).getTime()).toBeLessThan(new Date(to).getTime());
       expect(new Date(to).getTime()).toBeGreaterThanOrEqual(
@@ -87,12 +87,12 @@ describe("GET /transaction-log totals", () => {
     }
   });
 
-  it("nests each window inside the next one out", async () => {
+  it("nests each period inside the next one out", async () => {
     const totals = await fetchTotals();
 
     // The week can open in the previous month, so it is left out of the chain.
-    const opens = (window: (typeof WINDOWS)[number]) =>
-      new Date(totals[window].from).getTime();
+    const opens = (period: (typeof PERIODS)[number]) =>
+      new Date(totals[period].from).getTime();
 
     expect(opens("day")).toBeGreaterThanOrEqual(opens("week"));
     expect(opens("day")).toBeGreaterThanOrEqual(opens("month"));
@@ -107,20 +107,20 @@ describe("GET /transaction-log totals", () => {
   it("counts successful payments only", async () => {
     const { fiscalYear } = await fetchTotals();
 
-    // counts ignores the status filter, so this is every status in the window.
-    const inWindow = await fetchLog({
+    // counts ignores the status filter, so this is every status in the period.
+    const inPeriod = await fetchLog({
       from: fiscalYear.from,
       to: fiscalYear.to,
       pageSize: "1",
     });
 
     // No successes means no revenue, however many failed or pending rows exist.
-    if (inWindow.counts.success === 0) {
+    if (inPeriod.counts.success === 0) {
       expect(fiscalYear.total).toBe(0);
     }
   });
 
-  it("agrees with the rows themselves over a window that fits in one page", async () => {
+  it("agrees with the rows themselves over a period that fits in one page", async () => {
     const { day } = await fetchTotals();
 
     const successes = await fetchLog({
@@ -151,9 +151,9 @@ describe("GET /transaction-log totals", () => {
       to: "2026-01-02T00:00:00Z",
     });
 
-    for (const window of WINDOWS) {
-      expect(filtered.totals?.[window].total).toBe(
-        unfiltered.totals?.[window].total,
+    for (const period of PERIODS) {
+      expect(filtered.totals?.[period].total).toBe(
+        unfiltered.totals?.[period].total,
       );
     }
   });

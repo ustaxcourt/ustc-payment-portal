@@ -5,7 +5,8 @@ import type {
   TransactionLogQuery,
   TransactionLogResponse,
 } from "@appTypes/TransactionLog";
-import { courtDayBounds } from "@utils/courtDayBounds";
+import type { CourtPeriodName } from "@utils/courtDayBounds";
+import { courtDayBounds, courtPeriodBounds } from "@utils/courtDayBounds";
 import { toApiPaymentMethod } from "@utils/toApiPaymentMethod";
 
 export type GetTransactionLog = (
@@ -22,8 +23,10 @@ export const getTransactionLog: GetTransactionLog = async (
   const to = query.to ?? today.end;
 
   // Counts span the timeframe only, so the tallies hold steady while the user
-  // switches between statuses.
-  const [page, counts] = await Promise.all([
+  // switches between statuses. Totals ignore it entirely — fixed periods to date.
+  const periods = courtPeriodBounds();
+
+  const [page, counts, totals] = await Promise.all([
     TransactionModel.queryLog({
       from,
       to,
@@ -34,7 +37,23 @@ export const getTransactionLog: GetTransactionLog = async (
       offset: (query.page - 1) * query.pageSize,
     }),
     TransactionModel.countsInRange(from, to),
+    query.includeTotals ? TransactionModel.totalsToDate(periods) : undefined,
   ]);
+
+  // Each period echoes the instants actually summed; the dashboard displays
+  // these rather than deriving them.
+  const totalsByPeriod =
+    totals &&
+    Object.fromEntries(
+      Object.entries(periods).map(([name, bounds]) => [
+        name,
+        {
+          from: bounds.start.toISOString(),
+          to: bounds.end.toISOString(),
+          total: totals[name as CourtPeriodName],
+        },
+      ]),
+    );
 
   return TransactionLogResponseSchema.parse({
     data: page.rows.map((row) => ({
@@ -54,5 +73,7 @@ export const getTransactionLog: GetTransactionLog = async (
     sort: query.sort,
     order: query.order,
     total: page.total,
+    // Spread, so the key is absent rather than present-and-undefined.
+    ...(totalsByPeriod && { totals: totalsByPeriod }),
   });
 };

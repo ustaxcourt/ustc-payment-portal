@@ -91,7 +91,7 @@ export const TransactionLogQuerySchema = z
       .transform((value) => value === "true")
       .openapi({
         description:
-          "Adds `totals` to the response. Fixed windows to date; ignores " +
+          "Adds `totals` to the response. Fixed periods to date; ignores " +
           "`from`/`to` and `status`.",
         example: "true",
       }),
@@ -133,33 +133,33 @@ export const TransactionCountsSchema = z
       "Totals for the requested timeframe, unaffected by the status filter so the tallies stay stable as the user filters.",
   });
 
-export const TransactionTotalWindowSchema = z
+export const TransactionTotalPeriodSchema = z
   .object({
     from: z.string().datetime().openapi({
-      description: "Court-local midnight the window opened at",
+      description: "Court-local midnight the period opened at",
     }),
     to: z.string().datetime().openapi({
-      description: "Instant the window was totalled at — now, not period end",
+      description: "Instant the period was totalled at — now, not period end",
     }),
     total: z.number().nonnegative().openapi({
       description: "Summed transaction amounts in USD",
     }),
   })
-  .openapi("TransactionTotalWindow");
+  .openapi("TransactionTotalPeriod");
 
 export const TransactionTotalsSchema = z
   .object({
-    day: TransactionTotalWindowSchema,
-    week: TransactionTotalWindowSchema,
-    month: TransactionTotalWindowSchema,
-    quarter: TransactionTotalWindowSchema,
-    fiscalYear: TransactionTotalWindowSchema,
+    day: TransactionTotalPeriodSchema,
+    week: TransactionTotalPeriodSchema,
+    month: TransactionTotalPeriodSchema,
+    quarter: TransactionTotalPeriodSchema,
+    fiscalYear: TransactionTotalPeriodSchema,
   })
   .openapi("TransactionTotals", {
     description:
-      "Successful payments only, in fixed windows to date. Unaffected by the " +
+      "Successful payments only, in fixed periods to date. Unaffected by the " +
       "timeframe and status filters, so the figures stay stable as the user " +
-      "filters. Windows open at Court-local midnight; the week opens on " +
+      "filters. Periods open at Court-local midnight; the week opens on " +
       "Sunday, and the quarter and year are fiscal — the year opens on Oct 1.",
   });
 

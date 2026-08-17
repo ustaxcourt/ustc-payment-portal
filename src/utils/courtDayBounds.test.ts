@@ -1,4 +1,4 @@
-import { courtDayBounds, courtWindowBounds } from "./courtDayBounds";
+import { courtDayBounds, courtPeriodBounds } from "./courtDayBounds";
 
 const hoursBetween = (start: Date, end: Date): number =>
   (end.getTime() - start.getTime()) / 3_600_000;
@@ -80,40 +80,40 @@ describe("courtDayBounds", () => {
   });
 });
 
-describe("courtWindowBounds", () => {
+describe("courtPeriodBounds", () => {
   // Monday 2026-08-17, 11:00 EDT.
   const MONDAY = new Date("2026-08-17T15:00:00.000Z");
 
-  it("opens every window at Court-local midnight", () => {
-    const windows = courtWindowBounds(MONDAY);
+  it("opens every period at Court-local midnight", () => {
+    const periods = courtPeriodBounds(MONDAY);
 
-    expect(windows.day.start.toISOString()).toBe("2026-08-17T04:00:00.000Z");
-    expect(windows.week.start.toISOString()).toBe("2026-08-16T04:00:00.000Z");
-    expect(windows.month.start.toISOString()).toBe("2026-08-01T04:00:00.000Z");
-    expect(windows.quarter.start.toISOString()).toBe("2026-07-01T04:00:00.000Z");
-    expect(windows.fiscalYear.start.toISOString()).toBe(
+    expect(periods.day.start.toISOString()).toBe("2026-08-17T04:00:00.000Z");
+    expect(periods.week.start.toISOString()).toBe("2026-08-16T04:00:00.000Z");
+    expect(periods.month.start.toISOString()).toBe("2026-08-01T04:00:00.000Z");
+    expect(periods.quarter.start.toISOString()).toBe("2026-07-01T04:00:00.000Z");
+    expect(periods.fiscalYear.start.toISOString()).toBe(
       "2025-10-01T04:00:00.000Z",
     );
   });
 
-  it("closes every window at now, not at the end of the period", () => {
-    const windows = courtWindowBounds(MONDAY);
+  it("closes every period at now, not at its calendar end", () => {
+    const periods = courtPeriodBounds(MONDAY);
 
-    for (const window of Object.values(windows)) {
-      expect(window.end.toISOString()).toBe("2026-08-17T15:00:00.000Z");
+    for (const period of Object.values(periods)) {
+      expect(period.end.toISOString()).toBe("2026-08-17T15:00:00.000Z");
     }
   });
 
   describe("week", () => {
     it("opens on the most recent Sunday", () => {
-      const { week } = courtWindowBounds(MONDAY);
+      const { week } = courtPeriodBounds(MONDAY);
 
       expect(week.start.toISOString()).toBe("2026-08-16T04:00:00.000Z");
     });
 
     it("opens today when today is Sunday", () => {
       // Sunday 2026-08-16.
-      const { day, week } = courtWindowBounds(
+      const { day, week } = courtPeriodBounds(
         new Date("2026-08-16T15:00:00.000Z"),
       );
 
@@ -122,14 +122,14 @@ describe("courtWindowBounds", () => {
 
     it("reaches back into the previous month", () => {
       // Tuesday 2026-09-01 — the week opened on Sunday 2026-08-30.
-      const { week } = courtWindowBounds(new Date("2026-09-01T15:00:00.000Z"));
+      const { week } = courtPeriodBounds(new Date("2026-09-01T15:00:00.000Z"));
 
       expect(week.start.toISOString()).toBe("2026-08-30T04:00:00.000Z");
     });
 
     it("reaches back into the previous year", () => {
       // Friday 2027-01-01 — the week opened on Sunday 2026-12-27, in EST.
-      const { week } = courtWindowBounds(new Date("2027-01-01T15:00:00.000Z"));
+      const { week } = courtPeriodBounds(new Date("2027-01-01T15:00:00.000Z"));
 
       expect(week.start.toISOString()).toBe("2026-12-27T05:00:00.000Z");
     });
@@ -142,7 +142,7 @@ describe("courtWindowBounds", () => {
       ["January, the first month of fiscal Q2", "2026-01-15", "2026-01-01T05"],
       ["August, the second month of fiscal Q4", "2026-08-17", "2026-07-01T04"],
     ])("opens on the quarter containing %s", (_label, now, expected) => {
-      const { quarter } = courtWindowBounds(new Date(`${now}T15:00:00.000Z`));
+      const { quarter } = courtPeriodBounds(new Date(`${now}T15:00:00.000Z`));
 
       expect(quarter.start.toISOString()).toBe(`${expected}:00:00.000Z`);
     });
@@ -150,7 +150,7 @@ describe("courtWindowBounds", () => {
 
   describe("fiscal year", () => {
     it("stays in the previous calendar year through September", () => {
-      const { fiscalYear } = courtWindowBounds(
+      const { fiscalYear } = courtPeriodBounds(
         new Date("2026-09-30T15:00:00.000Z"),
       );
 
@@ -158,7 +158,7 @@ describe("courtWindowBounds", () => {
     });
 
     it("rolls over on October 1", () => {
-      const { fiscalYear } = courtWindowBounds(
+      const { fiscalYear } = courtPeriodBounds(
         new Date("2026-10-01T15:00:00.000Z"),
       );
 
@@ -169,7 +169,7 @@ describe("courtWindowBounds", () => {
   describe("daylight saving", () => {
     it("opens the day at EST midnight on the spring-forward day", () => {
       // Sunday 2026-03-08 — the clocks go forward at 02:00, after midnight.
-      const { day, week } = courtWindowBounds(
+      const { day, week } = courtPeriodBounds(
         new Date("2026-03-08T15:00:00.000Z"),
       );
 
@@ -177,9 +177,9 @@ describe("courtWindowBounds", () => {
       expect(week.start.toISOString()).toBe("2026-03-08T05:00:00.000Z");
     });
 
-    it("opens each window at its own offset when a window spans a change", () => {
+    it("opens each period at its own offset when a period spans a change", () => {
       // From January (EST) the fiscal year opened in October (EDT).
-      const { day, fiscalYear } = courtWindowBounds(
+      const { day, fiscalYear } = courtPeriodBounds(
         new Date("2026-01-15T15:00:00.000Z"),
       );
 

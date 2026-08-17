@@ -160,7 +160,7 @@ describe("TransactionModel.countsInRange", () => {
 describe("TransactionModel.totalsToDate", () => {
   const NOW = new Date("2026-08-17T15:00:00.000Z");
 
-  const WINDOWS = {
+  const PERIODS = {
     day: { start: new Date("2026-08-17T04:00:00.000Z"), end: NOW },
     week: { start: new Date("2026-08-16T04:00:00.000Z"), end: NOW },
     month: { start: new Date("2026-08-01T04:00:00.000Z"), end: NOW },
@@ -184,17 +184,17 @@ describe("TransactionModel.totalsToDate", () => {
     stubRaw();
     const chains = stubQuery([{}]);
 
-    await TransactionModel.totalsToDate(WINDOWS);
+    await TransactionModel.totalsToDate(PERIODS);
     const [q] = chains;
 
     expect(q.where).toHaveBeenCalledWith("paymentStatus", "success");
   });
 
-  it("takes a single round trip for all five windows", async () => {
+  it("takes a single round trip for all five periods", async () => {
     const raw = stubRaw();
     const chains = stubQuery([{}]);
 
-    await TransactionModel.totalsToDate(WINDOWS);
+    await TransactionModel.totalsToDate(PERIODS);
 
     expect(chains).toHaveLength(1);
     expect(raw).toHaveBeenCalledTimes(5);
@@ -203,16 +203,16 @@ describe("TransactionModel.totalsToDate", () => {
     );
   });
 
-  it("bounds each window on lastUpdatedAt, matching the log's timeframe", async () => {
+  it("bounds each period on lastUpdatedAt, matching the log's timeframe", async () => {
     const raw = stubRaw();
     stubQuery([{}]);
 
-    await TransactionModel.totalsToDate(WINDOWS);
+    await TransactionModel.totalsToDate(PERIODS);
 
     expect(raw).toHaveBeenCalledWith(SUM_SQL, [
       "transactionAmount",
       "lastUpdatedAt",
-      WINDOWS.fiscalYear.start,
+      PERIODS.fiscalYear.start,
       "lastUpdatedAt",
       NOW,
       "fiscalYear",
@@ -231,7 +231,7 @@ describe("TransactionModel.totalsToDate", () => {
       },
     ]);
 
-    expect(await TransactionModel.totalsToDate(WINDOWS)).toEqual({
+    expect(await TransactionModel.totalsToDate(PERIODS)).toEqual({
       day: 120.5,
       week: 1200,
       month: 4800,
@@ -240,22 +240,22 @@ describe("TransactionModel.totalsToDate", () => {
     });
   });
 
-  it("returns zero for a window with no successful payments", async () => {
+  it("returns zero for a period with no successful payments", async () => {
     stubRaw();
     stubQuery([{ day: null, week: "0", month: "0", quarter: "0" }]);
 
-    expect(await TransactionModel.totalsToDate(WINDOWS)).toMatchObject({
+    expect(await TransactionModel.totalsToDate(PERIODS)).toMatchObject({
       day: 0,
       week: 0,
       fiscalYear: 0,
     });
   });
 
-  it("returns zero for every window when no row comes back", async () => {
+  it("returns zero for every period when no row comes back", async () => {
     stubRaw();
     stubQuery([]);
 
-    expect(await TransactionModel.totalsToDate(WINDOWS)).toEqual({
+    expect(await TransactionModel.totalsToDate(PERIODS)).toEqual({
       day: 0,
       week: 0,
       month: 0,

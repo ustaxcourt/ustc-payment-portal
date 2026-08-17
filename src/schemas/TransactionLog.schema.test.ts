@@ -101,7 +101,7 @@ describe("TransactionLogQuerySchema", () => {
 });
 
 describe("TransactionLogResponseSchema", () => {
-  const window = {
+  const period = {
     from: "2026-08-17T04:00:00.000Z",
     to: "2026-08-17T15:00:00.000Z",
     total: 12450,
@@ -126,15 +126,15 @@ describe("TransactionLogResponseSchema", () => {
     expect(result.data).not.toHaveProperty("totals");
   });
 
-  it("parses with a total for each of the five windows", () => {
+  it("parses with a total for each of the five periods", () => {
     const result = TransactionLogResponseSchema.safeParse({
       ...response,
       totals: {
-        day: window,
-        week: window,
-        month: window,
-        quarter: window,
-        fiscalYear: window,
+        day: period,
+        week: period,
+        month: period,
+        quarter: period,
+        fiscalYear: period,
       },
     });
 
@@ -142,10 +142,10 @@ describe("TransactionLogResponseSchema", () => {
     expect(result.data?.totals?.fiscalYear.total).toBe(12450);
   });
 
-  it("rejects totals missing a window", () => {
+  it("rejects totals missing a period", () => {
     const result = TransactionLogResponseSchema.safeParse({
       ...response,
-      totals: { day: window },
+      totals: { day: period },
     });
 
     expect(result.success).toBe(false);
@@ -155,11 +155,11 @@ describe("TransactionLogResponseSchema", () => {
     const result = TransactionLogResponseSchema.safeParse({
       ...response,
       totals: {
-        day: { ...window, total: -1 },
-        week: window,
-        month: window,
-        quarter: window,
-        fiscalYear: window,
+        day: { ...period, total: -1 },
+        week: period,
+        month: period,
+        quarter: period,
+        fiscalYear: period,
       },
     });
 

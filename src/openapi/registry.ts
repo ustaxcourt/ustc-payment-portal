@@ -412,7 +412,10 @@ registry.registerPath({
     "timeframe and ignore the status filter, so the tallies stay stable while " +
     "the caller filters. Ordering follows `sort`/`order`, defaulting to " +
     "newest lastUpdatedAt first, and is always broken by the primary key so " +
-    "the order is stable across identical requests.",
+    "the order is stable across identical requests. `includeTotals=true` adds " +
+    "summed revenue for five fixed periods to date — day, week, month, fiscal " +
+    "quarter and fiscal year — covering successful payments only and ignoring " +
+    "both the timeframe and the status filter.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   request: {

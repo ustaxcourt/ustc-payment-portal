@@ -62,7 +62,7 @@ const startOfZoneDay = (
 
 export type Bounds = { start: Date; end: Date };
 
-export type CourtWindowName =
+export type CourtPeriodName =
   | "day"
   | "week"
   | "month"
@@ -94,11 +94,11 @@ export const courtDayBounds = (
   };
 };
 
-/** The five revenue windows, each opening at Court-local midnight and running
+/** The five revenue periods, each opening at Court-local midnight and running
  *  to date — every `end` is `now`, not the end of the period. */
-export const courtWindowBounds = (
+export const courtPeriodBounds = (
   now: Date = new Date(),
-): Record<CourtWindowName, Bounds> => {
+): Record<CourtPeriodName, Bounds> => {
   const { year, month, day } = partsInZone(now, COURT_TIME_ZONE);
 
   // Read in UTC so the zone's clock time can't tip the date into a neighbouring day.
