@@ -8,6 +8,8 @@ extendZodWithOpenApi(z);
 
 export const TRANSACTION_LOG_DEFAULT_PAGE_SIZE = 50;
 export const TRANSACTION_LOG_MAX_PAGE_SIZE = 200;
+/** `export=true` ceiling; one page (~1.7 MB) stays inside the 6 MB Lambda response limit. */
+export const TRANSACTION_LOG_MAX_EXPORT_PAGE_SIZE = 5000;
 
 const TRANSACTION_LOG_DATE_FORMAT_MESSAGE =
   "Date must be a valid ISO datetime or MM/DD/YYYY value";
@@ -95,9 +97,27 @@ export const TransactionLogQuerySchema = z
       .number()
       .int()
       .min(1)
-      .max(TRANSACTION_LOG_MAX_PAGE_SIZE)
+      .max(TRANSACTION_LOG_MAX_EXPORT_PAGE_SIZE)
       .default(TRANSACTION_LOG_DEFAULT_PAGE_SIZE)
-      .openapi({ description: "Rows per page", example: 50 }),
+      .openapi({
+        description:
+          "Rows per page. Capped at 200, or 5000 when `export=true`.",
+        example: 50,
+      }),
+    export: z
+      .enum(["true", "false"])
+      .openapi({
+        description:
+          "Marks an export request: raises the `pageSize` ceiling to 5000, " +
+          "and pages after the first omit `counts` and `total` (the caller " +
+          "already has them from page 1). Pages are not a consistent " +
+          "snapshot: a row updated between page requests can shift page " +
+          "boundaries, so export clients should verify their assembled row " +
+          "count against page 1's `total` and refetch on a mismatch.",
+        example: "true",
+      })
+      .default("false")
+      .transform((value) => value === "true"),
     sort: TransactionLogSortFieldSchema.default(
       TRANSACTION_LOG_DEFAULT_SORT,
     ).openapi({
@@ -133,6 +153,7 @@ export const TransactionLogQuerySchema = z
         status: query.status,
         page: query.page,
         pageSize: query.pageSize,
+        export: query.export,
         sort: query.sort,
         order: query.order,
       };
@@ -179,10 +200,18 @@ export const TransactionLogQuerySchema = z
       status: query.status,
       page: query.page,
       pageSize: query.pageSize,
+      export: query.export,
       sort: query.sort,
       order: query.order,
     };
   })
+  .refine(
+    (query) => query.export || query.pageSize <= TRANSACTION_LOG_MAX_PAGE_SIZE,
+    {
+      message: `\`pageSize\` above ${TRANSACTION_LOG_MAX_PAGE_SIZE} requires \`export=true\``,
+      path: ["pageSize"],
+    },
+  )
   .openapi("TransactionLogQuery");
 
 export type TransactionLogQuery = z.infer<typeof TransactionLogQuerySchema>;
@@ -218,7 +247,12 @@ export const TransactionLogResponseSchema = z
       description:
         "Rows for the requested page, ordered by the resolved `sort`/`order`",
     }),
-    counts: TransactionCountsSchema,
+    counts: TransactionCountsSchema.optional().openapi({
+      description:
+        "Totals for the requested timeframe, unaffected by the status filter " +
+        "so the tallies stay stable as the user filters. Omitted on export " +
+        "requests for pages after the first.",
+    }),
     from: z.string().datetime().openapi({
       description: "Resolved lower bound actually queried",
     }),
@@ -230,11 +264,25 @@ export const TransactionLogResponseSchema = z
     // Echoed back like the timeframe, so the caller can confirm what was applied.
     sort: TransactionLogSortFieldSchema,
     order: SortOrderSchema,
-    total: z.number().int().nonnegative().openapi({
-      description:
-        "Rows matching the timeframe and status filter, across all pages",
-    }),
+    total: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .openapi({
+        description:
+          "Rows matching the timeframe and status filter, across all pages. " +
+          "Omitted on export requests for pages after the first.",
+      }),
   })
+  .refine(
+    (response) =>
+      (response.counts === undefined) === (response.total === undefined),
+    {
+      message: "`counts` and `total` must be omitted together",
+      path: ["counts"],
+    },
+  )
   .openapi("TransactionLogResponse");
 
 export type TransactionLogResponse = z.infer<
