@@ -14,6 +14,42 @@ const mockCreateAppContext = createAppContext as jest.MockedFunction<
 
 describe("getTransactionLogHandler", () => {
   const getTransactionLog = jest.fn();
+  const transactionLogResponse = {
+    data: [
+      {
+        agencyTrackingId: "24cfd28543f945c38e1a0",
+        paygovTrackingId: null,
+        feeName: "Petition Filing Fee",
+        fee: "PETITION_FILING_FEE",
+        transactionAmount: 60,
+        clientName: "CI/CD Integration Tests",
+        transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
+        paymentStatus: "pending",
+        transactionStatus: "received",
+        paygovToken: null,
+        metadata: {
+          docketNumber: "123-26",
+        },
+        createdAt: "2026-08-19T17:26:35.841Z",
+        lastUpdatedAt: "2026-08-19T17:26:35.841Z",
+        returnCode: null,
+        returnDetail: null,
+      },
+    ],
+    counts: {
+      all: 68,
+      success: 49,
+      failed: 14,
+      pending: 5,
+    },
+    from: "2026-08-13T04:00:00.000Z",
+    to: "2026-08-20T04:00:00.000Z",
+    page: 1,
+    pageSize: 200,
+    sort: "createdAt",
+    order: "desc",
+    total: 68,
+  };
   const appContext = {
     ...testAppContext,
     getUseCases: () => ({
@@ -28,15 +64,17 @@ describe("getTransactionLogHandler", () => {
     mockCreateAppContext.mockReturnValue(appContext as AppContext);
   });
 
-  it("routes an MM/DD/YYYY timeframe to the transaction log use case", async () => {
-    getTransactionLog.mockResolvedValue({ data: [], counts: {}, total: 0 });
+  it("parses the dashboard timeframe query and returns the use-case response", async () => {
+    getTransactionLog.mockResolvedValue(transactionLogResponse);
 
     const result = await getTransactionLogHandler({
       queryStringParameters: {
-        from: "08/10/2026",
-        to: "08/10/2026",
-        status: "success",
+        from: "08/13/2026",
+        to: "08/19/2026",
+        order: "desc",
+        page: "1",
         pageSize: "200",
+        sort: "createdAt",
       },
       requestContext: { requestId: "req-1", identity: {} },
     } as unknown as APIGatewayEvent);
@@ -45,13 +83,15 @@ describe("getTransactionLogHandler", () => {
     expect(getTransactionLog).toHaveBeenCalledWith(
       appContext,
       expect.objectContaining({
-        status: "success",
+        from: new Date("2026-08-13T04:00:00.000Z"),
+        to: new Date("2026-08-20T04:00:00.000Z"),
+        order: "desc",
         page: 1,
         pageSize: 200,
-        from: new Date("2026-08-10T04:00:00.000Z"),
-        to: new Date("2026-08-11T04:00:00.000Z"),
+        sort: "createdAt",
       }),
     );
+    expect(JSON.parse(result.body)).toEqual(transactionLogResponse);
   });
 
   it("routes a winter MM/DD/YYYY timeframe using EST midnight bounds", async () => {
