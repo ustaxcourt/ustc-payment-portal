@@ -320,7 +320,9 @@ registry.registerPath({
         "Gone - the token is no longer valid for processing. " +
         "Another transaction may already be fulfilling the same obligation (check getDetails), " +
         "the transaction is not in an initiatable state (e.g. already processed), " +
-        "or a prior POST /process claim was abandoned and marked failed after the processing timeout. " +
+        "a prior POST /process claim was abandoned and marked failed after the processing timeout, " +
+        "or the token has exceeded its maximum age. " +
+        "For an expired token, retry POST /init with the same transactionReferenceId to obtain a new token. " +
         "This is not returned for concurrent in-flight requests on the same token (see 409).",
       content: {
         "application/json": {
@@ -406,9 +408,13 @@ registry.registerPath({
   description:
     "Transaction log for the Case Services & Finance dashboard. Filters on " +
     "lastUpdatedAt, defaulting to the current Court day in America/New_York, " +
-    "and returns rows newest first alongside aggregate counts. The counts " +
-    "cover the whole timeframe and ignore the status filter, so the tallies " +
-    "stay stable while the caller filters.",
+    "and returns rows alongside aggregate counts. The counts cover the whole " +
+    "timeframe and ignore the status filter, so the tallies stay stable while " +
+    "the caller filters. Ordering follows `sort`/`order`, defaulting to " +
+    "newest lastUpdatedAt first, and is always broken by the primary key so " +
+    "the order is stable across identical requests. `export=true` raises the " +
+    "`pageSize` ceiling to 5000 for file exports that walk every page; on " +
+    "export pages after the first, `counts` and `total` are omitted.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   request: {

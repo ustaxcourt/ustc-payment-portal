@@ -1,3 +1,4 @@
+import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { ConflictError } from "../errors/conflict";
 import { GoneError } from "../errors/gone";
 import TransactionModel from "./TransactionModel";
@@ -25,6 +26,7 @@ const baseRow = (): TransactionModel =>
     transactionStatus: "initiated",
     paymentStatus: "pending",
     fee: "fee-123",
+    createdAt: new Date().toISOString(),
     lastUpdatedAt: new Date().toISOString(),
   }) as TransactionModel;
 
@@ -43,6 +45,7 @@ const buildQueryMock = (steps: QueryStep[]) => {
     where: jest.fn(),
     whereIn: jest.fn(),
     whereNot: jest.fn(),
+    orderBy: jest.fn(),
     forUpdate: jest.fn(),
     noWait: jest.fn(),
     first: jest.fn(),
@@ -113,6 +116,24 @@ describe("TransactionModel.claimForProcessing", () => {
     expect(result?.transactionStatus).toBe("processing");
   });
 
+  it("throws GoneError when an initiated row's token has expired", async () => {
+    const row = {
+      ...baseRow(),
+      createdAt: new Date(Date.now() - MAX_TOKEN_AGE_MS - 1_000).toISOString(),
+    } as TransactionModel;
+
+    jest.spyOn(TransactionModel, "query").mockReturnValue(
+      buildQueryMock([
+        { kind: "first", result: row },
+        { kind: "first", result: undefined },
+      ]) as never,
+    );
+
+    await expect(TransactionModel.claimForProcessing("token-abc")).rejects.toThrow(
+      GoneError,
+    );
+  });
+
   it("throws GoneError when a sibling is already pending or processed", async () => {
     const row = baseRow();
     const sibling = {
@@ -153,6 +174,26 @@ describe("TransactionModel.claimForProcessing", () => {
     );
   });
 
+  it("throws ConflictError, not GoneError, when a fresh processing row's token is technically expired", async () => {
+    const row = {
+      ...baseRow(),
+      transactionStatus: "processing",
+      lastUpdatedAt: new Date().toISOString(),
+      createdAt: new Date(Date.now() - MAX_TOKEN_AGE_MS - 1_000).toISOString(),
+    } as TransactionModel;
+
+    jest.spyOn(TransactionModel, "query").mockReturnValue(
+      buildQueryMock([
+        { kind: "first", result: row },
+        { kind: "first", result: undefined },
+      ]) as never,
+    );
+
+    await expect(TransactionModel.claimForProcessing("token-abc")).rejects.toThrow(
+      new ConflictError(ConflictError.PAYMENT_IN_FLIGHT_MESSAGE),
+    );
+  });
+
   it("refreshes a stale processing claim and allows the current request to proceed", async () => {
     const staleTime = new Date(Date.now() - 601_000).toISOString();
     const row = {
@@ -176,6 +217,26 @@ describe("TransactionModel.claimForProcessing", () => {
 
     const result = await TransactionModel.claimForProcessing("token-abc");
     expect(result?.transactionStatus).toBe("processing");
+  });
+
+  it("throws GoneError when a stale processing row's token has also expired", async () => {
+    const row = {
+      ...baseRow(),
+      transactionStatus: "processing",
+      lastUpdatedAt: new Date(Date.now() - 601_000).toISOString(),
+      createdAt: new Date(Date.now() - MAX_TOKEN_AGE_MS - 1_000).toISOString(),
+    } as TransactionModel;
+
+    jest.spyOn(TransactionModel, "query").mockReturnValue(
+      buildQueryMock([
+        { kind: "first", result: row },
+        { kind: "first", result: undefined },
+      ]) as never,
+    );
+
+    await expect(TransactionModel.claimForProcessing("token-abc")).rejects.toThrow(
+      GoneError,
+    );
   });
 
   it("throws GoneError when transaction status is not initiated or processing", async () => {

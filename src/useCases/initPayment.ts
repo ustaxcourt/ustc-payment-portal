@@ -14,7 +14,7 @@ import { generateAgencyTrackingId } from "@utils/generateTrackingId";
 import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { ZodError } from "zod";
 import { authorizeClient } from "../authorizeClient";
-import { type ActiveFee, getActiveFee } from "../config/fees";
+import { type ActiveFee, getActiveFee } from "@/config/fees";
 import { isUniqueViolation } from "../db/pgErrors";
 import TransactionModel, {
   isStaleProcessingTransaction,
@@ -22,8 +22,8 @@ import TransactionModel, {
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 
-const MAX_TOKEN_AGE_MS = 10800000; // 3 Hours
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
 
 export type InitPayment = (
@@ -88,8 +88,39 @@ export const initPayment: InitPayment = async (
     throw new InvalidRequestError(`Fee ${feeKey} requires an amount`);
   }
 
+  const rejectIfAlreadyPaid = async (): Promise<void> => {
+    const alreadyPaid =
+      await TransactionModel.findPendingOrProcessedByReferenceId(
+        clientName,
+        transactionReferenceId,
+      );
+
+    if (!alreadyPaid) {
+      return;
+    }
+
+    appContext.logger.info("Rejecting initPayment: transaction already paid", {
+      transactionReferenceId,
+      agencyTrackingId: alreadyPaid.agencyTrackingId,
+      clientName,
+      transactionStatus: alreadyPaid.transactionStatus,
+      paymentStatus: alreadyPaid.paymentStatus,
+    });
+    emitInitPaymentConflictMetric("already_paid");
+    throw new ConflictError(
+      alreadyPaid.transactionStatus === "pending"
+        ? ConflictError.PAYMENT_SETTLING_MESSAGE
+        : ConflictError.ALREADY_PAID_MESSAGE,
+    );
+  };
+
+  await rejectIfAlreadyPaid();
+
   const existingInFlightTransaction =
-    await TransactionModel.findInFlightByReferenceId(transactionReferenceId);
+    await TransactionModel.findInFlightByReferenceId(
+      clientName,
+      transactionReferenceId,
+    );
 
   if (existingInFlightTransaction) {
     const tokenAgeMs =
@@ -181,9 +212,11 @@ export const initPayment: InitPayment = async (
     });
   } catch (err) {
     if (isUniqueViolation(err)) {
-      // Concurrent initPayment lost the createReceived race — the partial unique index
-      // `idx_transactions_unique_active` ensures at most one in-flight attempt per
-      // (clientName, transactionReferenceId). Report the same 409 as the app-level check.
+      // Lost the createReceived race against the partial unique index. The winner is either a
+      // concurrent initPayment (in-flight) or a processPayment that just landed on paid — re-read
+      // to tell them apart, so an overpayment attempt isn't reported as a transient race.
+      await rejectIfAlreadyPaid();
+
       const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
         "A payment session is already in-flight for this transactionReferenceId";
       appContext.logger.error(EXISTING_IN_FLIGHT_TRANSACTION_ERROR, {

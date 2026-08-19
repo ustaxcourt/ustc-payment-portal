@@ -1,4 +1,9 @@
-import { TransactionLogQuerySchema } from "./TransactionLog.schema";
+import {
+  SORT_ORDERS,
+  TRANSACTION_LOG_SORT_FIELDS,
+  TransactionLogQuerySchema,
+  TransactionLogResponseSchema,
+} from "./TransactionLog.schema";
 
 const parse = (query: Record<string, string>) =>
   TransactionLogQuerySchema.safeParse(query);
@@ -43,5 +48,96 @@ describe("TransactionLogQuerySchema", () => {
 
   it("rejects a page size beyond the cap", () => {
     expect(parse({ pageSize: "9999" }).success).toBe(false);
+  });
+
+  describe("export", () => {
+    it("defaults to a non-export request", () => {
+      expect(parse({}).data).toMatchObject({ export: false });
+    });
+
+    it("accepts an export page size the dashboard cap would refuse", () => {
+      const result = parse({ export: "true", pageSize: "5000" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({ export: true, pageSize: 5000 });
+    });
+
+    it("rejects a large page size without the export flag", () => {
+      const result = parse({ pageSize: "5000" });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0].message).toBe(
+        "`pageSize` above 200 requires `export=true`",
+      );
+    });
+
+    it("caps export pages too", () => {
+      expect(parse({ export: "true", pageSize: "5001" }).success).toBe(false);
+    });
+
+    it("rejects anything but true or false", () => {
+      expect(parse({ export: "1" }).success).toBe(false);
+      expect(parse({ export: "yes" }).success).toBe(false);
+    });
+  });
+
+  describe("sorting", () => {
+    it("defaults to the newest activity first", () => {
+      expect(parse({}).data).toMatchObject({
+        sort: "lastUpdatedAt",
+        order: "desc",
+      });
+    });
+
+    it("accepts every column the dashboard offers", () => {
+      for (const sort of TRANSACTION_LOG_SORT_FIELDS) {
+        for (const order of SORT_ORDERS) {
+          expect(parse({ sort, order }).data).toMatchObject({ sort, order });
+        }
+      }
+    });
+
+    // The whitelist is what keeps a column name out of SQL, so an unknown
+    // field has to fail parsing rather than fall through to a default.
+    it("rejects a column that is not on the whitelist", () => {
+      expect(parse({ sort: "paygovToken" }).success).toBe(false);
+      expect(parse({ sort: "createdAt; drop table transactions" }).success).toBe(
+        false,
+      );
+    });
+
+    it("rejects a direction that is not asc or desc", () => {
+      expect(parse({ order: "sideways" }).success).toBe(false);
+    });
+  });
+});
+
+describe("TransactionLogResponseSchema", () => {
+  const counts = { all: 47, success: 40, failed: 4, pending: 3 };
+  const page = {
+    data: [],
+    from: "2026-08-01T00:00:00.000Z",
+    to: "2026-08-02T00:00:00.000Z",
+    page: 2,
+    pageSize: 5000,
+    sort: "lastUpdatedAt",
+    order: "desc",
+  };
+
+  it("accepts the totals present together or omitted together", () => {
+    expect(
+      TransactionLogResponseSchema.safeParse({ ...page, counts, total: 47 })
+        .success,
+    ).toBe(true);
+    expect(TransactionLogResponseSchema.safeParse(page).success).toBe(true);
+  });
+
+  it("rejects one of the pair without the other", () => {
+    expect(
+      TransactionLogResponseSchema.safeParse({ ...page, counts }).success,
+    ).toBe(false);
+    expect(
+      TransactionLogResponseSchema.safeParse({ ...page, total: 47 }).success,
+    ).toBe(false);
   });
 });

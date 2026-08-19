@@ -2,6 +2,7 @@ import { writeEmf } from "./emf";
 
 export type InitPaymentConflictReason =
   | "processing_in_flight"
+  | "already_paid"
   | "persist_race";
 
 export function emitInitPaymentConflictMetric(

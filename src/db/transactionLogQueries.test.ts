@@ -9,6 +9,7 @@ const METHODS = [
   "where",
   "andWhere",
   "orderBy",
+  "orderByRaw",
   "limit",
   "offset",
   "select",
@@ -30,7 +31,14 @@ const stubQuery = (rows: unknown[], total = 0) => {
   return chains;
 };
 
-const page = { from: FROM, to: TO, limit: 50, offset: 0 };
+const page = {
+  from: FROM,
+  to: TO,
+  limit: 50,
+  offset: 0,
+  sort: "lastUpdatedAt",
+  order: "desc",
+} as const;
 
 afterEach(() => jest.restoreAllMocks());
 
@@ -47,10 +55,73 @@ describe("TransactionModel.queryLog", () => {
 
     expect(q.where).toHaveBeenCalledWith("lastUpdatedAt", ">=", FROM);
     expect(q.andWhere).toHaveBeenCalledWith("lastUpdatedAt", "<", TO);
-    expect(q.orderBy).toHaveBeenCalledWith("lastUpdatedAt", "desc");
+    expect(q.orderByRaw).toHaveBeenCalledWith("?? desc nulls last", [
+      "lastUpdatedAt",
+    ]);
     expect(q.limit).toHaveBeenCalledWith(25);
     expect(q.offset).toHaveBeenCalledWith(50);
     expect(result.total).toBe(90);
+  });
+
+  it("breaks ties on the primary key so the order is total", async () => {
+    const chains = stubQuery([], 3);
+
+    await TransactionModel.queryLog(page);
+    const [q] = chains;
+
+    expect(q.orderBy).toHaveBeenCalledWith("agencyTrackingId", "asc");
+  });
+
+  it("orders by the requested column and direction", async () => {
+    const chains = stubQuery([], 3);
+
+    await TransactionModel.queryLog({
+      ...page,
+      sort: "clientName",
+      order: "asc",
+    });
+    const [q] = chains;
+
+    expect(q.orderByRaw).toHaveBeenCalledWith("?? asc nulls last", [
+      "clientName",
+    ]);
+  });
+
+  it("counts without ordering or paging the count query", async () => {
+    const chains = stubQuery([], 7);
+
+    await TransactionModel.queryLog(page);
+    const [, countQuery] = chains;
+
+    expect(countQuery.orderByRaw).not.toHaveBeenCalled();
+    expect(countQuery.limit).not.toHaveBeenCalled();
+  });
+
+  it("skips the COUNT query entirely when withTotal is false", async () => {
+    const chains = stubQuery([], 7);
+
+    const result = await TransactionModel.queryLog({
+      ...page,
+      withTotal: false,
+    });
+
+    // Only the page query runs; no second chain is ever built for the count.
+    expect(chains).toHaveLength(1);
+    expect(chains[0].resultSize).not.toHaveBeenCalled();
+    expect(result.total).toBeUndefined();
+    expect(result.rows).toEqual([]);
+  });
+
+  it("still counts when withTotal is explicitly true", async () => {
+    const chains = stubQuery([], 12);
+
+    const result = await TransactionModel.queryLog({
+      ...page,
+      withTotal: true,
+    });
+
+    expect(chains).toHaveLength(2);
+    expect(result.total).toBe(12);
   });
 
   it("applies a requested status to both the page and its count", async () => {
