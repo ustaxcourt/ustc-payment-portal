@@ -29,6 +29,8 @@ export type TransactionLogFilter = {
   order: SortOrder;
   limit: number;
   offset: number;
+  /** False skips the COUNT behind `total`. */
+  withTotal?: boolean;
 };
 
 export type PaymentMethod = "plastic_card" | "ach" | "paypal";
@@ -124,7 +126,7 @@ export default class TransactionModel extends Model {
    *  on — and always broken by the primary key so the order is total. */
   static async queryLog(
     filter: TransactionLogFilter,
-  ): Promise<{ rows: TransactionModel[]; total: number }> {
+  ): Promise<{ rows: TransactionModel[]; total?: number }> {
     await getKnex();
 
     const base = () => {
@@ -147,7 +149,7 @@ export default class TransactionModel extends Model {
 
     const [rows, total] = await Promise.all([
       ordered.limit(filter.limit).offset(filter.offset),
-      base().resultSize(),
+      filter.withTotal === false ? undefined : base().resultSize(),
     ]);
 
     return { rows: rows.map(TransactionModel.attachFeeName), total };

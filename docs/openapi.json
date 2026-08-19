@@ -1102,14 +1102,12 @@
         },
         "required": [
           "data",
-          "counts",
           "from",
           "to",
           "page",
           "pageSize",
           "sort",
-          "order",
-          "total"
+          "order"
         ]
       },
       "TransactionLogEntry": {
@@ -1166,7 +1164,7 @@
           "failed",
           "pending"
         ],
-        "description": "Totals for the requested timeframe, unaffected by the status filter so the tallies stay stable as the user filters."
+        "description": "Totals for the requested timeframe, unaffected by the status filter so the tallies stay stable as the user filters. Omitted on export requests for pages after the first."
       },
       "TransactionLogSortField": {
         "type": "string",
@@ -1653,14 +1651,30 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 200,
+              "maximum": 5000,
               "default": 50,
-              "description": "Rows per page",
+              "description": "Rows per page. Capped at 200, or 5000 when `export=true`.",
               "example": 50
             },
             "required": false,
-            "description": "Rows per page",
+            "description": "Rows per page. Capped at 200, or 5000 when `export=true`.",
             "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "default": "false",
+              "description": "Marks an export request: raises the `pageSize` ceiling to 5000, and pages after the first omit `counts` and `total` (the caller already has them from page 1). Pages are not a consistent snapshot: a row updated between page requests can shift page boundaries, so export clients should verify their assembled row count against page 1's `total` and refetch on a mismatch.",
+              "example": "true"
+            },
+            "required": false,
+            "description": "Marks an export request: raises the `pageSize` ceiling to 5000, and pages after the first omit `counts` and `total` (the caller already has them from page 1). Pages are not a consistent snapshot: a row updated between page requests can shift page boundaries, so export clients should verify their assembled row count against page 1's `total` and refetch on a mismatch.",
+            "name": "export",
             "in": "query"
           },
           {
