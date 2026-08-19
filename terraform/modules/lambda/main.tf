@@ -34,6 +34,7 @@ locals {
     }
     getTransactionLog = {
       handler = "getTransactionLogHandler.getTransactionLogHandler"
+      timeout = 29
     }
     migrationRunner = {
       handler           = "lambdaHandler.migrationHandler"
