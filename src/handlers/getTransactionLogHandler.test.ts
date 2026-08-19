@@ -54,6 +54,27 @@ describe("getTransactionLogHandler", () => {
     );
   });
 
+  it("routes a winter MM/DD/YYYY timeframe using EST midnight bounds", async () => {
+    getTransactionLog.mockResolvedValue({ data: [], counts: {}, total: 0 });
+
+    const result = await getTransactionLogHandler({
+      queryStringParameters: {
+        from: "12/10/2026",
+        to: "12/10/2026",
+      },
+      requestContext: { requestId: "req-1b", identity: {} },
+    } as unknown as APIGatewayEvent);
+
+    expect(result.statusCode).toBe(200);
+    expect(getTransactionLog).toHaveBeenCalledWith(
+      appContext,
+      expect.objectContaining({
+        from: new Date("2026-12-10T05:00:00.000Z"),
+        to: new Date("2026-12-11T05:00:00.000Z"),
+      }),
+    );
+  });
+
   it("rejects malformed timeframe input with 400", async () => {
     const result = await getTransactionLogHandler({
       queryStringParameters: {
