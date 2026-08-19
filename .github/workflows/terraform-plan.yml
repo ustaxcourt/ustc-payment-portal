@@ -8,6 +8,11 @@ name: Terraform Validate and Plan
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - '**/*.tf'
+      - '**/*.tfvars'
+      - '**/.terraform.lock.hcl'
+      - 'terraform/environments/**/backend.hcl'
 
 permissions:
   id-token: write       # OIDC for AWS role assumption
