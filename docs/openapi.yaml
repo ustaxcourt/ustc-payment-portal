@@ -1030,6 +1030,16 @@ components:
         - asc
         - desc
       description: Direction the transaction log is ordered in
+    LookupType:
+      type: string
+      enum:
+        - accountHolder
+        - agencyId
+      default: accountHolder
+      description: >-
+        Which field `lookupValue` matches against. Ignored when `lookupValue` is
+        omitted.
+      example: agencyId
   parameters: {}
 paths:
   /init:
@@ -1332,6 +1342,50 @@ paths:
           required: false
           description: Restricts rows to one payment status. Aggregate counts ignore it.
           name: status
+          in: query
+        - schema:
+            type: string
+            enum:
+              - PETITION_FILING_FEE
+              - NONATTORNEY_EXAM_REGISTRATION_FEE
+            description: Restricts rows to one fee type.
+            example: PETITION_FILING_FEE
+          required: false
+          description: Restricts rows to one fee type.
+          name: fee
+          in: query
+        - schema:
+            type: string
+            enum:
+              - Credit/Debit Card
+              - ACH
+              - PayPal
+            description: Restricts rows to one payment method.
+            example: ACH
+          required: false
+          description: Restricts rows to one payment method.
+          name: paymentMethod
+          in: query
+        - schema:
+            $ref: '#/components/schemas/LookupType'
+          required: false
+          description: >-
+            Which field `lookupValue` matches against. Ignored when
+            `lookupValue` is omitted.
+          name: lookupType
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            description: >-
+              Case-insensitive partial match against the field named by
+              `lookupType`.
+            example: 26PHF07R
+          required: false
+          description: >-
+            Case-insensitive partial match against the field named by
+            `lookupType`.
+          name: lookupValue
           in: query
         - schema:
             type: integer

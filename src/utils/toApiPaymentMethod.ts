@@ -22,3 +22,17 @@ export const toApiPaymentMethod = (
   }
   return label;
 };
+
+const DB_PAYMENT_METHOD_BY_LABEL: Record<ApiPaymentMethod, DbPaymentMethod> =
+  Object.fromEntries(
+    Object.entries(PAYMENT_METHOD_LABELS).map(([db, label]) => [label, db]),
+  ) as Record<ApiPaymentMethod, DbPaymentMethod>;
+
+/** Reverse of `toApiPaymentMethod`, for filtering by the label a caller sends. */
+export const toDbPaymentMethod = (
+  method: ApiPaymentMethod | null | undefined,
+): DbPaymentMethod | undefined => {
+  if (method === null || method === undefined) return undefined;
+
+  return DB_PAYMENT_METHOD_BY_LABEL[method];
+};

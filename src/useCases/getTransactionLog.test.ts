@@ -146,6 +146,48 @@ describe("getTransactionLog", () => {
     expect(result.data[0].paymentMethod).toBe("Credit/Debit Card");
   });
 
+  describe("filters", () => {
+    it("passes fee straight through and translates the payment method label to the stored value", async () => {
+      await getTransactionLog(
+        appContext,
+        query({ fee: "PETITION_FILING_FEE", paymentMethod: "ACH" }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        fee: "PETITION_FILING_FEE",
+        paymentMethod: "ach",
+      });
+    });
+
+    it("builds a clientName lookup for accountHolder", async () => {
+      await getTransactionLog(
+        appContext,
+        query({ lookupType: "accountHolder", lookupValue: "Inez Thomson" }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        lookup: { column: "clientName", value: "Inez Thomson" },
+      });
+    });
+
+    it("builds an agencyTrackingId lookup for agencyId", async () => {
+      await getTransactionLog(
+        appContext,
+        query({ lookupType: "agencyId", lookupValue: "26PHF07R" }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        lookup: { column: "agencyTrackingId", value: "26PHF07R" },
+      });
+    });
+
+    it("omits the lookup filter when no lookupValue is given", async () => {
+      await getTransactionLog(appContext, query());
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({ lookup: undefined });
+    });
+  });
+
   describe("export requests", () => {
     it("computes the totals on the first page", async () => {
       const result = await getTransactionLog(
