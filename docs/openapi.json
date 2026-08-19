@@ -914,46 +914,6 @@
           "lastUpdatedAt"
         ]
       },
-      "TransactionsQuery": {
-        "type": "object",
-        "properties": {
-          "from": {
-            "type": "string",
-            "description": "Inclusive lower bound on lastUpdatedAt, formatted as MM/DD/YYYY.",
-            "example": "08/10/2026"
-          },
-          "to": {
-            "type": "string",
-            "description": "Inclusive upper bound on lastUpdatedAt, formatted as MM/DD/YYYY.",
-            "example": "08/10/2026"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "success",
-              "failed",
-              "pending"
-            ],
-            "description": "Restricts rows to one payment status.",
-            "example": "pending"
-          },
-          "page": {
-            "type": "integer",
-            "minimum": 1,
-            "default": 1,
-            "description": "1-indexed page number",
-            "example": 1
-          },
-          "pageSize": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 200,
-            "default": 50,
-            "description": "Rows per page",
-            "example": 50
-          }
-        }
-      },
       "TransactionsByStatusPathParams": {
         "type": "object",
         "properties": {
@@ -1515,8 +1475,8 @@
     },
     "/transactions": {
       "get": {
-        "summary": "Get transactions",
-        "description": "Without query parameters, returns up to 100 most recent transactions across all payment statuses. With any supported transaction query parameter (`from`, `to`, `status`, `page`, or `pageSize`), returns the transaction log for the inclusive MM/DD/YYYY date range, plus aggregate counts for that timeframe.",
+        "summary": "Get recent transactions",
+        "description": "Returns up to 100 most recent transactions across all payment statuses.",
         "tags": [
           "Payments"
         ],
@@ -1525,87 +1485,13 @@
             "sigv4": []
           }
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Inclusive lower bound on lastUpdatedAt, formatted as MM/DD/YYYY.",
-              "example": "08/10/2026"
-            },
-            "required": false,
-            "description": "Inclusive lower bound on lastUpdatedAt, formatted as MM/DD/YYYY.",
-            "name": "from",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "description": "Inclusive upper bound on lastUpdatedAt, formatted as MM/DD/YYYY.",
-              "example": "08/10/2026"
-            },
-            "required": false,
-            "description": "Inclusive upper bound on lastUpdatedAt, formatted as MM/DD/YYYY.",
-            "name": "to",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "enum": [
-                "success",
-                "failed",
-                "pending"
-              ],
-              "description": "Restricts rows to one payment status.",
-              "example": "pending"
-            },
-            "required": false,
-            "description": "Restricts rows to one payment status.",
-            "name": "status",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1,
-              "description": "1-indexed page number",
-              "example": 1
-            },
-            "required": false,
-            "description": "1-indexed page number",
-            "name": "page",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 200,
-              "default": 50,
-              "description": "Rows per page",
-              "example": 50
-            },
-            "required": false,
-            "description": "Rows per page",
-            "name": "pageSize",
-            "in": "query"
-          }
-        ],
         "responses": {
           "200": {
-            "description": "Transactions retrieved successfully",
+            "description": "Recent transactions retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/RecentTransactionsResponse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/TransactionLogResponse"
-                    }
-                  ]
+                  "$ref": "#/components/schemas/RecentTransactionsResponse"
                 }
               }
             }
