@@ -179,6 +179,60 @@ describe("TransactionLogQuerySchema", () => {
       expect(parse({ order: "sideways" }).success).toBe(false);
     });
   });
+
+  describe("filters", () => {
+    it("accepts a fee filter", () => {
+      const result = parse({ fee: "PETITION_FILING_FEE" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({ fee: "PETITION_FILING_FEE" });
+    });
+
+    it("rejects a fee key that is not on the whitelist", () => {
+      expect(parse({ fee: "NOT_A_REAL_FEE" }).success).toBe(false);
+    });
+
+    it("accepts a payment method filter", () => {
+      const result = parse({ paymentMethod: "ACH" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({ paymentMethod: "ACH" });
+    });
+
+    it("rejects a payment method that is not a known label", () => {
+      expect(parse({ paymentMethod: "cash" }).success).toBe(false);
+    });
+
+    it("defaults lookupType to accountHolder", () => {
+      const result = parse({ lookupValue: "Inez Thomson" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({
+        lookupType: "accountHolder",
+        lookupValue: "Inez Thomson",
+      });
+    });
+
+    it("accepts an explicit agencyId lookup", () => {
+      const result = parse({ lookupType: "agencyId", lookupValue: "26PHF07R" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({
+        lookupType: "agencyId",
+        lookupValue: "26PHF07R",
+      });
+    });
+
+    it("rejects an empty lookup value", () => {
+      expect(parse({ lookupValue: "" }).success).toBe(false);
+    });
+
+    it("rejects a lookupType that is not on the whitelist", () => {
+      expect(parse({ lookupType: "ssn", lookupValue: "123" }).success).toBe(
+        false,
+      );
+    });
+  });
 });
 
 describe("TransactionLogResponseSchema", () => {

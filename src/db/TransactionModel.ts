@@ -20,10 +20,15 @@ export type AggregatedPaymentStatus = Record<PaymentStatus, number> & {
   total: number;
 };
 
+export type PaymentMethod = "plastic_card" | "ach" | "paypal";
+
 export type TransactionLogFilter = {
   from: Date;
   to: Date;
   status?: PaymentStatus;
+  fee?: string;
+  paymentMethod?: PaymentMethod;
+  lookup?: { column: "clientName" | "agencyTrackingId"; value: string };
   sort: TransactionLogSortField;
   order: SortOrder;
   limit: number;
@@ -31,8 +36,6 @@ export type TransactionLogFilter = {
   /** False skips the COUNT behind `total`. */
   withTotal?: boolean;
 };
-
-export type PaymentMethod = "plastic_card" | "ach" | "paypal";
 
 /** Max age before a stuck `processing` row is treated as abandoned (Lambda timeout, crash). */
 export const PROCESSING_STALE_MS = 600_000;
@@ -129,13 +132,23 @@ export default class TransactionModel extends Model {
     await getKnex();
 
     const base = () => {
-      const query = TransactionModel.query()
+      let query = TransactionModel.query()
         .where("lastUpdatedAt", ">=", filter.from)
         .andWhere("lastUpdatedAt", "<", filter.to);
 
-      return filter.status
-        ? query.andWhere("paymentStatus", filter.status)
-        : query;
+      if (filter.status) query = query.andWhere("paymentStatus", filter.status);
+      if (filter.fee) query = query.andWhere("fee", filter.fee);
+      if (filter.paymentMethod) {
+        query = query.andWhere("paymentMethod", filter.paymentMethod);
+      }
+      if (filter.lookup) {
+        query = query.andWhereILike(
+          filter.lookup.column,
+          `%${filter.lookup.value}%`,
+        );
+      }
+
+      return query;
     };
 
     const ordered = transactionLogOrderBy(filter.sort, filter.order).reduce(

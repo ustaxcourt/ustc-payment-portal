@@ -13,10 +13,14 @@ const CHAINABLE_METHODS = [
   "join",
   "select",
   "where",
+  "andWhere",
+  "andWhereILike",
   "whereIn",
   "whereNot",
   "orderBy",
+  "orderByRaw",
   "limit",
+  "offset",
   "count",
   "groupBy",
   "patch",
@@ -29,6 +33,7 @@ const RESOLVING_METHODS = [
   "findById",
   "insertAndFetch",
   "patchAndFetchById",
+  "resultSize",
 ] as const;
 
 interface QueryBuilderStub
@@ -581,6 +586,92 @@ describe("TransactionModel", () => {
       );
 
       expect(found).toBeUndefined();
+    });
+  });
+
+  describe("queryLog", () => {
+    const baseFilter = {
+      from: new Date("2026-08-01T00:00:00Z"),
+      to: new Date("2026-08-02T00:00:00Z"),
+      sort: "lastUpdatedAt" as const,
+      order: "desc" as const,
+      limit: 50,
+      offset: 0,
+    };
+
+    it("filters by timeframe only when no optional filters are given", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog(baseFilter);
+
+      expect(builder.where).toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        ">=",
+        baseFilter.from,
+      );
+      expect(builder.andWhere).toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        "<",
+        baseFilter.to,
+      );
+      expect(builder.andWhere).not.toHaveBeenCalledWith(
+        "paymentStatus",
+        expect.anything(),
+      );
+      expect(builder.andWhereILike).not.toHaveBeenCalled();
+    });
+
+    it("filters by status, fee, and payment method when given", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({
+        ...baseFilter,
+        status: "failed",
+        fee: "PETITION_FILING_FEE",
+        paymentMethod: "ach" as PaymentMethod,
+      });
+
+      expect(builder.andWhere).toHaveBeenCalledWith("paymentStatus", "failed");
+      expect(builder.andWhere).toHaveBeenCalledWith(
+        "fee",
+        "PETITION_FILING_FEE",
+      );
+      expect(builder.andWhere).toHaveBeenCalledWith("paymentMethod", "ach");
+    });
+
+    it("matches the lookup column with a case-insensitive partial match", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({
+        ...baseFilter,
+        lookup: { column: "agencyTrackingId", value: "26PHF07R" },
+      });
+
+      expect(builder.andWhereILike).toHaveBeenCalledWith(
+        "agencyTrackingId",
+        "%26PHF07R%",
+      );
+    });
+
+    it("skips the total query when withTotal is false", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({ ...baseFilter, withTotal: false });
+
+      expect(builder.resultSize).not.toHaveBeenCalled();
+    });
+
+    it("runs the total query when withTotal is not false", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog(baseFilter);
+
+      expect(builder.resultSize).toHaveBeenCalled();
     });
   });
 
