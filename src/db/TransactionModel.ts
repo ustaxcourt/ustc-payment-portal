@@ -182,6 +182,13 @@ export default class TransactionModel extends Model {
     const knex = await getKnex();
     const names = Object.keys(periods) as CourtPeriodName[];
 
+    const earliestStart = new Date(
+      Math.min(...names.map((name) => periods[name].start.getTime())),
+    );
+    const latestEnd = new Date(
+      Math.max(...names.map((name) => periods[name].end.getTime())),
+    );
+
     // Identifiers go through ?? bindings so the snake_case mapper applies.
     const sums = names.map((name) =>
       knex.raw("coalesce(sum(??) filter (where ?? >= ? and ?? < ?), 0) as ??", [
@@ -196,7 +203,9 @@ export default class TransactionModel extends Model {
 
     const [row] = await TransactionModel.query()
       .select(sums)
-      .where("paymentStatus", "success");
+      .where("paymentStatus", "success")
+      .andWhere("lastUpdatedAt", ">=", earliestStart)
+      .andWhere("lastUpdatedAt", "<", latestEnd);
 
     // decimal(12,2) arrives as a string from pg, as it does on the model itself.
     const summed = row as unknown as Record<string, unknown>;

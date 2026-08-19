@@ -23,13 +23,12 @@ export const getTransactionLog: GetTransactionLog = async (
   const to = query.to ?? today.end;
 
   // Export pages after the first skip the COUNTs; the caller has them from page 1.
-  const withTotals = !query.export || query.page === 1;
+  const withCounts = !query.export || query.page === 1;
 
-  // Counts span the timeframe only, so the tallies hold steady while the user
-  // switches between statuses. Totals ignore it entirely — fixed periods to date.
+
   const periods = courtPeriodBounds();
 
-  const [page, counts, totals] = await Promise.all([
+  const [page, counts, periodTotals] = await Promise.all([
     TransactionModel.queryLog({
       from,
       to,
@@ -38,23 +37,37 @@ export const getTransactionLog: GetTransactionLog = async (
       order: query.order,
       limit: query.pageSize,
       offset: (query.page - 1) * query.pageSize,
-      withTotal: withTotals,
+      withTotal: withCounts,
     }),
-    TransactionModel.countsInRange(from, to),
+    withCounts ? TransactionModel.countsInRange(from, to) : undefined,
     query.includeTotals ? TransactionModel.totalsToDate(periods) : undefined,
   ]);
+
+  // One spread, so the pair can only ever be omitted together.
+  const countsAndTotal =
+    counts && page.total !== undefined
+      ? {
+        counts: {
+          all: counts.total,
+          success: counts.success,
+          failed: counts.failed,
+          pending: counts.pending,
+        },
+        total: page.total,
+      }
+      : {};
 
   // Each period echoes the instants actually summed; the dashboard displays
   // these rather than deriving them.
   const totalsByPeriod =
-    totals &&
+    periodTotals &&
     Object.fromEntries(
       Object.entries(periods).map(([name, bounds]) => [
         name,
         {
           from: bounds.start.toISOString(),
           to: bounds.end.toISOString(),
-          total: totals[name as CourtPeriodName],
+          total: periodTotals[name as CourtPeriodName],
         },
       ]),
     );
@@ -64,14 +77,13 @@ export const getTransactionLog: GetTransactionLog = async (
       ...row,
       paymentMethod: toApiPaymentMethod(row.paymentMethod),
     })),
-    ...totals,
+    ...countsAndTotal,
     from: from.toISOString(),
     to: to.toISOString(),
     page: query.page,
     pageSize: query.pageSize,
     sort: query.sort,
     order: query.order,
-    total: page.total,
     // Spread, so the key is absent rather than present-and-undefined.
     ...(totalsByPeriod && { totals: totalsByPeriod }),
   });

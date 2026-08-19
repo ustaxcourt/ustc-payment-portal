@@ -114,8 +114,12 @@ describe("GET /transaction-log totals", () => {
       pageSize: "1",
     });
 
+    // Present on a non-export first page; guarded so a contract change surfaces
+    // here rather than silently skipping the assertion.
+    expect(inPeriod.counts).toBeDefined();
+
     // No successes means no revenue, however many failed or pending rows exist.
-    if (inPeriod.counts.success === 0) {
+    if (inPeriod.counts?.success === 0) {
       expect(fiscalYear.total).toBe(0);
     }
   });
@@ -130,9 +134,11 @@ describe("GET /transaction-log totals", () => {
       pageSize: "200",
     });
 
+    expect(successes.total).toBeDefined();
+
     // Above one page the client cannot check the figure — the reason the sum
     // happens in Postgres at all.
-    if (successes.total > successes.data.length) return;
+    if ((successes.total ?? 0) > successes.data.length) return;
 
     const summed = successes.data.reduce(
       (running, row) => running + row.transactionAmount,

@@ -142,6 +142,60 @@ describe("getTransactionLog", () => {
     expect(result.data[0].paymentMethod).toBe("Credit/Debit Card");
   });
 
+  describe("export requests", () => {
+    it("computes the totals on the first page", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 1, pageSize: 5000 }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({ withTotal: true });
+      expect(countsInRange).toHaveBeenCalled();
+      expect(result.total).toBe(4);
+      expect(result.counts).toBeDefined();
+    });
+
+    it("skips both COUNT queries on pages after the first", async () => {
+      queryLog.mockResolvedValue({ rows: [failedRow as any] });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 2, pageSize: 5000 }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        withTotal: false,
+        limit: 5000,
+        offset: 5000,
+      });
+      expect(countsInRange).not.toHaveBeenCalled();
+      expect(result.total).toBeUndefined();
+      expect(result.counts).toBeUndefined();
+    });
+
+    it("keeps the totals on every page of a non-export request", async () => {
+      await getTransactionLog(appContext, query({ export: false, page: 2 }));
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({ withTotal: true });
+      expect(countsInRange).toHaveBeenCalled();
+    });
+
+    // The two features are independent: dropping the COUNTs must not drop the
+    // period totals, and vice versa.
+    it("still returns period totals on a page that skips the COUNTs", async () => {
+      queryLog.mockResolvedValue({ rows: [failedRow as any] });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 2, includeTotals: true }),
+      );
+
+      expect(result.counts).toBeUndefined();
+      expect(result.total).toBeUndefined();
+      expect(result.totals?.day.total).toBe(120);
+    });
+  });
+
   describe("totals", () => {
     it("leaves them out — and does not query them — unless asked", async () => {
       const result = await getTransactionLog(appContext, query());

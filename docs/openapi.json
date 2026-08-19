@@ -1094,7 +1094,7 @@
           "total": {
             "type": "integer",
             "minimum": 0,
-            "description": "Rows matching the timeframe and status filter, across all pages"
+            "description": "Rows matching the timeframe and status filter, across all pages. Omitted on export requests for pages after the first."
           },
           "totals": {
             "$ref": "#/components/schemas/TransactionTotals"

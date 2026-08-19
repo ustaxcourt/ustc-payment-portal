@@ -217,6 +217,59 @@ describe("TransactionModel.totalsToDate", () => {
     expect(q.where).toHaveBeenCalledWith("paymentStatus", "success");
   });
 
+  describe("outer range", () => {
+    // FILTER is evaluated per row, so the scan needs bounding to stay off
+    // every successful row ever written.
+    it("brackets the scan with the widest period", async () => {
+      stubRaw();
+      const chains = stubQuery([{}]);
+
+      await TransactionModel.totalsToDate(PERIODS);
+      const [q] = chains;
+
+      expect(q.andWhere).toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        ">=",
+        PERIODS.fiscalYear.start,
+      );
+      expect(q.andWhere).toHaveBeenCalledWith("lastUpdatedAt", "<", NOW);
+    });
+
+    // In the first week of October the week opens in September, before the
+    // fiscal year does. Bounding on the fiscal year would silently drop those
+    // days from the week's total.
+    it("opens at the earliest period, even when that is not the fiscal year", async () => {
+      const openedAt = new Date("2026-10-01T15:00:00.000Z");
+      const firstWeekOfFiscalYear = {
+        day: { start: new Date("2026-10-01T04:00:00.000Z"), end: openedAt },
+        week: { start: new Date("2026-09-27T04:00:00.000Z"), end: openedAt },
+        month: { start: new Date("2026-10-01T04:00:00.000Z"), end: openedAt },
+        quarter: { start: new Date("2026-10-01T04:00:00.000Z"), end: openedAt },
+        fiscalYear: {
+          start: new Date("2026-10-01T04:00:00.000Z"),
+          end: openedAt,
+        },
+      };
+
+      stubRaw();
+      const chains = stubQuery([{}]);
+
+      await TransactionModel.totalsToDate(firstWeekOfFiscalYear);
+      const [q] = chains;
+
+      expect(q.andWhere).toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        ">=",
+        firstWeekOfFiscalYear.week.start,
+      );
+      expect(q.andWhere).not.toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        ">=",
+        firstWeekOfFiscalYear.fiscalYear.start,
+      );
+    });
+  });
+
   it("takes a single round trip for all five periods", async () => {
     const raw = stubRaw();
     const chains = stubQuery([{}]);
