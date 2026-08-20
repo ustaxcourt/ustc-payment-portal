@@ -15,6 +15,7 @@ import { ProcessPaymentRequestSchema } from "@schemas/ProcessPayment.schema";
 import { TransactionLogQuerySchema } from "@schemas/TransactionLog.schema";
 import "./db/knex";
 import type { ClientPermission } from "@appTypes/ClientPermission";
+import type { ZodIssue } from "zod";
 
 const app = express();
 
@@ -182,7 +183,7 @@ app.get("/", (_req, res) => {
   res.send("hello world!");
 });
 
-app.get("/transactions", async (_req, res, next) => {
+app.get("/transactions", async (req, res, next) => {
   try {
     const result = await res.locals.appContext
       .getUseCases()
@@ -196,7 +197,10 @@ app.get("/transactions", async (_req, res, next) => {
 app.get("/transaction-log", async (req, res, next) => {
   const query = TransactionLogQuerySchema.safeParse(req.query);
   if (!query.success) {
-    res.status(400).json({ message: query.error.issues[0].message });
+    res.status(400).json({
+      message: "Validation error",
+      errors: query.error.issues as ZodIssue[],
+    });
     return;
   }
 
@@ -240,4 +244,3 @@ app.listen(port, () => {
   console.log(`Payment Portal started at http://localhost:${port}`);
   console.log(`API docs available at http://localhost:${port}/docs`);
 });
-
