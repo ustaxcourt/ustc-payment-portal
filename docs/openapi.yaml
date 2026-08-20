@@ -1345,29 +1345,29 @@ paths:
         - sigv4: []
       parameters:
         - schema:
-            type:
-              - string
-              - 'null'
-            format: date-time
+            type: string
             description: >-
-              Inclusive lower bound on lastUpdatedAt. Defaults with `to` to the
-              current Court day.
+              Inclusive lower bound on lastUpdatedAt. Accepts either an ISO
+              timestamp or MM/DD/YYYY. Defaults with `to` to the current Court
+              day.
             example: '2026-08-03T04:00:00.000Z'
           required: false
           description: >-
-            Inclusive lower bound on lastUpdatedAt. Defaults with `to` to the
-            current Court day.
+            Inclusive lower bound on lastUpdatedAt. Accepts either an ISO
+            timestamp or MM/DD/YYYY. Defaults with `to` to the current Court
+            day.
           name: from
           in: query
         - schema:
-            type:
-              - string
-              - 'null'
-            format: date-time
-            description: Exclusive upper bound on lastUpdatedAt.
+            type: string
+            description: >-
+              Upper bound on lastUpdatedAt. ISO timestamps stay exact;
+              MM/DD/YYYY expands to the end of that Court day.
             example: '2026-08-04T04:00:00.000Z'
           required: false
-          description: Exclusive upper bound on lastUpdatedAt.
+          description: >-
+            Upper bound on lastUpdatedAt. ISO timestamps stay exact; MM/DD/YYYY
+            expands to the end of that Court day.
           name: to
           in: query
         - schema:

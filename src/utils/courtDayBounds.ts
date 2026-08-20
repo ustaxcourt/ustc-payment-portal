@@ -1,12 +1,15 @@
 /** Observes DST, unlike a fixed -05:00 "EST" offset. */
 export const COURT_TIME_ZONE = "America/New_York";
 
-type DayParts = { year: number; month: number; day: number };
+type CourtDayParts = { year: number; month: number; day: number };
+
+const MONTH_DAY_YEAR_DATE_PATTERN =
+  /^(?<month>\d{2})\/(?<day>\d{2})\/(?<year>\d{4})$/;
 
 const partsInZone = (
   instant: Date,
   timeZone: string,
-): DayParts & { hour: number; minute: number; second: number } => {
+): CourtDayParts & { hour: number; minute: number; second: number } => {
   const formatted = new Intl.DateTimeFormat("en-US", {
     timeZone,
     hourCycle: "h23",
@@ -51,7 +54,7 @@ const zoneOffsetMs = (instant: Date, timeZone: string): number => {
 };
 
 const startOfZoneDay = (
-  { year, month, day }: DayParts,
+  { year, month, day }: CourtDayParts,
   timeZone: string,
 ): Date => {
   const naive = Date.UTC(year, month - 1, day);
@@ -70,6 +73,54 @@ export type CourtPeriodName =
   | "fiscalYear";
 
 const FISCAL_YEAR_START_MONTH = 10;
+export const parseMonthDayYearDate = (
+  value: string,
+): CourtDayParts | undefined => {
+  const match = MONTH_DAY_YEAR_DATE_PATTERN.exec(value);
+  if (!match?.groups) {
+    return undefined;
+  }
+
+  const month = Number(match.groups.month);
+  const day = Number(match.groups.day);
+  const year = Number(match.groups.year);
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    candidate.getUTCFullYear() !== year ||
+    candidate.getUTCMonth() + 1 !== month ||
+    candidate.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+
+  return { year, month, day };
+};
+
+export const courtDayBoundsForDate = (
+  day: CourtDayParts,
+): { start: Date; end: Date } => {
+  const nextDay = new Date(Date.UTC(day.year, day.month - 1, day.day + 1));
+
+  return {
+    start: startOfZoneDay(day, COURT_TIME_ZONE),
+    end: startOfZoneDay(
+      {
+        year: nextDay.getUTCFullYear(),
+        month: nextDay.getUTCMonth() + 1,
+        day: nextDay.getUTCDate(),
+      },
+      COURT_TIME_ZONE,
+    ),
+  };
+};
+
+export const courtDayBoundsForDateString = (
+  value: string,
+): { start: Date; end: Date } | undefined => {
+  const day = parseMonthDayYearDate(value);
+  return day ? courtDayBoundsForDate(day) : undefined;
+};
 
 /** Court-local day containing `now`, as half-open [start, end) instants.
  *  Bounds, not a date predicate: AT TIME ZONE in a WHERE skips the indexes. */

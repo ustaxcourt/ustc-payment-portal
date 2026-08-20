@@ -13,7 +13,7 @@ describe("courtDayBounds", () => {
       () =>
         ({
           formatToParts: () => [{ type: "year", value: "2026" }],
-        }) as unknown as Intl.DateTimeFormat,
+        } as unknown as Intl.DateTimeFormat),
     );
 
     expect(() => courtDayBounds(new Date("2026-08-03T15:00:00.000Z"))).toThrow(

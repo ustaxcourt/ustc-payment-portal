@@ -1,7 +1,8 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
+import { courtDayBoundsForDateString } from "@utils/courtDayBounds";
 import { z } from "zod";
-import { DashboardTransactionSchema } from "./TransactionDashboard.schema";
 import { PaymentStatusSchema } from "./PaymentStatus.schema";
+import { DashboardTransactionSchema } from "./TransactionDashboard.schema";
 
 extendZodWithOpenApi(z);
 
@@ -10,6 +11,33 @@ export const TRANSACTION_LOG_MAX_PAGE_SIZE = 200;
 /** `export=true` ceiling; one page (~1.7 MB) stays inside the 6 MB Lambda response limit. */
 export const TRANSACTION_LOG_MAX_EXPORT_PAGE_SIZE = 5000;
 
+const TRANSACTION_LOG_DATE_FORMAT_MESSAGE =
+  "Date must be a valid ISO datetime or MM/DD/YYYY value";
+
+const IsoDateTimeStringSchema = z.iso.datetime({ offset: true });
+
+const parseTransactionLogDate = (
+  value: string,
+  side: "from" | "to",
+): { date: Date; kind: "court-day" | "iso" } | undefined => {
+  const courtDayBounds = courtDayBoundsForDateString(value);
+  if (courtDayBounds) {
+    return {
+      date: side === "from" ? courtDayBounds.start : courtDayBounds.end,
+      kind: "court-day",
+    };
+  }
+
+  const isoDateTime = IsoDateTimeStringSchema.safeParse(value);
+  if (isoDateTime.success) {
+    return {
+      date: new Date(isoDateTime.data),
+      kind: "iso",
+    };
+  }
+
+  return undefined;
+};
 /** A closed list, so nothing from the query string reaches SQL as an identifier. */
 export const TRANSACTION_LOG_SORT_FIELDS = [
   "createdAt",
@@ -46,13 +74,14 @@ export type SortOrder = z.infer<typeof SortOrderSchema>;
 
 export const TransactionLogQuerySchema = z
   .object({
-    from: z.coerce.date().optional().openapi({
+    from: z.string().optional().openapi({
       description:
-        "Inclusive lower bound on lastUpdatedAt. Defaults with `to` to the current Court day.",
+        "Inclusive lower bound on lastUpdatedAt. Accepts either an ISO timestamp or MM/DD/YYYY. Defaults with `to` to the current Court day.",
       example: "2026-08-03T04:00:00.000Z",
     }),
-    to: z.coerce.date().optional().openapi({
-      description: "Exclusive upper bound on lastUpdatedAt.",
+    to: z.string().optional().openapi({
+      description:
+        "Upper bound on lastUpdatedAt. ISO timestamps stay exact; MM/DD/YYYY expands to the end of that Court day.",
       example: "2026-08-04T04:00:00.000Z",
     }),
     status: PaymentStatusSchema.optional().openapi({
@@ -116,13 +145,77 @@ export const TransactionLogQuerySchema = z
         example: "true",
       }),
   })
-  .refine((query) => (query.from === undefined) === (query.to === undefined), {
-    message: "`from` and `to` must be supplied together",
-    path: ["from"],
+  .superRefine((query, context) => {
+    if ((query.from === undefined) !== (query.to === undefined)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "`from` and `to` must be supplied together",
+        path: ["from"],
+      });
+      return;
+    }
+
+    if (!query.from || !query.to) {
+      return;
+    }
   })
-  .refine((query) => !query.from || !query.to || query.from < query.to, {
-    message: "`from` must be earlier than `to`",
-    path: ["from"],
+  .transform((query, context) => {
+    if (!query.from || !query.to) {
+      return {
+        status: query.status,
+        page: query.page,
+        pageSize: query.pageSize,
+        export: query.export,
+        sort: query.sort,
+        order: query.order,
+      };
+    }
+
+    const from = parseTransactionLogDate(query.from, "from");
+    const to = parseTransactionLogDate(query.to, "to");
+
+    if (!from) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: TRANSACTION_LOG_DATE_FORMAT_MESSAGE,
+        path: ["from"],
+      });
+    }
+
+    if (!to) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: TRANSACTION_LOG_DATE_FORMAT_MESSAGE,
+        path: ["to"],
+      });
+    }
+
+    if (!from || !to) {
+      return z.NEVER;
+    }
+
+    if (!(from.date < to.date)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          from.kind === "court-day" || to.kind === "court-day"
+            ? "`from` must be on or before `to`"
+            : "`from` must be earlier than `to`",
+        path: ["from"],
+      });
+      return z.NEVER;
+    }
+
+    return {
+      from: from.date,
+      to: to.date,
+      status: query.status,
+      page: query.page,
+      pageSize: query.pageSize,
+      export: query.export,
+      sort: query.sort,
+      order: query.order,
+    };
   })
   .refine(
     (query) => query.export || query.pageSize <= TRANSACTION_LOG_MAX_PAGE_SIZE,

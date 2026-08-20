@@ -1,6 +1,6 @@
-import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
+import { dashboardError, dashboardOk } from "@utils/dashboardHandlerUtils";
+import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "../appContext";
-import { dashboardOk, dashboardError } from "@utils/dashboardHandlerUtils";
 
 /**
  * GET /transactions
@@ -10,6 +10,7 @@ export const getAllTransactionsHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
   const appContext = createAppContext({ lambdaRequest: event });
+
   try {
     const result = await appContext
       .getUseCases()

@@ -1,5 +1,9 @@
 import TransactionModel from "../db/TransactionModel";
-import { TransactionLogResponseSchema } from "@schemas/TransactionLog.schema";
+import {
+  TRANSACTION_LOG_DEFAULT_ORDER,
+  TRANSACTION_LOG_DEFAULT_SORT,
+  TransactionLogResponseSchema,
+} from "@schemas/TransactionLog.schema";
 import type { AppContext } from "@appTypes/AppContext";
 import type {
   TransactionLogQuery,
@@ -24,6 +28,8 @@ export const getTransactionLog: GetTransactionLog = async (
   const today = courtDayBounds(now);
   const from = query.from ?? today.start;
   const to = query.to ?? today.end;
+  const sort = query.sort ?? TRANSACTION_LOG_DEFAULT_SORT;
+  const order = query.order ?? TRANSACTION_LOG_DEFAULT_ORDER;
 
   // Export pages after the first skip the COUNTs; the caller has them from page 1.
   const withCounts = !query.export || query.page === 1;
@@ -38,8 +44,8 @@ export const getTransactionLog: GetTransactionLog = async (
       from,
       to,
       status: query.status,
-      sort: query.sort,
-      order: query.order,
+      sort,
+      order,
       limit: query.pageSize,
       offset: (query.page - 1) * query.pageSize,
       withTotal: withCounts,
