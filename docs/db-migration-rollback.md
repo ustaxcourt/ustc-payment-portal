@@ -71,5 +71,5 @@ before the deploy — an operational event that loses all writes since that poin
 
 ## One-time setup
 
-- Confirm the `prod` GitHub Environment still has its **required reviewers** configured before attempting a rollback deploy.
+- Confirm the `production` GitHub Environment still has its **required reviewers** configured before attempting a rollback deploy.
 - Deployer role already has `lambda:InvokeFunction` on `*-migrationRunner` (from PAY-355) — no new IAM.

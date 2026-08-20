@@ -21,14 +21,14 @@ then delete pre-go-live so nothing dangles.
 
 ## What is different after go-live
 
-| Concern      | Pre-go-live               | **Post-go-live**                                                                                                 |
-| ------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Cadence      | deploy any time           | deploy inside an **agreed change window**                                                                        |
-| Clients      | none                      | **notify client integrators before Prod**                                                                        |
-| Staging→Prod | promote when you're ready | promote only after a **formal go/no-go**                                                                         |
-| Prod apply   | review plan, apply        | review plan, **`production` Environment reviewer approves** _(reviewer not yet configured — see Stage 4)_, apply |
-| Post-deploy  | confirm API responds      | **mandatory** post-deploy verification + monitoring watch                                                        |
-| Failure      | leave broken, fix forward | follow [`deploy-rollback.md`](deploy-rollback.md); time-bound the decision                                       |
+| Concern      | Pre-go-live               | **Post-go-live**                                                           |
+| ------------ | ------------------------- | -------------------------------------------------------------------------- |
+| Cadence      | deploy any time           | deploy inside an **agreed change window**                                  |
+| Clients      | none                      | **notify client integrators before Prod**                                  |
+| Staging→Prod | promote when you're ready | promote only after a **formal go/no-go**                                   |
+| Prod apply   | review plan, apply        | review plan, **`production` Environment reviewer approves**, apply         |
+| Post-deploy  | confirm API responds      | **mandatory** post-deploy verification + monitoring watch                  |
+| Failure      | leave broken, fix forward | follow [`deploy-rollback.md`](deploy-rollback.md); time-bound the decision |
 
 ---
 
@@ -141,8 +141,7 @@ Consequences and rules:
   [`deploy-rollback.md`](deploy-rollback.md) safe.
 - Until the Prod migration path is built, **schema-only releases must be planned
   with the team** and applied through whatever mechanism the team agrees on:
-  `<TBD: deploy migrationRunner to Prod for parity, or define an approved
-one-off>`.
+  `<TBD: deploy migrationRunner to Prod for parity, or define an approved one-off>`.
 
 ---
 
