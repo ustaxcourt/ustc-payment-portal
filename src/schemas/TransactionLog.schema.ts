@@ -168,7 +168,10 @@ export const TransactionTotalPeriodSchema = z
     to: z.string().datetime().openapi({
       description: "Instant the period was totalled at — now, not period end",
     }),
-    total: z.number().nonnegative().openapi({
+    // No nonnegative(): a CHECK constraint already guarantees it, and a
+    // response schema enforcing it again would turn a data anomaly into a 500
+    // on a read-only call.
+    total: z.number().openapi({
       description: "Summed transaction amounts in USD",
     }),
   })
@@ -187,7 +190,8 @@ export const TransactionTotalsSchema = z
       "Successful payments only, in fixed periods to date. Unaffected by the " +
       "timeframe and status filters, so the figures stay stable as the user " +
       "filters. Periods open at Court-local midnight; the week opens on " +
-      "Sunday, and the quarter and year are fiscal — the year opens on Oct 1.",
+      "Sunday, and the quarter and year are fiscal — the year opens on Oct 1. " +
+      "Omitted on export requests for pages after the first.",
   });
 
 export const TransactionLogResponseSchema = z

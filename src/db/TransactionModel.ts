@@ -208,10 +208,20 @@ export default class TransactionModel extends Model {
       .andWhere("lastUpdatedAt", "<", latestEnd);
 
     // decimal(12,2) arrives as a string from pg, as it does on the model itself.
-    const summed = row as unknown as Record<string, unknown>;
+    const summed = row as unknown as Record<string, unknown> | undefined;
     return names.reduce(
       (totals, name) => {
-        totals[name] = Number(summed?.[name] ?? 0);
+        // COALESCE guarantees a value for every period, so a missing one means
+        // the alias did not survive the snake_case round trip. Fail loudly
+        // rather than report $0 revenue.
+        const value = summed?.[name];
+        const total = Number(value);
+        if (value === null || Number.isNaN(total)) {
+          throw new Error(
+            `totalsToDate returned no usable total for the "${name}" period`,
+          );
+        }
+        totals[name] = total;
         return totals;
       },
       {} as Record<CourtPeriodName, number>,

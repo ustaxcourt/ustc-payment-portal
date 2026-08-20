@@ -182,7 +182,10 @@ describe("TransactionLogResponseSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects a negative total", () => {
+  // A CHECK constraint already keeps amounts non-negative. Rejecting one here
+  // would turn a data anomaly into a 500 on a read-only call, so it parses and
+  // the figure reaches the caller instead.
+  it("passes a negative total through rather than failing the response", () => {
     const result = TransactionLogResponseSchema.safeParse({
       ...response,
       totals: {
@@ -194,7 +197,8 @@ describe("TransactionLogResponseSchema", () => {
       },
     });
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    expect(result.data?.totals?.day.total).toBe(-1);
   });
 });
 

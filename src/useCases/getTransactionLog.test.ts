@@ -180,9 +180,9 @@ describe("getTransactionLog", () => {
       expect(countsInRange).toHaveBeenCalled();
     });
 
-    // The two features are independent: dropping the COUNTs must not drop the
-    // period totals, and vice versa.
-    it("still returns period totals on a page that skips the COUNTs", async () => {
+    // Each page would close its periods at a different `now`, so an export
+    // would carry a different set of figures on every page.
+    it("skips the period totals on pages after the first", async () => {
       queryLog.mockResolvedValue({ rows: [failedRow as any] });
 
       const result = await getTransactionLog(
@@ -190,8 +190,16 @@ describe("getTransactionLog", () => {
         query({ export: true, page: 2, includeTotals: true }),
       );
 
-      expect(result.counts).toBeUndefined();
-      expect(result.total).toBeUndefined();
+      expect(totalsToDate).not.toHaveBeenCalled();
+      expect(result.totals).toBeUndefined();
+    });
+
+    it("returns the period totals on the first page", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 1, includeTotals: true }),
+      );
+
       expect(result.totals?.day.total).toBe(120);
     });
   });
@@ -229,6 +237,18 @@ describe("getTransactionLog", () => {
       expect(totalsToDate.mock.calls[0][0].fiscalYear.start).toEqual(
         new Date("2025-10-01T04:00:00.000Z"),
       );
+    });
+
+    // Both derive from a single clock read, so they always name the same Court
+    // day. Fake timers freeze the clock here, so this pins the relationship
+    // rather than reproducing the midnight race it protects against.
+    it("opens the day period on the same instant as the default timeframe", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true }),
+      );
+
+      expect(result.totals?.day.from).toBe(result.from);
     });
 
     it("ignores the requested timeframe and status", async () => {

@@ -18,15 +18,20 @@ export const getTransactionLog: GetTransactionLog = async (
   _appContext: AppContext,
   query: TransactionLogQuery,
 ): Promise<TransactionLogResponse> => {
-  const today = courtDayBounds();
+  // One clock read for both, so the day they resolve to cannot differ across
+  // a midnight boundary.
+  const now = new Date();
+  const today = courtDayBounds(now);
   const from = query.from ?? today.start;
   const to = query.to ?? today.end;
 
   // Export pages after the first skip the COUNTs; the caller has them from page 1.
   const withCounts = !query.export || query.page === 1;
 
-
-  const periods = courtPeriodBounds();
+  // Resolving the periods costs eleven Intl passes, so it waits until the
+  // request actually asks for them.
+  const periods =
+    withCounts && query.includeTotals ? courtPeriodBounds(now) : undefined;
 
   const [page, counts, periodTotals] = await Promise.all([
     TransactionModel.queryLog({
@@ -40,7 +45,10 @@ export const getTransactionLog: GetTransactionLog = async (
       withTotal: withCounts,
     }),
     withCounts ? TransactionModel.countsInRange(from, to) : undefined,
-    query.includeTotals ? TransactionModel.totalsToDate(periods) : undefined,
+    // Behind the same gate: each page would otherwise re-run the aggregate and
+    // close its periods at a different `now`, so an export would carry a
+    // slightly different set of figures on every page.
+    periods ? TransactionModel.totalsToDate(periods) : undefined,
   ]);
 
   // One spread, so the pair can only ever be omitted together.
@@ -60,6 +68,7 @@ export const getTransactionLog: GetTransactionLog = async (
   // Each period echoes the instants actually summed; the dashboard displays
   // these rather than deriving them.
   const totalsByPeriod =
+    periods &&
     periodTotals &&
     Object.fromEntries(
       Object.entries(periods).map(([name, bounds]) => [

@@ -198,6 +198,15 @@ describe("TransactionModel.totalsToDate", () => {
   const SUM_SQL =
     "coalesce(sum(??) filter (where ?? >= ? and ?? < ?), 0) as ??";
 
+  // What COALESCE guarantees for an empty table: a value for every period.
+  const ZERO_ROW = {
+    day: "0",
+    week: "0",
+    month: "0",
+    quarter: "0",
+    fiscalYear: "0",
+  };
+
   const stubRaw = () => {
     const raw = jest.fn((sql: string, bindings: unknown[]) => ({
       sql,
@@ -209,7 +218,7 @@ describe("TransactionModel.totalsToDate", () => {
 
   it("sums successful payments only", async () => {
     stubRaw();
-    const chains = stubQuery([{}]);
+    const chains = stubQuery([ZERO_ROW]);
 
     await TransactionModel.totalsToDate(PERIODS);
     const [q] = chains;
@@ -222,7 +231,7 @@ describe("TransactionModel.totalsToDate", () => {
     // every successful row ever written.
     it("brackets the scan with the widest period", async () => {
       stubRaw();
-      const chains = stubQuery([{}]);
+      const chains = stubQuery([ZERO_ROW]);
 
       await TransactionModel.totalsToDate(PERIODS);
       const [q] = chains;
@@ -252,7 +261,7 @@ describe("TransactionModel.totalsToDate", () => {
       };
 
       stubRaw();
-      const chains = stubQuery([{}]);
+      const chains = stubQuery([ZERO_ROW]);
 
       await TransactionModel.totalsToDate(firstWeekOfFiscalYear);
       const [q] = chains;
@@ -272,7 +281,7 @@ describe("TransactionModel.totalsToDate", () => {
 
   it("takes a single round trip for all five periods", async () => {
     const raw = stubRaw();
-    const chains = stubQuery([{}]);
+    const chains = stubQuery([ZERO_ROW]);
 
     await TransactionModel.totalsToDate(PERIODS);
 
@@ -285,7 +294,7 @@ describe("TransactionModel.totalsToDate", () => {
 
   it("bounds each period on lastUpdatedAt, matching the log's timeframe", async () => {
     const raw = stubRaw();
-    stubQuery([{}]);
+    stubQuery([ZERO_ROW]);
 
     await TransactionModel.totalsToDate(PERIODS);
 
@@ -322,18 +331,9 @@ describe("TransactionModel.totalsToDate", () => {
 
   it("returns zero for a period with no successful payments", async () => {
     stubRaw();
-    stubQuery([{ day: null, week: "0", month: "0", quarter: "0" }]);
-
-    expect(await TransactionModel.totalsToDate(PERIODS)).toMatchObject({
-      day: 0,
-      week: 0,
-      fiscalYear: 0,
-    });
-  });
-
-  it("returns zero for every period when no row comes back", async () => {
-    stubRaw();
-    stubQuery([]);
+    stubQuery([
+      { day: "0", week: "0", month: "0", quarter: "0", fiscalYear: "0" },
+    ]);
 
     expect(await TransactionModel.totalsToDate(PERIODS)).toEqual({
       day: 0,
@@ -341,6 +341,41 @@ describe("TransactionModel.totalsToDate", () => {
       month: 0,
       quarter: 0,
       fiscalYear: 0,
+    });
+  });
+
+  // COALESCE guarantees a value per period, so anything missing means the
+  // alias did not survive the snake_case round trip — the one link the stubs
+  // here cannot exercise. Reporting $0 revenue for that would be worse than
+  // failing.
+  describe("rather than reporting a silent $0", () => {
+    it("throws when a period's alias does not come back", async () => {
+      stubRaw();
+      stubQuery([{ day: "120.50", week: "0", month: "0", quarter: "0" }]);
+
+      await expect(TransactionModel.totalsToDate(PERIODS)).rejects.toThrow(
+        'no usable total for the "fiscalYear" period',
+      );
+    });
+
+    it("throws when a period comes back null", async () => {
+      stubRaw();
+      stubQuery([
+        { day: null, week: "0", month: "0", quarter: "0", fiscalYear: "0" },
+      ]);
+
+      await expect(TransactionModel.totalsToDate(PERIODS)).rejects.toThrow(
+        'no usable total for the "day" period',
+      );
+    });
+
+    it("throws when no row comes back at all", async () => {
+      stubRaw();
+      stubQuery([]);
+
+      await expect(TransactionModel.totalsToDate(PERIODS)).rejects.toThrow(
+        "no usable total",
+      );
     });
   });
 });
