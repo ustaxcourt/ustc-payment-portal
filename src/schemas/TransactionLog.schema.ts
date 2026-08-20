@@ -168,6 +168,7 @@ export const TransactionLogQuerySchema = z
         export: query.export,
         sort: query.sort,
         order: query.order,
+        includeTotals: query.includeTotals,
       };
     }
 
@@ -215,6 +216,7 @@ export const TransactionLogQuerySchema = z
       export: query.export,
       sort: query.sort,
       order: query.order,
+      includeTotals: query.includeTotals,
     };
   })
   .refine(

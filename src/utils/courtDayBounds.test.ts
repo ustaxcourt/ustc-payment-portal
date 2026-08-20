@@ -1,4 +1,9 @@
-import { courtDayBounds, courtPeriodBounds } from "./courtDayBounds";
+import {
+  courtDayBounds,
+  courtDayBoundsForDateString,
+  courtPeriodBounds,
+  parseMonthDayYearDate,
+} from "./courtDayBounds";
 
 const hoursBetween = (start: Date, end: Date): number =>
   (end.getTime() - start.getTime()) / 3_600_000;
@@ -6,6 +11,16 @@ const hoursBetween = (start: Date, end: Date): number =>
 describe("courtDayBounds", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  it("defaults to the current instant when none is given", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-08-03T15:00:00.000Z"));
+
+    const { start, end } = courtDayBounds();
+
+    expect(start.toISOString()).toBe("2026-08-03T04:00:00.000Z");
+    expect(end.toISOString()).toBe("2026-08-04T04:00:00.000Z");
   });
 
   it("throws when a date part is missing rather than scoping to nothing", () => {
@@ -80,9 +95,50 @@ describe("courtDayBounds", () => {
   });
 });
 
+describe("parseMonthDayYearDate", () => {
+  it("accepts valid MM/DD/YYYY dates", () => {
+    expect(parseMonthDayYearDate("08/10/2026")).toEqual({
+      year: 2026,
+      month: 8,
+      day: 10,
+    });
+  });
+
+  it("rejects invalid calendar dates", () => {
+    expect(parseMonthDayYearDate("02/30/2026")).toBeUndefined();
+    expect(parseMonthDayYearDate("2026-08-10")).toBeUndefined();
+  });
+});
+
+describe("courtDayBoundsForDateString", () => {
+  it("returns the full Court-local day for a summer date", () => {
+    const bounds = courtDayBoundsForDateString("08/10/2026");
+
+    expect(bounds?.start.toISOString()).toBe("2026-08-10T04:00:00.000Z");
+    expect(bounds?.end.toISOString()).toBe("2026-08-11T04:00:00.000Z");
+  });
+
+  it("returns undefined for invalid input", () => {
+    expect(courtDayBoundsForDateString("8/10/2026")).toBeUndefined();
+  });
+});
+
 describe("courtPeriodBounds", () => {
   // Monday 2026-08-17, 11:00 EDT.
   const MONDAY = new Date("2026-08-17T15:00:00.000Z");
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("defaults to the current instant when none is given", () => {
+    jest.useFakeTimers().setSystemTime(MONDAY);
+
+    const periods = courtPeriodBounds();
+
+    expect(periods.day.start.toISOString()).toBe("2026-08-17T04:00:00.000Z");
+    expect(periods.day.end.toISOString()).toBe(MONDAY.toISOString());
+  });
 
   it("opens every period at Court-local midnight", () => {
     const periods = courtPeriodBounds(MONDAY);

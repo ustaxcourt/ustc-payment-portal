@@ -160,7 +160,7 @@ export const courtPeriodBounds = (
   const end = new Date(now.getTime());
   // Date.UTC normalises out-of-range days, so a Sunday in the previous month
   // or year needs no special casing.
-  const openingAt = (parts: DayParts): Bounds => ({
+  const openingAt = (parts: CourtDayParts): Bounds => ({
     start: startOfZoneDay(parts, COURT_TIME_ZONE),
     end,
   });

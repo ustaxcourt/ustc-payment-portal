@@ -97,8 +97,9 @@ export const getTransactionLog: GetTransactionLog = async (
     to: to.toISOString(),
     page: query.page,
     pageSize: query.pageSize,
-    sort: query.sort,
-    order: query.order,
+    // The resolved pair, so the response echoes what was actually applied.
+    sort,
+    order,
     // Spread, so the key is absent rather than present-and-undefined.
     ...(totalsByPeriod && { totals: totalsByPeriod }),
   });
