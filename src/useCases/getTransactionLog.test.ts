@@ -122,6 +122,22 @@ describe("getTransactionLog", () => {
     expect(result).toMatchObject({ sort: "lastUpdatedAt", order: "desc" });
   });
 
+  it("applies default sort/order when they are absent", async () => {
+    const result = await getTransactionLog(
+      appContext,
+      query({ sort: undefined, order: undefined }),
+    );
+
+    expect(queryLog.mock.calls[0][0]).toMatchObject({
+      sort: TRANSACTION_LOG_DEFAULT_SORT,
+      order: TRANSACTION_LOG_DEFAULT_ORDER,
+    });
+    expect(result).toMatchObject({
+      sort: TRANSACTION_LOG_DEFAULT_SORT,
+      order: TRANSACTION_LOG_DEFAULT_ORDER,
+    });
+  });
+
   it("returns the failure reason and the display payment method", async () => {
     const result = await getTransactionLog(appContext, query());
 
