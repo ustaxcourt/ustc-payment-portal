@@ -158,7 +158,7 @@ jobs:
 
       - name: Export artifact bucket (env)
         run: |
-          echo "Artifact bucket: $DEV_ARTIFACT_BUCKET"
+          echo "Dev bucket: $DEV_ARTIFACT_BUCKET"
           echo "Event: ${{ github.event_name }}"
           echo "Ref: ${{ github.ref }}"
 
