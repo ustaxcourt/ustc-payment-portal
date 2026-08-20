@@ -107,10 +107,7 @@ in the same backlog.
 - **Status:** Delivered via PAY-358.
 - **Why:** Prod deploys now pause on the native GitHub Environment review gate
   before jobs targeting `environment: production` can proceed.
-- **Build:** configured a required reviewer and deployment branch/tag policy on
-  the `production` environment; `prod-deploy.yml` continues to use that native
-  gate plus the separate destructive-migration approval step when needed. The
-  deployment policy allows branch `main` and tags matching `v*`.
+- **Build:** configured a required reviewer and deployment branch/tag policy on the production environment; prod-deploy.yml continues to use that native gate plus the separate destructive-migration approval step when needed. The deployment policy allows branch main and tags matching v*. Because v* also matches release-candidate tags (for example, v1.2.3-rc.1), the workflow's guard job remains the definitive control that prevents RC builds from being deployed to production.
 - **Effort:** S
 
 ### G5. Add a transaction read-view for Staging/Prod

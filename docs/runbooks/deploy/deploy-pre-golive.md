@@ -63,8 +63,7 @@ anything. If you remember one thing, remember that.
   **green**. A red Dev run means there is nothing safe to promote — stop.
 - You can see the auto-created `v<X.Y.Z>-dev.<N>` tag for your commit
   (`git tag -l "v*-dev.*" --sort=-creatordate | head`).
-- You have permission to run workflows and, if you are one of the configured
-  required reviewers, to approve the `production` GitHub Environment.
+- You have permission to run workflows and, if you are listed as a required reviewer for the `production` GitHub Environment, to approve deployments. The required reviewer list is maintained in the repository's Environment settings, where operators can verify whether they are authorized reviewers.
 
 ---
 
@@ -164,9 +163,9 @@ Response shape:
       "transactionStatus": "processed", // technical: received|initiated|processed|failed
       "returnDetail": "...",
       "createdTimestamp": "...",
-      "updatedTimestamp": "..."
-    }
-  ]
+      "updatedTimestamp": "...",
+    },
+  ],
 }
 ```
 

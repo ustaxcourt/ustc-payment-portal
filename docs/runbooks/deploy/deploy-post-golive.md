@@ -21,14 +21,14 @@ then delete pre-go-live so nothing dangles.
 
 ## What is different after go-live
 
-| Concern      | Pre-go-live               | **Post-go-live**                                                           |
-| ------------ | ------------------------- | -------------------------------------------------------------------------- |
-| Cadence      | deploy any time           | deploy inside an **agreed change window**                                  |
-| Clients      | none                      | **notify client integrators before Prod**                                  |
-| Staging→Prod | promote when you're ready | promote only after a **formal go/no-go**                                   |
-| Prod apply   | review plan, apply        | review plan, **`production` Environment reviewer approves**, apply         |
-| Post-deploy  | confirm API responds      | **mandatory** post-deploy verification + monitoring watch                  |
-| Failure      | leave broken, fix forward | follow [`deploy-rollback.md`](deploy-rollback.md); time-bound the decision |
+| Concern      | Pre-go-live               | **Post-go-live**                                                                                                                                                                                                                                                                                                               |
+| ------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cadence      | deploy any time           | deploy inside an **agreed change window**                                                                                                                                                                                                                                                                                      |
+| Clients      | none                      | **notify client integrators before Prod**                                                                                                                                                                                                                                                                                      |
+| Staging→Prod | promote when you're ready | promote only after a **formal go/no-go**                                                                                                                                                                                                                                                                                       |
+| Prod apply   | review plan, apply        | You have permission to run workflows and, if you are one of the required reviewers configured for the production GitHub Environment, to approve deployments. The list of required reviewers is maintained in the repository's Environment settings: <https://github.com/ustaxcourt/ustc-payment-portal/settings/environments>. |
+| Post-deploy  | confirm API responds      | **mandatory** post-deploy verification + monitoring watch                                                                                                                                                                                                                                                                      |
+| Failure      | leave broken, fix forward | follow [`deploy-rollback.md`](deploy-rollback.md); time-bound the decision                                                                                                                                                                                                                                                     |
 
 ---
 
@@ -164,12 +164,12 @@ Post-go-live, a bad Prod deploy is an **incident**, not a practice run. Follow
 
 ## Quick reference
 
-| Stage   | Workflow             | Trigger                    | Added post-go-live gate                                                                                 |
-| ------- | -------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Dev     | `cicd-dev.yml`       | auto on push to `main`     | (none)                                                                                                  |
-| Staging | `staging-deploy.yml` | manual dispatch            | smoke test is a hard stop                                                                               |
-| Verify  | —                    | manual                     | formal go/no-go checklist                                                                               |
-| Prod    | `prod-deploy.yml`    | Release published / manual | Environment reviewer approval _(reviewer must be configured first)_ + required post-deploy verification |
+| Stage   | Workflow             | Trigger                    | Added post-go-live gate                                         |
+| ------- | -------------------- | -------------------------- | --------------------------------------------------------------- |
+| Dev     | `cicd-dev.yml`       | auto on push to `main`     | (none)                                                          |
+| Staging | `staging-deploy.yml` | manual dispatch            | smoke test is a hard stop                                       |
+| Verify  | —                    | manual                     | formal go/no-go checklist                                       |
+| Prod    | `prod-deploy.yml`    | Release published / manual | Environment reviewer approval required post-deploy verification |
 
 > Items marked `<TBD>` are deliberate placeholders for decisions the team must
 > agree on. Replace them with the agreed policy and remove this note.
