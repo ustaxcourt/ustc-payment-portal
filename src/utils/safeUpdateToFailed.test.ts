@@ -1,3 +1,4 @@
+import { ConflictError } from "@errors/conflict";
 import { safeUpdateToFailed } from "./safeUpdateToFailed";
 import TransactionModel from "../db/TransactionModel";
 import { testAppContext as appContext } from "../test/testAppContext";
@@ -32,6 +33,16 @@ describe("safeUpdateToFailed", () => {
       undefined,
       undefined,
     );
+  });
+
+  it("does not throw when updateToFailed rejects with ConflictError because the row is already processed/pending", async () => {
+    TransactionModelMock.updateToFailed.mockRejectedValueOnce(
+      new ConflictError(ConflictError.PERSIST_RACE_MESSAGE),
+    );
+
+    await expect(
+      safeUpdateToFailed(appContext, "agency-123"),
+    ).resolves.toBeUndefined();
   });
 
   it("does not throw when updateToFailed rejects", async () => {

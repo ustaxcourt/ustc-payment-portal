@@ -171,11 +171,30 @@ export const initPayment: InitPayment = async (
         transactionStatus: existingInFlightTransaction.transactionStatus,
         staleProcessing,
       });
-      await TransactionModel.updateToFailed(
-        existingInFlightTransaction.agencyTrackingId,
-        EXISTING_TOKEN_ERROR_CODE,
-        "Existing token expired",
-      );
+      try {
+        await TransactionModel.updateToFailed(
+          existingInFlightTransaction.agencyTrackingId,
+          EXISTING_TOKEN_ERROR_CODE,
+          "Existing token expired",
+          existingInFlightTransaction.lastUpdatedAt,
+        );
+      } catch (err) {
+        if (!(err instanceof ConflictError)) {
+          throw err;
+        }
+        // The row changed underneath us — most likely processPayment just landed a
+        // successful completion on what looked like a stale row. Don't trust our
+        // stale read; re-check instead of falling through to a new attempt.
+        appContext.logger.info(
+          "Stale in-flight transaction changed state before it could be superseded",
+          {
+            transactionReferenceId,
+            agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
+          },
+        );
+        emitInitPaymentConflictMetric("stale_supersede_race");
+        await rejectIfAlreadyPaid();
+      }
     }
   }
 
