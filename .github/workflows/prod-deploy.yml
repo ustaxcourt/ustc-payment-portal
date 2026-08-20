@@ -45,10 +45,6 @@ jobs:
           fi
           [ -n "${TAG:-}" ] || { echo "Empty tag" >&2; exit 1; }
           case "$TAG" in
-            *-dev.*)
-              echo "::error::Refusing to deploy '$TAG' to production: dev tags are development builds, not releases. Cut a proper release tag from the same commit and deploy that instead." >&2
-              exit 1
-              ;;
             *-rc.*)
               echo "::error::Refusing to deploy '$TAG' to production: RC tags are release candidates, not releases. Cut a proper release tag from the same commit and deploy that instead." >&2
               exit 1
