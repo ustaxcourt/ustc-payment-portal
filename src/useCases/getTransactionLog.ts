@@ -1,5 +1,9 @@
 import TransactionModel from "../db/TransactionModel";
-import { TransactionLogResponseSchema } from "@schemas/TransactionLog.schema";
+import {
+  TRANSACTION_LOG_DEFAULT_ORDER,
+  TRANSACTION_LOG_DEFAULT_SORT,
+  TransactionLogResponseSchema,
+} from "@schemas/TransactionLog.schema";
 import type { AppContext } from "@appTypes/AppContext";
 import type {
   TransactionLogQuery,
@@ -20,6 +24,11 @@ export const getTransactionLog: GetTransactionLog = async (
   const today = courtDayBounds();
   const from = query.from ?? today.start;
   const to = query.to ?? today.end;
+  const sort = query.sort ?? TRANSACTION_LOG_DEFAULT_SORT;
+  const order = query.order ?? TRANSACTION_LOG_DEFAULT_ORDER;
+
+  // Export pages after the first skip the COUNTs; the caller has them from page 1.
+  const withTotals = !query.export || query.page === 1;
 
   // Counts span the timeframe only, so the tallies hold steady while the user
   // switches between statuses.
@@ -28,31 +37,41 @@ export const getTransactionLog: GetTransactionLog = async (
       from,
       to,
       status: query.status,
-      sort: query.sort,
-      order: query.order,
+      sort,
+      order,
       limit: query.pageSize,
       offset: (query.page - 1) * query.pageSize,
+      withTotal: withTotals,
     }),
-    TransactionModel.countsInRange(from, to),
+    withTotals ? TransactionModel.countsInRange(from, to) : undefined,
   ]);
+
+  // One spread, so the pair can only ever be omitted together.
+  const totals =
+    counts && page.total !== undefined
+      ? {
+          counts: {
+            all: counts.total,
+            success: counts.success,
+            failed: counts.failed,
+            pending: counts.pending,
+          },
+          total: page.total,
+        }
+      : {};
 
   return TransactionLogResponseSchema.parse({
     data: page.rows.map((row) => ({
       ...row,
       paymentMethod: toApiPaymentMethod(row.paymentMethod),
     })),
-    counts: {
-      all: counts.total,
-      success: counts.success,
-      failed: counts.failed,
-      pending: counts.pending,
-    },
+    ...totals,
     from: from.toISOString(),
     to: to.toISOString(),
     page: query.page,
     pageSize: query.pageSize,
-    sort: query.sort,
-    order: query.order,
+    sort,
+    order,
     total: page.total,
   });
 };

@@ -412,7 +412,9 @@ registry.registerPath({
     "timeframe and ignore the status filter, so the tallies stay stable while " +
     "the caller filters. Ordering follows `sort`/`order`, defaulting to " +
     "newest lastUpdatedAt first, and is always broken by the primary key so " +
-    "the order is stable across identical requests.",
+    "the order is stable across identical requests. `export=true` raises the " +
+    "`pageSize` ceiling to 5000 for file exports that walk every page; on " +
+    "export pages after the first, `counts` and `total` are omitted.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   request: {

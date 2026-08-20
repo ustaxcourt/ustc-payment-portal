@@ -1094,19 +1094,17 @@
           "total": {
             "type": "integer",
             "minimum": 0,
-            "description": "Rows matching the timeframe and status filter, across all pages"
+            "description": "Rows matching the timeframe and status filter, across all pages. Omitted on export requests for pages after the first."
           }
         },
         "required": [
           "data",
-          "counts",
           "from",
           "to",
           "page",
           "pageSize",
           "sort",
-          "order",
-          "total"
+          "order"
         ]
       },
       "TransactionLogEntry": {
@@ -1163,7 +1161,7 @@
           "failed",
           "pending"
         ],
-        "description": "Totals for the requested timeframe, unaffected by the status filter so the tallies stay stable as the user filters."
+        "description": "Totals for the requested timeframe, unaffected by the status filter so the tallies stay stable as the user filters. Omitted on export requests for pages after the first."
       },
       "TransactionLogSortField": {
         "type": "string",
@@ -1524,7 +1522,7 @@
     "/transaction-log": {
       "get": {
         "summary": "Get the transaction log",
-        "description": "Transaction log for the Case Services & Finance dashboard. Filters on lastUpdatedAt, defaulting to the current Court day in America/New_York, and returns rows alongside aggregate counts. The counts cover the whole timeframe and ignore the status filter, so the tallies stay stable while the caller filters. Ordering follows `sort`/`order`, defaulting to newest lastUpdatedAt first, and is always broken by the primary key so the order is stable across identical requests.",
+        "description": "Transaction log for the Case Services & Finance dashboard. Filters on lastUpdatedAt, defaulting to the current Court day in America/New_York, and returns rows alongside aggregate counts. The counts cover the whole timeframe and ignore the status filter, so the tallies stay stable while the caller filters. Ordering follows `sort`/`order`, defaulting to newest lastUpdatedAt first, and is always broken by the primary key so the order is stable across identical requests. `export=true` raises the `pageSize` ceiling to 5000 for file exports that walk every page; on export pages after the first, `counts` and `total` are omitted.",
         "tags": [
           "Payments"
         ],
@@ -1536,31 +1534,23 @@
         "parameters": [
           {
             "schema": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "format": "date-time",
-              "description": "Inclusive lower bound on lastUpdatedAt. Defaults with `to` to the current Court day.",
+              "type": "string",
+              "description": "Inclusive lower bound on lastUpdatedAt. Accepts either an ISO timestamp or MM/DD/YYYY. Defaults with `to` to the current Court day.",
               "example": "2026-08-03T04:00:00.000Z"
             },
             "required": false,
-            "description": "Inclusive lower bound on lastUpdatedAt. Defaults with `to` to the current Court day.",
+            "description": "Inclusive lower bound on lastUpdatedAt. Accepts either an ISO timestamp or MM/DD/YYYY. Defaults with `to` to the current Court day.",
             "name": "from",
             "in": "query"
           },
           {
             "schema": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "format": "date-time",
-              "description": "Exclusive upper bound on lastUpdatedAt.",
+              "type": "string",
+              "description": "Upper bound on lastUpdatedAt. ISO timestamps stay exact; MM/DD/YYYY expands to the end of that Court day.",
               "example": "2026-08-04T04:00:00.000Z"
             },
             "required": false,
-            "description": "Exclusive upper bound on lastUpdatedAt.",
+            "description": "Upper bound on lastUpdatedAt. ISO timestamps stay exact; MM/DD/YYYY expands to the end of that Court day.",
             "name": "to",
             "in": "query"
           },
@@ -1597,14 +1587,30 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 200,
+              "maximum": 5000,
               "default": 50,
-              "description": "Rows per page",
+              "description": "Rows per page. Capped at 200, or 5000 when `export=true`.",
               "example": 50
             },
             "required": false,
-            "description": "Rows per page",
+            "description": "Rows per page. Capped at 200, or 5000 when `export=true`.",
             "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "default": "false",
+              "description": "Marks an export request: raises the `pageSize` ceiling to 5000, and pages after the first omit `counts` and `total` (the caller already has them from page 1). Pages are not a consistent snapshot: a row updated between page requests can shift page boundaries, so export clients should verify their assembled row count against page 1's `total` and refetch on a mismatch.",
+              "example": "true"
+            },
+            "required": false,
+            "description": "Marks an export request: raises the `pageSize` ceiling to 5000, and pages after the first omit `counts` and `total` (the caller already has them from page 1). Pages are not a consistent snapshot: a row updated between page requests can shift page boundaries, so export clients should verify their assembled row count against page 1's `total` and refetch on a mismatch.",
+            "name": "export",
             "in": "query"
           },
           {
