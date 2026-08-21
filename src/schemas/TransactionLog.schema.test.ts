@@ -179,6 +179,96 @@ describe("TransactionLogQuerySchema", () => {
       expect(parse({ order: "sideways" }).success).toBe(false);
     });
   });
+
+  describe("includeTotals", () => {
+    it("stays off when it is not asked for", () => {
+      expect(parse({}).data?.includeTotals).toBe(false);
+    });
+
+    it('turns on for the string "true"', () => {
+      expect(parse({ includeTotals: "true" }).data?.includeTotals).toBe(true);
+    });
+
+    // z.coerce.boolean() would switch totals *on* here.
+    it('stays off for the string "false"', () => {
+      expect(parse({ includeTotals: "false" }).data?.includeTotals).toBe(false);
+    });
+
+    it("rejects a value that is neither true nor false", () => {
+      expect(parse({ includeTotals: "yes" }).success).toBe(false);
+    });
+  });
+});
+
+describe("TransactionLogResponseSchema", () => {
+  const period = {
+    from: "2026-08-17T04:00:00.000Z",
+    to: "2026-08-17T15:00:00.000Z",
+    total: 12450,
+  };
+
+  const response = {
+    data: [],
+    counts: { all: 0, success: 0, failed: 0, pending: 0 },
+    from: FROM,
+    to: TO,
+    page: 1,
+    pageSize: 50,
+    sort: "lastUpdatedAt",
+    order: "desc",
+    total: 0,
+  };
+
+  it("parses without totals, so existing callers are unaffected", () => {
+    const result = TransactionLogResponseSchema.safeParse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.data).not.toHaveProperty("totals");
+  });
+
+  it("parses with a total for each of the five periods", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      totals: {
+        day: period,
+        week: period,
+        month: period,
+        quarter: period,
+        fiscalYear: period,
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.totals?.fiscalYear.total).toBe(12450);
+  });
+
+  it("rejects totals missing a period", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      totals: { day: period },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  // A CHECK constraint already keeps amounts non-negative. Rejecting one here
+  // would turn a data anomaly into a 500 on a read-only call, so it parses and
+  // the figure reaches the caller instead.
+  it("passes a negative total through rather than failing the response", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      totals: {
+        day: { ...period, total: -1 },
+        week: period,
+        month: period,
+        quarter: period,
+        fiscalYear: period,
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.totals?.day.total).toBe(-1);
+  });
 });
 
 describe("TransactionLogResponseSchema", () => {

@@ -1095,6 +1095,9 @@
             "type": "integer",
             "minimum": 0,
             "description": "Rows matching the timeframe and status filter, across all pages. Omitted on export requests for pages after the first."
+          },
+          "totals": {
+            "$ref": "#/components/schemas/TransactionTotals"
           }
         },
         "required": [
@@ -1186,6 +1189,58 @@
           "desc"
         ],
         "description": "Direction the transaction log is ordered in"
+      },
+      "TransactionTotals": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "$ref": "#/components/schemas/TransactionTotalPeriod"
+          },
+          "week": {
+            "$ref": "#/components/schemas/TransactionTotalPeriod"
+          },
+          "month": {
+            "$ref": "#/components/schemas/TransactionTotalPeriod"
+          },
+          "quarter": {
+            "$ref": "#/components/schemas/TransactionTotalPeriod"
+          },
+          "fiscalYear": {
+            "$ref": "#/components/schemas/TransactionTotalPeriod"
+          }
+        },
+        "required": [
+          "day",
+          "week",
+          "month",
+          "quarter",
+          "fiscalYear"
+        ],
+        "description": "Successful payments only, in fixed periods to date. Unaffected by the timeframe and status filters, so the figures stay stable as the user filters. Periods open at Court-local midnight; the week opens on Sunday, and the quarter and year are fiscal — the year opens on Oct 1. Omitted on export requests for pages after the first."
+      },
+      "TransactionTotalPeriod": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Court-local midnight the period opened at"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Instant the period was totalled at — now, not period end"
+          },
+          "total": {
+            "type": "number",
+            "description": "Summed transaction amounts in USD"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "total"
+        ]
       }
     },
     "parameters": {}
@@ -1522,7 +1577,7 @@
     "/transaction-log": {
       "get": {
         "summary": "Get the transaction log",
-        "description": "Transaction log for the Case Services & Finance dashboard. Filters on lastUpdatedAt, defaulting to the current Court day in America/New_York, and returns rows alongside aggregate counts. The counts cover the whole timeframe and ignore the status filter, so the tallies stay stable while the caller filters. Ordering follows `sort`/`order`, defaulting to newest lastUpdatedAt first, and is always broken by the primary key so the order is stable across identical requests. `export=true` raises the `pageSize` ceiling to 5000 for file exports that walk every page; on export pages after the first, `counts` and `total` are omitted.",
+        "description": "Transaction log for the Case Services & Finance dashboard. Filters on lastUpdatedAt, defaulting to the current Court day in America/New_York, and returns rows alongside aggregate counts. The counts cover the whole timeframe and ignore the status filter, so the tallies stay stable while the caller filters. Ordering follows `sort`/`order`, defaulting to newest lastUpdatedAt first, and is always broken by the primary key so the order is stable across identical requests. `export=true` raises the `pageSize` ceiling to 5000 for file exports that walk every page; on export pages after the first, `counts` and `total` are omitted. `includeTotals=true` adds summed revenue for five fixed periods to date — day, week, month, fiscal quarter and fiscal year — covering successful payments only and ignoring both the timeframe and the status filter. It follows the same rule as `counts` on export pages after the first.",
         "tags": [
           "Payments"
         ],
@@ -1645,6 +1700,22 @@
             "required": false,
             "description": "Direction for `sort`. Rows with no value for the sorted column are listed last in both directions.",
             "name": "order",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "default": "false",
+              "description": "Adds `totals` to the response. Fixed periods to date; ignores `from`/`to` and `status`.",
+              "example": "true"
+            },
+            "required": false,
+            "description": "Adds `totals` to the response. Fixed periods to date; ignores `from`/`to` and `status`.",
+            "name": "includeTotals",
             "in": "query"
           }
         ],

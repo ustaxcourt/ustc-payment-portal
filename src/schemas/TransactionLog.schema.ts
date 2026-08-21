@@ -132,6 +132,18 @@ export const TransactionLogQuerySchema = z
         "listed last in both directions.",
       example: "desc",
     }),
+    // Not z.coerce.boolean(): that is Boolean(value), so the non-empty string
+    // "false" would switch totals on.
+    includeTotals: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true")
+      .openapi({
+        description:
+          "Adds `totals` to the response. Fixed periods to date; ignores " +
+          "`from`/`to` and `status`.",
+        example: "true",
+      }),
   })
   .superRefine((query, context) => {
     if ((query.from === undefined) !== (query.to === undefined)) {
@@ -156,6 +168,7 @@ export const TransactionLogQuerySchema = z
         export: query.export,
         sort: query.sort,
         order: query.order,
+        includeTotals: query.includeTotals,
       };
     }
 
@@ -203,6 +216,7 @@ export const TransactionLogQuerySchema = z
       export: query.export,
       sort: query.sort,
       order: query.order,
+      includeTotals: query.includeTotals,
     };
   })
   .refine(
@@ -241,6 +255,40 @@ export const TransactionCountsSchema = z
       "Totals for the requested timeframe, unaffected by the status filter so the tallies stay stable as the user filters.",
   });
 
+export const TransactionTotalPeriodSchema = z
+  .object({
+    from: z.string().datetime().openapi({
+      description: "Court-local midnight the period opened at",
+    }),
+    to: z.string().datetime().openapi({
+      description: "Instant the period was totalled at — now, not period end",
+    }),
+    // No nonnegative(): a CHECK constraint already guarantees it, and a
+    // response schema enforcing it again would turn a data anomaly into a 500
+    // on a read-only call.
+    total: z.number().openapi({
+      description: "Summed transaction amounts in USD",
+    }),
+  })
+  .openapi("TransactionTotalPeriod");
+
+export const TransactionTotalsSchema = z
+  .object({
+    day: TransactionTotalPeriodSchema,
+    week: TransactionTotalPeriodSchema,
+    month: TransactionTotalPeriodSchema,
+    quarter: TransactionTotalPeriodSchema,
+    fiscalYear: TransactionTotalPeriodSchema,
+  })
+  .openapi("TransactionTotals", {
+    description:
+      "Successful payments only, in fixed periods to date. Unaffected by the " +
+      "timeframe and status filters, so the figures stay stable as the user " +
+      "filters. Periods open at Court-local midnight; the week opens on " +
+      "Sunday, and the quarter and year are fiscal — the year opens on Oct 1. " +
+      "Omitted on export requests for pages after the first.",
+  });
+
 export const TransactionLogResponseSchema = z
   .object({
     data: z.array(TransactionLogEntrySchema).openapi({
@@ -264,16 +312,12 @@ export const TransactionLogResponseSchema = z
     // Echoed back like the timeframe, so the caller can confirm what was applied.
     sort: TransactionLogSortFieldSchema,
     order: SortOrderSchema,
-    total: z
-      .number()
-      .int()
-      .nonnegative()
-      .optional()
-      .openapi({
-        description:
-          "Rows matching the timeframe and status filter, across all pages. " +
-          "Omitted on export requests for pages after the first.",
-      }),
+    total: z.number().int().nonnegative().optional().openapi({
+      description:
+        "Rows matching the timeframe and status filter, across all pages. " +
+        "Omitted on export requests for pages after the first.",
+    }),
+    totals: TransactionTotalsSchema.optional(),
   })
   .refine(
     (response) =>
@@ -288,3 +332,5 @@ export const TransactionLogResponseSchema = z
 export type TransactionLogResponse = z.infer<
   typeof TransactionLogResponseSchema
 >;
+
+export type TransactionTotals = z.infer<typeof TransactionTotalsSchema>;
