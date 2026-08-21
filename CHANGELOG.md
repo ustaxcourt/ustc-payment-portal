@@ -1,5 +1,82 @@
 # @ustaxcourt/payment-portal
 
+## 1.1.0
+
+### Minor Changes
+
+- 47577a0: Raise the minimum supported Node.js version to `24.19.0` to align with DAWSON's Node version. `engines.node` is now `>=24.19.0 <25.0.0` and `.nvmrc` pins `24.19.0`. Consumers on Node `24.18.x` or earlier will need to upgrade.
+- 8f4a908: moved fees out of the database and into the codebase.
+- a8fe684: `GET /transaction-log` accepts `includeTotals=true`, which adds a `totals` block holding summed revenue for five fixed periods to date — day, week, month, fiscal quarter and fiscal year. Both the parameter and the field default off, so existing callers are unaffected.
+
+  Totals cover successful payments only and ignore `from`/`to` and `status`, so the figures hold steady while the user filters the log. Each period echoes the `from`/`to` it was summed over, resolved in `America/New_York`; weeks open on Sunday and the fiscal year opens on October 1.
+
+- 22b0a86: `GET /transaction-log` accepts `sort` and `order`, so the dashboard can order the log by any column it displays. `sort` is a closed list of the ten displayed columns and `order` is `asc`/`desc`; both default to the previous behaviour — `lastUpdatedAt` descending — so existing callers are unaffected.
+
+  Fee type and payment method order by the label the response returns rather than the value stored in the column: `paypal` sorts before `plastic_card`, but "Credit/Debit Card" sorts before "PayPal". Rows with no value for the sorted column are listed last in both directions, and every ordering is broken by the primary key so results are stable across identical requests. The response echoes the resolved `sort` and `order` alongside the existing `from`/`to`/`page`/`pageSize`.
+
+- c7e5a26: Add an export mode to `GET /transaction-log`. Passing `export=true` raises the `pageSize` ceiling from 200 to 5000 so file exports can walk the timeframe in few requests, and on export pages after the first the response omits `counts` and `total` (the caller already has them from page 1), skipping both COUNT queries. Non-export requests are unchanged; `pageSize` above 200 without the flag is rejected with a 400.
+- 03dec0f: Add timeframe query support for dashboard transaction retrieval.
+
+  - `GET /transaction-log` now accepts dashboard timeframe filters using inclusive `MM/DD/YYYY` dates, plus status and pagination controls, and returns aggregate counts for the requested range.
+  - Dashboard timeframe inputs are normalized to Court-local day bounds. The transaction-log API also continues to accept ISO datetimes, now requiring an explicit timezone offset.
+
+### Patch Changes
+
+- 47577a0: Refresh dependency locks. Direct npm updates include @aws-sdk/client-lambda,
+  @aws-sdk/client-secrets-manager, @aws-sdk/client-ssm, @aws-sdk/client-sts,
+  @smithy/core, @smithy/signature-v4, and @biomejs/biome; package-lock was
+  regenerated to pick up the corresponding transitive updates across the AWS SDK,
+  Smithy runtime, rollup platform binaries, and @babel/\*. No range changes in
+  package.json and no major version bumps. No public API changes; routine
+  maintenance to keep the published package's dependencies current.
+
+  @changesets/cli 2.31.1 → 3.0.0 was deferred to its own ticket — it requires
+  moving changesets/action from v1 to v2 in the publish workflow. See
+  docs/dependency-caveats.md.
+
+- 2eb0e48: Dependency updates, including replacing `npm-run-all` with `npm-run-all2` and resolving vulnerabilities from transitive dependencies via selective override.
+- bd6e24e: Block `POST /init` from minting a new checkout token when the `transactionReferenceId` has already been paid; previously a processed obligation could be re-initiated, allowing a customer to overpay.
+
+  - Extend `idx_transactions_unique_active` to include `processed`, so the database enforces at most one paid attempt per `(client_name, transaction_reference_id)` and the guard holds under concurrency. The migration first retires any superseded non-terminal attempt (marking it failed with return code 5009) so pre-existing rows can satisfy the new constraint, and aborts with the full list if an obligation has more than one paid attempt, since a genuine duplicate payment needs reconciliation rather than a schema change.
+  - Add an already-paid guard to `initPayment` returning HTTP 409, replacing the misleading "in-flight" message a `pending` attempt previously received. A settled attempt returns `ConflictError.ALREADY_PAID_MESSAGE`; one still clearing returns `ConflictError.PAYMENT_SETTLING_MESSAGE`, which notes that ACH can take 1-2 business days.
+  - Distinguish a lost `createReceived` race from an already-paid obligation so overpayment attempts are no longer reported under the `persist_race` metric; adds the `already_paid` conflict reason.
+  - Scope `TransactionModel.findInFlightByReferenceId` by `clientName` to match the unique index, and reuse `findPendingOrProcessedByReferenceId` in `claimForProcessing` instead of a duplicated inline query.
+
+- 92a76bb: Update runtime dependencies: @aws-sdk/client-secrets-manager,
+  @aws-sdk/client-ssm, and @aws-sdk/client-sts to 3.1094.0. No public API changes;
+  routine maintenance to keep the published package's dependencies current.
+- 1007e11: Refresh dependency locks across the package and Terraform modules. Direct npm
+  updates include @aws-sdk/client-lambda, @aws-sdk/client-secrets-manager,
+  @aws-sdk/client-ssm, @aws-sdk/client-sts, @biomejs/biome, @playwright/test,
+  esbuild, js-yaml, pg, and tsx; package-lock was regenerated to
+  pick up the corresponding transitive updates. Terraform lockfiles were also
+  refreshed to move the hashicorp/aws provider from 6.56.0 to 6.58.0.
+- 50f3bdd: Return HTTP 410 Gone from `POST /process` when a Pay.gov payment token has exceeded its 3-hour TTL, directing the client to retry `POST /init` with the same `transactionReferenceId` to mint a fresh token.
+
+  - Add a token-age check to `TransactionModel.claimForProcessing` (`MAX_TOKEN_AGE_MS`, now shared via `src/config/constants.ts` and also used by `initPayment`), applied uniformly to both an unclaimed `initiated` token and a reclaimed stale `processing` token — but never to an actively in-flight `processing` claim, which still returns 409 Conflict.
+  - Document the new 410 cause on `POST /process` in the OpenAPI spec.
+
+- 59469e4: Update runtime dependencies: knex 3.2.10 → 3.3.0, @aws-sdk/client-secrets-manager
+  and @aws-sdk/client-sts to 3.1084.0, tsx 4.22.4 → 4.23.0. No public API changes;
+  routine maintenance to keep the published package's dependencies current.
+- 6fbdcaa: Fix the `/health` deploy gate, which has failed on every real Dev deploy since it was introduced, blocking auto-tagging and promotion to Staging.
+
+  - `secrets` check no longer requires an mTLS agent in environments that don't use one. Dev's `SOAP_URL` points at the mock `ustc-pay-gov-test-server`, which authenticates via a bearer token instead of a client cert, so the requirement is now gated by an explicit allowlist of mTLS-optional environments (`dev`, `local`); Stg, Prod, and any unrecognized `APP_ENV` still fail closed and require a working mTLS agent.
+  - `payGov` check now sends the same bearer auth headers the mock test server requires on every request, including the WSDL fetch; previously it sent none, so the probe always got rejected in Dev.
+  - Extracted the Pay.gov bearer-token header logic into a shared `getPayGovAuthHeaders` helper, replacing three near-duplicate copies across `appContext.ts`'s `postHttpRequest`, `testCert.ts`, and the healthCheck's WSDL probe.
+
+- 0f091ce: Update dependency range: @asteasolutions/zod-to-openapi ^8.5.0 → ^9.0.0 and move
+  the generated OpenAPI spec from 3.1.0 to 3.2.0 (switches to the new
+  OpenApiGeneratorV32; the only change to the spec is the declared `openapi`
+  version — schema output is otherwise identical). Refreshed in-range patch
+  resolutions for @aws-sdk/\*, fast-xml-parser, and tsx (no range changes).
+- 5f61386: Serialize concurrent `POST /process` requests for the same checkout token so only one Pay.gov SOAP call proceeds; duplicate in-flight requests receive HTTP 409 Conflict.
+
+  - Add transient `processing` transaction status and extend `idx_transactions_unique_active` to treat it as in-flight.
+  - Add `TransactionModel.claimForProcessing` (row lock + atomic claim) and wire it into `processPayment`.
+  - Document 409 on `POST /process` in OpenAPI; add unit, handler, and integration concurrency tests.
+  - Fix local Pay.gov test server startup to use `PAY_GOV_TEST_SERVER_ACCESS_TOKEN` so it matches `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID`.
+
 ## 1.0.1
 
 ### Patch Changes
