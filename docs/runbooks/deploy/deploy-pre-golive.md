@@ -63,9 +63,7 @@ anything. If you remember one thing, remember that.
   **green**. A red Dev run means there is nothing safe to promote — stop.
 - You can see the auto-created `v<X.Y.Z>-dev.<N>` tag for your commit
   (`git tag -l "v*-dev.*" --sort=-creatordate | head`).
-- You have permission to run workflows (and to approve the `staging` /
-  `production` GitHub Environments once required reviewers are configured — none
-  are today).
+- You have permission to run workflows and, if you are listed as a required reviewer for the `production` GitHub Environment, to approve deployments. The required reviewer list is maintained in the repository's Environment settings, where operators can verify whether they are authorized reviewers.
 
 ---
 
@@ -88,7 +86,7 @@ Dev deploys automatically when the PR merges. Do **not** skip the check.
 ## Stage 2 — Deploy to Staging
 
 1. Run the **`CICD - Staging`** workflow (`staging-deploy.yml`) via
-   *Run workflow* / `workflow_dispatch`.
+   _Run workflow_ / `workflow_dispatch`.
    - Leave **`source_dev_tag`** blank to auto-select the newest dev tag that has
      artifacts, **or** type a specific `v<X.Y.Z>-dev.<N>` to promote a known
      commit.
@@ -118,9 +116,9 @@ works end-to-end.
    `BASE_URL=<staging-api-gateway-url> npm run test:integration`
    (see [`src/test/integration/`](../../../src/test/integration/), e.g.
    `transaction.test.ts`). This is your primary signal — it drives a real payment
-   start to finish. *(There is no Cypress suite in this repo; a client app such as
+   start to finish. _(There is no Cypress suite in this repo; a client app such as
    DAWSON may exercise the flow with Cypress, but the repo-local end-to-end check
-   is this Jest integration suite.)*
+   is this Jest integration suite.)_
 2. Confirm the resulting transaction reached the expected state
    (`transactionStatus` = `processed`, `paymentStatus` = `success`). **Note: the
    transaction dashboard is Dev-only** — its endpoints are gated to `dev`/`pr-*`
@@ -157,16 +155,17 @@ Response shape:
 
 ```jsonc
 {
-  "paymentStatus": "success",          // business outcome: pending | success | failed
-  "transactions": [                    // one entry PER ATTEMPT — may be more than one
+  "paymentStatus": "success", // business outcome: pending | success | failed
+  "transactions": [
+    // one entry PER ATTEMPT — may be more than one
     {
       "payGovTrackingId": "...",
       "transactionStatus": "processed", // technical: received|initiated|processed|failed
       "returnDetail": "...",
       "createdTimestamp": "...",
-      "updatedTimestamp": "..."
-    }
-  ]
+      "updatedTimestamp": "...",
+    },
+  ],
 }
 ```
 
@@ -184,7 +183,7 @@ and Pay.gov states map via
 - **ACH:** settlement is asynchronous. Pay.gov first returns
   `Pending`/`Received`/`Submitted`/`Waiting`, which map to a **non-terminal**
   `transactionStatus` and `paymentStatus` = `pending` — for **both** fields. This
-  is healthy, not a failure; you will *not* see `processed` yet. Confirm the row
+  is healthy, not a failure; you will _not_ see `processed` yet. Confirm the row
   was created and Pay.gov accepted it, then re-poll `getDetails` later — it flips
   to `processed`/`success` once Pay.gov reports `Settled`/`Success`. **For deploy
   verification, prefer a card payment so you get a terminal result immediately.**
@@ -208,7 +207,7 @@ Production deploys from a **final (non-pre-release) GitHub Release** on the
      `plan_only=false`) to apply.
 2. `prod-deploy.yml` re-validates the artifacts for the SHA, runs
    `terraform plan`, and applies **only** when it's a real (non-pre-release)
-   Release *or* `plan_only=false`, *and* the plan actually has changes.
+   Release _or_ `plan_only=false`, _and_ the plan actually has changes.
 
 > **GATE — review the Terraform plan before applying.** Prod is a **separate AWS
 > account**. Per repo safety rules, a human owns the apply decision — read the
@@ -222,7 +221,7 @@ Production deploys from a **final (non-pre-release) GitHub Release** on the
   applied to the Prod database **before** promoting.
 - **The RC Release is not marked as a pre-release**, so the only thing keeping it
   from triggering a Prod deploy is GitHub's "no workflow re-trigger from
-  `GITHUB_TOKEN`" rule. *Verified empirically:* 14+ RC releases exist and
+  `GITHUB_TOKEN`" rule. _Verified empirically:_ 14+ RC releases exist and
   `prod-deploy.yml` has never fired on a `-rc.*` tag (only one `release`-event run
   ever, on a final tag). But the safeguard is implicit — if anyone re-publishes an
   RC Release by hand (or automation switches to a PAT), `prod-deploy.yml` would
@@ -246,12 +245,12 @@ same release as the code that depends on it.
 
 ## Quick reference
 
-| Stage | Workflow | Trigger | Target account | Hard gate |
-|-------|----------|---------|----------------|-----------|
-| Dev | `cicd-dev.yml` | auto on push to `main` | Dev | run green + 5 artifacts |
-| Staging | `staging-deploy.yml` | manual dispatch | Staging | `/init` smoke test 200 + redirect 302 |
-| Verify | — | manual | Staging | integration suite + `getDetails`/logs |
-| Prod | `prod-deploy.yml` | Release published / manual | Production | reviewed Terraform plan |
+| Stage   | Workflow             | Trigger                    | Target account | Hard gate                             |
+| ------- | -------------------- | -------------------------- | -------------- | ------------------------------------- |
+| Dev     | `cicd-dev.yml`       | auto on push to `main`     | Dev            | run green + 5 artifacts               |
+| Staging | `staging-deploy.yml` | manual dispatch            | Staging        | `/init` smoke test 200 + redirect 302 |
+| Verify  | —                    | manual                     | Staging        | integration suite + `getDetails`/logs |
+| Prod    | `prod-deploy.yml`    | Release published / manual | Production     | reviewed Terraform plan               |
 
 ---
 
