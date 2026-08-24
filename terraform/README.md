@@ -237,7 +237,7 @@ Example change:
 - name: Setup Terraform
   uses: hashicorp/setup-terraform@v4
   with:
-    terraform_version: "1.15.8" # Update this version
+    terraform_version: "1.15.9" # Update this version
 ```
 
 ### GitHub Action Updates
