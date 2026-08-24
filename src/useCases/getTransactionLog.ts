@@ -4,11 +4,6 @@ import {
   TRANSACTION_LOG_DEFAULT_SORT,
   TransactionLogResponseSchema,
 } from "@schemas/TransactionLog.schema";
-import {
-  TRANSACTION_LOG_DEFAULT_ORDER,
-  TRANSACTION_LOG_DEFAULT_SORT,
-  TransactionLogResponseSchema,
-} from "@schemas/TransactionLog.schema";
 import type { AppContext } from "@appTypes/AppContext";
 import type {
   TransactionLogQuery,
@@ -16,7 +11,7 @@ import type {
 } from "@appTypes/TransactionLog";
 import type { CourtPeriodName } from "@utils/courtDayBounds";
 import { courtDayBounds, courtPeriodBounds } from "@utils/courtDayBounds";
-import { toApiPaymentMethod } from "@utils/toApiPaymentMethod";
+import { toApiPaymentMethod, toDbPaymentMethod } from "@utils/toApiPaymentMethod";
 
 export type GetTransactionLog = (
   appContext: AppContext,

@@ -5,15 +5,10 @@ type CourtDayParts = { year: number; month: number; day: number };
 
 const MONTH_DAY_YEAR_DATE_PATTERN =
   /^(?<month>\d{2})\/(?<day>\d{2})\/(?<year>\d{4})$/;
-type CourtDayParts = { year: number; month: number; day: number };
-
-const MONTH_DAY_YEAR_DATE_PATTERN =
-  /^(?<month>\d{2})\/(?<day>\d{2})\/(?<year>\d{4})$/;
 
 const partsInZone = (
   instant: Date,
   timeZone: string,
-): CourtDayParts & { hour: number; minute: number; second: number } => {
 ): CourtDayParts & { hour: number; minute: number; second: number } => {
   const formatted = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -59,7 +54,6 @@ const zoneOffsetMs = (instant: Date, timeZone: string): number => {
 };
 
 const startOfZoneDay = (
-  { year, month, day }: CourtDayParts,
   { year, month, day }: CourtDayParts,
   timeZone: string,
 ): Date => {

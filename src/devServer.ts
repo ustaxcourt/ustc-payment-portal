@@ -183,7 +183,7 @@ app.get("/", (_req, res) => {
   res.send("hello world!");
 });
 
-app.get("/transactions", async (req, res, next) => {
+app.get("/transactions", async (_req, res, next) => {
   try {
     const result = await res.locals.appContext
       .getUseCases()
