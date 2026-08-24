@@ -179,8 +179,7 @@ export const TransactionLogQuerySchema = z
     }
   })
   .transform((query, context) => {
-    if (!query.from || !query.to) {
-      return {
+    const refinedQuery = {
         status: query.status,
         fee: query.fee,
         paymentMethod: query.paymentMethod,
@@ -192,7 +191,10 @@ export const TransactionLogQuerySchema = z
         sort: query.sort,
         order: query.order,
         includeTotals: query.includeTotals,
-      };
+    }
+
+    if (!query.from || !query.to) {
+      return refinedQuery;
     }
 
     const from = parseTransactionLogDate(query.from, "from");
@@ -200,7 +202,7 @@ export const TransactionLogQuerySchema = z
 
     if (!from) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: TRANSACTION_LOG_DATE_FORMAT_MESSAGE,
         path: ["from"],
       });
@@ -208,7 +210,7 @@ export const TransactionLogQuerySchema = z
 
     if (!to) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: TRANSACTION_LOG_DATE_FORMAT_MESSAGE,
         path: ["to"],
       });
@@ -220,7 +222,7 @@ export const TransactionLogQuerySchema = z
 
     if (!(from.date < to.date)) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message:
           from.kind === "court-day" || to.kind === "court-day"
             ? "`from` must be on or before `to`"
@@ -233,17 +235,7 @@ export const TransactionLogQuerySchema = z
     return {
       from: from.date,
       to: to.date,
-      status: query.status,
-      fee: query.fee,
-      paymentMethod: query.paymentMethod,
-      transactionStatus: query.transactionStatus,
-      clientName: query.clientName,
-      page: query.page,
-      pageSize: query.pageSize,
-      export: query.export,
-      sort: query.sort,
-      order: query.order,
-      includeTotals: query.includeTotals,
+      ...refinedQuery,
     };
   })
   .refine(
