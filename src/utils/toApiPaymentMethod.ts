@@ -1,5 +1,7 @@
-import type { PaymentMethod as DbPaymentMethod } from "../db/TransactionModel";
-import type { PaymentMethod as ApiPaymentMethod } from "@schemas/PaymentMethod.schema";
+import type {
+  PaymentMethod as ApiPaymentMethod,
+  DbPaymentMethod,
+} from "@schemas/PaymentMethod.schema";
 
 /** Maps a stored value to the label the API returns. Exported as data so SQL can
  *  order by the label without a second copy of the mapping drifting out of sync. */

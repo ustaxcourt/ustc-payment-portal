@@ -1,6 +1,7 @@
-import { ConflictError } from "@errors/conflict";
 import { getKnex } from "./knex";
-import TransactionModel, { isStaleProcessingTransaction, type PaymentMethod } from "./TransactionModel";
+import TransactionModel, { isStaleProcessingTransaction } from "./TransactionModel";
+import type { DbPaymentMethod } from "@schemas/PaymentMethod.schema";
+import { ConflictError } from "@/errors/conflict";
 
 jest.mock("./knex", () => ({
   getKnex: jest.fn(),
@@ -178,7 +179,7 @@ describe("TransactionModel", () => {
         clientName: "test-client",
         transactionReferenceId: "TXN-REF-001",
         transactionAmount: 60,
-        paymentMethod: "plastic_card" as PaymentMethod,
+        paymentMethod: "plastic_card" as DbPaymentMethod,
       };
       builder.insertAndFetch.mockResolvedValueOnce({
         ...data,
@@ -630,7 +631,7 @@ describe("TransactionModel", () => {
         ...baseFilter,
         status: "failed",
         fee: "PETITION_FILING_FEE",
-        paymentMethod: "ach" as PaymentMethod,
+        paymentMethod: "ach" as DbPaymentMethod,
       });
 
       expect(builder.andWhere).toHaveBeenCalledWith("paymentStatus", "failed");
