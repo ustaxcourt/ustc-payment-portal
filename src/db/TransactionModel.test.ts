@@ -1,7 +1,7 @@
-import { getKnex } from "./knex";
-import TransactionModel, { isStaleProcessingTransaction } from "./TransactionModel";
 import type { DbPaymentMethod } from "@schemas/PaymentMethod.schema";
 import { ConflictError } from "@/errors/conflict";
+import { getKnex } from "./knex";
+import TransactionModel, { isStaleProcessingTransaction } from "./TransactionModel";
 
 jest.mock("./knex", () => ({
   getKnex: jest.fn(),
@@ -106,6 +106,36 @@ describe("TransactionModel", () => {
         agencyTrackingId: "TEST-123",
       });
       expect(result.transactionAmount).toBeUndefined();
+    });
+
+    it("passes through a known paymentMethod value", () => {
+      const instance = new TransactionModel();
+      const result = instance.$parseDatabaseJson({ paymentMethod: "ach" });
+      expect(result.paymentMethod).toBe("ach");
+    });
+
+    it("leaves paymentMethod null when the column is null", () => {
+      const instance = new TransactionModel();
+      const result = instance.$parseDatabaseJson({ paymentMethod: null });
+      expect(result.paymentMethod).toBeNull();
+    });
+
+    it("leaves paymentMethod absent when the column is not in the row", () => {
+      const instance = new TransactionModel();
+      const result = instance.$parseDatabaseJson({
+        agencyTrackingId: "TEST-123",
+      });
+      expect(result.paymentMethod).toBeUndefined();
+    });
+
+    // The column is a plain varchar with no DB-level enum/CHECK constraint, so
+    // this is the only guard against a legacy row or manual edit silently
+    // reaching the API with a value outside the union.
+    it("throws when paymentMethod holds a value outside the known union", () => {
+      const instance = new TransactionModel();
+      expect(() =>
+        instance.$parseDatabaseJson({ paymentMethod: "venmo" }),
+      ).toThrow("Unknown payment method: venmo");
     });
   });
 

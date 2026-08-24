@@ -1,6 +1,7 @@
 import { ConflictError } from "@errors/conflict";
 import { GoneError } from "@errors/gone";
 import type { DbPaymentMethod } from "@schemas/PaymentMethod.schema";
+import { DbPaymentMethodSchema } from "@schemas/PaymentMethod.schema";
 import type { PaymentStatus } from "@schemas/PaymentStatus.schema";
 import type {
   SortOrder,
@@ -97,6 +98,16 @@ export default class TransactionModel extends Model {
       parsed.transactionAmount !== null
     ) {
       parsed.transactionAmount = Number(parsed.transactionAmount);
+    }
+    if (parsed.paymentMethod !== undefined && parsed.paymentMethod !== null) {
+      const result = DbPaymentMethodSchema.safeParse(parsed.paymentMethod);
+      if (!result.success) {
+        // The column is a plain varchar with no DB-level enum/CHECK constraint,
+        // so a legacy row or manual edit could hold a value outside the union.
+        throw new Error(
+          `Unknown payment method: ${parsed.paymentMethod as string}`,
+        );
+      }
     }
     return parsed;
   }

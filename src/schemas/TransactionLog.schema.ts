@@ -167,7 +167,7 @@ export const TransactionLogQuerySchema = z
   .superRefine((query, context) => {
     if ((query.from === undefined) !== (query.to === undefined)) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "`from` and `to` must be supplied together",
         path: ["from"],
       });
@@ -180,18 +180,20 @@ export const TransactionLogQuerySchema = z
   })
   .transform((query, context) => {
     const refinedQuery = {
-        status: query.status,
-        fee: query.fee,
-        paymentMethod: query.paymentMethod,
-        transactionStatus: query.transactionStatus,
-        clientName: query.clientName,
-        page: query.page,
-        pageSize: query.pageSize,
-        export: query.export,
-        sort: query.sort,
-        order: query.order,
-        includeTotals: query.includeTotals,
-    }
+      from: undefined as Date | undefined,
+      to: undefined as Date | undefined,
+      status: query.status,
+      fee: query.fee,
+      paymentMethod: query.paymentMethod,
+      transactionStatus: query.transactionStatus,
+      clientName: query.clientName,
+      page: query.page,
+      pageSize: query.pageSize,
+      export: query.export,
+      sort: query.sort,
+      order: query.order,
+      includeTotals: query.includeTotals,
+    };
 
     if (!query.from || !query.to) {
       return refinedQuery;
@@ -233,9 +235,9 @@ export const TransactionLogQuerySchema = z
     }
 
     return {
+      ...refinedQuery,
       from: from.date,
       to: to.date,
-      ...refinedQuery,
     };
   })
   .refine(
