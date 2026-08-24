@@ -202,6 +202,24 @@ describe("TransactionLogQuerySchema", () => {
     it("rejects a payment method that is not a known label", () => {
       expect(parse({ paymentMethod: "cash" }).success).toBe(false);
     });
+
+    it("accepts a transaction status filter", () => {
+      const result = parse({ transactionStatus: "processed" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({ transactionStatus: "processed" });
+    });
+
+    it("rejects a transaction status that is not a known value", () => {
+      expect(parse({ transactionStatus: "cancelled" }).success).toBe(false);
+    });
+
+    it("accepts a client name filter", () => {
+      const result = parse({ clientName: "payment-portal" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({ clientName: "payment-portal" });
+    });
   });
 });
 
