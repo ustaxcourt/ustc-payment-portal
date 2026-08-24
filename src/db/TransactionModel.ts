@@ -30,7 +30,6 @@ export type TransactionLogFilter = {
   fee?: string;
   paymentMethod?: DbPaymentMethod;
   transactionStatus?: SchemaTransactionStatus;
-  clientName?: string;
   sort: TransactionLogSortField;
   order: SortOrder;
   limit: number;
@@ -155,9 +154,6 @@ export default class TransactionModel extends Model {
       }
       if (filter.transactionStatus) {
         query = query.andWhere("transactionStatus", filter.transactionStatus);
-      }
-      if (filter.clientName) {
-        query = query.andWhereILike("clientName", `%${filter.clientName}%`);
       }
 
       return query;

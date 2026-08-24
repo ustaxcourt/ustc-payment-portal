@@ -687,21 +687,6 @@ describe("TransactionModel", () => {
       );
     });
 
-    it("matches the client name with a case-insensitive partial match", async () => {
-      const builder = spyOnQuery();
-      builder.resolvesTo = [];
-
-      await TransactionModel.queryLog({
-        ...baseFilter,
-        clientName: "payment",
-      });
-
-      expect(builder.andWhereILike).toHaveBeenCalledWith(
-        "clientName",
-        "%payment%",
-      );
-    });
-
     it("skips the total query when withTotal is false", async () => {
       const builder = spyOnQuery();
       builder.resolvesTo = [];

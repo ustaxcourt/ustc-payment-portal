@@ -252,13 +252,6 @@ describe("TransactionLogQuerySchema", () => {
     it("rejects a transaction status that is not a known value", () => {
       expect(parse({ transactionStatus: "cancelled" }).success).toBe(false);
     });
-
-    it("accepts a client name filter", () => {
-      const result = parse({ clientName: "payment-portal" });
-
-      expect(result.success).toBe(true);
-      expect(result.data).toMatchObject({ clientName: "payment-portal" });
-    });
   });
 
   describe("includeTotals", () => {

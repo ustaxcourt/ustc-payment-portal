@@ -171,15 +171,14 @@ describe("getTransactionLog", () => {
       });
     });
 
-    it("passes transactionStatus and clientName straight through", async () => {
+    it("passes transactionStatus straight through", async () => {
       await getTransactionLog(
         appContext,
-        query({ transactionStatus: "processed", clientName: "payment" }),
+        query({ transactionStatus: "processed" }),
       );
 
       expect(queryLog.mock.calls[0][0]).toMatchObject({
         transactionStatus: "processed",
-        clientName: "payment",
       });
     });
   });

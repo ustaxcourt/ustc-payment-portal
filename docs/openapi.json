@@ -1677,17 +1677,6 @@
           },
           {
             "schema": {
-              "type": "string",
-              "description": "Restricts rows to a case-insensitive partial match on client name.",
-              "example": "payment-portal"
-            },
-            "required": false,
-            "description": "Restricts rows to a case-insensitive partial match on client name.",
-            "name": "clientName",
-            "in": "query"
-          },
-          {
-            "schema": {
               "type": "integer",
               "minimum": 1,
               "default": 1,

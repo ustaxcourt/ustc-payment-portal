@@ -104,10 +104,6 @@ export const TransactionLogQuerySchema = z
       description: "Restricts rows to one transaction attempt status.",
       example: "processed",
     }),
-    clientName: z.string().optional().openapi({
-      description: "Restricts rows to a case-insensitive partial match on client name.",
-      example: "payment-portal",
-    }),
     page: z.coerce.number().int().min(1).default(1).openapi({
       description: "1-indexed page number",
       example: 1,
@@ -186,7 +182,6 @@ export const TransactionLogQuerySchema = z
       fee: query.fee,
       paymentMethod: query.paymentMethod,
       transactionStatus: query.transactionStatus,
-      clientName: query.clientName,
       page: query.page,
       pageSize: query.pageSize,
       export: query.export,
