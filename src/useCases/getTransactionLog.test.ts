@@ -181,6 +181,30 @@ describe("getTransactionLog", () => {
         transactionStatus: "processed",
       });
     });
+
+    it("combines an explicit timeframe with filters in the same request", async () => {
+      const from = new Date("2026-07-01T00:00:00.000Z");
+      const to = new Date("2026-07-02T00:00:00.000Z");
+
+      const result = await getTransactionLog(
+        appContext,
+        query({
+          from,
+          to,
+          fee: "PETITION_FILING_FEE",
+          transactionStatus: "processed",
+        }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        from,
+        to,
+        fee: "PETITION_FILING_FEE",
+        transactionStatus: "processed",
+      });
+      expect(result.from).toBe(from.toISOString());
+      expect(result.to).toBe(to.toISOString());
+    });
   });
 
   describe("export requests", () => {
