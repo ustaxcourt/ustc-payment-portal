@@ -159,33 +159,6 @@ describe("getTransactionLog", () => {
       });
     });
 
-    it("builds a clientName lookup for accountHolder", async () => {
-      await getTransactionLog(
-        appContext,
-        query({ lookupType: "accountHolder", lookupValue: "Inez Thomson" }),
-      );
-
-      expect(queryLog.mock.calls[0][0]).toMatchObject({
-        lookup: { column: "clientName", value: "Inez Thomson" },
-      });
-    });
-
-    it("builds an agencyTrackingId lookup for agencyId", async () => {
-      await getTransactionLog(
-        appContext,
-        query({ lookupType: "agencyId", lookupValue: "26PHF07R" }),
-      );
-
-      expect(queryLog.mock.calls[0][0]).toMatchObject({
-        lookup: { column: "agencyTrackingId", value: "26PHF07R" },
-      });
-    });
-
-    it("omits the lookup filter when no lookupValue is given", async () => {
-      await getTransactionLog(appContext, query());
-
-      expect(queryLog.mock.calls[0][0]).toMatchObject({ lookup: undefined });
-    });
   });
 
   describe("export requests", () => {

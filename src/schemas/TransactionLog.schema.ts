@@ -74,16 +74,6 @@ export type TransactionLogSortField = z.infer<
 >;
 export type SortOrder = z.infer<typeof SortOrderSchema>;
 
-export const LOOKUP_TYPES = ["accountHolder", "agencyId"] as const;
-
-export const LookupTypeSchema = z.enum(LOOKUP_TYPES).openapi("LookupType", {
-  description:
-    "Which field `lookupValue` is matched against: the client application " +
-    "name (`accountHolder`) or the agency tracking ID (`agencyId`).",
-});
-
-export type LookupType = z.infer<typeof LookupTypeSchema>;
-
 export const TransactionLogQuerySchema = z
   .object({
     from: z.string().optional().openapi({
@@ -108,16 +98,6 @@ export const TransactionLogQuerySchema = z
     paymentMethod: PaymentMethodSchema.optional().openapi({
       description: "Restricts rows to one payment method.",
       example: "ACH",
-    }),
-    lookupType: LookupTypeSchema.default("accountHolder").openapi({
-      description:
-        "Which field `lookupValue` matches against. Ignored when `lookupValue` is omitted.",
-      example: "agencyId",
-    }),
-    lookupValue: z.string().min(1).optional().openapi({
-      description:
-        "Case-insensitive partial match against the field named by `lookupType`.",
-      example: "26PHF07R",
     }),
     page: z.coerce.number().int().min(1).default(1).openapi({
       description: "1-indexed page number",
@@ -183,8 +163,6 @@ export const TransactionLogQuerySchema = z
         status: query.status,
         fee: query.fee,
         paymentMethod: query.paymentMethod,
-        lookupType: query.lookupType,
-        lookupValue: query.lookupValue,
         page: query.page,
         pageSize: query.pageSize,
         export: query.export,
@@ -234,8 +212,6 @@ export const TransactionLogQuerySchema = z
       status: query.status,
       fee: query.fee,
       paymentMethod: query.paymentMethod,
-      lookupType: query.lookupType,
-      lookupValue: query.lookupValue,
       page: query.page,
       pageSize: query.pageSize,
       export: query.export,

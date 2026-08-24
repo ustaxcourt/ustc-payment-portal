@@ -641,21 +641,6 @@ describe("TransactionModel", () => {
       expect(builder.andWhere).toHaveBeenCalledWith("paymentMethod", "ach");
     });
 
-    it("matches the lookup column with a case-insensitive partial match", async () => {
-      const builder = spyOnQuery();
-      builder.resolvesTo = [];
-
-      await TransactionModel.queryLog({
-        ...baseFilter,
-        lookup: { column: "agencyTrackingId", value: "26PHF07R" },
-      });
-
-      expect(builder.andWhereILike).toHaveBeenCalledWith(
-        "agencyTrackingId",
-        "%26PHF07R%",
-      );
-    });
-
     it("skips the total query when withTotal is false", async () => {
       const builder = spyOnQuery();
       builder.resolvesTo = [];

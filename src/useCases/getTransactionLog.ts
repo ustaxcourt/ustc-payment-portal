@@ -30,15 +30,6 @@ export const getTransactionLog: GetTransactionLog = async (
   // Export pages after the first skip the COUNTs; the caller has them from page 1.
   const withTotals = !query.export || query.page === 1;
 
-  const lookup = query.lookupValue
-    ? {
-        column: (query.lookupType === "agencyId"
-          ? "agencyTrackingId"
-          : "clientName") as "agencyTrackingId" | "clientName",
-        value: query.lookupValue,
-      }
-    : undefined;
-
   // Counts span the timeframe only, so the tallies hold steady while the user
   // switches between statuses.
   const [page, counts] = await Promise.all([
@@ -48,7 +39,6 @@ export const getTransactionLog: GetTransactionLog = async (
       status: query.status,
       fee: query.fee,
       paymentMethod: toDbPaymentMethod(query.paymentMethod),
-      lookup,
       sort,
       order,
       limit: query.pageSize,

@@ -28,7 +28,6 @@ export type TransactionLogFilter = {
   status?: PaymentStatus;
   fee?: string;
   paymentMethod?: PaymentMethod;
-  lookup?: { column: "clientName" | "agencyTrackingId"; value: string };
   sort: TransactionLogSortField;
   order: SortOrder;
   limit: number;
@@ -140,12 +139,6 @@ export default class TransactionModel extends Model {
       if (filter.fee) query = query.andWhere("fee", filter.fee);
       if (filter.paymentMethod) {
         query = query.andWhere("paymentMethod", filter.paymentMethod);
-      }
-      if (filter.lookup) {
-        query = query.andWhereILike(
-          filter.lookup.column,
-          `%${filter.lookup.value}%`,
-        );
       }
 
       return query;

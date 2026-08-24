@@ -202,36 +202,6 @@ describe("TransactionLogQuerySchema", () => {
     it("rejects a payment method that is not a known label", () => {
       expect(parse({ paymentMethod: "cash" }).success).toBe(false);
     });
-
-    it("defaults lookupType to accountHolder", () => {
-      const result = parse({ lookupValue: "Inez Thomson" });
-
-      expect(result.success).toBe(true);
-      expect(result.data).toMatchObject({
-        lookupType: "accountHolder",
-        lookupValue: "Inez Thomson",
-      });
-    });
-
-    it("accepts an explicit agencyId lookup", () => {
-      const result = parse({ lookupType: "agencyId", lookupValue: "26PHF07R" });
-
-      expect(result.success).toBe(true);
-      expect(result.data).toMatchObject({
-        lookupType: "agencyId",
-        lookupValue: "26PHF07R",
-      });
-    });
-
-    it("rejects an empty lookup value", () => {
-      expect(parse({ lookupValue: "" }).success).toBe(false);
-    });
-
-    it("rejects a lookupType that is not on the whitelist", () => {
-      expect(parse({ lookupType: "ssn", lookupValue: "123" }).success).toBe(
-        false,
-      );
-    });
   });
 });
 
