@@ -39,9 +39,18 @@ const query = (overrides: Partial<TransactionLogQuery> = {}) =>
     ...overrides,
   }) as TransactionLogQuery;
 
+const totals = {
+  day: 120,
+  week: 1200,
+  month: 4800,
+  quarter: 14400,
+  fiscalYear: 57600,
+};
+
 describe("getTransactionLog", () => {
   let queryLog: jest.SpyInstance;
   let countsInRange: jest.SpyInstance;
+  let totalsToDate: jest.SpyInstance;
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date("2026-08-03T15:00:00.000Z"));
@@ -51,6 +60,9 @@ describe("getTransactionLog", () => {
     countsInRange = jest
       .spyOn(TransactionModel, "countsInRange")
       .mockResolvedValue(counts);
+    totalsToDate = jest
+      .spyOn(TransactionModel, "totalsToDate")
+      .mockResolvedValue(totals);
   });
 
   afterEach(() => {
@@ -208,6 +220,94 @@ describe("getTransactionLog", () => {
 
       expect(queryLog.mock.calls[0][0]).toMatchObject({ withTotal: true });
       expect(countsInRange).toHaveBeenCalled();
+    });
+
+    // Each page would close its periods at a different `now`, so an export
+    // would carry a different set of figures on every page.
+    it("skips the period totals on pages after the first", async () => {
+      queryLog.mockResolvedValue({ rows: [failedRow as any] });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 2, includeTotals: true }),
+      );
+
+      expect(totalsToDate).not.toHaveBeenCalled();
+      expect(result.totals).toBeUndefined();
+    });
+
+    it("returns the period totals on the first page", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 1, includeTotals: true }),
+      );
+
+      expect(result.totals?.day.total).toBe(120);
+    });
+  });
+
+  describe("totals", () => {
+    it("leaves them out — and does not query them — unless asked", async () => {
+      const result = await getTransactionLog(appContext, query());
+
+      expect(totalsToDate).not.toHaveBeenCalled();
+      expect(result).not.toHaveProperty("totals");
+    });
+
+    it("returns a total per period when asked", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true }),
+      );
+
+      expect(totalsToDate).toHaveBeenCalledTimes(1);
+      expect(result.totals?.day.total).toBe(120);
+      expect(result.totals?.fiscalYear.total).toBe(57600);
+    });
+
+    it("echoes the period each total was summed over", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true }),
+      );
+
+      expect(result.totals?.day).toMatchObject({
+        from: "2026-08-03T04:00:00.000Z",
+        to: "2026-08-03T15:00:00.000Z",
+      });
+      expect(result.totals?.fiscalYear.from).toBe("2025-10-01T04:00:00.000Z");
+      expect(totalsToDate.mock.calls[0][0].fiscalYear.start).toEqual(
+        new Date("2025-10-01T04:00:00.000Z"),
+      );
+    });
+
+    // Both derive from a single clock read, so they always name the same Court
+    // day. Fake timers freeze the clock here, so this pins the relationship
+    // rather than reproducing the midnight race it protects against.
+    it("opens the day period on the same instant as the default timeframe", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true }),
+      );
+
+      expect(result.totals?.day.from).toBe(result.from);
+    });
+
+    it("ignores the requested timeframe and status", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({
+          from: new Date("2026-07-01T00:00:00.000Z"),
+          to: new Date("2026-07-02T00:00:00.000Z"),
+          status: "failed",
+          includeTotals: true,
+        }),
+      );
+
+      expect(totalsToDate.mock.calls[0][0].day.start).toEqual(
+        new Date("2026-08-03T04:00:00.000Z"),
+      );
+      expect(result.totals?.day.total).toBe(120);
     });
   });
 });

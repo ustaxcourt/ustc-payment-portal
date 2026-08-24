@@ -1,5 +1,6 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { courtDayBoundsForDateString } from "@utils/courtDayBounds";
+import { courtDayBoundsForDateString } from "@utils/courtDayBounds";
 import { z } from "zod";
 import { FeeKeySchema } from "./FeeKey.schema";
 import { PaymentMethodSchema } from "./PaymentMethod.schema";
@@ -14,6 +15,33 @@ export const TRANSACTION_LOG_MAX_PAGE_SIZE = 200;
 /** `export=true` ceiling; one page (~1.7 MB) stays inside the 6 MB Lambda response limit. */
 export const TRANSACTION_LOG_MAX_EXPORT_PAGE_SIZE = 5000;
 
+const TRANSACTION_LOG_DATE_FORMAT_MESSAGE =
+  "Date must be a valid ISO datetime or MM/DD/YYYY value";
+
+const IsoDateTimeStringSchema = z.iso.datetime({ offset: true });
+
+const parseTransactionLogDate = (
+  value: string,
+  side: "from" | "to",
+): { date: Date; kind: "court-day" | "iso" } | undefined => {
+  const courtDayBounds = courtDayBoundsForDateString(value);
+  if (courtDayBounds) {
+    return {
+      date: side === "from" ? courtDayBounds.start : courtDayBounds.end,
+      kind: "court-day",
+    };
+  }
+
+  const isoDateTime = IsoDateTimeStringSchema.safeParse(value);
+  if (isoDateTime.success) {
+    return {
+      date: new Date(isoDateTime.data),
+      kind: "iso",
+    };
+  }
+
+  return undefined;
+};
 const TRANSACTION_LOG_DATE_FORMAT_MESSAGE =
   "Date must be a valid ISO datetime or MM/DD/YYYY value";
 
@@ -151,6 +179,18 @@ export const TransactionLogQuerySchema = z
         "listed last in both directions.",
       example: "desc",
     }),
+    // Not z.coerce.boolean(): that is Boolean(value), so the non-empty string
+    // "false" would switch totals on.
+    includeTotals: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true")
+      .openapi({
+        description:
+          "Adds `totals` to the response. Fixed periods to date; ignores " +
+          "`from`/`to` and `status`.",
+        example: "true",
+      }),
   })
   .superRefine((query, context) => {
     if ((query.from === undefined) !== (query.to === undefined)) {
@@ -268,6 +308,40 @@ export const TransactionCountsSchema = z
       "Totals for the requested timeframe, unaffected by the status filter so the tallies stay stable as the user filters.",
   });
 
+export const TransactionTotalPeriodSchema = z
+  .object({
+    from: z.string().datetime().openapi({
+      description: "Court-local midnight the period opened at",
+    }),
+    to: z.string().datetime().openapi({
+      description: "Instant the period was totalled at — now, not period end",
+    }),
+    // No nonnegative(): a CHECK constraint already guarantees it, and a
+    // response schema enforcing it again would turn a data anomaly into a 500
+    // on a read-only call.
+    total: z.number().openapi({
+      description: "Summed transaction amounts in USD",
+    }),
+  })
+  .openapi("TransactionTotalPeriod");
+
+export const TransactionTotalsSchema = z
+  .object({
+    day: TransactionTotalPeriodSchema,
+    week: TransactionTotalPeriodSchema,
+    month: TransactionTotalPeriodSchema,
+    quarter: TransactionTotalPeriodSchema,
+    fiscalYear: TransactionTotalPeriodSchema,
+  })
+  .openapi("TransactionTotals", {
+    description:
+      "Successful payments only, in fixed periods to date. Unaffected by the " +
+      "timeframe and status filters, so the figures stay stable as the user " +
+      "filters. Periods open at Court-local midnight; the week opens on " +
+      "Sunday, and the quarter and year are fiscal — the year opens on Oct 1. " +
+      "Omitted on export requests for pages after the first.",
+  });
+
 export const TransactionLogResponseSchema = z
   .object({
     data: z.array(TransactionLogEntrySchema).openapi({
@@ -315,3 +389,5 @@ export const TransactionLogResponseSchema = z
 export type TransactionLogResponse = z.infer<
   typeof TransactionLogResponseSchema
 >;
+
+export type TransactionTotals = z.infer<typeof TransactionTotalsSchema>;

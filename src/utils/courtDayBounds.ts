@@ -5,10 +5,15 @@ type CourtDayParts = { year: number; month: number; day: number };
 
 const MONTH_DAY_YEAR_DATE_PATTERN =
   /^(?<month>\d{2})\/(?<day>\d{2})\/(?<year>\d{4})$/;
+type CourtDayParts = { year: number; month: number; day: number };
+
+const MONTH_DAY_YEAR_DATE_PATTERN =
+  /^(?<month>\d{2})\/(?<day>\d{2})\/(?<year>\d{4})$/;
 
 const partsInZone = (
   instant: Date,
   timeZone: string,
+): CourtDayParts & { hour: number; minute: number; second: number } => {
 ): CourtDayParts & { hour: number; minute: number; second: number } => {
   const formatted = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -55,6 +60,7 @@ const zoneOffsetMs = (instant: Date, timeZone: string): number => {
 
 const startOfZoneDay = (
   { year, month, day }: CourtDayParts,
+  { year, month, day }: CourtDayParts,
   timeZone: string,
 ): Date => {
   const naive = Date.UTC(year, month - 1, day);
@@ -63,6 +69,16 @@ const startOfZoneDay = (
   return new Date(naive - zoneOffsetMs(new Date(first), timeZone));
 };
 
+export type Bounds = { start: Date; end: Date };
+
+export type CourtPeriodName =
+  | "day"
+  | "week"
+  | "month"
+  | "quarter"
+  | "fiscalYear";
+
+const FISCAL_YEAR_START_MONTH = 10;
 export const parseMonthDayYearDate = (
   value: string,
 ): CourtDayParts | undefined => {
@@ -132,5 +148,38 @@ export const courtDayBounds = (
       },
       COURT_TIME_ZONE,
     ),
+  };
+};
+
+/** The five revenue periods, each opening at Court-local midnight and running
+ *  to date — every `end` is `now`, not the end of the period. */
+export const courtPeriodBounds = (
+  now: Date = new Date(),
+): Record<CourtPeriodName, Bounds> => {
+  const { year, month, day } = partsInZone(now, COURT_TIME_ZONE);
+
+  // Read in UTC so the zone's clock time can't tip the date into a neighbouring day.
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  const quarterStartMonth = month - ((month - 1) % 3);
+  const fiscalYear = month >= FISCAL_YEAR_START_MONTH ? year : year - 1;
+
+  const end = new Date(now.getTime());
+  // Date.UTC normalises out-of-range days, so a Sunday in the previous month
+  // or year needs no special casing.
+  const openingAt = (parts: CourtDayParts): Bounds => ({
+    start: startOfZoneDay(parts, COURT_TIME_ZONE),
+    end,
+  });
+
+  return {
+    day: openingAt({ year, month, day }),
+    week: openingAt({ year, month, day: day - weekday }),
+    month: openingAt({ year, month, day: 1 }),
+    quarter: openingAt({ year, month: quarterStartMonth, day: 1 }),
+    fiscalYear: openingAt({
+      year: fiscalYear,
+      month: FISCAL_YEAR_START_MONTH,
+      day: 1,
+    }),
   };
 };
