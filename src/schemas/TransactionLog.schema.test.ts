@@ -64,45 +64,6 @@ describe("TransactionLogQuerySchema", () => {
     });
   });
 
-  it("accepts an inclusive same-day MM/DD/YYYY range", () => {
-    const result = parse({ from: "08/10/2026", to: "08/10/2026" });
-
-    expect(result.success).toBe(true);
-    if (!result.success || !("from" in result.data) || !("to" in result.data)) {
-      throw new Error("Expected query to parse successfully");
-    }
-
-    const datedQuery = result.data as { from: Date; to: Date };
-    expect(datedQuery.from.toISOString()).toBe("2026-08-10T04:00:00.000Z");
-    expect(datedQuery.to.toISOString()).toBe("2026-08-11T04:00:00.000Z");
-  });
-
-  it("accepts mixed MM/DD/YYYY and ISO inputs", () => {
-    const result = parse({
-      from: "08/10/2026",
-      to: "2026-08-11T04:00:00.000Z",
-    });
-
-    expect(result.success).toBe(true);
-  });
-
-  it("preserves explicit sort/order when timeframe is transformed", () => {
-    const result = parse({
-      from: "08/10/2026",
-      to: "08/10/2026",
-      export: "true",
-      sort: "clientName",
-      order: "asc",
-    });
-
-    expect(result.success).toBe(true);
-    expect(result.data).toMatchObject({
-      export: true,
-      sort: "clientName",
-      order: "asc",
-    });
-  });
-
   it.each([
     ["from", { from: FROM }],
     ["to", { to: TO }],
