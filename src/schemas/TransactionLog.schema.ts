@@ -335,8 +335,8 @@ export const TransactionLogResponseSchema = z
       .optional()
       .openapi({
         description:
-          "Rows matching the timeframe and status filter, across all pages. " +
-          "Omitted on export requests for pages after the first.",
+          "Rows matching the timeframe and all supplied row filters, across all " +
+          "pages. Omitted on export requests for pages after the first.",
       }),
     totals: TransactionTotalsSchema.optional(),
   })
