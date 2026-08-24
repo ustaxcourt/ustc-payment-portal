@@ -959,8 +959,10 @@ components:
           type: integer
           minimum: 0
           description: >-
-            Rows matching the timeframe and status filter, across all pages.
-            Omitted on export requests for pages after the first.
+            Rows matching the timeframe and all applied filters (`status`,
+            `fee`, `paymentMethod`, `transactionStatus`), across all pages —
+            unlike `counts` and `totals`, this figure is narrowed by every
+            filter. Omitted on export requests for pages after the first.
         totals:
           $ref: '#/components/schemas/TransactionTotals'
       required:
@@ -1009,9 +1011,9 @@ components:
         - failed
         - pending
       description: >-
-        Totals for the requested timeframe, unaffected by the status filter so
-        the tallies stay stable as the user filters. Omitted on export requests
-        for pages after the first.
+        Totals for the requested timeframe. Unaffected by `status`, `fee`,
+        `paymentMethod`, and `transactionStatus`, so the tallies stay stable as
+        the user filters. Omitted on export requests for pages after the first.
     TransactionLogSortField:
       type: string
       enum:
@@ -1053,10 +1055,11 @@ components:
         - fiscalYear
       description: >-
         Successful payments only, in fixed periods to date. Unaffected by the
-        timeframe and status filters, so the figures stay stable as the user
-        filters. Periods open at Court-local midnight; the week opens on Sunday,
-        and the quarter and year are fiscal — the year opens on Oct 1. Omitted
-        on export requests for pages after the first.
+        requested timeframe and by `status`, `fee`, `paymentMethod`, and
+        `transactionStatus`, so the figures stay stable as the user filters.
+        Periods open at Court-local midnight; the week opens on Sunday, and the
+        quarter and year are fiscal — the year opens on Oct 1. Omitted on export
+        requests for pages after the first.
     TransactionTotalPeriod:
       type: object
       properties:
@@ -1376,10 +1379,14 @@ paths:
               - success
               - failed
               - pending
-            description: Restricts rows to one payment status. Aggregate counts ignore it.
+            description: >-
+              Restricts rows to one payment status. `counts` and `totals` ignore
+              it.
             example: failed
           required: false
-          description: Restricts rows to one payment status. Aggregate counts ignore it.
+          description: >-
+            Restricts rows to one payment status. `counts` and `totals` ignore
+            it.
           name: status
           in: query
         - schema:
@@ -1387,10 +1394,10 @@ paths:
             enum:
               - PETITION_FILING_FEE
               - NONATTORNEY_EXAM_REGISTRATION_FEE
-            description: Restricts rows to one fee type.
+            description: Restricts rows to one fee type. `counts` and `totals` ignore it.
             example: PETITION_FILING_FEE
           required: false
-          description: Restricts rows to one fee type.
+          description: Restricts rows to one fee type. `counts` and `totals` ignore it.
           name: fee
           in: query
         - schema:
@@ -1399,10 +1406,14 @@ paths:
               - Credit/Debit Card
               - ACH
               - PayPal
-            description: Restricts rows to one payment method.
+            description: >-
+              Restricts rows to one payment method. `counts` and `totals` ignore
+              it.
             example: ACH
           required: false
-          description: Restricts rows to one payment method.
+          description: >-
+            Restricts rows to one payment method. `counts` and `totals` ignore
+            it.
           name: paymentMethod
           in: query
         - schema:
@@ -1414,10 +1425,14 @@ paths:
               - processed
               - failed
               - pending
-            description: Restricts rows to one transaction attempt status.
+            description: >-
+              Restricts rows to one transaction attempt status. `counts` and
+              `totals` ignore it.
             example: processed
           required: false
-          description: Restricts rows to one transaction attempt status.
+          description: >-
+            Restricts rows to one transaction attempt status. `counts` and
+            `totals` ignore it.
           name: transactionStatus
           in: query
         - schema:
@@ -1500,12 +1515,14 @@ paths:
             default: 'false'
             description: >-
               Adds `totals` to the response. Fixed periods to date; ignores
-              `from`/`to` and `status`.
+              `from`/`to`, `status`, `fee`, `paymentMethod`, and
+              `transactionStatus`.
             example: 'true'
           required: false
           description: >-
             Adds `totals` to the response. Fixed periods to date; ignores
-            `from`/`to` and `status`.
+            `from`/`to`, `status`, `fee`, `paymentMethod`, and
+            `transactionStatus`.
           name: includeTotals
           in: query
       responses:

@@ -175,8 +175,9 @@ export default class TransactionModel extends Model {
     return { rows: rows.map(TransactionModel.attachFeeName), total };
   }
 
-  /** Counts per status in a timeframe. Takes no status filter: all four
-   *  tallies stay visible while one status is selected. */
+  /** Counts per status in a timeframe. Takes no filter at all — status, fee,
+   *  paymentMethod, and transactionStatus — so all four tallies stay visible
+   *  regardless of what queryLog's request is currently filtered by. */
   static async countsInRange(
     from: Date,
     to: Date,
