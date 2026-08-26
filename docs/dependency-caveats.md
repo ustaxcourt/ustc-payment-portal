@@ -50,37 +50,30 @@ enough context that the next person doesn't have to re-derive the decision.
 - **Plan:** Revisit only when the Node runtime itself moves off 24 (new
   `engines`/`.nvmrc` floor); bump `@types/node` to match in the same change.
 
-### @changesets/cli@^2.31.0 → 3.0.0 — deferred (2026-08-12)
+### @changesets/cli@^2.31.0 → 3.0.0 — resolved (2026-08-26)
 
-- **Current:** `@changesets/cli@^2.31.0` (resolved `2.31.1`).
-  **Available latest:** `3.0.0`, published 2026-08-11.
-- **Reason:** not a drop-in bump — it is a publish-pipeline change, not a
-  dependency bump.
-  - `.github/workflows/publish.yml` uses `changesets/action@v1`, which upstream
-    documents as the Changesets **v2** line; `changesets/action@v2` is the
-    branch "compatible with Changesets v3". The CLI and the action have to move
-    together, and the action bump is subject to the `uses:` pinning rule in
-    `AGENTS.md`.
-  - v3 changes `changeset version` to exit `1` when there are no unreleased
-    changesets (previously `0`). `publish.yml` runs on every push to `main`, so
-    ordinary merges with no pending changesets would start failing the publish
-    job until this is handled.
-  - v3 is ESM-only (`type: module`) and requires Node `^22.11 || ^24 || >=26`
-    and npm `>=10.9.0`. Both are satisfied here, and the
-    `@changesets/cli/changelog` subpath this repo's config uses is still in the
-    3.0.0 exports map — so these are not blockers, just context.
-  - Other v3 breaking changes were checked and do **not** apply: `prettier` →
-    `format` config option (not set), `changeset tag` → `git-tag` (unused),
-    removed `--updateChangelog`/`--isPublic`/`--skipCI`/`--commit` flags
-    (unused), `--sinceMaster` (unused), `privatePackages` default flip (single
-    public package), and the prerelease `pre.json` restructure (prerelease mode
-    not in use). Existing changeset files are unaffected — the file format did
-    not change.
-- **Plan:** Dedicated follow-up ticket to move `@changesets/cli` to v3 and
-  `changesets/action` to v2 together, handle the new exit-code behavior, and
-  verify end to end with a dry-run publish before merging. Upstream has moved
-  the 2.x line to a `maintenance-v2` dist-tag, so `^2.31.0` remains a supported
-  place to sit in the meantime. Follow-up ticket: **PAY-###**.
+- **Upgraded to:** `@changesets/cli@^3.0.1` in previous update branch,
+  `.github/workflows/publish.yml`'s `changesets/action@v1` → `@v2`, updated in the `2026-08-24`
+  branch.
+- **Follow-up verification performed:**
+  - `publish.yml` already used the v2 kebab-case input names
+    (`publish-script`, `github-token` as an explicit input, not the
+    `GITHUB_TOKEN` env var) and OIDC/npm-provenance auth rather than
+    `NPM_TOKEN`/`.npmrc` — all of which v2 requires — so no workflow changes
+    were needed beyond the version bump itself.
+  - `.changeset/config.json` uses no removed v3 options (no `prettier`,
+    `commit`/`sinceMaster`/`updateChangelog`/`isPublic`/`skipCI` flags,
+    `privatePackages`, or prerelease `pre.json` in use).
+  - `npx changeset status` and `npx changeset --version` run cleanly against
+    the resolved `3.0.1`.
+  - No workflow references the CLI flags/inputs removed in v3/v2 (checked via
+    repo-wide search).
+- **Still worth watching:** `changeset version` now exits `1` (previously `0`)
+  when there are no unreleased changesets. `changesets/action@v2` gates its
+  internal call to `version` behind its own "has changesets" check, so this
+  shouldn't surface in `publish.yml`'s normal push-to-`main` flow — but if the
+  publish job ever starts failing specifically on merges with no pending
+  changesets, this exit-code change is the first thing to check.
 
 <!-- Format:
 ### <package> <current> → <available> — deferred (<date>)
@@ -91,13 +84,17 @@ enough context that the next person doesn't have to re-derive the decision.
 -->
 
 ---
+
 ## Vulnerabilities
 
 ### Vulnerabilities resolved via override
+
 Be cautious about doing overrides — reserve them for cases where the dependency is unlikely to fix the issue, or would take a long time to (e.g., a transitive dependency that isn't updated because it needs to support an old version of Node). If you do need an override, add the transitive dependency in question to `overrides` at the bottom of `package.json`.
 
 ### GHSA-8988-4f7v-96qf — @opentelemetry/core (<2.8.0) (moderate) — resolved via override (2026-07-29)
+
 **From: Artillery**
+
 - **Override:** `@opentelemetry/exporter-{metrics,trace}-otlp-{grpc,http,proto}` pinned
   to `^0.221.0`.
 - **Why an override was needed:** pulled in via `artillery` →
@@ -113,7 +110,9 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   exporter range past `0.221.0`, this override can likely be dropped.
 
 ### GHSA-mh99-v99m-4gvg — brace-expansion (<=5.0.7) (high) — resolved via override (2026-07-29)
+
 **From: Jest**
+
 - **Override:** `babel-plugin-istanbul@^8.0.2`, `test-exclude@^8.0.0`,
   `glob@^13.0.6`, `ejs@^6.0.1`, and `matcher-collection` → `minimatch@^10.2.2`.
 - **Why an override was needed:** this single advisory was reached through three
@@ -128,8 +127,7 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
     `jake` dependency entirely (which was only ever needed for `ejs`'s own test
     script, never required at runtime — confirmed no runtime `require('jake')`
     in `ejs`'s source).
-  - `matcher-collection` (via `artillery`'s `walk-sync`) is unmaintained since
-    2019. Its only existing release line has never used anything but
+  - `matcher-collection` (via `artillery`'s `walk-sync`) is unmaintained since 2019. Its only existing release line has never used anything but
     `minimatch@3.x`, so there's no upstream fix to wait for. Its one usage in
     `artillery` is the legacy AWS ECS/Fargate test-packaging path
     (`run-ecs`), which this repo's performance scripts never invoke. (We don't use AWS ECS or Fargate here.)
@@ -143,6 +141,7 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   as compatible, so a future parent version could shift what's safe here.
 
 ### Accepted vulnerabilities
+
 <!-- Format:
 ### <advisory-id> — <package>@<version> (<severity>)
 
