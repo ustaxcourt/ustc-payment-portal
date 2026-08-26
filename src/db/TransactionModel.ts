@@ -1,5 +1,6 @@
 import { ConflictError } from "@errors/conflict";
 import { GoneError } from "@errors/gone";
+import type { FeeKey } from "@schemas/FeeKey.schema";
 import type { DbPaymentMethod } from "@schemas/PaymentMethod.schema";
 import { DbPaymentMethodSchema } from "@schemas/PaymentMethod.schema";
 import type { PaymentStatus } from "@schemas/PaymentStatus.schema";
@@ -27,7 +28,7 @@ export type TransactionLogFilter = {
   from: Date;
   to: Date;
   status?: PaymentStatus;
-  fee?: string;
+  fee?: FeeKey;
   paymentMethod?: DbPaymentMethod;
   transactionStatus?: SchemaTransactionStatus;
   sort: TransactionLogSortField;
