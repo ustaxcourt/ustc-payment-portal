@@ -34,6 +34,8 @@ import {
   MetadataNonattorneyExamSchema,
   MetadataSchema,
   DeployHealthReportSchema,
+  ValidateClientRequestSchema,
+  ValidateClientResponseSchema,
 } from "../schemas";
 
 export const registry = new OpenAPIRegistry();
@@ -81,6 +83,8 @@ registry.register(
   "TransactionPaymentStatusResponse",
   TransactionPaymentStatusResponseSchema,
 );
+registry.register("ValidateClientRequest", ValidateClientRequestSchema);
+registry.register("ValidateClientResponse", ValidateClientResponseSchema);
 
 // ============================================
 // AWS Signature Version 4 Security Scheme
@@ -535,6 +539,52 @@ registry.registerPath({
     403: {
       description:
         "Forbidden - invalid SigV4 signature or client not authorized",
+      content: {
+        "application/json": {
+          schema: ForbiddenErrorSchema,
+        },
+      },
+    },
+    500: {
+      description: "Internal server error",
+      content: {
+        "application/json": {
+          schema: ServerErrorSchema,
+        },
+      },
+    },
+  },
+});
+
+// ============================================
+// GET /validate-client - Pre-golive Client Credential Check
+// ============================================
+registry.registerPath({
+  method: "get",
+  path: "/validate-client",
+  summary: "Validate a client's registration before go-live",
+  description:
+    "Confirms that a newly registered client's AWS account, IAM role ARN, and registered fees " +
+    "were entered correctly, without creating a Pay.gov session or writing any transaction state. " +
+    "Where the call fails is the diagnostic: a 403 from API Gateway means the account ID or the " +
+    "signing setup is wrong, while a 403 from the service means the resolved role ARN is not " +
+    "present in the client-permissions secret.",
+  tags: ["Payments"],
+  security: [{ sigv4: [] }],
+  responses: {
+    200: {
+      description:
+        "Client is registered. Returns the resolved client name and every fee key registered to it.",
+      content: {
+        "application/json": {
+          schema: ValidateClientResponseSchema,
+        },
+      },
+    },
+    403: {
+      description:
+        "Forbidden - invalid SigV4 signature, or the resolved IAM role ARN is not registered " +
+        "in client-permissions.",
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,
