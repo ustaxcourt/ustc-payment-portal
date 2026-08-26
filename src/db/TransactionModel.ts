@@ -60,6 +60,8 @@ const TOKEN_NO_LONGER_VALID_MESSAGE = "This token is no longer valid.";
 const TOKEN_EXPIRED_MESSAGE =
   "Transaction token has expired. Retry POST /init with the same transactionReferenceId to obtain a new token.";
 
+const VALID_DB_PAYMENT_METHODS = new Set<string>(DbPaymentMethodSchema.options);
+
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
@@ -99,10 +101,9 @@ export default class TransactionModel extends Model {
       parsed.transactionAmount = Number(parsed.transactionAmount);
     }
     if (parsed.paymentMethod !== undefined && parsed.paymentMethod !== null) {
-      const result = DbPaymentMethodSchema.safeParse(parsed.paymentMethod);
-      if (!result.success) {
-        // The column is a plain varchar with no DB-level enum/CHECK constraint,
-        // so a legacy row or manual edit could hold a value outside the union.
+      // The column is a plain varchar with no DB-level enum/CHECK constraint,
+      // so a legacy row or manual edit could hold a value outside the union.
+      if (!VALID_DB_PAYMENT_METHODS.has(parsed.paymentMethod as string)) {
         throw new Error(
           `Unknown payment method: ${parsed.paymentMethod as string}`,
         );
