@@ -1,4 +1,3 @@
-import type { DbPaymentMethod } from "@schemas/PaymentMethod.schema";
 import { toApiPaymentMethod, toDbPaymentMethod } from "./toApiPaymentMethod";
 
 describe("toApiPaymentMethod", () => {
@@ -16,12 +15,6 @@ describe("toApiPaymentMethod", () => {
 
   it("returns undefined when method is undefined", () => {
     expect(toApiPaymentMethod(undefined)).toBeUndefined();
-  });
-
-  it("throws when method is an unrecognized value", () => {
-    expect(() =>
-      toApiPaymentMethod("venmo" as DbPaymentMethod),
-    ).toThrow("Unknown payment method: venmo");
   });
 });
 

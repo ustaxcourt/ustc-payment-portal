@@ -17,12 +17,7 @@ export const toApiPaymentMethod = (
 ): ApiPaymentMethod | undefined => {
   if (method === null || method === undefined) return undefined;
 
-  const label = PAYMENT_METHOD_LABELS[method];
-  if (label === undefined) {
-    // Reachable only if the column holds a value outside the union.
-    throw new Error(`Unknown payment method: ${method as string}`);
-  }
-  return label;
+  return PAYMENT_METHOD_LABELS[method];
 };
 
 const DB_PAYMENT_METHOD_BY_LABEL: Record<ApiPaymentMethod, DbPaymentMethod> =
