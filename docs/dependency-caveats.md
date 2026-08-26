@@ -52,9 +52,9 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ### @changesets/cli@^2.31.0 → 3.0.0 — resolved (2026-08-26)
 
-- **Upgraded to:** `@changesets/cli@^3.0.1`, alongside
-  `.github/workflows/publish.yml`'s `changesets/action@v1` → `@v2`, together
-  in the same change (per the plan below).
+- **Upgraded to:** `@changesets/cli@^3.0.1` in previous update branch,
+  `.github/workflows/publish.yml`'s `changesets/action@v1` → `@v2`, updated in the `2026-08-24`
+  branch.
 - **Follow-up verification performed:**
   - `publish.yml` already used the v2 kebab-case input names
     (`publish-script`, `github-token` as an explicit input, not the
