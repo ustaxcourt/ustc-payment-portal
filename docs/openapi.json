@@ -978,6 +978,35 @@
           "total"
         ]
       },
+      "ValidateClientRequest": {
+        "type": "object",
+        "properties": {}
+      },
+      "ValidateClientResponse": {
+        "type": "object",
+        "properties": {
+          "clientName": {
+            "type": "string",
+            "description": "Display name of the registered client, resolved from the client-permissions secret using the IAM role ARN the request was signed with.",
+            "example": "DAWSON"
+          },
+          "allowedFeeKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Every fee key registered to this client in the client-permissions secret.",
+            "example": [
+              "PETITION_FILING_FEE",
+              "NONATTORNEY_EXAM_REGISTRATION_FEE"
+            ]
+          }
+        },
+        "required": [
+          "clientName",
+          "allowedFeeKeys"
+        ]
+      },
       "DeployHealthReport": {
         "type": "object",
         "properties": {
@@ -1862,6 +1891,52 @@
           },
           "403": {
             "description": "Forbidden - invalid SigV4 signature or client not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/validate-client": {
+      "get": {
+        "summary": "Validate a client's registration before go-live",
+        "description": "Confirms that a newly registered client's AWS account, IAM role ARN, and registered fees were entered correctly, without creating a Pay.gov session or writing any transaction state. Where the call fails is the diagnostic: a 403 from API Gateway means the account ID or the signing setup is wrong, while a 403 from the service means the resolved role ARN is not present in the client-permissions secret.",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "sigv4": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Client is registered. Returns the resolved client name and every fee key registered to it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateClientResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - invalid SigV4 signature, or the resolved IAM role ARN is not registered in client-permissions.",
             "content": {
               "application/json": {
                 "schema": {
