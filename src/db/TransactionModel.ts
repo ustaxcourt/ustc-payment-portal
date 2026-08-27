@@ -7,7 +7,7 @@ import type {
   TransactionLogSortField,
 } from "@schemas/TransactionLog.schema";
 import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/TransactionStatus.schema";
-import type { Bounds, CourtPeriodName } from "@utils/courtDayBounds";
+import type { Bounds } from "@utils/courtDayBounds";
 import type { Knex } from "knex";
 import { Model } from "objection";
 import { getActiveFee } from "../config/fees";
@@ -176,11 +176,11 @@ export default class TransactionModel extends Model {
    *  `lastUpdatedAt` to match queryLog/countsInRange, so a row falls in the same
    *  period in the table and in the totals. One filtered SUM per period keeps it
    *  to a single round trip. */
-  static async totalsToDate(
-    periods: Record<CourtPeriodName, Bounds>,
-  ): Promise<Record<CourtPeriodName, number>> {
+  static async totalsToDate<Name extends string>(
+    periods: Record<Name, Bounds>,
+  ): Promise<Record<Name, number>> {
     const knex = await getKnex();
-    const names = Object.keys(periods) as CourtPeriodName[];
+    const names = Object.keys(periods) as Name[];
 
     const earliestStart = new Date(
       Math.min(...names.map((name) => periods[name].start.getTime())),
@@ -224,8 +224,23 @@ export default class TransactionModel extends Model {
         totals[name] = total;
         return totals;
       },
-      {} as Record<CourtPeriodName, number>,
+      {} as Record<Name, number>,
     );
+  }
+
+  /** First instant the log has any record of, or null while the table is
+   *  empty. A prior-year period opening before this is a coverage gap, where
+   *  a $0 total would read as a real figure. Any status counts: a failed
+   *  payment still proves the Portal was recording. */
+  static async earliestRecordAt(): Promise<Date | null> {
+    await getKnex();
+    const [row] = await TransactionModel.query().min(
+      "lastUpdatedAt as earliest",
+    );
+
+    const earliest = (row as unknown as { earliest?: Date | string | null })
+      ?.earliest;
+    return earliest ? new Date(earliest) : null;
   }
 
   private static tallyByStatus(

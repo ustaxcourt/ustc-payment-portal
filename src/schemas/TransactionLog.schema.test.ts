@@ -198,6 +198,39 @@ describe("TransactionLogQuerySchema", () => {
       expect(parse({ includeTotals: "yes" }).success).toBe(false);
     });
   });
+
+  describe("includePriorYearTotals", () => {
+    it("stays off when it is not asked for", () => {
+      expect(parse({}).data?.includePriorYearTotals).toBe(false);
+    });
+
+    it('turns on for the string "true"', () => {
+      expect(
+        parse({ includePriorYearTotals: "true" }).data?.includePriorYearTotals,
+      ).toBe(true);
+    });
+
+    // z.coerce.boolean() would switch the prior-year totals *on* here.
+    it('stays off for the string "false"', () => {
+      expect(
+        parse({ includePriorYearTotals: "false" }).data?.includePriorYearTotals,
+      ).toBe(false);
+    });
+
+    it("rejects a value that is neither true nor false", () => {
+      expect(parse({ includePriorYearTotals: "yes" }).success).toBe(false);
+    });
+
+    it("survives the explicit-timeframe transform branch", () => {
+      const result = parse({
+        from: "2026-08-01T00:00:00.000Z",
+        to: "2026-08-02T00:00:00.000Z",
+        includePriorYearTotals: "true",
+      });
+
+      expect(result.data?.includePriorYearTotals).toBe(true);
+    });
+  });
 });
 
 describe("TransactionLogResponseSchema", () => {
@@ -246,6 +279,40 @@ describe("TransactionLogResponseSchema", () => {
     const result = TransactionLogResponseSchema.safeParse({
       ...response,
       totals: { day: period },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("parses prior-year totals when each period carries its coverage flag", () => {
+    const priorPeriod = { ...period, hasData: true };
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      priorYearTotals: {
+        day: priorPeriod,
+        week: priorPeriod,
+        month: { ...period, hasData: false },
+        quarter: priorPeriod,
+        fiscalYear: priorPeriod,
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.priorYearTotals?.month.hasData).toBe(false);
+  });
+
+  // Without the flag a $0 from before the Portal's first record would read as
+  // a real figure, so the schema refuses to let it be dropped quietly.
+  it("rejects a prior-year period missing its coverage flag", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      priorYearTotals: {
+        day: period,
+        week: period,
+        month: period,
+        quarter: period,
+        fiscalYear: period,
+      },
     });
 
     expect(result.success).toBe(false);

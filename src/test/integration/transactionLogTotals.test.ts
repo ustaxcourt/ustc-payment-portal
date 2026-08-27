@@ -169,4 +169,56 @@ describe("GET /transaction-log totals", () => {
 
     expect(response.status).toBe(400);
   });
+
+  describe("prior-year totals", () => {
+    type PriorYearTotals = NonNullable<
+      TransactionLogResponse["priorYearTotals"]
+    >;
+
+    const fetchPriorYearTotals = async (): Promise<PriorYearTotals> => {
+      const body = await fetchLog({ includePriorYearTotals: "true" });
+      if (!body.priorYearTotals) {
+        throw new Error(
+          "includePriorYearTotals=true returned no priorYearTotals",
+        );
+      }
+      return body.priorYearTotals;
+    };
+
+    it("omits them unless they are asked for", async () => {
+      const body = await fetchLog({ includeTotals: "true" });
+
+      expect(body).not.toHaveProperty("priorYearTotals");
+    });
+
+    it("returns each period about a Court year back, closed and flagged", async () => {
+      const yearMs = 366 * 24 * 3_600_000;
+      const requestedAt = Date.now();
+      const totals = await fetchPriorYearTotals();
+
+      for (const period of PERIODS) {
+        const { from, to, total, hasData } = totals[period];
+
+        expect(new Date(from).getTime()).toBeLessThan(new Date(to).getTime());
+        // `to` is the corresponding instant last year, so it sits within a
+        // leap year of the request, give or take the request's own latency.
+        expect(new Date(to).getTime()).toBeGreaterThanOrEqual(
+          requestedAt - yearMs - 60_000,
+        );
+        expect(new Date(to).getTime()).toBeLessThanOrEqual(
+          requestedAt - yearMs + 3 * 24 * 3_600_000,
+        );
+        expect(total).toBeGreaterThanOrEqual(0);
+        expect(typeof hasData).toBe("boolean");
+      }
+    });
+
+    it("rejects a value that is neither true nor false", async () => {
+      const response = await portalFetch(
+        logUrl({ includePriorYearTotals: "yes" }),
+      );
+
+      expect(response.status).toBe(400);
+    });
+  });
 });

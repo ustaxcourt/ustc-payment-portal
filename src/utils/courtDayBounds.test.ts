@@ -2,6 +2,7 @@ import {
   courtDayBounds,
   courtDayBoundsForDateString,
   courtPeriodBounds,
+  courtYearEarlier,
   parseMonthDayYearDate,
 } from "./courtDayBounds";
 
@@ -120,6 +121,50 @@ describe("courtDayBoundsForDateString", () => {
 
   it("returns undefined for invalid input", () => {
     expect(courtDayBoundsForDateString("8/10/2026")).toBeUndefined();
+  });
+});
+
+describe("courtYearEarlier", () => {
+  it("keeps the Court wall-clock time when both years share an offset", () => {
+    // Monday 2026-08-17, 11:00 EDT → Sunday 2025-08-17, 11:00 EDT.
+    const earlier = courtYearEarlier(new Date("2026-08-17T15:00:00.000Z"));
+
+    expect(earlier.toISOString()).toBe("2025-08-17T15:00:00.000Z");
+  });
+
+  it("keeps the wall clock in winter too", () => {
+    const earlier = courtYearEarlier(new Date("2026-01-15T15:00:00.000Z"));
+
+    expect(earlier.toISOString()).toBe("2025-01-15T15:00:00.000Z");
+  });
+
+  it("holds the wall clock across differing DST calendars, not the UTC offset", () => {
+    // 2026-03-08 11:00 is EDT (clocks moved that morning); 2025-03-08 was
+    // still EST (2025 moved on the 9th). Same 11:00 on the Court's wall,
+    // one hour apart in UTC.
+    const earlier = courtYearEarlier(new Date("2026-03-08T15:00:00.000Z"));
+
+    expect(earlier.toISOString()).toBe("2025-03-08T16:00:00.000Z");
+  });
+
+  it("maps Feb 29 to Feb 28, the year before a leap year never being one", () => {
+    const earlier = courtYearEarlier(new Date("2028-02-29T17:00:00.000Z"));
+
+    expect(earlier.toISOString()).toBe("2027-02-28T17:00:00.000Z");
+  });
+
+  it("lands prior-year periods one fiscal year back when composed", () => {
+    // Monday 2026-08-17 sits in FY26; the same moment a Court year earlier
+    // sits in FY25, so the fiscal year opens on 2024-10-01.
+    const periods = courtPeriodBounds(
+      courtYearEarlier(new Date("2026-08-17T15:00:00.000Z")),
+    );
+
+    expect(periods.fiscalYear.start.toISOString()).toBe(
+      "2024-10-01T04:00:00.000Z",
+    );
+    expect(periods.day.start.toISOString()).toBe("2025-08-17T04:00:00.000Z");
+    expect(periods.day.end.toISOString()).toBe("2025-08-17T15:00:00.000Z");
   });
 });
 

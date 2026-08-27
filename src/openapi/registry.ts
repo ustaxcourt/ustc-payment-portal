@@ -418,7 +418,11 @@ registry.registerPath({
     "`includeTotals=true` adds summed revenue for five fixed periods to date " +
     "— day, week, month, fiscal quarter and fiscal year — covering successful " +
     "payments only and ignoring both the timeframe and the status filter. It " +
-    "follows the same rule as `counts` on export pages after the first.",
+    "follows the same rule as `counts` on export pages after the first. " +
+    "`includePriorYearTotals=true` adds the same periods one year earlier on " +
+    "the Court calendar for year-over-year comparison, each ending at the " +
+    "corresponding instant last year and flagged with `hasData` when the " +
+    "Portal's records span the whole period.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   request: {

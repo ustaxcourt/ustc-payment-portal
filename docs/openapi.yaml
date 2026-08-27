@@ -963,6 +963,8 @@ components:
             Omitted on export requests for pages after the first.
         totals:
           $ref: '#/components/schemas/TransactionTotals'
+        priorYearTotals:
+          $ref: '#/components/schemas/TransactionPriorYearTotals'
       required:
         - data
         - from
@@ -1075,6 +1077,47 @@ components:
         - from
         - to
         - total
+    TransactionPriorYearTotals:
+      type: object
+      properties:
+        day:
+          $ref: '#/components/schemas/TransactionPriorYearTotalPeriod'
+        week:
+          $ref: '#/components/schemas/TransactionPriorYearTotalPeriod'
+        month:
+          $ref: '#/components/schemas/TransactionPriorYearTotalPeriod'
+        quarter:
+          $ref: '#/components/schemas/TransactionPriorYearTotalPeriod'
+        fiscalYear:
+          $ref: '#/components/schemas/TransactionPriorYearTotalPeriod'
+      required:
+        - day
+        - week
+        - month
+        - quarter
+        - fiscalYear
+      description: >-
+        The `totals` periods one year earlier on the Court calendar, each
+        running exactly as far into its year as the current one has, so the
+        comparison is to-date against to-date. The week opens on the Sunday of
+        the week containing the same calendar date last year. Omitted on export
+        requests for pages after the first.
+    TransactionPriorYearTotalPeriod:
+      allOf:
+        - $ref: '#/components/schemas/TransactionTotalPeriod'
+        - type: object
+          properties:
+            hasData:
+              type: boolean
+              description: >-
+                True when the Portal's records span the whole period. False
+                marks a period opening before the first recorded transaction,
+                where $0 is a coverage gap rather than a true zero
+          required:
+            - hasData
+      description: >-
+        A prior-year period: `to` is the corresponding instant one year earlier
+        on the Court calendar, not the period's end
   parameters: {}
 paths:
   /init:
@@ -1339,6 +1382,10 @@ paths:
         — day, week, month, fiscal quarter and fiscal year — covering successful
         payments only and ignoring both the timeframe and the status filter. It
         follows the same rule as `counts` on export pages after the first.
+        `includePriorYearTotals=true` adds the same periods one year earlier on
+        the Court calendar for year-over-year comparison, each ending at the
+        corresponding instant last year and flagged with `hasData` when the
+        Portal's records span the whole period.
       tags:
         - Payments
       security:
@@ -1469,6 +1516,27 @@ paths:
             Adds `totals` to the response. Fixed periods to date; ignores
             `from`/`to` and `status`.
           name: includeTotals
+          in: query
+        - schema:
+            type: string
+            enum:
+              - 'true'
+              - 'false'
+            default: 'false'
+            description: >-
+              Adds `priorYearTotals` to the response: the same fixed periods one
+              year earlier on the Court calendar, each ending at the
+              corresponding instant last year. Independent of `includeTotals`,
+              and omitted on export requests for pages after the first, as
+              `totals` is.
+            example: 'true'
+          required: false
+          description: >-
+            Adds `priorYearTotals` to the response: the same fixed periods one
+            year earlier on the Court calendar, each ending at the corresponding
+            instant last year. Independent of `includeTotals`, and omitted on
+            export requests for pages after the first, as `totals` is.
+          name: includePriorYearTotals
           in: query
       responses:
         '200':

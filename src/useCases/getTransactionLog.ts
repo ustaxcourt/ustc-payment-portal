@@ -10,7 +10,11 @@ import type {
   TransactionLogResponse,
 } from "@appTypes/TransactionLog";
 import type { CourtPeriodName } from "@utils/courtDayBounds";
-import { courtDayBounds, courtPeriodBounds } from "@utils/courtDayBounds";
+import {
+  courtDayBounds,
+  courtPeriodBounds,
+  courtYearEarlier,
+} from "@utils/courtDayBounds";
 import { toApiPaymentMethod } from "@utils/toApiPaymentMethod";
 
 export type GetTransactionLog = (
@@ -38,24 +42,35 @@ export const getTransactionLog: GetTransactionLog = async (
   // request actually asks for them.
   const periods =
     withCounts && query.includeTotals ? courtPeriodBounds(now) : undefined;
+  // The same periods a Court year earlier, run to the corresponding instant,
+  // so each comparison is to-date against to-date.
+  const priorYearPeriods =
+    withCounts && query.includePriorYearTotals
+      ? courtPeriodBounds(courtYearEarlier(now))
+      : undefined;
 
-  const [page, counts, periodTotals] = await Promise.all([
-    TransactionModel.queryLog({
-      from,
-      to,
-      status: query.status,
-      sort,
-      order,
-      limit: query.pageSize,
-      offset: (query.page - 1) * query.pageSize,
-      withTotal: withCounts,
-    }),
-    withCounts ? TransactionModel.countsInRange(from, to) : undefined,
-    // Behind the same gate: each page would otherwise re-run the aggregate and
-    // close its periods at a different `now`, so an export would carry a
-    // slightly different set of figures on every page.
-    periods ? TransactionModel.totalsToDate(periods) : undefined,
-  ]);
+  const [page, counts, periodTotals, priorYearTotals, earliestRecordAt] =
+    await Promise.all([
+      TransactionModel.queryLog({
+        from,
+        to,
+        status: query.status,
+        sort,
+        order,
+        limit: query.pageSize,
+        offset: (query.page - 1) * query.pageSize,
+        withTotal: withCounts,
+      }),
+      withCounts ? TransactionModel.countsInRange(from, to) : undefined,
+      // Behind the same gate: each page would otherwise re-run the aggregate and
+      // close its periods at a different `now`, so an export would carry a
+      // slightly different set of figures on every page.
+      periods ? TransactionModel.totalsToDate(periods) : undefined,
+      priorYearPeriods
+        ? TransactionModel.totalsToDate(priorYearPeriods)
+        : undefined,
+      priorYearPeriods ? TransactionModel.earliestRecordAt() : undefined,
+    ]);
 
   // One spread, so the pair can only ever be omitted together.
   const countsAndTotal =
@@ -87,6 +102,25 @@ export const getTransactionLog: GetTransactionLog = async (
       ]),
     );
 
+  const priorYearTotalsByPeriod =
+    priorYearPeriods &&
+    priorYearTotals &&
+    Object.fromEntries(
+      Object.entries(priorYearPeriods).map(([name, bounds]) => [
+        name,
+        {
+          from: bounds.start.toISOString(),
+          to: bounds.end.toISOString(),
+          total: priorYearTotals[name as CourtPeriodName],
+          // A period opening before the first recorded transaction is a
+          // coverage gap: its $0 would read as a real figure on the dashboard.
+          hasData:
+            earliestRecordAt != null &&
+            earliestRecordAt.getTime() <= bounds.start.getTime(),
+        },
+      ]),
+    );
+
   return TransactionLogResponseSchema.parse({
     data: page.rows.map((row) => ({
       ...row,
@@ -102,5 +136,8 @@ export const getTransactionLog: GetTransactionLog = async (
     order,
     // Spread, so the key is absent rather than present-and-undefined.
     ...(totalsByPeriod && { totals: totalsByPeriod }),
+    ...(priorYearTotalsByPeriod && {
+      priorYearTotals: priorYearTotalsByPeriod,
+    }),
   });
 };

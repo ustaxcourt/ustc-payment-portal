@@ -47,10 +47,19 @@ const totals = {
   fiscalYear: 57600,
 };
 
+const priorTotals = {
+  day: 95,
+  week: 950,
+  month: 3800,
+  quarter: 11400,
+  fiscalYear: 45600,
+};
+
 describe("getTransactionLog", () => {
   let queryLog: jest.SpyInstance;
   let countsInRange: jest.SpyInstance;
   let totalsToDate: jest.SpyInstance;
+  let earliestRecordAt: jest.SpyInstance;
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date("2026-08-03T15:00:00.000Z"));
@@ -60,9 +69,18 @@ describe("getTransactionLog", () => {
     countsInRange = jest
       .spyOn(TransactionModel, "countsInRange")
       .mockResolvedValue(counts);
+    // One spy serves both years: the fiscal year a period set opens in tells
+    // the current request apart from the prior-year one.
     totalsToDate = jest
       .spyOn(TransactionModel, "totalsToDate")
-      .mockResolvedValue(totals);
+      .mockImplementation(async (periods) =>
+        periods.fiscalYear.start.getUTCFullYear() === 2025
+          ? totals
+          : priorTotals,
+      );
+    earliestRecordAt = jest
+      .spyOn(TransactionModel, "earliestRecordAt")
+      .mockResolvedValue(new Date("2024-01-01T05:00:00.000Z"));
   });
 
   afterEach(() => {
@@ -282,6 +300,108 @@ describe("getTransactionLog", () => {
         new Date("2026-08-03T04:00:00.000Z"),
       );
       expect(result.totals?.day.total).toBe(120);
+    });
+  });
+
+  describe("prior-year totals", () => {
+    it("leaves them out — and does not query them — unless asked", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true }),
+      );
+
+      expect(totalsToDate).toHaveBeenCalledTimes(1);
+      expect(earliestRecordAt).not.toHaveBeenCalled();
+      expect(result).not.toHaveProperty("priorYearTotals");
+    });
+
+    it("returns the same periods one Court year earlier", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includePriorYearTotals: true }),
+      );
+
+      // Monday 2026-08-03, 11:00 EDT → Sunday 2025-08-03, 11:00 EDT.
+      expect(result.priorYearTotals?.day).toMatchObject({
+        from: "2025-08-03T04:00:00.000Z",
+        to: "2025-08-03T15:00:00.000Z",
+        total: 95,
+      });
+      expect(result.priorYearTotals?.fiscalYear.from).toBe(
+        "2024-10-01T04:00:00.000Z",
+      );
+      expect(result.priorYearTotals?.fiscalYear.total).toBe(45600);
+    });
+
+    it("stands alone: `totals` still needs its own flag", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includePriorYearTotals: true }),
+      );
+
+      expect(result).not.toHaveProperty("totals");
+    });
+
+    it("keeps the current and prior figures apart when both are asked for", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true, includePriorYearTotals: true }),
+      );
+
+      expect(result.totals?.day.total).toBe(120);
+      expect(result.priorYearTotals?.day.total).toBe(95);
+    });
+
+    it("marks every period covered when records predate them all", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includePriorYearTotals: true }),
+      );
+
+      for (const period of Object.values(result.priorYearTotals ?? {})) {
+        expect(period.hasData).toBe(true);
+      }
+    });
+
+    it("flags a period opening before the first recorded transaction", async () => {
+      earliestRecordAt.mockResolvedValue(new Date("2025-01-15T05:00:00.000Z"));
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ includePriorYearTotals: true }),
+      );
+
+      // The prior fiscal year opened 2024-10-01, before the log began; the
+      // prior day, week, month and quarter all sit inside recorded history.
+      expect(result.priorYearTotals?.fiscalYear.hasData).toBe(false);
+      expect(result.priorYearTotals?.day.hasData).toBe(true);
+      expect(result.priorYearTotals?.quarter.hasData).toBe(true);
+    });
+
+    it("flags every period while the log is empty", async () => {
+      earliestRecordAt.mockResolvedValue(null);
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ includePriorYearTotals: true }),
+      );
+
+      for (const period of Object.values(result.priorYearTotals ?? {})) {
+        expect(period.hasData).toBe(false);
+      }
+    });
+
+    it("skips prior-year totals on export pages after the first", async () => {
+      queryLog.mockResolvedValue({ rows: [failedRow as any] });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 2, includePriorYearTotals: true }),
+      );
+
+      expect(totalsToDate).not.toHaveBeenCalled();
+      expect(earliestRecordAt).not.toHaveBeenCalled();
+      expect(result.priorYearTotals).toBeUndefined();
     });
   });
 });

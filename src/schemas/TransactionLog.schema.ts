@@ -144,6 +144,19 @@ export const TransactionLogQuerySchema = z
           "`from`/`to` and `status`.",
         example: "true",
       }),
+    includePriorYearTotals: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true")
+      .openapi({
+        description:
+          "Adds `priorYearTotals` to the response: the same fixed periods " +
+          "one year earlier on the Court calendar, each ending at the " +
+          "corresponding instant last year. Independent of `includeTotals`, " +
+          "and omitted on export requests for pages after the first, as " +
+          "`totals` is.",
+        example: "true",
+      }),
   })
   .superRefine((query, context) => {
     if ((query.from === undefined) !== (query.to === undefined)) {
@@ -169,6 +182,7 @@ export const TransactionLogQuerySchema = z
         sort: query.sort,
         order: query.order,
         includeTotals: query.includeTotals,
+        includePriorYearTotals: query.includePriorYearTotals,
       };
     }
 
@@ -217,6 +231,7 @@ export const TransactionLogQuerySchema = z
       sort: query.sort,
       order: query.order,
       includeTotals: query.includeTotals,
+      includePriorYearTotals: query.includePriorYearTotals,
     };
   })
   .refine(
@@ -289,6 +304,37 @@ export const TransactionTotalsSchema = z
       "Omitted on export requests for pages after the first.",
   });
 
+export const TransactionPriorYearTotalPeriodSchema =
+  TransactionTotalPeriodSchema.extend({
+    hasData: z.boolean().openapi({
+      description:
+        "True when the Portal's records span the whole period. False marks " +
+        "a period opening before the first recorded transaction, where $0 " +
+        "is a coverage gap rather than a true zero",
+    }),
+  }).openapi("TransactionPriorYearTotalPeriod", {
+    description:
+      "A prior-year period: `to` is the corresponding instant one year " +
+      "earlier on the Court calendar, not the period's end",
+  });
+
+export const TransactionPriorYearTotalsSchema = z
+  .object({
+    day: TransactionPriorYearTotalPeriodSchema,
+    week: TransactionPriorYearTotalPeriodSchema,
+    month: TransactionPriorYearTotalPeriodSchema,
+    quarter: TransactionPriorYearTotalPeriodSchema,
+    fiscalYear: TransactionPriorYearTotalPeriodSchema,
+  })
+  .openapi("TransactionPriorYearTotals", {
+    description:
+      "The `totals` periods one year earlier on the Court calendar, each " +
+      "running exactly as far into its year as the current one has, so the " +
+      "comparison is to-date against to-date. The week opens on the Sunday " +
+      "of the week containing the same calendar date last year. Omitted on " +
+      "export requests for pages after the first.",
+  });
+
 export const TransactionLogResponseSchema = z
   .object({
     data: z.array(TransactionLogEntrySchema).openapi({
@@ -318,6 +364,7 @@ export const TransactionLogResponseSchema = z
         "Omitted on export requests for pages after the first.",
     }),
     totals: TransactionTotalsSchema.optional(),
+    priorYearTotals: TransactionPriorYearTotalsSchema.optional(),
   })
   .refine(
     (response) =>
@@ -334,3 +381,7 @@ export type TransactionLogResponse = z.infer<
 >;
 
 export type TransactionTotals = z.infer<typeof TransactionTotalsSchema>;
+
+export type TransactionPriorYearTotals = z.infer<
+  typeof TransactionPriorYearTotalsSchema
+>;

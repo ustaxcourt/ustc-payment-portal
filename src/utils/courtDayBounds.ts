@@ -145,6 +145,19 @@ export const courtDayBounds = (
   };
 };
 
+/** The same Court-local wall-clock moment one year earlier, for prior-year
+ *  comparisons: feed it to courtPeriodBounds and every period runs exactly as
+ *  far into its year as the current one has. Feb 29 maps to Feb 28, and a
+ *  moment the clocks skipped or repeated settles on the offset the second
+ *  pass resolves to, matching startOfZoneDay. */
+export const courtYearEarlier = (instant: Date): Date => {
+  const p = partsInZone(instant, COURT_TIME_ZONE);
+  const day = p.month === 2 && p.day === 29 ? 28 : p.day;
+  const naive = Date.UTC(p.year - 1, p.month - 1, day, p.hour, p.minute, p.second);
+  const first = naive - zoneOffsetMs(new Date(naive), COURT_TIME_ZONE);
+  return new Date(naive - zoneOffsetMs(new Date(first), COURT_TIME_ZONE));
+};
+
 /** The five revenue periods, each opening at Court-local midnight and running
  *  to date — every `end` is `now`, not the end of the period. */
 export const courtPeriodBounds = (

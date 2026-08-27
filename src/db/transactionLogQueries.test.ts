@@ -16,6 +16,7 @@ const METHODS = [
   "select",
   "count",
   "groupBy",
+  "min",
 ];
 
 const stubQuery = (rows: unknown[], total = 0) => {
@@ -377,5 +378,36 @@ describe("TransactionModel.totalsToDate", () => {
         "no usable total",
       );
     });
+  });
+});
+
+describe("TransactionModel.earliestRecordAt", () => {
+  it("takes the minimum lastUpdatedAt across every status", async () => {
+    const chains = stubQuery([
+      { earliest: new Date("2025-01-15T05:00:00.000Z") },
+    ]);
+
+    const result = await TransactionModel.earliestRecordAt();
+    const [q] = chains;
+
+    expect(q.min).toHaveBeenCalledWith("lastUpdatedAt as earliest");
+    // No status filter: a failed payment still proves the log was recording.
+    expect(q.where).not.toHaveBeenCalled();
+    expect(result?.toISOString()).toBe("2025-01-15T05:00:00.000Z");
+  });
+
+  it("returns a Date for the string pg sends when the column is cast", async () => {
+    stubQuery([{ earliest: "2025-01-15T05:00:00.000Z" }]);
+
+    const result = await TransactionModel.earliestRecordAt();
+
+    expect(result?.toISOString()).toBe("2025-01-15T05:00:00.000Z");
+  });
+
+  it("returns null while the table is empty", async () => {
+    // min() over no rows still yields one row, with a null aggregate.
+    stubQuery([{ earliest: null }]);
+
+    expect(await TransactionModel.earliestRecordAt()).toBeNull();
   });
 });
