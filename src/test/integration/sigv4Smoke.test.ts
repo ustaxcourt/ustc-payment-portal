@@ -217,7 +217,9 @@ describeWithCreds("SigV4 helper behavior and credential handling", () => {
     );
 
     const responseBody = await result.text();
-    console.log("signedFetchWithCredentials response:", result.status, responseBody.slice(0, 200));
+    // TEMP DIAGNOSTIC: full body (not truncated) to capture AWS's recalculated
+    // canonical string when this fails in CI. Revert once the 403 is root-caused.
+    console.log("signedFetchWithCredentials response:", result.status, responseBody);
 
     expect(result.status).toBe(200);
   });
