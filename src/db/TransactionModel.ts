@@ -498,14 +498,35 @@ export default class TransactionModel extends Model {
     agencyTrackingId: string,
     returnCode?: number,
     returnDetail?: string,
+    expectedLastUpdatedAt?: string,
   ): Promise<TransactionModel> {
     await getKnex();
-    return this.query().patchAndFetchById(agencyTrackingId, {
-      transactionStatus: "failed",
-      paymentStatus: "failed",
-      returnCode,
-      returnDetail,
-    });
+    const query = this.query()
+      .patch({
+        transactionStatus: "failed" as const,
+        paymentStatus: "failed" as const,
+        returnCode,
+        returnDetail,
+      })
+      .where("agencyTrackingId", agencyTrackingId)
+      .whereNotIn("transactionStatus", ["processed", "pending"]);
+
+      // Case Handle for Pending failed?
+
+      // We should never make it here if we are `processing` status
+
+    if (expectedLastUpdatedAt !== undefined) {
+      query.where("lastUpdatedAt", expectedLastUpdatedAt);
+    }
+
+    const updated = (await query
+      .returning("*")
+      .first()) as TransactionModel | undefined;
+
+    if (!updated) {
+      throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
+    }
+    return updated;
   }
 
   // TODO: [Future Ticket] Implement findByTransactionReferenceId to retrieve

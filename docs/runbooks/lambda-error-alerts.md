@@ -40,6 +40,7 @@ Each conflict log/EMF line carries a `Reason` property. Filter on it to tell the
 |---|---|---|
 | `InitPaymentConflict` | `processing_in_flight` | A new `POST /init` arrived while a prior attempt for the same reference is actively `processing` (a `POST /process` is finalizing it). Rejected rather than re-initiated. |
 | `InitPaymentConflict` | `persist_race` | Two `POST /init` calls raced to insert; the partial unique index `idx_transactions_unique_active` let only one win. The loser gets the same 409. |
+| `InitPaymentConflict` | `stale_supersede_race` | `POST /init` read a `processing` row as stale (>10 min) and tried to supersede it, but a concurrent `POST /process` reclaimed and completed that same row first. `TransactionModel.updateToFailed`'s compare-and-swap guard (status + `lastUpdatedAt`) caught the race and rejected the write instead of overwriting the now-`processed` row — this is the fix for the "processed row gets overwritten by initPayment" failure mode. `initPayment` re-checks via `rejectIfAlreadyPaid` and returns the correct already-paid 409 to the caller. No action needed; this is the guard working as designed. |
 | `ProcessPaymentConflict` | (claim lost) | Two `POST /process` calls raced to claim the same token; `claimForProcessing`'s atomic compare-and-swap (`initiated` → `processing`) let only one win. |
 
 ### What to check
