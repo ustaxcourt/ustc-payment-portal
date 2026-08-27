@@ -4,10 +4,8 @@ import { getActiveFee, staticFees } from "../../../src/config/fees";
 import { generateAgencyTrackingId } from "../../../src/utils/generateTrackingId";
 
 type GenerateTransactionsParams = {
-  successTransactions: number;
-  failedTransactions: number;
-  pendingTransactions: number;
   multiAttemptGroups?: number;
+  startYear?: number;
 };
 
 type TransactionRow = {
@@ -30,20 +28,32 @@ type TransactionRow = {
   last_updated_at: string;
 };
 
+const getDateRange = (startYear?: number) => {
+  const currentYear = dayjs().year();
+
+  return {
+    startDate: dayjs(`${startYear ?? currentYear}-01-01`).startOf("day"),
+    endDate: dayjs().endOf("day"),
+  };
+};
+
+const createRandomDateForDay = (day: dayjs.Dayjs): string =>
+  day
+    .startOf("day")
+    .add(faker.number.int({ min: 0, max: 86399 }), "second")
+    .toISOString();
+
 export const generateTransactions = async ({
-  successTransactions,
-  failedTransactions,
-  pendingTransactions,
   multiAttemptGroups = 0,
+  startYear,
 }: GenerateTransactionsParams): Promise<TransactionRow[]> => {
+  const { startDate, endDate } = getDateRange(startYear);
+
   const feesList = Object.keys(staticFees);
   const clientNames = ["payment-portal", "efile-portal", "clerk-app"];
   const paymentMethods = ["plastic_card", "ach", "paypal"] as const;
 
   const agencyIds = ["USTC", "IRS"];
-  const agencyCounters: Record<string, number> = Object.fromEntries(
-    agencyIds.map((agencyId) => [agencyId, 0]),
-  );
 
   const getTransactionStatus = (
     paymentStatus: "success" | "failed" | "pending",
@@ -59,6 +69,7 @@ export const generateTransactions = async ({
   };
 
   const returnCodes = [3001, 3002, 5000];
+
   const returnDetails = [
     "The card has been declined, the transaction will not be processed.",
     "Invalid card number.",
@@ -76,30 +87,51 @@ export const generateTransactions = async ({
   const makeRow = (
     payment_status: "success" | "failed" | "pending",
     overrides: RowOverrides = {},
-  ) => {
+  ): TransactionRow => {
     const agencyId =
       overrides.agencyId ?? faker.helpers.arrayElement(agencyIds);
-    const fee = overrides.fee ?? faker.helpers.arrayElement(feesList);
-    agencyCounters[agencyId] += 1;
+
     const transactionReferenceId =
       overrides.transactionReferenceId ?? faker.string.uuid();
-    const createdAt =
-      overrides.createdAt ??
-      dayjs()
-        .subtract(faker.number.int({ min: 1, max: 40 }), "day")
-        .add(faker.number.int({ min: 0, max: 86400 }), "second")
-        .toISOString();
+
+    const createdAt = overrides.createdAt ?? dayjs().toISOString();
+
+    let fee = overrides.fee;
+    let activeFee;
+
+    if (fee) {
+      activeFee = getActiveFee(fee, createdAt);
+    } else {
+      while (true) {
+        const candidateFee = faker.helpers.arrayElement(feesList);
+
+        try {
+          activeFee = getActiveFee(candidateFee, createdAt);
+          fee = candidateFee;
+          break;
+        } catch {
+          // try another fee
+        }
+      }
+    }
+
     const lastUpdatedAt = dayjs(createdAt)
       .add(faker.number.int({ min: 0, max: 5 }), "day")
       .add(faker.number.int({ min: 0, max: 3600 }), "second")
       .toISOString();
-    const activeFee = getActiveFee(fee, createdAt);
+
     const transactionAmount = activeFee.isVariable
-      ? faker.number.float({ min: 1, max: 1_000, fractionDigits: 2 })
+      ? faker.number.float({
+          min: 1,
+          max: 1_000,
+          fractionDigits: 2,
+        })
       : activeFee.amount;
+
     if (transactionAmount === null || transactionAmount === undefined) {
       throw new Error(`Fixed fee '${fee}' is missing an amount`);
     }
+
     const maybeMetadata = {
       accountHolder: faker.person.fullName(),
       agencyId,
@@ -110,9 +142,11 @@ export const generateTransactions = async ({
 
     const hasPayGovResponse =
       payment_status === "success" || payment_status === "failed";
+
     const transactionDate = hasPayGovResponse
       ? dayjs(lastUpdatedAt).format("YYYY-MM-DDTHH:mm:ss")
       : null;
+
     const paymentDate = hasPayGovResponse
       ? dayjs(lastUpdatedAt).format("YYYY-MM-DD")
       : null;
@@ -120,7 +154,10 @@ export const generateTransactions = async ({
     return {
       agency_tracking_id: generateAgencyTrackingId(),
       paygov_tracking_id: faker.datatype.boolean()
-        ? faker.string.alphanumeric({ length: 20, casing: "upper" })
+        ? faker.string.alphanumeric({
+            length: 20,
+            casing: "upper",
+          })
         : null,
       fee,
       client_name:
@@ -153,20 +190,31 @@ export const generateTransactions = async ({
     outcomes: Array<"success" | "failed" | "pending">,
   ): TransactionRow[] => {
     const transactionReferenceId = faker.string.uuid();
-    const fee = faker.helpers.arrayElement(feesList);
     const clientName = faker.helpers.arrayElement(clientNames);
     const agencyId = faker.helpers.arrayElement(agencyIds);
-    const baseDate = dayjs().subtract(
-      faker.number.int({ min: 3, max: 20 }),
+
+    const randomDay = startDate.add(
+      faker.number.int({
+        min: 0,
+        max: endDate.diff(startDate, "day"),
+      }),
       "day",
     );
+
+    const baseDate = dayjs(createRandomDateForDay(randomDay));
+
     let elapsed = 0;
+
     return outcomes.map((outcome) => {
       const createdAt = baseDate.add(elapsed, "minute").toISOString();
-      elapsed += faker.number.int({ min: 20, max: 60 });
+
+      elapsed += faker.number.int({
+        min: 20,
+        max: 60,
+      });
+
       return makeRow(outcome, {
         transactionReferenceId,
-        fee,
         clientName,
         agencyId,
         createdAt,
@@ -174,14 +222,34 @@ export const generateTransactions = async ({
     });
   };
 
+  const rows: TransactionRow[] = [];
+
+  for (let day = startDate; day.isBefore(endDate); day = day.add(1, "day")) {
+    const transactionCount = faker.number.int({
+      min: 0,
+      max: 10,
+    });
+
+    for (let i = 0; i < transactionCount; i++) {
+      const paymentStatus = faker.helpers.weightedArrayElement([
+        { value: "success", weight: 80 },
+        { value: "failed", weight: 15 },
+        { value: "pending", weight: 5 },
+      ]) as "success" | "failed" | "pending";
+
+      rows.push(
+        makeRow(paymentStatus, {
+          createdAt: createRandomDateForDay(day),
+        }),
+      );
+    }
+  }
+
   const multiAttemptRows = Array.from({ length: multiAttemptGroups }, () =>
     makeMultiAttemptGroup(["failed", "success"]),
   ).flat();
 
-  return [
-    ...Array.from({ length: successTransactions }, () => makeRow("success")),
-    ...Array.from({ length: failedTransactions }, () => makeRow("failed")),
-    ...Array.from({ length: pendingTransactions }, () => makeRow("pending")),
-    ...multiAttemptRows,
-  ];
+  rows.push(...multiAttemptRows);
+
+  return rows;
 };

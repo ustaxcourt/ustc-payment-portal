@@ -10,9 +10,9 @@ import { generateTransactions } from "./data/transactions";
  *    SEED_PENDING_TRANSACTIONS: Number of pending transactions to seed.
  *    SEED_MULTI_ATTEMPT_GROUPS: Number of groups of transactions with multiple attempts (e.g. a failed attempt followed by a successful retry).
  */
-const SEED_SUCCESS_TRANSACTIONS = 200;
-const SEED_FAILED_TRANSACTIONS = 50;
-const SEED_PENDING_TRANSACTIONS = 20;
+const SEED_START_YEAR = process.env.SEED_START_YEAR
+  ? Number.parseInt(process.env.SEED_START_YEAR, 10)
+  : undefined;
 const SEED_MULTI_ATTEMPT_GROUPS = 10;
 
 /**
@@ -24,10 +24,8 @@ export async function seed(knex: Knex): Promise<void> {
   await knex("transactions").del();
   await knex("transactions").insert(
     await generateTransactions({
-      successTransactions: SEED_SUCCESS_TRANSACTIONS,
-      failedTransactions: SEED_FAILED_TRANSACTIONS,
-      pendingTransactions: SEED_PENDING_TRANSACTIONS,
       multiAttemptGroups: SEED_MULTI_ATTEMPT_GROUPS,
+      startYear: SEED_START_YEAR,
     }),
   );
 }

@@ -1,5 +1,4 @@
 import { ConflictError } from "@errors/conflict";
-import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { GoneError } from "@errors/gone";
 import type { PaymentStatus } from "@schemas/PaymentStatus.schema";
 import type {
@@ -10,6 +9,7 @@ import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/Tran
 import type { Bounds, CourtPeriodName } from "@utils/courtDayBounds";
 import type { Knex } from "knex";
 import { Model } from "objection";
+import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { getActiveFee } from "../config/fees";
 import { getKnex } from "./knex";
 import { transactionLogOrderBy } from "./transactionLogSort";
