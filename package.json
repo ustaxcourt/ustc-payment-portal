@@ -53,7 +53,7 @@
     "migrate:down": "npm run knex -- migrate:down $1",
     "seed:make": "npm run knex -- seed:make $1",
     "seed:run": "npm run knex -- seed:run",
-    "seed:year:run": "SEED_START_YEAR=${SEED_START_YEAR:-2025} npm run knex -- seed:run",
+    "seed:start-date:run": "SEED_START_DATE=${SEED_START_DATE:-2025-01-01} npm run knex -- seed:run",
     "docker": "docker compose up",
     "docker:migration": "MIGRATION_MODE=1 docker compose up",
     "test:performance:stress:full": "scripts/run-performance-test.sh stress full",

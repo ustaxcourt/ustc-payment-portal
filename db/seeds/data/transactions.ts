@@ -5,7 +5,8 @@ import { generateAgencyTrackingId } from "../../../src/utils/generateTrackingId"
 
 type GenerateTransactionsParams = {
   multiAttemptGroups?: number;
-  startYear?: number;
+  startDate?: string;
+  numberOfRecords: number;
 };
 
 type TransactionRow = {
@@ -28,11 +29,9 @@ type TransactionRow = {
   last_updated_at: string;
 };
 
-const getDateRange = (startYear?: number) => {
-  const currentYear = dayjs().year();
-
+const getDateRange = (startDate?: string) => {
   return {
-    startDate: dayjs(`${startYear ?? currentYear}-01-01`).startOf("day"),
+    startDate: dayjs(startDate).startOf("day"),
     endDate: dayjs().endOf("day"),
   };
 };
@@ -45,9 +44,10 @@ const createRandomDateForDay = (day: dayjs.Dayjs): string =>
 
 export const generateTransactions = async ({
   multiAttemptGroups = 0,
-  startYear,
+  startDate,
+  numberOfRecords,
 }: GenerateTransactionsParams): Promise<TransactionRow[]> => {
-  const { startDate, endDate } = getDateRange(startYear);
+  const { startDate: start, endDate } = getDateRange(startDate);
 
   const feesList = Object.keys(staticFees);
   const clientNames = ["payment-portal", "efile-portal", "clerk-app"];
@@ -115,9 +115,14 @@ export const generateTransactions = async ({
       }
     }
 
-    const lastUpdatedAt = dayjs(createdAt)
-      .add(faker.number.int({ min: 0, max: 5 }), "day")
-      .add(faker.number.int({ min: 0, max: 3600 }), "second")
+    const lastUpdatedAt = start
+      .add(
+        faker.number.int({
+          min: 0,
+          max: endDate.diff(start, "second"),
+        }),
+        "second",
+      )
       .toISOString();
 
     const transactionAmount = activeFee.isVariable
@@ -127,10 +132,6 @@ export const generateTransactions = async ({
           fractionDigits: 2,
         })
       : activeFee.amount;
-
-    if (transactionAmount === null || transactionAmount === undefined) {
-      throw new Error(`Fixed fee '${fee}' is missing an amount`);
-    }
 
     const maybeMetadata = {
       accountHolder: faker.person.fullName(),
@@ -151,6 +152,12 @@ export const generateTransactions = async ({
       ? dayjs(lastUpdatedAt).format("YYYY-MM-DD")
       : null;
 
+    if (transactionAmount === null || transactionAmount === undefined) {
+      throw new Error(`Fixed fee '${fee}' is missing an amount`);
+    }
+
+    const amount: number = transactionAmount;
+
     return {
       agency_tracking_id: generateAgencyTrackingId(),
       paygov_tracking_id: faker.datatype.boolean()
@@ -166,7 +173,7 @@ export const generateTransactions = async ({
       payment_status,
       transaction_status: getTransactionStatus(payment_status),
       payment_method: faker.helpers.arrayElement(paymentMethods),
-      transaction_amount: transactionAmount,
+      transaction_amount: amount,
       paygov_token: faker.datatype.boolean()
         ? faker.string.uuid().replace(/-/g, "")
         : null,
@@ -193,10 +200,10 @@ export const generateTransactions = async ({
     const clientName = faker.helpers.arrayElement(clientNames);
     const agencyId = faker.helpers.arrayElement(agencyIds);
 
-    const randomDay = startDate.add(
+    const randomDay = start.add(
       faker.number.int({
         min: 0,
-        max: endDate.diff(startDate, "day"),
+        max: endDate.diff(start, "day"),
       }),
       "day",
     );
@@ -222,13 +229,25 @@ export const generateTransactions = async ({
     });
   };
 
+  // Generate a fixed total number of transactions and distribute them
+  // as evenly as possible across the date range. Any remainder is
+  // allocated one-by-one to the earliest days. Multi-attempt rows are
+  // reserved separately and included in the total.
   const rows: TransactionRow[] = [];
 
-  for (let day = startDate; day.isBefore(endDate); day = day.add(1, "day")) {
-    const transactionCount = faker.number.int({
-      min: 0,
-      max: 10,
-    });
+  const days = endDate.diff(start, "day") + 1;
+  const targetRows = Math.max(0, numberOfRecords - multiAttemptGroups * 2);
+
+  const baseTransactionsPerDay = Math.floor(targetRows / days);
+  const extraTransactions = targetRows % days;
+
+  let dayIndex = 0;
+
+  for (let day = start; day.isBefore(endDate); day = day.add(1, "day")) {
+    const transactionCount =
+      baseTransactionsPerDay + (dayIndex < extraTransactions ? 1 : 0);
+
+    dayIndex++;
 
     for (let i = 0; i < transactionCount; i++) {
       const paymentStatus = faker.helpers.weightedArrayElement([
