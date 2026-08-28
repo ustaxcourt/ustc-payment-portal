@@ -4,6 +4,7 @@ import {
   TransactionLogQuerySchema,
   TransactionLogResponseSchema,
 } from "./TransactionLog.schema";
+import { mapCourtPeriods } from "@utils/courtDayBounds";
 
 const parse = (query: Record<string, string>) =>
   TransactionLogQuerySchema.safeParse(query);
@@ -229,13 +230,7 @@ describe("TransactionLogResponseSchema", () => {
   it("parses with a total for each of the five periods", () => {
     const result = TransactionLogResponseSchema.safeParse({
       ...response,
-      totals: {
-        day: period,
-        week: period,
-        month: period,
-        quarter: period,
-        fiscalYear: period,
-      },
+      totals: mapCourtPeriods(() => period),
     });
 
     expect(result.success).toBe(true);
@@ -258,16 +253,44 @@ describe("TransactionLogResponseSchema", () => {
     const result = TransactionLogResponseSchema.safeParse({
       ...response,
       totals: {
+        ...mapCourtPeriods(() => period),
         day: { ...period, total: -1 },
-        week: period,
-        month: period,
-        quarter: period,
-        fiscalYear: period,
       },
     });
 
     expect(result.success).toBe(true);
     expect(result.data?.totals?.day.total).toBe(-1);
+  });
+
+  it("parses YoY trends with one comparison per period", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      yoyTrends: mapCourtPeriods(() => ({
+        current: 100,
+        previous: 80,
+        difference: 20,
+        percentChange: 25,
+      })),
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.yoyTrends?.fiscalYear.percentChange).toBe(25);
+  });
+
+  it("rejects YoY trends missing a period", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      yoyTrends: {
+        day: {
+          current: 100,
+          previous: 80,
+          difference: 20,
+          percentChange: 25,
+        },
+      },
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 

@@ -6,7 +6,12 @@ import type {
   TransactionLogSortField,
 } from "@schemas/TransactionLog.schema";
 import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/TransactionStatus.schema";
-import type { Bounds, CourtPeriodName } from "@utils/courtDayBounds";
+import {
+  COURT_PERIOD_NAMES,
+  mapCourtPeriods,
+  type Bounds,
+  type CourtPeriodRecord,
+} from "@utils/courtDayBounds";
 import type { Knex } from "knex";
 import { Model } from "objection";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
@@ -19,6 +24,13 @@ export type { PaymentStatus };
 
 export type AggregatedPaymentStatus = Record<PaymentStatus, number> & {
   total: number;
+};
+
+type TransactionYoYTrend = {
+  current: number;
+  previous: number;
+  difference: number;
+  percentChange: number;
 };
 
 export type TransactionLogFilter = {
@@ -177,10 +189,10 @@ export default class TransactionModel extends Model {
    *  period in the table and in the totals. One filtered SUM per period keeps it
    *  to a single round trip. */
   static async totalsToDate(
-    periods: Record<CourtPeriodName, Bounds>,
-  ): Promise<Record<CourtPeriodName, number>> {
+    periods: CourtPeriodRecord<Bounds>,
+  ): Promise<CourtPeriodRecord<number>> {
     const knex = await getKnex();
-    const names = Object.keys(periods) as CourtPeriodName[];
+    const names = COURT_PERIOD_NAMES;
 
     const earliestStart = new Date(
       Math.min(...names.map((name) => periods[name].start.getTime())),
@@ -209,23 +221,47 @@ export default class TransactionModel extends Model {
 
     // decimal(12,2) arrives as a string from pg, as it does on the model itself.
     const summed = row as unknown as Record<string, unknown> | undefined;
-    return names.reduce(
-      (totals, name) => {
-        // COALESCE guarantees a value for every period, so a missing one means
-        // the alias did not survive the snake_case round trip. Fail loudly
-        // rather than report $0 revenue.
-        const value = summed?.[name];
-        const total = Number(value);
-        if (value === null || Number.isNaN(total)) {
-          throw new Error(
-            `totalsToDate returned no usable total for the "${name}" period`,
-          );
-        }
-        totals[name] = total;
-        return totals;
-      },
-      {} as Record<CourtPeriodName, number>,
-    );
+    return mapCourtPeriods((name) => {
+      // COALESCE guarantees a value for every period, so a missing one means
+      // the alias did not survive the snake_case round trip. Fail loudly
+      // rather than report $0 revenue.
+      const value = summed?.[name];
+      const total = Number(value);
+      if (value === null || Number.isNaN(total)) {
+        throw new Error(
+          `totalsToDate returned no usable total for the "${name}" period`,
+        );
+      }
+      return total;
+    });
+  }
+
+  static async yoyTrends(
+    currentPeriods: CourtPeriodRecord<Bounds>,
+    previousPeriods: CourtPeriodRecord<Bounds>,
+  ): Promise<CourtPeriodRecord<TransactionYoYTrend>> {
+    const currentTotals = await TransactionModel.totalsToDate(currentPeriods);
+    const previousTotals = await TransactionModel.totalsToDate(previousPeriods);
+
+    return mapCourtPeriods((name) => {
+      const current = currentTotals[name];
+      const previous = previousTotals[name];
+      const difference = current - previous;
+
+      const percentChange =
+        previous === 0
+          ? current > 0
+            ? 100
+            : 0
+          : Number(((difference / previous) * 100).toFixed(2));
+
+      return {
+        current,
+        previous,
+        difference,
+        percentChange,
+      };
+    });
   }
 
   private static tallyByStatus(

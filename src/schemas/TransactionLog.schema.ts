@@ -1,5 +1,8 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
-import { courtDayBoundsForDateString } from "@utils/courtDayBounds";
+import {
+  courtDayBoundsForDateString,
+  mapCourtPeriods,
+} from "@utils/courtDayBounds";
 import { z } from "zod";
 import { PaymentStatusSchema } from "./PaymentStatus.schema";
 import { DashboardTransactionSchema } from "./TransactionDashboard.schema";
@@ -272,14 +275,12 @@ export const TransactionTotalPeriodSchema = z
   })
   .openapi("TransactionTotalPeriod");
 
+const buildCourtPeriodSchemaShape = <Schema extends z.ZodTypeAny>(
+  schema: Schema,
+) => mapCourtPeriods(() => schema);
+
 export const TransactionTotalsSchema = z
-  .object({
-    day: TransactionTotalPeriodSchema,
-    week: TransactionTotalPeriodSchema,
-    month: TransactionTotalPeriodSchema,
-    quarter: TransactionTotalPeriodSchema,
-    fiscalYear: TransactionTotalPeriodSchema,
-  })
+  .object(buildCourtPeriodSchemaShape(TransactionTotalPeriodSchema))
   .openapi("TransactionTotals", {
     description:
       "Successful payments only, in fixed periods to date. Unaffected by the " +
@@ -287,6 +288,29 @@ export const TransactionTotalsSchema = z
       "filters. Periods open at Court-local midnight; the week opens on " +
       "Sunday, and the quarter and year are fiscal — the year opens on Oct 1. " +
       "Omitted on export requests for pages after the first.",
+  });
+
+const YoYComparisonSchema = z.object({
+  current: z.number().openapi({
+    description: "Amount collected during the current timeframe",
+  }),
+  previous: z.number().openapi({
+    description:
+      "Amount collected during the corresponding timeframe one year earlier",
+  }),
+  difference: z.number().openapi({
+    description: "Current amount minus previous amount",
+  }),
+  percentChange: z.number().openapi({
+    description: "Percentage change from the previous period",
+  }),
+});
+
+export const TransactionYoYTrendsSchema = z
+  .object(buildCourtPeriodSchemaShape(YoYComparisonSchema))
+  .openapi("TransactionYoYTrends", {
+    description:
+      "Year-over-year comparison of successful payment totals for each dashboard period.",
   });
 
 export const TransactionLogResponseSchema = z
@@ -312,12 +336,18 @@ export const TransactionLogResponseSchema = z
     // Echoed back like the timeframe, so the caller can confirm what was applied.
     sort: TransactionLogSortFieldSchema,
     order: SortOrderSchema,
-    total: z.number().int().nonnegative().optional().openapi({
-      description:
-        "Rows matching the timeframe and status filter, across all pages. " +
-        "Omitted on export requests for pages after the first.",
-    }),
+    total: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .openapi({
+        description:
+          "Rows matching the timeframe and status filter, across all pages. " +
+          "Omitted on export requests for pages after the first.",
+      }),
     totals: TransactionTotalsSchema.optional(),
+    yoyTrends: TransactionYoYTrendsSchema.optional(),
   })
   .refine(
     (response) =>
@@ -334,3 +364,4 @@ export type TransactionLogResponse = z.infer<
 >;
 
 export type TransactionTotals = z.infer<typeof TransactionTotalsSchema>;
+export type TransactionYoYTrends = z.infer<typeof TransactionYoYTrendsSchema>;

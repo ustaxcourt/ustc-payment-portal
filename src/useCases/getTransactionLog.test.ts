@@ -6,6 +6,7 @@ import {
   TRANSACTION_LOG_DEFAULT_ORDER,
   TRANSACTION_LOG_DEFAULT_SORT,
 } from "@schemas/TransactionLog.schema";
+import { previousCourtPeriodBounds } from "@utils/courtDayBounds";
 
 const createdAt = new Date("2026-08-03T12:00:00.000Z");
 const lastUpdatedAt = new Date("2026-08-03T13:00:00.000Z");
@@ -47,10 +48,39 @@ const totals = {
   fiscalYear: 57600,
 };
 
+const yoyTrends = {
+  day: { current: 120, previous: 100, difference: 20, percentChange: 20 },
+  week: {
+    current: 1200,
+    previous: 1000,
+    difference: 200,
+    percentChange: 20,
+  },
+  month: {
+    current: 4800,
+    previous: 4000,
+    difference: 800,
+    percentChange: 20,
+  },
+  quarter: {
+    current: 14400,
+    previous: 12000,
+    difference: 2400,
+    percentChange: 20,
+  },
+  fiscalYear: {
+    current: 57600,
+    previous: 48000,
+    difference: 9600,
+    percentChange: 20,
+  },
+};
+
 describe("getTransactionLog", () => {
   let queryLog: jest.SpyInstance;
   let countsInRange: jest.SpyInstance;
   let totalsToDate: jest.SpyInstance;
+  let queryYoYTrends: jest.SpyInstance;
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date("2026-08-03T15:00:00.000Z"));
@@ -63,6 +93,9 @@ describe("getTransactionLog", () => {
     totalsToDate = jest
       .spyOn(TransactionModel, "totalsToDate")
       .mockResolvedValue(totals);
+    queryYoYTrends = jest
+      .spyOn(TransactionModel, "yoyTrends")
+      .mockResolvedValue(yoyTrends);
   });
 
   afterEach(() => {
@@ -92,7 +125,10 @@ describe("getTransactionLog", () => {
   });
 
   it("counts the whole timeframe even when a status filter is applied", async () => {
-    const result = await getTransactionLog(appContext, query({ status: "failed" }));
+    const result = await getTransactionLog(
+      appContext,
+      query({ status: "failed" }),
+    );
 
     expect(queryLog.mock.calls[0][0]).toMatchObject({ status: "failed" });
     // countsInRange takes only the bounds, so the tallies cannot be narrowed.
@@ -207,7 +243,9 @@ describe("getTransactionLog", () => {
       );
 
       expect(totalsToDate).not.toHaveBeenCalled();
+      expect(queryYoYTrends).not.toHaveBeenCalled();
       expect(result.totals).toBeUndefined();
+      expect(result.yoyTrends).toBeUndefined();
     });
 
     it("returns the period totals on the first page", async () => {
@@ -282,6 +320,22 @@ describe("getTransactionLog", () => {
         new Date("2026-08-03T04:00:00.000Z"),
       );
       expect(result.totals?.day.total).toBe(120);
+    });
+
+    it("returns YoY trends using the prior year's matching periods", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true }),
+      );
+
+      expect(queryYoYTrends).toHaveBeenCalledTimes(1);
+      expect(queryYoYTrends.mock.calls[0][0].fiscalYear.start).toEqual(
+        new Date("2025-10-01T04:00:00.000Z"),
+      );
+      expect(queryYoYTrends.mock.calls[0][1]).toEqual(
+        previousCourtPeriodBounds(new Date("2026-08-03T15:00:00.000Z")),
+      );
+      expect(result.yoyTrends?.fiscalYear.percentChange).toBe(20);
     });
   });
 });

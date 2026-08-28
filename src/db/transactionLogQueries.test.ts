@@ -1,5 +1,6 @@
 import TransactionModel from "./TransactionModel";
 import { getKnex } from "./knex";
+import { previousCourtPeriodBounds } from "@utils/courtDayBounds";
 
 jest.mock("./knex", () => ({ getKnex: jest.fn() }));
 
@@ -377,5 +378,100 @@ describe("TransactionModel.totalsToDate", () => {
         "no usable total",
       );
     });
+  });
+});
+
+describe("TransactionModel.yoyTrends", () => {
+  const NOW = new Date("2026-08-17T15:00:00.000Z");
+  const CURRENT_PERIODS = {
+    day: { start: new Date("2026-08-17T04:00:00.000Z"), end: NOW },
+    week: { start: new Date("2026-08-16T04:00:00.000Z"), end: NOW },
+    month: { start: new Date("2026-08-01T04:00:00.000Z"), end: NOW },
+    quarter: { start: new Date("2026-07-01T04:00:00.000Z"), end: NOW },
+    fiscalYear: { start: new Date("2025-10-01T04:00:00.000Z"), end: NOW },
+  };
+
+  it("returns one comparison object for every Court period", async () => {
+    const totalsToDate = jest
+      .spyOn(TransactionModel, "totalsToDate")
+      .mockResolvedValueOnce({
+        day: 120,
+        week: 1200,
+        month: 4800,
+        quarter: 14400,
+        fiscalYear: 57600,
+      })
+      .mockResolvedValueOnce({
+        day: 100,
+        week: 1000,
+        month: 4000,
+        quarter: 12000,
+        fiscalYear: 48000,
+      });
+
+    const result = await TransactionModel.yoyTrends(
+      CURRENT_PERIODS,
+      previousCourtPeriodBounds(NOW),
+    );
+
+    expect(totalsToDate).toHaveBeenNthCalledWith(1, CURRENT_PERIODS);
+    expect(totalsToDate).toHaveBeenNthCalledWith(
+      2,
+      previousCourtPeriodBounds(NOW),
+    );
+    expect(result).toEqual({
+      day: { current: 120, previous: 100, difference: 20, percentChange: 20 },
+      week: {
+        current: 1200,
+        previous: 1000,
+        difference: 200,
+        percentChange: 20,
+      },
+      month: {
+        current: 4800,
+        previous: 4000,
+        difference: 800,
+        percentChange: 20,
+      },
+      quarter: {
+        current: 14400,
+        previous: 12000,
+        difference: 2400,
+        percentChange: 20,
+      },
+      fiscalYear: {
+        current: 57600,
+        previous: 48000,
+        difference: 9600,
+        percentChange: 20,
+      },
+    });
+  });
+
+  it("returns 100 when the previous period was zero and the current period is positive", async () => {
+    jest
+      .spyOn(TransactionModel, "totalsToDate")
+      .mockResolvedValueOnce({
+        day: 10,
+        week: 0,
+        month: 0,
+        quarter: 0,
+        fiscalYear: 0,
+      })
+      .mockResolvedValueOnce({
+        day: 0,
+        week: 0,
+        month: 0,
+        quarter: 0,
+        fiscalYear: 0,
+      });
+
+    const result = await TransactionModel.yoyTrends(
+      CURRENT_PERIODS,
+      previousCourtPeriodBounds(NOW),
+    );
+
+    expect(result.day.percentChange).toBe(100);
+    expect(result.week.percentChange).toBe(0);
   });
 });

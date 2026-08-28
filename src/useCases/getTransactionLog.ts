@@ -9,8 +9,12 @@ import type {
   TransactionLogQuery,
   TransactionLogResponse,
 } from "@appTypes/TransactionLog";
-import type { CourtPeriodName } from "@utils/courtDayBounds";
-import { courtDayBounds, courtPeriodBounds } from "@utils/courtDayBounds";
+import {
+  courtDayBounds,
+  courtPeriodBounds,
+  mapCourtPeriods,
+  previousCourtPeriodBounds,
+} from "@utils/courtDayBounds";
 import { toApiPaymentMethod } from "@utils/toApiPaymentMethod";
 
 export type GetTransactionLog = (
@@ -38,8 +42,9 @@ export const getTransactionLog: GetTransactionLog = async (
   // request actually asks for them.
   const periods =
     withCounts && query.includeTotals ? courtPeriodBounds(now) : undefined;
+  const previousPeriods = periods ? previousCourtPeriodBounds(now) : undefined;
 
-  const [page, counts, periodTotals] = await Promise.all([
+  const [page, counts, periodTotals, yoyTrends] = await Promise.all([
     TransactionModel.queryLog({
       from,
       to,
@@ -55,20 +60,23 @@ export const getTransactionLog: GetTransactionLog = async (
     // close its periods at a different `now`, so an export would carry a
     // slightly different set of figures on every page.
     periods ? TransactionModel.totalsToDate(periods) : undefined,
+    periods && previousPeriods
+      ? TransactionModel.yoyTrends(periods, previousPeriods)
+      : undefined,
   ]);
 
   // One spread, so the pair can only ever be omitted together.
   const countsAndTotal =
     counts && page.total !== undefined
       ? {
-        counts: {
-          all: counts.total,
-          success: counts.success,
-          failed: counts.failed,
-          pending: counts.pending,
-        },
-        total: page.total,
-      }
+          counts: {
+            all: counts.total,
+            success: counts.success,
+            failed: counts.failed,
+            pending: counts.pending,
+          },
+          total: page.total,
+        }
       : {};
 
   // Each period echoes the instants actually summed; the dashboard displays
@@ -76,16 +84,14 @@ export const getTransactionLog: GetTransactionLog = async (
   const totalsByPeriod =
     periods &&
     periodTotals &&
-    Object.fromEntries(
-      Object.entries(periods).map(([name, bounds]) => [
-        name,
-        {
-          from: bounds.start.toISOString(),
-          to: bounds.end.toISOString(),
-          total: periodTotals[name as CourtPeriodName],
-        },
-      ]),
-    );
+    mapCourtPeriods((name) => {
+      const bounds = periods[name];
+      return {
+        from: bounds.start.toISOString(),
+        to: bounds.end.toISOString(),
+        total: periodTotals[name],
+      };
+    });
 
   return TransactionLogResponseSchema.parse({
     data: page.rows.map((row) => ({
@@ -93,6 +99,8 @@ export const getTransactionLog: GetTransactionLog = async (
       paymentMethod: toApiPaymentMethod(row.paymentMethod),
     })),
     ...countsAndTotal,
+    ...(totalsByPeriod && { totals: totalsByPeriod }),
+    ...(yoyTrends && { yoyTrends }),
     from: from.toISOString(),
     to: to.toISOString(),
     page: query.page,
@@ -100,7 +108,5 @@ export const getTransactionLog: GetTransactionLog = async (
     // The resolved pair, so the response echoes what was actually applied.
     sort,
     order,
-    // Spread, so the key is absent rather than present-and-undefined.
-    ...(totalsByPeriod && { totals: totalsByPeriod }),
   });
 };
