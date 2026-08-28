@@ -228,6 +228,41 @@ export default class TransactionModel extends Model {
     );
   }
 
+  /** Successful payments per fee in a timeframe. Bounds on `lastUpdatedAt` and
+   *  takes no status filter, matching queryLog/countsInRange. */
+  static async feeBreakdownInRange(
+    from: Date,
+    to: Date,
+  ): Promise<Array<{ fee: string; qty: number; subtotal: number }>> {
+    await getKnex();
+    const rows = await TransactionModel.query()
+      .select("fee")
+      .count("* as qty")
+      .sum("transactionAmount as subtotal")
+      .where("paymentStatus", "success")
+      .andWhere("lastUpdatedAt", ">=", from)
+      .andWhere("lastUpdatedAt", "<", to)
+      .groupBy("fee");
+
+    // count and decimal(12,2) arrive as strings from pg; an unusable value
+    // fails loudly rather than reporting a silent $0 for a fee with revenue.
+    return (rows as unknown as Array<Record<string, unknown>>).map((row) => {
+      const fee = String(row.fee);
+      const qty = Number(row.qty);
+      const subtotal = Number(row.subtotal);
+      if (
+        row.subtotal === null ||
+        Number.isNaN(qty) ||
+        Number.isNaN(subtotal)
+      ) {
+        throw new Error(
+          `feeBreakdownInRange returned no usable tally for the "${fee}" fee`,
+        );
+      }
+      return { fee, qty, subtotal };
+    });
+  }
+
   private static tallyByStatus(
     rows: Array<{ paymentStatus?: string; count?: unknown }>,
   ): AggregatedPaymentStatus {

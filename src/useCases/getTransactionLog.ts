@@ -1,3 +1,4 @@
+import { getFeeNamesByKey } from "../config/fees";
 import TransactionModel from "../db/TransactionModel";
 import {
   TRANSACTION_LOG_DEFAULT_ORDER,
@@ -6,6 +7,7 @@ import {
 } from "@schemas/TransactionLog.schema";
 import type { AppContext } from "@appTypes/AppContext";
 import type {
+  TransactionFeeBreakdown,
   TransactionLogQuery,
   TransactionLogResponse,
 } from "@appTypes/TransactionLog";
@@ -39,7 +41,7 @@ export const getTransactionLog: GetTransactionLog = async (
   const periods =
     withCounts && query.includeTotals ? courtPeriodBounds(now) : undefined;
 
-  const [page, counts, periodTotals] = await Promise.all([
+  const [page, counts, periodTotals, feeTallies] = await Promise.all([
     TransactionModel.queryLog({
       from,
       to,
@@ -55,6 +57,10 @@ export const getTransactionLog: GetTransactionLog = async (
     // close its periods at a different `now`, so an export would carry a
     // slightly different set of figures on every page.
     periods ? TransactionModel.totalsToDate(periods) : undefined,
+    // Same gate as counts, for the same reason.
+    withCounts && query.includeFeeBreakdown
+      ? TransactionModel.feeBreakdownInRange(from, to)
+      : undefined,
   ]);
 
   // One spread, so the pair can only ever be omitted together.
@@ -87,6 +93,8 @@ export const getTransactionLog: GetTransactionLog = async (
       ]),
     );
 
+  const feeBreakdown = feeTallies && buildFeeBreakdown(feeTallies);
+
   return TransactionLogResponseSchema.parse({
     data: page.rows.map((row) => ({
       ...row,
@@ -102,5 +110,31 @@ export const getTransactionLog: GetTransactionLog = async (
     order,
     // Spread, so the key is absent rather than present-and-undefined.
     ...(totalsByPeriod && { totals: totalsByPeriod }),
+    ...(feeBreakdown && { feeBreakdown }),
   });
+};
+
+/** Zero-fills every configured fee, keeps revenue under unconfigured keys,
+ *  and orders by subtotal descending. */
+const buildFeeBreakdown = (
+  tallies: Array<{ fee: string; qty: number; subtotal: number }>,
+): TransactionFeeBreakdown => {
+  const feeNames = getFeeNamesByKey();
+  const talliesByFee = new Map(tallies.map((tally) => [tally.fee, tally]));
+
+  const rows = [
+    ...Object.keys(feeNames),
+    ...tallies
+      .map((tally) => tally.fee)
+      .filter((fee) => !(fee in feeNames)),
+  ].map((fee) => ({
+    fee,
+    feeName: feeNames[fee] ?? fee,
+    qty: talliesByFee.get(fee)?.qty ?? 0,
+    subtotal: talliesByFee.get(fee)?.subtotal ?? 0,
+  }));
+
+  return rows.sort(
+    (a, b) => b.subtotal - a.subtotal || a.feeName.localeCompare(b.feeName),
+  );
 };
