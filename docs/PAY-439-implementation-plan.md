@@ -33,6 +33,7 @@ GET /validate-client   (SigV4-signed, authorization = AWS_IAM)
                                                 secret unparseable?           -> 500
   Use case (validateClient)
     -> allowedFeeKeys contains "*"                                            -> 403 "Forbidden - authorized Fees was misconfigured."
+    -> allowedFeeKeys is empty                                                -> 403 (same message)
     -> every key resolves via getActiveFee()                              no  -> 403 / 500 (see error table)
     -> 200 { clientName, allowedFeeKeys }
 ```
@@ -296,6 +297,8 @@ Replace the `validateClient` body. Order matters:
    propagate (see the error table).
 3. **Return** `{ clientName, allowedFeeKeys }`.
 
+   (An empty `allowedFeeKeys` is rejected between steps 1 and 2 — see Open Questions #5.)
+
 `getActiveFee` is called with no date argument, i.e. resolved as of now. Correct here — the
 question is "is this config valid today", not pinning a historical transaction.
 
@@ -315,7 +318,8 @@ request"`. That is the ticket's "default server error message", so propagating
 | 403 | `userArn` missing / not an assumed-role ARN | `extractCallerArn` | `Missing IAM principal` / `Invalid IAM principal format` |
 | 403 | Role ARN not in `client-permissions` | `getClientByRoleArn` | `Client not registered` |
 | 403 | `allowedFeeKeys` contains `*` | use case | `Forbidden - authorized Fees was misconfigured.` |
-| 403 | A key is unknown or has no activated version | use case, catching `FeeNotFoundError` | proposed: same misconfigured message |
+| 403 | `allowedFeeKeys` is empty | use case | `Forbidden - authorized Fees was misconfigured.` |
+| 403 | A key is unknown or has no activated version | use case, catching `FeeNotFoundError` | `Forbidden - authorized Fees was misconfigured.` |
 | 500 | `client-permissions` secret unparseable | `getClientPermissions` → `ServerError` | `Failed to fetch client permissions` |
 | 500 | A fee entry is malformed | `FeeConfigurationError`, uncaught | `An unexpected error occurred while processing the request` |
 
@@ -377,7 +381,10 @@ this endpoint.
 
 ---
 
-## Open questions for the developer
+## Open questions for the developer — RESOLVED 2026-08-30
+
+All five were answered before Phase 3 was written; the implementation reflects the answers
+below. Kept here rather than deleted so the reasoning behind each behavior stays on the record.
 
 1. **Path name** — see Phase 0. Blocks Phase 2.
 2. **Unknown fee key → which status?** The AC specifies 403 for the `*` wildcard but is silent
@@ -399,6 +406,21 @@ this endpoint.
    can pay for nothing. 200 with an empty array, or 403? Plan currently assumes 200.
 
 Questions 2–5 all land in Phase 3 and do not block Phases 0–2.
+
+### Answers
+
+1. **Path name** — `/validate-client`, as proposed. Settled and now deployed through the
+   OpenAPI spec, the API Gateway resource, and the integration tests.
+2. **Unknown fee key** — 403 with the same `Forbidden - authorized Fees was misconfigured.`
+   message as the wildcard. The status code is the diagnostic; the layer it came from is what
+   distinguishes the cases, not the wording.
+3. **Unregistered-ARN message** — accepted as-is. The caller sees `Client not registered`,
+   which reusing `lambdaHandler` gives for free. No code change.
+4. **Malformed-secret message** — accepted as-is. The caller sees `Failed to fetch client
+   permissions` with a 500. No code change.
+5. **Empty `allowedFeeKeys`** — **403, not the 200 this plan assumed.** A client that can pay
+   for nothing is not correctly registered, and catching that before go-live is what the
+   endpoint is for. Same misconfigured message as the other two fee failures.
 
 ---
 

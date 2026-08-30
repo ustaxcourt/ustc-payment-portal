@@ -567,8 +567,9 @@ registry.registerPath({
     "Confirms that a newly registered client's AWS account, IAM role ARN, and registered fees " +
     "were entered correctly, without creating a Pay.gov session or writing any transaction state. " +
     "Where the call fails is the diagnostic: a 403 from API Gateway means the account ID or the " +
-    "signing setup is wrong, while a 403 from the service means the resolved role ARN is not " +
-    "present in the client-permissions secret.",
+    "signing setup is wrong; a 403 reading 'Client not registered' means the resolved role ARN is " +
+    "not present in the client-permissions secret; and a 403 reading 'Forbidden - authorized Fees " +
+    "was misconfigured.' means the role resolved but the fees registered to it are not usable.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   responses: {
@@ -583,8 +584,9 @@ registry.registerPath({
     },
     403: {
       description:
-        "Forbidden - invalid SigV4 signature, or the resolved IAM role ARN is not registered " +
-        "in client-permissions.",
+        "Forbidden - invalid SigV4 signature; or the resolved IAM role ARN is not registered in " +
+        "client-permissions; or the client's registered fee keys are misconfigured (the `*` " +
+        "wildcard, an empty set, or a key that does not resolve to an active fee).",
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,
