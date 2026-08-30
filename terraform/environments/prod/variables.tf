@@ -14,6 +14,10 @@ variable "getDetails_s3_key" {
   type = string
 }
 
+variable "validateClient_s3_key" {
+  type = string
+}
+
 variable "testCert_s3_key" {
   type = string
 }
@@ -30,6 +34,11 @@ variable "processPayment_source_code_hash" {
 }
 
 variable "getDetails_source_code_hash" {
+  type    = string
+  default = ""
+}
+
+variable "validateClient_source_code_hash" {
   type    = string
   default = ""
 }

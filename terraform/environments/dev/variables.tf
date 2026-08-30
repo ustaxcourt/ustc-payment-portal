@@ -28,6 +28,12 @@ variable "getDetails_s3_key" {
   default     = ""
 }
 
+variable "validateClient_s3_key" {
+  description = "S3 key for validateClient Lambda artifact"
+  type        = string
+  default     = ""
+}
+
 variable "testCert_s3_key" {
   description = "S3 key for testCert Lambda artifact"
   type        = string
@@ -100,6 +106,12 @@ variable "processPayment_source_code_hash" {
 
 variable "getDetails_source_code_hash" {
   description = "Base64-encoded SHA256 hash for getDetails artifact"
+  type        = string
+  default     = ""
+}
+
+variable "validateClient_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for validateClient artifact"
   type        = string
   default     = ""
 }

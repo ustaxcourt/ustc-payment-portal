@@ -59,6 +59,16 @@ locals {
     DASHBOARD_ALLOWED_ORIGIN = local.dashboard_allowed_origin
   }
 
+  # Client-validation Lambda: validateClient
+  # Reads the client-permissions secret and nothing else. Deliberately not
+  # lambda_env_payment — this endpoint has no business holding the Pay.gov cert
+  # passphrase or RDS credentials.
+  lambda_env_validate_client = {
+    NODE_ENV                     = local.node_env
+    APP_ENV                      = local.app_env
+    CLIENT_PERMISSIONS_SECRET_ID = module.secrets.client_permissions_secret_id
+  }
+
   # Migration Lambda: migrationRunner
   # Needs RDS only — no payment secrets, no CORS origin.
   # RDS_MASTER_SECRET_ARN uses the admin credentials — required for CREATE/DROP DATABASE
@@ -81,6 +91,7 @@ locals {
     initPayment                 = local.lambda_env_payment
     processPayment              = local.lambda_env_payment
     getDetails                  = local.lambda_env_payment
+    validateClient              = local.lambda_env_validate_client
     testCert                    = local.lambda_env_payment
     healthCheck                 = local.lambda_env_payment
     getAllTransactions          = local.lambda_env_dashboard
@@ -97,6 +108,7 @@ locals {
     initPayment                 = 512
     processPayment              = 256
     getDetails                  = 512
+    validateClient              = 256
     testCert                    = 768
     healthCheck                 = 768
     getAllTransactions          = 256
