@@ -69,8 +69,6 @@ const TOKEN_NO_LONGER_VALID_MESSAGE = "This token is no longer valid.";
 const TOKEN_EXPIRED_MESSAGE =
   "Transaction token has expired. Retry POST /init with the same transactionReferenceId to obtain a new token.";
 
-const FEE_NAMES_BY_KEY = getFeeNamesByKey();
-
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
@@ -288,7 +286,7 @@ export default class TransactionModel extends Model {
   }
 
   private static attachFeeName(row: TransactionModel): TransactionModel {
-    const feeName = FEE_NAMES_BY_KEY[row.fee];
+    const feeName = getFeeNamesByKey()[row.fee];
     if (!feeName) {
       throw new Error(`Unknown fee key: ${row.fee}`);
     }
