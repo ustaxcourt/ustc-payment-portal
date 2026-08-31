@@ -28,6 +28,8 @@ const failedRow = {
   lastUpdatedAt,
 };
 
+const failedQueryRow = failedRow as unknown as TransactionModel;
+
 const counts = { success: 40, failed: 4, pending: 3, total: 47 };
 
 // Mirrors what the schema hands the use case, defaults already applied.
@@ -94,7 +96,7 @@ describe("getTransactionLog", () => {
     jest.useFakeTimers().setSystemTime(new Date("2026-08-03T15:00:00.000Z"));
     queryLog = jest
       .spyOn(TransactionModel, "queryLog")
-      .mockResolvedValue({ rows: [failedRow as any], total: 4 });
+      .mockResolvedValue({ rows: [failedQueryRow], total: 4 });
     countsInRange = jest
       .spyOn(TransactionModel, "countsInRange")
       .mockResolvedValue(counts);
@@ -266,7 +268,7 @@ describe("getTransactionLog", () => {
     });
 
     it("skips both COUNT queries on pages after the first", async () => {
-      queryLog.mockResolvedValue({ rows: [failedRow as any] });
+      queryLog.mockResolvedValue({ rows: [failedQueryRow] });
 
       const result = await getTransactionLog(
         appContext,
@@ -293,7 +295,7 @@ describe("getTransactionLog", () => {
     // Each page would close its periods at a different `now`, so an export
     // would carry a different set of figures on every page.
     it("skips the period totals on pages after the first", async () => {
-      queryLog.mockResolvedValue({ rows: [failedRow as any] });
+      queryLog.mockResolvedValue({ rows: [failedQueryRow] });
 
       const result = await getTransactionLog(
         appContext,

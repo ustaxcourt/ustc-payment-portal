@@ -9,19 +9,16 @@ import type {
   TransactionLogQuery,
   TransactionLogResponse,
 } from "@appTypes/TransactionLog";
-<<<<<<< HEAD
 import {
   courtDayBounds,
   courtPeriodBounds,
   mapCourtPeriods,
   previousCourtPeriodBounds,
 } from "@utils/courtDayBounds";
-import { toApiPaymentMethod } from "@utils/toApiPaymentMethod";
-=======
-import type { CourtPeriodName } from "@utils/courtDayBounds";
-import { courtDayBounds, courtPeriodBounds } from "@utils/courtDayBounds";
-import { toApiPaymentMethod, toDbPaymentMethod } from "@utils/toApiPaymentMethod";
->>>>>>> main
+import {
+  toApiPaymentMethod,
+  toDbPaymentMethod,
+} from "@utils/toApiPaymentMethod";
 
 export type GetTransactionLog = (
   appContext: AppContext,

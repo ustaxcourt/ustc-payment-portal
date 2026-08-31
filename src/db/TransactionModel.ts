@@ -18,11 +18,7 @@ import {
 import type { Knex } from "knex";
 import { Model } from "objection";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
-<<<<<<< HEAD
 import { getFeeNamesByKey } from "../config/fees";
-=======
-import { getActiveFee } from "../config/fees";
->>>>>>> main
 import { getKnex } from "./knex";
 import { transactionLogOrderBy } from "./transactionLogSort";
 
@@ -506,11 +502,12 @@ export default class TransactionModel extends Model {
         return undefined;
       }
 
-      const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
-        row.clientName,
-        row.transactionReferenceId,
-        { excludeToken: paygovToken, trx },
-      );
+      const sibling =
+        await TransactionModel.findPendingOrProcessedByReferenceId(
+          row.clientName,
+          row.transactionReferenceId,
+          { excludeToken: paygovToken, trx },
+        );
 
       if (sibling) {
         throw new GoneError(SIBLING_GONE_MESSAGE);
@@ -535,9 +532,12 @@ export default class TransactionModel extends Model {
 
       // Re-touch the row so last_updated_at refreshes (DB trigger) and this request
       // owns the completion attempt.
-      return TransactionModel.query(trx).patchAndFetchById(row.agencyTrackingId, {
-        transactionStatus: "processing",
-      });
+      return TransactionModel.query(trx).patchAndFetchById(
+        row.agencyTrackingId,
+        {
+          transactionStatus: "processing",
+        },
+      );
     });
   }
 

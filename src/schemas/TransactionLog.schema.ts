@@ -161,13 +161,9 @@ export const TransactionLogQuerySchema = z
       .transform((value) => value === "true")
       .openapi({
         description:
-<<<<<<< HEAD
           "Adds `totals` and `yoyTrends` to the response. Fixed periods to " +
-          "date; ignores `from`/`to` and `status`.",
-=======
-          "Adds `totals` to the response. Fixed periods to date; ignores " +
-          "`from`/`to`, `status`, `fee`, `paymentMethod`, and `transactionStatus`.",
->>>>>>> main
+          "date; ignores `from`/`to`, `status`, `fee`, `paymentMethod`, and " +
+          "`transactionStatus`.",
         example: "true",
       }),
   })
@@ -372,15 +368,10 @@ export const TransactionLogResponseSchema = z
       .optional()
       .openapi({
         description:
-<<<<<<< HEAD
-          "Rows matching the timeframe and status filter, across all pages. " +
-          "Omitted on export requests for pages after the first.",
-=======
           "Rows matching the timeframe and all applied filters (`status`, " +
           "`fee`, `paymentMethod`, `transactionStatus`), across all pages — " +
           "unlike `counts` and `totals`, this figure is narrowed by every " +
           "filter. Omitted on export requests for pages after the first.",
->>>>>>> main
       }),
     totals: TransactionTotalsSchema.optional(),
     yoyTrends: TransactionYoYTrendsSchema.optional(),
