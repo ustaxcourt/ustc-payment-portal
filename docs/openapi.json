@@ -1264,8 +1264,11 @@
                 "description": "Current amount minus previous amount"
               },
               "percentChange": {
-                "type": "number",
-                "description": "Percentage change from the previous period"
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Percentage change from the previous period, or null when the previous total is zero"
               }
             },
             "required": [
@@ -1291,8 +1294,11 @@
                 "description": "Current amount minus previous amount"
               },
               "percentChange": {
-                "type": "number",
-                "description": "Percentage change from the previous period"
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Percentage change from the previous period, or null when the previous total is zero"
               }
             },
             "required": [
@@ -1318,8 +1324,11 @@
                 "description": "Current amount minus previous amount"
               },
               "percentChange": {
-                "type": "number",
-                "description": "Percentage change from the previous period"
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Percentage change from the previous period, or null when the previous total is zero"
               }
             },
             "required": [
@@ -1345,8 +1354,11 @@
                 "description": "Current amount minus previous amount"
               },
               "percentChange": {
-                "type": "number",
-                "description": "Percentage change from the previous period"
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Percentage change from the previous period, or null when the previous total is zero"
               }
             },
             "required": [
@@ -1372,8 +1384,11 @@
                 "description": "Current amount minus previous amount"
               },
               "percentChange": {
-                "type": "number",
-                "description": "Percentage change from the previous period"
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Percentage change from the previous period, or null when the previous total is zero"
               }
             },
             "required": [
@@ -1728,7 +1743,7 @@
     "/transaction-log": {
       "get": {
         "summary": "Get the transaction log",
-        "description": "Transaction log for the Case Services & Finance dashboard. Filters on lastUpdatedAt, defaulting to the current Court day in America/New_York, and returns rows alongside aggregate counts. The counts cover the whole timeframe and ignore the status filter, so the tallies stay stable while the caller filters. Ordering follows `sort`/`order`, defaulting to newest lastUpdatedAt first, and is always broken by the primary key so the order is stable across identical requests. `export=true` raises the `pageSize` ceiling to 5000 for file exports that walk every page; on export pages after the first, `counts` and `total` are omitted. `includeTotals=true` adds summed revenue for five fixed periods to date — day, week, month, fiscal quarter and fiscal year — covering successful payments only and ignoring both the timeframe and the status filter. It follows the same rule as `counts` on export pages after the first.",
+        "description": "Transaction log for the Case Services & Finance dashboard. Filters on lastUpdatedAt, defaulting to the current Court day in America/New_York, and returns rows alongside aggregate counts. The counts cover the whole timeframe and ignore the status filter, so the tallies stay stable while the caller filters. Ordering follows `sort`/`order`, defaulting to newest lastUpdatedAt first, and is always broken by the primary key so the order is stable across identical requests. `export=true` raises the `pageSize` ceiling to 5000 for file exports that walk every page; on export pages after the first, `counts` and `total` are omitted. `includeTotals=true` adds summed revenue for five fixed periods to date and matching year-over-year comparisons — day, week, month, fiscal quarter and fiscal year — covering successful payments only and ignoring both the timeframe and the status filter. It follows the same rule as `counts` on export pages after the first.",
         "tags": [
           "Payments"
         ],
@@ -1861,11 +1876,11 @@
                 "false"
               ],
               "default": "false",
-              "description": "Adds `totals` to the response. Fixed periods to date; ignores `from`/`to` and `status`.",
+              "description": "Adds `totals` and `yoyTrends` to the response. Fixed periods to date; ignores `from`/`to` and `status`.",
               "example": "true"
             },
             "required": false,
-            "description": "Adds `totals` to the response. Fixed periods to date; ignores `from`/`to` and `status`.",
+            "description": "Adds `totals` and `yoyTrends` to the response. Fixed periods to date; ignores `from`/`to` and `status`.",
             "name": "includeTotals",
             "in": "query"
           }
