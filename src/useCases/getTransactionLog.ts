@@ -47,6 +47,8 @@ export const getTransactionLog: GetTransactionLog = async (
       fee: query.fee,
       paymentMethod: toDbPaymentMethod(query.paymentMethod),
       transactionStatus: query.transactionStatus,
+      metadataKey: query.metadataKey,
+      metadataValue: query.metadataValue,
       sort,
       order,
       limit: query.pageSize,

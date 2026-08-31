@@ -1,187 +1,192 @@
 import { faker } from "@faker-js/faker";
 import dayjs from "dayjs";
-import { getActiveFee, staticFees } from "../../../src/config/fees";
+import { getActiveFee } from "../../../src/config/fees";
 import { generateAgencyTrackingId } from "../../../src/utils/generateTrackingId";
+import {
+  PAYMENT_STATUS_BY_ARCHETYPE,
+  TRANSACTION_STATUS_BY_ARCHETYPE,
+  pickArchetypeForDay,
+} from "./utils/archetypes";
+import { buildMetadata } from "./utils/metadata";
+import { pickFailureReason, pickPaymentMethod } from "./utils/payment";
+import {
+  EARLIEST_FEE_ACTIVATION_MS,
+  pickFeeActiveOn,
+  type SeededFee,
+} from "./utils/seededFees";
+import {
+  deriveTimestamps,
+  pickCreatedAt,
+  randomInstantWithinDay,
+} from "./utils/timestamps";
+import type { Archetype, TransactionRow } from "./utils/types";
 
 type GenerateTransactionsParams = {
-  successTransactions: number;
-  failedTransactions: number;
-  pendingTransactions: number;
+  /** Groups of rows sharing one obligation (failed attempt then a successful retry). */
   multiAttemptGroups?: number;
+  /** Earliest day rows are dated to; clamped forward to the earliest fee activation. */
+  startDate?: string;
+  /** Total rows, spread across every day from `startDate` to today. Retry rows count toward this. */
+  numberOfRecords: number;
 };
 
-type TransactionRow = {
-  agency_tracking_id: string;
-  paygov_tracking_id: string | null;
-  fee: string;
-  client_name: string;
-  transaction_reference_id: string;
-  payment_status: string;
-  transaction_status: string | null;
-  paygov_token: string | null;
-  payment_method: string | null;
-  transaction_amount: number;
-  transaction_date: string | null;
-  payment_date: string | null;
-  return_code: number | null;
-  return_detail: string | null;
-  metadata: Record<string, string> | null;
-  created_at: string;
-  last_updated_at: string;
+const DEFAULT_START_DATE = "2025-01-01";
+
+type RowOverrides = {
+  fee?: SeededFee;
+  createdAt?: string;
+  transactionReferenceId?: string;
+  metadata?: Record<string, string>;
+  forcePaymentMethod?: string;
 };
 
-export const generateTransactions = async ({
-  successTransactions,
-  failedTransactions,
-  pendingTransactions,
-  multiAttemptGroups = 0,
-}: GenerateTransactionsParams): Promise<TransactionRow[]> => {
-  const feesList = Object.keys(staticFees);
-  const clientNames = ["payment-portal", "efile-portal", "clerk-app"];
-  const paymentMethods = ["plastic_card", "ach", "paypal"] as const;
+const makeRow = (
+  archetype: Archetype,
+  day: dayjs.Dayjs,
+  now: dayjs.Dayjs,
+  overrides: RowOverrides = {},
+): TransactionRow => {
+  const createdAt = overrides.createdAt ?? pickCreatedAt(archetype, day, now);
+  const fee = overrides.fee ?? pickFeeActiveOn(createdAt);
+  const metadata = overrides.metadata ?? buildMetadata(fee.key);
 
-  const agencyIds = ["USTC", "IRS"];
-  const agencyCounters: Record<string, number> = Object.fromEntries(
-    agencyIds.map((agencyId) => [agencyId, 0]),
+  const paymentMethod =
+    overrides.forcePaymentMethod ?? pickPaymentMethod(archetype);
+  const isAch = paymentMethod === "ach";
+
+  const { lastUpdatedAt, transactionDate, paymentDate } = deriveTimestamps(
+    archetype,
+    createdAt,
+    isAch,
+    now,
   );
 
-  const getTransactionStatus = (
-    paymentStatus: "success" | "failed" | "pending",
-  ): string => {
-    switch (paymentStatus) {
-      case "success":
-        return "processed";
-      case "failed":
-        return "failed";
-      case "pending":
-        return faker.helpers.arrayElement(["initiated", "received", "pending"]);
-    }
+  // Amount is pinned to the fee version in effect at creation time. Neither
+  // seeded fee is variable, so this is always the flat configured amount.
+  const activeFee = getActiveFee(fee.key, createdAt);
+  if (activeFee.amount === null || activeFee.amount === undefined) {
+    throw new Error(`Fixed fee '${fee.key}' is missing an amount`);
+  }
+
+  const hasToken = archetype !== "received";
+  const hasPayGovResponse = archetype === "settling" || archetype === "success";
+  const failureReason = archetype === "failed" ? pickFailureReason() : null;
+
+  return {
+    agency_tracking_id: generateAgencyTrackingId(),
+    paygov_tracking_id: hasPayGovResponse
+      ? faker.string.alphanumeric({ length: 20, casing: "upper" })
+      : null,
+    fee: fee.key,
+    client_name: fee.client,
+    transaction_reference_id:
+      overrides.transactionReferenceId ?? faker.string.uuid(),
+    payment_status: PAYMENT_STATUS_BY_ARCHETYPE[archetype],
+    transaction_status: TRANSACTION_STATUS_BY_ARCHETYPE[archetype],
+    payment_method: paymentMethod,
+    transaction_amount: activeFee.amount,
+    paygov_token: hasToken ? faker.string.uuid().replace(/-/g, "") : null,
+    transaction_date: transactionDate,
+    payment_date: paymentDate,
+    return_code: failureReason ? failureReason.code : null,
+    return_detail: failureReason ? failureReason.detail : null,
+    metadata,
+    created_at: createdAt,
+    last_updated_at: lastUpdatedAt,
   };
+};
 
-  const returnCodes = [3001, 3002, 5000];
-  const returnDetails = [
-    "The card has been declined, the transaction will not be processed.",
-    "Invalid card number.",
-    "An internal error occurred. Please try again.",
-  ];
+/**
+ * A declined first attempt followed by a successful retry, dated to a random day
+ * in range. Both rows share the obligation's `transaction_reference_id`, fee,
+ * client, and metadata — only the failed attempt predates the success.
+ */
+const makeRetryGroup = (
+  start: dayjs.Dayjs,
+  now: dayjs.Dayjs,
+): TransactionRow[] => {
+  const spanDays = Math.max(
+    0,
+    now.startOf("day").diff(start.startOf("day"), "day"),
+  );
+  const day = start.add(faker.number.int({ min: 0, max: spanDays }), "day");
 
-  type RowOverrides = {
-    transactionReferenceId?: string;
-    fee?: (typeof feesList)[number];
-    clientName?: string;
-    agencyId?: string;
-    createdAt?: string;
-  };
-
-  const makeRow = (
-    payment_status: "success" | "failed" | "pending",
-    overrides: RowOverrides = {},
-  ) => {
-    const agencyId =
-      overrides.agencyId ?? faker.helpers.arrayElement(agencyIds);
-    const fee = overrides.fee ?? faker.helpers.arrayElement(feesList);
-    agencyCounters[agencyId] += 1;
-    const transactionReferenceId =
-      overrides.transactionReferenceId ?? faker.string.uuid();
-    const createdAt =
-      overrides.createdAt ??
-      dayjs()
-        .subtract(faker.number.int({ min: 1, max: 40 }), "day")
-        .add(faker.number.int({ min: 0, max: 86400 }), "second")
-        .toISOString();
-    const lastUpdatedAt = dayjs(createdAt)
-      .add(faker.number.int({ min: 0, max: 5 }), "day")
-      .add(faker.number.int({ min: 0, max: 3600 }), "second")
-      .toISOString();
-    const activeFee = getActiveFee(fee, createdAt);
-    const transactionAmount = activeFee.isVariable
-      ? faker.number.float({ min: 1, max: 1_000, fractionDigits: 2 })
-      : activeFee.amount;
-    if (transactionAmount === null || transactionAmount === undefined) {
-      throw new Error(`Fixed fee '${fee}' is missing an amount`);
-    }
-    const maybeMetadata = {
-      accountHolder: faker.person.fullName(),
-      agencyId,
-      userAgent: faker.internet.userAgent(),
-      isHighValue:
-        faker.number.int({ min: 100, max: 900 }) >= 200 ? "true" : "false",
-    };
-
-    const hasPayGovResponse =
-      payment_status === "success" || payment_status === "failed";
-    const transactionDate = hasPayGovResponse
-      ? dayjs(lastUpdatedAt).format("YYYY-MM-DDTHH:mm:ss")
-      : null;
-    const paymentDate = hasPayGovResponse
-      ? dayjs(lastUpdatedAt).format("YYYY-MM-DD")
-      : null;
-
-    return {
-      agency_tracking_id: generateAgencyTrackingId(),
-      paygov_tracking_id: faker.datatype.boolean()
-        ? faker.string.alphanumeric({ length: 20, casing: "upper" })
-        : null,
-      fee,
-      client_name:
-        overrides.clientName ?? faker.helpers.arrayElement(clientNames),
-      transaction_reference_id: transactionReferenceId,
-      payment_status,
-      transaction_status: getTransactionStatus(payment_status),
-      payment_method: faker.helpers.arrayElement(paymentMethods),
-      transaction_amount: transactionAmount,
-      paygov_token: faker.datatype.boolean()
-        ? faker.string.uuid().replace(/-/g, "")
-        : null,
-      transaction_date: transactionDate,
-      payment_date: paymentDate,
-      return_code:
-        payment_status === "failed"
-          ? faker.helpers.arrayElement(returnCodes)
-          : null,
-      return_detail:
-        payment_status === "failed"
-          ? faker.helpers.arrayElement(returnDetails)
-          : null,
-      metadata: maybeMetadata,
-      created_at: createdAt,
-      last_updated_at: lastUpdatedAt,
-    };
-  };
-
-  const makeMultiAttemptGroup = (
-    outcomes: Array<"success" | "failed" | "pending">,
-  ): TransactionRow[] => {
-    const transactionReferenceId = faker.string.uuid();
-    const fee = faker.helpers.arrayElement(feesList);
-    const clientName = faker.helpers.arrayElement(clientNames);
-    const agencyId = faker.helpers.arrayElement(agencyIds);
-    const baseDate = dayjs().subtract(
-      faker.number.int({ min: 3, max: 20 }),
-      "day",
+  const failedAt = randomInstantWithinDay(day, now.subtract(1, "hour"));
+  const successAt = (() => {
+    const candidate = failedAt.add(
+      faker.number.int({ min: 2, max: 240 }),
+      "minute",
     );
-    let elapsed = 0;
-    return outcomes.map((outcome) => {
-      const createdAt = baseDate.add(elapsed, "minute").toISOString();
-      elapsed += faker.number.int({ min: 20, max: 60 });
-      return makeRow(outcome, {
-        transactionReferenceId,
-        fee,
-        clientName,
-        agencyId,
-        createdAt,
-      });
-    });
-  };
+    return candidate.isAfter(now.subtract(1, "minute"))
+      ? now.subtract(1, "minute")
+      : candidate;
+  })();
 
-  const multiAttemptRows = Array.from({ length: multiAttemptGroups }, () =>
-    makeMultiAttemptGroup(["failed", "success"]),
-  ).flat();
+  const fee = pickFeeActiveOn(failedAt.toISOString());
+  const transactionReferenceId = faker.string.uuid();
+  const metadata = buildMetadata(fee.key);
+  const shared = { fee, transactionReferenceId, metadata };
 
   return [
-    ...Array.from({ length: successTransactions }, () => makeRow("success")),
-    ...Array.from({ length: failedTransactions }, () => makeRow("failed")),
-    ...Array.from({ length: pendingTransactions }, () => makeRow("pending")),
-    ...multiAttemptRows,
+    makeRow("failed", day, now, {
+      ...shared,
+      createdAt: failedAt.toISOString(),
+    }),
+    makeRow("success", day, now, {
+      ...shared,
+      createdAt: successAt.toISOString(),
+      // People retry a declined card with another card.
+      forcePaymentMethod: "plastic_card",
+    }),
   ];
+};
+
+/**
+ * Dummy data seed generator: `numberOfRecords` fake-but-realistic rows spread as
+ * evenly as possible across every day from the effective start date to today,
+ * any remainder going to the earliest days. Retry-group rows are reserved out of
+ * the total. Status pairs, populated columns, metadata shapes, and timestamps
+ * track what the production model would actually produce.
+ */
+export const generateTransactions = async ({
+  multiAttemptGroups = 0,
+  startDate,
+  numberOfRecords,
+}: GenerateTransactionsParams): Promise<TransactionRow[]> => {
+  const now = dayjs();
+  const requestedStart = dayjs(startDate ?? DEFAULT_START_DATE).startOf("day");
+  const activationFloor = dayjs(EARLIEST_FEE_ACTIVATION_MS);
+  // Never date a row before any seeded fee exists — getActiveFee would throw.
+  const start = (
+    requestedStart.isAfter(activationFloor) ? requestedStart : activationFloor
+  ).startOf("day");
+
+  const totalDays = Math.max(
+    1,
+    now.startOf("day").diff(start.startOf("day"), "day") + 1,
+  );
+  const targetRows = Math.max(0, numberOfRecords - multiAttemptGroups * 2);
+  const baseRowsPerDay = Math.floor(targetRows / totalDays);
+  const remainder = targetRows % totalDays;
+
+  const rows: TransactionRow[] = [];
+  let dayIndex = 0;
+  for (
+    let day = start;
+    !day.startOf("day").isAfter(now, "day");
+    day = day.add(1, "day")
+  ) {
+    const rowsToday = baseRowsPerDay + (dayIndex < remainder ? 1 : 0);
+    const daysAgo = now.startOf("day").diff(day.startOf("day"), "day");
+    for (let i = 0; i < rowsToday; i++) {
+      rows.push(makeRow(pickArchetypeForDay(daysAgo), day, now));
+    }
+    dayIndex++;
+  }
+
+  for (let i = 0; i < multiAttemptGroups; i++) {
+    rows.push(...makeRetryGroup(start, now));
+  }
+
+  return rows;
 };

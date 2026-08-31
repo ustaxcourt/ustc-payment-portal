@@ -16,6 +16,7 @@ const CHAINABLE_METHODS = [
   "where",
   "andWhere",
   "andWhereILike",
+  "whereRaw",
   "whereIn",
   "whereNot",
   "orderBy",
@@ -685,6 +686,34 @@ describe("TransactionModel", () => {
         "transactionStatus",
         "processed",
       );
+    });
+
+    it("matches a metadata key with a case-insensitive substring, escaping LIKE wildcards", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({
+        ...baseFilter,
+        metadataKey: "docketNumber",
+        metadataValue: "50%_x",
+      });
+
+      expect(builder.whereRaw).toHaveBeenCalledWith("metadata ->> ? ILIKE ?", [
+        "docketNumber",
+        "%50\\%\\_x%",
+      ]);
+    });
+
+    it("omits the metadata predicate when only a key is given", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({
+        ...baseFilter,
+        metadataKey: "docketNumber",
+      });
+
+      expect(builder.whereRaw).not.toHaveBeenCalled();
     });
 
     it("skips the total query when withTotal is false", async () => {

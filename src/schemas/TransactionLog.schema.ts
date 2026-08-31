@@ -75,6 +75,27 @@ export type TransactionLogSortField = z.infer<
 >;
 export type SortOrder = z.infer<typeof SortOrderSchema>;
 
+/** A closed list, so nothing from the query string reaches SQL as a JSON key. */
+export const TRANSACTION_LOG_METADATA_KEYS = [
+  "docketNumber",
+  "email",
+  "fullName",
+  "accessCode",
+] as const;
+
+export const TransactionLogMetadataKeySchema = z
+  .enum(TRANSACTION_LOG_METADATA_KEYS)
+  .openapi("TransactionLogMetadataKey", {
+    description:
+      "Which metadata field `metadataValue` is matched against. Available keys " +
+      "depend on the fee: `docketNumber` for Petition Filing Fee; `email`, " +
+      "`fullName`, and `accessCode` for Non-Attorney Exam Registration Fee.",
+  });
+
+export type TransactionLogMetadataKey = z.infer<
+  typeof TransactionLogMetadataKeySchema
+>;
+
 export const TransactionLogQuerySchema = z
   .object({
     from: z.string().optional().openapi({
@@ -106,6 +127,18 @@ export const TransactionLogQuerySchema = z
       description:
         "Restricts rows to one transaction attempt status. `counts` and `totals` ignore it.",
       example: "processed",
+    }),
+    metadataKey: TransactionLogMetadataKeySchema.optional().openapi({
+      description:
+        "Which metadata field to search. Must be supplied together with " +
+        "`metadataValue`. `counts` and `totals` ignore it.",
+      example: "docketNumber",
+    }),
+    metadataValue: z.string().trim().min(1).max(200).optional().openapi({
+      description:
+        "Case-insensitive substring matched against the metadata field named " +
+        "by `metadataKey`. Must be supplied together with `metadataKey`.",
+      example: "123-26",
     }),
     page: z.coerce.number().int().min(1).default(1).openapi({
       description: "1-indexed page number",
@@ -164,6 +197,16 @@ export const TransactionLogQuerySchema = z
       }),
   })
   .superRefine((query, context) => {
+    if ((query.metadataKey === undefined) !== (query.metadataValue === undefined)) {
+      context.addIssue({
+        code: "custom",
+        message: "`metadataKey` and `metadataValue` must be supplied together",
+        path: [
+          query.metadataKey === undefined ? "metadataKey" : "metadataValue",
+        ],
+      });
+    }
+
     if ((query.from === undefined) !== (query.to === undefined)) {
       context.addIssue({
         code: "custom",
@@ -185,6 +228,8 @@ export const TransactionLogQuerySchema = z
       fee: query.fee,
       paymentMethod: query.paymentMethod,
       transactionStatus: query.transactionStatus,
+      metadataKey: query.metadataKey,
+      metadataValue: query.metadataValue,
       page: query.page,
       pageSize: query.pageSize,
       export: query.export,

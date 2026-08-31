@@ -9,6 +9,7 @@ const TO = new Date("2026-08-04T04:00:00.000Z");
 const METHODS = [
   "where",
   "andWhere",
+  "whereRaw",
   "orderBy",
   "orderByRaw",
   "limit",
@@ -146,6 +147,24 @@ describe("TransactionModel.queryLog", () => {
         "paymentStatus",
         expect.anything(),
       );
+    }
+  });
+
+  it("applies a metadata search to both the page and its count", async () => {
+    const chains = stubQuery([], 2);
+
+    await TransactionModel.queryLog({
+      ...page,
+      metadataKey: "docketNumber",
+      metadataValue: "123",
+    });
+
+    expect(chains).toHaveLength(2);
+    for (const q of chains) {
+      expect(q.whereRaw).toHaveBeenCalledWith("metadata ->> ? ILIKE ?", [
+        "docketNumber",
+        "%123%",
+      ]);
     }
   });
 });

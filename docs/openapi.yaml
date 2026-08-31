@@ -1078,6 +1078,17 @@ components:
         - from
         - to
         - total
+    TransactionLogMetadataKey:
+      type: string
+      enum:
+        - docketNumber
+        - email
+        - fullName
+        - accessCode
+      description: >-
+        Which metadata field to search. Must be supplied together with
+        `metadataValue`. `counts` and `totals` ignore it.
+      example: docketNumber
   parameters: {}
 paths:
   /init:
@@ -1436,6 +1447,29 @@ paths:
             Restricts rows to one transaction attempt status. `counts` and
             `totals` ignore it.
           name: transactionStatus
+          in: query
+        - schema:
+            $ref: '#/components/schemas/TransactionLogMetadataKey'
+          required: false
+          description: >-
+            Which metadata field to search. Must be supplied together with
+            `metadataValue`. `counts` and `totals` ignore it.
+          name: metadataKey
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+            description: >-
+              Case-insensitive substring matched against the metadata field
+              named by `metadataKey`. Must be supplied together with
+              `metadataKey`.
+            example: 123-26
+          required: false
+          description: >-
+            Case-insensitive substring matched against the metadata field named
+            by `metadataKey`. Must be supplied together with `metadataKey`.
+          name: metadataValue
           in: query
         - schema:
             type: integer

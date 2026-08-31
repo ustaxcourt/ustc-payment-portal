@@ -6,6 +6,7 @@ import { DbPaymentMethodSchema } from "@schemas/PaymentMethod.schema";
 import type { PaymentStatus } from "@schemas/PaymentStatus.schema";
 import type {
   SortOrder,
+  TransactionLogMetadataKey,
   TransactionLogSortField,
 } from "@schemas/TransactionLog.schema";
 import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/TransactionStatus.schema";
@@ -31,6 +32,9 @@ export type TransactionLogFilter = {
   fee?: FeeKey;
   paymentMethod?: DbPaymentMethod;
   transactionStatus?: SchemaTransactionStatus;
+  /** Paired with `metadataValue`; both set or both absent. */
+  metadataKey?: TransactionLogMetadataKey;
+  metadataValue?: string;
   sort: TransactionLogSortField;
   order: SortOrder;
   limit: number;
@@ -156,6 +160,15 @@ export default class TransactionModel extends Model {
       }
       if (filter.transactionStatus) {
         query = query.andWhere("transactionStatus", filter.transactionStatus);
+      }
+      if (filter.metadataKey && filter.metadataValue) {
+        // Escape LIKE wildcards so the value matches literally; `\` is ILIKE's
+        // default escape char. The key is a closed-list enum, never free text.
+        const escaped = filter.metadataValue.replace(/[\\%_]/g, "\\$&");
+        query = query.whereRaw("metadata ->> ? ILIKE ?", [
+          filter.metadataKey,
+          `%${escaped}%`,
+        ]);
       }
 
       return query;
