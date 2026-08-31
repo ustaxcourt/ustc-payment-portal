@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
 import dayjs from "dayjs";
-import { getActiveFee, staticFees } from "../../../src/config/fees";
+import { staticFees, type FeeVersion } from "../../../src/config/fees";
 import { generateAgencyTrackingId } from "../../../src/utils/generateTrackingId";
 
 type GenerateTransactionsParams = {
@@ -30,10 +30,49 @@ type TransactionRow = {
 };
 
 const getDateRange = (startDate?: string) => {
+  const parsedStartDate = startDate ? dayjs(startDate) : dayjs();
+
+  if (!parsedStartDate.isValid()) {
+    throw new Error("SEED_START_DATE must be a valid date string");
+  }
+
+  const normalizedStartDate = parsedStartDate.startOf("day");
+  const endDate = dayjs().endOf("day");
+
+  if (normalizedStartDate.isAfter(endDate)) {
+    throw new Error("SEED_START_DATE must be on or before today");
+  }
+
   return {
-    startDate: dayjs(startDate).startOf("day"),
-    endDate: dayjs().endOf("day"),
+    startDate: normalizedStartDate,
+    endDate,
   };
+};
+
+const getSeedFeeVersion = (fee: string): FeeVersion => {
+  const definition = staticFees[fee];
+
+  if (!definition) {
+    throw new Error(`No configured fee found for '${fee}'`);
+  }
+
+  const latestVersion = [...definition.versions].sort(
+    (left, right) =>
+      Date.parse(right.activationDate) - Date.parse(left.activationDate),
+  )[0];
+
+  if (!latestVersion) {
+    throw new Error(`Fee '${fee}' has no configured versions`);
+  }
+
+  if (
+    !latestVersion.isVariable &&
+    (latestVersion.amount === null || latestVersion.amount === undefined)
+  ) {
+    throw new Error(`Fixed fee '${fee}' is missing an amount`);
+  }
+
+  return latestVersion;
 };
 
 const createRandomDateForDay = (day: dayjs.Dayjs): string =>
@@ -97,22 +136,13 @@ export const generateTransactions = async ({
     const createdAt = overrides.createdAt ?? dayjs().toISOString();
 
     let fee = overrides.fee;
-    let activeFee;
+    let seedFeeVersion: FeeVersion;
 
     if (fee) {
-      activeFee = getActiveFee(fee, createdAt);
+      seedFeeVersion = getSeedFeeVersion(fee);
     } else {
-      while (true) {
-        const candidateFee = faker.helpers.arrayElement(feesList);
-
-        try {
-          activeFee = getActiveFee(candidateFee, createdAt);
-          fee = candidateFee;
-          break;
-        } catch {
-          // try another fee
-        }
-      }
+      fee = faker.helpers.arrayElement(feesList);
+      seedFeeVersion = getSeedFeeVersion(fee);
     }
 
     const lastUpdatedAt = start
@@ -125,13 +155,13 @@ export const generateTransactions = async ({
       )
       .toISOString();
 
-    const transactionAmount = activeFee.isVariable
+    const transactionAmount = seedFeeVersion.isVariable
       ? faker.number.float({
           min: 1,
           max: 1_000,
           fractionDigits: 2,
         })
-      : activeFee.amount;
+      : seedFeeVersion.amount;
 
     const maybeMetadata = {
       accountHolder: faker.person.fullName(),

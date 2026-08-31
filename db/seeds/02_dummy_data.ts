@@ -3,11 +3,10 @@ import { Model } from "objection";
 import { generateTransactions } from "./data/transactions";
 
 /**
- * Set the number of each transaction type to seed. Adjust as needed for local development and CI.
+ * Seed controls for local development and CI.
  *
- *    SEED_SUCCESS_TRANSACTIONS: Number of successful transactions to seed.
- *    SEED_FAILED_TRANSACTIONS: Number of failed transactions to seed.
- *    SEED_PENDING_TRANSACTIONS: Number of pending transactions to seed.
+ *    SEED_START_DATE: Inclusive lower bound for generated transaction dates.
+ *    NUMBER_OF_RECORDS: Total number of transaction rows to generate.
  *    SEED_MULTI_ATTEMPT_GROUPS: Number of groups of transactions with multiple attempts (e.g. a failed attempt followed by a successful retry).
  */
 const SEED_START_DATE = process.env.SEED_START_DATE ?? "2025-01-01";

@@ -30,7 +30,7 @@ type TransactionYoYTrend = {
   current: number;
   previous: number;
   difference: number;
-  percentChange: number;
+  percentChange: number | null;
 };
 
 export type TransactionLogFilter = {
@@ -236,13 +236,10 @@ export default class TransactionModel extends Model {
     });
   }
 
-  static async yoyTrends(
-    currentPeriods: CourtPeriodRecord<Bounds>,
-    previousPeriods: CourtPeriodRecord<Bounds>,
-  ): Promise<CourtPeriodRecord<TransactionYoYTrend>> {
-    const currentTotals = await TransactionModel.totalsToDate(currentPeriods);
-    const previousTotals = await TransactionModel.totalsToDate(previousPeriods);
-
+  static yoyTrends(
+    currentTotals: CourtPeriodRecord<number>,
+    previousTotals: CourtPeriodRecord<number>,
+  ): CourtPeriodRecord<TransactionYoYTrend> {
     return mapCourtPeriods((name) => {
       const current = currentTotals[name];
       const previous = previousTotals[name];
@@ -250,9 +247,7 @@ export default class TransactionModel extends Model {
 
       const percentChange =
         previous === 0
-          ? current > 0
-            ? 100
-            : 0
+          ? null
           : Number(((difference / previous) * 100).toFixed(2));
 
       return {

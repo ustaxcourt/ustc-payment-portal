@@ -91,6 +91,14 @@ const shiftUtcYear = (instant: Date, yearDelta: number): Date => {
   return shifted;
 };
 
+const shiftBoundsYear = (
+  { start, end }: Bounds,
+  yearDelta: number,
+): Bounds => ({
+  start: shiftUtcYear(start, yearDelta),
+  end: shiftUtcYear(end, yearDelta),
+});
+
 export const parseMonthDayYearDate = (
   value: string,
 ): CourtDayParts | undefined => {
@@ -198,4 +206,18 @@ export const courtPeriodBounds = (
 
 export const previousCourtPeriodBounds = (
   now: Date = new Date(),
-): CourtPeriodRecord<Bounds> => courtPeriodBounds(shiftUtcYear(now, -1));
+): CourtPeriodRecord<Bounds> => {
+  const currentPeriods = courtPeriodBounds(now);
+  const shiftedNow = shiftUtcYear(now, -1);
+  const shiftedWeek = courtPeriodBounds(shiftedNow).week;
+  const currentWeekDurationMs =
+    currentPeriods.week.end.getTime() - currentPeriods.week.start.getTime();
+
+  return {
+    ...mapCourtPeriods((name) => shiftBoundsYear(currentPeriods[name], -1)),
+    week: {
+      start: shiftedWeek.start,
+      end: new Date(shiftedWeek.start.getTime() + currentWeekDurationMs),
+    },
+  } satisfies CourtPeriodRecord<Bounds>;
+};

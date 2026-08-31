@@ -176,6 +176,7 @@ describe("courtPeriodBounds", () => {
 
   it("derives the previous year's comparison periods with the same keys", () => {
     const previousPeriods = previousCourtPeriodBounds(MONDAY);
+    const currentPeriods = courtPeriodBounds(MONDAY);
 
     expect(Object.keys(previousPeriods)).toEqual([...COURT_PERIOD_NAMES]);
     expect(previousPeriods.day.start.toISOString()).toBe(
@@ -186,6 +187,17 @@ describe("courtPeriodBounds", () => {
     );
     expect(previousPeriods.fiscalYear.start.toISOString()).toBe(
       "2024-10-01T04:00:00.000Z",
+    );
+    expect(previousPeriods.week.start.toISOString()).toBe(
+      "2025-08-17T04:00:00.000Z",
+    );
+    expect(previousPeriods.week.end.toISOString()).toBe(
+      "2025-08-18T15:00:00.000Z",
+    );
+    expect(
+      previousPeriods.week.end.getTime() - previousPeriods.week.start.getTime(),
+    ).toBe(
+      currentPeriods.week.end.getTime() - currentPeriods.week.start.getTime(),
     );
   });
 

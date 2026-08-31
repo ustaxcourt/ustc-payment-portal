@@ -48,6 +48,14 @@ const totals = {
   fiscalYear: 57600,
 };
 
+const previousTotals = {
+  day: 100,
+  week: 1000,
+  month: 4000,
+  quarter: 12000,
+  fiscalYear: 48000,
+};
+
 const yoyTrends = {
   day: { current: 120, previous: 100, difference: 20, percentChange: 20 },
   week: {
@@ -92,10 +100,11 @@ describe("getTransactionLog", () => {
       .mockResolvedValue(counts);
     totalsToDate = jest
       .spyOn(TransactionModel, "totalsToDate")
-      .mockResolvedValue(totals);
+      .mockResolvedValueOnce(totals)
+      .mockResolvedValueOnce(previousTotals);
     queryYoYTrends = jest
       .spyOn(TransactionModel, "yoyTrends")
-      .mockResolvedValue(yoyTrends);
+      .mockReturnValue(yoyTrends);
   });
 
   afterEach(() => {
@@ -272,7 +281,7 @@ describe("getTransactionLog", () => {
         query({ includeTotals: true }),
       );
 
-      expect(totalsToDate).toHaveBeenCalledTimes(1);
+      expect(totalsToDate).toHaveBeenCalledTimes(2);
       expect(result.totals?.day.total).toBe(120);
       expect(result.totals?.fiscalYear.total).toBe(57600);
     });
@@ -290,6 +299,9 @@ describe("getTransactionLog", () => {
       expect(result.totals?.fiscalYear.from).toBe("2025-10-01T04:00:00.000Z");
       expect(totalsToDate.mock.calls[0][0].fiscalYear.start).toEqual(
         new Date("2025-10-01T04:00:00.000Z"),
+      );
+      expect(totalsToDate.mock.calls[1][0]).toEqual(
+        previousCourtPeriodBounds(new Date("2026-08-03T15:00:00.000Z")),
       );
     });
 
@@ -329,10 +341,9 @@ describe("getTransactionLog", () => {
       );
 
       expect(queryYoYTrends).toHaveBeenCalledTimes(1);
-      expect(queryYoYTrends.mock.calls[0][0].fiscalYear.start).toEqual(
-        new Date("2025-10-01T04:00:00.000Z"),
-      );
-      expect(queryYoYTrends.mock.calls[0][1]).toEqual(
+      expect(queryYoYTrends.mock.calls[0][0]).toEqual(totals);
+      expect(queryYoYTrends.mock.calls[0][1]).toEqual(previousTotals);
+      expect(totalsToDate.mock.calls[1][0]).toEqual(
         previousCourtPeriodBounds(new Date("2026-08-03T15:00:00.000Z")),
       );
       expect(result.yoyTrends?.fiscalYear.percentChange).toBe(20);

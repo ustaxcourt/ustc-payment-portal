@@ -277,6 +277,21 @@ describe("TransactionLogResponseSchema", () => {
     expect(result.data?.yoyTrends?.fiscalYear.percentChange).toBe(25);
   });
 
+  it("parses a null YoY percent change when the previous total is zero", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      yoyTrends: mapCourtPeriods(() => ({
+        current: 100,
+        previous: 0,
+        difference: 100,
+        percentChange: null,
+      })),
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.yoyTrends?.fiscalYear.percentChange).toBeNull();
+  });
+
   it("rejects YoY trends missing a period", () => {
     const result = TransactionLogResponseSchema.safeParse({
       ...response,

@@ -44,7 +44,7 @@ export const getTransactionLog: GetTransactionLog = async (
     withCounts && query.includeTotals ? courtPeriodBounds(now) : undefined;
   const previousPeriods = periods ? previousCourtPeriodBounds(now) : undefined;
 
-  const [page, counts, periodTotals, yoyTrends] = await Promise.all([
+  const [page, counts, periodTotals, previousPeriodTotals] = await Promise.all([
     TransactionModel.queryLog({
       from,
       to,
@@ -60,10 +60,15 @@ export const getTransactionLog: GetTransactionLog = async (
     // close its periods at a different `now`, so an export would carry a
     // slightly different set of figures on every page.
     periods ? TransactionModel.totalsToDate(periods) : undefined,
-    periods && previousPeriods
-      ? TransactionModel.yoyTrends(periods, previousPeriods)
+    previousPeriods
+      ? TransactionModel.totalsToDate(previousPeriods)
       : undefined,
   ]);
+
+  const yoyTrends =
+    periodTotals && previousPeriodTotals
+      ? TransactionModel.yoyTrends(periodTotals, previousPeriodTotals)
+      : undefined;
 
   // One spread, so the pair can only ever be omitted together.
   const countsAndTotal =

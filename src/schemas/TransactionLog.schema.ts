@@ -143,8 +143,8 @@ export const TransactionLogQuerySchema = z
       .transform((value) => value === "true")
       .openapi({
         description:
-          "Adds `totals` to the response. Fixed periods to date; ignores " +
-          "`from`/`to` and `status`.",
+          "Adds `totals` and `yoyTrends` to the response. Fixed periods to " +
+          "date; ignores `from`/`to` and `status`.",
         example: "true",
       }),
   })
@@ -301,8 +301,9 @@ const YoYComparisonSchema = z.object({
   difference: z.number().openapi({
     description: "Current amount minus previous amount",
   }),
-  percentChange: z.number().openapi({
-    description: "Percentage change from the previous period",
+  percentChange: z.number().nullable().openapi({
+    description:
+      "Percentage change from the previous period, or null when the previous total is zero",
   }),
 });
 
