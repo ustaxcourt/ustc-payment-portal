@@ -149,8 +149,12 @@ describe("GET /transaction-log ordering", () => {
 
   describe("stability", () => {
     it("returns the same order for identical requests", async () => {
+      // Pinned so a row another suite inserts mid-test (stamped `lastUpdatedAt`
+      // "now", within the wide FROM/TO range above) can't land inside the page
+      // window for one call and not the other.
+      const to = new Date().toISOString();
       const ids = async () =>
-        (await fetchLog({ sort: "feeName", order: "asc" })).data.map(
+        (await fetchLog({ sort: "feeName", order: "asc", to })).data.map(
           (row) => row.agencyTrackingId,
         );
 

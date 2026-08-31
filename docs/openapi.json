@@ -1094,7 +1094,7 @@
           "total": {
             "type": "integer",
             "minimum": 0,
-            "description": "Rows matching the timeframe and status filter, across all pages. Omitted on export requests for pages after the first."
+            "description": "Rows matching the timeframe and all applied filters (`status`, `fee`, `paymentMethod`, `transactionStatus`), across all pages — unlike `counts` and `totals`, this figure is narrowed by every filter. Omitted on export requests for pages after the first."
           },
           "totals": {
             "$ref": "#/components/schemas/TransactionTotals"
@@ -1164,7 +1164,7 @@
           "failed",
           "pending"
         ],
-        "description": "Totals for the requested timeframe, unaffected by the status filter so the tallies stay stable as the user filters. Omitted on export requests for pages after the first."
+        "description": "Totals for the requested timeframe. Unaffected by `status`, `fee`, `paymentMethod`, and `transactionStatus`, so the tallies stay stable as the user filters. Omitted on export requests for pages after the first."
       },
       "TransactionLogSortField": {
         "type": "string",
@@ -1216,7 +1216,7 @@
           "quarter",
           "fiscalYear"
         ],
-        "description": "Successful payments only, in fixed periods to date. Unaffected by the timeframe and status filters, so the figures stay stable as the user filters. Periods open at Court-local midnight; the week opens on Sunday, and the quarter and year are fiscal — the year opens on Oct 1. Omitted on export requests for pages after the first."
+        "description": "Successful payments only, in fixed periods to date. Unaffected by the requested timeframe and by `status`, `fee`, `paymentMethod`, and `transactionStatus`, so the figures stay stable as the user filters. Periods open at Court-local midnight; the week opens on Sunday, and the quarter and year are fiscal — the year opens on Oct 1. Omitted on export requests for pages after the first."
       },
       "TransactionTotalPeriod": {
         "type": "object",
@@ -1577,7 +1577,7 @@
     "/transaction-log": {
       "get": {
         "summary": "Get the transaction log",
-        "description": "Transaction log for the Case Services & Finance dashboard. Filters on lastUpdatedAt, defaulting to the current Court day in America/New_York, and returns rows alongside aggregate counts. The counts cover the whole timeframe and ignore the status filter, so the tallies stay stable while the caller filters. Ordering follows `sort`/`order`, defaulting to newest lastUpdatedAt first, and is always broken by the primary key so the order is stable across identical requests. `export=true` raises the `pageSize` ceiling to 5000 for file exports that walk every page; on export pages after the first, `counts` and `total` are omitted. `includeTotals=true` adds summed revenue for five fixed periods to date — day, week, month, fiscal quarter and fiscal year — covering successful payments only and ignoring both the timeframe and the status filter. It follows the same rule as `counts` on export pages after the first.",
+        "description": "Transaction log for the Case Services & Finance dashboard. Filters on lastUpdatedAt, defaulting to the current Court day in America/New_York, and returns rows alongside aggregate counts. The counts cover the whole timeframe and ignore the status, fee, paymentMethod, and transactionStatus filters, so the tallies stay stable while the caller filters. Ordering follows `sort`/`order`, defaulting to newest lastUpdatedAt first, and is always broken by the primary key so the order is stable across identical requests. `export=true` raises the `pageSize` ceiling to 5000 for file exports that walk every page; on export pages after the first, `counts` and `total` are omitted. `includeTotals=true` adds summed revenue for five fixed periods to date — day, week, month, fiscal quarter and fiscal year — covering successful payments only and ignoring both the timeframe and the status, fee, paymentMethod, and transactionStatus filters. It follows the same rule as `counts` on export pages after the first.",
         "tags": [
           "Payments"
         ],
@@ -1617,12 +1617,62 @@
                 "failed",
                 "pending"
               ],
-              "description": "Restricts rows to one payment status. Aggregate counts ignore it.",
+              "description": "Restricts rows to one payment status. `counts` and `totals` ignore it.",
               "example": "failed"
             },
             "required": false,
-            "description": "Restricts rows to one payment status. Aggregate counts ignore it.",
+            "description": "Restricts rows to one payment status. `counts` and `totals` ignore it.",
             "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PETITION_FILING_FEE",
+                "NONATTORNEY_EXAM_REGISTRATION_FEE"
+              ],
+              "description": "Restricts rows to one fee type. `counts` and `totals` ignore it.",
+              "example": "PETITION_FILING_FEE"
+            },
+            "required": false,
+            "description": "Restricts rows to one fee type. `counts` and `totals` ignore it.",
+            "name": "fee",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Credit/Debit Card",
+                "ACH",
+                "PayPal"
+              ],
+              "description": "Restricts rows to one payment method. `counts` and `totals` ignore it.",
+              "example": "ACH"
+            },
+            "required": false,
+            "description": "Restricts rows to one payment method. `counts` and `totals` ignore it.",
+            "name": "paymentMethod",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "received",
+                "initiated",
+                "processing",
+                "processed",
+                "failed",
+                "pending"
+              ],
+              "description": "Restricts rows to one transaction attempt status. `counts` and `totals` ignore it.",
+              "example": "processed"
+            },
+            "required": false,
+            "description": "Restricts rows to one transaction attempt status. `counts` and `totals` ignore it.",
+            "name": "transactionStatus",
             "in": "query"
           },
           {
@@ -1710,11 +1760,11 @@
                 "false"
               ],
               "default": "false",
-              "description": "Adds `totals` to the response. Fixed periods to date; ignores `from`/`to` and `status`.",
+              "description": "Adds `totals` to the response. Fixed periods to date; ignores `from`/`to`, `status`, `fee`, `paymentMethod`, and `transactionStatus`.",
               "example": "true"
             },
             "required": false,
-            "description": "Adds `totals` to the response. Fixed periods to date; ignores `from`/`to` and `status`.",
+            "description": "Adds `totals` to the response. Fixed periods to date; ignores `from`/`to`, `status`, `fee`, `paymentMethod`, and `transactionStatus`.",
             "name": "includeTotals",
             "in": "query"
           }
