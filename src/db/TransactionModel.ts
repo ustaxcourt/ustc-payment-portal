@@ -15,7 +15,7 @@ import {
 import type { Knex } from "knex";
 import { Model } from "objection";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
-import { getActiveFee } from "../config/fees";
+import { getFeeNamesByKey } from "../config/fees";
 import { getKnex } from "./knex";
 import { transactionLogOrderBy } from "./transactionLogSort";
 
@@ -68,6 +68,8 @@ const TOKEN_NO_LONGER_VALID_MESSAGE = "This token is no longer valid.";
 
 const TOKEN_EXPIRED_MESSAGE =
   "Transaction token has expired. Retry POST /init with the same transactionReferenceId to obtain a new token.";
+
+const FEE_NAMES_BY_KEY = getFeeNamesByKey();
 
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
@@ -286,8 +288,12 @@ export default class TransactionModel extends Model {
   }
 
   private static attachFeeName(row: TransactionModel): TransactionModel {
-    const activeFee = getActiveFee(row.fee, row.createdAt);
-    row.feeName = activeFee.name;
+    const feeName = FEE_NAMES_BY_KEY[row.fee];
+    if (!feeName) {
+      throw new Error(`Unknown fee key: ${row.fee}`);
+    }
+
+    row.feeName = feeName;
     return row;
   }
 

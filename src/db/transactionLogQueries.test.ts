@@ -1,5 +1,6 @@
 import TransactionModel from "./TransactionModel";
 import { getKnex } from "./knex";
+import { staticFees } from "../config/fees";
 
 jest.mock("./knex", () => ({ getKnex: jest.fn() }));
 
@@ -449,5 +450,23 @@ describe("TransactionModel.yoyTrends", () => {
 
     expect(result.day.percentChange).toBeNull();
     expect(result.week.percentChange).toBeNull();
+  });
+});
+
+describe("TransactionModel.attachFeeName", () => {
+  it("uses the stable fee-definition name for historical rows before activation", async () => {
+    const historicalRow = {
+      fee: "PETITION_FILING_FEE",
+      createdAt: "2025-01-15T12:00:00.000Z",
+    } as TransactionModel;
+
+    const attachFeeName = Object.getOwnPropertyDescriptor(
+      TransactionModel,
+      "attachFeeName",
+    )?.value as (row: TransactionModel) => TransactionModel;
+
+    const result = attachFeeName(historicalRow);
+
+    expect(result.feeName).toBe(staticFees.PETITION_FILING_FEE.name);
   });
 });
