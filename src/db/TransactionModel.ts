@@ -1,5 +1,8 @@
 import { ConflictError } from "@errors/conflict";
 import { GoneError } from "@errors/gone";
+import type { FeeKey } from "@schemas/FeeKey.schema";
+import type { DbPaymentMethod } from "@schemas/PaymentMethod.schema";
+import { DbPaymentMethodSchema } from "@schemas/PaymentMethod.schema";
 import type { PaymentStatus } from "@schemas/PaymentStatus.schema";
 import type {
   SortOrder,
@@ -15,7 +18,11 @@ import {
 import type { Knex } from "knex";
 import { Model } from "objection";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
+<<<<<<< HEAD
 import { getFeeNamesByKey } from "../config/fees";
+=======
+import { getActiveFee } from "../config/fees";
+>>>>>>> main
 import { getKnex } from "./knex";
 import { transactionLogOrderBy } from "./transactionLogSort";
 
@@ -37,6 +44,9 @@ export type TransactionLogFilter = {
   from: Date;
   to: Date;
   status?: PaymentStatus;
+  fee?: FeeKey;
+  paymentMethod?: DbPaymentMethod;
+  transactionStatus?: SchemaTransactionStatus;
   sort: TransactionLogSortField;
   order: SortOrder;
   limit: number;
@@ -44,8 +54,6 @@ export type TransactionLogFilter = {
   /** False skips the COUNT behind `total`. */
   withTotal?: boolean;
 };
-
-export type PaymentMethod = "plastic_card" | "ach" | "paypal";
 
 /** Max age before a stuck `processing` row is treated as abandoned (Lambda timeout, crash). */
 export const PROCESSING_STALE_MS = 600_000;
@@ -69,6 +77,8 @@ const TOKEN_NO_LONGER_VALID_MESSAGE = "This token is no longer valid.";
 const TOKEN_EXPIRED_MESSAGE =
   "Transaction token has expired. Retry POST /init with the same transactionReferenceId to obtain a new token.";
 
+const VALID_DB_PAYMENT_METHODS = new Set<string>(DbPaymentMethodSchema.options);
+
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
@@ -79,7 +89,7 @@ export default class TransactionModel extends Model {
   paymentStatus!: PaymentStatus;
   transactionStatus?: TransactionStatus | null;
   paygovToken?: string | null;
-  paymentMethod?: PaymentMethod | null;
+  paymentMethod?: DbPaymentMethod | null;
   transactionAmount!: number;
   transactionDate?: string | null;
   paymentDate?: string | null;
@@ -106,6 +116,15 @@ export default class TransactionModel extends Model {
       parsed.transactionAmount !== null
     ) {
       parsed.transactionAmount = Number(parsed.transactionAmount);
+    }
+    if (parsed.paymentMethod !== undefined && parsed.paymentMethod !== null) {
+      // The column is a plain varchar with no DB-level enum/CHECK constraint,
+      // so a legacy row or manual edit could hold a value outside the union.
+      if (!VALID_DB_PAYMENT_METHODS.has(parsed.paymentMethod as string)) {
+        throw new Error(
+          `Unknown payment method: ${parsed.paymentMethod as string}`,
+        );
+      }
     }
     return parsed;
   }
@@ -142,13 +161,20 @@ export default class TransactionModel extends Model {
     await getKnex();
 
     const base = () => {
-      const query = TransactionModel.query()
+      let query = TransactionModel.query()
         .where("lastUpdatedAt", ">=", filter.from)
         .andWhere("lastUpdatedAt", "<", filter.to);
 
-      return filter.status
-        ? query.andWhere("paymentStatus", filter.status)
-        : query;
+      if (filter.status) query = query.andWhere("paymentStatus", filter.status);
+      if (filter.fee) query = query.andWhere("fee", filter.fee);
+      if (filter.paymentMethod) {
+        query = query.andWhere("paymentMethod", filter.paymentMethod);
+      }
+      if (filter.transactionStatus) {
+        query = query.andWhere("transactionStatus", filter.transactionStatus);
+      }
+
+      return query;
     };
 
     const ordered = transactionLogOrderBy(filter.sort, filter.order).reduce(
@@ -167,8 +193,9 @@ export default class TransactionModel extends Model {
     return { rows: rows.map(TransactionModel.attachFeeName), total };
   }
 
-  /** Counts per status in a timeframe. Takes no status filter: all four
-   *  tallies stay visible while one status is selected. */
+  /** Counts per status in a timeframe. Takes no filter at all — status, fee,
+   *  paymentMethod, and transactionStatus — so all four tallies stay visible
+   *  regardless of what queryLog's request is currently filtered by. */
   static async countsInRange(
     from: Date,
     to: Date,
@@ -334,7 +361,7 @@ export default class TransactionModel extends Model {
     data: Partial<TransactionModel> & { transactionAmount: number },
   ): Promise<TransactionModel> {
     await getKnex();
-    const newTransaction = await this.query().insertAndFetch({
+    const newTransaction = await TransactionModel.query().insertAndFetch({
       ...data,
       paymentStatus: "pending",
       transactionStatus: "received",
@@ -348,7 +375,7 @@ export default class TransactionModel extends Model {
     paygovToken: string,
   ): Promise<void> {
     await getKnex();
-    await this.query()
+    await TransactionModel.query()
       .patch({
         transactionStatus: "initiated",
         paygovToken,
@@ -387,7 +414,7 @@ export default class TransactionModel extends Model {
     paygovTrackingId: string,
     transactionStatus: TransactionStatus,
     paymentStatus: PaymentStatus,
-    paymentMethod: PaymentMethod | null,
+    paymentMethod: DbPaymentMethod | null,
     transactionDate: string | undefined,
     paymentDate: string | undefined,
     expectedTransactionStatus?: TransactionStatus,
@@ -403,7 +430,7 @@ export default class TransactionModel extends Model {
     };
 
     if (expectedTransactionStatus === undefined) {
-      const updated = await this.query().patchAndFetchById(
+      const updated = await TransactionModel.query().patchAndFetchById(
         agencyTrackingId,
         patch,
       );
@@ -413,7 +440,7 @@ export default class TransactionModel extends Model {
       return updated;
     }
 
-    const updated = (await this.query()
+    const updated = (await TransactionModel.query()
       .patch(patch)
       .where("agencyTrackingId", agencyTrackingId)
       .where("transactionStatus", expectedTransactionStatus)
@@ -469,7 +496,7 @@ export default class TransactionModel extends Model {
   ): Promise<TransactionModel | undefined> {
     const knex = await getKnex();
     return knex.transaction(async (trx) => {
-      const row = await this.query(trx)
+      const row = await TransactionModel.query(trx)
         .where({ paygovToken })
         .forUpdate()
         .noWait()
@@ -479,7 +506,7 @@ export default class TransactionModel extends Model {
         return undefined;
       }
 
-      const sibling = await this.findPendingOrProcessedByReferenceId(
+      const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
         row.clientName,
         row.transactionReferenceId,
         { excludeToken: paygovToken, trx },
@@ -508,7 +535,7 @@ export default class TransactionModel extends Model {
 
       // Re-touch the row so last_updated_at refreshes (DB trigger) and this request
       // owns the completion attempt.
-      return this.query(trx).patchAndFetchById(row.agencyTrackingId, {
+      return TransactionModel.query(trx).patchAndFetchById(row.agencyTrackingId, {
         transactionStatus: "processing",
       });
     });
@@ -535,7 +562,7 @@ export default class TransactionModel extends Model {
     returnDetail?: string,
   ): Promise<TransactionModel> {
     await getKnex();
-    return this.query().patchAndFetchById(agencyTrackingId, {
+    return TransactionModel.query().patchAndFetchById(agencyTrackingId, {
       transactionStatus: "failed",
       paymentStatus: "failed",
       returnCode,

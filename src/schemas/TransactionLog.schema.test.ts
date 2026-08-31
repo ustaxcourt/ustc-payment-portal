@@ -181,6 +181,41 @@ describe("TransactionLogQuerySchema", () => {
     });
   });
 
+  describe("filters", () => {
+    it("accepts a fee filter", () => {
+      const result = parse({ fee: "PETITION_FILING_FEE" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({ fee: "PETITION_FILING_FEE" });
+    });
+
+    it("rejects a fee key that is not on the whitelist", () => {
+      expect(parse({ fee: "NOT_A_REAL_FEE" }).success).toBe(false);
+    });
+
+    it("accepts a payment method filter", () => {
+      const result = parse({ paymentMethod: "ACH" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({ paymentMethod: "ACH" });
+    });
+
+    it("rejects a payment method that is not a known label", () => {
+      expect(parse({ paymentMethod: "cash" }).success).toBe(false);
+    });
+
+    it("accepts a transaction status filter", () => {
+      const result = parse({ transactionStatus: "processed" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({ transactionStatus: "processed" });
+    });
+
+    it("rejects a transaction status that is not a known value", () => {
+      expect(parse({ transactionStatus: "cancelled" }).success).toBe(false);
+    });
+  });
+
   describe("includeTotals", () => {
     it("stays off when it is not asked for", () => {
       expect(parse({}).data?.includeTotals).toBe(false);
