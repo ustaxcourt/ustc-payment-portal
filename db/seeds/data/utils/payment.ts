@@ -1,41 +1,38 @@
 import { faker } from "@faker-js/faker";
+import { getAllReturnCodes } from "../../../../src/config/payGovReturnCodes";
 import type { Archetype } from "./types";
 
 /**
- * Illustrative Pay.gov failure reasons. The code ⇄ detail pairing is fixed: a
- * failed row's `return_code` always matches its `return_detail`. These are
- * placeholders modelled on typical card-processor declines — swap in the real
- * Pay.gov TCS return codes once they are known.
+ * Failed-transaction return codes/details, sourced from the real Pay.gov TCS
+ * return code reference rather than placeholders.
  */
-export const FAILURE_RETURN_REASONS: ReadonlyArray<{
-  code: number;
-  detail: string;
-}> = [
-  { code: 1010, detail: "The card was declined by the issuing bank." },
-  { code: 1011, detail: "The card has insufficient funds." },
-  { code: 1012, detail: "The card number is invalid." },
-  { code: 1013, detail: "The card has expired." },
-  { code: 1014, detail: "The card security code is incorrect." },
-  { code: 2001, detail: "The bank account could not be verified." },
-  { code: 5000, detail: "An internal error occurred. Please try again." },
-];
+const FAILURE_RETURN_REASONS = getAllReturnCodes().filter(
+  (returnCode) => returnCode.transactionStatus === "Failed",
+);
 
-export const pickFailureReason = (): { code: number; detail: string } =>
-  faker.helpers.arrayElement(FAILURE_RETURN_REASONS);
+export const pickFailureReason = (): { code: number; detail: string } => {
+  const { returnCode, returnDetail } = faker.helpers.arrayElement(
+    FAILURE_RETURN_REASONS,
+  );
+  return { code: returnCode, detail: returnDetail };
+};
+
+const PAID_METHOD_MIX = [
+  { weight: 70, value: "plastic_card" },
+  { weight: 20, value: "ach" },
+  { weight: 10, value: "paypal" },
+] as const;
 
 export const pickPaymentMethod = (archetype: Archetype): string | null => {
   if (archetype === "settling") {
     // Only ACH sits in a pending transaction_status before finalising.
     return "ach";
   }
-  if (archetype === "success") {
-    return faker.helpers.weightedArrayElement([
-      { weight: 70, value: "plastic_card" },
-      { weight: 20, value: "ach" },
-      { weight: 10, value: "paypal" },
-    ]);
+  if (archetype === "success" || archetype === "failed") {
+    // A decline (`updateAfterPayGovResponse` with a failed status) is reported
+    // against the method the payer submitted, so a failed row still carries one.
+    return faker.helpers.weightedArrayElement([...PAID_METHOD_MIX]);
   }
   // received / initiated / processing: the user has not paid yet.
-  // failed: `updateToFailed` never records a method.
   return null;
 };
