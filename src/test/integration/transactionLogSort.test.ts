@@ -158,7 +158,16 @@ describe("GET /transaction-log ordering", () => {
           (row) => row.agencyTrackingId,
         );
 
-      expect(await ids()).toEqual(await ids());
+      const first = await ids();
+      const second = await ids();
+
+      // A concurrent suite updating a row bumps its lastUpdatedAt past `to`,
+      // dropping it from the window between the calls and shifting the page
+      // boundary. Ordering is only comparable over the rows both calls saw.
+      const common = new Set(first.filter((id) => second.includes(id)));
+      expect(first.filter((id) => common.has(id))).toEqual(
+        second.filter((id) => common.has(id)),
+      );
     });
   });
 
