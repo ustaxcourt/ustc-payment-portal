@@ -11,7 +11,7 @@ import type {
 } from "@appTypes/TransactionLog";
 import type { CourtPeriodName } from "@utils/courtDayBounds";
 import { courtDayBounds, courtPeriodBounds } from "@utils/courtDayBounds";
-import { toApiPaymentMethod } from "@utils/toApiPaymentMethod";
+import { toApiPaymentMethod, toDbPaymentMethod } from "@utils/toApiPaymentMethod";
 
 export type GetTransactionLog = (
   appContext: AppContext,
@@ -44,6 +44,9 @@ export const getTransactionLog: GetTransactionLog = async (
       from,
       to,
       status: query.status,
+      fee: query.fee,
+      paymentMethod: toDbPaymentMethod(query.paymentMethod),
+      transactionStatus: query.transactionStatus,
       sort,
       order,
       limit: query.pageSize,
