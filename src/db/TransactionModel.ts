@@ -75,6 +75,8 @@ const TOKEN_EXPIRED_MESSAGE =
 
 const VALID_DB_PAYMENT_METHODS = new Set<string>(DbPaymentMethodSchema.options);
 
+const feeNamesByKey = getFeeNamesByKey();
+
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
   paygovTrackingId?: string | null;
@@ -309,7 +311,7 @@ export default class TransactionModel extends Model {
   }
 
   private static attachFeeName(row: TransactionModel): TransactionModel {
-    const feeName = getFeeNamesByKey()[row.fee];
+    const feeName = feeNamesByKey[row.fee];
     if (!feeName) {
       throw new Error(`Unknown fee key: ${row.fee}`);
     }
