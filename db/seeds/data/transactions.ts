@@ -4,8 +4,8 @@ import { getActiveFee } from "../../../src/config/fees";
 import { generateAgencyTrackingId } from "../../../src/utils/generateTrackingId";
 import {
   PAYMENT_STATUS_BY_ARCHETYPE,
-  TRANSACTION_STATUS_BY_ARCHETYPE,
   pickArchetypeForDay,
+  TRANSACTION_STATUS_BY_ARCHETYPE,
 } from "./utils/archetypes";
 import { buildMetadata } from "./utils/metadata";
 import { pickFailureReason, pickPaymentMethod } from "./utils/payment";
