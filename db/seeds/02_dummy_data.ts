@@ -14,7 +14,7 @@ import { generateTransactions } from "./data/transactions";
  *      attempt followed by a successful retry).
  */
 const SEED_START_DATE = "2025-01-01";
-const SEED_TOTAL_RECORDS = 3500;
+const SEED_TOTAL_RECORDS = 20000;
 const SEED_MULTI_ATTEMPT_GROUPS = 10;
 
 /**

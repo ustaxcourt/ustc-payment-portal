@@ -30,8 +30,6 @@ type GenerateTransactionsParams = {
   numberOfRecords: number;
 };
 
-const DEFAULT_START_DATE = "2025-01-01";
-
 type RowOverrides = {
   fee?: SeededFee;
   createdAt?: string;
@@ -150,11 +148,11 @@ const makeRetryGroup = (
  */
 export const generateTransactions = async ({
   multiAttemptGroups = 0,
-  startDate,
-  numberOfRecords,
+  startDate = "2025-01-01",
+  numberOfRecords = 20000,
 }: GenerateTransactionsParams): Promise<TransactionRow[]> => {
   const now = dayjs();
-  const requestedStart = dayjs(startDate ?? DEFAULT_START_DATE).startOf("day");
+  const requestedStart = dayjs(startDate, "YYYY-DD-MM").startOf("day");
   const activationFloor = dayjs(EARLIEST_FEE_ACTIVATION_MS);
   // Never date a row before any seeded fee exists — getActiveFee would throw.
   const start = (
