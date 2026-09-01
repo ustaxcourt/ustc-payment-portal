@@ -19,6 +19,7 @@ import {
   toApiPaymentMethod,
   toDbPaymentMethod,
 } from "@utils/toApiPaymentMethod";
+import { logger } from "@/utils/logger";
 
 export type GetTransactionLog = (
   appContext: AppContext,
@@ -62,12 +63,15 @@ export const getTransactionLog: GetTransactionLog = async (
       withTotal: withCounts,
     }),
     withCounts ? TransactionModel.countsInRange(from, to) : undefined,
-    // Behind the same gate: each page would otherwise re-run the aggregate and
-    // close its periods at a different `now`, so an export would carry a
-    // slightly different set of figures on every page.
     periods ? TransactionModel.totalsToDate(periods) : undefined,
     previousPeriods
-      ? TransactionModel.totalsToDate(previousPeriods)
+      ? TransactionModel.totalsToDate(previousPeriods).catch((error) => {
+          logger.warn(
+            { error, from, to },
+            "Unable to calculate previous-period totals for YoY trends",
+          );
+          return undefined;
+        })
       : undefined,
   ]);
 
