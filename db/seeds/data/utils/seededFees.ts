@@ -18,9 +18,21 @@ export const SEEDED_FEES = [
     client: "Non-Attorney Admissions Exam Registration App",
     weight: 15,
   },
-] as const;
+] as const satisfies readonly {
+  key: string;
+  client: string;
+  weight: number;
+}[];
 
 export type SeededFee = (typeof SEEDED_FEES)[number];
+
+for (const { key } of SEEDED_FEES) {
+  if (!(key in staticFees)) {
+    throw new Error(
+      `SEEDED_FEES references "${key}", which is not a fee in src/config/fees.ts`,
+    );
+  }
+}
 
 const feeActivationMs = (key: SeededFee["key"]): number =>
   Math.min(
