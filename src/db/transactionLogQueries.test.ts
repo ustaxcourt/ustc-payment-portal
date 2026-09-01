@@ -239,6 +239,17 @@ describe("TransactionModel.countsAndFeeBreakdownInRange", () => {
       TransactionModel.countsAndFeeBreakdownInRange(FROM, TO),
     ).rejects.toThrow('no usable tally for the "PETITION_FILING_FEE" fee');
   });
+
+  it("tolerates a bad subtotal on a group the breakdown discards", async () => {
+    stubQuery([
+      { paymentStatus: "failed", fee: "PETITION_FILING_FEE", qty: "3", subtotal: null },
+    ]);
+
+    const { counts, tallies } = await TransactionModel.countsAndFeeBreakdownInRange(FROM, TO);
+
+    expect(counts).toEqual({ success: 0, failed: 3, pending: 0, total: 3 });
+    expect(tallies).toEqual([]);
+  });
 });
 
 describe("TransactionModel.totalsToDate", () => {

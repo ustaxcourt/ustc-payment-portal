@@ -131,8 +131,12 @@ describe("GET /transaction-log fee breakdown", () => {
   });
 
   it("holds the figures steady while the log is filtered by status", async () => {
-    const unfiltered = await fetchBreakdown();
-    const filtered = await fetchBreakdown({ status: "failed" });
+    // In flight together: a concurrent suite writing between two sequential
+    // fetches would change the tallies and flake the comparison.
+    const [unfiltered, filtered] = await Promise.all([
+      fetchBreakdown(),
+      fetchBreakdown({ status: "failed" }),
+    ]);
 
     expect(filtered.feeBreakdown).toEqual(unfiltered.feeBreakdown);
   });

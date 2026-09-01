@@ -281,14 +281,15 @@ export default class TransactionModel extends Model {
 
     // count and decimal(12,2) arrive as strings from pg; an unusable value
     // fails loudly rather than reporting a silent $0 for a fee with revenue.
+    // The subtotal is only checked on success groups: the breakdown discards
+    // the others, and a bad value there must not fail the whole request.
     for (const row of rows as unknown as Array<Record<string, unknown>>) {
       const paymentStatus = row.paymentStatus;
       const fee = String(row.fee);
       const qty = Number(row.qty);
-      const subtotal = Number(row.subtotal);
-      if (row.subtotal === null || Number.isNaN(qty) || Number.isNaN(subtotal)) {
+      if (Number.isNaN(qty)) {
         throw new Error(
-          `countsAndFeeBreakdownInRange returned no usable tally for the "${fee}" fee`,
+          `countsAndFeeBreakdownInRange returned no usable count for the "${fee}" fee`,
         );
       }
 
@@ -300,7 +301,16 @@ export default class TransactionModel extends Model {
         counts[paymentStatus] += qty;
         counts.total += qty;
       }
-      if (paymentStatus === "success") tallies.push({ fee, qty, subtotal });
+
+      if (paymentStatus === "success") {
+        const subtotal = Number(row.subtotal);
+        if (row.subtotal === null || Number.isNaN(subtotal)) {
+          throw new Error(
+            `countsAndFeeBreakdownInRange returned no usable tally for the "${fee}" fee`,
+          );
+        }
+        tallies.push({ fee, qty, subtotal });
+      }
     }
 
     return { counts, tallies };
