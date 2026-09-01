@@ -361,6 +361,19 @@ jobs:
           echo "Test unauthorized role: $TEST_UNAUTHORIZED_ROLE_ARN"
           npm run test:integration:sigv4
 
+      # Runs here rather than in the integration_test job because it needs a
+      # deployed API Gateway AND the unregistered test role, both of which are
+      # only wired up in this step's env.
+      - name: Validate-client endpoint test (PR environment)
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
+        env:
+          BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          TEST_UNAUTHORIZED_ROLE_ARN: ${{ steps.tf_outputs.outputs.test_unauthorized_role_arn }}
+        run: |
+          echo "Running /validate-client checks against: $BASE_URL"
+          npm run test:integration:validate-client
+
       - name: Upload SigV4 coverage (PR environment)
         if: ${{ always() && steps.tf_outputs.outputs.has_outputs == 'true' }}
         uses: actions/upload-artifact@v6
@@ -685,6 +698,15 @@ jobs:
           echo "This validates that API Gateway accepts signed requests and rejects unsigned requests."
           echo "Test unauthorized role: $TEST_UNAUTHORIZED_ROLE_ARN"
           npm run test:integration:sigv4
+
+      - name: Validate-client endpoint test (dev)
+        env:
+          BASE_URL: ${{ steps.tf_outputs_dev.outputs.api_url }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          TEST_UNAUTHORIZED_ROLE_ARN: ${{ steps.tf_outputs_dev.outputs.test_unauthorized_role_arn }}
+        run: |
+          echo "Running /validate-client checks against: $BASE_URL"
+          npm run test:integration:validate-client
 
       - name: Upload SigV4 coverage (dev)
         if: ${{ always() }}

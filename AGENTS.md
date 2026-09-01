@@ -60,6 +60,8 @@ The portal is published as `@ustaxcourt/payment-portal` and serves two purposes:
   - Local (no SigV4): `npm run test:integration:dev`
   - CI (SigV4-signed, against a deployed API Gateway): `npm run test:integration`
   - SigV4 smoke only: `BASE_URL=$BASE_URL npm run test:integration:sigv4`
+  - `/validate-client` only: `BASE_URL=$BASE_URL npm run test:integration:validate-client`
+  - The `sigv4Smoke`, `deployHealthSmoke`, and `validateClient` suites need a deployed API Gateway, so they are excluded from the generic `test:integration*` scripts and run in their own lanes. A new integration test that cannot run against the local devServer belongs in a lane too, not in the shared folder run.
 - **Smoke-check** the running local stack: `npm run check:local-flow`
 - **Database migrations**: `npm run migrate:latest` (Knex). See other `migrate:*` and `seed:*` scripts in `package.json`.
 
