@@ -174,7 +174,7 @@ export const validateClientHandler = (
 - The question runs the other direction. It asks "is this one key in the allowed set"; this
   endpoint asks "is every member of the allowed set a real fee".
 
-**Follow-up (developer):** [AGENTS.md](../AGENTS.md) words the requirement as an absolute MUST
+**Follow-up (developer) — DONE:** [AGENTS.md](../AGENTS.md) words the requirement as an absolute MUST
 tied to SigV4 protection. This route is SigV4-protected but only ever reads the caller's own
 permission record — no fee parameter, no cross-client exposure, no transaction touched. Add a
 carve-out sentence there alongside the existing read-only-dashboard exemption, so a later

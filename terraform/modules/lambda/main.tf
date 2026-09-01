@@ -16,8 +16,6 @@ locals {
       handler = "getDetailsHandler.getDetailsHandler"
       timeout = var.payment_lambda_timeout
     }
-    # Not a payment-flow lambda: no Pay.gov call, so the retry budget does not
-    # apply and the module default timeout is enough.
     validateClient = {
       handler = "validateClientHandler.validateClientHandler"
     }

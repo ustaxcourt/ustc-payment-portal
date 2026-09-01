@@ -1,4 +1,3 @@
-import { MISCONFIGURED_FEES_MESSAGE } from "@useCases/validateClient";
 import {
   assumeRole,
   signRequest,
@@ -93,7 +92,7 @@ describeWithCreds("GET /validate-client — registered client", () => {
     validateClientUrl = `${mustGetBaseUrl()}/validate-client`;
   });
 
-  it("signed request reaches the Lambda and returns a well-formed body", async () => {
+  it("returns 200 with clientName and allowedFeeKeys", async () => {
     if (
       skipCiOnlyTest(
         "test requires credentials registered in CI client-permissions",
@@ -103,38 +102,18 @@ describeWithCreds("GET /validate-client — registered client", () => {
     }
 
     const result = await signedFetch(validateClientUrl, { method: "GET" });
-    const data = await parseJsonOrText(result);
+    const data = (await result.json()) as ValidateClientBody;
     console.log("Signed validate-client response:", result.status, data);
 
-    expect(typeof data).toBe("object");
-    if (typeof data !== "object" || data === null) {
-      return;
-    }
-
-    // Deliberately not a flat `expect(200)`. Whether the signing role resolves
-    // to a *well-configured* client depends on the contents of the environment's
-    // client-permissions secret, which this repo does not own — a CI role
-    // registered with `["*"]` is rejected by design. What the deployed stack must
-    // guarantee is that a valid signature reaches the Lambda at all, so this
-    // accepts either a 200 or one of our own 403s, and fails on API Gateway's.
-    // Same reasoning as the signed case in sigv4Smoke.test.ts.
-    if (result.status === 200) {
-      expect(typeof data.clientName).toBe("string");
-      expect(data.clientName?.length).toBeGreaterThan(0);
-      expect(Array.isArray(data.allowedFeeKeys)).toBe(true);
-      // The endpoint rejects both the wildcard and an empty set, so a 200 body
-      // always carries at least one concrete key.
-      expect(data.allowedFeeKeys?.length).toBeGreaterThan(0);
-      expect(data.allowedFeeKeys).not.toContain("*");
-      return;
-    }
-
-    // Reached the Lambda but was rejected there — a real finding about the
-    // environment's registration, not a broken deployment.
-    expect(result.status).toBe(403);
-    expect([MISCONFIGURED_FEES_MESSAGE, "Client not registered"]).toContain(
-      data.message,
-    );
+    // Flat 200, not "200 or 403": cicd-dev.yml rewrites this caller's entry with
+    // concrete fee keys, so a 403 here is a real failure, not an unknown fixture.
+    expect(result.status).toBe(200);
+    expect(typeof data.clientName).toBe("string");
+    expect(data.clientName?.length).toBeGreaterThan(0);
+    expect(Array.isArray(data.allowedFeeKeys)).toBe(true);
+    // The wildcard and the empty set are both rejected, so a 200 always has a key.
+    expect(data.allowedFeeKeys?.length).toBeGreaterThan(0);
+    expect(data.allowedFeeKeys).not.toContain("*");
   });
 });
 

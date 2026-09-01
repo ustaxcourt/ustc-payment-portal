@@ -29,10 +29,14 @@ locals {
   # Reads the client-permissions secret and nothing else. Deliberately not
   # lambda_env_payment — this endpoint has no business holding the Pay.gov cert
   # passphrase or RDS credentials.
+  # TTL 0 disables the permissions cache for this function only: a stale read would
+  # tell a just-registered client their ARN is still unknown. Payment Lambdas keep
+  # the 5-minute default.
   lambda_env_validate_client = {
-    NODE_ENV                     = local.node_env
-    APP_ENV                      = local.app_env
-    CLIENT_PERMISSIONS_SECRET_ID = module.secrets.client_permissions_secret_id
+    NODE_ENV                        = local.node_env
+    APP_ENV                         = local.app_env
+    CLIENT_PERMISSIONS_SECRET_ID    = module.secrets.client_permissions_secret_id
+    CLIENT_PERMISSIONS_CACHE_TTL_MS = "0"
   }
 
   # Migration Lambda: migrationRunner
