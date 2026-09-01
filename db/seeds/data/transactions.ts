@@ -145,15 +145,14 @@ export const generateTransactions = async ({
       seedFeeVersion = getSeedFeeVersion(fee);
     }
 
-    const lastUpdatedAt = start
-      .add(
-        faker.number.int({
-          min: 0,
-          max: endDate.diff(start, "second"),
-        }),
-        "second",
-      )
-      .toISOString();
+    const candidateLastUpdatedAt = dayjs(createdAt).add(
+      faker.number.int({ min: 0, max: 5 }),
+      "day",
+    );
+
+    const lastUpdatedAt = (
+      candidateLastUpdatedAt.isAfter(endDate) ? endDate : candidateLastUpdatedAt
+    ).toISOString();
 
     const transactionAmount = seedFeeVersion.isVariable
       ? faker.number.float({
