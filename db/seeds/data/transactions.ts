@@ -152,7 +152,7 @@ export const generateTransactions = async ({
   numberOfRecords = 3500,
 }: GenerateTransactionsParams): Promise<TransactionRow[]> => {
   const now = dayjs();
-  const requestedStart = dayjs(startDate, "YYYY-DD-MM").startOf("day");
+  const requestedStart = dayjs(startDate).startOf("day");
   const activationFloor = dayjs(EARLIEST_FEE_ACTIVATION_MS);
   // Never date a row before any seeded fee exists — getActiveFee would throw.
   const start = (
