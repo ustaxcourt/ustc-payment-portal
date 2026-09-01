@@ -51,7 +51,7 @@ describe("getTransactionLog", () => {
   let queryLog: jest.SpyInstance;
   let countsInRange: jest.SpyInstance;
   let totalsToDate: jest.SpyInstance;
-  let feeBreakdownInRange: jest.SpyInstance;
+  let countsAndFeeBreakdown: jest.SpyInstance;
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date("2026-08-03T15:00:00.000Z"));
@@ -64,12 +64,15 @@ describe("getTransactionLog", () => {
     totalsToDate = jest
       .spyOn(TransactionModel, "totalsToDate")
       .mockResolvedValue(totals);
-    feeBreakdownInRange = jest
-      .spyOn(TransactionModel, "feeBreakdownInRange")
-      .mockResolvedValue([
-        { fee: "PETITION_FILING_FEE", qty: 2, subtotal: 120 },
-        { fee: "NONATTORNEY_EXAM_REGISTRATION_FEE", qty: 1, subtotal: 250 },
-      ]);
+    countsAndFeeBreakdown = jest
+      .spyOn(TransactionModel, "countsAndFeeBreakdownInRange")
+      .mockResolvedValue({
+        counts,
+        tallies: [
+          { fee: "PETITION_FILING_FEE", qty: 2, subtotal: 120 },
+          { fee: "NONATTORNEY_EXAM_REGISTRATION_FEE", qty: 1, subtotal: 250 },
+        ],
+      });
   });
 
   afterEach(() => {
@@ -345,7 +348,7 @@ describe("getTransactionLog", () => {
     it("leaves it out — and does not query it — unless asked", async () => {
       const result = await getTransactionLog(appContext, query());
 
-      expect(feeBreakdownInRange).not.toHaveBeenCalled();
+      expect(countsAndFeeBreakdown).not.toHaveBeenCalled();
       expect(result).not.toHaveProperty("feeBreakdown");
     });
 
@@ -358,7 +361,7 @@ describe("getTransactionLog", () => {
         query({ from, to, includeFeeBreakdown: true }),
       );
 
-      expect(feeBreakdownInRange).toHaveBeenCalledWith(from, to);
+      expect(countsAndFeeBreakdown).toHaveBeenCalledWith(from, to);
     });
 
     it("tallies the whole timeframe even when a status filter is applied", async () => {
@@ -367,7 +370,7 @@ describe("getTransactionLog", () => {
         query({ status: "failed", includeFeeBreakdown: true }),
       );
 
-      expect(feeBreakdownInRange).toHaveBeenCalledWith(
+      expect(countsAndFeeBreakdown).toHaveBeenCalledWith(
         new Date("2026-08-03T04:00:00.000Z"),
         new Date("2026-08-04T04:00:00.000Z"),
       );
@@ -396,7 +399,7 @@ describe("getTransactionLog", () => {
     });
 
     it("keeps a zero row for every configured fee", async () => {
-      feeBreakdownInRange.mockResolvedValue([]);
+      countsAndFeeBreakdown.mockResolvedValue({ counts, tallies: [] });
 
       const result = await getTransactionLog(
         appContext,
@@ -420,9 +423,10 @@ describe("getTransactionLog", () => {
     });
 
     it("keeps revenue under a fee key the config no longer knows", async () => {
-      feeBreakdownInRange.mockResolvedValue([
-        { fee: "RETIRED_FEE", qty: 4, subtotal: 400 },
-      ]);
+      countsAndFeeBreakdown.mockResolvedValue({
+        counts,
+        tallies: [{ fee: "RETIRED_FEE", qty: 4, subtotal: 400 }],
+      });
 
       const result = await getTransactionLog(
         appContext,
@@ -436,6 +440,21 @@ describe("getTransactionLog", () => {
         subtotal: 400,
       });
       expect(result.feeBreakdown).toHaveLength(3);
+    });
+
+    it("sources the counts from the same statement as the tallies", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeFeeBreakdown: true }),
+      );
+
+      expect(countsInRange).not.toHaveBeenCalled();
+      expect(result.counts).toEqual({
+        all: 47,
+        success: 40,
+        failed: 4,
+        pending: 3,
+      });
     });
 
     it("works independently of includeTotals", async () => {
@@ -466,7 +485,7 @@ describe("getTransactionLog", () => {
         query({ export: true, page: 2, includeFeeBreakdown: true }),
       );
 
-      expect(feeBreakdownInRange).not.toHaveBeenCalled();
+      expect(countsAndFeeBreakdown).not.toHaveBeenCalled();
       expect(result.feeBreakdown).toBeUndefined();
     });
   });

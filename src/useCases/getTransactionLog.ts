@@ -41,7 +41,7 @@ export const getTransactionLog: GetTransactionLog = async (
   const periods =
     withCounts && query.includeTotals ? courtPeriodBounds(now) : undefined;
 
-  const [page, counts, periodTotals, feeTallies] = await Promise.all([
+  const [page, aggregates, periodTotals] = await Promise.all([
     TransactionModel.queryLog({
       from,
       to,
@@ -55,16 +55,25 @@ export const getTransactionLog: GetTransactionLog = async (
       offset: (query.page - 1) * query.pageSize,
       withTotal: withCounts,
     }),
-    withCounts ? TransactionModel.countsInRange(from, to) : undefined,
+    // With the breakdown on, counts and tallies come from one statement so
+    // they share a snapshot and `counts.success` always matches the summed
+    // quantities. Both stay behind the export first-page gate.
+    withCounts && query.includeFeeBreakdown
+      ? TransactionModel.countsAndFeeBreakdownInRange(from, to)
+      : withCounts
+        ? TransactionModel.countsInRange(from, to).then((counts) => ({
+            counts,
+            tallies: undefined,
+          }))
+        : undefined,
     // Behind the same gate: each page would otherwise re-run the aggregate and
     // close its periods at a different `now`, so an export would carry a
     // slightly different set of figures on every page.
     periods ? TransactionModel.totalsToDate(periods) : undefined,
-    // Same gate as counts, for the same reason.
-    withCounts && query.includeFeeBreakdown
-      ? TransactionModel.feeBreakdownInRange(from, to)
-      : undefined,
   ]);
+
+  const counts = aggregates?.counts;
+  const feeTallies = aggregates?.tallies;
 
   // One spread, so the pair can only ever be omitted together.
   const countsAndTotal =

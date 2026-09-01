@@ -353,7 +353,9 @@ export const TransactionFeeBreakdownSchema = z
       "Successful payments in the requested timeframe, tallied per fee and " +
       "ordered by subtotal descending. Every fee the Portal handles appears, " +
       "even with nothing collected. Honours `from`/`to` but ignores the " +
-      "status filter. Omitted on export requests for pages after the first.",
+      "status filter. Computed in the same statement as `counts`, so " +
+      "`counts.success` always equals the summed quantities. Omitted on " +
+      "export requests for pages after the first.",
   });
 
 export const TransactionLogResponseSchema = z
