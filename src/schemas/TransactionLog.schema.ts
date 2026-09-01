@@ -1,8 +1,11 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { courtDayBoundsForDateString } from "@utils/courtDayBounds";
 import { z } from "zod";
+import { FeeKeySchema } from "./FeeKey.schema";
+import { PaymentMethodSchema } from "./PaymentMethod.schema";
 import { PaymentStatusSchema } from "./PaymentStatus.schema";
 import { DashboardTransactionSchema } from "./TransactionDashboard.schema";
+import { TransactionStatusSchema } from "./TransactionStatus.schema";
 
 extendZodWithOpenApi(z);
 
@@ -86,8 +89,23 @@ export const TransactionLogQuerySchema = z
     }),
     status: PaymentStatusSchema.optional().openapi({
       description:
-        "Restricts rows to one payment status. Aggregate counts ignore it.",
+        "Restricts rows to one payment status. `counts` and `totals` ignore it.",
       example: "failed",
+    }),
+    fee: FeeKeySchema.optional().openapi({
+      description:
+        "Restricts rows to one fee type. `counts` and `totals` ignore it.",
+      example: "PETITION_FILING_FEE",
+    }),
+    paymentMethod: PaymentMethodSchema.optional().openapi({
+      description:
+        "Restricts rows to one payment method. `counts` and `totals` ignore it.",
+      example: "ACH",
+    }),
+    transactionStatus: TransactionStatusSchema.optional().openapi({
+      description:
+        "Restricts rows to one transaction attempt status. `counts` and `totals` ignore it.",
+      example: "processed",
     }),
     page: z.coerce.number().int().min(1).default(1).openapi({
       description: "1-indexed page number",
@@ -141,7 +159,7 @@ export const TransactionLogQuerySchema = z
       .openapi({
         description:
           "Adds `totals` to the response. Fixed periods to date; ignores " +
-          "`from`/`to` and `status`.",
+          "`from`/`to`, `status`, `fee`, `paymentMethod`, and `transactionStatus`.",
         example: "true",
       }),
     includeFeeBreakdown: z
@@ -152,7 +170,8 @@ export const TransactionLogQuerySchema = z
         description:
           "Adds `feeBreakdown` to the response: successful payments in the " +
           "requested timeframe, tallied per fee. Honours `from`/`to` but " +
-          "ignores `status`, so the figures stay stable as the caller " +
+          "ignores `status`, `fee`, `paymentMethod`, and " +
+          "`transactionStatus`, so the figures stay stable as the caller " +
           "filters. Omitted on export requests for pages after the first, " +
           "as `totals` is.",
         example: "true",
@@ -161,7 +180,7 @@ export const TransactionLogQuerySchema = z
   .superRefine((query, context) => {
     if ((query.from === undefined) !== (query.to === undefined)) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "`from` and `to` must be supplied together",
         path: ["from"],
       });
@@ -173,17 +192,24 @@ export const TransactionLogQuerySchema = z
     }
   })
   .transform((query, context) => {
+    const refinedQuery = {
+      from: undefined as Date | undefined,
+      to: undefined as Date | undefined,
+      status: query.status,
+      fee: query.fee,
+      paymentMethod: query.paymentMethod,
+      transactionStatus: query.transactionStatus,
+      page: query.page,
+      pageSize: query.pageSize,
+      export: query.export,
+      sort: query.sort,
+      order: query.order,
+      includeTotals: query.includeTotals,
+      includeFeeBreakdown: query.includeFeeBreakdown,
+    };
+
     if (!query.from || !query.to) {
-      return {
-        status: query.status,
-        page: query.page,
-        pageSize: query.pageSize,
-        export: query.export,
-        sort: query.sort,
-        order: query.order,
-        includeTotals: query.includeTotals,
-        includeFeeBreakdown: query.includeFeeBreakdown,
-      };
+      return refinedQuery;
     }
 
     const from = parseTransactionLogDate(query.from, "from");
@@ -191,7 +217,7 @@ export const TransactionLogQuerySchema = z
 
     if (!from) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: TRANSACTION_LOG_DATE_FORMAT_MESSAGE,
         path: ["from"],
       });
@@ -199,7 +225,7 @@ export const TransactionLogQuerySchema = z
 
     if (!to) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: TRANSACTION_LOG_DATE_FORMAT_MESSAGE,
         path: ["to"],
       });
@@ -211,7 +237,7 @@ export const TransactionLogQuerySchema = z
 
     if (!(from.date < to.date)) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message:
           from.kind === "court-day" || to.kind === "court-day"
             ? "`from` must be on or before `to`"
@@ -222,16 +248,9 @@ export const TransactionLogQuerySchema = z
     }
 
     return {
+      ...refinedQuery,
       from: from.date,
       to: to.date,
-      status: query.status,
-      page: query.page,
-      pageSize: query.pageSize,
-      export: query.export,
-      sort: query.sort,
-      order: query.order,
-      includeTotals: query.includeTotals,
-      includeFeeBreakdown: query.includeFeeBreakdown,
     };
   })
   .refine(
@@ -267,7 +286,9 @@ export const TransactionCountsSchema = z
   })
   .openapi("TransactionCounts", {
     description:
-      "Totals for the requested timeframe, unaffected by the status filter so the tallies stay stable as the user filters.",
+      "Totals for the requested timeframe. Unaffected by `status`, `fee`, " +
+      "`paymentMethod`, and `transactionStatus`, so the tallies stay stable " +
+      "as the user filters.",
   });
 
 export const TransactionTotalPeriodSchema = z
@@ -298,10 +319,11 @@ export const TransactionTotalsSchema = z
   .openapi("TransactionTotals", {
     description:
       "Successful payments only, in fixed periods to date. Unaffected by the " +
-      "timeframe and status filters, so the figures stay stable as the user " +
-      "filters. Periods open at Court-local midnight; the week opens on " +
-      "Sunday, and the quarter and year are fiscal — the year opens on Oct 1. " +
-      "Omitted on export requests for pages after the first.",
+      "requested timeframe and by `status`, `fee`, `paymentMethod`, and " +
+      "`transactionStatus`, so the figures stay stable as the user filters. " +
+      "Periods open at Court-local midnight; the week opens on Sunday, and " +
+      "the quarter and year are fiscal — the year opens on Oct 1. Omitted on " +
+      "export requests for pages after the first.",
   });
 
 export const TransactionFeeBreakdownRowSchema = z
@@ -342,9 +364,10 @@ export const TransactionLogResponseSchema = z
     }),
     counts: TransactionCountsSchema.optional().openapi({
       description:
-        "Totals for the requested timeframe, unaffected by the status filter " +
-        "so the tallies stay stable as the user filters. Omitted on export " +
-        "requests for pages after the first.",
+        "Totals for the requested timeframe. Unaffected by `status`, `fee`, " +
+        "`paymentMethod`, and `transactionStatus`, so the tallies stay " +
+        "stable as the user filters. Omitted on export requests for pages " +
+        "after the first.",
     }),
     from: z.string().datetime().openapi({
       description: "Resolved lower bound actually queried",
@@ -357,11 +380,18 @@ export const TransactionLogResponseSchema = z
     // Echoed back like the timeframe, so the caller can confirm what was applied.
     sort: TransactionLogSortFieldSchema,
     order: SortOrderSchema,
-    total: z.number().int().nonnegative().optional().openapi({
-      description:
-        "Rows matching the timeframe and status filter, across all pages. " +
-        "Omitted on export requests for pages after the first.",
-    }),
+    total: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .openapi({
+        description:
+          "Rows matching the timeframe and all applied filters (`status`, " +
+          "`fee`, `paymentMethod`, `transactionStatus`), across all pages — " +
+          "unlike `counts` and `totals`, this figure is narrowed by every " +
+          "filter. Omitted on export requests for pages after the first.",
+      }),
     totals: TransactionTotalsSchema.optional(),
     feeBreakdown: TransactionFeeBreakdownSchema.optional(),
   })

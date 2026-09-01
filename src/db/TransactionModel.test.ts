@@ -1,6 +1,7 @@
-import { ConflictError } from "@errors/conflict";
+import type { DbPaymentMethod } from "@schemas/PaymentMethod.schema";
+import { ConflictError } from "@/errors/conflict";
 import { getKnex } from "./knex";
-import TransactionModel, { isStaleProcessingTransaction, type PaymentMethod } from "./TransactionModel";
+import TransactionModel, { isStaleProcessingTransaction } from "./TransactionModel";
 
 jest.mock("./knex", () => ({
   getKnex: jest.fn(),
@@ -13,10 +14,14 @@ const CHAINABLE_METHODS = [
   "join",
   "select",
   "where",
+  "andWhere",
+  "andWhereILike",
   "whereIn",
   "whereNot",
   "orderBy",
+  "orderByRaw",
   "limit",
+  "offset",
   "count",
   "groupBy",
   "patch",
@@ -29,6 +34,7 @@ const RESOLVING_METHODS = [
   "findById",
   "insertAndFetch",
   "patchAndFetchById",
+  "resultSize",
 ] as const;
 
 interface QueryBuilderStub
@@ -100,6 +106,36 @@ describe("TransactionModel", () => {
         agencyTrackingId: "TEST-123",
       });
       expect(result.transactionAmount).toBeUndefined();
+    });
+
+    it("passes through a known paymentMethod value", () => {
+      const instance = new TransactionModel();
+      const result = instance.$parseDatabaseJson({ paymentMethod: "ach" });
+      expect(result.paymentMethod).toBe("ach");
+    });
+
+    it("leaves paymentMethod null when the column is null", () => {
+      const instance = new TransactionModel();
+      const result = instance.$parseDatabaseJson({ paymentMethod: null });
+      expect(result.paymentMethod).toBeNull();
+    });
+
+    it("leaves paymentMethod absent when the column is not in the row", () => {
+      const instance = new TransactionModel();
+      const result = instance.$parseDatabaseJson({
+        agencyTrackingId: "TEST-123",
+      });
+      expect(result.paymentMethod).toBeUndefined();
+    });
+
+    // The column is a plain varchar with no DB-level enum/CHECK constraint, so
+    // this is the only guard against a legacy row or manual edit silently
+    // reaching the API with a value outside the union.
+    it("throws when paymentMethod holds a value outside the known union", () => {
+      const instance = new TransactionModel();
+      expect(() =>
+        instance.$parseDatabaseJson({ paymentMethod: "venmo" }),
+      ).toThrow("Unknown payment method: venmo");
     });
   });
 
@@ -173,7 +209,7 @@ describe("TransactionModel", () => {
         clientName: "test-client",
         transactionReferenceId: "TXN-REF-001",
         transactionAmount: 60,
-        paymentMethod: "plastic_card" as PaymentMethod,
+        paymentMethod: "plastic_card" as DbPaymentMethod,
       };
       builder.insertAndFetch.mockResolvedValueOnce({
         ...data,
@@ -581,6 +617,92 @@ describe("TransactionModel", () => {
       );
 
       expect(found).toBeUndefined();
+    });
+  });
+
+  describe("queryLog", () => {
+    const baseFilter = {
+      from: new Date("2026-08-01T00:00:00Z"),
+      to: new Date("2026-08-02T00:00:00Z"),
+      sort: "lastUpdatedAt" as const,
+      order: "desc" as const,
+      limit: 50,
+      offset: 0,
+    };
+
+    it("filters by timeframe only when no optional filters are given", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog(baseFilter);
+
+      expect(builder.where).toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        ">=",
+        baseFilter.from,
+      );
+      expect(builder.andWhere).toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        "<",
+        baseFilter.to,
+      );
+      expect(builder.andWhere).not.toHaveBeenCalledWith(
+        "paymentStatus",
+        expect.anything(),
+      );
+      expect(builder.andWhereILike).not.toHaveBeenCalled();
+    });
+
+    it("filters by status, fee, and payment method when given", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({
+        ...baseFilter,
+        status: "failed",
+        fee: "PETITION_FILING_FEE",
+        paymentMethod: "ach" as DbPaymentMethod,
+      });
+
+      expect(builder.andWhere).toHaveBeenCalledWith("paymentStatus", "failed");
+      expect(builder.andWhere).toHaveBeenCalledWith(
+        "fee",
+        "PETITION_FILING_FEE",
+      );
+      expect(builder.andWhere).toHaveBeenCalledWith("paymentMethod", "ach");
+    });
+
+    it("filters by transaction status when given", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({
+        ...baseFilter,
+        transactionStatus: "processed",
+      });
+
+      expect(builder.andWhere).toHaveBeenCalledWith(
+        "transactionStatus",
+        "processed",
+      );
+    });
+
+    it("skips the total query when withTotal is false", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({ ...baseFilter, withTotal: false });
+
+      expect(builder.resultSize).not.toHaveBeenCalled();
+    });
+
+    it("runs the total query when withTotal is not false", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog(baseFilter);
+
+      expect(builder.resultSize).toHaveBeenCalled();
     });
   });
 

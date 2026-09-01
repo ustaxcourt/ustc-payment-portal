@@ -165,6 +165,55 @@ describe("getTransactionLog", () => {
     expect(result.data[0].paymentMethod).toBe("Credit/Debit Card");
   });
 
+  describe("filters", () => {
+    it("passes fee straight through and translates the payment method label to the stored value", async () => {
+      await getTransactionLog(
+        appContext,
+        query({ fee: "PETITION_FILING_FEE", paymentMethod: "ACH" }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        fee: "PETITION_FILING_FEE",
+        paymentMethod: "ach",
+      });
+    });
+
+    it("passes transactionStatus straight through", async () => {
+      await getTransactionLog(
+        appContext,
+        query({ transactionStatus: "processed" }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        transactionStatus: "processed",
+      });
+    });
+
+    it("combines an explicit timeframe with filters in the same request", async () => {
+      const from = new Date("2026-07-01T00:00:00.000Z");
+      const to = new Date("2026-07-02T00:00:00.000Z");
+
+      const result = await getTransactionLog(
+        appContext,
+        query({
+          from,
+          to,
+          fee: "PETITION_FILING_FEE",
+          transactionStatus: "processed",
+        }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        from,
+        to,
+        fee: "PETITION_FILING_FEE",
+        transactionStatus: "processed",
+      });
+      expect(result.from).toBe(from.toISOString());
+      expect(result.to).toBe(to.toISOString());
+    });
+  });
+
   describe("export requests", () => {
     it("computes the totals on the first page", async () => {
       const result = await getTransactionLog(

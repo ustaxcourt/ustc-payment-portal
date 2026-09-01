@@ -409,21 +409,23 @@ registry.registerPath({
     "Transaction log for the Case Services & Finance dashboard. Filters on " +
     "lastUpdatedAt, defaulting to the current Court day in America/New_York, " +
     "and returns rows alongside aggregate counts. The counts cover the whole " +
-    "timeframe and ignore the status filter, so the tallies stay stable while " +
-    "the caller filters. Ordering follows `sort`/`order`, defaulting to " +
-    "newest lastUpdatedAt first, and is always broken by the primary key so " +
-    "the order is stable across identical requests. `export=true` raises the " +
+    "timeframe and ignore the status, fee, paymentMethod, and " +
+    "transactionStatus filters, so the tallies stay stable while the caller " +
+    "filters. Ordering follows `sort`/`order`, defaulting to newest " +
+    "lastUpdatedAt first, and is always broken by the primary key so the " +
+    "order is stable across identical requests. `export=true` raises the " +
     "`pageSize` ceiling to 5000 for file exports that walk every page; on " +
     "export pages after the first, `counts` and `total` are omitted. " +
     "`includeTotals=true` adds summed revenue for five fixed periods to date " +
     "— day, week, month, fiscal quarter and fiscal year — covering successful " +
-    "payments only and ignoring both the timeframe and the status filter. It " +
-    "follows the same rule as `counts` on export pages after the first. " +
+    "payments only and ignoring both the timeframe and the status, fee, " +
+    "paymentMethod, and transactionStatus filters. It follows the same rule " +
+    "as `counts` on export pages after the first. " +
     "`includeFeeBreakdown=true` adds successful payments tallied per fee — " +
     "count and summed amount — for the requested timeframe, ignoring the " +
-    "status filter, ordered by subtotal descending with every configured fee " +
-    "present even at zero. It follows the same rule as `counts` on export " +
-    "pages after the first.",
+    "status, fee, paymentMethod, and transactionStatus filters, ordered by " +
+    "subtotal descending with every configured fee present even at zero. It " +
+    "follows the same rule as `counts` on export pages after the first.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   request: {
