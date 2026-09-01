@@ -6,15 +6,14 @@ import { generateTransactions } from "./data/transactions";
  * Seed volume controls. Adjust for local development and CI.
  *
  *    SEED_START_DATE: Earliest day seeded rows are dated to. Clamped forward to
- *      the earliest fee activation date if it precedes that. Override with the
- *      SEED_START_DATE env var.
+ *      the earliest fee activation date if it precedes that.
  *    SEED_TOTAL_RECORDS: Total rows to generate, spread as evenly as possible
  *      across every day from SEED_START_DATE to today. Multi-attempt rows count
  *      toward this total.
  *    SEED_MULTI_ATTEMPT_GROUPS: Groups of rows sharing one obligation (a failed
  *      attempt followed by a successful retry).
  */
-const SEED_START_DATE = process.env.SEED_START_DATE ?? "2025-01-01";
+const SEED_START_DATE = "2025-01-01";
 const SEED_TOTAL_RECORDS = 3500;
 const SEED_MULTI_ATTEMPT_GROUPS = 10;
 
