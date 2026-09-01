@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  TransactionFeeBreakdownSchema,
   TransactionLogQuerySchema,
   TransactionLogResponseSchema,
   TransactionTotalsSchema,
@@ -12,3 +13,7 @@ export type TransactionLogResponse = z.infer<
 >;
 
 export type TransactionTotals = z.infer<typeof TransactionTotalsSchema>;
+
+export type TransactionFeeBreakdown = z.infer<
+  typeof TransactionFeeBreakdownSchema
+>;

@@ -15,6 +15,7 @@ const METHODS = [
   "offset",
   "select",
   "count",
+  "sum",
   "groupBy",
 ];
 
@@ -181,6 +182,56 @@ describe("TransactionModel.countsInRange", () => {
       pending: 0,
       total: 9,
     });
+  });
+});
+
+describe("TransactionModel.feeBreakdownInRange", () => {
+  it("tallies successful payments only, bounded on lastUpdatedAt", async () => {
+    const chains = stubQuery([]);
+
+    await TransactionModel.feeBreakdownInRange(FROM, TO);
+    const [q] = chains;
+
+    expect(q.where).toHaveBeenCalledWith("paymentStatus", "success");
+    expect(q.andWhere).toHaveBeenCalledWith("lastUpdatedAt", ">=", FROM);
+    expect(q.andWhere).toHaveBeenCalledWith("lastUpdatedAt", "<", TO);
+  });
+
+  it("groups per fee, counting rows and summing amounts", async () => {
+    const chains = stubQuery([]);
+
+    await TransactionModel.feeBreakdownInRange(FROM, TO);
+    const [q] = chains;
+
+    expect(q.groupBy).toHaveBeenCalledWith("fee");
+    expect(q.count).toHaveBeenCalledWith("* as qty");
+    expect(q.sum).toHaveBeenCalledWith("transactionAmount as subtotal");
+  });
+
+  it("returns numbers, not the strings pg sends back", async () => {
+    stubQuery([
+      { fee: "PETITION_FILING_FEE", qty: "2", subtotal: "120.50" },
+      { fee: "NONATTORNEY_EXAM_REGISTRATION_FEE", qty: "1", subtotal: "250.00" },
+    ]);
+
+    expect(await TransactionModel.feeBreakdownInRange(FROM, TO)).toEqual([
+      { fee: "PETITION_FILING_FEE", qty: 2, subtotal: 120.5 },
+      { fee: "NONATTORNEY_EXAM_REGISTRATION_FEE", qty: 1, subtotal: 250 },
+    ]);
+  });
+
+  it("returns nothing for a timeframe with no successful payments", async () => {
+    stubQuery([]);
+
+    expect(await TransactionModel.feeBreakdownInRange(FROM, TO)).toEqual([]);
+  });
+
+  it("throws rather than reporting a silent $0 for a fee", async () => {
+    stubQuery([{ fee: "PETITION_FILING_FEE", qty: "2", subtotal: null }]);
+
+    await expect(
+      TransactionModel.feeBreakdownInRange(FROM, TO),
+    ).rejects.toThrow('no usable tally for the "PETITION_FILING_FEE" fee');
   });
 });
 
