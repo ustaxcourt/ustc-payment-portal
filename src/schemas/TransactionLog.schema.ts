@@ -221,6 +221,13 @@ export const TransactionLogQuerySchema = z
     }
   })
   .transform((query, context) => {
+    // superRefine has already rejected a half-supplied pair, so both are set or
+    // both absent here; collapse them into one field the model can trust.
+    const metadataSearch =
+      query.metadataKey !== undefined && query.metadataValue !== undefined
+        ? { key: query.metadataKey, value: query.metadataValue }
+        : undefined;
+
     const refinedQuery = {
       from: undefined as Date | undefined,
       to: undefined as Date | undefined,
@@ -228,8 +235,7 @@ export const TransactionLogQuerySchema = z
       fee: query.fee,
       paymentMethod: query.paymentMethod,
       transactionStatus: query.transactionStatus,
-      metadataKey: query.metadataKey,
-      metadataValue: query.metadataValue,
+      metadataSearch,
       page: query.page,
       pageSize: query.pageSize,
       export: query.export,

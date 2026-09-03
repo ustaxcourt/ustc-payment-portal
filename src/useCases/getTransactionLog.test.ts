@@ -182,23 +182,21 @@ describe("getTransactionLog", () => {
       });
     });
 
-    it("passes the metadata key and value straight through", async () => {
+    it("passes the metadata search straight through", async () => {
       await getTransactionLog(
         appContext,
-        query({ metadataKey: "docketNumber", metadataValue: "123-26" }),
+        query({ metadataSearch: { key: "docketNumber", value: "123-26" } }),
       );
 
       expect(queryLog.mock.calls[0][0]).toMatchObject({
-        metadataKey: "docketNumber",
-        metadataValue: "123-26",
+        metadataSearch: { key: "docketNumber", value: "123-26" },
       });
     });
 
     it("leaves the metadata filter unset when it is not requested", async () => {
       await getTransactionLog(appContext, query());
 
-      expect(queryLog.mock.calls[0][0].metadataKey).toBeUndefined();
-      expect(queryLog.mock.calls[0][0].metadataValue).toBeUndefined();
+      expect(queryLog.mock.calls[0][0].metadataSearch).toBeUndefined();
     });
 
     it("combines an explicit timeframe with filters in the same request", async () => {

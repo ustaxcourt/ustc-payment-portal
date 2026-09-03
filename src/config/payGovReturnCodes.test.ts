@@ -1,5 +1,8 @@
-import { payGovReturnCodes } from "./constants";
-import { getAllReturnCodes, getReturnCode } from "./payGovReturnCodes";
+import {
+  getAllReturnCodes,
+  getReturnCode,
+  payGovReturnCodes,
+} from "./payGovReturnCodes";
 
 describe("payGovReturnCodes config", () => {
   describe("getAllReturnCodes", () => {

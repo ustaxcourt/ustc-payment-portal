@@ -222,8 +222,7 @@ describe("TransactionLogQuerySchema", () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toMatchObject({
-        metadataKey: "docketNumber",
-        metadataValue: "123-26",
+        metadataSearch: { key: "docketNumber", value: "123-26" },
       });
     });
 
@@ -233,7 +232,9 @@ describe("TransactionLogQuerySchema", () => {
         metadataValue: "  foo@example.com  ",
       });
 
-      expect(result.data).toMatchObject({ metadataValue: "foo@example.com" });
+      expect(result.data).toMatchObject({
+        metadataSearch: { value: "foo@example.com" },
+      });
     });
 
     // The whitelist is what keeps the key out of SQL, so an unknown key has to

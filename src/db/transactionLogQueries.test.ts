@@ -155,8 +155,7 @@ describe("TransactionModel.queryLog", () => {
 
     await TransactionModel.queryLog({
       ...page,
-      metadataKey: "docketNumber",
-      metadataValue: "123",
+      metadataSearch: { key: "docketNumber", value: "123" },
     });
 
     expect(chains).toHaveLength(2);

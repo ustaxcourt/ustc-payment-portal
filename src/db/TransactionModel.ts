@@ -32,9 +32,8 @@ export type TransactionLogFilter = {
   fee?: FeeKey;
   paymentMethod?: DbPaymentMethod;
   transactionStatus?: SchemaTransactionStatus;
-  /** Paired with `metadataValue`; both set or both absent. */
-  metadataKey?: TransactionLogMetadataKey;
-  metadataValue?: string;
+  /** Key and value are one field, so the half-supplied state cannot be built. */
+  metadataSearch?: { key: TransactionLogMetadataKey; value: string };
   sort: TransactionLogSortField;
   order: SortOrder;
   limit: number;
@@ -161,12 +160,12 @@ export default class TransactionModel extends Model {
       if (filter.transactionStatus) {
         query = query.andWhere("transactionStatus", filter.transactionStatus);
       }
-      if (filter.metadataKey && filter.metadataValue) {
+      if (filter.metadataSearch) {
         // Escape LIKE wildcards so the value matches literally; `\` is ILIKE's
         // default escape char. The key is a closed-list enum, never free text.
-        const escaped = filter.metadataValue.replace(/[\\%_]/g, "\\$&");
+        const escaped = filter.metadataSearch.value.replace(/[\\%_]/g, "\\$&");
         query = query.whereRaw("metadata ->> ? ILIKE ?", [
-          filter.metadataKey,
+          filter.metadataSearch.key,
           `%${escaped}%`,
         ]);
       }

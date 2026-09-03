@@ -694,8 +694,7 @@ describe("TransactionModel", () => {
 
       await TransactionModel.queryLog({
         ...baseFilter,
-        metadataKey: "docketNumber",
-        metadataValue: "50%_x",
+        metadataSearch: { key: "docketNumber", value: "50%_x" },
       });
 
       expect(builder.whereRaw).toHaveBeenCalledWith("metadata ->> ? ILIKE ?", [
@@ -704,14 +703,11 @@ describe("TransactionModel", () => {
       ]);
     });
 
-    it("omits the metadata predicate when only a key is given", async () => {
+    it("omits the metadata predicate when no metadata search is given", async () => {
       const builder = spyOnQuery();
       builder.resolvesTo = [];
 
-      await TransactionModel.queryLog({
-        ...baseFilter,
-        metadataKey: "docketNumber",
-      });
+      await TransactionModel.queryLog({ ...baseFilter });
 
       expect(builder.whereRaw).not.toHaveBeenCalled();
     });
