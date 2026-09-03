@@ -965,6 +965,8 @@ components:
             filter. Omitted on export requests for pages after the first.
         totals:
           $ref: '#/components/schemas/TransactionTotals'
+        feeBreakdown:
+          $ref: '#/components/schemas/TransactionFeeBreakdown'
       required:
         - data
         - from
@@ -1078,6 +1080,40 @@ components:
         - from
         - to
         - total
+    TransactionFeeBreakdown:
+      type: array
+      items:
+        $ref: '#/components/schemas/TransactionFeeBreakdownRow'
+      description: >-
+        Successful payments in the requested timeframe, tallied per fee and
+        ordered by subtotal descending. Every fee the Portal handles appears,
+        even with nothing collected. Honours `from`/`to` but ignores the status
+        filter. Computed in the same statement as `counts`, so `counts.success`
+        always equals the summed quantities. Omitted on export requests for
+        pages after the first.
+    TransactionFeeBreakdownRow:
+      type: object
+      properties:
+        fee:
+          type: string
+          description: Stable fee key (e.g. PETITION_FILING_FEE)
+          example: PETITION_FILING_FEE
+        feeName:
+          type: string
+          description: Human-readable fee name
+          example: Petition Filing Fee
+        qty:
+          type: integer
+          minimum: 0
+          description: Successful payments for the fee in the requested timeframe
+        subtotal:
+          type: number
+          description: Summed transaction amounts in USD
+      required:
+        - fee
+        - feeName
+        - qty
+        - subtotal
   parameters: {}
 paths:
   /init:
@@ -1343,7 +1379,12 @@ paths:
         — day, week, month, fiscal quarter and fiscal year — covering successful
         payments only and ignoring both the timeframe and the status, fee,
         paymentMethod, and transactionStatus filters. It follows the same rule
-        as `counts` on export pages after the first.
+        as `counts` on export pages after the first. `includeFeeBreakdown=true`
+        adds successful payments tallied per fee — count and summed amount — for
+        the requested timeframe, ignoring the status, fee, paymentMethod, and
+        transactionStatus filters, ordered by subtotal descending with every
+        configured fee present even at zero. It follows the same rule as
+        `counts` on export pages after the first.
       tags:
         - Payments
       security:
@@ -1526,6 +1567,28 @@ paths:
             `from`/`to`, `status`, `fee`, `paymentMethod`, and
             `transactionStatus`.
           name: includeTotals
+          in: query
+        - schema:
+            type: string
+            enum:
+              - 'true'
+              - 'false'
+            default: 'false'
+            description: >-
+              Adds `feeBreakdown` to the response: successful payments in the
+              requested timeframe, tallied per fee. Honours `from`/`to` but
+              ignores `status`, `fee`, `paymentMethod`, and `transactionStatus`,
+              so the figures stay stable as the caller filters. Omitted on
+              export requests for pages after the first, as `totals` is.
+            example: 'true'
+          required: false
+          description: >-
+            Adds `feeBreakdown` to the response: successful payments in the
+            requested timeframe, tallied per fee. Honours `from`/`to` but
+            ignores `status`, `fee`, `paymentMethod`, and `transactionStatus`,
+            so the figures stay stable as the caller filters. Omitted on export
+            requests for pages after the first, as `totals` is.
+          name: includeFeeBreakdown
           in: query
       responses:
         '200':

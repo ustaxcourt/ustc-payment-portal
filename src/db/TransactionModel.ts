@@ -251,6 +251,71 @@ export default class TransactionModel extends Model {
     );
   }
 
+  /** Status counts and per-fee success tallies from one SELECT grouped by
+   *  (paymentStatus, fee): both aggregates read the same statement snapshot,
+   *  so `counts.success` always equals the summed tally quantities. Bounds on
+   *  `lastUpdatedAt` and takes no filter, matching countsInRange. */
+  static async countsAndFeeBreakdownInRange(
+    from: Date,
+    to: Date,
+  ): Promise<{
+    counts: AggregatedPaymentStatus;
+    tallies: Array<{ fee: string; qty: number; subtotal: number }>;
+  }> {
+    await getKnex();
+    const rows = await TransactionModel.query()
+      .select("paymentStatus", "fee")
+      .count("* as qty")
+      .sum("transactionAmount as subtotal")
+      .where("lastUpdatedAt", ">=", from)
+      .andWhere("lastUpdatedAt", "<", to)
+      .groupBy("paymentStatus", "fee");
+
+    const counts: AggregatedPaymentStatus = {
+      success: 0,
+      failed: 0,
+      pending: 0,
+      total: 0,
+    };
+    const tallies: Array<{ fee: string; qty: number; subtotal: number }> = [];
+
+    // count and decimal(12,2) arrive as strings from pg; an unusable value
+    // fails loudly rather than reporting a silent $0 for a fee with revenue.
+    // The subtotal is only checked on success groups: the breakdown discards
+    // the others, and a bad value there must not fail the whole request.
+    for (const row of rows as unknown as Array<Record<string, unknown>>) {
+      const paymentStatus = row.paymentStatus;
+      const fee = String(row.fee);
+      const qty = Number(row.qty);
+      if (Number.isNaN(qty)) {
+        throw new Error(
+          `countsAndFeeBreakdownInRange returned no usable count for the "${fee}" fee`,
+        );
+      }
+
+      if (
+        paymentStatus === "success" ||
+        paymentStatus === "failed" ||
+        paymentStatus === "pending"
+      ) {
+        counts[paymentStatus] += qty;
+        counts.total += qty;
+      }
+
+      if (paymentStatus === "success") {
+        const subtotal = Number(row.subtotal);
+        if (row.subtotal === null || Number.isNaN(subtotal)) {
+          throw new Error(
+            `countsAndFeeBreakdownInRange returned no usable tally for the "${fee}" fee`,
+          );
+        }
+        tallies.push({ fee, qty, subtotal });
+      }
+    }
+
+    return { counts, tallies };
+  }
+
   private static tallyByStatus(
     rows: Array<{ paymentStatus?: string; count?: unknown }>,
   ): AggregatedPaymentStatus {

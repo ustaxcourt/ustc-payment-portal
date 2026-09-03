@@ -15,6 +15,7 @@ const METHODS = [
   "offset",
   "select",
   "count",
+  "sum",
   "groupBy",
 ];
 
@@ -181,6 +182,73 @@ describe("TransactionModel.countsInRange", () => {
       pending: 0,
       total: 9,
     });
+  });
+});
+
+describe("TransactionModel.countsAndFeeBreakdownInRange", () => {
+  const grouped = [
+    { paymentStatus: "success", fee: "PETITION_FILING_FEE", qty: "2", subtotal: "120.50" },
+    { paymentStatus: "success", fee: "NONATTORNEY_EXAM_REGISTRATION_FEE", qty: "1", subtotal: "250.00" },
+    { paymentStatus: "failed", fee: "PETITION_FILING_FEE", qty: "3", subtotal: "180.00" },
+    { paymentStatus: "pending", fee: "PETITION_FILING_FEE", qty: "1", subtotal: "60.00" },
+  ];
+
+  it("reads one statement, bounded on lastUpdatedAt with no status filter", async () => {
+    const chains = stubQuery([]);
+
+    await TransactionModel.countsAndFeeBreakdownInRange(FROM, TO);
+
+    expect(chains).toHaveLength(1);
+    const [q] = chains;
+    expect(q.where).toHaveBeenCalledWith("lastUpdatedAt", ">=", FROM);
+    expect(q.andWhere).toHaveBeenCalledWith("lastUpdatedAt", "<", TO);
+    expect(q.where).not.toHaveBeenCalledWith("paymentStatus", expect.anything());
+    expect(q.groupBy).toHaveBeenCalledWith("paymentStatus", "fee");
+    expect(q.count).toHaveBeenCalledWith("* as qty");
+    expect(q.sum).toHaveBeenCalledWith("transactionAmount as subtotal");
+  });
+
+  it("derives both aggregates from the same rows, so they cannot disagree", async () => {
+    stubQuery(grouped);
+
+    const { counts, tallies } = await TransactionModel.countsAndFeeBreakdownInRange(FROM, TO);
+
+    expect(counts).toEqual({ success: 3, failed: 3, pending: 1, total: 7 });
+    expect(tallies).toEqual([
+      { fee: "PETITION_FILING_FEE", qty: 2, subtotal: 120.5 },
+      { fee: "NONATTORNEY_EXAM_REGISTRATION_FEE", qty: 1, subtotal: 250 },
+    ]);
+    expect(counts.success).toBe(tallies.reduce((sum, tally) => sum + tally.qty, 0));
+  });
+
+  it("returns zero counts and no tallies for an empty timeframe", async () => {
+    stubQuery([]);
+
+    expect(await TransactionModel.countsAndFeeBreakdownInRange(FROM, TO)).toEqual({
+      counts: { success: 0, failed: 0, pending: 0, total: 0 },
+      tallies: [],
+    });
+  });
+
+  it("throws rather than reporting a silent $0 for a fee", async () => {
+    stubQuery([
+      { paymentStatus: "success", fee: "PETITION_FILING_FEE", qty: "2", subtotal: null },
+    ]);
+
+    await expect(
+      TransactionModel.countsAndFeeBreakdownInRange(FROM, TO),
+    ).rejects.toThrow('no usable tally for the "PETITION_FILING_FEE" fee');
+  });
+
+  it("tolerates a bad subtotal on a group the breakdown discards", async () => {
+    stubQuery([
+      { paymentStatus: "failed", fee: "PETITION_FILING_FEE", qty: "3", subtotal: null },
+    ]);
+
+    const { counts, tallies } = await TransactionModel.countsAndFeeBreakdownInRange(FROM, TO);
+
+    expect(counts).toEqual({ success: 0, failed: 3, pending: 0, total: 3 });
+    expect(tallies).toEqual([]);
   });
 });
 
