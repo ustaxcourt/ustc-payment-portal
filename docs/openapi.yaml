@@ -874,9 +874,6 @@ components:
         - success
         - failed
         - total
-    ValidateClientRequest:
-      type: object
-      properties: {}
     ValidateClientResponse:
       type: object
       properties:

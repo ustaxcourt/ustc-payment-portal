@@ -34,9 +34,11 @@ import {
   MetadataNonattorneyExamSchema,
   MetadataSchema,
   DeployHealthReportSchema,
-  ValidateClientRequestSchema,
   ValidateClientResponseSchema,
 } from "../schemas";
+
+import { CLIENT_NOT_REGISTERED_MESSAGE } from "@clients/permissionsClient";
+import { MISCONFIGURED_FEES_MESSAGE } from "@useCases/validateClient";
 
 export const registry = new OpenAPIRegistry();
 
@@ -83,7 +85,6 @@ registry.register(
   "TransactionPaymentStatusResponse",
   TransactionPaymentStatusResponseSchema,
 );
-registry.register("ValidateClientRequest", ValidateClientRequestSchema);
 registry.register("ValidateClientResponse", ValidateClientResponseSchema);
 
 // ============================================
@@ -569,9 +570,10 @@ registry.registerPath({
     "Confirms that a newly registered client's AWS account, IAM role ARN, and registered fees " +
     "were entered correctly, without creating a Pay.gov session or writing any transaction state. " +
     "Where the call fails is the diagnostic: a 403 from API Gateway means the account ID or the " +
-    "signing setup is wrong; a 403 reading 'Client not registered' means the resolved role ARN is " +
-    "not present in the client-permissions secret; and a 403 reading 'Forbidden - authorized Fees " +
-    "was misconfigured.' means the role resolved but the fees registered to it are not usable.",
+    `signing setup is wrong; a 403 reading '${CLIENT_NOT_REGISTERED_MESSAGE}' means the resolved ` +
+    "role ARN is not present in the client-permissions secret; and a 403 reading " +
+    `'${MISCONFIGURED_FEES_MESSAGE}' means the role resolved but the fees registered to it ` +
+    "are not usable.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   responses: {

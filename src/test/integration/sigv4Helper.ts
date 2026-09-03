@@ -187,3 +187,54 @@ export const signedFetch = async (
     headers: signed.headers,
   });
 };
+
+/**
+ * Lane gating shared by the integration suites that require a deployed API
+ * Gateway (sigv4Smoke, deployHealthSmoke, validateClient). These run in their own
+ * npm scripts rather than the generic `test:integration*` folder run, so each one
+ * needs the same credential/BASE_URL guards — keeping them here stops the skip
+ * heuristic drifting between lanes.
+ */
+
+/** Whether the environment carries credentials that can sign a request. */
+export const hasSigningCredentials = (): boolean =>
+  Boolean(process.env.AWS_ACCESS_KEY_ID) &&
+  Boolean(process.env.AWS_SECRET_ACCESS_KEY);
+
+/**
+ * True when running locally against a CI-only fixture. DEV_AWS_DEPLOYER_ROLE_ARN
+ * is set in a developer's shell but not on the runner, so its presence means the
+ * caller is not the deployer role the test needs.
+ */
+export const skipCiOnlyTest = (reason: string): boolean => {
+  if (!process.env.DEV_AWS_DEPLOYER_ROLE_ARN) {
+    return false;
+  }
+
+  console.log(`Skipping: ${reason}`);
+  return true;
+};
+
+/** BASE_URL of the deployed stage under test. Throws rather than silently passing. */
+export const mustGetBaseUrl = (): string => {
+  const url = process.env.BASE_URL;
+  if (!url) {
+    throw new Error("BASE_URL is required for SigV4 integration tests");
+  }
+  return url;
+};
+
+/**
+ * Reads a response body as JSON, falling back to raw text. API Gateway's own
+ * errors are JSON, but a non-JSON body is possible, so callers must handle both.
+ */
+export const parseJsonOrText = async <T = unknown>(
+  result: Response,
+): Promise<T | string> => {
+  const raw = await result.text();
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return raw;
+  }
+};

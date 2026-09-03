@@ -1,8 +1,12 @@
 import {
   assumeRole,
+  hasSigningCredentials,
+  mustGetBaseUrl,
+  parseJsonOrText,
   signRequest,
   signedFetch,
   signedFetchWithCredentials,
+  skipCiOnlyTest,
 } from "./sigv4Helper";
 
 jest.setTimeout(20000); // end-to-end calls can exceed Jest's 5s default
@@ -39,28 +43,6 @@ jest.setTimeout(20000); // end-to-end calls can exceed Jest's 5s default
  *   npm run test:integration:validate-client
  */
 
-const hasSigningCredentials =
-  Boolean(process.env.AWS_ACCESS_KEY_ID) &&
-  Boolean(process.env.AWS_SECRET_ACCESS_KEY);
-const isLocalCiOnlySkipMode = Boolean(process.env.DEV_AWS_DEPLOYER_ROLE_ARN);
-
-const skipCiOnlyTest = (reason: string): boolean => {
-  if (!isLocalCiOnlySkipMode) {
-    return false;
-  }
-
-  console.log(`Skipping: ${reason}`);
-  return true;
-};
-
-const mustGetBaseUrl = (): string => {
-  const url = process.env.BASE_URL;
-  if (!url) {
-    throw new Error("BASE_URL is required for SigV4 integration tests");
-  }
-  return url;
-};
-
 /**
  * Every response this endpoint can produce is one of these two shapes: the
  * success body, or an error body carrying `message`. API Gateway's own 403s are
@@ -72,18 +54,7 @@ type ValidateClientBody = {
   message?: string;
 };
 
-const parseJsonOrText = async (
-  result: Response,
-): Promise<ValidateClientBody | string> => {
-  const raw = await result.text();
-  try {
-    return JSON.parse(raw) as ValidateClientBody;
-  } catch {
-    return raw;
-  }
-};
-
-const describeWithCreds = hasSigningCredentials ? describe : describe.skip;
+const describeWithCreds = hasSigningCredentials() ? describe : describe.skip;
 
 describeWithCreds("GET /validate-client — registered client", () => {
   let validateClientUrl: string;
@@ -126,7 +97,7 @@ describeWithCreds("GET /validate-client — API Gateway layer", () => {
 
   it("unsigned request returns 403 without reaching Lambda", async () => {
     const result = await fetch(validateClientUrl, { method: "GET" });
-    const data = await parseJsonOrText(result);
+    const data = await parseJsonOrText<ValidateClientBody>(result);
     console.log("Unsigned validate-client response:", result.status, data);
 
     expect(result.status).toBe(403);
@@ -157,7 +128,7 @@ describeWithCreds("GET /validate-client — API Gateway layer", () => {
       },
     });
 
-    const data = await parseJsonOrText(result);
+    const data = await parseJsonOrText<ValidateClientBody>(result);
     console.log("Tampered validate-client response:", result.status, data);
 
     expect(result.status).toBe(403);
@@ -178,7 +149,7 @@ describeWithCreds("GET /validate-client — API Gateway layer", () => {
  */
 const testUnauthorizedRoleArn = process.env.TEST_UNAUTHORIZED_ROLE_ARN ?? "";
 const describeLambdaAuth =
-  hasSigningCredentials && testUnauthorizedRoleArn ? describe : describe.skip;
+  hasSigningCredentials() && testUnauthorizedRoleArn ? describe : describe.skip;
 
 describeLambdaAuth("GET /validate-client — Lambda layer", () => {
   let validateClientUrl: string;
@@ -208,7 +179,7 @@ describeLambdaAuth("GET /validate-client — Lambda layer", () => {
       { method: "GET" },
     );
 
-    const data = await parseJsonOrText(result);
+    const data = await parseJsonOrText<ValidateClientBody>(result);
     console.log("Unregistered validate-client response:", result.status, data);
 
     expect(result.status).toBe(403);

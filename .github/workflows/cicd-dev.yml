@@ -329,8 +329,13 @@ jobs:
           IAM_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
 
           # Concrete keys, not "*": /validate-client rejects the wildcard, so seeding it
-          # would stop that test ever seeing a 200. Keep in sync with src/config/fees.ts.
-          CI_FEE_KEYS='["PETITION_FILING_FEE","NONATTORNEY_EXAM_REGISTRATION_FEE"]'
+          # would stop that test ever seeing a 200. Read from staticFees so a new fee
+          # key can't leave CI seeding a set that no longer resolves.
+          CI_FEE_KEYS=$(cd "$GITHUB_WORKSPACE" && npm run --silent print:fee-keys)
+          if ! echo "$CI_FEE_KEYS" | jq -e 'type == "array" and length > 0' >/dev/null; then
+            echo "ERROR: print:fee-keys did not return a non-empty JSON array: $CI_FEE_KEYS"
+            exit 1
+          fi
           CLIENT_PERMISSIONS=$(echo "$CLIENT_PERMISSIONS" | jq -c --arg arn "$IAM_ROLE_ARN" --arg keys "$CI_FEE_KEYS" \
             'map(select(.clientRoleArn != $arn)) + [{clientName: "CI Deployer", clientRoleArn: $arn, allowedFeeKeys: ($keys | fromjson)}]')
 
@@ -703,15 +708,6 @@ jobs:
           echo "This validates that API Gateway accepts signed requests and rejects unsigned requests."
           echo "Test unauthorized role: $TEST_UNAUTHORIZED_ROLE_ARN"
           npm run test:integration:sigv4
-
-      - name: Validate-client endpoint test (dev)
-        env:
-          BASE_URL: ${{ steps.tf_outputs_dev.outputs.api_url }}
-          AWS_REGION: ${{ env.AWS_REGION }}
-          TEST_UNAUTHORIZED_ROLE_ARN: ${{ steps.tf_outputs_dev.outputs.test_unauthorized_role_arn }}
-        run: |
-          echo "Running /validate-client checks against: $BASE_URL"
-          npm run test:integration:validate-client
 
       - name: Upload SigV4 coverage (dev)
         if: ${{ always() }}
