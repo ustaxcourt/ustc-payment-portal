@@ -20,3 +20,4 @@ export type {
   GetDetailsPathParams,
   GetDetailsResponse,
 } from "@schemas/GetDetails.schema";
+export type { ValidateClientResponse } from "@schemas/ValidateClient.schema";

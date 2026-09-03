@@ -34,7 +34,11 @@ import {
   MetadataNonattorneyExamSchema,
   MetadataSchema,
   DeployHealthReportSchema,
+  ValidateClientResponseSchema,
 } from "../schemas";
+
+import { CLIENT_NOT_REGISTERED_MESSAGE } from "@clients/permissionsClient";
+import { MISCONFIGURED_FEES_MESSAGE } from "@useCases/validateClient";
 
 export const registry = new OpenAPIRegistry();
 
@@ -81,6 +85,7 @@ registry.register(
   "TransactionPaymentStatusResponse",
   TransactionPaymentStatusResponseSchema,
 );
+registry.register("ValidateClientResponse", ValidateClientResponseSchema);
 
 // ============================================
 // AWS Signature Version 4 Security Scheme
@@ -542,6 +547,55 @@ registry.registerPath({
     403: {
       description:
         "Forbidden - invalid SigV4 signature or client not authorized",
+      content: {
+        "application/json": {
+          schema: ForbiddenErrorSchema,
+        },
+      },
+    },
+    500: {
+      description: "Internal server error",
+      content: {
+        "application/json": {
+          schema: ServerErrorSchema,
+        },
+      },
+    },
+  },
+});
+
+// ============================================
+// GET /validate-client - Pre-golive Client Credential Check
+// ============================================
+registry.registerPath({
+  method: "get",
+  path: "/validate-client",
+  summary: "Validate a client's registration before go-live",
+  description:
+    "Confirms that a newly registered client's AWS account, IAM role ARN, and registered fees " +
+    "were entered correctly, without creating a Pay.gov session or writing any transaction state. " +
+    "Where the call fails is the diagnostic: a 403 from API Gateway means the account ID or the " +
+    `signing setup is wrong; a 403 reading '${CLIENT_NOT_REGISTERED_MESSAGE}' means the resolved ` +
+    "role ARN is not present in the client-permissions secret; and a 403 reading " +
+    `'${MISCONFIGURED_FEES_MESSAGE}' means the role resolved but the fees registered to it ` +
+    "are not usable.",
+  tags: ["Payments"],
+  security: [{ sigv4: [] }],
+  responses: {
+    200: {
+      description:
+        "Client is registered. Returns the resolved client name and every fee key registered to it.",
+      content: {
+        "application/json": {
+          schema: ValidateClientResponseSchema,
+        },
+      },
+    },
+    403: {
+      description:
+        "Forbidden - invalid SigV4 signature; or the resolved IAM role ARN is not registered in " +
+        "client-permissions; or the client's registered fee keys are misconfigured (the `*` " +
+        "wildcard, an empty set, or a key that does not resolve to an active fee).",
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,

@@ -60,6 +60,8 @@ The portal is published as `@ustaxcourt/payment-portal` and serves two purposes:
   - Local (no SigV4): `npm run test:integration:dev`
   - CI (SigV4-signed, against a deployed API Gateway): `npm run test:integration`
   - SigV4 smoke only: `BASE_URL=$BASE_URL npm run test:integration:sigv4`
+  - `/validate-client` only: `BASE_URL=$BASE_URL npm run test:integration:validate-client`
+  - The `sigv4Smoke`, `deployHealthSmoke`, and `validateClient` suites need a deployed API Gateway, so they are excluded from the generic `test:integration*` scripts and run in their own lanes. A new integration test that cannot run against the local devServer belongs in a lane too, not in the shared folder run.
 - **Smoke-check** the running local stack: `npm run check:local-flow`
 - **Database migrations**: `npm run migrate:latest` (Knex). See other `migrate:*` and `seed:*` scripts in `package.json`.
 
@@ -82,7 +84,7 @@ The portal is published as `@ustaxcourt/payment-portal` and serves two purposes:
 
 ## Security Requirements
 
-- `authorizeClient` MUST be called in every handler/use case that operates on the payment workflow — i.e. anything that reads or mutates fee-scoped data (`initPayment`, `processPayment`, `getDetails`, and any future payment-flow operations). These endpoints are also SigV4-protected at API Gateway as a matter of SOP, so the two signals correlate: if the route is behind SigV4, it needs `authorizeClient`. Read-only dashboard endpoints do not.
+- `authorizeClient` MUST be called in every handler/use case that operates on the payment workflow — i.e. anything that reads or mutates fee-scoped data (`initPayment`, `processPayment`, `getDetails`, and any future payment-flow operations). These endpoints are also SigV4-protected at API Gateway as a matter of SOP, so the two signals correlate: if the route is behind SigV4, it needs `authorizeClient`. Read-only dashboard endpoints do not. Nor do endpoints that take no fee parameter and only read the caller's own permission record (`validateClient`) — there is no fee to authorize against, and `authorizeClient` treats a `*` wildcard as a pass, which is the opposite of what such a check must do.
 - Pino's redaction config is the source of truth for what gets stripped from logs — see `redact.paths` in [`src/utils/logger.ts`](src/utils/logger.ts). Before logging a field that could plausibly carry PII or secrets (emails, names, access codes, payment data, anything signed/authenticated), check that list. If a sensitive field is not covered and you believe it should be, STOP — do not add the log line. Ask the developer whether to add it to `redact.paths` first, using `AskUserQuestion` (or the equivalent prompt mechanism for your agent) before proceeding.
 
 ## Testing Conventions

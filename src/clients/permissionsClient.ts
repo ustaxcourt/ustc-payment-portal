@@ -114,11 +114,15 @@ export const getClientPermissions = async (): Promise<ClientPermission[]> => {
   }
 };
 
+/** Thrown when the signing role resolves but has no client-permissions entry. */
+export const CLIENT_NOT_REGISTERED_MESSAGE = "Client not registered";
+
 /**
  * Looks up a client by their IAM role ARN.
  *
  * @param roleArn - The IAM role ARN to look up
- * @returns The client's permissions, or null if not found
+ * @returns The client's permissions
+ * @throws ForbiddenError if the role ARN has no client-permissions entry
  */
 export const getClientByRoleArn = async (
   roleArn: string,
@@ -126,7 +130,7 @@ export const getClientByRoleArn = async (
   const permissions = await getClientPermissions();
   const client = permissions.find((p) => p.clientRoleArn === roleArn) || null;
   if (!client) {
-    throw new ForbiddenError("Client not registered");
+    throw new ForbiddenError(CLIENT_NOT_REGISTERED_MESSAGE);
   }
   return client;
 };

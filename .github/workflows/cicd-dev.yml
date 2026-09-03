@@ -118,6 +118,7 @@ jobs:
           TF_VAR_initPayment_s3_key: ${{ steps.upload_artifacts_pr.outputs.initPayment_s3_key }}
           TF_VAR_processPayment_s3_key: ${{ steps.upload_artifacts_pr.outputs.processPayment_s3_key }}
           TF_VAR_getDetails_s3_key: ${{ steps.upload_artifacts_pr.outputs.getDetails_s3_key }}
+          TF_VAR_validateClient_s3_key: ${{ steps.upload_artifacts_pr.outputs.validateClient_s3_key }}
           TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_pr.outputs.testCert_s3_key }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_s3_key }}
           TF_VAR_getAllTransactions_s3_key: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_s3_key }}
@@ -127,6 +128,7 @@ jobs:
           TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.initPayment_source_code_hash }}
           TF_VAR_processPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.processPayment_source_code_hash }}
           TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getDetails_source_code_hash }}
+          TF_VAR_validateClient_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.validateClient_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.testCert_source_code_hash }}
           TF_VAR_migrationRunner_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_source_code_hash }}
           TF_VAR_getAllTransactions_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_source_code_hash }}
@@ -153,6 +155,7 @@ jobs:
           TF_VAR_initPayment_s3_key: ${{ steps.upload_artifacts_pr.outputs.initPayment_s3_key }}
           TF_VAR_processPayment_s3_key: ${{ steps.upload_artifacts_pr.outputs.processPayment_s3_key }}
           TF_VAR_getDetails_s3_key: ${{ steps.upload_artifacts_pr.outputs.getDetails_s3_key }}
+          TF_VAR_validateClient_s3_key: ${{ steps.upload_artifacts_pr.outputs.validateClient_s3_key }}
           TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_pr.outputs.testCert_s3_key }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_s3_key }}
           TF_VAR_getAllTransactions_s3_key: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_s3_key }}
@@ -162,6 +165,7 @@ jobs:
           TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.initPayment_source_code_hash }}
           TF_VAR_processPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.processPayment_source_code_hash }}
           TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getDetails_source_code_hash }}
+          TF_VAR_validateClient_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.validateClient_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.testCert_source_code_hash }}
           TF_VAR_migrationRunner_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_source_code_hash }}
           TF_VAR_getAllTransactions_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_source_code_hash }}
@@ -300,33 +304,43 @@ jobs:
           aws secretsmanager put-secret-value --secret-id "$PAYGOV_SECRET_ID" --secret-string file:///dev/stdin
 
           # Copy client permissions (authorized IAM role ARNs for Lambda-level auth).
-          # Guarded: this secret only exists in dev once PAY-008 has been deployed there.
-          # When absent, seed PR env with the deployer role so integration tests (which run as that role) pass.
+          # Only exists in dev once PAY-008 is deployed there; when absent, start from [].
           CLIENT_PERMISSIONS_SECRET_ID=$(terraform output -raw client_permissions_secret_id)
           CLIENT_PERMISSIONS=$(aws secretsmanager get-secret-value --secret-id "ustc/pay-gov/dev/client-permissions" --query SecretString --output text 2>/dev/null || echo "")
           if [ -n "$CLIENT_PERMISSIONS" ]; then
-            aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string "$CLIENT_PERMISSIONS"
             echo "Copied client-permissions from dev."
           else
-            echo "Source secret 'ustc/pay-gov/dev/client-permissions' not found — seeding PR env with deployer role for integration tests."
-            # Lambda expects IAM role ARN (arn:aws:iam::ACCOUNT:role/NAME); API Gateway sends assumed-role ARN.
-            CALLER_ARN=$(aws sts get-caller-identity --query Arn --output text)
-            ACCOUNT_ID=$(echo "$CALLER_ARN" | cut -d: -f5)
-            ROLE_NAME=$(echo "$CALLER_ARN" | sed -n 's|.*assumed-role/\([^/]*\)/.*|\1|p')
-            if [ -n "$ROLE_NAME" ]; then
-              IAM_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
-              # Wildcard allowedFeeKeys so CI tests pass regardless of which fee Keys are added in the future.
-              # This entry is CI-only and never written to dev/stg/prod client-permissions.
-              DEPLOYER_PERMISSIONS=$(jq -n --arg arn "$IAM_ROLE_ARN" '[{clientName: "CI Deployer", clientRoleArn: $arn, allowedFeeKeys: ["*"]}]')
-              aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string "$DEPLOYER_PERMISSIONS"
-              echo "Seeded client-permissions with deployer role: $IAM_ROLE_ARN"
-            else
-              echo "ERROR: Could not derive IAM role ARN from caller identity: $CALLER_ARN"
-              echo "Expected an assumed-role ARN (arn:aws:sts::ACCOUNT:assumed-role/ROLE/SESSION)."
-              echo "Integration tests will fail with 403 Client not registered without this seed."
-              exit 1
-            fi
+            echo "Source secret 'ustc/pay-gov/dev/client-permissions' not found — starting from an empty set."
+            CLIENT_PERMISSIONS="[]"
           fi
+
+          # Register the CI caller on both paths above — integration tests run as this role,
+          # and dev's copied entry is hand-edited state. API Gateway sends an assumed-role
+          # ARN; Lambda matches on the IAM role ARN.
+          CALLER_ARN=$(aws sts get-caller-identity --query Arn --output text)
+          ACCOUNT_ID=$(echo "$CALLER_ARN" | cut -d: -f5)
+          ROLE_NAME=$(echo "$CALLER_ARN" | sed -n 's|.*assumed-role/\([^/]*\)/.*|\1|p')
+          if [ -z "$ROLE_NAME" ]; then
+            echo "ERROR: Could not derive IAM role ARN from caller identity: $CALLER_ARN"
+            echo "Expected an assumed-role ARN (arn:aws:sts::ACCOUNT:assumed-role/ROLE/SESSION)."
+            echo "Integration tests will fail with 403 Client not registered without this seed."
+            exit 1
+          fi
+          IAM_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
+
+          # Concrete keys, not "*": /validate-client rejects the wildcard, so seeding it
+          # would stop that test ever seeing a 200. Read from staticFees so a new fee
+          # key can't leave CI seeding a set that no longer resolves.
+          CI_FEE_KEYS=$(cd "$GITHUB_WORKSPACE" && npm run --silent print:fee-keys)
+          if ! echo "$CI_FEE_KEYS" | jq -e 'type == "array" and length > 0' >/dev/null; then
+            echo "ERROR: print:fee-keys did not return a non-empty JSON array: $CI_FEE_KEYS"
+            exit 1
+          fi
+          CLIENT_PERMISSIONS=$(echo "$CLIENT_PERMISSIONS" | jq -c --arg arn "$IAM_ROLE_ARN" --arg keys "$CI_FEE_KEYS" \
+            'map(select(.clientRoleArn != $arn)) + [{clientName: "CI Deployer", clientRoleArn: $arn, allowedFeeKeys: ($keys | fromjson)}]')
+
+          aws secretsmanager put-secret-value --secret-id "$CLIENT_PERMISSIONS_SECRET_ID" --secret-string "$CLIENT_PERMISSIONS"
+          echo "Registered CI caller in client-permissions: $IAM_ROLE_ARN"
 
           # Copy allowed account IDs (for API Gateway cross-account resource policy).
           # Guarded: this secret only exists in dev once PAY-008 has been deployed there.
@@ -356,6 +370,19 @@ jobs:
           echo "This validates that API Gateway accepts signed requests and rejects unsigned requests."
           echo "Test unauthorized role: $TEST_UNAUTHORIZED_ROLE_ARN"
           npm run test:integration:sigv4
+
+      # Runs here rather than in the integration_test job because it needs a
+      # deployed API Gateway AND the unregistered test role, both of which are
+      # only wired up in this step's env.
+      - name: Validate-client endpoint test (PR environment)
+        if: ${{ steps.tf_outputs.outputs.has_outputs == 'true' }}
+        env:
+          BASE_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          TEST_UNAUTHORIZED_ROLE_ARN: ${{ steps.tf_outputs.outputs.test_unauthorized_role_arn }}
+        run: |
+          echo "Running /validate-client checks against: $BASE_URL"
+          npm run test:integration:validate-client
 
       - name: Upload SigV4 coverage (PR environment)
         if: ${{ always() && steps.tf_outputs.outputs.has_outputs == 'true' }}
@@ -547,6 +574,7 @@ jobs:
           TF_VAR_initPayment_s3_key: ${{ steps.promote_artifacts.outputs.initPayment_s3_key }}
           TF_VAR_processPayment_s3_key: ${{ steps.promote_artifacts.outputs.processPayment_s3_key }}
           TF_VAR_getDetails_s3_key: ${{ steps.promote_artifacts.outputs.getDetails_s3_key }}
+          TF_VAR_validateClient_s3_key: ${{ steps.promote_artifacts.outputs.validateClient_s3_key }}
           TF_VAR_testCert_s3_key: ${{ steps.promote_artifacts.outputs.testCert_s3_key }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.promote_artifacts.outputs.migrationRunner_s3_key }}
           TF_VAR_getAllTransactions_s3_key: ${{ steps.promote_artifacts.outputs.getAllTransactions_s3_key }}
@@ -559,6 +587,7 @@ jobs:
           TF_VAR_initPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.initPayment_source_code_hash }}
           TF_VAR_processPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.processPayment_source_code_hash }}
           TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
+          TF_VAR_validateClient_source_code_hash: ${{ steps.promote_artifacts.outputs.validateClient_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
           TF_VAR_migrationRunner_source_code_hash: ${{ steps.promote_artifacts.outputs.migrationRunner_source_code_hash }}
           TF_VAR_getAllTransactions_source_code_hash: ${{ steps.promote_artifacts.outputs.getAllTransactions_source_code_hash }}
@@ -601,6 +630,7 @@ jobs:
           TF_VAR_initPayment_s3_key: ${{ steps.promote_artifacts.outputs.initPayment_s3_key }}
           TF_VAR_processPayment_s3_key: ${{ steps.promote_artifacts.outputs.processPayment_s3_key }}
           TF_VAR_getDetails_s3_key: ${{ steps.promote_artifacts.outputs.getDetails_s3_key }}
+          TF_VAR_validateClient_s3_key: ${{ steps.promote_artifacts.outputs.validateClient_s3_key }}
           TF_VAR_testCert_s3_key: ${{ steps.promote_artifacts.outputs.testCert_s3_key }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.promote_artifacts.outputs.migrationRunner_s3_key }}
           TF_VAR_getAllTransactions_s3_key: ${{ steps.promote_artifacts.outputs.getAllTransactions_s3_key }}
@@ -613,6 +643,7 @@ jobs:
           TF_VAR_initPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.initPayment_source_code_hash }}
           TF_VAR_processPayment_source_code_hash: ${{ steps.promote_artifacts.outputs.processPayment_source_code_hash }}
           TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
+          TF_VAR_validateClient_source_code_hash: ${{ steps.promote_artifacts.outputs.validateClient_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
           TF_VAR_migrationRunner_source_code_hash: ${{ steps.promote_artifacts.outputs.migrationRunner_source_code_hash }}
           TF_VAR_getAllTransactions_source_code_hash: ${{ steps.promote_artifacts.outputs.getAllTransactions_source_code_hash }}

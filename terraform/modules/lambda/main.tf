@@ -16,6 +16,11 @@ locals {
       handler = "getDetailsHandler.getDetailsHandler"
       timeout = var.payment_lambda_timeout
     }
+
+    validateClient = {
+      handler = "validateClientHandler.validateClientHandler"
+      timeout = 15
+    }
     testCert = {
       handler = "lambdaHandler.handler"
     }
