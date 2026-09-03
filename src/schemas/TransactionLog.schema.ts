@@ -2,6 +2,10 @@ import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { courtDayBoundsForDateString } from "@utils/courtDayBounds";
 import { z } from "zod";
 import { FeeKeySchema } from "./FeeKey.schema";
+import {
+  MetadataDawsonSchema,
+  MetadataNonattorneyExamSchema,
+} from "./Metadata.schema";
 import { PaymentMethodSchema } from "./PaymentMethod.schema";
 import { PaymentStatusSchema } from "./PaymentStatus.schema";
 import { DashboardTransactionSchema } from "./TransactionDashboard.schema";
@@ -75,6 +79,31 @@ export type TransactionLogSortField = z.infer<
 >;
 export type SortOrder = z.infer<typeof SortOrderSchema>;
 
+/** Derived from the fee-specific metadata schemas so search stays in lockstep
+ *  with the metadata contract — a field is searchable by the same edit that
+ *  adds it. Still a closed list: nothing from the query string reaches SQL as a
+ *  JSON key. Dawson keys are listed before the exam keys; a key common to both
+ *  schemas appears once. */
+export const TRANSACTION_LOG_METADATA_KEYS = [
+  ...new Set([
+    ...MetadataDawsonSchema.keyof().options,
+    ...MetadataNonattorneyExamSchema.keyof().options,
+  ]),
+] as const;
+
+export const TransactionLogMetadataKeySchema = z
+  .enum(TRANSACTION_LOG_METADATA_KEYS)
+  .openapi("TransactionLogMetadataKey", {
+    description:
+      "Which metadata field `metadataValue` is matched against. The keys are " +
+      "the field names defined by the fee-specific metadata schemas (see the " +
+      "`Metadata` schema); which of them a given row carries depends on its fee.",
+  });
+
+export type TransactionLogMetadataKey = z.infer<
+  typeof TransactionLogMetadataKeySchema
+>;
+
 export const TransactionLogQuerySchema = z
   .object({
     from: z.string().optional().openapi({
@@ -106,6 +135,18 @@ export const TransactionLogQuerySchema = z
       description:
         "Restricts rows to one transaction attempt status. `counts` and `totals` ignore it.",
       example: "processed",
+    }),
+    metadataKey: TransactionLogMetadataKeySchema.optional().openapi({
+      description:
+        "Which metadata field to search. Must be supplied together with " +
+        "`metadataValue`. `counts` and `totals` ignore it.",
+      example: "docketNumber",
+    }),
+    metadataValue: z.string().trim().min(1).max(200).optional().openapi({
+      description:
+        "Case-insensitive substring matched against the metadata field named " +
+        "by `metadataKey`. Must be supplied together with `metadataKey`.",
+      example: "123-26",
     }),
     page: z.coerce.number().int().min(1).default(1).openapi({
       description: "1-indexed page number",
@@ -178,6 +219,16 @@ export const TransactionLogQuerySchema = z
       }),
   })
   .superRefine((query, context) => {
+    if ((query.metadataKey === undefined) !== (query.metadataValue === undefined)) {
+      context.addIssue({
+        code: "custom",
+        message: "`metadataKey` and `metadataValue` must be supplied together",
+        path: [
+          query.metadataKey === undefined ? "metadataKey" : "metadataValue",
+        ],
+      });
+    }
+
     if ((query.from === undefined) !== (query.to === undefined)) {
       context.addIssue({
         code: "custom",
@@ -192,6 +243,13 @@ export const TransactionLogQuerySchema = z
     }
   })
   .transform((query, context) => {
+    // superRefine has already rejected a half-supplied pair, so both are set or
+    // both absent here; collapse them into one field the model can trust.
+    const metadataSearch =
+      query.metadataKey !== undefined && query.metadataValue !== undefined
+        ? { key: query.metadataKey, value: query.metadataValue }
+        : undefined;
+
     const refinedQuery = {
       from: undefined as Date | undefined,
       to: undefined as Date | undefined,
@@ -199,6 +257,7 @@ export const TransactionLogQuerySchema = z
       fee: query.fee,
       paymentMethod: query.paymentMethod,
       transactionStatus: query.transactionStatus,
+      metadataSearch,
       page: query.page,
       pageSize: query.pageSize,
       export: query.export,

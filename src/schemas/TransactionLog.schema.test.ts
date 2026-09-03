@@ -213,6 +213,61 @@ describe("TransactionLogQuerySchema", () => {
     it("rejects a transaction status that is not a known value", () => {
       expect(parse({ transactionStatus: "cancelled" }).success).toBe(false);
     });
+
+    it("accepts a metadata key and value supplied together", () => {
+      const result = parse({
+        metadataKey: "docketNumber",
+        metadataValue: "123-26",
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({
+        metadataSearch: { key: "docketNumber", value: "123-26" },
+      });
+    });
+
+    it("trims surrounding whitespace from the metadata value", () => {
+      const result = parse({
+        metadataKey: "email",
+        metadataValue: "  foo@example.com  ",
+      });
+
+      expect(result.data).toMatchObject({
+        metadataSearch: { value: "foo@example.com" },
+      });
+    });
+
+    // The whitelist is what keeps the key out of SQL, so an unknown key has to
+    // fail parsing rather than fall through.
+    it("rejects a metadata key that is not on the whitelist", () => {
+      expect(
+        parse({ metadataKey: "paygovToken", metadataValue: "x" }).success,
+      ).toBe(false);
+    });
+
+    it("rejects a metadata key without a value", () => {
+      const result = parse({ metadataKey: "docketNumber" });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0].message).toBe(
+        "`metadataKey` and `metadataValue` must be supplied together",
+      );
+    });
+
+    it("rejects a metadata value without a key", () => {
+      const result = parse({ metadataValue: "123-26" });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0].message).toBe(
+        "`metadataKey` and `metadataValue` must be supplied together",
+      );
+    });
+
+    it("rejects a blank metadata value", () => {
+      expect(
+        parse({ metadataKey: "docketNumber", metadataValue: "   " }).success,
+      ).toBe(false);
+    });
   });
 
   describe("includeTotals", () => {

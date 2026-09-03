@@ -192,6 +192,23 @@ describe("getTransactionLog", () => {
       });
     });
 
+    it("passes the metadata search straight through", async () => {
+      await getTransactionLog(
+        appContext,
+        query({ metadataSearch: { key: "docketNumber", value: "123-26" } }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        metadataSearch: { key: "docketNumber", value: "123-26" },
+      });
+    });
+
+    it("leaves the metadata filter unset when it is not requested", async () => {
+      await getTransactionLog(appContext, query());
+
+      expect(queryLog.mock.calls[0][0].metadataSearch).toBeUndefined();
+    });
+
     it("combines an explicit timeframe with filters in the same request", async () => {
       const from = new Date("2026-07-01T00:00:00.000Z");
       const to = new Date("2026-07-02T00:00:00.000Z");
