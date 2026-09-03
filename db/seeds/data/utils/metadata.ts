@@ -7,15 +7,17 @@ import type { SeededFee } from "./seededFees";
  */
 export const buildMetadata = (
   feeKey: SeededFee["key"],
-): Record<string, string> | null => {
+): Record<string, string> => {
   switch (feeKey) {
     case "PETITION_FILING_FEE":
       return buildDawsonMetadata();
     case "NONATTORNEY_EXAM_REGISTRATION_FEE":
       return buildNonAttorneyMetadata();
     default:
-      console.warn(`No metadata builder for fee key "${feeKey}" found.`);
-      return null; // Return null if no metadata builder is found
+      // Unreachable for the current SeededFee keys; a new SEEDED_FEES entry
+      // without a matching builder lands here — fail the seed loudly rather
+      // than insert a row with no metadata.
+      throw new Error(`No metadata builder for seeded fee "${feeKey}"`);
   }
 };
 
