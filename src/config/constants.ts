@@ -232,7 +232,7 @@ export const payGovReturnCodes: PayGovReturnCodes = {
   },
   4019: {
     returnDetail:
-      'No agency application found for given agency_id {0} and tcs_app_id {1}. / Batch failed because it was a potential duplicate batch and was not reprocessed (that case returns transaction_status "Batch Failed", not "Failed").',
+      'No agency application found for given agency_id and tcs_app_id. / Batch failed because it was a potential duplicate batch and was not reprocessed (that case returns transaction_status "Batch Failed", not "Failed").',
     transactionStatus: "Failed",
   },
   4020: {
