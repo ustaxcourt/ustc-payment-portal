@@ -1114,6 +1114,17 @@ components:
         - feeName
         - qty
         - subtotal
+    TransactionLogMetadataKey:
+      type: string
+      enum:
+        - docketNumber
+        - email
+        - fullName
+        - accessCode
+      description: >-
+        Which metadata field to search. Must be supplied together with
+        `metadataValue`. `counts` and `totals` ignore it.
+      example: docketNumber
   parameters: {}
 paths:
   /init:
