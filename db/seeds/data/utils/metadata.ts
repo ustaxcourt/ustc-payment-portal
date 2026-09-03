@@ -14,18 +14,16 @@ export const buildMetadata = (
     case "NONATTORNEY_EXAM_REGISTRATION_FEE":
       return buildNonAttorneyMetadata();
     default:
-      // Unreachable for the current SeededFee keys; a new SEEDED_FEES entry
-      // without a matching builder lands here — fail the seed loudly rather
-      // than insert a row with no metadata.
       throw new Error(`No metadata builder for seeded fee "${feeKey}"`);
   }
 };
 
 const buildDawsonMetadata = (): Record<string, string> => {
-  // Dawson docket number: 3 digits, a dash, then a 2-digit year (e.g. 123-26).
-  const index = faker.number.int({ min: 100, max: 999 });
+  // Dawson docket number: a petition sequence number that resets each year and
+  // runs into the tens of thousands, a dash, then a 2-digit year (e.g. 12345-26).
+  const petitionNumber = faker.number.int({ min: 1, max: 50000 });
   const year = faker.helpers.arrayElement(["24", "25", "26"]);
-  return { docketNumber: `${index}-${year}` };
+  return { docketNumber: `${petitionNumber}-${year}` };
 };
 
 const buildNonAttorneyMetadata = (): Record<string, string> => {
