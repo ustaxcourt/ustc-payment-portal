@@ -425,7 +425,12 @@ registry.registerPath({
     "— day, week, month, fiscal quarter and fiscal year — covering successful " +
     "payments only and ignoring both the timeframe and the status, fee, " +
     "paymentMethod, and transactionStatus filters. It follows the same rule " +
-    "as `counts` on export pages after the first.",
+    "as `counts` on export pages after the first. " +
+    "`includeFeeBreakdown=true` adds successful payments tallied per fee — " +
+    "count and summed amount — for the requested timeframe, ignoring the " +
+    "status, fee, paymentMethod, and transactionStatus filters, ordered by " +
+    "subtotal descending with every configured fee present even at zero. It " +
+    "follows the same rule as `counts` on export pages after the first.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   request: {

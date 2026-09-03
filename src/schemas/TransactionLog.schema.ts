@@ -162,6 +162,20 @@ export const TransactionLogQuerySchema = z
           "`from`/`to`, `status`, `fee`, `paymentMethod`, and `transactionStatus`.",
         example: "true",
       }),
+    includeFeeBreakdown: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true")
+      .openapi({
+        description:
+          "Adds `feeBreakdown` to the response: successful payments in the " +
+          "requested timeframe, tallied per fee. Honours `from`/`to` but " +
+          "ignores `status`, `fee`, `paymentMethod`, and " +
+          "`transactionStatus`, so the figures stay stable as the caller " +
+          "filters. Omitted on export requests for pages after the first, " +
+          "as `totals` is.",
+        example: "true",
+      }),
   })
   .superRefine((query, context) => {
     if ((query.from === undefined) !== (query.to === undefined)) {
@@ -191,6 +205,7 @@ export const TransactionLogQuerySchema = z
       sort: query.sort,
       order: query.order,
       includeTotals: query.includeTotals,
+      includeFeeBreakdown: query.includeFeeBreakdown,
     };
 
     if (!query.from || !query.to) {
@@ -311,6 +326,38 @@ export const TransactionTotalsSchema = z
       "export requests for pages after the first.",
   });
 
+export const TransactionFeeBreakdownRowSchema = z
+  .object({
+    fee: z.string().openapi({
+      description: "Stable fee key (e.g. PETITION_FILING_FEE)",
+      example: "PETITION_FILING_FEE",
+    }),
+    feeName: z.string().openapi({
+      description: "Human-readable fee name",
+      example: "Petition Filing Fee",
+    }),
+    qty: z.number().int().nonnegative().openapi({
+      description: "Successful payments for the fee in the requested timeframe",
+    }),
+    // No nonnegative(), for the same reason as TransactionTotalPeriod.
+    subtotal: z.number().openapi({
+      description: "Summed transaction amounts in USD",
+    }),
+  })
+  .openapi("TransactionFeeBreakdownRow");
+
+export const TransactionFeeBreakdownSchema = z
+  .array(TransactionFeeBreakdownRowSchema)
+  .openapi("TransactionFeeBreakdown", {
+    description:
+      "Successful payments in the requested timeframe, tallied per fee and " +
+      "ordered by subtotal descending. Every fee the Portal handles appears, " +
+      "even with nothing collected. Honours `from`/`to` but ignores the " +
+      "status filter. Computed in the same statement as `counts`, so " +
+      "`counts.success` always equals the summed quantities. Omitted on " +
+      "export requests for pages after the first.",
+  });
+
 export const TransactionLogResponseSchema = z
   .object({
     data: z.array(TransactionLogEntrySchema).openapi({
@@ -348,6 +395,7 @@ export const TransactionLogResponseSchema = z
           "filter. Omitted on export requests for pages after the first.",
       }),
     totals: TransactionTotalsSchema.optional(),
+    feeBreakdown: TransactionFeeBreakdownSchema.optional(),
   })
   .refine(
     (response) =>
@@ -364,3 +412,7 @@ export type TransactionLogResponse = z.infer<
 >;
 
 export type TransactionTotals = z.infer<typeof TransactionTotalsSchema>;
+
+export type TransactionFeeBreakdown = z.infer<
+  typeof TransactionFeeBreakdownSchema
+>;
