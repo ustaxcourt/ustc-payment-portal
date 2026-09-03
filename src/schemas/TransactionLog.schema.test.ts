@@ -288,6 +288,38 @@ describe("TransactionLogQuerySchema", () => {
       expect(parse({ includeTotals: "yes" }).success).toBe(false);
     });
   });
+
+  describe("includeFeeBreakdown", () => {
+    it("stays off when it is not asked for", () => {
+      expect(parse({}).data?.includeFeeBreakdown).toBe(false);
+    });
+
+    it('turns on for the string "true"', () => {
+      expect(
+        parse({ includeFeeBreakdown: "true" }).data?.includeFeeBreakdown,
+      ).toBe(true);
+    });
+
+    it('stays off for the string "false"', () => {
+      expect(
+        parse({ includeFeeBreakdown: "false" }).data?.includeFeeBreakdown,
+      ).toBe(false);
+    });
+
+    it("rejects a value that is neither true nor false", () => {
+      expect(parse({ includeFeeBreakdown: "yes" }).success).toBe(false);
+    });
+
+    it("survives the timeframe transform", () => {
+      const result = parse({
+        from: FROM,
+        to: TO,
+        includeFeeBreakdown: "true",
+      });
+
+      expect(result.data?.includeFeeBreakdown).toBe(true);
+    });
+  });
 });
 
 describe("TransactionLogResponseSchema", () => {
@@ -314,6 +346,41 @@ describe("TransactionLogResponseSchema", () => {
 
     expect(result.success).toBe(true);
     expect(result.data).not.toHaveProperty("totals");
+    expect(result.data).not.toHaveProperty("feeBreakdown");
+  });
+
+  it("parses with a fee breakdown", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      feeBreakdown: [
+        {
+          fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+          feeName: "Non-Attorney Exam Registration Fee",
+          qty: 3,
+          subtotal: 750,
+        },
+        {
+          fee: "PETITION_FILING_FEE",
+          feeName: "Petition Filing Fee",
+          qty: 2,
+          subtotal: 120,
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.feeBreakdown?.[0].subtotal).toBe(750);
+  });
+
+  it("rejects a breakdown row missing its tally", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      feeBreakdown: [
+        { fee: "PETITION_FILING_FEE", feeName: "Petition Filing Fee" },
+      ],
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it("parses with a total for each of the five periods", () => {

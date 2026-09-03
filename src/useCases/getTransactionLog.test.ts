@@ -51,6 +51,7 @@ describe("getTransactionLog", () => {
   let queryLog: jest.SpyInstance;
   let countsInRange: jest.SpyInstance;
   let totalsToDate: jest.SpyInstance;
+  let countsAndFeeBreakdown: jest.SpyInstance;
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date("2026-08-03T15:00:00.000Z"));
@@ -63,6 +64,15 @@ describe("getTransactionLog", () => {
     totalsToDate = jest
       .spyOn(TransactionModel, "totalsToDate")
       .mockResolvedValue(totals);
+    countsAndFeeBreakdown = jest
+      .spyOn(TransactionModel, "countsAndFeeBreakdownInRange")
+      .mockResolvedValue({
+        counts,
+        tallies: [
+          { fee: "PETITION_FILING_FEE", qty: 2, subtotal: 120 },
+          { fee: "NONATTORNEY_EXAM_REGISTRATION_FEE", qty: 1, subtotal: 250 },
+        ],
+      });
   });
 
   afterEach(() => {
@@ -348,6 +358,152 @@ describe("getTransactionLog", () => {
         new Date("2026-08-03T04:00:00.000Z"),
       );
       expect(result.totals?.day.total).toBe(120);
+    });
+  });
+
+  describe("fee breakdown", () => {
+    it("leaves it out — and does not query it — unless asked", async () => {
+      const result = await getTransactionLog(appContext, query());
+
+      expect(countsAndFeeBreakdown).not.toHaveBeenCalled();
+      expect(result).not.toHaveProperty("feeBreakdown");
+    });
+
+    it("tallies the requested timeframe, unlike the period totals", async () => {
+      const from = new Date("2026-07-01T00:00:00.000Z");
+      const to = new Date("2026-07-02T00:00:00.000Z");
+
+      await getTransactionLog(
+        appContext,
+        query({ from, to, includeFeeBreakdown: true }),
+      );
+
+      expect(countsAndFeeBreakdown).toHaveBeenCalledWith(from, to);
+    });
+
+    it("tallies the whole timeframe even when a status filter is applied", async () => {
+      await getTransactionLog(
+        appContext,
+        query({ status: "failed", includeFeeBreakdown: true }),
+      );
+
+      expect(countsAndFeeBreakdown).toHaveBeenCalledWith(
+        new Date("2026-08-03T04:00:00.000Z"),
+        new Date("2026-08-04T04:00:00.000Z"),
+      );
+    });
+
+    it("names each fee and orders by subtotal descending", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeFeeBreakdown: true }),
+      );
+
+      expect(result.feeBreakdown).toEqual([
+        {
+          fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+          feeName: "Non-Attorney Exam Registration Fee",
+          qty: 1,
+          subtotal: 250,
+        },
+        {
+          fee: "PETITION_FILING_FEE",
+          feeName: "Petition Filing Fee",
+          qty: 2,
+          subtotal: 120,
+        },
+      ]);
+    });
+
+    it("keeps a zero row for every configured fee", async () => {
+      countsAndFeeBreakdown.mockResolvedValue({ counts, tallies: [] });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeFeeBreakdown: true }),
+      );
+
+      expect(result.feeBreakdown).toEqual([
+        {
+          fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+          feeName: "Non-Attorney Exam Registration Fee",
+          qty: 0,
+          subtotal: 0,
+        },
+        {
+          fee: "PETITION_FILING_FEE",
+          feeName: "Petition Filing Fee",
+          qty: 0,
+          subtotal: 0,
+        },
+      ]);
+    });
+
+    it("keeps revenue under a fee key the config no longer knows", async () => {
+      countsAndFeeBreakdown.mockResolvedValue({
+        counts,
+        tallies: [{ fee: "RETIRED_FEE", qty: 4, subtotal: 400 }],
+      });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeFeeBreakdown: true }),
+      );
+
+      expect(result.feeBreakdown?.[0]).toEqual({
+        fee: "RETIRED_FEE",
+        feeName: "RETIRED_FEE",
+        qty: 4,
+        subtotal: 400,
+      });
+      expect(result.feeBreakdown).toHaveLength(3);
+    });
+
+    it("sources the counts from the same statement as the tallies", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeFeeBreakdown: true }),
+      );
+
+      expect(countsInRange).not.toHaveBeenCalled();
+      expect(result.counts).toEqual({
+        all: 47,
+        success: 40,
+        failed: 4,
+        pending: 3,
+      });
+    });
+
+    it("works independently of includeTotals", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeFeeBreakdown: true }),
+      );
+
+      expect(totalsToDate).not.toHaveBeenCalled();
+      expect(result).not.toHaveProperty("totals");
+      expect(result.feeBreakdown).toHaveLength(2);
+    });
+
+    it("returns the breakdown on the first export page", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 1, includeFeeBreakdown: true }),
+      );
+
+      expect(result.feeBreakdown).toHaveLength(2);
+    });
+
+    it("skips the breakdown on export pages after the first", async () => {
+      queryLog.mockResolvedValue({ rows: [failedRow as any] });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 2, includeFeeBreakdown: true }),
+      );
+
+      expect(countsAndFeeBreakdown).not.toHaveBeenCalled();
+      expect(result.feeBreakdown).toBeUndefined();
     });
   });
 });
