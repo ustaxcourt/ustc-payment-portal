@@ -2,6 +2,10 @@ import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { courtDayBoundsForDateString } from "@utils/courtDayBounds";
 import { z } from "zod";
 import { FeeKeySchema } from "./FeeKey.schema";
+import {
+  MetadataDawsonSchema,
+  MetadataNonattorneyExamSchema,
+} from "./Metadata.schema";
 import { PaymentMethodSchema } from "./PaymentMethod.schema";
 import { PaymentStatusSchema } from "./PaymentStatus.schema";
 import { DashboardTransactionSchema } from "./TransactionDashboard.schema";
@@ -75,21 +79,25 @@ export type TransactionLogSortField = z.infer<
 >;
 export type SortOrder = z.infer<typeof SortOrderSchema>;
 
-/** A closed list, so nothing from the query string reaches SQL as a JSON key. */
+/** Derived from the fee-specific metadata schemas so search stays in lockstep
+ *  with the metadata contract — a field is searchable by the same edit that
+ *  adds it. Still a closed list: nothing from the query string reaches SQL as a
+ *  JSON key. Dawson keys are listed before the exam keys; a key common to both
+ *  schemas appears once. */
 export const TRANSACTION_LOG_METADATA_KEYS = [
-  "docketNumber",
-  "email",
-  "fullName",
-  "accessCode",
+  ...new Set([
+    ...MetadataDawsonSchema.keyof().options,
+    ...MetadataNonattorneyExamSchema.keyof().options,
+  ]),
 ] as const;
 
 export const TransactionLogMetadataKeySchema = z
   .enum(TRANSACTION_LOG_METADATA_KEYS)
   .openapi("TransactionLogMetadataKey", {
     description:
-      "Which metadata field `metadataValue` is matched against. Available keys " +
-      "depend on the fee: `docketNumber` for Petition Filing Fee; `email`, " +
-      "`fullName`, and `accessCode` for Non-Attorney Exam Registration Fee.",
+      "Which metadata field `metadataValue` is matched against. The keys are " +
+      "the field names defined by the fee-specific metadata schemas (see the " +
+      "`Metadata` schema); which of them a given row carries depends on its fee.",
   });
 
 export type TransactionLogMetadataKey = z.infer<
