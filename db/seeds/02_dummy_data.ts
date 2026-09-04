@@ -18,13 +18,16 @@ const SEED_MULTI_ATTEMPT_GROUPS = 10;
  * development and CI.
  */
 export async function seed(knex: Knex): Promise<void> {
+  console.log("02_dummy_data seed started");
   Model.knex(knex);
   await knex("transactions").del();
-  await knex("transactions").insert(
-    await generateTransactions({
-      multiAttemptGroups: SEED_MULTI_ATTEMPT_GROUPS,
-      startDate: SEED_START_DATE,
-      numberOfRecords: NUMBER_OF_RECORDS,
-    }),
-  );
+  const rows = await generateTransactions({
+    multiAttemptGroups: SEED_MULTI_ATTEMPT_GROUPS,
+    startDate: SEED_START_DATE,
+    numberOfRecords: NUMBER_OF_RECORDS,
+  });
+
+  console.log(`Generated ${rows.length} rows`);
+  await knex("transactions").insert(rows);
+  console.log("02_dummy_data seed completed");
 }
