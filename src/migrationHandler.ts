@@ -90,6 +90,9 @@ const getLocalConnection = (): DatabaseConnection => {
     throw new Error(`Invalid DB_PORT: ${DB_PORT}`);
   }
 
+  console.log(
+    `Connecting to local database at ${DB_HOST}:${DB_PORT} with user ${DB_USER}`,
+  );
   return {
     host: DB_HOST,
     port,
