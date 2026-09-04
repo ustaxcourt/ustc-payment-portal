@@ -36,7 +36,7 @@ export const staticFees: StaticFees = {
       {
         isVariable: false,
         amount: 60,
-        activationDate: "2026-03-05T00:00:00Z",
+        activationDate: "2025-01-01T00:00:00Z",
       },
     ],
     description: "Fee charged for filing a petition with the U.S. Tax Court.",
@@ -48,7 +48,7 @@ export const staticFees: StaticFees = {
       {
         isVariable: false,
         amount: 250,
-        activationDate: "2026-03-05T00:00:00Z",
+        activationDate: "2025-01-01T00:00:00Z",
       },
     ],
     description:
