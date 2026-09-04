@@ -9,7 +9,7 @@ import { generateTransactions } from "./data/transactions";
  *    NUMBER_OF_RECORDS: Total number of transaction rows to generate.
  *    SEED_MULTI_ATTEMPT_GROUPS: Number of groups of transactions with multiple attempts (e.g. a failed attempt followed by a successful retry).
  */
-const SEED_START_DATE = "2025-01-01";
+const SEED_START_DATE = "2024-10-01";
 const NUMBER_OF_RECORDS = 3500;
 const SEED_MULTI_ATTEMPT_GROUPS = 10;
 
