@@ -1,5 +1,6 @@
 import TransactionModel from "./TransactionModel";
 import { getKnex } from "./knex";
+import { staticFees } from "../config/fees";
 
 jest.mock("./knex", () => ({ getKnex: jest.fn() }));
 
@@ -445,5 +446,95 @@ describe("TransactionModel.totalsToDate", () => {
         "no usable total",
       );
     });
+  });
+});
+
+describe("TransactionModel.yoyTrends", () => {
+  const CURRENT_TOTALS = {
+    day: 120,
+    week: 1200,
+    month: 4800,
+    quarter: 14400,
+    fiscalYear: 57600,
+  };
+
+  const PREVIOUS_TOTALS = {
+    day: 100,
+    week: 1000,
+    month: 4000,
+    quarter: 12000,
+    fiscalYear: 48000,
+  };
+
+  it("returns one comparison object for every Court period", () => {
+    const result = TransactionModel.yoyTrends(CURRENT_TOTALS, PREVIOUS_TOTALS);
+
+    expect(result).toEqual({
+      day: { current: 120, previous: 100, difference: 20, percentChange: 20 },
+      week: {
+        current: 1200,
+        previous: 1000,
+        difference: 200,
+        percentChange: 20,
+      },
+      month: {
+        current: 4800,
+        previous: 4000,
+        difference: 800,
+        percentChange: 20,
+      },
+      quarter: {
+        current: 14400,
+        previous: 12000,
+        difference: 2400,
+        percentChange: 20,
+      },
+      fiscalYear: {
+        current: 57600,
+        previous: 48000,
+        difference: 9600,
+        percentChange: 20,
+      },
+    });
+  });
+
+  it("returns null when the previous period total is zero", () => {
+    const result = TransactionModel.yoyTrends(
+      {
+        day: 10,
+        week: 0,
+        month: 0,
+        quarter: 0,
+        fiscalYear: 0,
+      },
+      {
+        day: 0,
+        week: 0,
+        month: 0,
+        quarter: 0,
+        fiscalYear: 0,
+      },
+    );
+
+    expect(result.day.percentChange).toBeNull();
+    expect(result.week.percentChange).toBeNull();
+  });
+});
+
+describe("TransactionModel.attachFeeName", () => {
+  it("uses the stable fee-definition name for historical rows before activation", async () => {
+    const historicalRow = {
+      fee: "PETITION_FILING_FEE",
+      createdAt: "2025-01-15T12:00:00.000Z",
+    } as TransactionModel;
+
+    const attachFeeName = Object.getOwnPropertyDescriptor(
+      TransactionModel,
+      "attachFeeName",
+    )?.value as (row: TransactionModel) => TransactionModel;
+
+    const result = attachFeeName(historicalRow);
+
+    expect(result.feeName).toBe(staticFees.PETITION_FILING_FEE.name);
   });
 });

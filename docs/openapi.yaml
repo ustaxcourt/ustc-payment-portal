@@ -965,6 +965,8 @@ components:
             filter. Omitted on export requests for pages after the first.
         totals:
           $ref: '#/components/schemas/TransactionTotals'
+        yoyTrends:
+          $ref: '#/components/schemas/TransactionYoYTrends'
         feeBreakdown:
           $ref: '#/components/schemas/TransactionFeeBreakdown'
       required:
@@ -1080,6 +1082,149 @@ components:
         - from
         - to
         - total
+    TransactionYoYTrends:
+      type: object
+      properties:
+        day:
+          type: object
+          properties:
+            current:
+              type: number
+              description: Amount collected during the current timeframe
+            previous:
+              type: number
+              description: >-
+                Amount collected during the corresponding timeframe one year
+                earlier
+            difference:
+              type: number
+              description: Current amount minus previous amount
+            percentChange:
+              type:
+                - number
+                - 'null'
+              description: >-
+                Percentage change from the previous period, or null when the
+                previous total is zero
+          required:
+            - current
+            - previous
+            - difference
+            - percentChange
+        week:
+          type: object
+          properties:
+            current:
+              type: number
+              description: Amount collected during the current timeframe
+            previous:
+              type: number
+              description: >-
+                Amount collected during the corresponding timeframe one year
+                earlier
+            difference:
+              type: number
+              description: Current amount minus previous amount
+            percentChange:
+              type:
+                - number
+                - 'null'
+              description: >-
+                Percentage change from the previous period, or null when the
+                previous total is zero
+          required:
+            - current
+            - previous
+            - difference
+            - percentChange
+        month:
+          type: object
+          properties:
+            current:
+              type: number
+              description: Amount collected during the current timeframe
+            previous:
+              type: number
+              description: >-
+                Amount collected during the corresponding timeframe one year
+                earlier
+            difference:
+              type: number
+              description: Current amount minus previous amount
+            percentChange:
+              type:
+                - number
+                - 'null'
+              description: >-
+                Percentage change from the previous period, or null when the
+                previous total is zero
+          required:
+            - current
+            - previous
+            - difference
+            - percentChange
+        quarter:
+          type: object
+          properties:
+            current:
+              type: number
+              description: Amount collected during the current timeframe
+            previous:
+              type: number
+              description: >-
+                Amount collected during the corresponding timeframe one year
+                earlier
+            difference:
+              type: number
+              description: Current amount minus previous amount
+            percentChange:
+              type:
+                - number
+                - 'null'
+              description: >-
+                Percentage change from the previous period, or null when the
+                previous total is zero
+          required:
+            - current
+            - previous
+            - difference
+            - percentChange
+        fiscalYear:
+          type: object
+          properties:
+            current:
+              type: number
+              description: Amount collected during the current timeframe
+            previous:
+              type: number
+              description: >-
+                Amount collected during the corresponding timeframe one year
+                earlier
+            difference:
+              type: number
+              description: Current amount minus previous amount
+            percentChange:
+              type:
+                - number
+                - 'null'
+              description: >-
+                Percentage change from the previous period, or null when the
+                previous total is zero
+          required:
+            - current
+            - previous
+            - difference
+            - percentChange
+      required:
+        - day
+        - week
+        - month
+        - quarter
+        - fiscalYear
+      description: >-
+        Year-over-year comparison of successful payment totals for each
+        dashboard period.
+
     TransactionFeeBreakdown:
       type: array
       items:
@@ -1091,6 +1236,7 @@ components:
         filter. Computed in the same statement as `counts`, so `counts.success`
         always equals the summed quantities. Omitted on export requests for
         pages after the first.
+
     TransactionFeeBreakdownRow:
       type: object
       properties:
@@ -1114,7 +1260,8 @@ components:
         - feeName
         - qty
         - subtotal
-  parameters: {}
+
+    parameters: {}
 paths:
   /init:
     post:
@@ -1376,15 +1523,16 @@ paths:
         `pageSize` ceiling to 5000 for file exports that walk every page; on
         export pages after the first, `counts` and `total` are omitted.
         `includeTotals=true` adds summed revenue for five fixed periods to date
-        — day, week, month, fiscal quarter and fiscal year — covering successful
-        payments only and ignoring both the timeframe and the status, fee,
-        paymentMethod, and transactionStatus filters. It follows the same rule
-        as `counts` on export pages after the first. `includeFeeBreakdown=true`
-        adds successful payments tallied per fee — count and summed amount — for
-        the requested timeframe, ignoring the status, fee, paymentMethod, and
-        transactionStatus filters, ordered by subtotal descending with every
-        configured fee present even at zero. It follows the same rule as
-        `counts` on export pages after the first.
+        and matching year-over-year comparisons — day, week, month, fiscal
+        quarter and fiscal year — covering successful payments only and ignoring
+        both the timeframe and the status, fee, paymentMethod, and
+        transactionStatus filters. It follows the same rule as `counts` on
+        export pages after the first. `includeFeeBreakdown=true` adds successful
+        payments tallied per fee — count and summed amount — for the requested
+        timeframe, ignoring the status, fee, paymentMethod, and transactionStatus
+        filters, ordered by subtotal descending with every configured fee present
+        even at zero. It follows the same rule as `counts` on export pages after
+        the first.
       tags:
         - Payments
       security:
@@ -1557,14 +1705,14 @@ paths:
               - 'false'
             default: 'false'
             description: >-
-              Adds `totals` to the response. Fixed periods to date; ignores
-              `from`/`to`, `status`, `fee`, `paymentMethod`, and
+              Adds `totals` and `yoyTrends` to the response. Fixed periods to
+              date; ignores `from`/`to`, `status`, `fee`, `paymentMethod`, and
               `transactionStatus`.
             example: 'true'
           required: false
           description: >-
-            Adds `totals` to the response. Fixed periods to date; ignores
-            `from`/`to`, `status`, `fee`, `paymentMethod`, and
+            Adds `totals` and `yoyTrends` to the response. Fixed periods to
+            date; ignores `from`/`to`, `status`, `fee`, `paymentMethod`, and
             `transactionStatus`.
           name: includeTotals
           in: query

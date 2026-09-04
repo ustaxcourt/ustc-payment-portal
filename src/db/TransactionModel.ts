@@ -9,11 +9,16 @@ import type {
   TransactionLogSortField,
 } from "@schemas/TransactionLog.schema";
 import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/TransactionStatus.schema";
-import type { Bounds, CourtPeriodName } from "@utils/courtDayBounds";
+import {
+  COURT_PERIOD_NAMES,
+  mapCourtPeriods,
+  type Bounds,
+  type CourtPeriodRecord,
+} from "@utils/courtDayBounds";
 import type { Knex } from "knex";
 import { Model } from "objection";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
-import { getActiveFee } from "../config/fees";
+import { getFeeNamesByKey } from "../config/fees";
 import { getKnex } from "./knex";
 import { transactionLogOrderBy } from "./transactionLogSort";
 
@@ -22,6 +27,13 @@ export type { PaymentStatus };
 
 export type AggregatedPaymentStatus = Record<PaymentStatus, number> & {
   total: number;
+};
+
+type TransactionYoYTrend = {
+  current: number;
+  previous: number;
+  difference: number;
+  percentChange: number | null;
 };
 
 export type TransactionLogFilter = {
@@ -62,6 +74,8 @@ const TOKEN_EXPIRED_MESSAGE =
   "Transaction token has expired. Retry POST /init with the same transactionReferenceId to obtain a new token.";
 
 const VALID_DB_PAYMENT_METHODS = new Set<string>(DbPaymentMethodSchema.options);
+
+const feeNamesByKey = getFeeNamesByKey();
 
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
@@ -200,10 +214,10 @@ export default class TransactionModel extends Model {
    *  period in the table and in the totals. One filtered SUM per period keeps it
    *  to a single round trip. */
   static async totalsToDate(
-    periods: Record<CourtPeriodName, Bounds>,
-  ): Promise<Record<CourtPeriodName, number>> {
+    periods: CourtPeriodRecord<Bounds>,
+  ): Promise<CourtPeriodRecord<number>> {
     const knex = await getKnex();
-    const names = Object.keys(periods) as CourtPeriodName[];
+    const names = COURT_PERIOD_NAMES;
 
     const earliestStart = new Date(
       Math.min(...names.map((name) => periods[name].start.getTime())),
@@ -232,23 +246,42 @@ export default class TransactionModel extends Model {
 
     // decimal(12,2) arrives as a string from pg, as it does on the model itself.
     const summed = row as unknown as Record<string, unknown> | undefined;
-    return names.reduce(
-      (totals, name) => {
-        // COALESCE guarantees a value for every period, so a missing one means
-        // the alias did not survive the snake_case round trip. Fail loudly
-        // rather than report $0 revenue.
-        const value = summed?.[name];
-        const total = Number(value);
-        if (value === null || Number.isNaN(total)) {
-          throw new Error(
-            `totalsToDate returned no usable total for the "${name}" period`,
-          );
-        }
-        totals[name] = total;
-        return totals;
-      },
-      {} as Record<CourtPeriodName, number>,
-    );
+    return mapCourtPeriods((name) => {
+      // COALESCE guarantees a value for every period, so a missing one means
+      // the alias did not survive the snake_case round trip. Fail loudly
+      // rather than report $0 revenue.
+      const value = summed?.[name];
+      const total = Number(value);
+      if (value === null || Number.isNaN(total)) {
+        throw new Error(
+          `totalsToDate returned no usable total for the "${name}" period`,
+        );
+      }
+      return total;
+    });
+  }
+
+  static yoyTrends(
+    currentTotals: CourtPeriodRecord<number>,
+    previousTotals: CourtPeriodRecord<number>,
+  ): CourtPeriodRecord<TransactionYoYTrend> {
+    return mapCourtPeriods((name) => {
+      const current = currentTotals[name];
+      const previous = previousTotals[name];
+      const difference = current - previous;
+
+      const percentChange =
+        previous === 0
+          ? null
+          : Number(((difference / previous) * 100).toFixed(2));
+
+      return {
+        current,
+        previous,
+        difference,
+        percentChange,
+      };
+    });
   }
 
   /** Status counts and per-fee success tallies from one SELECT grouped by
@@ -343,8 +376,12 @@ export default class TransactionModel extends Model {
   }
 
   private static attachFeeName(row: TransactionModel): TransactionModel {
-    const activeFee = getActiveFee(row.fee, row.createdAt);
-    row.feeName = activeFee.name;
+    const feeName = feeNamesByKey[row.fee];
+    if (!feeName) {
+      throw new Error(`Unknown fee key: ${row.fee}`);
+    }
+
+    row.feeName = feeName;
     return row;
   }
 
@@ -532,11 +569,12 @@ export default class TransactionModel extends Model {
         return undefined;
       }
 
-      const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
-        row.clientName,
-        row.transactionReferenceId,
-        { excludeToken: paygovToken, trx },
-      );
+      const sibling =
+        await TransactionModel.findPendingOrProcessedByReferenceId(
+          row.clientName,
+          row.transactionReferenceId,
+          { excludeToken: paygovToken, trx },
+        );
 
       if (sibling) {
         throw new GoneError(SIBLING_GONE_MESSAGE);
@@ -561,9 +599,12 @@ export default class TransactionModel extends Model {
 
       // Re-touch the row so last_updated_at refreshes (DB trigger) and this request
       // owns the completion attempt.
-      return TransactionModel.query(trx).patchAndFetchById(row.agencyTrackingId, {
-        transactionStatus: "processing",
-      });
+      return TransactionModel.query(trx).patchAndFetchById(
+        row.agencyTrackingId,
+        {
+          transactionStatus: "processing",
+        },
+      );
     });
   }
 

@@ -11,9 +11,17 @@ import type {
   TransactionLogQuery,
   TransactionLogResponse,
 } from "@appTypes/TransactionLog";
-import type { CourtPeriodName } from "@utils/courtDayBounds";
-import { courtDayBounds, courtPeriodBounds } from "@utils/courtDayBounds";
-import { toApiPaymentMethod, toDbPaymentMethod } from "@utils/toApiPaymentMethod";
+import {
+  courtDayBounds,
+  courtPeriodBounds,
+  mapCourtPeriods,
+  previousCourtPeriodBounds,
+} from "@utils/courtDayBounds";
+import {
+  toApiPaymentMethod,
+  toDbPaymentMethod,
+} from "@utils/toApiPaymentMethod";
+import { logger } from "@/utils/logger";
 
 export type GetTransactionLog = (
   appContext: AppContext,
@@ -40,53 +48,68 @@ export const getTransactionLog: GetTransactionLog = async (
   // request actually asks for them.
   const periods =
     withCounts && query.includeTotals ? courtPeriodBounds(now) : undefined;
+  const previousPeriods = periods ? previousCourtPeriodBounds(now) : undefined;
 
-  const [page, aggregates, periodTotals] = await Promise.all([
-    TransactionModel.queryLog({
-      from,
-      to,
-      status: query.status,
-      fee: query.fee,
-      paymentMethod: toDbPaymentMethod(query.paymentMethod),
-      transactionStatus: query.transactionStatus,
-      sort,
-      order,
-      limit: query.pageSize,
-      offset: (query.page - 1) * query.pageSize,
-      withTotal: withCounts,
-    }),
-    // With the breakdown on, counts and tallies come from one statement so
-    // they share a snapshot and `counts.success` always matches the summed
-    // quantities. Both stay behind the export first-page gate.
-    withCounts && query.includeFeeBreakdown
-      ? TransactionModel.countsAndFeeBreakdownInRange(from, to)
-      : withCounts
-        ? TransactionModel.countsInRange(from, to).then((counts) => ({
-            counts,
-            tallies: undefined,
-          }))
+  const [page, aggregates, periodTotals, previousPeriodTotals] =
+    await Promise.all([
+      TransactionModel.queryLog({
+        from,
+        to,
+        status: query.status,
+        fee: query.fee,
+        paymentMethod: toDbPaymentMethod(query.paymentMethod),
+        transactionStatus: query.transactionStatus,
+        sort,
+        order,
+        limit: query.pageSize,
+        offset: (query.page - 1) * query.pageSize,
+        withTotal: withCounts,
+      }),
+      // With the breakdown on, counts and tallies come from one statement so
+      // they share a snapshot and `counts.success` always matches the summed
+      // quantities. Both stay behind the export first-page gate.
+      withCounts && query.includeFeeBreakdown
+        ? TransactionModel.countsAndFeeBreakdownInRange(from, to)
+        : withCounts
+          ? TransactionModel.countsInRange(from, to).then((counts) => ({
+              counts,
+              tallies: undefined,
+            }))
+          : undefined,
+      // Behind the same gate: each page would otherwise re-run the aggregate and
+      // close its periods at a different `now`, so an export would carry a
+      // slightly different set of figures on every page.
+      periods ? TransactionModel.totalsToDate(periods) : undefined,
+      previousPeriods
+        ? TransactionModel.totalsToDate(previousPeriods).catch((error) => {
+            logger.warn(
+              { error, from, to },
+              "Unable to calculate previous-period totals for YoY trends",
+            );
+            return undefined;
+          })
         : undefined,
-    // Behind the same gate: each page would otherwise re-run the aggregate and
-    // close its periods at a different `now`, so an export would carry a
-    // slightly different set of figures on every page.
-    periods ? TransactionModel.totalsToDate(periods) : undefined,
-  ]);
+    ]);
 
   const counts = aggregates?.counts;
+  const yoyTrends =
+    periodTotals && previousPeriodTotals
+      ? TransactionModel.yoyTrends(periodTotals, previousPeriodTotals)
+      : undefined;
   const feeTallies = aggregates?.tallies;
 
   // One spread, so the pair can only ever be omitted together.
   const countsAndTotal =
     counts && page.total !== undefined
       ? {
-        counts: {
-          all: counts.total,
-          success: counts.success,
-          failed: counts.failed,
-          pending: counts.pending,
-        },
-        total: page.total,
-      }
+          counts: {
+            all: counts.total,
+            success: counts.success,
+            failed: counts.failed,
+            pending: counts.pending,
+          },
+          total: page.total,
+        }
       : {};
 
   // Each period echoes the instants actually summed; the dashboard displays
@@ -94,16 +117,14 @@ export const getTransactionLog: GetTransactionLog = async (
   const totalsByPeriod =
     periods &&
     periodTotals &&
-    Object.fromEntries(
-      Object.entries(periods).map(([name, bounds]) => [
-        name,
-        {
-          from: bounds.start.toISOString(),
-          to: bounds.end.toISOString(),
-          total: periodTotals[name as CourtPeriodName],
-        },
-      ]),
-    );
+    mapCourtPeriods((name) => {
+      const bounds = periods[name];
+      return {
+        from: bounds.start.toISOString(),
+        to: bounds.end.toISOString(),
+        total: periodTotals[name],
+      };
+    });
 
   const feeBreakdown = feeTallies && buildFeeBreakdown(feeTallies);
 
@@ -113,6 +134,8 @@ export const getTransactionLog: GetTransactionLog = async (
       paymentMethod: toApiPaymentMethod(row.paymentMethod),
     })),
     ...countsAndTotal,
+    ...(totalsByPeriod && { totals: totalsByPeriod }),
+    ...(yoyTrends && { yoyTrends }),
     from: from.toISOString(),
     to: to.toISOString(),
     page: query.page,
@@ -136,9 +159,7 @@ const buildFeeBreakdown = (
 
   const rows = [
     ...Object.keys(feeNames),
-    ...tallies
-      .map((tally) => tally.fee)
-      .filter((fee) => !(fee in feeNames)),
+    ...tallies.map((tally) => tally.fee).filter((fee) => !(fee in feeNames)),
   ].map((fee) => ({
     fee,
     feeName: feeNames[fee] ?? fee,

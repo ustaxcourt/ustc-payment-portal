@@ -3,16 +3,14 @@ import { Model } from "objection";
 import { generateTransactions } from "./data/transactions";
 
 /**
- * Set the number of each transaction type to seed. Adjust as needed for local development and CI.
+ * Seed controls for local development and CI.
  *
- *    SEED_SUCCESS_TRANSACTIONS: Number of successful transactions to seed.
- *    SEED_FAILED_TRANSACTIONS: Number of failed transactions to seed.
- *    SEED_PENDING_TRANSACTIONS: Number of pending transactions to seed.
+ *    SEED_START_DATE: Inclusive lower bound for generated transaction dates.
+ *    NUMBER_OF_RECORDS: Total number of transaction rows to generate.
  *    SEED_MULTI_ATTEMPT_GROUPS: Number of groups of transactions with multiple attempts (e.g. a failed attempt followed by a successful retry).
  */
-const SEED_SUCCESS_TRANSACTIONS = 200;
-const SEED_FAILED_TRANSACTIONS = 50;
-const SEED_PENDING_TRANSACTIONS = 20;
+const SEED_START_DATE = "2024-10-01";
+const NUMBER_OF_RECORDS = 3500;
 const SEED_MULTI_ATTEMPT_GROUPS = 10;
 
 /**
@@ -20,14 +18,16 @@ const SEED_MULTI_ATTEMPT_GROUPS = 10;
  * development and CI.
  */
 export async function seed(knex: Knex): Promise<void> {
+  console.log("02_dummy_data seed started");
   Model.knex(knex);
   await knex("transactions").del();
-  await knex("transactions").insert(
-    await generateTransactions({
-      successTransactions: SEED_SUCCESS_TRANSACTIONS,
-      failedTransactions: SEED_FAILED_TRANSACTIONS,
-      pendingTransactions: SEED_PENDING_TRANSACTIONS,
-      multiAttemptGroups: SEED_MULTI_ATTEMPT_GROUPS,
-    }),
-  );
+  const rows = await generateTransactions({
+    multiAttemptGroups: SEED_MULTI_ATTEMPT_GROUPS,
+    startDate: SEED_START_DATE,
+    numberOfRecords: NUMBER_OF_RECORDS,
+  });
+
+  console.log(`Generated ${rows.length} rows`);
+  await knex("transactions").insert(rows);
+  console.log("02_dummy_data seed completed");
 }
