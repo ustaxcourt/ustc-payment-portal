@@ -50,7 +50,7 @@ export const getTransactionLog: GetTransactionLog = async (
     withCounts && query.includeTotals ? courtPeriodBounds(now) : undefined;
   const previousPeriods = periods ? previousCourtPeriodBounds(now) : undefined;
 
-  const [page, counts, aggregates, periodTotals, previousPeriodTotals] =
+  const [page, aggregates, periodTotals, previousPeriodTotals] =
     await Promise.all([
       TransactionModel.queryLog({
         from,
@@ -65,7 +65,6 @@ export const getTransactionLog: GetTransactionLog = async (
         offset: (query.page - 1) * query.pageSize,
         withTotal: withCounts,
       }),
-      withCounts ? TransactionModel.countsInRange(from, to) : undefined,
       // With the breakdown on, counts and tallies come from one statement so
       // they share a snapshot and `counts.success` always matches the summed
       // quantities. Both stay behind the export first-page gate.
@@ -92,6 +91,7 @@ export const getTransactionLog: GetTransactionLog = async (
         : undefined,
     ]);
 
+  const counts = aggregates?.counts;
   const yoyTrends =
     periodTotals && previousPeriodTotals
       ? TransactionModel.yoyTrends(periodTotals, previousPeriodTotals)
