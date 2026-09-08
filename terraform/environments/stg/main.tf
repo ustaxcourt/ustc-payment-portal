@@ -24,6 +24,7 @@ module "lambda" {
     initPayment     = var.initPayment_s3_key
     processPayment  = var.processPayment_s3_key
     getDetails      = var.getDetails_s3_key
+    validateClient  = var.validateClient_s3_key
     testCert        = var.testCert_s3_key
     healthCheck     = var.testCert_s3_key
     migrationRunner = var.migrationRunner_s3_key
@@ -32,6 +33,7 @@ module "lambda" {
     initPayment     = var.initPayment_source_code_hash
     processPayment  = var.processPayment_source_code_hash
     getDetails      = var.getDetails_source_code_hash
+    validateClient  = var.validateClient_source_code_hash
     testCert        = var.testCert_source_code_hash
     healthCheck     = var.testCert_source_code_hash
     migrationRunner = var.migrationRunner_source_code_hash
