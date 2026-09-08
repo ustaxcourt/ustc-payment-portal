@@ -91,54 +91,46 @@ enough context that the next person doesn't have to re-derive the decision.
 
 Be cautious about doing overrides — reserve them for cases where the dependency is unlikely to fix the issue, or would take a long time to (e.g., a transitive dependency that isn't updated because it needs to support an old version of Node). If you do need an override, add the transitive dependency in question to `overrides` at the bottom of `package.json`.
 
-### GHSA-8988-4f7v-96qf — @opentelemetry/core (<2.8.0) (moderate) — resolved via override (2026-07-29)
-
-**From: Artillery**
-
-- **Override:** `@opentelemetry/exporter-{metrics,trace}-otlp-{grpc,http,proto}` pinned
-  to `^0.221.0`.
-- **Why an override was needed:** pulled in via `artillery` →
-  `artillery-plugin-publish-metrics`, which pins these six packages to
-  `^0.218.0`. As `0.x` versions, that caret caps them at `0.218.x`
-  (patch-only), locking their exact-pinned `core`/`resources`/`sdk-metrics`/
-  `sdk-trace-base` deps to the vulnerable `2.7.1`. `^0.221.0` is the real next
-  OTel release generation, not a forced mix — its cross-deps already resolve
-  consistently to `2.10.0`.
-- **Verified:** `npm install` resolves with no `ERESOLVE` conflicts; finding no
-  longer appears in `npm audit`.
-- **Revisit:** if `artillery-plugin-publish-metrics` ever bumps its own otlp
-  exporter range past `0.221.0`, this override can likely be dropped.
-
-### GHSA-mh99-v99m-4gvg — brace-expansion (<=5.0.7) (high) — resolved via override (2026-07-29)
+### GHSA-mh99-v99m-4gvg — brace-expansion (<=5.0.7) (high) — resolved via override (2026-07-29, updated 2026-09-08)
 
 **From: Jest**
 
-- **Override:** `babel-plugin-istanbul@^8.0.2`, `test-exclude@^8.0.0`,
-  `glob@^13.0.6`, `ejs@^6.0.1`, and `matcher-collection` → `minimatch@^10.2.2`.
-- **Why an override was needed:** this single advisory was reached through three
-  independent chains, each capped by its immediate parent's declared range one
-  or more majors behind the fix:
-  - `jest`'s own `babel-plugin-istanbul`/`glob` deps are held back because
-    `glob@11+`/`test-exclude@8` require Node `>=20`, and jest 30 still
-    officially supports Node `18.14.0+`. Not a bug on jest's part, just a
-    Node-floor jest can't be forced to drop, but doesn't apply to us (`.nvmrc`
-    pins `24.19.0`).
-  - `@oclif/core` (via `artillery`) pins `ejs@^3.1.10`; `ejs@5.0.1+` dropped its
-    `jake` dependency entirely (which was only ever needed for `ejs`'s own test
-    script, never required at runtime — confirmed no runtime `require('jake')`
-    in `ejs`'s source).
-  - `matcher-collection` (via `artillery`'s `walk-sync`) is unmaintained since 2019. Its only existing release line has never used anything but
-    `minimatch@3.x`, so there's no upstream fix to wait for. Its one usage in
-    `artillery` is the legacy AWS ECS/Fargate test-packaging path
-    (`run-ecs`), which this repo's performance scripts never invoke. (We don't use AWS ECS or Fargate here.)
-- **Verified:** full unit suite (688/688 passing), `npm run test:coverage`
-  (istanbul instrumentation producing correct line/branch numbers), `tsc`
-  clean, and `artillery --version`/`--help`/`run --help` (exercises oclif's
-  `ejs.render()` help templating) all confirmed working post-override.
-- **Revisit:** re-run the same verification (test suite, coverage, artillery
+- **Override:** `babel-plugin-istanbul@^8.0.2`, `test-exclude@^8.0.0`, and
+  `matcher-collection` → `minimatch@^10.2.2`.
+- **Why an override is still needed:** this advisory was originally reached
+  through three independent chains; two have since resolved upstream and their
+  overrides were dropped (`override cleanup` commit, 2026-09-08) — `npm audit`
+  confirmed clean afterward:
+  - `@oclif/core` (via `artillery`) used to pin `ejs@^3.1.10`; the installed
+    `@oclif/core@4.14.0` now declares `ejs@^6` directly, already past the fix.
+    The `ejs@^6.0.1` override was removed as redundant.
+  - `jest`'s own `glob` dep used to be held back by a Node-version floor
+    (`glob@11+` requiring Node `>=20`, jest 30 officially supporting Node
+    `18.14.0+`). The installed `@jest/reporters@30.5.1`/`jest-config@30.5.1`
+    now declare `glob@^13.0.6` directly. The `glob@^13.0.6` override was
+    removed as redundant.
+  - The remaining chain is still capped by each immediate parent's declared
+    range: `jest` → `babel-plugin-istanbul@^8.0.0` (npm's `latest` dist-tag is
+    still `8.0.0`; the fix landed in unpublicized patches `8.0.1`/`8.0.2`), and
+    `babel-plugin-istanbul` → `test-exclude@^7.0.1` (still behind the fixed
+    `8.0.0`).
+  - `matcher-collection` (via `artillery`'s `walk-sync`) is unmaintained since
+    2019 and still declares `minimatch@^3.0.2` with no newer release to wait
+    for. Its one usage in `artillery` is the legacy AWS ECS/Fargate
+    test-packaging path (`run-ecs`), which this repo's performance scripts
+    never invoke. (We don't use AWS ECS or Fargate here.)
+- **Verified (2026-07-29, full override set):** full unit suite (688/688
+  passing), `npm run test:coverage` (istanbul instrumentation producing
+  correct line/branch numbers), `tsc` clean, and `artillery
+  --version`/`--help`/`run --help` (exercises oclif's `ejs.render()` help
+  templating) all confirmed working post-override.
+- **Verified (2026-09-08, after dropping `ejs`/`glob`):** `npm audit` reports 0
+  vulnerabilities.
+- **Revisit:** re-run the full verification (test suite, coverage, artillery
   CLI smoke test) whenever `jest`, `ts-jest`, or `artillery` are next bumped —
-  these overrides sit outside the range each parent package actually declares
-  as compatible, so a future parent version could shift what's safe here.
+  the remaining overrides sit outside the range each parent package actually
+  declares as compatible, so a future parent version could shift what's safe
+  here.
 
 ### Accepted vulnerabilities
 
