@@ -198,9 +198,7 @@ const getSeedsDirectory = (): string => {
   return path.join(__dirname, "..", "db", "seeds");
 };
 
-const debugTransactions = async (
-  knex: ReturnType<typeof Knex>,
-): Promise<MigrationHandlerResult> => {
+const debugTransactions = async (): Promise<MigrationHandlerResult> => {
   const maintenanceKnex = await getMaintenanceKnex();
   const summary = await maintenanceKnex.raw<{
     rows: {
