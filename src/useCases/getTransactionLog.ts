@@ -41,6 +41,8 @@ export const getTransactionLog: GetTransactionLog = async (
   const sort = query.sort ?? TRANSACTION_LOG_DEFAULT_SORT;
   const order = query.order ?? TRANSACTION_LOG_DEFAULT_ORDER;
 
+  console.log("Database", process.env.RDS_DB_NAME);
+
   // Export pages after the first skip the COUNTs; the caller has them from page 1.
   const withCounts = !query.export || query.page === 1;
 
