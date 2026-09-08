@@ -23,7 +23,7 @@ import {
   SecretsManagerClient,
 } from "@aws-sdk/client-secrets-manager";
 import Knex from "knex";
-import { migrationHandler } from "./migrationHandler";
+import { getApplicationKnex, migrationHandler } from "./migrationHandler";
 
 const mockKnex = Knex as unknown as jest.Mock;
 const mockSecretsManagerClient = SecretsManagerClient as unknown as jest.Mock;
@@ -542,6 +542,28 @@ describe("migrationHandler", () => {
 
       expect(mockDestroy).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("getApplicationKnex connects to the application database", async () => {
+    await getApplicationKnex();
+
+    expect(mockKnex).toHaveBeenCalledWith(
+      expect.objectContaining({
+        client: "pg",
+        connection: expect.objectContaining({
+          host: "db.example.us-east-1.rds.amazonaws.com",
+          port: 5432,
+          user: "db_user",
+          password: "db_password",
+          database: "paymentportal_pr_99",
+        }),
+        pool: {
+          min: 0,
+          max: 1,
+          acquireTimeoutMillis: 10000,
+        },
+      }),
+    );
   });
 
   describe("debug-tables", () => {

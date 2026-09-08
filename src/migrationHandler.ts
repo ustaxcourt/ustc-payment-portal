@@ -172,6 +172,18 @@ const getMaintenanceKnex = async (): Promise<ReturnType<typeof Knex>> => {
   });
 };
 
+export const getApplicationKnex = async (): Promise<
+  ReturnType<typeof Knex>
+> => {
+  const connection = await getDatabaseConnection();
+
+  return Knex({
+    client: "pg",
+    connection,
+    pool: { min: 0, max: 1, acquireTimeoutMillis: 10000 },
+  });
+};
+
 const getMigrationsDirectory = (): string => {
   const bundledDirectory = path.join(__dirname, "db", "migrations");
 
@@ -200,7 +212,7 @@ const getSeedsDirectory = (): string => {
 };
 
 export const debugTransactions = async () => {
-  const knexInstance = await getMaintenanceKnex();
+  const knexInstance = await getApplicationKnex();
 
   try {
     const summary = await knexInstance.raw(`
@@ -548,7 +560,7 @@ const gcRoles = async (
 };
 
 export const debugTables = async () => {
-  const knexInstance = await getMaintenanceKnex();
+  const knexInstance = await getApplicationKnex();
 
   try {
     const result = await knexInstance.raw(`
