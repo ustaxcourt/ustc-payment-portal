@@ -21,7 +21,8 @@ type Command =
   | "seed"
   | "verify"
   | "gc-dbs"
-  | "gc-roles";
+  | "gc-roles"
+  | "debug-transactions";
 
 type MigrationHandlerEvent = {
   command?: Command;
@@ -195,6 +196,54 @@ const getSeedsDirectory = (): string => {
   }
 
   return path.join(__dirname, "..", "db", "seeds");
+};
+
+const debugTransactions = async (
+  knex: ReturnType<typeof Knex>,
+): Promise<MigrationHandlerResult> => {
+  const maintenanceKnex = await getMaintenanceKnex();
+  const summary = await maintenanceKnex.raw<{
+    rows: {
+      count: string;
+      minCreatedAt: string;
+      maxCreatedAt: string;
+    }[];
+  }>(`
+    SELECT
+      COUNT(*)::text AS count,
+      MIN(created_at)::text AS "minCreatedAt",
+      MAX(created_at)::text AS "maxCreatedAt"
+    FROM transactions
+  `);
+
+  const yearly = await maintenanceKnex.raw<{
+    rows: {
+      year: number;
+      count: string;
+      total: string;
+    }[];
+  }>(`
+    SELECT
+      EXTRACT(YEAR FROM created_at) AS year,
+      COUNT(*)::text AS count,
+      COALESCE(SUM(transaction_amount), 0)::text AS total
+    FROM transactions
+    GROUP BY year
+    ORDER BY year
+  `);
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify(
+      {
+        database: process.env.RDS_DB_NAME,
+        summary: summary.rows[0],
+        yearly: yearly.rows,
+      },
+      null,
+      2,
+    ),
+  };
 };
 
 const provisionUser = async (): Promise<MigrationHandlerResult> => {
@@ -544,6 +593,7 @@ export const migrationHandler = async (
   }
   if (command === "show-users") return showUsers();
   if (command === "show-databases") return showDatabases();
+  if (command === "debug-transactions") return debugTransactions();
 
   const dbLabel = process.env.RDS_DB_NAME ?? "(local)";
   if (command === "rollback" && event?.confirm !== true) {
