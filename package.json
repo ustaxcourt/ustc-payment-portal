@@ -140,23 +140,14 @@
     "access": "public"
   },
   "overrides": {
-    "read-yaml-file": "^2.1.0",
     "@istanbuljs/load-nyc-config": {
       "js-yaml": "^4.2.0"
     },
     "tsup": {
       "esbuild": "^0.28.2"
     },
-    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.221.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "^0.221.0",
-    "@opentelemetry/exporter-metrics-otlp-proto": "^0.221.0",
-    "@opentelemetry/exporter-trace-otlp-grpc": "^0.221.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.221.0",
-    "@opentelemetry/exporter-trace-otlp-proto": "^0.221.0",
     "babel-plugin-istanbul": "^8.0.2",
     "test-exclude": "^8.0.0",
-    "ejs": "^6.0.1",
-    "glob": "^13.0.6",
     "matcher-collection": {
       "minimatch": "^10.2.2"
     }
