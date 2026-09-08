@@ -41,7 +41,16 @@ export const getTransactionLog: GetTransactionLog = async (
   const sort = query.sort ?? TRANSACTION_LOG_DEFAULT_SORT;
   const order = query.order ?? TRANSACTION_LOG_DEFAULT_ORDER;
 
-  console.log("Database", process.env.RDS_DB_NAME);
+  logger.info(
+    {
+      query,
+      includeTotals: query.includeTotals,
+      includeFeeBreakdown: query.includeFeeBreakdown,
+      export: query.export,
+      page: query.page,
+    },
+    "transaction-log query",
+  );
 
   // Export pages after the first skip the COUNTs; the caller has them from page 1.
   const withCounts = !query.export || query.page === 1;
@@ -99,6 +108,16 @@ export const getTransactionLog: GetTransactionLog = async (
       ? TransactionModel.yoyTrends(periodTotals, previousPeriodTotals)
       : undefined;
   const feeTallies = aggregates?.tallies;
+
+  logger.info(
+    {
+      periods: !!periods,
+      previousPeriods: !!previousPeriods,
+      periodTotals: !!periodTotals,
+      previousPeriodTotals: !!previousPeriodTotals,
+    },
+    "transaction-log yoy debug",
+  );
 
   // One spread, so the pair can only ever be omitted together.
   const countsAndTotal =
