@@ -73,7 +73,7 @@ jobs:
           set -euo pipefail
           SHA='${{ steps.resolve.outputs.sha }}'
           echo "Validating artifacts for $SHA in s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
-          for f in initPayment processPayment getDetails testCert migrationRunner; do
+          for f in initPayment processPayment getDetails validateClient testCert migrationRunner; do
             KEY="artifacts/dev/${SHA}/${f}.zip"
             aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "$KEY" >/dev/null 2>&1 || {
               echo "Missing $KEY" >&2; exit 1; }
@@ -205,6 +205,7 @@ jobs:
           echo "initPayment=${PREFIX}/initPayment.zip" >> $GITHUB_OUTPUT
           echo "processPayment=${PREFIX}/processPayment.zip" >> $GITHUB_OUTPUT
           echo "getDetails=${PREFIX}/getDetails.zip" >> $GITHUB_OUTPUT
+          echo "validateClient=${PREFIX}/validateClient.zip" >> $GITHUB_OUTPUT
           echo "testCert=${PREFIX}/testCert.zip" >> $GITHUB_OUTPUT
           echo "migrationRunner=${PREFIX}/migrationRunner.zip" >> $GITHUB_OUTPUT
 
@@ -241,6 +242,7 @@ jobs:
           TF_VAR_initPayment_s3_key: ${{ steps.artifacts.outputs.initPayment }}
           TF_VAR_processPayment_s3_key: ${{ steps.artifacts.outputs.processPayment }}
           TF_VAR_getDetails_s3_key: ${{ steps.artifacts.outputs.getDetails }}
+          TF_VAR_validateClient_s3_key: ${{ steps.artifacts.outputs.validateClient }}
           TF_VAR_testCert_s3_key: ${{ steps.artifacts.outputs.testCert }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.artifacts.outputs.migrationRunner }}
           # AWS Chatbot → Microsoft Teams routing. Missing secrets disable Teams routing (enable_teams=false).

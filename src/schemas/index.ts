@@ -15,3 +15,4 @@ export * from "./TransactionsByStatus.schema";
 export * from "./TransactionLog.schema";
 export * from "./TransactionPaymentStatus.schema";
 export * from "./DeployHealthReport.schema";
+export * from "./ValidateClient.schema";
