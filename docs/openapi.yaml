@@ -1247,7 +1247,6 @@ components:
       description: >-
         Year-over-year comparison of successful payment totals for each
         dashboard period.
-
     TransactionFeeBreakdown:
       type: array
       items:
@@ -1259,7 +1258,6 @@ components:
         filter. Computed in the same statement as `counts`, so `counts.success`
         always equals the summed quantities. Omitted on export requests for
         pages after the first.
-
     TransactionFeeBreakdownRow:
       type: object
       properties:
@@ -1283,8 +1281,7 @@ components:
         - feeName
         - qty
         - subtotal
-
-    parameters: {}
+  parameters: {}
 paths:
   /init:
     post:
@@ -1549,13 +1546,13 @@ paths:
         and matching year-over-year comparisons — day, week, month, fiscal
         quarter and fiscal year — covering successful payments only and ignoring
         both the timeframe and the status, fee, paymentMethod, and
-        transactionStatus filters. It follows the same rule as `counts` on
-        export pages after the first. `includeFeeBreakdown=true` adds successful
+        transactionStatus filters. `includeFeeBreakdown=true` adds successful
         payments tallied per fee — count and summed amount — for the requested
-        timeframe, ignoring the status, fee, paymentMethod, and transactionStatus
-        filters, ordered by subtotal descending with every configured fee present
-        even at zero. It follows the same rule as `counts` on export pages after
-        the first.
+        timeframe, ignoring the status, fee, paymentMethod, and
+        transactionStatus filters, ordered by subtotal descending with every
+        configured fee present even at zero. Both `includeTotals` and
+        `includeFeeBreakdown` follow the same rule as `counts` on export pages
+        after the first.
       tags:
         - Payments
       security:

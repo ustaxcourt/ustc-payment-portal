@@ -22,7 +22,8 @@ type Command =
   | "verify"
   | "gc-dbs"
   | "gc-roles"
-  | "debug-transactions";
+  | "debug-transactions"
+  | "debug-tables";
 
 type MigrationHandlerEvent = {
   command?: Command;
@@ -198,50 +199,42 @@ const getSeedsDirectory = (): string => {
   return path.join(__dirname, "..", "db", "seeds");
 };
 
-const debugTransactions = async (): Promise<MigrationHandlerResult> => {
-  const maintenanceKnex = await getMaintenanceKnex();
-  const summary = await maintenanceKnex.raw<{
-    rows: {
-      count: string;
-      minCreatedAt: string;
-      maxCreatedAt: string;
-    }[];
-  }>(`
-    SELECT
-      COUNT(*)::text AS count,
-      MIN(created_at)::text AS "minCreatedAt",
-      MAX(created_at)::text AS "maxCreatedAt"
-    FROM transactions
-  `);
+export const debugTransactions = async () => {
+  const knexInstance = await getMaintenanceKnex();
 
-  const yearly = await maintenanceKnex.raw<{
-    rows: {
-      year: number;
-      count: string;
-      total: string;
-    }[];
-  }>(`
-    SELECT
-      EXTRACT(YEAR FROM created_at) AS year,
-      COUNT(*)::text AS count,
-      COALESCE(SUM(transaction_amount), 0)::text AS total
-    FROM transactions
-    GROUP BY year
-    ORDER BY year
-  `);
+  try {
+    const summary = await knexInstance.raw(`
+      SELECT
+        COUNT(*)::text AS count,
+        MIN(created_at)::text AS "minCreatedAt",
+        MAX(created_at)::text AS "maxCreatedAt"
+      FROM transactions
+    `);
+    const yearly = await knexInstance.raw(`
+      SELECT
+        EXTRACT(YEAR FROM created_at) AS year,
+        COUNT(*)::text AS count,
+        COALESCE(SUM(transaction_amount), 0)::text AS total
+      FROM transactions
+      GROUP BY year
+      ORDER BY year
+    `);
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify(
-      {
-        database: process.env.RDS_DB_NAME,
-        summary: summary.rows[0],
-        yearly: yearly.rows,
-      },
-      null,
-      2,
-    ),
-  };
+    return {
+      statusCode: 200,
+      body: JSON.stringify(
+        {
+          database: process.env.RDS_DB_NAME,
+          summary: summary.rows[0],
+          yearly: yearly.rows,
+        },
+        null,
+        2,
+      ),
+    };
+  } finally {
+    await knexInstance.destroy();
+  }
 };
 
 const provisionUser = async (): Promise<MigrationHandlerResult> => {
@@ -554,6 +547,35 @@ const gcRoles = async (
   return { statusCode: 200, body: JSON.stringify({ dropped, failed }) };
 };
 
+export const debugTables = async () => {
+  const knexInstance = await getMaintenanceKnex();
+
+  try {
+    const result = await knexInstance.raw(`
+      SELECT
+        schemaname,
+        tablename
+      FROM pg_tables
+      WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+      ORDER BY schemaname, tablename
+    `);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify(
+        {
+          database: process.env.RDS_DB_NAME,
+          tables: result.rows,
+        },
+        null,
+        2,
+      ),
+    };
+  } finally {
+    await knexInstance.destroy();
+  }
+};
+
 // THIS WILL ONLY BE FOR CI/CD USAGE AND SHOULD NOT BE EXPOSED IN API GATEWAY
 // If we ever write integration tests for this Lambda or any of the dashboard endpoints,
 // we will need to setup PR ephemeral environments to spin up a RDS instance, otherwise the tests
@@ -607,6 +629,8 @@ export const migrationHandler = async (
         `actually dead first; unlocking a live run risks corruption.`,
     );
   }
+
+  if (command === "debug-tables") return debugTables();
 
   const connection = await getDatabaseConnection();
 
