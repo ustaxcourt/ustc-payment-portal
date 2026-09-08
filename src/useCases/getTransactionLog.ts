@@ -111,13 +111,44 @@ export const getTransactionLog: GetTransactionLog = async (
 
   logger.info(
     {
-      periods: !!periods,
-      previousPeriods: !!previousPeriods,
-      periodTotals: !!periodTotals,
-      previousPeriodTotals: !!previousPeriodTotals,
+      periods,
+      previousPeriods,
+      periodTotals,
+      previousPeriodTotals,
+      yoyTrends,
+      includeTotals: query.includeTotals,
+      from: from.toISOString(),
+      to: to.toISOString(),
     },
     "transaction-log yoy debug",
   );
+
+  if (periodTotals) {
+    logger.info(
+      {
+        periodTotals,
+      },
+      "transaction-log current period totals",
+    );
+  }
+
+  if (previousPeriodTotals) {
+    logger.info(
+      {
+        previousPeriodTotals,
+      },
+      "transaction-log previous period totals",
+    );
+  }
+
+  if (yoyTrends) {
+    logger.info(
+      {
+        yoyTrends,
+      },
+      "transaction-log yoy trends",
+    );
+  }
 
   // One spread, so the pair can only ever be omitted together.
   const countsAndTotal =
