@@ -1079,165 +1079,38 @@
           "latencyMs"
         ]
       },
-      "TransactionLogResponse": {
+      "RevenueSummaryResponse": {
         "type": "object",
         "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TransactionLogEntry"
-            },
-            "description": "Rows for the requested page, ordered by the resolved `sort`/`order`"
-          },
-          "counts": {
-            "$ref": "#/components/schemas/TransactionCounts"
-          },
-          "from": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Resolved lower bound actually queried"
-          },
-          "to": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Resolved upper bound actually queried"
-          },
-          "page": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "pageSize": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "sort": {
-            "$ref": "#/components/schemas/TransactionLogSortField"
-          },
-          "order": {
-            "$ref": "#/components/schemas/SortOrder"
-          },
-          "total": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Rows matching the timeframe and all applied filters (`status`, `fee`, `paymentMethod`, `transactionStatus`), across all pages — unlike `counts` and `totals`, this figure is narrowed by every filter. Omitted on export requests for pages after the first."
-          },
           "totals": {
-            "$ref": "#/components/schemas/TransactionTotals"
+            "$ref": "#/components/schemas/RevenueSummaryTotals"
           },
           "yoyTrends": {
             "$ref": "#/components/schemas/TransactionYoYTrends"
-          },
-          "feeBreakdown": {
-            "$ref": "#/components/schemas/TransactionFeeBreakdown"
           }
         },
         "required": [
-          "data",
-          "from",
-          "to",
-          "page",
-          "pageSize",
-          "sort",
-          "order"
-        ]
-      },
-      "TransactionLogEntry": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardTransaction"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "returnCode": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "description": "Pay.gov return code, set when a payment fails",
-                "example": 102
-              },
-              "returnDetail": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "description": "Pay.gov failure reason, set when a payment fails",
-                "example": "Insufficient funds"
-              }
-            }
-          }
-        ]
-      },
-      "TransactionCounts": {
-        "type": "object",
-        "properties": {
-          "all": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "success": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "failed": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "pending": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
-        "required": [
-          "all",
-          "success",
-          "failed",
-          "pending"
+          "totals"
         ],
-        "description": "Totals for the requested timeframe. Unaffected by `status`, `fee`, `paymentMethod`, and `transactionStatus`, so the tallies stay stable as the user filters. Omitted on export requests for pages after the first."
+        "description": "Everything the dashboard's revenue totals table needs in one call: per-period totals with fee tallies, and year-over-year trends. Replaces composing `includeTotals` and per-period `includeFeeBreakdown` calls on /transaction-log."
       },
-      "TransactionLogSortField": {
-        "type": "string",
-        "enum": [
-          "createdAt",
-          "lastUpdatedAt",
-          "feeName",
-          "transactionAmount",
-          "paymentMethod",
-          "paymentStatus",
-          "returnDetail",
-          "transactionStatus",
-          "clientName",
-          "transactionReferenceId"
-        ],
-        "description": "Column the transaction log is ordered by"
-      },
-      "SortOrder": {
-        "type": "string",
-        "enum": [
-          "asc",
-          "desc"
-        ],
-        "description": "Direction the transaction log is ordered in"
-      },
-      "TransactionTotals": {
+      "RevenueSummaryTotals": {
         "type": "object",
         "properties": {
           "day": {
-            "$ref": "#/components/schemas/TransactionTotalPeriod"
+            "$ref": "#/components/schemas/RevenueSummaryPeriod"
           },
           "week": {
-            "$ref": "#/components/schemas/TransactionTotalPeriod"
+            "$ref": "#/components/schemas/RevenueSummaryPeriod"
           },
           "month": {
-            "$ref": "#/components/schemas/TransactionTotalPeriod"
+            "$ref": "#/components/schemas/RevenueSummaryPeriod"
           },
           "quarter": {
-            "$ref": "#/components/schemas/TransactionTotalPeriod"
+            "$ref": "#/components/schemas/RevenueSummaryPeriod"
           },
           "fiscalYear": {
-            "$ref": "#/components/schemas/TransactionTotalPeriod"
+            "$ref": "#/components/schemas/RevenueSummaryPeriod"
           }
         },
         "required": [
@@ -1247,7 +1120,63 @@
           "quarter",
           "fiscalYear"
         ],
-        "description": "Successful payments only, in fixed periods to date. Unaffected by the requested timeframe and by `status`, `fee`, `paymentMethod`, and `transactionStatus`, so the figures stay stable as the user filters. Periods open at Court-local midnight; the week opens on Sunday, and the quarter and year are fiscal — the year opens on Oct 1. Omitted on export requests for pages after the first."
+        "description": "Successful payments only, in fixed periods to date. Periods open at Court-local midnight; the week opens on Sunday, and the quarter and year are fiscal — the year opens on Oct 1."
+      },
+      "RevenueSummaryPeriod": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TransactionTotalPeriod"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "fees": {
+                "$ref": "#/components/schemas/TransactionFeeBreakdown"
+              }
+            },
+            "required": [
+              "fees"
+            ]
+          }
+        ],
+        "description": "One dashboard period's collected total plus its per-fee tallies, computed over the same window."
+      },
+      "TransactionFeeBreakdown": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/TransactionFeeBreakdownRow"
+        },
+        "description": "Successful payments in the requested timeframe, tallied per fee and ordered by subtotal descending. Every fee the Portal handles appears, even with nothing collected. Honours `from`/`to` but ignores the status filter. Computed in the same statement as `counts`, so `counts.success` always equals the summed quantities. Omitted on export requests for pages after the first."
+      },
+      "TransactionFeeBreakdownRow": {
+        "type": "object",
+        "properties": {
+          "fee": {
+            "type": "string",
+            "description": "Stable fee key (e.g. PETITION_FILING_FEE)",
+            "example": "PETITION_FILING_FEE"
+          },
+          "feeName": {
+            "type": "string",
+            "description": "Human-readable fee name",
+            "example": "Petition Filing Fee"
+          },
+          "qty": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Successful payments for the fee in the requested timeframe"
+          },
+          "subtotal": {
+            "type": "number",
+            "description": "Summed transaction amounts in USD"
+          }
+        },
+        "required": [
+          "fee",
+          "feeName",
+          "qty",
+          "subtotal"
+        ]
       },
       "TransactionTotalPeriod": {
         "type": "object",
@@ -1436,42 +1365,175 @@
         ],
         "description": "Year-over-year comparison of successful payment totals for each dashboard period."
       },
-      "TransactionFeeBreakdown": {
-        "type": "array",
-        "items": {
-          "$ref": "#/components/schemas/TransactionFeeBreakdownRow"
-        },
-        "description": "Successful payments in the requested timeframe, tallied per fee and ordered by subtotal descending. Every fee the Portal handles appears, even with nothing collected. Honours `from`/`to` but ignores the status filter. Computed in the same statement as `counts`, so `counts.success` always equals the summed quantities. Omitted on export requests for pages after the first."
-      },
-      "TransactionFeeBreakdownRow": {
+      "TransactionLogResponse": {
         "type": "object",
         "properties": {
-          "fee": {
-            "type": "string",
-            "description": "Stable fee key (e.g. PETITION_FILING_FEE)",
-            "example": "PETITION_FILING_FEE"
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionLogEntry"
+            },
+            "description": "Rows for the requested page, ordered by the resolved `sort`/`order`"
           },
-          "feeName": {
-            "type": "string",
-            "description": "Human-readable fee name",
-            "example": "Petition Filing Fee"
+          "counts": {
+            "$ref": "#/components/schemas/TransactionCounts"
           },
-          "qty": {
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Resolved lower bound actually queried"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Resolved upper bound actually queried"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sort": {
+            "$ref": "#/components/schemas/TransactionLogSortField"
+          },
+          "order": {
+            "$ref": "#/components/schemas/SortOrder"
+          },
+          "total": {
             "type": "integer",
             "minimum": 0,
-            "description": "Successful payments for the fee in the requested timeframe"
+            "description": "Rows matching the timeframe and all applied filters (`status`, `fee`, `paymentMethod`, `transactionStatus`), across all pages — unlike `counts` and `totals`, this figure is narrowed by every filter. Omitted on export requests for pages after the first."
           },
-          "subtotal": {
-            "type": "number",
-            "description": "Summed transaction amounts in USD"
+          "totals": {
+            "$ref": "#/components/schemas/TransactionTotals"
+          },
+          "yoyTrends": {
+            "$ref": "#/components/schemas/TransactionYoYTrends"
+          },
+          "feeBreakdown": {
+            "$ref": "#/components/schemas/TransactionFeeBreakdown"
           }
         },
         "required": [
-          "fee",
-          "feeName",
-          "qty",
-          "subtotal"
+          "data",
+          "from",
+          "to",
+          "page",
+          "pageSize",
+          "sort",
+          "order"
         ]
+      },
+      "TransactionLogEntry": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardTransaction"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "returnCode": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Pay.gov return code, set when a payment fails",
+                "example": 102
+              },
+              "returnDetail": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Pay.gov failure reason, set when a payment fails",
+                "example": "Insufficient funds"
+              }
+            }
+          }
+        ]
+      },
+      "TransactionCounts": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "success": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "failed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pending": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "all",
+          "success",
+          "failed",
+          "pending"
+        ],
+        "description": "Totals for the requested timeframe. Unaffected by `status`, `fee`, `paymentMethod`, and `transactionStatus`, so the tallies stay stable as the user filters. Omitted on export requests for pages after the first."
+      },
+      "TransactionLogSortField": {
+        "type": "string",
+        "enum": [
+          "createdAt",
+          "lastUpdatedAt",
+          "feeName",
+          "transactionAmount",
+          "paymentMethod",
+          "paymentStatus",
+          "returnDetail",
+          "transactionStatus",
+          "clientName",
+          "transactionReferenceId"
+        ],
+        "description": "Column the transaction log is ordered by"
+      },
+      "SortOrder": {
+        "type": "string",
+        "enum": [
+          "asc",
+          "desc"
+        ],
+        "description": "Direction the transaction log is ordered in"
+      },
+      "TransactionTotals": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "$ref": "#/components/schemas/TransactionTotalPeriod"
+          },
+          "week": {
+            "$ref": "#/components/schemas/TransactionTotalPeriod"
+          },
+          "month": {
+            "$ref": "#/components/schemas/TransactionTotalPeriod"
+          },
+          "quarter": {
+            "$ref": "#/components/schemas/TransactionTotalPeriod"
+          },
+          "fiscalYear": {
+            "$ref": "#/components/schemas/TransactionTotalPeriod"
+          }
+        },
+        "required": [
+          "day",
+          "week",
+          "month",
+          "quarter",
+          "fiscalYear"
+        ],
+        "description": "Successful payments only, in fixed periods to date. Unaffected by the requested timeframe and by `status`, `fee`, `paymentMethod`, and `transactionStatus`, so the figures stay stable as the user filters. Periods open at Court-local midnight; the week opens on Sunday, and the quarter and year are fiscal — the year opens on Oct 1. Omitted on export requests for pages after the first."
       }
     },
     "parameters": {}
@@ -1778,6 +1840,62 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecentTransactionsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - invalid SigV4 signature or client not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/revenue-summary": {
+      "get": {
+        "summary": "Get the dashboard revenue summary",
+        "description": "Everything the dashboard's revenue totals table needs in one call: summed revenue and per-fee tallies for five fixed periods to date — day, week, month, fiscal quarter and fiscal year — plus year-over-year comparisons. Successful payments only. Periods open at Court-local midnight in America/New_York; the week opens on Sunday and the fiscal year on Oct 1. Totals and tallies are computed in a single statement, so a period's total always equals its summed fees. `yoyTrends` is omitted when the prior-year totals cannot be computed. Takes no parameters: the summary is always all periods, as of now — a consumer needing anything else wants a different endpoint, not a flag here.",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "sigv4": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Revenue summary retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevenueSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unexpected query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
                 }
               }
             }

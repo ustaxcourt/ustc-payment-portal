@@ -9,7 +9,6 @@ import {
   mapCourtPeriods,
   previousCourtPeriodBounds,
 } from "@utils/courtDayBounds";
-import { logger } from "@/utils/logger";
 import { buildFeeBreakdown } from "./getTransactionLog";
 
 export type GetRevenueSummary = (
@@ -20,7 +19,7 @@ export type GetRevenueSummary = (
  *  Totals are derived from the per-fee tallies' single statement snapshot, so
  *  a period's total always equals its summed fees. */
 export const getRevenueSummary: GetRevenueSummary = async (
-  _appContext: AppContext,
+  appContext: AppContext,
 ): Promise<RevenueSummaryResponse> => {
   // One clock read for both period sets, matching getTransactionLog.
   const now = new Date();
@@ -31,9 +30,10 @@ export const getRevenueSummary: GetRevenueSummary = async (
     TransactionModel.feeTalliesByPeriods(periods),
     // Trends degrade rather than fail the totals, matching getTransactionLog.
     TransactionModel.totalsToDate(previousPeriods).catch((error) => {
-      logger.warn(
-        { error },
+      // Request-scoped, so a degraded response stays traceable to its request.
+      appContext.logger.warn(
         "Unable to calculate previous-period totals for YoY trends",
+        { errorMessage: error instanceof Error ? error.message : String(error) },
       );
       return undefined;
     }),

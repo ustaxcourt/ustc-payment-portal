@@ -3,7 +3,9 @@ import type { AppContext } from "@appTypes/AppContext";
 import { mapCourtPeriods } from "@utils/courtDayBounds";
 import { getRevenueSummary } from "./getRevenueSummary";
 
-const appContext = {} as unknown as AppContext;
+const appContext = {
+  logger: { debug: jest.fn(), error: jest.fn(), info: jest.fn(), warn: jest.fn() },
+} as unknown as AppContext;
 
 const PETITION = { fee: "PETITION_FILING_FEE", qty: 2, subtotal: 120 };
 
