@@ -141,3 +141,24 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
 - **Mitigation:** ...
 - **Revisit:** <condition or date>
 -->
+
+### GHSA-8cw4-87c7-c6xx — csv-parse@<7.0.2 (moderate) — accepted (2026-09-09)
+
+**From: Artillery**
+
+- **Reason it can't be fixed now:** `artillery@2.0.34` (the latest published
+  version) still pins `csv-parse@^4.16.3`, three majors behind the `7.0.2`
+  fix. `npm audit fix --force`'s suggested remediation downgrades `artillery`
+  to `0.0.2` — an unrelated ancient release, not a real fix. No override was
+  taken: forcing `csv-parse@^7.0.2` into `artillery@4.x`'s internals for a
+  three-major jump risks breaking whatever CSV handling artillery relies on,
+  for a path this repo doesn't exercise.
+- **Mitigation:** the vulnerability requires attacker-controlled CSV input
+  parsed via `csv-parse`'s `columns` option (artillery's `--payload` CSV
+  feature). This repo has no `.csv` payload files and
+  `scripts/run-performance-test.sh` never passes `--payload`/CSV flags to
+  `artillery run` — the vulnerable path is unreachable through anything this
+  repo actually does with artillery.
+- **Revisit:** if `artillery` bumps its own `csv-parse` dependency past
+  `7.0.2`, or if a future performance script starts using CSV payload files
+  with artillery.
