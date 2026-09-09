@@ -8,6 +8,20 @@ jest.mock("../appContext", () => ({
   createAppContext: jest.fn(),
 }));
 
+jest.mock("@/db/knex", () => ({
+  __esModule: true,
+  default: {
+    raw: jest.fn().mockResolvedValue({
+      rows: [
+        {
+          db: "paymentportal_pr_370",
+          usr: "pr_user_pr_370",
+        },
+      ],
+    }),
+  },
+}));
+
 const mockCreateAppContext = createAppContext as jest.MockedFunction<
   typeof createAppContext
 >;

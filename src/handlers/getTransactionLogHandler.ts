@@ -6,12 +6,20 @@ import {
   dashboardError,
   dashboardValidationError,
 } from "@utils/dashboardHandlerUtils";
+import knex from "@/db/knex";
 
 /** GET /transaction-log — timeframe defaults to the current Court day.
  *  Separate from /transactions, which the dev dashboard depends on. */
 export const getTransactionLogHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
+  if (knex) {
+    const [{ db, usr }] = (
+      await knex.raw("select current_database() as db, current_user as usr")
+    ).rows;
+    console.log({ db, usr });
+  }
+
   const appContext = createAppContext({ lambdaRequest: event });
 
   const query = TransactionLogQuerySchema.safeParse(

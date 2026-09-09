@@ -42,22 +42,6 @@ export const lambdaHandler = async <T>({
 }): Promise<APIGatewayProxyResult> => {
   const appContext = createAppContext({ lambdaRequest: event });
   try {
-    const knex = await getKnex();
-
-    const dbResult = await knex.raw(`
-      select
-        current_database() as database,
-        current_user as username
-    `);
-
-    logger.info(
-      {
-        database: dbResult.rows[0]?.database,
-        username: dbResult.rows[0]?.username,
-      },
-      "[lambdaHandler] database connection",
-    );
-
     const parsedRequest = parseAndValidate(rawRequest, schema);
     const roleArn = extractCallerArn(event.requestContext);
     const client = await getClientByRoleArn(roleArn);
