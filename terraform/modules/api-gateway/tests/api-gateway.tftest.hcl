@@ -49,7 +49,6 @@ run "dev_environment_enables_dashboard_routes" {
       getTransactionsByStatus     = "arn:aws:lambda:us-east-1:123456789012:function:get-by-status"
       getTransactionPaymentStatus = "arn:aws:lambda:us-east-1:123456789012:function:get-payment-status"
       getTransactionLog           = "arn:aws:lambda:us-east-1:123456789012:function:get-transaction-log"
-      getRevenueSummary           = "arn:aws:lambda:us-east-1:123456789012:function:get-revenue-summary"
     }
   }
 
@@ -87,7 +86,6 @@ run "dev_routes_stay_private_without_public_dashboard_flag" {
       getTransactionsByStatus     = "arn:aws:lambda:us-east-1:123456789012:function:get-by-status"
       getTransactionPaymentStatus = "arn:aws:lambda:us-east-1:123456789012:function:get-payment-status"
       getTransactionLog           = "arn:aws:lambda:us-east-1:123456789012:function:get-transaction-log"
-      getRevenueSummary           = "arn:aws:lambda:us-east-1:123456789012:function:get-revenue-summary"
     }
   }
 

@@ -100,7 +100,6 @@ locals {
     healthCheck                 = local.lambda_env_payment
     getAllTransactions          = local.lambda_env_dashboard
     getTransactionLog           = local.lambda_env_dashboard
-    getRevenueSummary           = local.lambda_env_dashboard
     getTransactionsByStatus     = local.lambda_env_dashboard
     getTransactionPaymentStatus = local.lambda_env_dashboard
     migrationRunner             = local.lambda_env_migration
@@ -118,7 +117,6 @@ locals {
     healthCheck                 = 768
     getAllTransactions          = 256
     getTransactionLog           = 256
-    getRevenueSummary           = 256
     getTransactionsByStatus     = 256
     getTransactionPaymentStatus = 256
     migrationRunner             = 256

@@ -8,7 +8,6 @@ export const testAppContext: AppContext = {
     processPayment: jest.fn(),
     getDetails: jest.fn(),
     getRecentTransactions: jest.fn(),
-    getRevenueSummary: jest.fn(),
     getTransactionLog: jest.fn(),
     getTransactionPaymentStatus: jest.fn(),
     getTransactionsByStatus: jest.fn(),

@@ -28,8 +28,6 @@ import {
   TransactionPaymentStatusResponseSchema,
   TransactionsByStatusPathParamsSchema,
   TransactionsByStatusResponseSchema,
-  RevenueSummaryQuerySchema,
-  RevenueSummaryResponseSchema,
   TransactionLogQuerySchema,
   TransactionLogResponseSchema,
   MetadataDawsonSchema,
@@ -382,66 +380,6 @@ registry.registerPath({
       content: {
         "application/json": {
           schema: RecentTransactionsResponseSchema,
-        },
-      },
-    },
-    403: {
-      description:
-        "Forbidden - invalid SigV4 signature or client not authorized",
-      content: {
-        "application/json": {
-          schema: ForbiddenErrorSchema,
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: ServerErrorSchema,
-        },
-      },
-    },
-  },
-});
-
-// ============================================
-// GET /revenue-summary - Revenue Summary
-// ============================================
-registry.registerPath({
-  method: "get",
-  path: "/revenue-summary",
-  summary: "Get the dashboard revenue summary",
-  description:
-    "Everything the dashboard's revenue totals table needs in one call: " +
-    "summed revenue and per-fee tallies for five fixed periods to date — " +
-    "day, week, month, fiscal quarter and fiscal year — plus year-over-year " +
-    "comparisons. Successful payments only. Periods open at Court-local " +
-    "midnight in America/New_York; the week opens on Sunday and the fiscal " +
-    "year on Oct 1. Totals and tallies are computed in a single statement, " +
-    "so a period's total always equals its summed fees. `yoyTrends` is " +
-    "omitted when the prior-year totals cannot be computed. Takes no " +
-    "parameters: the summary is always all periods, as of now — a consumer " +
-    "needing anything else wants a different endpoint, not a flag here.",
-  tags: ["Payments"],
-  security: [{ sigv4: [] }],
-  request: {
-    query: RevenueSummaryQuerySchema,
-  },
-  responses: {
-    200: {
-      description: "Revenue summary retrieved successfully",
-      content: {
-        "application/json": {
-          schema: RevenueSummaryResponseSchema,
-        },
-      },
-    },
-    400: {
-      description: "Unexpected query parameters",
-      content: {
-        "application/json": {
-          schema: BadRequestErrorSchema,
         },
       },
     },

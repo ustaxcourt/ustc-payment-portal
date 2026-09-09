@@ -12,7 +12,6 @@ import { InvalidRequestError } from "@errors/invalidRequest";
 import { parseRequestBody } from "./parseRequestBody";
 import { InitPaymentRequestSchema } from "@schemas/InitPayment.schema";
 import { ProcessPaymentRequestSchema } from "@schemas/ProcessPayment.schema";
-import { RevenueSummaryQuerySchema } from "@schemas/RevenueSummary.schema";
 import { TransactionLogQuerySchema } from "@schemas/TransactionLog.schema";
 import "./db/knex";
 import type { ClientPermission } from "@appTypes/ClientPermission";
@@ -209,26 +208,6 @@ app.get("/transaction-log", async (req, res, next) => {
     const result = await res.locals.appContext
       .getUseCases()
       .getTransactionLog(res.locals.appContext, query.data);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.get("/revenue-summary", async (req, res, next) => {
-  const query = RevenueSummaryQuerySchema.safeParse(req.query);
-  if (!query.success) {
-    res.status(400).json({
-      message: "Validation error",
-      errors: query.error.issues as ZodIssue[],
-    });
-    return;
-  }
-
-  try {
-    const result = await res.locals.appContext
-      .getUseCases()
-      .getRevenueSummary(res.locals.appContext);
     res.json(result);
   } catch (err) {
     next(err);
