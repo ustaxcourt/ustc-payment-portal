@@ -13,14 +13,13 @@ import knex from "@/db/knex";
 export const getTransactionLogHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
+  const appContext = createAppContext({ lambdaRequest: event });
   if (knex) {
     const [{ db, usr }] = (
       await knex.raw("select current_database() as db, current_user as usr")
     ).rows;
-    console.log({ db, usr });
+    appContext.logger.info("db usr", { db, usr });
   }
-
-  const appContext = createAppContext({ lambdaRequest: event });
 
   const query = TransactionLogQuerySchema.safeParse(
     event.queryStringParameters ?? {},
