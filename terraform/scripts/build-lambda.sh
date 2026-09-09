@@ -143,6 +143,21 @@ npx esbuild src/handlers/getTransactionLogHandler.ts \
   --minify \
   --keep-names
 
+# Bundle getRevenueSummary Lambda
+echo "Bundling getRevenueSummary..."
+mkdir -p dist/getRevenueSummary
+npx esbuild src/handlers/getRevenueSummaryHandler.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/getRevenueSummary/getRevenueSummaryHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
+
 # Bundle getTransactionsByStatus Lambda
 echo "Bundling getTransactionsByStatus..."
 mkdir -p dist/getTransactionsByStatus
@@ -243,7 +258,7 @@ npx esbuild src/powerTuning/powerTuningCleanUp.ts \
 # Copy certificate files if they exist
 if [ -d "certs" ]; then
     echo "Copying certificate files..."
-    for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog; do
+    for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog getRevenueSummary; do
         if [ -d "dist/$func" ]; then
             cp -r certs dist/$func/
         fi
@@ -261,7 +276,7 @@ curl -sSf -o /tmp/rds-ca-bundle.pem \
 # above: it reads the client-permissions secret and nothing else — no RDS, no
 # Pay.gov mTLS. It transitively imports knex via lambdaHandler, but with no
 # RDS_SECRET_ARN set that pool is never opened.
-for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog powerTuningCleanUp; do
+for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog getRevenueSummary powerTuningCleanUp; do
   cp /tmp/rds-ca-bundle.pem "dist/${func}/rds-ca-bundle.pem"
 done
 
@@ -296,12 +311,13 @@ echo "  - dist/getAllTransactions/getAllTransactionsHandler.js"
 echo "  - dist/getTransactionsByStatus/getTransactionsByStatusHandler.js"
 echo "  - dist/getTransactionPaymentStatus/getTransactionPaymentStatusHandler.js"
 echo "  - dist/getTransactionLog/getTransactionLogHandler.js"
+echo "  - dist/getRevenueSummary/getRevenueSummaryHandler.js"
 echo "  - dist/migrationRunner/lambdaHandler.js"
 
 # Show file sizes
 echo ""
 echo "Bundle sizes:"
-for func in initPayment processPayment getDetails validateClient testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog migrationRunner; do
+for func in initPayment processPayment getDetails validateClient testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog getRevenueSummary migrationRunner; do
   output_file="lambdaHandler.js"
   if [ "$func" = "initPayment" ]; then
     output_file="initPaymentHandler.js"
@@ -319,6 +335,8 @@ for func in initPayment processPayment getDetails validateClient testCert getAll
     output_file="getTransactionPaymentStatusHandler.js"
   elif [ "$func" = "getTransactionLog" ]; then
     output_file="getTransactionLogHandler.js"
+  elif [ "$func" = "getRevenueSummary" ]; then
+    output_file="getRevenueSummaryHandler.js"
   fi
 
   if [ -f "dist/$func/$output_file" ]; then

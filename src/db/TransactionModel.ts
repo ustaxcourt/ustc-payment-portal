@@ -284,6 +284,66 @@ export default class TransactionModel extends Model {
     });
   }
 
+  static async feeTalliesByPeriods(
+    periods: CourtPeriodRecord<Bounds>,
+  ): Promise<
+    CourtPeriodRecord<Array<{ fee: string; qty: number; subtotal: number }>>
+  > {
+    const knex = await getKnex();
+    const names = COURT_PERIOD_NAMES;
+
+    const earliestStart = new Date(
+      Math.min(...names.map((name) => periods[name].start.getTime())),
+    );
+    const latestEnd = new Date(
+      Math.max(...names.map((name) => periods[name].end.getTime())),
+    );
+
+    const columns = names.flatMap((name) => [
+      knex.raw("count(*) filter (where ?? >= ? and ?? < ?) as ??", [
+        "lastUpdatedAt",
+        periods[name].start,
+        "lastUpdatedAt",
+        periods[name].end,
+        `${name}Qty`,
+      ]),
+      knex.raw("coalesce(sum(??) filter (where ?? >= ? and ?? < ?), 0) as ??", [
+        "transactionAmount",
+        "lastUpdatedAt",
+        periods[name].start,
+        "lastUpdatedAt",
+        periods[name].end,
+        `${name}Subtotal`,
+      ]),
+    ]);
+
+    const rows = await TransactionModel.query()
+      .select(["fee", ...columns])
+      .where("paymentStatus", "success")
+      .andWhere("lastUpdatedAt", ">=", earliestStart)
+      .andWhere("lastUpdatedAt", "<", latestEnd)
+      .groupBy("fee");
+
+    return mapCourtPeriods((name) =>
+      (rows as unknown as Array<Record<string, unknown>>).flatMap((row) => {
+        const fee = String(row.fee);
+        const qty = Number(row[`${name}Qty`]);
+        const subtotalValue = row[`${name}Subtotal`];
+        const subtotal = Number(subtotalValue);
+        if (
+          Number.isNaN(qty) ||
+          subtotalValue === null ||
+          Number.isNaN(subtotal)
+        ) {
+          throw new Error(
+            `feeTalliesByPeriods returned no usable tally for the "${fee}" fee in the "${name}" period`,
+          );
+        }
+        return qty > 0 ? [{ fee, qty, subtotal }] : [];
+      }),
+    );
+  }
+
   /** Status counts and per-fee success tallies from one SELECT grouped by
    *  (paymentStatus, fee): both aggregates read the same statement snapshot,
    *  so `counts.success` always equals the summed tally quantities. Bounds on

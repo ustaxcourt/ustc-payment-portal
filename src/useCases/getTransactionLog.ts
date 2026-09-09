@@ -202,8 +202,8 @@ export const getTransactionLog: GetTransactionLog = async (
 };
 
 /** Zero-fills every configured fee, keeps revenue under unconfigured keys,
- *  and orders by subtotal descending. */
-const buildFeeBreakdown = (
+ *  and orders by subtotal descending. Shared with getRevenueSummary. */
+export const buildFeeBreakdown = (
   tallies: Array<{ fee: string; qty: number; subtotal: number }>,
 ): TransactionFeeBreakdown => {
   const feeNames = getFeeNamesByKey();
