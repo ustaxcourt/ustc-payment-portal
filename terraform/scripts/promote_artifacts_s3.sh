@@ -123,7 +123,5 @@ echo "========================================="
 echo "Promotion Complete!"
 echo "========================================="
 echo "Artifacts available at:"
-for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog initRefGenerator processTokenMinter powerTuningCleanUp; do
-  echo "  - ${func}: s3://${BUCKET}/${TARGET_PREFIX}/${func}.zip"
-done
+jq -r '.artifacts | keys[] | "  - \(.): s3://'"${BUCKET}"'/'"${TARGET_PREFIX}"'/\(.).zip"' "$TARGET_MANIFEST_FILE"
 echo "========================================="
