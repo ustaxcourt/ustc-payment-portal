@@ -666,6 +666,11 @@ export const migrationHandler = async (
     if (command === "seed") {
       const directory = getSeedsDirectory();
 
+      console.log("Database", {
+        database: connection.database,
+        host: connection.host,
+        user: connection.user,
+      });
       console.log("Seed directory:", directory);
       console.log("Seed files:", fs.readdirSync(directory));
 
