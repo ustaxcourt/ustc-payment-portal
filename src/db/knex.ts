@@ -94,7 +94,18 @@ export function getKnex(): Promise<ReturnType<typeof Knex>> {
         "select current_database() as db, current_user as usr",
       );
 
-      console.log("[POSTGRES CONNECTION]", JSON.stringify(info, null, 2));
+      console.log(
+        "[KNEX CONNECTION]",
+        JSON.stringify(
+          {
+            database: connection.database,
+            user: connection.user,
+            host: connection.host,
+          },
+          null,
+          2,
+        ),
+      );
 
       Model.knex(knexInstance);
       return knexInstance;
