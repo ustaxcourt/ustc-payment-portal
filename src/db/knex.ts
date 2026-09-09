@@ -88,12 +88,6 @@ export function getKnex(): Promise<ReturnType<typeof Knex>> {
         ...knexSnakeCaseMappers(),
       });
 
-      const {
-        rows: [info],
-      } = await knexInstance.raw(
-        "select current_database() as db, current_user as usr",
-      );
-
       console.log(
         "[KNEX CONNECTION]",
         JSON.stringify(
