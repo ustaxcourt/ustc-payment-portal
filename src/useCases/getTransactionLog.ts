@@ -103,6 +103,13 @@ export const getTransactionLog: GetTransactionLog = async (
     ]);
 
   const counts = aggregates?.counts;
+  logger.info(
+    {
+      "periodTotals:": periodTotals,
+      "previousPeriodTotals:": previousPeriodTotals,
+    },
+    "Period totals",
+  );
   const yoyTrends =
     periodTotals && previousPeriodTotals
       ? TransactionModel.yoyTrends(periodTotals, previousPeriodTotals)
