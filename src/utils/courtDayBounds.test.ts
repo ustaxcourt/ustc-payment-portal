@@ -1,8 +1,10 @@
 import {
+  COURT_PERIOD_NAMES,
   courtDayBounds,
   courtDayBoundsForDateString,
   courtPeriodBounds,
   parseMonthDayYearDate,
+  previousCourtPeriodBounds,
 } from "./courtDayBounds";
 
 const hoursBetween = (start: Date, end: Date): number =>
@@ -28,7 +30,7 @@ describe("courtDayBounds", () => {
       () =>
         ({
           formatToParts: () => [{ type: "year", value: "2026" }],
-        } as unknown as Intl.DateTimeFormat),
+        }) as unknown as Intl.DateTimeFormat,
     );
 
     expect(() => courtDayBounds(new Date("2026-08-03T15:00:00.000Z"))).toThrow(
@@ -140,13 +142,25 @@ describe("courtPeriodBounds", () => {
     expect(periods.day.end.toISOString()).toBe(MONDAY.toISOString());
   });
 
+  it("exports the canonical period names once, in order", () => {
+    expect(COURT_PERIOD_NAMES).toEqual([
+      "day",
+      "week",
+      "month",
+      "quarter",
+      "fiscalYear",
+    ]);
+  });
+
   it("opens every period at Court-local midnight", () => {
     const periods = courtPeriodBounds(MONDAY);
 
     expect(periods.day.start.toISOString()).toBe("2026-08-17T04:00:00.000Z");
     expect(periods.week.start.toISOString()).toBe("2026-08-16T04:00:00.000Z");
     expect(periods.month.start.toISOString()).toBe("2026-08-01T04:00:00.000Z");
-    expect(periods.quarter.start.toISOString()).toBe("2026-07-01T04:00:00.000Z");
+    expect(periods.quarter.start.toISOString()).toBe(
+      "2026-07-01T04:00:00.000Z",
+    );
     expect(periods.fiscalYear.start.toISOString()).toBe(
       "2025-10-01T04:00:00.000Z",
     );
@@ -158,6 +172,33 @@ describe("courtPeriodBounds", () => {
     for (const period of Object.values(periods)) {
       expect(period.end.toISOString()).toBe("2026-08-17T15:00:00.000Z");
     }
+  });
+
+  it("derives the previous year's comparison periods with the same keys", () => {
+    const previousPeriods = previousCourtPeriodBounds(MONDAY);
+    const currentPeriods = courtPeriodBounds(MONDAY);
+
+    expect(Object.keys(previousPeriods)).toEqual([...COURT_PERIOD_NAMES]);
+    expect(previousPeriods.day.start.toISOString()).toBe(
+      "2025-08-17T04:00:00.000Z",
+    );
+    expect(previousPeriods.day.end.toISOString()).toBe(
+      "2025-08-17T15:00:00.000Z",
+    );
+    expect(previousPeriods.fiscalYear.start.toISOString()).toBe(
+      "2024-10-01T04:00:00.000Z",
+    );
+    expect(previousPeriods.week.start.toISOString()).toBe(
+      "2025-08-17T04:00:00.000Z",
+    );
+    expect(previousPeriods.week.end.toISOString()).toBe(
+      "2025-08-18T15:00:00.000Z",
+    );
+    expect(
+      previousPeriods.week.end.getTime() - previousPeriods.week.start.getTime(),
+    ).toBe(
+      currentPeriods.week.end.getTime() - currentPeriods.week.start.getTime(),
+    );
   });
 
   describe("week", () => {
