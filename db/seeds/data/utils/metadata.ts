@@ -7,23 +7,23 @@ import type { SeededFee } from "./seededFees";
  */
 export const buildMetadata = (
   feeKey: SeededFee["key"],
-): Record<string, string> | null => {
+): Record<string, string> => {
   switch (feeKey) {
     case "PETITION_FILING_FEE":
       return buildDawsonMetadata();
     case "NONATTORNEY_EXAM_REGISTRATION_FEE":
       return buildNonAttorneyMetadata();
     default:
-      console.warn(`No metadata builder for fee key "${feeKey}" found.`);
-      return null; // Return null if no metadata builder is found
+      throw new Error(`No metadata builder for seeded fee "${feeKey}"`);
   }
 };
 
 const buildDawsonMetadata = (): Record<string, string> => {
-  // Dawson docket number: 3 digits, a dash, then a 2-digit year (e.g. 123-26).
-  const index = faker.number.int({ min: 100, max: 999 });
+  // Dawson docket number: a petition sequence number that resets each year and
+  // runs into the tens of thousands, a dash, then a 2-digit year (e.g. 12345-26).
+  const petitionNumber = faker.number.int({ min: 1, max: 50000 });
   const year = faker.helpers.arrayElement(["24", "25", "26"]);
-  return { docketNumber: `${index}-${year}` };
+  return { docketNumber: `${petitionNumber}-${year}` };
 };
 
 const buildNonAttorneyMetadata = (): Record<string, string> => {

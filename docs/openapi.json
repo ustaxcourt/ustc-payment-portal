@@ -1534,6 +1534,17 @@
           "fiscalYear"
         ],
         "description": "Successful payments only, in fixed periods to date. Unaffected by the requested timeframe and by `status`, `fee`, `paymentMethod`, and `transactionStatus`, so the figures stay stable as the user filters. Periods open at Court-local midnight; the week opens on Sunday, and the quarter and year are fiscal — the year opens on Oct 1. Omitted on export requests for pages after the first."
+      },
+      "TransactionLogMetadataKey": {
+        "type": "string",
+        "enum": [
+          "docketNumber",
+          "email",
+          "fullName",
+          "accessCode"
+        ],
+        "description": "Which metadata field to search. Must be supplied together with `metadataValue`. `counts` and `totals` ignore it.",
+        "example": "docketNumber"
       }
     },
     "parameters": {}
@@ -2022,6 +2033,28 @@
             "required": false,
             "description": "Restricts rows to one transaction attempt status. `counts` and `totals` ignore it.",
             "name": "transactionStatus",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/TransactionLogMetadataKey"
+            },
+            "required": false,
+            "description": "Which metadata field to search. Must be supplied together with `metadataValue`. `counts` and `totals` ignore it.",
+            "name": "metadataKey",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Case-insensitive substring matched against the metadata field named by `metadataKey`. Must be supplied together with `metadataKey`.",
+              "example": "123-26"
+            },
+            "required": false,
+            "description": "Case-insensitive substring matched against the metadata field named by `metadataKey`. Must be supplied together with `metadataKey`.",
+            "name": "metadataValue",
             "in": "query"
           },
           {
