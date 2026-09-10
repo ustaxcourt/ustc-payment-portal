@@ -158,7 +158,6 @@ export const generateTransactions = async ({
   const start = (
     requestedStart.isAfter(activationFloor) ? requestedStart : activationFloor
   ).startOf("day");
-
   if (start.isAfter(now)) {
     throw new Error(
       `SEED_START_DATE ${startDate} is after today; no rows can be generated`,
