@@ -215,7 +215,7 @@ export const getActiveFee = (
 ```
 
 - `fee` — the stable key (e.g. `"PETITION_FILING_FEE"`)
-- `date` — the point in time to resolve against. Callers pass the transaction's `createdAt` so historical rows always reflect the version that was in effect **when the transaction was created**, even after a future version has activated.
+- `date` — the point in time to resolve against when versioned fee attributes must be evaluated. This is primarily used for fee validation and amount resolution because fee versions are selected by activationDate.
 - Returns a merged `ActiveFee` (definition fields + the winning `FeeVersion` fields + the echoed `fee` key).
 - Throws `FeeNotFoundError` if the key is unknown, the date is invalid, or no version has activated by `date`; throws `FeeConfigurationError` when a configured fee definition/version is malformed.
 
