@@ -156,7 +156,6 @@ export const getTransactionLog: GetTransactionLog = async (
       paymentMethod: toApiPaymentMethod(row.paymentMethod),
     })),
     ...countsAndTotal,
-    ...(totalsByPeriod && { totals: totalsByPeriod }),
     ...(yoyTrends && { yoyTrends }),
     from: from.toISOString(),
     to: to.toISOString(),
