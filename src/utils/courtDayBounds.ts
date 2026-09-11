@@ -85,10 +85,41 @@ export const mapCourtPeriods = <T>(
   }, {} as CourtPeriodRecord<T>);
 
 const FISCAL_YEAR_START_MONTH = 10;
-const shiftUtcYear = (instant: Date, yearDelta: number): Date => {
-  const shifted = new Date(instant.getTime());
-  shifted.setUTCFullYear(shifted.getUTCFullYear() + yearDelta);
-  return shifted;
+export const shiftUtcYear = (instant: Date, yearDelta: number): Date => {
+  const year = instant.getUTCFullYear() + yearDelta;
+  const month = instant.getUTCMonth();
+  const day = instant.getUTCDate();
+
+  // Explicit Feb 29 -> Feb 28 fallback
+  if (month === 1 && day === 29) {
+    const isLeapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+
+    if (!isLeapYear) {
+      return new Date(
+        Date.UTC(
+          year,
+          month,
+          28,
+          instant.getUTCHours(),
+          instant.getUTCMinutes(),
+          instant.getUTCSeconds(),
+          instant.getUTCMilliseconds(),
+        ),
+      );
+    }
+  }
+
+  return new Date(
+    Date.UTC(
+      year,
+      month,
+      day,
+      instant.getUTCHours(),
+      instant.getUTCMinutes(),
+      instant.getUTCSeconds(),
+      instant.getUTCMilliseconds(),
+    ),
+  );
 };
 
 export const parseMonthDayYearDate = (

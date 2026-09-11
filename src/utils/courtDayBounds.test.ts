@@ -5,6 +5,7 @@ import {
   courtPeriodBounds,
   parseMonthDayYearDate,
   previousCourtPeriodBounds,
+  shiftUtcYear,
 } from "./courtDayBounds";
 
 const hoursBetween = (start: Date, end: Date): number =>
@@ -283,5 +284,25 @@ describe("courtPeriodBounds", () => {
       expect(day.start.toISOString()).toBe("2026-01-15T05:00:00.000Z");
       expect(fiscalYear.start.toISOString()).toBe("2025-10-01T04:00:00.000Z");
     });
+  });
+});
+
+describe("shiftUtcYear", () => {
+  it("shifts a normal date by one year", () => {
+    expect(
+      shiftUtcYear(new Date("2024-06-15T12:34:56Z"), -1).toISOString(),
+    ).toBe("2023-06-15T12:34:56.000Z");
+  });
+
+  it("maps leap day to february 28 in a non-leap year", () => {
+    expect(
+      shiftUtcYear(new Date("2024-02-29T12:34:56Z"), -1).toISOString(),
+    ).toBe("2023-02-28T12:34:56.000Z");
+  });
+
+  it("preserves leap day when the target year is also a leap year", () => {
+    expect(
+      shiftUtcYear(new Date("2024-02-29T12:34:56Z"), 4).toISOString(),
+    ).toBe("2028-02-29T12:34:56.000Z");
   });
 });

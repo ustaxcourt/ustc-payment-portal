@@ -229,7 +229,7 @@ The resolution rule: filter versions with `activationDate <= date`, pick the one
 | `NONATTORNEY_EXAM_REGISTRATION_FEE` | v1      | `TCSUSTAXCOURTANAEF`    | false      | 250.00 | 2024-10-01T00:00:00Z           |
 | `PETITION_FILING_FEE`               | v2      | `TCSUSTAXCOURTPETITION` | false      | 70.00  | 2026-06-01T00:00:00Z (planned) |
 
-**Amount derivation on dashboard reads:** `TransactionModel.getAll` / `getByPaymentStatus` call `getActiveFee(row.fee, row.createdAt)` and hydrate `transactionAmount` and `feeName` from the result. This keeps historical rows accurate without persisting the amount per transaction.
+**Dashboard reads:** Transaction log queries use the persisted `transactionAmount` stored on each transaction record. Fee display names are hydrated from the fee definition via `staticFees` because `name` is definition-level data and is not versioned. Historical fee resolution via `getActiveFee(fee, date)` remains relevant for versioned attributes such as `amount`, `isVariable`, and `activationDate`.
 
 ### Amount Resolution Logic
 
