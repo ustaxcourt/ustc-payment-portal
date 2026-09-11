@@ -21,7 +21,6 @@ import {
   toApiPaymentMethod,
   toDbPaymentMethod,
 } from "@utils/toApiPaymentMethod";
-import { logger } from "@/utils/logger";
 
 export type GetTransactionLog = (
   appContext: AppContext,
@@ -40,17 +39,6 @@ export const getTransactionLog: GetTransactionLog = async (
   const to = query.to ?? today.end;
   const sort = query.sort ?? TRANSACTION_LOG_DEFAULT_SORT;
   const order = query.order ?? TRANSACTION_LOG_DEFAULT_ORDER;
-
-  logger.info(
-    {
-      query,
-      includeTotals: query.includeTotals,
-      includeFeeBreakdown: query.includeFeeBreakdown,
-      export: query.export,
-      page: query.page,
-    },
-    "transaction-log query",
-  );
 
   // Export pages after the first skip the COUNTs; the caller has them from page 1.
   const withCounts = !query.export || query.page === 1;
@@ -94,9 +82,9 @@ export const getTransactionLog: GetTransactionLog = async (
       periods ? TransactionModel.totalsToDate(periods) : undefined,
       previousPeriods
         ? TransactionModel.totalsToDate(previousPeriods).catch((error) => {
-            logger.warn(
-              { error, from, to },
+            _appContext.logger.warn(
               "Unable to calculate previous-period totals for YoY trends",
+              { error, from, to },
             );
             return undefined;
           })
@@ -104,58 +92,32 @@ export const getTransactionLog: GetTransactionLog = async (
     ]);
 
   const counts = aggregates?.counts;
-  logger.info(
-    {
-      "periodTotals:": periodTotals,
-      "previousPeriodTotals:": previousPeriodTotals,
-    },
-    "Period totals",
-  );
+  _appContext.logger.info("Period totals", {
+    "periodTotals:": periodTotals,
+    "previousPeriodTotals:": previousPeriodTotals,
+  });
   const yoyTrends =
     periodTotals && previousPeriodTotals
       ? TransactionModel.yoyTrends(periodTotals, previousPeriodTotals)
       : undefined;
   const feeTallies = aggregates?.tallies;
 
-  logger.info(
-    {
-      periods,
-      previousPeriods,
-      periodTotals,
-      previousPeriodTotals,
-      yoyTrends,
-      includeTotals: query.includeTotals,
-      from: from.toISOString(),
-      to: to.toISOString(),
-    },
-    "transaction-log yoy debug",
-  );
-
   if (periodTotals) {
-    logger.info(
-      {
-        periodTotals,
-      },
-      "transaction-log current period totals",
-    );
+    _appContext.logger.info("transaction-log current period totals", {
+      periodTotals,
+    });
   }
 
   if (previousPeriodTotals) {
-    logger.info(
-      {
-        previousPeriodTotals,
-      },
-      "transaction-log previous period totals",
-    );
+    _appContext.logger.info("transaction-log previous period totals", {
+      previousPeriodTotals,
+    });
   }
 
   if (yoyTrends) {
-    logger.info(
-      {
-        yoyTrends,
-      },
-      "transaction-log yoy trends",
-    );
+    _appContext.logger.info("transaction-log yoy trends", {
+      yoyTrends,
+    });
   }
 
   // One spread, so the pair can only ever be omitted together.

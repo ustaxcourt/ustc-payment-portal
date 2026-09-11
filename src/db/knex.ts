@@ -88,19 +88,6 @@ export function getKnex(): Promise<ReturnType<typeof Knex>> {
         ...knexSnakeCaseMappers(),
       });
 
-      console.log(
-        "[KNEX CONNECTION]",
-        JSON.stringify(
-          {
-            database: connection.database,
-            user: connection.user,
-            host: connection.host,
-          },
-          null,
-          2,
-        ),
-      );
-
       Model.knex(knexInstance);
       return knexInstance;
     })
