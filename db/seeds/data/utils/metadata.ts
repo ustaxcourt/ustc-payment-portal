@@ -11,8 +11,10 @@ export const buildMetadata = (
   switch (feeKey) {
     case "PETITION_FILING_FEE":
       return buildDawsonMetadata();
+
     case "NONATTORNEY_EXAM_REGISTRATION_FEE":
       return buildNonAttorneyMetadata();
+
     default:
       throw new Error(`No metadata builder for seeded fee "${feeKey}"`);
   }
@@ -23,6 +25,7 @@ const buildDawsonMetadata = (): Record<string, string> => {
   // runs into the tens of thousands, a dash, then a 2-digit year (e.g. 12345-26).
   const petitionNumber = faker.number.int({ min: 1, max: 50000 });
   const year = faker.helpers.arrayElement(["24", "25", "26"]);
+
   return { docketNumber: `${petitionNumber}-${year}` };
 };
 

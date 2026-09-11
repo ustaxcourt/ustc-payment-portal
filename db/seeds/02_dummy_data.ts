@@ -13,7 +13,7 @@ import { generateTransactions } from "./data/transactions";
  *    SEED_MULTI_ATTEMPT_GROUPS: Groups of rows sharing one obligation (a failed
  *      attempt followed by a successful retry).
  */
-const SEED_START_DATE = "2025-01-01";
+const SEED_START_DATE = "2024-10-01";
 const SEED_TOTAL_RECORDS = 3500;
 const SEED_MULTI_ATTEMPT_GROUPS = 10;
 
@@ -22,13 +22,18 @@ const SEED_MULTI_ATTEMPT_GROUPS = 10;
  * development and CI.
  */
 export async function seed(knex: Knex): Promise<void> {
+  console.log("02_dummy_data seed started");
   Model.knex(knex);
   await knex("transactions").del();
-  await knex("transactions").insert(
-    await generateTransactions({
-      multiAttemptGroups: SEED_MULTI_ATTEMPT_GROUPS,
-      startDate: SEED_START_DATE,
-      numberOfRecords: SEED_TOTAL_RECORDS,
-    }),
-  );
+
+  const rows = await generateTransactions({
+    multiAttemptGroups: SEED_MULTI_ATTEMPT_GROUPS,
+    startDate: SEED_START_DATE,
+    numberOfRecords: SEED_TOTAL_RECORDS,
+  });
+
+  console.log(`Generated ${rows.length} rows`);
+  await knex("transactions").insert(rows);
+
+  console.log("02_dummy_data seed completed");
 }

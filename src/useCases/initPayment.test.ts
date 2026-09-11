@@ -22,6 +22,12 @@ jest.mock("../db/TransactionModel", () => {
 
 jest.mock("../config/fees", () => ({
   __esModule: true,
+
+  getFeeNamesByKey: jest.fn(() => ({
+    PETITION_FILING_FEE: "Petition Filing Fee",
+    NONATTORNEY_EXAM_REGISTRATION_FEE: "Non-Attorney Exam Registration Fee",
+  })),
+
   getActiveFee: jest.fn((fee) => {
     if (fee === "PETITION_FILING_FEE") {
       return {
@@ -31,6 +37,7 @@ jest.mock("../config/fees", () => ({
         isVariable: false,
       };
     }
+
     if (fee === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
       return {
         fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
@@ -39,6 +46,7 @@ jest.mock("../config/fees", () => ({
         isVariable: false,
       };
     }
+
     const { FeeNotFoundError } = jest.requireActual("../errors/feeNotFound");
     throw new FeeNotFoundError(fee);
   }),

@@ -34,7 +34,7 @@ type RowOverrides = {
   fee?: SeededFee;
   createdAt?: string;
   transactionReferenceId?: string;
-  metadata?: Record<string, string>;
+  metadata?: Record<string, string> | null;
   forcePaymentMethod?: string;
 };
 
@@ -88,7 +88,7 @@ const makeRow = (
     payment_date: paymentDate,
     return_code: failureReason ? failureReason.code : null,
     return_detail: failureReason ? failureReason.detail : null,
-    metadata,
+    metadata: metadata ?? {},
     created_at: createdAt,
     last_updated_at: lastUpdatedAt,
   };
@@ -158,7 +158,6 @@ export const generateTransactions = async ({
   const start = (
     requestedStart.isAfter(activationFloor) ? requestedStart : activationFloor
   ).startOf("day");
-  
   if (start.isAfter(now)) {
     throw new Error(
       `SEED_START_DATE ${startDate} is after today; no rows can be generated`,
