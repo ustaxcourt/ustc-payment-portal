@@ -6,3 +6,4 @@
 - General minor and patch updates from running `npm update`.
 - GHSA-8cw4-87c7-c6xx — csv-parse@<7.0.2 (moderate) vulnerability accepted for now in `dependency-caveats.md`, we don't currently use the CSV payload file feature of Artillery (the parent package that uses csv-parse).
 - `Changelogs` schema update to `v4.0.0`.
+- Bumps `@ustaxcourt/ustc-pay-gov-test-server` to `0.3.0`.
