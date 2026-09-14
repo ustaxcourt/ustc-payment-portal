@@ -56,6 +56,17 @@ export const isStaleProcessingTransaction = (row: {
   return ageMs >= PROCESSING_STALE_MS;
 };
 
+export const isExpiredInitiatedTransaction = (row: {
+  transactionStatus?: SchemaTransactionStatus | null;
+  createdAt: string;
+}): boolean => {
+  if (row.transactionStatus !== "initiated") {
+    return false;
+  }
+  const ageMs = Date.now() - new Date(row.createdAt).getTime();
+  return ageMs > MAX_TOKEN_AGE_MS;
+};
+
 const SIBLING_GONE_MESSAGE =
   "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.";
 
@@ -544,11 +555,12 @@ export default class TransactionModel extends Model {
         return undefined;
       }
 
-      const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
-        row.clientName,
-        row.transactionReferenceId,
-        { excludeToken: paygovToken, trx },
-      );
+      const sibling =
+        await TransactionModel.findPendingOrProcessedByReferenceId(
+          row.clientName,
+          row.transactionReferenceId,
+          { excludeToken: paygovToken, trx },
+        );
 
       if (sibling) {
         throw new GoneError(SIBLING_GONE_MESSAGE);
@@ -573,9 +585,12 @@ export default class TransactionModel extends Model {
 
       // Re-touch the row so last_updated_at refreshes (DB trigger) and this request
       // owns the completion attempt.
-      return TransactionModel.query(trx).patchAndFetchById(row.agencyTrackingId, {
-        transactionStatus: "processing",
-      });
+      return TransactionModel.query(trx).patchAndFetchById(
+        row.agencyTrackingId,
+        {
+          transactionStatus: "processing",
+        },
+      );
     });
   }
 
@@ -605,6 +620,18 @@ export default class TransactionModel extends Model {
       paymentStatus: "failed",
       returnCode,
       returnDetail,
+    });
+  }
+
+  static async updateToCancelled(
+    agencyTrackingId: string,
+    trx?: Knex.Transaction,
+  ): Promise<TransactionModel> {
+    await getKnex();
+    return TransactionModel.query(trx).patchAndFetchById(agencyTrackingId, {
+      transactionStatus: "cancelled",
+      paymentStatus: "failed",
+      lastUpdatedAt: TransactionModel.raw("last_updated_at"),
     });
   }
 
