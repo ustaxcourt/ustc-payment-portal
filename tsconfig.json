@@ -29,20 +29,19 @@
     /* Modules */
     "module": "commonjs" /* Specify what module code is generated. */,
     "rootDir": "./src" /* Specify the root folder within your source files. */,
-    "baseUrl": "./src" /* Resolve non-relative imports from the source root. */,
     "paths": {
-      "@/*": ["*"],
-      "@clients/*": ["clients/*"],
-      "@entities/*": ["entities/*"],
-      "@errors/*": ["errors/*"],
-      "@handlers/*": ["handlers/*"],
-      "@schemas/*": ["schemas/*"],
-      "@utils/*": ["utils/*"],
-      "@appTypes/*": ["types/*"],
-      "@useCases/*": ["useCases/*"]
+      "@/*": ["./src/*"],
+      "@clients/*": ["./src/clients/*"],
+      "@entities/*": ["./src/entities/*"],
+      "@errors/*": ["./src/errors/*"],
+      "@handlers/*": ["./src/handlers/*"],
+      "@schemas/*": ["./src/schemas/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@appTypes/*": ["./src/types/*"],
+      "@useCases/*": ["./src/useCases/*"]
     },
-    "moduleResolution": "node" /* Specify how TypeScript looks up a file from a given module specifier. */,
-    "ignoreDeprecations": "6.0" /* Acknowledge legacy node module resolution until the v7 resolver migration. */,
+    "moduleResolution": "bundler" /* Specify how TypeScript looks up a file from a given module specifier. */,
+    "ignoreDeprecations": "6.0" /* Silence TS6's implicit-baseUrl deprecation warning, surfaced only by rollup-plugin-dts's aliased TS6 API; irrelevant to real TS7. */,
     // "rootDirs": [],                                   /* Allow multiple folders to be treated as one when resolving modules. */
     // "typeRoots": [],                                  /* Specify multiple folders that act like './node_modules/@types'. */
     "types": [
@@ -121,21 +120,5 @@
     /* Completeness */
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
-  },
-  "ts-node": {
-    "compilerOptions": {
-      "baseUrl": "./src",
-      "paths": {
-        "@/*": ["*"],
-        "@clients/*": ["clients/*"],
-        "@entities/*": ["entities/*"],
-        "@errors/*": ["errors/*"],
-        "@handlers/*": ["handlers/*"],
-        "@schemas/*": ["schemas/*"],
-        "@utils/*": ["utils/*"],
-        "@appTypes/*": ["types/*"],
-        "@useCases/*": ["useCases/*"]
-      }
-    }
   }
 }

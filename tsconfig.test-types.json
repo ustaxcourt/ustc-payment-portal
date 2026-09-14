@@ -2,8 +2,7 @@
   "include": ["./test-types/**/*"],
   "compilerOptions": {
     "module": "commonjs",
-    "moduleResolution": "node",
-    "ignoreDeprecations": "6.0",
+    "moduleResolution": "bundler",
     "target": "es2022",
     "strict": true,
     "esModuleInterop": true,

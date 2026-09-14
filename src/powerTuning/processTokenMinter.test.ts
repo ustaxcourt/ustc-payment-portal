@@ -1,11 +1,13 @@
 import type { APIGatewayEvent } from "aws-lambda";
 
-const sendMock = jest.fn();
-const invokeCommandMock = jest.fn((input: unknown) => ({ input }));
+const mockSend = jest.fn();
+const mockInvokeCommand = jest.fn((input: unknown) => ({ input }));
 
 jest.mock("@aws-sdk/client-lambda", () => ({
-  LambdaClient: jest.fn(() => ({ send: sendMock })),
-  InvokeCommand: jest.fn((input: unknown) => invokeCommandMock(input)),
+  LambdaClient: jest.fn(() => ({
+    send: (...args: unknown[]) => mockSend(...args),
+  })),
+  InvokeCommand: jest.fn((input: unknown) => mockInvokeCommand(input)),
 }));
 
 jest.mock("@utils/logger", () => ({
@@ -49,30 +51,30 @@ const okFetch = (): void => {
 };
 
 beforeEach(() => {
-  sendMock.mockReset();
-  invokeCommandMock.mockClear();
+  mockSend.mockReset();
+  mockInvokeCommand.mockClear();
   global.fetch = jest.fn();
 });
 
 describe("processTokenMinter", () => {
   it("mints a fresh token by invoking initPayment and completing on the mock", async () => {
-    sendMock.mockResolvedValue(okInvoke("tok-123"));
+    mockSend.mockResolvedValue(okInvoke("tok-123"));
     okFetch();
 
     const result = await processTokenMinter(buildEvent());
 
     expect(JSON.parse(result.body ?? "{}")).toEqual({ token: "tok-123" });
-    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(mockSend).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
   it("invokes the initPayment function with a fresh transactionReferenceId and the tuning caller ARN", async () => {
-    sendMock.mockResolvedValue(okInvoke());
+    mockSend.mockResolvedValue(okInvoke());
     okFetch();
 
     await processTokenMinter(buildEvent());
 
-    const input = invokeCommandMock.mock.calls[0][0] as {
+    const input = mockInvokeCommand.mock.calls[0][0] as {
       FunctionName: string;
       Payload: Buffer;
     };
@@ -89,7 +91,7 @@ describe("processTokenMinter", () => {
   });
 
   it("completes the payment on the mock at the /pay/<method>/<status> path with the minted token", async () => {
-    sendMock.mockResolvedValue(okInvoke("tok-xyz"));
+    mockSend.mockResolvedValue(okInvoke("tok-xyz"));
     okFetch();
 
     await processTokenMinter(buildEvent());
@@ -103,7 +105,7 @@ describe("processTokenMinter", () => {
   });
 
   it("preserves the base event and its requestContext", async () => {
-    sendMock.mockResolvedValue(okInvoke());
+    mockSend.mockResolvedValue(okInvoke());
     okFetch();
 
     const event = buildEvent();
@@ -113,7 +115,7 @@ describe("processTokenMinter", () => {
   });
 
   it("merges the minted token into an existing JSON body", async () => {
-    sendMock.mockResolvedValue(okInvoke("tok-merged"));
+    mockSend.mockResolvedValue(okInvoke("tok-merged"));
     okFetch();
 
     const result = await processTokenMinter(
@@ -127,7 +129,7 @@ describe("processTokenMinter", () => {
   });
 
   it("falls back to a token-only body when the base body is not JSON", async () => {
-    sendMock.mockResolvedValue(okInvoke("tok-only"));
+    mockSend.mockResolvedValue(okInvoke("tok-only"));
     okFetch();
 
     const result = await processTokenMinter(buildEvent("not-json"));
@@ -136,7 +138,7 @@ describe("processTokenMinter", () => {
   });
 
   it("uses a unique transactionReferenceId on each invocation", async () => {
-    sendMock.mockResolvedValue(okInvoke());
+    mockSend.mockResolvedValue(okInvoke());
     okFetch();
 
     await processTokenMinter(buildEvent());
@@ -144,12 +146,12 @@ describe("processTokenMinter", () => {
 
     const first = JSON.parse(
       (
-        invokeCommandMock.mock.calls[0][0] as { Payload: Buffer }
+        mockInvokeCommand.mock.calls[0][0] as { Payload: Buffer }
       ).Payload.toString(),
     );
     const second = JSON.parse(
       (
-        invokeCommandMock.mock.calls[1][0] as { Payload: Buffer }
+        mockInvokeCommand.mock.calls[1][0] as { Payload: Buffer }
       ).Payload.toString(),
     );
     expect(JSON.parse(first.body).transactionReferenceId).not.toBe(
@@ -158,7 +160,7 @@ describe("processTokenMinter", () => {
   });
 
   it("throws when the initPayment invocation reports a FunctionError", async () => {
-    sendMock.mockResolvedValue({
+    mockSend.mockResolvedValue({
       FunctionError: "Unhandled",
       Payload: new TextEncoder().encode("boom"),
     });
@@ -170,7 +172,7 @@ describe("processTokenMinter", () => {
   });
 
   it("throws when the initPayment invocation returns no payload", async () => {
-    sendMock.mockResolvedValue({});
+    mockSend.mockResolvedValue({});
 
     await expect(processTokenMinter(buildEvent())).rejects.toThrow(
       /returned no payload/,
@@ -178,7 +180,7 @@ describe("processTokenMinter", () => {
   });
 
   it("throws when initPayment returns a non-200 status", async () => {
-    sendMock.mockResolvedValue({
+    mockSend.mockResolvedValue({
       Payload: encodeProxyResult(409, { message: "conflict" }),
     });
 
@@ -188,7 +190,7 @@ describe("processTokenMinter", () => {
   });
 
   it("throws when the initPayment response is missing token or paymentRedirect", async () => {
-    sendMock.mockResolvedValue({
+    mockSend.mockResolvedValue({
       Payload: encodeProxyResult(200, { paymentRedirect: PAYMENT_REDIRECT }),
     });
 
@@ -198,7 +200,7 @@ describe("processTokenMinter", () => {
   });
 
   it("throws when the mock markPayment call fails", async () => {
-    sendMock.mockResolvedValue(okInvoke());
+    mockSend.mockResolvedValue(okInvoke());
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
       status: 500,

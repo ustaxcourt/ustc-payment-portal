@@ -1,5 +1,3 @@
-import type { Config } from "jest";
-
 const moduleNameMapper = {
   "^@/(.*)$": "<rootDir>/src/$1",
   "^@clients/(.*)$": "<rootDir>/src/clients/$1",
@@ -12,12 +10,13 @@ const moduleNameMapper = {
   "^@useCases/(.*)$": "<rootDir>/src/useCases/$1",
 };
 
-const config: Config = {
-  preset: "ts-jest",
+/** @type {import('@jest/types').Config.InitialOptions} */
+const config = {
+  transform: { "^.+\\.tsx?$": "@swc/jest" },
   testEnvironment: "node",
   setupFiles: ["dotenv/config"],
   testPathIgnorePatterns: ["/node_modules/", "/dist/", "/resources/"],
   moduleNameMapper,
 };
 
-export default config;
+module.exports = config;
