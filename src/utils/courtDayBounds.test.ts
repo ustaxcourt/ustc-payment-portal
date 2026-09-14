@@ -17,6 +17,50 @@ describe("courtDayBounds", () => {
     jest.useRealTimers();
   });
 
+  it.each([
+    [
+      "summer day at EDT midnight (UTC-4)",
+      "2026-08-03T15:00:00.000Z",
+      "2026-08-03T04:00:00.000Z",
+      "2026-08-04T04:00:00.000Z",
+    ],
+    [
+      "winter day at EST midnight (UTC-5)",
+      "2026-01-15T15:00:00.000Z",
+      "2026-01-15T05:00:00.000Z",
+      "2026-01-16T05:00:00.000Z",
+    ],
+    [
+      "a late Court evening on its own day",
+      "2026-08-04T03:30:00.000Z",
+      "2026-08-03T04:00:00.000Z",
+      "2026-08-04T04:00:00.000Z",
+    ],
+    [
+      "an early Court morning on its own day",
+      "2026-08-03T04:30:00.000Z",
+      "2026-08-03T04:00:00.000Z",
+      "2026-08-04T04:00:00.000Z",
+    ],
+    [
+      "a month boundary",
+      "2026-08-31T15:00:00.000Z",
+      "2026-08-31T04:00:00.000Z",
+      "2026-09-01T04:00:00.000Z",
+    ],
+    [
+      "a year boundary",
+      "2026-12-31T15:00:00.000Z",
+      "2026-12-31T05:00:00.000Z",
+      "2027-01-01T05:00:00.000Z",
+    ],
+  ])("brackets %s", (_label, now, expectedStart, expectedEnd) => {
+    const { start, end } = courtDayBounds(new Date(now));
+
+    expect(start.toISOString()).toBe(expectedStart);
+    expect(end.toISOString()).toBe(expectedEnd);
+  });
+
   it("defaults to the current instant when none is given", () => {
     jest.useFakeTimers().setSystemTime(new Date("2026-08-03T15:00:00.000Z"));
 
@@ -37,36 +81,6 @@ describe("courtDayBounds", () => {
     expect(() => courtDayBounds(new Date("2026-08-03T15:00:00.000Z"))).toThrow(
       "No month in America/New_York date parts",
     );
-  });
-
-  it("brackets a summer day at EDT midnight (UTC-4)", () => {
-    const { start, end } = courtDayBounds(new Date("2026-08-03T15:00:00.000Z"));
-
-    expect(start.toISOString()).toBe("2026-08-03T04:00:00.000Z");
-    expect(end.toISOString()).toBe("2026-08-04T04:00:00.000Z");
-  });
-
-  it("brackets a winter day at EST midnight (UTC-5)", () => {
-    const { start, end } = courtDayBounds(new Date("2026-01-15T15:00:00.000Z"));
-
-    expect(start.toISOString()).toBe("2026-01-15T05:00:00.000Z");
-    expect(end.toISOString()).toBe("2026-01-16T05:00:00.000Z");
-  });
-
-  it("keeps a late Court evening on its own day, not UTC's next day", () => {
-    // 2026-08-03 23:30 in New York is already 2026-08-04 in UTC.
-    const { start, end } = courtDayBounds(new Date("2026-08-04T03:30:00.000Z"));
-
-    expect(start.toISOString()).toBe("2026-08-03T04:00:00.000Z");
-    expect(end.toISOString()).toBe("2026-08-04T04:00:00.000Z");
-  });
-
-  it("keeps an early Court morning on its own day", () => {
-    // 2026-08-03 00:30 in New York.
-    const { start, end } = courtDayBounds(new Date("2026-08-03T04:30:00.000Z"));
-
-    expect(start.toISOString()).toBe("2026-08-03T04:00:00.000Z");
-    expect(end.toISOString()).toBe("2026-08-04T04:00:00.000Z");
   });
 
   it("spans 23 hours on the spring-forward day", () => {
