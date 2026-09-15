@@ -4,8 +4,10 @@ import {
   courtDayBoundsForDateString,
   courtPeriodBounds,
   parseMonthDayYearDate,
+  partsInZone,
   previousCourtPeriodBounds,
-  shiftUtcYear,
+  shiftCourtYear,
+  zonedDateTimeToUtc,
 } from "./courtDayBounds";
 
 const hoursBetween = (start: Date, end: Date): number =>
@@ -301,22 +303,100 @@ describe("courtPeriodBounds", () => {
   });
 });
 
-describe("shiftUtcYear", () => {
+describe("previousCourtPeriodBounds", () => {
+  it.each([
+    // Current year is on daylight time; prior year is still on standard time.
+    [
+      "spring transition gap",
+      "2025-03-09T15:00:00.000Z", // 11:00 AM EDT
+      "2024-03-09T16:00:00.000Z", // 11:00 AM EST
+    ],
+    // Current year is on standard time; prior year is still on daylight time.
+    [
+      "fall transition gap",
+      "2026-11-01T15:00:00.000Z", // 10:00 AM EST
+      "2025-11-01T14:00:00.000Z", // 10:00 AM EDT
+    ],
+  ])(
+    "keeps the previous day-to-date end aligned across the %s",
+    (_label, now, expectedPreviousEnd) => {
+      const { day } = previousCourtPeriodBounds(new Date(now));
+      expect(day.end.toISOString()).toBe(expectedPreviousEnd);
+    },
+  );
+});
+
+describe("shiftCourtYear", () => {
   it("shifts a normal date by one year", () => {
     expect(
-      shiftUtcYear(new Date("2024-06-15T12:34:56Z"), -1).toISOString(),
+      shiftCourtYear(new Date("2024-06-15T12:34:56Z"), -1).toISOString(),
     ).toBe("2023-06-15T12:34:56.000Z");
   });
 
   it("maps leap day to february 28 in a non-leap year", () => {
     expect(
-      shiftUtcYear(new Date("2024-02-29T12:34:56Z"), -1).toISOString(),
+      shiftCourtYear(new Date("2024-02-29T12:34:56Z"), -1).toISOString(),
     ).toBe("2023-02-28T12:34:56.000Z");
   });
 
   it("preserves leap day when the target year is also a leap year", () => {
     expect(
-      shiftUtcYear(new Date("2024-02-29T12:34:56Z"), 4).toISOString(),
+      shiftCourtYear(new Date("2024-02-29T12:34:56Z"), 4).toISOString(),
     ).toBe("2028-02-29T12:34:56.000Z");
+  });
+
+  it("preserves New York wall-clock time across DST changes", () => {
+    expect(
+      shiftCourtYear(new Date("2025-03-09T15:00:00.000Z"), -1).toISOString(),
+    ).toBe("2024-03-09T16:00:00.000Z");
+  });
+});
+
+describe("zonedDateTimeToUtc", () => {
+  it("converts an EST time to UTC", () => {
+    const utcDate = zonedDateTimeToUtc(
+      {
+        year: 2026,
+        month: 1,
+        day: 15,
+        hour: 5,
+        minute: 0,
+        second: 0,
+      },
+      "America/New_York",
+    );
+
+    expect(utcDate.toISOString()).toBe("2026-01-15T10:00:00.000Z");
+  });
+
+  it("converts an EDT time to UTC", () => {
+    const utcDate = zonedDateTimeToUtc(
+      {
+        year: 2026,
+        month: 8,
+        day: 3,
+        hour: 5,
+        minute: 0,
+        second: 0,
+      },
+      "America/New_York",
+    );
+
+    expect(utcDate.toISOString()).toBe("2026-08-03T09:00:00.000Z");
+  });
+});
+
+describe("partsInZone", () => {
+  it("returns the correct parts for a given instant and time zone", () => {
+    const instant = new Date("2026-01-15T12:34:56Z");
+    const parts = partsInZone(instant, "America/New_York");
+    expect(parts).toEqual({
+      year: 2026,
+      month: 1,
+      day: 15,
+      hour: 7,
+      minute: 34,
+      second: 56,
+    });
   });
 });
