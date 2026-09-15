@@ -124,7 +124,8 @@ export const initPayment: InitPayment = async (
     );
 
   if (existingInFlightTransaction) {
-    // From createdAt: the Pay.gov token is issued when the row goes initiated (ADR 0011).
+    // From createdAt: the Pay.gov token is issued when the row goes initiated, and the
+    // trigger moves lastUpdatedAt for writes unrelated to the token.
     const tokenAgeMs =
       Date.now() - new Date(existingInFlightTransaction.createdAt).getTime();
     const staleProcessing = isStaleProcessingTransaction(

@@ -2,7 +2,7 @@ import type { Knex } from "knex";
 
 // Holds last_updated_at still on the transition into 'cancelled'. An abandoned attempt is a
 // bookkeeping correction, not an event, so it must stay in the day it was attempted — the
-// transaction log and every aggregate window on this column. See ADR 0011.
+// transaction log and every aggregate window on this column.
 //
 // The rule lives here rather than at the call site because a BEFORE UPDATE trigger cannot tell
 // "caller set the column to its own value" from "caller never mentioned it": both leave

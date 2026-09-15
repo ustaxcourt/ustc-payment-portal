@@ -12,7 +12,7 @@ const TOKEN_TTL = "3 hours";
 
 // Clears the backlog of abandoned Pay.gov sessions stuck at 'initiated'. Must run after
 // 20260914000000, which teaches set_last_updated_at() to hold last_updated_at on this
-// transition — without it every row below re-dates to the deploy. See ADR 0011.
+// transition — without it every row below re-dates to the deploy.
 export async function up(knex: Knex): Promise<void> {
   const cancelled = await knex.raw<{ rows: CancelledRow[] }>(`
     UPDATE transactions

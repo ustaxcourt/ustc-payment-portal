@@ -184,7 +184,7 @@ module "api" {
 # ephemeral and must not run a 15-min probe or create alarms on the shared metric.
 # No SNS target in dev (the monitoring module / alerts topic is stg+prod only).
 # Ships with the schedule DISABLED: the Lambda deploys dark and is invoked manually first,
-# then enabled per environment (ADR 0011 rollout). Disabling it again is the rollback.
+# then enabled per environment. Disabling it again is the rollback.
 module "cancel_sweep" {
   source = "../../modules/cancel-sweep"
 
