@@ -26,16 +26,10 @@ describe("cancelExpiredHandler", () => {
   });
 
   it("returns the sweep result", async () => {
-    cancelExpiredMock.mockResolvedValueOnce({
-      cancelledCount: 4,
-      batches: 1,
-      truncated: false,
-    });
+    cancelExpiredMock.mockResolvedValueOnce({ cancelledCount: 4 });
 
     await expect(cancelExpiredHandler()).resolves.toEqual({
       cancelledCount: 4,
-      batches: 1,
-      truncated: false,
     });
     expect(cancelExpiredMock).toHaveBeenCalledTimes(1);
   });
