@@ -82,11 +82,11 @@ export const getTransactionLog: GetTransactionLog = async (
       periods ? TransactionModel.totalsToDate(periods) : undefined,
       previousPeriods
         ? TransactionModel.totalsToDate(previousPeriods).catch((error) => {
-            _appContext.logger.warn(
+            _appContext.logger.error(
               "Unable to calculate previous-period totals for YoY trends",
               { error, from, to },
             );
-            return undefined;
+            throw error;
           })
         : undefined,
     ]);
