@@ -62,19 +62,29 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          # grep -qv succeeds as soon as one file does NOT match the safe list.
           SAFE='^(docs/|\.changeset/|\.github/ISSUE_TEMPLATE/|LICENSE$|.*\.md$)'
-          if git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -qvE "$SAFE"; then
+          FILES=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          # -c so grep drains the stream; an early exit would SIGPIPE the writer and
+          # pipefail would read that as "docs only". `|| true` because grep exits 1
+          # when it selects nothing, which is the normal docs-only case.
+          UNSAFE=$(printf '%s' "$FILES" | grep -cvE "$SAFE" || true)
+          if [ "$UNSAFE" -gt 0 ]; then
             NEEDS=true
+            echo "Runtime-affecting paths ($UNSAFE):"
+            printf '%s' "$FILES" | grep -vE "$SAFE" || true
           else
             NEEDS=false
           fi
           echo "needs_env=$NEEDS" >> "$GITHUB_OUTPUT"
           echo "PR needs an ephemeral environment: $NEEDS"
 
+  # Build + artifact upload run on every PR: `deploy_dev` promotes whatever this
+  # job published to artifacts/pr-<N>/ when the PR merges, so skipping the job
+  # outright would leave that promotion with nothing to find. Only the ephemeral
+  # environment below is conditional.
   pr_build_test_deploy:
     needs: [check_actor, changes]
-    if: github.event_name == 'pull_request' && github.event.action != 'closed' && needs.check_actor.outputs.is_dependabot != 'true' && needs.changes.outputs.needs_env == 'true'
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && needs.check_actor.outputs.is_dependabot != 'true'
     name: PR Build/Test and Ephemeral Deploy (Dev Account)
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -120,17 +130,20 @@ jobs:
           ./upload_lambda_artifacts_s3.sh
 
       - name: Setup Terraform
+        if: needs.changes.outputs.needs_env == 'true'
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.15.9"
           terraform_wrapper: false
 
       - name: Terraform Init
+        if: needs.changes.outputs.needs_env == 'true'
         working-directory: terraform/environments/dev
         run: |
           terraform init -input=false -backend-config=backend-pr.hcl
 
       - name: Select/Create PR Workspace
+        if: needs.changes.outputs.needs_env == 'true'
         id: tfws
         working-directory: terraform/environments/dev
         env:
@@ -142,6 +155,7 @@ jobs:
           echo "workspace=$WS" >> $GITHUB_OUTPUT
 
       - name: Terraform Plan
+        if: needs.changes.outputs.needs_env == 'true'
         id: plan
         working-directory: terraform/environments/dev
         env:
@@ -176,6 +190,7 @@ jobs:
           set -e
 
       - name: Debug plan exit code
+        if: needs.changes.outputs.needs_env == 'true'
         run: echo "plan exitcode=${{ steps.plan.outputs.exitcode }}"
 
       - name: Terraform Apply (if required)
@@ -214,6 +229,7 @@ jobs:
           echo "State resources:" && terraform state list || true
 
       - name: Get Terraform Outputs (fail closed if missing)
+        if: needs.changes.outputs.needs_env == 'true'
         id: tf_outputs
         working-directory: terraform/environments/dev
         run: |
@@ -427,8 +443,9 @@ jobs:
 
   integration_test:
     name: Integration Tests (PR environment)
-    needs: [check_actor, pr_build_test_deploy]
-    if: github.event_name == 'pull_request' && github.event.action != 'closed' && needs.check_actor.outputs.is_dependabot != 'true'
+    needs: [check_actor, changes, pr_build_test_deploy]
+    # No ephemeral env means no api_url to point BASE_URL at.
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && needs.check_actor.outputs.is_dependabot != 'true' && needs.changes.outputs.needs_env == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -485,8 +502,7 @@ jobs:
             echo "::error::Could not determine whether this PR affects runtime (changes job: $CHANGES_RESULT)."
             exit 1
           fi
-          # No ephemeral env was deployed, so integration_test is legitimately
-          # skipped. Without this branch every docs-only PR would be unmergeable.
+          # No env was deployed, so a skipped integration_test is expected here.
           if [ "$NEEDS_ENV" != "true" ]; then
             echo "Documentation-only PR — no ephemeral environment, nothing to test. Passing."
             exit 0

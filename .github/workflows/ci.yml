@@ -26,7 +26,13 @@ jobs:
             db/
             knexfile.ts
             src/db/knexConfig.ts
+            # package.json defines migrate:*/seed:run; tsconfig.json supplies the
+            # `paths` that tsconfig-paths/register resolves for the seeds' @errors/*
+            # imports; .nvmrc pins the Node the knex CLI runs under.
+            package.json
             package-lock.json
+            tsconfig.json
+            .nvmrc
             src/config/
             src/schemas/
             src/errors/
@@ -41,8 +47,13 @@ jobs:
           else
             BASE="origin/main"
           fi
-          if git diff --name-only "$BASE...HEAD" -- "${PATHS[@]}" | grep -q .; then
+          # Substitution, not a pipe: an early-exiting reader would SIGPIPE git
+          # mid-write, and pipefail would report that as "nothing changed".
+          MATCHED=$(git diff --name-only "$BASE...HEAD" -- "${PATHS[@]}")
+          if [ -n "$MATCHED" ]; then
             CHANGED=true
+            echo "Matched paths:"
+            echo "$MATCHED"
           else
             CHANGED=false
           fi

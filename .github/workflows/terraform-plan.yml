@@ -66,8 +66,13 @@ jobs:
           # terraform/ only — this workflow file is deliberately not a trigger.
           # Array, not a string: zsh doesn't word-split. See PAY-428 plan.
           PATHS=( terraform/ )
-          if git diff --name-only "$BASE_SHA...$HEAD_SHA" -- "${PATHS[@]}" | grep -q .; then
+          # Substitution, not a pipe: an early-exiting reader would SIGPIPE git
+          # mid-write, and pipefail would report that as "nothing changed".
+          MATCHED=$(git diff --name-only "$BASE_SHA...$HEAD_SHA" -- "${PATHS[@]}")
+          if [ -n "$MATCHED" ]; then
             CHANGED=true
+            echo "Matched paths:"
+            echo "$MATCHED"
           else
             CHANGED=false
           fi
@@ -197,8 +202,8 @@ jobs:
   comment:
     name: Post unified plan comment
     needs: [check_actor, changes, plan]
-    # The `changes` guard is required: without it this posts a false
-    # "job did not produce output" on every non-Terraform PR.
+    # Without the `changes` guard the artifact fallbacks below render a false
+    # "job did not produce output" for every env on non-Terraform PRs.
     if: ${{ always() && github.event.pull_request.number && needs.check_actor.outputs.is_dependabot != 'true' && needs.changes.outputs.terraform == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
