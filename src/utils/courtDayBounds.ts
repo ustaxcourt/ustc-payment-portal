@@ -3,6 +3,7 @@ export const COURT_TIME_ZONE = "America/New_York";
 
 type CourtDayParts = { year: number; month: number; day: number };
 
+const FISCAL_YEAR_START_MONTH = 10;
 const MONTH_DAY_YEAR_DATE_PATTERN =
   /^(?<month>\d{2})\/(?<day>\d{2})\/(?<year>\d{4})$/;
 
@@ -116,7 +117,6 @@ export const zonedDateTimeToUtc = (
   return new Date(resolved);
 };
 
-const FISCAL_YEAR_START_MONTH = 10;
 export const shiftCourtYear = (instant: Date, yearDelta: number): Date => {
   const parts = partsInZone(instant, COURT_TIME_ZONE);
 
