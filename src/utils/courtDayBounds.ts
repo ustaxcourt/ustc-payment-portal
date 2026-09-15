@@ -3,10 +3,11 @@ export const COURT_TIME_ZONE = "America/New_York";
 
 type CourtDayParts = { year: number; month: number; day: number };
 
+const FISCAL_YEAR_START_MONTH = 10;
 const MONTH_DAY_YEAR_DATE_PATTERN =
   /^(?<month>\d{2})\/(?<day>\d{2})\/(?<year>\d{4})$/;
 
-const partsInZone = (
+export const partsInZone = (
   instant: Date,
   timeZone: string,
 ): CourtDayParts & { hour: number; minute: number; second: number } => {
@@ -65,14 +66,84 @@ const startOfZoneDay = (
 
 export type Bounds = { start: Date; end: Date };
 
-export type CourtPeriodName =
-  | "day"
-  | "week"
-  | "month"
-  | "quarter"
-  | "fiscalYear";
+export const COURT_PERIOD_NAMES = [
+  "day",
+  "week",
+  "month",
+  "quarter",
+  "fiscalYear",
+] as const;
 
-const FISCAL_YEAR_START_MONTH = 10;
+export type CourtPeriodName = (typeof COURT_PERIOD_NAMES)[number];
+export type CourtPeriodRecord<T> = Record<CourtPeriodName, T>;
+
+export const mapCourtPeriods = <T>(
+  getValue: (name: CourtPeriodName) => T,
+): CourtPeriodRecord<T> =>
+  COURT_PERIOD_NAMES.reduce((periods, name) => {
+    periods[name] = getValue(name);
+    return periods;
+  }, {} as CourtPeriodRecord<T>);
+
+type ZonedDateTime = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+export const zonedDateTimeToUtc = (
+  value: ZonedDateTime,
+  timeZone: string,
+): Date => {
+  // First guess: treat the local date/time as UTC.
+  const naive = Date.UTC(
+    value.year,
+    value.month - 1,
+    value.day,
+    value.hour,
+    value.minute,
+    value.second,
+  );
+
+  // Resolve the actual offset in the target zone.
+  const first = naive - zoneOffsetMs(new Date(naive), timeZone);
+
+  // Second pass settles DST-transition cases.
+  const resolved = naive - zoneOffsetMs(new Date(first), timeZone);
+
+  return new Date(resolved);
+};
+
+export const shiftCourtYear = (instant: Date, yearDelta: number): Date => {
+  const parts = partsInZone(instant, COURT_TIME_ZONE);
+
+  const targetYear = parts.year + yearDelta;
+  const targetDay =
+    parts.month === 2 &&
+    parts.day === 29 &&
+    !(
+      targetYear % 4 === 0 &&
+      (targetYear % 100 !== 0 || targetYear % 400 === 0)
+    )
+      ? 28
+      : parts.day;
+
+  return zonedDateTimeToUtc(
+    {
+      year: targetYear,
+      month: parts.month,
+      day: targetDay,
+      hour: parts.hour,
+      minute: parts.minute,
+      second: parts.second,
+    },
+    COURT_TIME_ZONE,
+  );
+};
+
 export const parseMonthDayYearDate = (
   value: string,
 ): CourtDayParts | undefined => {
@@ -149,7 +220,7 @@ export const courtDayBounds = (
  *  to date — every `end` is `now`, not the end of the period. */
 export const courtPeriodBounds = (
   now: Date = new Date(),
-): Record<CourtPeriodName, Bounds> => {
+): CourtPeriodRecord<Bounds> => {
   const { year, month, day } = partsInZone(now, COURT_TIME_ZONE);
 
   // Read in UTC so the zone's clock time can't tip the date into a neighbouring day.
@@ -175,5 +246,28 @@ export const courtPeriodBounds = (
       month: FISCAL_YEAR_START_MONTH,
       day: 1,
     }),
-  };
+  } satisfies CourtPeriodRecord<Bounds>;
+};
+
+export const previousCourtPeriodBounds = (
+  now: Date = new Date(),
+): CourtPeriodRecord<Bounds> => {
+  const currentPeriods = courtPeriodBounds(now);
+
+  // Shift by Court-local year and preserve the America/New_York wall-clock
+  // time across DST boundaries (for example 11:00 EDT -> 11:00 EST).
+  const shiftedNow = shiftCourtYear(now, -1);
+  const previousPeriods = courtPeriodBounds(shiftedNow);
+  const shiftedWeek = previousPeriods.week;
+
+  const currentWeekDurationMs =
+    currentPeriods.week.end.getTime() - currentPeriods.week.start.getTime();
+
+  return {
+    ...previousPeriods,
+    week: {
+      start: shiftedWeek.start,
+      end: new Date(shiftedWeek.start.getTime() + currentWeekDurationMs),
+    },
+  } satisfies CourtPeriodRecord<Bounds>;
 };
