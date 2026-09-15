@@ -661,6 +661,33 @@ export default class TransactionModel extends Model {
     });
   }
 
+  // One statement, so Postgres re-checks the predicate after taking each row lock and a row
+  // claimForProcessing grabs mid-sweep is skipped rather than clobbered. SKIP LOCKED keeps the
+  // sweep off rows a live POST /process holds, which uses NOWAIT and would fail fast.
+  static async cancelExpiredBatch(limit: number): Promise<string[]> {
+    const knex = await getKnex();
+    const result = await knex.raw<{ rows: { agency_tracking_id: string }[] }>(
+      `UPDATE transactions
+          SET transaction_status = 'cancelled',
+              payment_status = 'failed'
+        WHERE agency_tracking_id IN (
+          SELECT agency_tracking_id
+            FROM transactions
+           WHERE transaction_status = 'initiated'
+             AND created_at < now() - make_interval(secs => ?)
+           ORDER BY created_at
+           LIMIT ?
+             FOR UPDATE SKIP LOCKED
+        )
+        RETURNING agency_tracking_id`,
+      [MAX_TOKEN_AGE_MS / 1000, limit],
+    );
+
+    return result.rows.map((row) => row.agency_tracking_id);
+  }
+
+  // No returnCode/returnDetail: Pay.gov returned nothing. The set_last_updated_at trigger
+  // holds lastUpdatedAt still on this transition, so the row stays in its own day (ADR 0011).
   static async updateToCancelled(
     agencyTrackingId: string,
     trx?: Knex.Transaction,
@@ -669,7 +696,6 @@ export default class TransactionModel extends Model {
     return TransactionModel.query(trx).patchAndFetchById(agencyTrackingId, {
       transactionStatus: "cancelled",
       paymentStatus: "failed",
-      lastUpdatedAt: TransactionModel.raw("last_updated_at"),
     });
   }
 

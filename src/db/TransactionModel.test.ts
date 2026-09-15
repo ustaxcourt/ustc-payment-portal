@@ -230,8 +230,38 @@ describe("TransactionModel", () => {
     });
   });
 
+  describe("cancelExpiredBatch", () => {
+    it("bounds the sweep, skips locked rows, and returns the cancelled ids", async () => {
+      const raw = jest
+        .fn()
+        .mockResolvedValue({ rows: [{ agency_tracking_id: "AGENCY-1" }] });
+      getKnexMock.mockResolvedValue({ raw } as never);
+
+      const cancelled = await TransactionModel.cancelExpiredBatch(500);
+
+      expect(cancelled).toEqual(["AGENCY-1"]);
+
+      const [sql, bindings] = raw.mock.calls[0];
+      expect(sql).toContain("FOR UPDATE SKIP LOCKED");
+      expect(sql).toContain("transaction_status = 'initiated'");
+      expect(sql).toContain("RETURNING agency_tracking_id");
+      // Seconds derived from the shared TTL constant, not a hard-coded '3 hours'.
+      expect(bindings).toEqual([MAX_TOKEN_AGE_MS / 1000, 500]);
+    });
+
+    it("returns an empty array when nothing is expired", async () => {
+      const raw = jest.fn().mockResolvedValue({ rows: [] });
+      getKnexMock.mockResolvedValue({ raw } as never);
+
+      await expect(TransactionModel.cancelExpiredBatch(500)).resolves.toEqual(
+        [],
+      );
+    });
+  });
+
   describe("updateToCancelled", () => {
-    it("sets cancelled/failed and self-assigns lastUpdatedAt so the trigger leaves it alone", async () => {
+    // No returnCode/returnDetail, and lastUpdatedAt is the trigger's business.
+    it("sets cancelled/failed and writes nothing else", async () => {
       const builder = spyOnQuery();
       builder.patchAndFetchById.mockResolvedValueOnce({
         agencyTrackingId: "TEST-CANCEL-01",
@@ -242,15 +272,10 @@ describe("TransactionModel", () => {
       const updated =
         await TransactionModel.updateToCancelled("TEST-CANCEL-01");
 
-      const [id, patch] = builder.patchAndFetchById.mock.calls[0];
-      expect(id).toBe("TEST-CANCEL-01");
-      expect(patch).toMatchObject({
+      expect(builder.patchAndFetchById).toHaveBeenCalledWith("TEST-CANCEL-01", {
         transactionStatus: "cancelled",
         paymentStatus: "failed",
       });
-      expect(patch.lastUpdatedAt).toBeDefined();
-      expect(patch).not.toHaveProperty("returnCode");
-      expect(patch).not.toHaveProperty("returnDetail");
       expect(updated?.transactionStatus).toBe("cancelled");
       expect(updated?.paymentStatus).toBe("failed");
     });
