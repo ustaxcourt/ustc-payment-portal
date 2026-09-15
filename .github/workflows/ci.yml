@@ -4,8 +4,8 @@ on:
     branches:
       - "**"
 jobs:
-  # Cheap detection so the Postgres-backed migration check only runs when something
-  # it actually depends on changed. Mirrors migration-safety-pr.yml's `changes` job.
+  # Cheap detection so the Postgres check only runs when its inputs changed.
+  # Same shape as migration-safety-pr.yml.
   changes:
     name: Detect changed paths
     runs-on: ubuntu-latest
@@ -18,13 +18,10 @@ jobs:
       - id: detect
         run: |
           set -euo pipefail
-          # src/config, src/schemas, src/errors and src/utils are here because db/seeds/
-          # imports from them and db/ is not covered by tsconfig.json ("include" is
-          # ./src/**/*), so nothing else would catch a seed break.
-          # An array, not a space-separated string: passing "${PATHS[@]}" avoids
-          # relying on unquoted word-splitting, which behaves differently across
-          # shells (zsh does not split, so a string form silently matches nothing
-          # when anyone dry-runs this locally on macOS).
+          # src/{config,schemas,errors,utils}: db/seeds imports them, and db/ isn't in
+          # tsconfig's include, so nothing else catches a seed break.
+          # Array, not a string — zsh doesn't word-split, so "${PATHS[@]}" keeps
+          # local dry-runs honest.
           PATHS=(
             db/
             knexfile.ts
@@ -36,13 +33,9 @@ jobs:
             src/utils/
             .github/workflows/ci.yml
           )
-          # This workflow runs on push, so there is no PR base SHA and
-          # github.event.before is unreliable (all-zeros on a branch's first push,
-          # wrong after a force-push). Let git resolve the fork point instead:
-          # `git diff A...B` diffs from merge-base(A, B) to B.
-          # On main the merge-base with itself is HEAD, which would make the range
-          # empty, so compare against the previous commit — on a PR merge commit
-          # HEAD^ is main's prior tip, which is what we want.
+          # Push events have no PR base SHA, and github.event.before is unreliable,
+          # so let git find the fork point: `git diff A...B` = merge-base(A,B)..B.
+          # On main that merge-base is HEAD, so use HEAD^ (main's prior tip on a merge).
           if [ "$GITHUB_REF" = "refs/heads/main" ]; then
             BASE="HEAD^"
           else
@@ -110,10 +103,8 @@ jobs:
       - name: Run migrate:rollback
         run: npm run migrate:rollback -- --all
 
-  # The single required status check for the migration run. Always runs so every push
-  # gets a real result: green immediately when nothing migration-related changed,
-  # otherwise the check's own outcome. Add THIS check to branch protection, not
-  # `migration-check`.
+  # The required status check — always runs so every push gets a real red/green.
+  # Point branch protection at THIS, not `migration-check`.
   migration-check-gate:
     name: Migration Check Gate
     needs: [changes, migration-check]
@@ -125,8 +116,7 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           MIGRATIONS: ${{ needs.changes.outputs.migrations }}
-          # Bracket form is required: the job id contains a hyphen, and the expression
-          # parser reads `needs.migration-check.result` as a subtraction.
+          # Bracket form required: the hyphen would parse as subtraction.
           CHECK_RESULT: ${{ needs['migration-check'].result }}
         run: |
           set -euo pipefail
@@ -138,8 +128,7 @@ jobs:
             echo "No migration-related changes in this push — nothing to check."
             exit 0
           fi
-          # A skipped result here means `build` failed, so we cannot claim the
-          # migrations are fine.
+          # `skipped` here means build failed — can't claim the migrations are fine.
           if [ "$CHECK_RESULT" = "success" ]; then
             echo "Migration check passed."
             exit 0

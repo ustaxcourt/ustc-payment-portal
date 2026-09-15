@@ -40,9 +40,41 @@ jobs:
             echo "is_dependabot=false" >> $GITHUB_OUTPUT
           fi
 
+  # Denylist, not an allowlist: the ephemeral env is how a PR's Lambda code gets
+  # under test, so anything that isn't documentation needs one. An unlisted path
+  # means "deploy", so a gap costs a wasted deploy, never an untested merge.
+  changes:
+    name: Detect runtime-affecting changes
+    # PR-only: this workflow also fires on push-to-main and workflow_dispatch,
+    # where there is no pull_request payload to diff against.
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    outputs:
+      needs_env: ${{ steps.detect.outputs.needs_env }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # grep -qv succeeds as soon as one file does NOT match the safe list.
+          SAFE='^(docs/|\.changeset/|\.github/ISSUE_TEMPLATE/|LICENSE$|.*\.md$)'
+          if git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -qvE "$SAFE"; then
+            NEEDS=true
+          else
+            NEEDS=false
+          fi
+          echo "needs_env=$NEEDS" >> "$GITHUB_OUTPUT"
+          echo "PR needs an ephemeral environment: $NEEDS"
+
   pr_build_test_deploy:
-    needs: check_actor
-    if: github.event_name == 'pull_request' && github.event.action != 'closed' && needs.check_actor.outputs.is_dependabot != 'true'
+    needs: [check_actor, changes]
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && needs.check_actor.outputs.is_dependabot != 'true' && needs.changes.outputs.needs_env == 'true'
     name: PR Build/Test and Ephemeral Deploy (Dev Account)
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -432,7 +464,7 @@ jobs:
   # Keys off integration_test; Dependabot is exempt by policy (the ruleset has no bypass).
   integration_gate:
     name: Integration Gate
-    needs: [check_actor, integration_test]
+    needs: [check_actor, changes, integration_test]
     if: ${{ always() && github.event_name == 'pull_request' && github.event.action != 'closed' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -441,10 +473,22 @@ jobs:
         env:
           TESTS_RESULT: ${{ needs.integration_test.result }}
           IS_DEPENDABOT: ${{ needs.check_actor.outputs.is_dependabot }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          NEEDS_ENV: ${{ needs.changes.outputs.needs_env }}
         run: |
-          echo "integration_test result: '$TESTS_RESULT' (dependabot=$IS_DEPENDABOT)"
+          echo "integration_test result: '$TESTS_RESULT' (dependabot=$IS_DEPENDABOT, needs_env=$NEEDS_ENV)"
           if [ "$IS_DEPENDABOT" = "true" ]; then
             echo "Dependabot PR — exempt from the integration gate by policy. Passing."
+            exit 0
+          fi
+          if [ "$CHANGES_RESULT" != "success" ]; then
+            echo "::error::Could not determine whether this PR affects runtime (changes job: $CHANGES_RESULT)."
+            exit 1
+          fi
+          # No ephemeral env was deployed, so integration_test is legitimately
+          # skipped. Without this branch every docs-only PR would be unmergeable.
+          if [ "$NEEDS_ENV" != "true" ]; then
+            echo "Documentation-only PR — no ephemeral environment, nothing to test. Passing."
             exit 0
           fi
           if [ "$TESTS_RESULT" = "success" ]; then
