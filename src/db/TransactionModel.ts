@@ -22,6 +22,7 @@ import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { getFeeNamesByKey } from "../config/fees";
 import { getKnex } from "./knex";
 import { transactionLogOrderBy } from "./transactionLogSort";
+import { ServerError } from "@/errors/serverError";
 
 export type TransactionStatus = SchemaTransactionStatus;
 export type { PaymentStatus };
@@ -390,7 +391,7 @@ export default class TransactionModel extends Model {
   private static attachFeeName(row: TransactionModel): TransactionModel {
     const feeName = feeNamesByKey[row.fee];
     if (!feeName) {
-      throw new Error(`Unknown fee key: ${row.fee}`);
+      throw new ServerError(`Unknown fee key: ${row.fee}`);
     }
 
     row.feeName = feeName;
