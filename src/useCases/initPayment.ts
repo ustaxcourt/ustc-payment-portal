@@ -17,6 +17,7 @@ import { authorizeClient } from "../authorizeClient";
 import { type ActiveFee, getActiveFee } from "@/config/fees";
 import { isUniqueViolation } from "../db/pgErrors";
 import TransactionModel, {
+  isExpiredInitiatedTransaction,
   isStaleProcessingTransaction,
 } from "../db/TransactionModel";
 import { FailedTransactionError } from "../errors/failedTransaction";
@@ -123,9 +124,10 @@ export const initPayment: InitPayment = async (
     );
 
   if (existingInFlightTransaction) {
+    // From createdAt: the Pay.gov token is issued when the row goes initiated, and the
+    // trigger moves lastUpdatedAt for writes unrelated to the token.
     const tokenAgeMs =
-      Date.now() -
-      new Date(existingInFlightTransaction.lastUpdatedAt).getTime();
+      Date.now() - new Date(existingInFlightTransaction.createdAt).getTime();
     const staleProcessing = isStaleProcessingTransaction(
       existingInFlightTransaction,
     );
@@ -171,11 +173,19 @@ export const initPayment: InitPayment = async (
         transactionStatus: existingInFlightTransaction.transactionStatus,
         staleProcessing,
       });
-      await TransactionModel.updateToFailed(
-        existingInFlightTransaction.agencyTrackingId,
-        EXISTING_TOKEN_ERROR_CODE,
-        "Existing token expired",
-      );
+      // An abandoned `initiated` session is cancelled; a stale `processing` row did
+      // reach Pay.gov, so it stays a failure.
+      if (isExpiredInitiatedTransaction(existingInFlightTransaction)) {
+        await TransactionModel.updateToCancelled(
+          existingInFlightTransaction.agencyTrackingId,
+        );
+      } else {
+        await TransactionModel.updateToFailed(
+          existingInFlightTransaction.agencyTrackingId,
+          EXISTING_TOKEN_ERROR_CODE,
+          "Existing token expired",
+        );
+      }
     }
   }
 

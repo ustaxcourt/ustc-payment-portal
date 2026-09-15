@@ -56,6 +56,17 @@ export const isStaleProcessingTransaction = (row: {
   return ageMs >= PROCESSING_STALE_MS;
 };
 
+export const isExpiredInitiatedTransaction = (row: {
+  transactionStatus?: SchemaTransactionStatus | null;
+  createdAt: string;
+}): boolean => {
+  if (row.transactionStatus !== "initiated") {
+    return false;
+  }
+  const ageMs = Date.now() - new Date(row.createdAt).getTime();
+  return ageMs > MAX_TOKEN_AGE_MS;
+};
+
 const SIBLING_GONE_MESSAGE =
   "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.";
 
@@ -544,11 +555,12 @@ export default class TransactionModel extends Model {
         return undefined;
       }
 
-      const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
-        row.clientName,
-        row.transactionReferenceId,
-        { excludeToken: paygovToken, trx },
-      );
+      const sibling =
+        await TransactionModel.findPendingOrProcessedByReferenceId(
+          row.clientName,
+          row.transactionReferenceId,
+          { excludeToken: paygovToken, trx },
+        );
 
       if (sibling) {
         throw new GoneError(SIBLING_GONE_MESSAGE);
@@ -573,9 +585,12 @@ export default class TransactionModel extends Model {
 
       // Re-touch the row so last_updated_at refreshes (DB trigger) and this request
       // owns the completion attempt.
-      return TransactionModel.query(trx).patchAndFetchById(row.agencyTrackingId, {
-        transactionStatus: "processing",
-      });
+      return TransactionModel.query(trx).patchAndFetchById(
+        row.agencyTrackingId,
+        {
+          transactionStatus: "processing",
+        },
+      );
     });
   }
 
@@ -605,6 +620,44 @@ export default class TransactionModel extends Model {
       paymentStatus: "failed",
       returnCode,
       returnDetail,
+    });
+  }
+
+  // One statement, so Postgres re-checks the predicate after taking each row lock and a row
+  // claimForProcessing grabs mid-sweep is skipped rather than clobbered. SKIP LOCKED keeps the
+  // sweep off rows a live POST /process holds, which uses NOWAIT and would fail fast.
+  static async cancelExpiredBatch(limit: number): Promise<string[]> {
+    const knex = await getKnex();
+    const result = await knex.raw<{ rows: { agency_tracking_id: string }[] }>(
+      `UPDATE transactions
+          SET transaction_status = 'cancelled',
+              payment_status = 'failed'
+        WHERE agency_tracking_id IN (
+          SELECT agency_tracking_id
+            FROM transactions
+           WHERE transaction_status = 'initiated'
+             AND created_at < now() - make_interval(secs => ?)
+           ORDER BY created_at
+           LIMIT ?
+             FOR UPDATE SKIP LOCKED
+        )
+        RETURNING agency_tracking_id`,
+      [MAX_TOKEN_AGE_MS / 1000, limit],
+    );
+
+    return result.rows.map((row) => row.agency_tracking_id);
+  }
+
+  // No returnCode/returnDetail: Pay.gov returned nothing. The set_last_updated_at trigger
+  // holds lastUpdatedAt still on this transition, so the row stays in its own day.
+  static async updateToCancelled(
+    agencyTrackingId: string,
+    trx?: Knex.Transaction,
+  ): Promise<TransactionModel> {
+    await getKnex();
+    return TransactionModel.query(trx).patchAndFetchById(agencyTrackingId, {
+      transactionStatus: "cancelled",
+      paymentStatus: "failed",
     });
   }
 

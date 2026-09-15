@@ -173,6 +173,21 @@ npx esbuild src/handlers/getTransactionPaymentStatusHandler.ts \
   --minify \
   --keep-names
 
+# Bundle Cancel Expired Lambda (EventBridge-scheduled sweep, no API Gateway route)
+echo "Bundling cancelExpired..."
+mkdir -p dist/cancelExpired
+npx esbuild src/handlers/cancelExpiredHandler.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/cancelExpired/cancelExpiredHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
+
 # Bundle Migration Runner Lambda
 echo "Bundling migrationRunner..."
 mkdir -p dist/migrationRunner
@@ -261,7 +276,9 @@ curl -sSf -o /tmp/rds-ca-bundle.pem \
 # above: it reads the client-permissions secret and nothing else — no RDS, no
 # Pay.gov mTLS. It transitively imports knex via lambdaHandler, but with no
 # RDS_SECRET_ARN set that pool is never opened.
-for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog powerTuningCleanUp; do
+# cancelExpired is here but absent from the certs loop above: it sweeps the transactions
+# table and never calls Pay.gov, so it needs the RDS CA and no mTLS material.
+for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog cancelExpired powerTuningCleanUp; do
   cp /tmp/rds-ca-bundle.pem "dist/${func}/rds-ca-bundle.pem"
 done
 
@@ -296,12 +313,13 @@ echo "  - dist/getAllTransactions/getAllTransactionsHandler.js"
 echo "  - dist/getTransactionsByStatus/getTransactionsByStatusHandler.js"
 echo "  - dist/getTransactionPaymentStatus/getTransactionPaymentStatusHandler.js"
 echo "  - dist/getTransactionLog/getTransactionLogHandler.js"
+echo "  - dist/cancelExpired/cancelExpiredHandler.js"
 echo "  - dist/migrationRunner/lambdaHandler.js"
 
 # Show file sizes
 echo ""
 echo "Bundle sizes:"
-for func in initPayment processPayment getDetails validateClient testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog migrationRunner; do
+for func in initPayment processPayment getDetails validateClient testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog cancelExpired migrationRunner; do
   output_file="lambdaHandler.js"
   if [ "$func" = "initPayment" ]; then
     output_file="initPaymentHandler.js"
@@ -319,6 +337,8 @@ for func in initPayment processPayment getDetails validateClient testCert getAll
     output_file="getTransactionPaymentStatusHandler.js"
   elif [ "$func" = "getTransactionLog" ]; then
     output_file="getTransactionLogHandler.js"
+  elif [ "$func" = "cancelExpired" ]; then
+    output_file="cancelExpiredHandler.js"
   fi
 
   if [ -f "dist/$func/$output_file" ]; then
