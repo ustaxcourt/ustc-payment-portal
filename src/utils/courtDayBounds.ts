@@ -65,14 +65,32 @@ const startOfZoneDay = (
 
 export type Bounds = { start: Date; end: Date };
 
-export type CourtPeriodName =
-  | "day"
-  | "week"
-  | "month"
-  | "quarter"
-  | "fiscalYear";
+export const COURT_PERIOD_NAMES = [
+  "day",
+  "week",
+  "month",
+  "quarter",
+  "fiscalYear",
+] as const;
+
+export type CourtPeriodName = (typeof COURT_PERIOD_NAMES)[number];
+export type CourtPeriodRecord<T> = Record<CourtPeriodName, T>;
+
+export const mapCourtPeriods = <T>(
+  getValue: (name: CourtPeriodName) => T,
+): CourtPeriodRecord<T> =>
+  COURT_PERIOD_NAMES.reduce((periods, name) => {
+    periods[name] = getValue(name);
+    return periods;
+  }, {} as CourtPeriodRecord<T>);
 
 const FISCAL_YEAR_START_MONTH = 10;
+const shiftUtcYear = (instant: Date, yearDelta: number): Date => {
+  const shifted = new Date(instant.getTime());
+  shifted.setUTCFullYear(shifted.getUTCFullYear() + yearDelta);
+  return shifted;
+};
+
 export const parseMonthDayYearDate = (
   value: string,
 ): CourtDayParts | undefined => {
@@ -149,7 +167,7 @@ export const courtDayBounds = (
  *  to date — every `end` is `now`, not the end of the period. */
 export const courtPeriodBounds = (
   now: Date = new Date(),
-): Record<CourtPeriodName, Bounds> => {
+): CourtPeriodRecord<Bounds> => {
   const { year, month, day } = partsInZone(now, COURT_TIME_ZONE);
 
   // Read in UTC so the zone's clock time can't tip the date into a neighbouring day.
@@ -175,5 +193,26 @@ export const courtPeriodBounds = (
       month: FISCAL_YEAR_START_MONTH,
       day: 1,
     }),
-  };
+  } satisfies CourtPeriodRecord<Bounds>;
+};
+
+export const previousCourtPeriodBounds = (
+  now: Date = new Date(),
+): CourtPeriodRecord<Bounds> => {
+  const currentPeriods = courtPeriodBounds(now);
+
+  const shiftedNow = shiftUtcYear(now, -1);
+  const previousPeriods = courtPeriodBounds(shiftedNow);
+  const shiftedWeek = previousPeriods.week;
+
+  const currentWeekDurationMs =
+    currentPeriods.week.end.getTime() - currentPeriods.week.start.getTime();
+
+  return {
+    ...previousPeriods,
+    week: {
+      start: shiftedWeek.start,
+      end: new Date(shiftedWeek.start.getTime() + currentWeekDurationMs),
+    },
+  } satisfies CourtPeriodRecord<Bounds>;
 };
