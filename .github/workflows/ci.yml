@@ -4,6 +4,62 @@ on:
     branches:
       - "**"
 jobs:
+  # Cheap detection so the Postgres check only runs when its inputs changed.
+  # Same shape as migration-safety-pr.yml.
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      migrations: ${{ steps.detect.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history so the merge-base resolves
+      - id: detect
+        run: |
+          set -euo pipefail
+          # src/{config,schemas,errors,utils}: db/seeds imports them, and db/ isn't in
+          # tsconfig's include, so nothing else catches a seed break.
+          # Array, not a string — zsh doesn't word-split, so "${PATHS[@]}" keeps
+          # local dry-runs honest.
+          PATHS=(
+            db/
+            knexfile.ts
+            src/db/knexConfig.ts
+            # package.json defines migrate:*/seed:run; tsconfig.json supplies the
+            # `paths` that tsconfig-paths/register resolves for the seeds' @errors/*
+            # imports; .nvmrc pins the Node the knex CLI runs under.
+            package.json
+            package-lock.json
+            tsconfig.json
+            .nvmrc
+            src/config/
+            src/schemas/
+            src/errors/
+            src/utils/
+            .github/workflows/ci.yml
+          )
+          # Push events have no PR base SHA, and github.event.before is unreliable,
+          # so let git find the fork point: `git diff A...B` = merge-base(A,B)..B.
+          # On main that merge-base is HEAD, so use HEAD^ (main's prior tip on a merge).
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            BASE="HEAD^"
+          else
+            BASE="origin/main"
+          fi
+          # Substitution, not a pipe: an early-exiting reader would SIGPIPE git
+          # mid-write, and pipefail would report that as "nothing changed".
+          MATCHED=$(git diff --name-only "$BASE...HEAD" -- "${PATHS[@]}")
+          if [ -n "$MATCHED" ]; then
+            CHANGED=true
+            echo "Matched paths:"
+            echo "$MATCHED"
+          else
+            CHANGED=false
+          fi
+          echo "migrations=$CHANGED" >> "$GITHUB_OUTPUT"
+          echo "Migration-related files changed: $CHANGED"
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -20,7 +76,8 @@ jobs:
 
   migration-check:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, changes]
+    if: needs.changes.outputs.migrations == 'true'
     services:
       postgres:
         image: postgres:14
@@ -56,3 +113,36 @@ jobs:
         run: npm run seed:run
       - name: Run migrate:rollback
         run: npm run migrate:rollback -- --all
+
+  # The required status check — always runs so every push gets a real red/green.
+  # Point branch protection at THIS, not `migration-check`.
+  migration-check-gate:
+    name: Migration Check Gate
+    needs: [changes, migration-check]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require the migration check to have passed
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          MIGRATIONS: ${{ needs.changes.outputs.migrations }}
+          # Bracket form required: the hyphen would parse as subtraction.
+          CHECK_RESULT: ${{ needs['migration-check'].result }}
+        run: |
+          set -euo pipefail
+          if [ "$CHANGES_RESULT" != "success" ]; then
+            echo "::error::Could not determine whether migrations changed (changes job: $CHANGES_RESULT)."
+            exit 1
+          fi
+          if [ "$MIGRATIONS" != "true" ]; then
+            echo "No migration-related changes in this push — nothing to check."
+            exit 0
+          fi
+          # `skipped` here means build failed — can't claim the migrations are fine.
+          if [ "$CHECK_RESULT" = "success" ]; then
+            echo "Migration check passed."
+            exit 0
+          fi
+          echo "::error::Migration check did not pass (result='$CHECK_RESULT')."
+          exit 1
