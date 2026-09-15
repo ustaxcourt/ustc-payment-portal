@@ -649,7 +649,7 @@ export default class TransactionModel extends Model {
   }
 
   // No returnCode/returnDetail: Pay.gov returned nothing. The set_last_updated_at trigger
-  // holds lastUpdatedAt still on this transition, so the row stays in its own day (ADR 0011).
+  // holds lastUpdatedAt still on this transition, so the row stays in its own day.
   static async updateToCancelled(
     agencyTrackingId: string,
     trx?: Knex.Transaction,

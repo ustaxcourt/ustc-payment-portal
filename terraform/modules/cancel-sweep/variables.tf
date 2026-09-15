@@ -19,7 +19,7 @@ variable "cancel_expired_function_arn" {
 }
 
 variable "schedule_enabled" {
-  description = "Whether the EventBridge rule fires. Ships false so the Lambda can deploy dark and be invoked manually first; flip to true per environment once a manual run looks right (ADR 0011 rollout). Disabling it is also the rollback."
+  description = "Whether the EventBridge rule fires. Ships false so the Lambda can deploy dark and be invoked manually first; flip to true per environment once a manual run looks right. Disabling it is also the rollback."
   type        = bool
   default     = false
 }

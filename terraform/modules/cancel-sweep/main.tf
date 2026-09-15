@@ -1,5 +1,5 @@
 # Scheduled cancellation sweep. An EventBridge rule invokes the cancelExpired Lambda, which
-# moves `initiated` rows past the Pay.gov token TTL to `cancelled` / `failed`. See ADR 0011.
+# moves `initiated` rows past the Pay.gov token TTL to `cancelled` / `failed`.
 #
 # Names derive from name_prefix because the CI read-only and deployer IAM policies are scoped
 # to `function:${prefix}*`, `rule/${prefix}-*` and `alarm:${prefix}-*`. Deviating from the
