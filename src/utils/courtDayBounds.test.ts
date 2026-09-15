@@ -350,6 +350,12 @@ describe("shiftCourtYear", () => {
       shiftCourtYear(new Date("2025-03-09T15:00:00.000Z"), -1).toISOString(),
     ).toBe("2024-03-09T16:00:00.000Z");
   });
+
+  it("preserves New York wall-clock time across the fall DST transition", () => {
+    expect(
+      shiftCourtYear(new Date("2026-11-01T15:00:00.000Z"), -1).toISOString(),
+    ).toBe("2025-11-01T14:00:00.000Z");
+  });
 });
 
 describe("zonedDateTimeToUtc", () => {
@@ -383,6 +389,18 @@ describe("zonedDateTimeToUtc", () => {
     );
 
     expect(utcDate.toISOString()).toBe("2026-08-03T09:00:00.000Z");
+  });
+  it.each([
+    "2026-01-15T12:34:56.000Z", // EST
+    "2026-08-03T12:34:56.000Z", // EDT
+    "2025-03-09T15:00:00.000Z", // DST transition scenario
+    "2026-11-01T15:00:00.000Z", // DST transition scenario
+  ])("round-trips %s through America/New_York", (instant) => {
+    const parts = partsInZone(new Date(instant), "America/New_York");
+
+    expect(zonedDateTimeToUtc(parts, "America/New_York").toISOString()).toBe(
+      instant,
+    );
   });
 });
 
