@@ -685,16 +685,18 @@ export default class TransactionModel extends Model {
     return result.rows.map((row) => row.agency_tracking_id);
   }
 
-  // No returnCode/returnDetail: Pay.gov returned nothing. The trigger holds lastUpdatedAt.
+  // Guarded on `initiated` so a row claimForProcessing took in the meantime is never
+  // clobbered. No returnCode/returnDetail: Pay.gov returned nothing. The trigger holds
+  // lastUpdatedAt. Returns the number of rows actually cancelled.
   static async updateToCancelled(
     agencyTrackingId: string,
     trx?: Knex.Transaction,
-  ): Promise<TransactionModel> {
+  ): Promise<number> {
     await getKnex();
-    return TransactionModel.query(trx).patchAndFetchById(agencyTrackingId, {
-      transactionStatus: "cancelled",
-      paymentStatus: "failed",
-    });
+    return TransactionModel.query(trx)
+      .patch({ transactionStatus: "cancelled", paymentStatus: "failed" })
+      .where("agencyTrackingId", agencyTrackingId)
+      .where("transactionStatus", "initiated");
   }
 
   // TODO: [Future Ticket] Implement findByTransactionReferenceId to retrieve

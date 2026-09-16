@@ -43,7 +43,9 @@ resource "aws_cloudwatch_metric_alarm" "sweep_failed" {
   datapoints_to_alarm = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   threshold           = 1
-  treat_missing_data  = "notBreaching"
+  # Breaching once enabled, so a rule that stops delivering — which publishes no Errors
+  # datapoint at all — trips this instead of sitting quietly OK. A dark deploy stays quiet.
+  treat_missing_data = var.schedule_enabled ? "breaching" : "notBreaching"
 
   actions_enabled = true
   alarm_actions   = var.alarm_sns_topic_arns

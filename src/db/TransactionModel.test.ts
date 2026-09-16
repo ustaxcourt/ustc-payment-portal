@@ -263,21 +263,35 @@ describe("TransactionModel", () => {
     // No returnCode/returnDetail, and lastUpdatedAt is the trigger's business.
     it("sets cancelled/failed and writes nothing else", async () => {
       const builder = spyOnQuery();
-      builder.patchAndFetchById.mockResolvedValueOnce({
-        agencyTrackingId: "TEST-CANCEL-01",
-        transactionStatus: "cancelled",
-        paymentStatus: "failed",
-      });
+      builder.resolvesTo = 1;
 
-      const updated =
+      const cancelled =
         await TransactionModel.updateToCancelled("TEST-CANCEL-01");
 
-      expect(builder.patchAndFetchById).toHaveBeenCalledWith("TEST-CANCEL-01", {
+      expect(builder.patch).toHaveBeenCalledWith({
         transactionStatus: "cancelled",
         paymentStatus: "failed",
       });
-      expect(updated?.transactionStatus).toBe("cancelled");
-      expect(updated?.paymentStatus).toBe("failed");
+      expect(cancelled).toBe(1);
+    });
+
+    // Guards the claimForProcessing race: a row that moved on must not be clobbered.
+    it("scopes the write to the id and an still-initiated row", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = 0;
+
+      const cancelled =
+        await TransactionModel.updateToCancelled("TEST-CANCEL-02");
+
+      expect(builder.where).toHaveBeenCalledWith(
+        "agencyTrackingId",
+        "TEST-CANCEL-02",
+      );
+      expect(builder.where).toHaveBeenCalledWith(
+        "transactionStatus",
+        "initiated",
+      );
+      expect(cancelled).toBe(0);
     });
   });
 
