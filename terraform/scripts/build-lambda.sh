@@ -276,8 +276,7 @@ curl -sSf -o /tmp/rds-ca-bundle.pem \
 # above: it reads the client-permissions secret and nothing else — no RDS, no
 # Pay.gov mTLS. It transitively imports knex via lambdaHandler, but with no
 # RDS_SECRET_ARN set that pool is never opened.
-# cancelExpired is here but absent from the certs loop above: it sweeps the transactions
-# table and never calls Pay.gov, so it needs the RDS CA and no mTLS material.
+# cancelExpired is absent from the certs loop above: it never calls Pay.gov, so RDS CA only.
 for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog cancelExpired powerTuningCleanUp; do
   cp /tmp/rds-ca-bundle.pem "dist/${func}/rds-ca-bundle.pem"
 done

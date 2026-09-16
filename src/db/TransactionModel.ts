@@ -623,9 +623,8 @@ export default class TransactionModel extends Model {
     });
   }
 
-  // One statement, so Postgres re-checks the predicate after taking each row lock and a row
-  // claimForProcessing grabs mid-sweep is skipped rather than clobbered. SKIP LOCKED keeps the
-  // sweep off rows a live POST /process holds, which uses NOWAIT and would fail fast.
+  // One statement, so Postgres re-checks the predicate after each row lock and SKIP LOCKED
+  // yields to a live POST /process, which takes locks with NOWAIT and would fail fast.
   static async cancelExpiredBatch(limit: number): Promise<string[]> {
     const knex = await getKnex();
     const result = await knex.raw<{ rows: { agency_tracking_id: string }[] }>(
@@ -648,8 +647,7 @@ export default class TransactionModel extends Model {
     return result.rows.map((row) => row.agency_tracking_id);
   }
 
-  // No returnCode/returnDetail: Pay.gov returned nothing. The set_last_updated_at trigger
-  // holds lastUpdatedAt still on this transition, so the row stays in its own day.
+  // No returnCode/returnDetail: Pay.gov returned nothing. The trigger holds lastUpdatedAt.
   static async updateToCancelled(
     agencyTrackingId: string,
     trx?: Knex.Transaction,

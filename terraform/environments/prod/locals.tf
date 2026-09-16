@@ -25,9 +25,7 @@ locals {
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
   } : {})
 
-  # Scheduled sweep Lambda: cancelExpired
-  # Transactions table only. No Pay.gov URLs or certs — it serves no request and
-  # calls nothing outside the database.
+  # Scheduled sweep: transactions table only, no Pay.gov URLs or certs.
   lambda_env_cancel_sweep = {
     NODE_ENV       = local.node_env
     APP_ENV        = local.app_env

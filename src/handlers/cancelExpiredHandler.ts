@@ -2,8 +2,7 @@ import type { CancelExpiredTransactionsResult } from "@useCases/cancelExpiredTra
 import { cancelExpiredTransactions } from "@useCases/cancelExpiredTransactions";
 import { createAppContext } from "../appContext";
 
-// EventBridge-scheduled, not API Gateway: no request to validate and no HTTP response.
-// Throwing lets Lambda record the invocation as failed so the error alarm sees it.
+// EventBridge-scheduled, not API Gateway. Throwing lets Lambda record a failed invocation.
 export const cancelExpiredHandler =
   async (): Promise<CancelExpiredTransactionsResult> => {
     const appContext = createAppContext();

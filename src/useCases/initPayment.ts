@@ -124,8 +124,8 @@ export const initPayment: InitPayment = async (
     );
 
   if (existingInFlightTransaction) {
-    // From createdAt: the Pay.gov token is issued when the row goes initiated, and the
-    // trigger moves lastUpdatedAt for writes unrelated to the token.
+    // From createdAt: the token is issued when the row goes initiated, and lastUpdatedAt
+    // moves for unrelated writes.
     const tokenAgeMs =
       Date.now() - new Date(existingInFlightTransaction.createdAt).getTime();
     const staleProcessing = isStaleProcessingTransaction(
@@ -173,8 +173,8 @@ export const initPayment: InitPayment = async (
         transactionStatus: existingInFlightTransaction.transactionStatus,
         staleProcessing,
       });
-      // An abandoned `initiated` session is cancelled; a stale `processing` row did
-      // reach Pay.gov, so it stays a failure.
+      // An abandoned `initiated` session is cancelled; a stale `processing` row reached
+      // Pay.gov, so it stays a failure.
       if (isExpiredInitiatedTransaction(existingInFlightTransaction)) {
         await TransactionModel.updateToCancelled(
           existingInFlightTransaction.agencyTrackingId,

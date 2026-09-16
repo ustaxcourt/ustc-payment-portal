@@ -5,7 +5,7 @@ import { emitCancelSweepMetric } from "../health/cancelSweepMetric";
 
 export type CancelExpiredTransactionsResult = { cancelledCount: number };
 
-// One bounded statement per run. The backfill clears the historical backlog
+// One bounded statement per run; the backfill clears the historical backlog.
 export const cancelExpiredTransactions = async (
   appContext: AppContext,
 ): Promise<CancelExpiredTransactionsResult> => {
