@@ -11,10 +11,12 @@ import type {
   InitPaymentResponse,
 } from "@schemas/InitPayment.schema";
 import { generateAgencyTrackingId } from "@utils/generateTrackingId";
+import { logError } from "@utils/logError";
 import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { ZodError } from "zod";
-import { authorizeClient } from "../authorizeClient";
+import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { type ActiveFee, getActiveFee } from "@/config/fees";
+import { authorizeClient } from "../authorizeClient";
 import { isUniqueViolation } from "../db/pgErrors";
 import TransactionModel, {
   isStaleProcessingTransaction,
@@ -22,7 +24,6 @@ import TransactionModel, {
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
-import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
 
@@ -69,6 +70,8 @@ export const initPayment: InitPayment = async (
   );
 
   let fee: ActiveFee;
+  const hasAmount = amount !== undefined;
+
   try {
     fee = getActiveFee(feeKey);
   } catch (error) {
@@ -78,43 +81,15 @@ export const initPayment: InitPayment = async (
     throw error;
   }
 
-  if (amount !== undefined && !fee.isVariable) {
+  if (hasAmount !== fee.isVariable) {
     throw new InvalidRequestError(
-      `Fee ${feeKey} does not allow variable amounts`,
+      hasAmount
+        ? `Fee ${feeKey} does not allow variable amounts`
+        : `Fee ${feeKey} requires an amount`,
     );
   }
 
-  if (amount === undefined && fee.isVariable) {
-    throw new InvalidRequestError(`Fee ${feeKey} requires an amount`);
-  }
-
-  const rejectIfAlreadyPaid = async (): Promise<void> => {
-    const alreadyPaid =
-      await TransactionModel.findPendingOrProcessedByReferenceId(
-        clientName,
-        transactionReferenceId,
-      );
-
-    if (!alreadyPaid) {
-      return;
-    }
-
-    appContext.logger.info("Rejecting initPayment: transaction already paid", {
-      transactionReferenceId,
-      agencyTrackingId: alreadyPaid.agencyTrackingId,
-      clientName,
-      transactionStatus: alreadyPaid.transactionStatus,
-      paymentStatus: alreadyPaid.paymentStatus,
-    });
-    emitInitPaymentConflictMetric("already_paid");
-    throw new ConflictError(
-      alreadyPaid.transactionStatus === "pending"
-        ? ConflictError.PAYMENT_SETTLING_MESSAGE
-        : ConflictError.ALREADY_PAID_MESSAGE,
-    );
-  };
-
-  await rejectIfAlreadyPaid();
+  await rejectIfAlreadyPaid(clientName, transactionReferenceId, appContext);
 
   const existingInFlightTransaction =
     await TransactionModel.findInFlightByReferenceId(
@@ -212,28 +187,20 @@ export const initPayment: InitPayment = async (
     });
   } catch (err) {
     if (isUniqueViolation(err)) {
-      // Lost the createReceived race against the partial unique index. The winner is either a
-      // concurrent initPayment (in-flight) or a processPayment that just landed on paid — re-read
-      // to tell them apart, so an overpayment attempt isn't reported as a transient race.
-      await rejectIfAlreadyPaid();
+      await rejectIfAlreadyPaid(clientName, transactionReferenceId, appContext);
 
-      const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
-        "A payment session is already in-flight for this transactionReferenceId";
-      appContext.logger.error(EXISTING_IN_FLIGHT_TRANSACTION_ERROR, {
+      const EXISTING_IN_FLIGHT_TRANSACTION_ERROR = "A payment session is already in-flight for this transactionReferenceId";
+      logError(appContext, EXISTING_IN_FLIGHT_TRANSACTION_ERROR, err, {
         transactionReferenceId,
         agencyTrackingId,
-        clientName,
       });
       emitInitPaymentConflictMetric("persist_race");
       throw new ConflictError(EXISTING_IN_FLIGHT_TRANSACTION_ERROR);
     }
 
-    /* istanbul ignore next */
-    appContext.logger.error("Failed to record received transaction", {
+    logError(appContext, "Failed to record received transaction", err, {
       transactionReferenceId,
       agencyTrackingId,
-      errorName: err instanceof Error ? err.name : undefined,
-      errorMessage: err instanceof Error ? err.message : String(err),
     });
 
     /* istanbul ignore next */
@@ -256,12 +223,9 @@ export const initPayment: InitPayment = async (
   try {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
-    appContext.logger.error("Error making SOAP request to Pay.gov", {
+    logError(appContext, "Error making SOAP request to Pay.gov", err, {
       transactionReferenceId,
       agencyTrackingId,
-      clientName,
-      errorName: err instanceof Error ? err.name : undefined,
-      errorMessage: err instanceof Error ? err.message : String(err),
     });
     if (!(err instanceof ZodError || err instanceof FailedTransactionError)) {
       emitPayGovErrorMetric();
@@ -281,11 +245,9 @@ export const initPayment: InitPayment = async (
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
     /* istanbul ignore next */
-    appContext.logger.error("Failed to mark transaction as initiated", {
+    logError(appContext, "Failed to mark transaction as initiated", err, {
       transactionReferenceId,
       agencyTrackingId,
-      errorName: err instanceof Error ? err.name : undefined,
-      errorMessage: err instanceof Error ? err.message : String(err),
     });
     await safeUpdateToFailed(appContext, agencyTrackingId);
     throw new ServerError(
@@ -303,4 +265,34 @@ export const initPayment: InitPayment = async (
     token: result.token,
     paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${fee.tcsAppId}`,
   };
+};
+
+const rejectIfAlreadyPaid = async (
+  clientName: string,
+  transactionReferenceId: string,
+  appContext: AppContext,
+): Promise<void> => {
+  const alreadyPaid =
+    await TransactionModel.findPendingOrProcessedByReferenceId(
+      clientName,
+      transactionReferenceId,
+    );
+
+  if (!alreadyPaid) {
+    return;
+  }
+
+  appContext.logger.info("Rejecting initPayment: transaction already paid", {
+    transactionReferenceId,
+    agencyTrackingId: alreadyPaid.agencyTrackingId,
+    clientName,
+    transactionStatus: alreadyPaid.transactionStatus,
+    paymentStatus: alreadyPaid.paymentStatus,
+  });
+  emitInitPaymentConflictMetric("already_paid");
+  throw new ConflictError(
+    alreadyPaid.transactionStatus === "pending"
+      ? ConflictError.PAYMENT_SETTLING_MESSAGE
+      : ConflictError.ALREADY_PAID_MESSAGE,
+  );
 };

@@ -1,22 +1,23 @@
+import type { AppContext } from "@appTypes/AppContext";
 import type { ClientPermission } from "@appTypes/ClientPermission";
 import { GetRequestRequest } from "@entities/GetDetailsRequest";
-import type { AppContext } from "@appTypes/AppContext";
+import { NotFoundError } from "@errors/notFound";
+import { PayGovError } from "@errors/payGovError";
+import { ServerError } from "@errors/serverError";
 import type { GetDetailsResponse } from "@schemas/GetDetails.schema";
 import type { TransactionRecordSummary } from "@schemas/TransactionRecord.schema";
 import type { TransactionStatus } from "@schemas/TransactionStatus.schema";
-import { parseTransactionStatus } from "./parseTransactionStatus";
 import {
   derivePaymentStatus,
   derivePaymentStatusFromSingleTransaction,
 } from "@utils/derivePaymentStatus";
+import { logError } from "@utils/logError";
 import { toPaymentMethod } from "@utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
-import TransactionModel from "../db/TransactionModel";
-import { getActiveFee, type ActiveFee } from "../config/fees";
 import { authorizeClient } from "../authorizeClient";
-import { NotFoundError } from "@errors/notFound";
-import { PayGovError } from "@errors/payGovError";
-import { ServerError } from "@errors/serverError";
+import { type ActiveFee, getActiveFee } from "../config/fees";
+import TransactionModel from "../db/TransactionModel";
+import { parseTransactionStatus } from "./parseTransactionStatus";
 
 const PAYGOV_RETRY_MESSAGE =
   "There was an error communicating with Pay.gov. Please retry your transaction.";
@@ -69,10 +70,8 @@ export const getDetails: GetDetails = async (
   try {
     fee = getActiveFee(feeKey, allRows[0].createdAt);
   } catch (err) {
-    appContext.logger.error("Fee lookup failed", {
+    logError(appContext, "Fee lookup failed", err, {
       clientName: client.clientName,
-      errorName: err instanceof Error ? err.name : undefined,
-      errorMessage: err instanceof Error ? err.message : String(err),
       fee: feeKey,
       transactionReferenceId,
     });
@@ -135,15 +134,13 @@ const updatePendingAttemptFromPayGov = async (
         // temporarily unreachable, not that the underlying transaction failed.
         // We surface a retryable error and leave the row's pending state alone.
         /* istanbul ignore next: This branch is for refresh failures, which are rare in normal operation */
-        appContext.logger.error("Failed to refresh Pay.gov status", {
+        logError(appContext, "Failed to refresh Pay.gov status", err, {
           transactionReferenceId: row.transactionReferenceId,
           agencyTrackingId: row.agencyTrackingId,
           clientName,
           fee: feeKey,
           metadata: row.metadata ?? undefined,
           paygovTrackingId: row.paygovTrackingId,
-          errorName: err instanceof Error ? err.name : undefined,
-          errorMessage: err instanceof Error ? err.message : String(err),
         });
         throw new PayGovError(PAYGOV_RETRY_MESSAGE, 500);
       }
@@ -191,8 +188,10 @@ const updatePendingAttemptFromPayGov = async (
         // We had a fresh status from Pay.gov but couldn't persist it. The row's
         // recorded state is stale, not wrong — a retry will re-fetch and re-persist.
         /* istanbul ignore next: This branch is for DB persistence failures, which are rare in normal operation */
-        appContext.logger.error(
+        logError(
+          appContext,
           "Failed to persist refreshed Pay.gov status to DB",
+          err,
           {
             transactionReferenceId: row.transactionReferenceId,
             agencyTrackingId: row.agencyTrackingId,
@@ -200,8 +199,6 @@ const updatePendingAttemptFromPayGov = async (
             fee: feeKey,
             metadata: row.metadata ?? undefined,
             paygovTrackingId: row.paygovTrackingId,
-            errorName: err instanceof Error ? err.name : undefined,
-            errorMessage: err instanceof Error ? err.message : String(err),
           },
         );
         throw new PayGovError(PAYGOV_RETRY_MESSAGE, 500);
