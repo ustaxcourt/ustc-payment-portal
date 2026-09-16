@@ -55,8 +55,8 @@ run "schedule_enables_when_asked" {
   }
 }
 
-# A rule that stops delivering publishes no Errors datapoint, so once enabled the failure
-# alarm must breach on missing data or the sweep can die silently.
+# Liveness rides on TransactionsCancelled, which is emitted every run including zero. Lambda
+# emits Errors only on failure, so that alarm must never breach on missing data.
 run "enabled_schedule_alarms_on_a_missing_heartbeat" {
   command = plan
 
@@ -65,8 +65,18 @@ run "enabled_schedule_alarms_on_a_missing_heartbeat" {
   }
 
   assert {
-    condition     = aws_cloudwatch_metric_alarm.sweep_failed.treat_missing_data == "breaching"
-    error_message = "an enabled sweep must treat a missing Errors datapoint as breaching"
+    condition     = aws_cloudwatch_metric_alarm.sweep_stalled.treat_missing_data == "breaching"
+    error_message = "an enabled sweep must breach when it reports no datapoint at all"
+  }
+
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.sweep_stalled.statistic == "SampleCount"
+    error_message = "liveness counts datapoints, not cancellations — a zero-count run is still alive"
+  }
+
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.sweep_failed.treat_missing_data == "notBreaching"
+    error_message = "a healthy Lambda emits no Errors datapoint; breaching here alarms continuously"
   }
 }
 

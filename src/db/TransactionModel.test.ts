@@ -852,10 +852,13 @@ describe("TransactionModel", () => {
       expect(isExpiredInitiatedTransaction(transaction)).toBe(false);
     });
 
+    // Date.now() is frozen: reading it twice can straddle a millisecond and flip the result.
     it("returns false exactly at the TTL boundary", () => {
+      const now = Date.now();
+      jest.spyOn(Date, "now").mockReturnValue(now);
       const transaction = {
         transactionStatus: "initiated",
-        createdAt: new Date(Date.now() - MAX_TOKEN_AGE_MS).toISOString(),
+        createdAt: new Date(now - MAX_TOKEN_AGE_MS).toISOString(),
       } as TransactionModel;
 
       expect(isExpiredInitiatedTransaction(transaction)).toBe(false);

@@ -43,9 +43,9 @@ resource "aws_cloudwatch_metric_alarm" "sweep_failed" {
   datapoints_to_alarm = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   threshold           = 1
-  # Breaching once enabled, so a rule that stops delivering — which publishes no Errors
-  # datapoint at all — trips this instead of sitting quietly OK. A dark deploy stays quiet.
-  treat_missing_data = var.schedule_enabled ? "breaching" : "notBreaching"
+  # Lambda emits Errors only on failure, so a healthy window has no datapoint. Liveness is
+  # the sweep_stalled alarm's job, on a metric we emit every run.
+  treat_missing_data = "notBreaching"
 
   actions_enabled = true
   alarm_actions   = var.alarm_sns_topic_arns
@@ -75,6 +75,37 @@ resource "aws_cloudwatch_metric_alarm" "cancellation_spike" {
   threshold           = var.spike_alarm_threshold
   # A window with no sweep is sweep_failed's job, not this one.
   treat_missing_data = "notBreaching"
+
+  actions_enabled = true
+  alarm_actions   = var.alarm_sns_topic_arns
+  ok_actions      = var.alarm_sns_topic_arns
+  tags            = var.tags
+}
+
+# Liveness. TransactionsCancelled is emitted on every run including zero, so an absent
+# datapoint means the sweep did not run at all.
+resource "aws_cloudwatch_metric_alarm" "sweep_stalled" {
+  alarm_name        = "${var.name_prefix}-cancel-sweep-stalled"
+  alarm_description = <<-EOT
+    The cancellation sweep has not reported in ${var.spike_window_seconds}s. Abandoned payments
+    stay `initiated` and keep showing as pending until it resumes. Check the EventBridge rule is
+    enabled and delivering.
+    Service: payment-portal (${var.environment})
+    Severity: warning
+    Runbook: ${var.runbook_url}
+  EOT
+  namespace         = "USTC/PaymentPortal"
+  metric_name       = "TransactionsCancelled"
+  dimensions        = { Environment = var.environment }
+  statistic         = "SampleCount"
+
+  period              = var.spike_window_seconds
+  evaluation_periods  = 1
+  datapoints_to_alarm = 1
+  comparison_operator = "LessThanThreshold"
+  threshold           = 1
+  # Only once the schedule is on; a dark deploy legitimately reports nothing.
+  treat_missing_data = var.schedule_enabled ? "breaching" : "notBreaching"
 
   actions_enabled = true
   alarm_actions   = var.alarm_sns_topic_arns

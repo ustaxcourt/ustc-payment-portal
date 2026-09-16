@@ -200,7 +200,8 @@ module "monitoring" {
 
 # Scheduled Pay.gov health probe + alarm (invokes the testCert Lambda every 15 min).
 # Reuses the monitoring module's alerts topic so outages page via the same Teams channel.
-# Ships DISABLED: invoked manually first, then enabled per environment. Disabling is the rollback.
+# Scheduled cancellation sweep. Ships DISABLED: invoked manually first, then enabled per
+# environment. Disabling it again is the rollback.
 module "cancel_sweep" {
   source = "../../modules/cancel-sweep"
 

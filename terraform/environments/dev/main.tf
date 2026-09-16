@@ -180,10 +180,8 @@ module "api" {
   depends_on = [module.secrets, aws_acm_certificate_validation.this]
 }
 
-# Scheduled Pay.gov health probe + alarm. Real dev env only — PR workspaces are
-# ephemeral and must not run a 15-min probe or create alarms on the shared metric.
-# No SNS target in dev (the monitoring module / alerts topic is stg+prod only).
-# Ships DISABLED: invoked manually first, then enabled per environment. Disabling is the rollback.
+# Scheduled cancellation sweep. Ships DISABLED: invoked manually first, then enabled per
+# environment. Disabling it again is the rollback.
 module "cancel_sweep" {
   source = "../../modules/cancel-sweep"
 
@@ -199,6 +197,9 @@ module "cancel_sweep" {
   }
 }
 
+# Scheduled Pay.gov health probe + alarm. Real dev env only — PR workspaces are
+# ephemeral and must not run a 15-min probe or create alarms on the shared metric.
+# No SNS target in dev (the monitoring module / alerts topic is stg+prod only).
 module "paygov_health" {
   count  = local.environment == "dev" ? 1 : 0
   source = "../../modules/paygov-health"
