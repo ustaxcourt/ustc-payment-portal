@@ -239,6 +239,37 @@ describe("getDetails", () => {
 
       expect(result.paymentStatus).toBe("failed");
     });
+
+    it("returns paymentStatus 'failed' for a cancelled attempt without refreshing Pay.gov", async () => {
+      const postHttpRequestSpy = jest.fn();
+      appContext.postHttpRequest = postHttpRequestSpy;
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({ transactionStatus: "cancelled", paymentStatus: "failed" }),
+      ]);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(result.paymentStatus).toBe("failed");
+      expect(result.transactions[0].transactionStatus).toBe("cancelled");
+      expect(postHttpRequestSpy).not.toHaveBeenCalled();
+    });
+
+    it("returns paymentStatus 'failed' for a mix of failed and cancelled attempts", async () => {
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({ transactionStatus: "failed", paymentStatus: "failed" }),
+        buildRow({ transactionStatus: "cancelled", paymentStatus: "failed" }),
+      ]);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(result.paymentStatus).toBe("failed");
+    });
   });
 
   describe("non-terminal status without paygovTrackingId (no Pay.gov refresh)", () => {
