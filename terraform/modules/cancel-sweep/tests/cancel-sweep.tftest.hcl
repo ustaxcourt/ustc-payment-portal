@@ -55,6 +55,21 @@ run "schedule_enables_when_asked" {
   }
 }
 
+# A rule that stops delivering publishes no Errors datapoint, so once enabled the failure
+# alarm must breach on missing data or the sweep can die silently.
+run "enabled_schedule_alarms_on_a_missing_heartbeat" {
+  command = plan
+
+  variables {
+    schedule_enabled = true
+  }
+
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.sweep_failed.treat_missing_data == "breaching"
+    error_message = "an enabled sweep must treat a missing Errors datapoint as breaching"
+  }
+}
+
 run "invokes_the_supplied_lambda" {
   command = plan
 
@@ -107,12 +122,13 @@ run "alarms_watch_the_right_metrics" {
     error_message = "failure alarm should be scoped to the cancelExpired function"
   }
 
+  # Dark deploy publishes no datapoints and must stay quiet.
   assert {
     condition = alltrue([
       aws_cloudwatch_metric_alarm.cancellation_spike.treat_missing_data == "notBreaching",
       aws_cloudwatch_metric_alarm.sweep_failed.treat_missing_data == "notBreaching",
     ])
-    error_message = "neither alarm should treat missing data as breaching"
+    error_message = "a disabled schedule should not alarm on missing data"
   }
 
   # The window must contain at least one sweep.
