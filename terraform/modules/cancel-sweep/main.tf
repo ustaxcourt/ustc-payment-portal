@@ -1,9 +1,6 @@
-# Scheduled cancellation sweep. An EventBridge rule invokes the cancelExpired Lambda, which
-# moves `initiated` rows past the Pay.gov token TTL to `cancelled` / `failed`.
-#
-# Names derive from name_prefix because the CI read-only and deployer IAM policies are scoped
-# to `function:${prefix}*`, `rule/${prefix}-*` and `alarm:${prefix}-*`. Deviating from the
-# convention fails the plan in CI, not the apply.
+# EventBridge invokes the cancelExpired Lambda, which moves `initiated` rows past the Pay.gov
+# token TTL to `cancelled` / `failed`. Names must derive from name_prefix — the CI read-only and
+# deployer IAM policies are scoped to `${prefix}*` ARNs, so drifting fails the plan.
 
 resource "aws_cloudwatch_event_rule" "cancel_sweep" {
   name                = "${var.name_prefix}-cancel-sweep"
@@ -27,8 +24,7 @@ resource "aws_lambda_permission" "allow_eventbridge" {
   source_arn    = aws_cloudwatch_event_rule.cancel_sweep.arn
 }
 
-# The sweep throwing is the loud failure — a run that cannot reach the database cancels
-# nothing and must not look like a quiet day.
+# A run that cannot reach the database cancels nothing and must not look like a quiet day.
 resource "aws_cloudwatch_metric_alarm" "sweep_failed" {
   alarm_name          = "${var.name_prefix}-cancel-sweep-failed"
   alarm_description   = <<-EOT
@@ -55,7 +51,7 @@ resource "aws_cloudwatch_metric_alarm" "sweep_failed" {
   tags            = var.tags
 }
 
-# Volume alarm. Steady state is a handful per window; a spike points upstream.
+# Steady state is a handful per window; a spike points upstream.
 resource "aws_cloudwatch_metric_alarm" "cancellation_spike" {
   alarm_name          = "${var.name_prefix}-cancel-sweep-spike"
   alarm_description   = <<-EOT
@@ -75,7 +71,7 @@ resource "aws_cloudwatch_metric_alarm" "cancellation_spike" {
   datapoints_to_alarm = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   threshold           = var.spike_alarm_threshold
-  # A window with no sweep is the sweep_failed alarm's job, not this one.
+  # A window with no sweep is sweep_failed's job, not this one.
   treat_missing_data = "notBreaching"
 
   actions_enabled = true

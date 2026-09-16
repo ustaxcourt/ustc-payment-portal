@@ -7,8 +7,7 @@ variables {
   cancel_expired_function_arn  = "arn:aws:lambda:us-east-1:123456789012:function:ustc-payment-processor-cancelExpired"
 }
 
-# Names must match the `${prefix}-*` ARN patterns the CI read-only and deployer policies are
-# scoped to; drifting from the convention fails the plan in CI rather than the apply.
+# Must match the `${prefix}-*` ARN patterns the CI IAM policies are scoped to.
 run "names_follow_the_prefix_convention" {
   command = plan
 
@@ -28,8 +27,7 @@ run "names_follow_the_prefix_convention" {
   }
 }
 
-# The Lambda deploys dark: the rule exists but must not fire until an environment is enabled
-# deliberately. Disabling it again is also the documented rollback.
+# The Lambda deploys dark; disabling the rule again is also the rollback.
 run "schedule_ships_disabled_by_default" {
   command = plan
 
@@ -76,8 +74,7 @@ run "invokes_the_supplied_lambda" {
   }
 }
 
-# The spike alarm reads our own EMF counter; the failure alarm reads Lambda's. A window with
-# no sweep at all is the failure alarm's business, so neither may treat missing as breaching.
+# Spike alarm reads our EMF counter, failure alarm reads Lambda's; neither breaches on missing.
 run "alarms_watch_the_right_metrics" {
   command = plan
 
@@ -118,7 +115,7 @@ run "alarms_watch_the_right_metrics" {
     error_message = "neither alarm should treat missing data as breaching"
   }
 
-  # The window must contain at least one sweep, or a quiet window reads as a gap.
+  # The window must contain at least one sweep.
   assert {
     condition     = aws_cloudwatch_metric_alarm.cancellation_spike.period >= 900
     error_message = "spike window must exceed the 15-minute sweep cadence"

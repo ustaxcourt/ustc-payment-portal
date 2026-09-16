@@ -59,9 +59,7 @@ locals {
     DASHBOARD_ALLOWED_ORIGIN = local.dashboard_allowed_origin
   }
 
-  # Scheduled sweep Lambda: cancelExpired
-  # Transactions table only. No Pay.gov URLs, certs, or CORS origin — it serves no
-  # request and calls nothing outside the database.
+  # Scheduled sweep: transactions table only, no Pay.gov URLs or certs.
   lambda_env_cancel_sweep = {
     NODE_ENV       = local.node_env
     APP_ENV        = local.app_env

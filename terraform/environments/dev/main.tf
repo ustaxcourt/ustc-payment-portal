@@ -183,8 +183,7 @@ module "api" {
 # Scheduled Pay.gov health probe + alarm. Real dev env only — PR workspaces are
 # ephemeral and must not run a 15-min probe or create alarms on the shared metric.
 # No SNS target in dev (the monitoring module / alerts topic is stg+prod only).
-# Ships with the schedule DISABLED: the Lambda deploys dark and is invoked manually first,
-# then enabled per environment. Disabling it again is the rollback.
+# Ships DISABLED: invoked manually first, then enabled per environment. Disabling is the rollback.
 module "cancel_sweep" {
   source = "../../modules/cancel-sweep"
 
