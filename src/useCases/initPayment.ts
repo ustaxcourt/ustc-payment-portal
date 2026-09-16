@@ -47,11 +47,10 @@ export const initPayment: InitPayment = async (
     urlCancel,
   } = request;
   const { clientName } = client;
+  const clientLogFields = { transactionReferenceId, clientName, fee: feeKey };
 
   appContext.logger.debug("Received initPayment request", {
-    transactionReferenceId,
-    fee: feeKey,
-    clientName,
+    ...clientLogFields,
     hasAmount: amount !== undefined,
     metadata: request.metadata,
   });
@@ -59,15 +58,7 @@ export const initPayment: InitPayment = async (
   authorizeClient(client, feeKey);
 
   /* istanbul ignore next */
-  appContext.logger.info(
-    "Authorized client for initPayment",
-    /* istanbul ignore next */
-    {
-      transactionReferenceId,
-      clientName,
-      fee: feeKey,
-    },
-  );
+  appContext.logger.info("Authorized client for initPayment", clientLogFields);
 
   let fee: ActiveFee;
   const hasAmount = amount !== undefined;
@@ -89,75 +80,22 @@ export const initPayment: InitPayment = async (
     );
   }
 
-  await rejectIfAlreadyPaid(clientName, transactionReferenceId, appContext);
+  const shortCircuitResponse = await handleIfPaymentProcessedOrPending(
+    appContext,
+    clientName,
+    transactionReferenceId,
+    fee,
+  );
 
-  const existingInFlightTransaction =
-    await TransactionModel.findInFlightByReferenceId(
-      clientName,
-      transactionReferenceId,
-    );
-
-  if (existingInFlightTransaction) {
-    const tokenAgeMs =
-      Date.now() -
-      new Date(existingInFlightTransaction.lastUpdatedAt).getTime();
-    const staleProcessing = isStaleProcessingTransaction(
-      existingInFlightTransaction,
-    );
-
-    if (
-      existingInFlightTransaction.transactionStatus === "processing" &&
-      !staleProcessing
-    ) {
-      appContext.logger.info(
-        "Rejecting initPayment: transaction is actively processing",
-        {
-          transactionReferenceId,
-          agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
-          tokenAgeMs,
-        },
-      );
-      emitInitPaymentConflictMetric("processing_in_flight");
-      throw new ConflictError(
-        ConflictError.PAYMENT_IN_FLIGHT_TRANSACTION_MESSAGE,
-      );
-    }
-
-    if (
-      existingInFlightTransaction.paygovToken &&
-      tokenAgeMs < MAX_TOKEN_AGE_MS &&
-      !staleProcessing
-    ) {
-      appContext.logger.info("Returning existing in-flight transaction", {
-        transactionReferenceId,
-        agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
-        tokenAgeMs,
-        transactionStatus: existingInFlightTransaction.transactionStatus,
-      });
-      return {
-        token: existingInFlightTransaction.paygovToken,
-        paymentRedirect: `${process.env.PAYMENT_URL}?token=${existingInFlightTransaction.paygovToken}&tcsAppID=${fee.tcsAppId}`,
-      };
-    } else {
-      appContext.logger.info("Existing in-flight transaction token expired", {
-        transactionReferenceId,
-        agencyTrackingId: existingInFlightTransaction.agencyTrackingId,
-        tokenAgeMs,
-        transactionStatus: existingInFlightTransaction.transactionStatus,
-        staleProcessing,
-      });
-      await TransactionModel.updateToFailed(
-        existingInFlightTransaction.agencyTrackingId,
-        EXISTING_TOKEN_ERROR_CODE,
-        "Existing token expired",
-      );
-    }
+  if (shortCircuitResponse) {
+    return shortCircuitResponse;
   }
 
   // TODO: Add a unit test for a variable fee request (when we actually have one to support)
   /* istanbul ignore next */
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
   const agencyTrackingId = generateAgencyTrackingId();
+  const baseLogFields = { transactionReferenceId, agencyTrackingId };
 
   const req = new StartOnlineCollectionRequest({
     tcsAppId: fee.tcsAppId,
@@ -168,8 +106,7 @@ export const initPayment: InitPayment = async (
   });
 
   appContext.logger.info("Initiating new transaction", {
-    transactionReferenceId,
-    agencyTrackingId,
+    ...baseLogFields,
     transactionAmount,
     fee: feeKey,
     clientName,
@@ -189,19 +126,14 @@ export const initPayment: InitPayment = async (
     if (isUniqueViolation(err)) {
       await rejectIfAlreadyPaid(clientName, transactionReferenceId, appContext);
 
-      const EXISTING_IN_FLIGHT_TRANSACTION_ERROR = "A payment session is already in-flight for this transactionReferenceId";
-      logError(appContext, EXISTING_IN_FLIGHT_TRANSACTION_ERROR, err, {
-        transactionReferenceId,
-        agencyTrackingId,
-      });
+      const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
+        "A payment session is already in-flight for this transactionReferenceId";
+      logError(appContext, EXISTING_IN_FLIGHT_TRANSACTION_ERROR, err, baseLogFields);
       emitInitPaymentConflictMetric("persist_race");
       throw new ConflictError(EXISTING_IN_FLIGHT_TRANSACTION_ERROR);
     }
 
-    logError(appContext, "Failed to record received transaction", err, {
-      transactionReferenceId,
-      agencyTrackingId,
-    });
+    logError(appContext, "Failed to record received transaction", err, baseLogFields);
 
     /* istanbul ignore next */
     throw new Error(
@@ -212,8 +144,7 @@ export const initPayment: InitPayment = async (
   }
 
   appContext.logger.info("Transaction received and recorded", {
-    transactionReferenceId,
-    agencyTrackingId,
+    ...baseLogFields,
     transactionAmount,
     fee: feeKey,
     clientName,
@@ -223,10 +154,7 @@ export const initPayment: InitPayment = async (
   try {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
-    logError(appContext, "Error making SOAP request to Pay.gov", err, {
-      transactionReferenceId,
-      agencyTrackingId,
-    });
+    logError(appContext, "Error making SOAP request to Pay.gov", err, baseLogFields);
     if (!(err instanceof ZodError || err instanceof FailedTransactionError)) {
       emitPayGovErrorMetric();
     }
@@ -245,10 +173,7 @@ export const initPayment: InitPayment = async (
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
     /* istanbul ignore next */
-    logError(appContext, "Failed to mark transaction as initiated", err, {
-      transactionReferenceId,
-      agencyTrackingId,
-    });
+    logError(appContext, "Failed to mark transaction as initiated", err, baseLogFields);
     await safeUpdateToFailed(appContext, agencyTrackingId);
     throw new ServerError(
       "Failed to record payment session. Please retry your transaction.",
@@ -256,8 +181,7 @@ export const initPayment: InitPayment = async (
   }
 
   appContext.logger.info("Successfully initiated transaction", {
-    transactionReferenceId,
-    agencyTrackingId,
+    ...baseLogFields,
     token: result.token,
   });
 
@@ -265,6 +189,27 @@ export const initPayment: InitPayment = async (
     token: result.token,
     paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${fee.tcsAppId}`,
   };
+};
+
+const rejectAlreadyPaidTransaction = (
+  appContext: AppContext,
+  clientName: string,
+  transactionReferenceId: string,
+  alreadyPaid: TransactionModel,
+): never => {
+  appContext.logger.info("Rejecting initPayment: transaction already paid", {
+    transactionReferenceId,
+    agencyTrackingId: alreadyPaid.agencyTrackingId,
+    clientName,
+    transactionStatus: alreadyPaid.transactionStatus,
+    paymentStatus: alreadyPaid.paymentStatus,
+  });
+  emitInitPaymentConflictMetric("already_paid");
+  throw new ConflictError(
+    alreadyPaid.transactionStatus === "pending"
+      ? ConflictError.PAYMENT_SETTLING_MESSAGE
+      : ConflictError.ALREADY_PAID_MESSAGE,
+  );
 };
 
 const rejectIfAlreadyPaid = async (
@@ -282,17 +227,108 @@ const rejectIfAlreadyPaid = async (
     return;
   }
 
-  appContext.logger.info("Rejecting initPayment: transaction already paid", {
-    transactionReferenceId,
-    agencyTrackingId: alreadyPaid.agencyTrackingId,
+  rejectAlreadyPaidTransaction(
+    appContext,
     clientName,
-    transactionStatus: alreadyPaid.transactionStatus,
-    paymentStatus: alreadyPaid.paymentStatus,
-  });
-  emitInitPaymentConflictMetric("already_paid");
-  throw new ConflictError(
-    alreadyPaid.transactionStatus === "pending"
-      ? ConflictError.PAYMENT_SETTLING_MESSAGE
-      : ConflictError.ALREADY_PAID_MESSAGE,
+    transactionReferenceId,
+    alreadyPaid,
   );
+};
+
+const resolveInFlightTransaction = async (
+  appContext: AppContext,
+  transactionReferenceId: string,
+  existingTransaction: TransactionModel,
+  fee: ActiveFee,
+): Promise<InitPaymentResponse | null> => {
+  const tokenAgeMs =
+    Date.now() - new Date(existingTransaction.lastUpdatedAt).getTime();
+  const staleProcessing = isStaleProcessingTransaction(existingTransaction);
+  const inFlightLogFields = {
+    transactionReferenceId,
+    agencyTrackingId: existingTransaction.agencyTrackingId,
+    tokenAgeMs,
+  };
+
+  if (
+    existingTransaction.transactionStatus === "processing" &&
+    !staleProcessing
+  ) {
+    appContext.logger.info(
+      "Rejecting initPayment: transaction is actively processing",
+      inFlightLogFields,
+    );
+    emitInitPaymentConflictMetric("processing_in_flight");
+    throw new ConflictError(
+      ConflictError.PAYMENT_IN_FLIGHT_TRANSACTION_MESSAGE,
+    );
+  }
+
+  if (
+    existingTransaction.paygovToken &&
+    tokenAgeMs < MAX_TOKEN_AGE_MS &&
+    !staleProcessing
+  ) {
+    appContext.logger.info("Returning existing in-flight transaction", {
+      ...inFlightLogFields,
+      transactionStatus: existingTransaction.transactionStatus,
+    });
+    return {
+      token: existingTransaction.paygovToken,
+      paymentRedirect: `${process.env.PAYMENT_URL}?token=${existingTransaction.paygovToken}&tcsAppID=${fee.tcsAppId}`,
+    };
+  }
+
+  appContext.logger.info("Existing in-flight transaction token expired", {
+    ...inFlightLogFields,
+    transactionStatus: existingTransaction.transactionStatus,
+    staleProcessing,
+  });
+  await TransactionModel.updateToFailed(
+    existingTransaction.agencyTrackingId,
+    EXISTING_TOKEN_ERROR_CODE,
+    "Existing token expired",
+  );
+  return null;
+};
+
+const handleIfPaymentProcessedOrPending = async (
+  appContext: AppContext,
+  clientName: string,
+  transactionReferenceId: string,
+  fee: ActiveFee,
+): Promise<InitPaymentResponse | null> => {
+  const existingTransaction =
+    await TransactionModel.findByReferenceIdAndTransactionStatus(
+      clientName,
+      transactionReferenceId,
+      ["initiated", "processing", "pending", "processed"],
+    );
+
+  if (!existingTransaction) {
+    return null;
+  }
+
+  switch (existingTransaction.transactionStatus) {
+    case "initiated":
+    case "processing":
+      return resolveInFlightTransaction(
+        appContext,
+        transactionReferenceId,
+        existingTransaction,
+        fee,
+      );
+
+    case "pending":
+    case "processed":
+      return rejectAlreadyPaidTransaction(
+        appContext,
+        clientName,
+        transactionReferenceId,
+        existingTransaction,
+      );
+
+    default:
+      return null;
+  }
 };
