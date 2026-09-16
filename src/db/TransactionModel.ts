@@ -22,6 +22,7 @@ import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { getFeeNamesByKey } from "../config/fees";
 import { getKnex } from "./knex";
 import { transactionLogOrderBy } from "./transactionLogSort";
+import { ServerError } from "@/errors/serverError";
 
 export type TransactionStatus = SchemaTransactionStatus;
 export type { PaymentStatus };
@@ -360,6 +361,11 @@ export default class TransactionModel extends Model {
    *  (paymentStatus, fee): both aggregates read the same statement snapshot,
    *  so `counts.success` always equals the summed tally quantities. Bounds on
    *  `lastUpdatedAt` and takes no filter, matching countsInRange. */
+
+  /** Status counts and per-fee success tallies from one SELECT grouped by
+   *  (paymentStatus, fee): both aggregates read the same statement snapshot,
+   *  so `counts.success` always equals the summed tally quantities. Bounds on
+   *  `lastUpdatedAt` and takes no filter, matching countsInRange. */
   static async countsAndFeeBreakdownInRange(
     from: Date,
     to: Date,
@@ -450,7 +456,7 @@ export default class TransactionModel extends Model {
   private static attachFeeName(row: TransactionModel): TransactionModel {
     const feeName = feeNamesByKey[row.fee];
     if (!feeName) {
-      throw new Error(`Unknown fee key: ${row.fee}`);
+      throw new ServerError(`Unknown fee key: ${row.fee}`);
     }
 
     row.feeName = feeName;
