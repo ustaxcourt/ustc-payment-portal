@@ -685,9 +685,6 @@ export default class TransactionModel extends Model {
     return result.rows.map((row) => row.agency_tracking_id);
   }
 
-  // Guarded on `initiated` so a row claimForProcessing took in the meantime is never
-  // clobbered. No returnCode/returnDetail: Pay.gov returned nothing. The trigger holds
-  // lastUpdatedAt. Returns the number of rows actually cancelled.
   static async updateToCancelled(
     agencyTrackingId: string,
     trx?: Knex.Transaction,
@@ -698,9 +695,4 @@ export default class TransactionModel extends Model {
       .where("agencyTrackingId", agencyTrackingId)
       .where("transactionStatus", "initiated");
   }
-
-  // TODO: [Future Ticket] Implement findByTransactionReferenceId to retrieve
-  // all transaction attempts for a given transactionReferenceId. This is needed
-  // to populate the full transactions array in the process payment response.
-  // Until then, the response wraps the single current transaction in a one-element array.
 }
