@@ -27,6 +27,7 @@ module "lambda" {
     validateClient  = var.validateClient_s3_key
     testCert        = var.testCert_s3_key
     healthCheck     = var.testCert_s3_key
+    cancelExpired   = var.cancelExpired_s3_key
     migrationRunner = var.migrationRunner_s3_key
   }
   source_code_hashes = {
@@ -36,6 +37,7 @@ module "lambda" {
     validateClient  = var.validateClient_source_code_hash
     testCert        = var.testCert_source_code_hash
     healthCheck     = var.testCert_source_code_hash
+    cancelExpired   = var.cancelExpired_source_code_hash
     migrationRunner = var.migrationRunner_source_code_hash
   }
 
@@ -192,6 +194,24 @@ module "monitoring" {
 
 # Scheduled Pay.gov health probe + alarm (invokes the testCert Lambda every 15 min).
 # Reuses the monitoring module's alerts topic so outages page via the same Teams channel.
+# Scheduled cancellation sweep. Ships DISABLED: invoked manually first, then enabled per
+# environment. Disabling it again is the rollback.
+module "cancel_sweep" {
+  source = "../../modules/cancel-sweep"
+
+  name_prefix                  = local.name_prefix
+  environment                  = local.app_env
+  cancel_expired_function_name = module.lambda.function_names["cancelExpired"]
+  cancel_expired_function_arn  = module.lambda.function_arns["cancelExpired"]
+  schedule_enabled             = false
+  alarm_sns_topic_arns         = [module.monitoring.sns_topic_arn]
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
+}
+
 module "paygov_health" {
   source = "../../modules/paygov-health"
 

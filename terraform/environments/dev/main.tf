@@ -47,9 +47,11 @@ module "lambda" {
     validateClient              = var.validateClient_s3_key
     testCert                    = var.testCert_s3_key
     healthCheck                 = var.testCert_s3_key
+    cancelExpired               = var.cancelExpired_s3_key
     migrationRunner             = var.migrationRunner_s3_key
     getAllTransactions          = var.getAllTransactions_s3_key
     getTransactionLog           = var.getTransactionLog_s3_key
+    getRevenueSummary           = var.getRevenueSummary_s3_key
     getTransactionsByStatus     = var.getTransactionsByStatus_s3_key
     getTransactionPaymentStatus = var.getTransactionPaymentStatus_s3_key
   }
@@ -60,9 +62,11 @@ module "lambda" {
     validateClient              = var.validateClient_source_code_hash
     testCert                    = var.testCert_source_code_hash
     healthCheck                 = var.testCert_source_code_hash
+    cancelExpired               = var.cancelExpired_source_code_hash
     migrationRunner             = var.migrationRunner_source_code_hash
     getAllTransactions          = var.getAllTransactions_source_code_hash
     getTransactionLog           = var.getTransactionLog_source_code_hash
+    getRevenueSummary           = var.getRevenueSummary_source_code_hash
     getTransactionsByStatus     = var.getTransactionsByStatus_source_code_hash
     getTransactionPaymentStatus = var.getTransactionPaymentStatus_source_code_hash
   }
@@ -176,6 +180,23 @@ module "api" {
   stage_throttling_burst_limit   = local.api_stage_throttling_burst_limit
 
   depends_on = [module.secrets, aws_acm_certificate_validation.this]
+}
+
+# Scheduled cancellation sweep. Ships DISABLED: invoked manually first, then enabled per
+# environment. Disabling it again is the rollback.
+module "cancel_sweep" {
+  source = "../../modules/cancel-sweep"
+
+  name_prefix                  = local.name_prefix
+  environment                  = local.app_env
+  cancel_expired_function_name = module.lambda.function_names["cancelExpired"]
+  cancel_expired_function_arn  = module.lambda.function_arns["cancelExpired"]
+  schedule_enabled             = false
+
+  tags = {
+    Env     = local.environment
+    Project = "ustc-payment-portal"
+  }
 }
 
 # Scheduled Pay.gov health probe + alarm. Real dev env only — PR workspaces are

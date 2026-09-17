@@ -37,6 +37,7 @@ export type GetDetails = (
 const TERMINAL_STATUSES: ReadonlyArray<TransactionStatus> = [
   "processed",
   "failed",
+  "cancelled",
 ];
 
 const isTerminal = (status: TransactionStatus | null | undefined): boolean =>

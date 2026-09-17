@@ -10,19 +10,32 @@ import type {
   TransactionLogSortField,
 } from "@schemas/TransactionLog.schema";
 import type { TransactionStatus as SchemaTransactionStatus } from "@schemas/TransactionStatus.schema";
-import type { Bounds, CourtPeriodName } from "@utils/courtDayBounds";
+import {
+  COURT_PERIOD_NAMES,
+  mapCourtPeriods,
+  type Bounds,
+  type CourtPeriodRecord,
+} from "@utils/courtDayBounds";
 import type { Knex } from "knex";
 import { Model } from "objection";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
-import { getActiveFee } from "../config/fees";
+import { getFeeNamesByKey } from "../config/fees";
 import { getKnex } from "./knex";
 import { transactionLogOrderBy } from "./transactionLogSort";
+import { ServerError } from "@/errors/serverError";
 
 export type TransactionStatus = SchemaTransactionStatus;
 export type { PaymentStatus };
 
 export type AggregatedPaymentStatus = Record<PaymentStatus, number> & {
   total: number;
+};
+
+type TransactionYoYTrend = {
+  current: number;
+  previous: number;
+  difference: number;
+  percentChange: number | null;
 };
 
 export type TransactionLogFilter = {
@@ -56,6 +69,17 @@ export const isStaleProcessingTransaction = (row: {
   return ageMs >= PROCESSING_STALE_MS;
 };
 
+export const isExpiredInitiatedTransaction = (row: {
+  transactionStatus?: SchemaTransactionStatus | null;
+  createdAt: string;
+}): boolean => {
+  if (row.transactionStatus !== "initiated") {
+    return false;
+  }
+  const ageMs = Date.now() - new Date(row.createdAt).getTime();
+  return ageMs > MAX_TOKEN_AGE_MS;
+};
+
 const SIBLING_GONE_MESSAGE =
   "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.";
 
@@ -65,6 +89,8 @@ const TOKEN_EXPIRED_MESSAGE =
   "Transaction token has expired. Retry POST /init with the same transactionReferenceId to obtain a new token.";
 
 const VALID_DB_PAYMENT_METHODS = new Set<string>(DbPaymentMethodSchema.options);
+
+const feeNamesByKey = getFeeNamesByKey();
 
 export default class TransactionModel extends Model {
   agencyTrackingId!: string;
@@ -212,10 +238,10 @@ export default class TransactionModel extends Model {
    *  period in the table and in the totals. One filtered SUM per period keeps it
    *  to a single round trip. */
   static async totalsToDate(
-    periods: Record<CourtPeriodName, Bounds>,
-  ): Promise<Record<CourtPeriodName, number>> {
+    periods: CourtPeriodRecord<Bounds>,
+  ): Promise<CourtPeriodRecord<number>> {
     const knex = await getKnex();
-    const names = Object.keys(periods) as CourtPeriodName[];
+    const names = COURT_PERIOD_NAMES;
 
     const earliestStart = new Date(
       Math.min(...names.map((name) => periods[name].start.getTime())),
@@ -244,24 +270,108 @@ export default class TransactionModel extends Model {
 
     // decimal(12,2) arrives as a string from pg, as it does on the model itself.
     const summed = row as unknown as Record<string, unknown> | undefined;
-    return names.reduce(
-      (totals, name) => {
-        // COALESCE guarantees a value for every period, so a missing one means
-        // the alias did not survive the snake_case round trip. Fail loudly
-        // rather than report $0 revenue.
-        const value = summed?.[name];
-        const total = Number(value);
-        if (value === null || Number.isNaN(total)) {
+    return mapCourtPeriods((name) => {
+      // COALESCE guarantees a value for every period, so a missing one means
+      // the alias did not survive the snake_case round trip. Fail loudly
+      // rather than report $0 revenue.
+      const value = summed?.[name];
+      const total = Number(value);
+      if (value === null || Number.isNaN(total)) {
+        throw new Error(
+          `totalsToDate returned no usable total for the "${name}" period`,
+        );
+      }
+      return total;
+    });
+  }
+
+  static yoyTrends(
+    currentTotals: CourtPeriodRecord<number>,
+    previousTotals: CourtPeriodRecord<number>,
+  ): CourtPeriodRecord<TransactionYoYTrend> {
+    return mapCourtPeriods((name) => {
+      const current = currentTotals[name];
+      const previous = previousTotals[name];
+      const difference = current - previous;
+
+      const percentChange =
+        previous === 0
+          ? null
+          : Number(((difference / previous) * 100).toFixed(2));
+
+      return {
+        current,
+        previous,
+        difference,
+        percentChange,
+      };
+    });
+  }
+
+  static async feeTalliesByPeriods(
+    periods: CourtPeriodRecord<Bounds>,
+  ): Promise<
+    CourtPeriodRecord<Array<{ fee: string; qty: number; subtotal: number }>>
+  > {
+    const knex = await getKnex();
+    const names = COURT_PERIOD_NAMES;
+
+    const earliestStart = new Date(
+      Math.min(...names.map((name) => periods[name].start.getTime())),
+    );
+    const latestEnd = new Date(
+      Math.max(...names.map((name) => periods[name].end.getTime())),
+    );
+
+    const columns = names.flatMap((name) => [
+      knex.raw("count(*) filter (where ?? >= ? and ?? < ?) as ??", [
+        "lastUpdatedAt",
+        periods[name].start,
+        "lastUpdatedAt",
+        periods[name].end,
+        `${name}Qty`,
+      ]),
+      knex.raw("coalesce(sum(??) filter (where ?? >= ? and ?? < ?), 0) as ??", [
+        "transactionAmount",
+        "lastUpdatedAt",
+        periods[name].start,
+        "lastUpdatedAt",
+        periods[name].end,
+        `${name}Subtotal`,
+      ]),
+    ]);
+
+    const rows = await TransactionModel.query()
+      .select(["fee", ...columns])
+      .where("paymentStatus", "success")
+      .andWhere("lastUpdatedAt", ">=", earliestStart)
+      .andWhere("lastUpdatedAt", "<", latestEnd)
+      .groupBy("fee");
+
+    return mapCourtPeriods((name) =>
+      (rows as unknown as Array<Record<string, unknown>>).flatMap((row) => {
+        const fee = String(row.fee);
+        const qty = Number(row[`${name}Qty`]);
+        const subtotalValue = row[`${name}Subtotal`];
+        const subtotal = Number(subtotalValue);
+        if (
+          Number.isNaN(qty) ||
+          subtotalValue === null ||
+          Number.isNaN(subtotal)
+        ) {
           throw new Error(
-            `totalsToDate returned no usable total for the "${name}" period`,
+            `feeTalliesByPeriods returned no usable tally for the "${fee}" fee in the "${name}" period`,
           );
         }
-        totals[name] = total;
-        return totals;
-      },
-      {} as Record<CourtPeriodName, number>,
+        return qty > 0 ? [{ fee, qty, subtotal }] : [];
+      }),
     );
   }
+
+  /** Status counts and per-fee success tallies from one SELECT grouped by
+   *  (paymentStatus, fee): both aggregates read the same statement snapshot,
+   *  so `counts.success` always equals the summed tally quantities. Bounds on
+   *  `lastUpdatedAt` and takes no filter, matching countsInRange. */
 
   /** Status counts and per-fee success tallies from one SELECT grouped by
    *  (paymentStatus, fee): both aggregates read the same statement snapshot,
@@ -355,8 +465,12 @@ export default class TransactionModel extends Model {
   }
 
   private static attachFeeName(row: TransactionModel): TransactionModel {
-    const activeFee = getActiveFee(row.fee, row.createdAt);
-    row.feeName = activeFee.name;
+    const feeName = feeNamesByKey[row.fee];
+    if (!feeName) {
+      throw new ServerError(`Unknown fee key: ${row.fee}`);
+    }
+
+    row.feeName = feeName;
     return row;
   }
 
@@ -544,11 +658,12 @@ export default class TransactionModel extends Model {
         return undefined;
       }
 
-      const sibling = await TransactionModel.findPendingOrProcessedByReferenceId(
-        row.clientName,
-        row.transactionReferenceId,
-        { excludeToken: paygovToken, trx },
-      );
+      const sibling =
+        await TransactionModel.findPendingOrProcessedByReferenceId(
+          row.clientName,
+          row.transactionReferenceId,
+          { excludeToken: paygovToken, trx },
+        );
 
       if (sibling) {
         throw new GoneError(SIBLING_GONE_MESSAGE);
@@ -573,9 +688,12 @@ export default class TransactionModel extends Model {
 
       // Re-touch the row so last_updated_at refreshes (DB trigger) and this request
       // owns the completion attempt.
-      return TransactionModel.query(trx).patchAndFetchById(row.agencyTrackingId, {
-        transactionStatus: "processing",
-      });
+      return TransactionModel.query(trx).patchAndFetchById(
+        row.agencyTrackingId,
+        {
+          transactionStatus: "processing",
+        },
+      );
     });
   }
 
@@ -607,8 +725,38 @@ export default class TransactionModel extends Model {
     });
   }
 
-  // TODO: [Future Ticket] Implement findByTransactionReferenceId to retrieve
-  // all transaction attempts for a given transactionReferenceId. This is needed
-  // to populate the full transactions array in the process payment response.
-  // Until then, the response wraps the single current transaction in a one-element array.
+  // One statement, so Postgres re-checks the predicate after each row lock and SKIP LOCKED
+  // yields to a live POST /process, which takes locks with NOWAIT and would fail fast.
+  static async cancelExpiredBatch(limit: number): Promise<string[]> {
+    const knex = await getKnex();
+    const result = await knex.raw<{ rows: { agency_tracking_id: string }[] }>(
+      `UPDATE transactions
+          SET transaction_status = 'cancelled',
+              payment_status = 'failed'
+        WHERE agency_tracking_id IN (
+          SELECT agency_tracking_id
+            FROM transactions
+           WHERE transaction_status = 'initiated'
+             AND created_at < now() - make_interval(secs => ?)
+           ORDER BY created_at
+           LIMIT ?
+             FOR UPDATE SKIP LOCKED
+        )
+        RETURNING agency_tracking_id`,
+      [MAX_TOKEN_AGE_MS / 1000, limit],
+    );
+
+    return result.rows.map((row) => row.agency_tracking_id);
+  }
+
+  static async updateToCancelled(
+    agencyTrackingId: string,
+    trx?: Knex.Transaction,
+  ): Promise<number> {
+    await getKnex();
+    return TransactionModel.query(trx)
+      .patch({ transactionStatus: "cancelled", paymentStatus: "failed" })
+      .where("agencyTrackingId", agencyTrackingId)
+      .where("transactionStatus", "initiated");
+  }
 }

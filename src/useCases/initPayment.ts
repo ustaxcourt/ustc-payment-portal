@@ -20,11 +20,14 @@ import { getReturnCode } from "@/config/payGovReturnCodes";
 import { authorizeClient } from "../authorizeClient";
 import { isUniqueViolation } from "../db/pgErrors";
 import TransactionModel, {
+  isExpiredInitiatedTransaction,
   isStaleProcessingTransaction,
 } from "../db/TransactionModel";
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+
+const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
 
 type ReceivedTransactionParams = {
   agencyTrackingId: string;
@@ -289,8 +292,10 @@ const resolveInFlightTransaction = async (
   existingTransaction: TransactionModel,
   fee: ActiveFee,
 ): Promise<InitPaymentResponse | null> => {
+  // Token age is measured from createdAt: the token is issued when the row goes
+  // initiated, and lastUpdatedAt moves for unrelated writes.
   const tokenAgeMs =
-    Date.now() - new Date(existingTransaction.lastUpdatedAt).getTime();
+    Date.now() - new Date(existingTransaction.createdAt).getTime();
   const staleProcessing = isStaleProcessingTransaction(existingTransaction);
   const inFlightLogFields = {
     transactionReferenceId,
@@ -332,11 +337,18 @@ const resolveInFlightTransaction = async (
     transactionStatus: existingTransaction.transactionStatus,
     staleProcessing,
   });
-  await TransactionModel.updateToFailed(
-    existingTransaction.agencyTrackingId,
-    5009,
-    getReturnCode(5009)?.returnDetail,
-  );
+
+  // An abandoned `initiated` session never reached Pay.gov, so it's cancelled rather
+  // than failed; a stale `processing` row did reach Pay.gov, so it stays a failure.
+  if (isExpiredInitiatedTransaction(existingTransaction)) {
+    await TransactionModel.updateToCancelled(existingTransaction.agencyTrackingId);
+  } else {
+    await TransactionModel.updateToFailed(
+      existingTransaction.agencyTrackingId,
+      EXISTING_TOKEN_ERROR_CODE,
+      getReturnCode(EXISTING_TOKEN_ERROR_CODE)?.returnDetail,
+    );
+  }
   return null;
 };
 
