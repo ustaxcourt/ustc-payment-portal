@@ -211,8 +211,15 @@ describe("TransactionLogQuerySchema", () => {
       expect(result.data).toMatchObject({ transactionStatus: "processed" });
     });
 
+    it("accepts the cancelled transaction status filter", () => {
+      const result = parse({ transactionStatus: "cancelled" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({ transactionStatus: "cancelled" });
+    });
+
     it("rejects a transaction status that is not a known value", () => {
-      expect(parse({ transactionStatus: "cancelled" }).success).toBe(false);
+      expect(parse({ transactionStatus: "abandoned" }).success).toBe(false);
     });
 
     it("accepts a metadata key and value supplied together", () => {

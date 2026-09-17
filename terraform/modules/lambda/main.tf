@@ -45,6 +45,10 @@ locals {
       handler = "getRevenueSummaryHandler.getRevenueSummaryHandler"
       timeout = 29
     }
+    cancelExpired = {
+      handler = "cancelExpiredHandler.cancelExpiredHandler"
+      timeout = 60
+    }
     migrationRunner = {
       handler           = "lambdaHandler.migrationHandler"
       timeout           = 120
