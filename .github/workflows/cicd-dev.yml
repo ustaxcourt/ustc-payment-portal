@@ -125,6 +125,7 @@ jobs:
           TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_s3_key }}
           TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_s3_key }}
           TF_VAR_getTransactionLog_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionLog_s3_key }}
+          TF_VAR_getRevenueSummary_s3_key: ${{ steps.upload_artifacts_pr.outputs.getRevenueSummary_s3_key }}
           TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.initPayment_source_code_hash }}
           TF_VAR_processPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.processPayment_source_code_hash }}
           TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getDetails_source_code_hash }}
@@ -135,6 +136,7 @@ jobs:
           TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_source_code_hash }}
           TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_source_code_hash }}
           TF_VAR_getTransactionLog_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionLog_source_code_hash }}
+          TF_VAR_getRevenueSummary_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getRevenueSummary_source_code_hash }}
         run: |
           set +e
           terraform plan -input=false -lock-timeout=2m -detailed-exitcode -out=tfplan
@@ -162,6 +164,7 @@ jobs:
           TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_s3_key }}
           TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_s3_key }}
           TF_VAR_getTransactionLog_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionLog_s3_key }}
+          TF_VAR_getRevenueSummary_s3_key: ${{ steps.upload_artifacts_pr.outputs.getRevenueSummary_s3_key }}
           TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.initPayment_source_code_hash }}
           TF_VAR_processPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.processPayment_source_code_hash }}
           TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getDetails_source_code_hash }}
@@ -172,6 +175,7 @@ jobs:
           TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_source_code_hash }}
           TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_source_code_hash }}
           TF_VAR_getTransactionLog_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionLog_source_code_hash }}
+          TF_VAR_getRevenueSummary_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getRevenueSummary_source_code_hash }}
         run: terraform apply -auto-approve tfplan
 
       - name: Smoke check (post-apply to verify the workspace)
@@ -581,6 +585,7 @@ jobs:
           TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_s3_key }}
           TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_s3_key }}
           TF_VAR_getTransactionLog_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionLog_s3_key }}
+          TF_VAR_getRevenueSummary_s3_key: ${{ steps.promote_artifacts.outputs.getRevenueSummary_s3_key }}
           TF_VAR_initRefGenerator_s3_key: ${{ steps.promote_artifacts.outputs.initRefGenerator_s3_key }}
           TF_VAR_processTokenMinter_s3_key: ${{ steps.promote_artifacts.outputs.processTokenMinter_s3_key }}
           TF_VAR_powerTuningCleanUp_s3_key: ${{ steps.promote_artifacts.outputs.powerTuningCleanUp_s3_key }}
@@ -594,6 +599,7 @@ jobs:
           TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_source_code_hash }}
           TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_source_code_hash }}
           TF_VAR_getTransactionLog_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionLog_source_code_hash }}
+          TF_VAR_getRevenueSummary_source_code_hash: ${{ steps.promote_artifacts.outputs.getRevenueSummary_source_code_hash }}
           TF_VAR_initRefGenerator_source_code_hash: ${{ steps.promote_artifacts.outputs.initRefGenerator_source_code_hash }}
           TF_VAR_processTokenMinter_source_code_hash: ${{ steps.promote_artifacts.outputs.processTokenMinter_source_code_hash }}
           TF_VAR_powerTuningCleanUp_source_code_hash: ${{ steps.promote_artifacts.outputs.powerTuningCleanUp_source_code_hash }}
@@ -637,6 +643,7 @@ jobs:
           TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_s3_key }}
           TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_s3_key }}
           TF_VAR_getTransactionLog_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionLog_s3_key }}
+          TF_VAR_getRevenueSummary_s3_key: ${{ steps.promote_artifacts.outputs.getRevenueSummary_s3_key }}
           TF_VAR_initRefGenerator_s3_key: ${{ steps.promote_artifacts.outputs.initRefGenerator_s3_key }}
           TF_VAR_processTokenMinter_s3_key: ${{ steps.promote_artifacts.outputs.processTokenMinter_s3_key }}
           TF_VAR_powerTuningCleanUp_s3_key: ${{ steps.promote_artifacts.outputs.powerTuningCleanUp_s3_key }}
@@ -650,6 +657,7 @@ jobs:
           TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_source_code_hash }}
           TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_source_code_hash }}
           TF_VAR_getTransactionLog_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionLog_source_code_hash }}
+          TF_VAR_getRevenueSummary_source_code_hash: ${{ steps.promote_artifacts.outputs.getRevenueSummary_source_code_hash }}
           TF_VAR_initRefGenerator_source_code_hash: ${{ steps.promote_artifacts.outputs.initRefGenerator_source_code_hash }}
           TF_VAR_processTokenMinter_source_code_hash: ${{ steps.promote_artifacts.outputs.processTokenMinter_source_code_hash }}
           TF_VAR_powerTuningCleanUp_source_code_hash: ${{ steps.promote_artifacts.outputs.powerTuningCleanUp_source_code_hash }}
