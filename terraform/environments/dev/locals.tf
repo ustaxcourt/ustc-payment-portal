@@ -59,6 +59,15 @@ locals {
     DASHBOARD_ALLOWED_ORIGIN = local.dashboard_allowed_origin
   }
 
+  # Scheduled sweep: transactions table only, no Pay.gov URLs or certs.
+  lambda_env_cancel_sweep = {
+    NODE_ENV       = local.node_env
+    APP_ENV        = local.app_env
+    RDS_ENDPOINT   = local.app_rds_endpoint
+    RDS_SECRET_ARN = local.app_rds_secret_arn
+    RDS_DB_NAME    = local.rds_db_name
+  }
+
   # Client-validation Lambda: validateClient
   # Reads the client-permissions secret and nothing else. Deliberately not
   # lambda_env_payment — this endpoint has no business holding the Pay.gov cert
@@ -103,6 +112,7 @@ locals {
     getRevenueSummary           = local.lambda_env_dashboard
     getTransactionsByStatus     = local.lambda_env_dashboard
     getTransactionPaymentStatus = local.lambda_env_dashboard
+    cancelExpired               = local.lambda_env_cancel_sweep
     migrationRunner             = local.lambda_env_migration
   }
 
@@ -121,6 +131,7 @@ locals {
     getRevenueSummary           = 256
     getTransactionsByStatus     = 256
     getTransactionPaymentStatus = 256
+    cancelExpired               = 256
     migrationRunner             = 256
   }
   github_oidc_provider_arn = "arn:aws:iam::723609007960:oidc-provider/token.actions.githubusercontent.com"

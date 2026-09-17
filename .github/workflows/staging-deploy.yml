@@ -207,6 +207,7 @@ jobs:
           echo "getDetails=${PREFIX}/getDetails.zip" >> $GITHUB_OUTPUT
           echo "validateClient=${PREFIX}/validateClient.zip" >> $GITHUB_OUTPUT
           echo "testCert=${PREFIX}/testCert.zip" >> $GITHUB_OUTPUT
+          echo "cancelExpired=${PREFIX}/cancelExpired.zip" >> $GITHUB_OUTPUT
           echo "migrationRunner=${PREFIX}/migrationRunner.zip" >> $GITHUB_OUTPUT
 
       # - name: Fetch artifact hashes (to see if tf change is needed)
@@ -244,6 +245,7 @@ jobs:
           TF_VAR_getDetails_s3_key: ${{ steps.artifacts.outputs.getDetails }}
           TF_VAR_validateClient_s3_key: ${{ steps.artifacts.outputs.validateClient }}
           TF_VAR_testCert_s3_key: ${{ steps.artifacts.outputs.testCert }}
+          TF_VAR_cancelExpired_s3_key: ${{ steps.artifacts.outputs.cancelExpired }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.artifacts.outputs.migrationRunner }}
           # AWS Chatbot → Microsoft Teams routing. Missing secrets disable Teams routing (enable_teams=false).
           TF_VAR_teams_tenant_id: ${{ secrets.STAGING_TEAMS_TENANT_ID }}

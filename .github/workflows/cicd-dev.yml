@@ -120,6 +120,7 @@ jobs:
           TF_VAR_getDetails_s3_key: ${{ steps.upload_artifacts_pr.outputs.getDetails_s3_key }}
           TF_VAR_validateClient_s3_key: ${{ steps.upload_artifacts_pr.outputs.validateClient_s3_key }}
           TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_pr.outputs.testCert_s3_key }}
+          TF_VAR_cancelExpired_s3_key: ${{ steps.upload_artifacts_pr.outputs.cancelExpired_s3_key }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_s3_key }}
           TF_VAR_getAllTransactions_s3_key: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_s3_key }}
           TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_s3_key }}
@@ -131,6 +132,7 @@ jobs:
           TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getDetails_source_code_hash }}
           TF_VAR_validateClient_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.validateClient_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.testCert_source_code_hash }}
+          TF_VAR_cancelExpired_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.cancelExpired_source_code_hash }}
           TF_VAR_migrationRunner_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_source_code_hash }}
           TF_VAR_getAllTransactions_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_source_code_hash }}
           TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_source_code_hash }}
@@ -159,6 +161,7 @@ jobs:
           TF_VAR_getDetails_s3_key: ${{ steps.upload_artifacts_pr.outputs.getDetails_s3_key }}
           TF_VAR_validateClient_s3_key: ${{ steps.upload_artifacts_pr.outputs.validateClient_s3_key }}
           TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_pr.outputs.testCert_s3_key }}
+          TF_VAR_cancelExpired_s3_key: ${{ steps.upload_artifacts_pr.outputs.cancelExpired_s3_key }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_s3_key }}
           TF_VAR_getAllTransactions_s3_key: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_s3_key }}
           TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_s3_key }}
@@ -170,6 +173,7 @@ jobs:
           TF_VAR_getDetails_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getDetails_source_code_hash }}
           TF_VAR_validateClient_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.validateClient_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.testCert_source_code_hash }}
+          TF_VAR_cancelExpired_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.cancelExpired_source_code_hash }}
           TF_VAR_migrationRunner_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_source_code_hash }}
           TF_VAR_getAllTransactions_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_source_code_hash }}
           TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_source_code_hash }}
@@ -580,6 +584,7 @@ jobs:
           TF_VAR_getDetails_s3_key: ${{ steps.promote_artifacts.outputs.getDetails_s3_key }}
           TF_VAR_validateClient_s3_key: ${{ steps.promote_artifacts.outputs.validateClient_s3_key }}
           TF_VAR_testCert_s3_key: ${{ steps.promote_artifacts.outputs.testCert_s3_key }}
+          TF_VAR_cancelExpired_s3_key: ${{ steps.promote_artifacts.outputs.cancelExpired_s3_key }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.promote_artifacts.outputs.migrationRunner_s3_key }}
           TF_VAR_getAllTransactions_s3_key: ${{ steps.promote_artifacts.outputs.getAllTransactions_s3_key }}
           TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_s3_key }}
@@ -594,6 +599,7 @@ jobs:
           TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
           TF_VAR_validateClient_source_code_hash: ${{ steps.promote_artifacts.outputs.validateClient_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
+          TF_VAR_cancelExpired_source_code_hash: ${{ steps.promote_artifacts.outputs.cancelExpired_source_code_hash }}
           TF_VAR_migrationRunner_source_code_hash: ${{ steps.promote_artifacts.outputs.migrationRunner_source_code_hash }}
           TF_VAR_getAllTransactions_source_code_hash: ${{ steps.promote_artifacts.outputs.getAllTransactions_source_code_hash }}
           TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_source_code_hash }}
@@ -638,6 +644,7 @@ jobs:
           TF_VAR_getDetails_s3_key: ${{ steps.promote_artifacts.outputs.getDetails_s3_key }}
           TF_VAR_validateClient_s3_key: ${{ steps.promote_artifacts.outputs.validateClient_s3_key }}
           TF_VAR_testCert_s3_key: ${{ steps.promote_artifacts.outputs.testCert_s3_key }}
+          TF_VAR_cancelExpired_s3_key: ${{ steps.promote_artifacts.outputs.cancelExpired_s3_key }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.promote_artifacts.outputs.migrationRunner_s3_key }}
           TF_VAR_getAllTransactions_s3_key: ${{ steps.promote_artifacts.outputs.getAllTransactions_s3_key }}
           TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_s3_key }}
@@ -652,6 +659,7 @@ jobs:
           TF_VAR_getDetails_source_code_hash: ${{ steps.promote_artifacts.outputs.getDetails_source_code_hash }}
           TF_VAR_validateClient_source_code_hash: ${{ steps.promote_artifacts.outputs.validateClient_source_code_hash }}
           TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
+          TF_VAR_cancelExpired_source_code_hash: ${{ steps.promote_artifacts.outputs.cancelExpired_source_code_hash }}
           TF_VAR_migrationRunner_source_code_hash: ${{ steps.promote_artifacts.outputs.migrationRunner_source_code_hash }}
           TF_VAR_getAllTransactions_source_code_hash: ${{ steps.promote_artifacts.outputs.getAllTransactions_source_code_hash }}
           TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_source_code_hash }}

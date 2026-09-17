@@ -69,6 +69,17 @@ export const isStaleProcessingTransaction = (row: {
   return ageMs >= PROCESSING_STALE_MS;
 };
 
+export const isExpiredInitiatedTransaction = (row: {
+  transactionStatus?: SchemaTransactionStatus | null;
+  createdAt: string;
+}): boolean => {
+  if (row.transactionStatus !== "initiated") {
+    return false;
+  }
+  const ageMs = Date.now() - new Date(row.createdAt).getTime();
+  return ageMs > MAX_TOKEN_AGE_MS;
+};
+
 const SIBLING_GONE_MESSAGE =
   "This token is no longer valid. Another transaction is already fulfilling this obligation. Use the getDetails API to check the current status.";
 
@@ -715,8 +726,38 @@ export default class TransactionModel extends Model {
     });
   }
 
-  // TODO: [Future Ticket] Implement findByTransactionReferenceId to retrieve
-  // all transaction attempts for a given transactionReferenceId. This is needed
-  // to populate the full transactions array in the process payment response.
-  // Until then, the response wraps the single current transaction in a one-element array.
+  // One statement, so Postgres re-checks the predicate after each row lock and SKIP LOCKED
+  // yields to a live POST /process, which takes locks with NOWAIT and would fail fast.
+  static async cancelExpiredBatch(limit: number): Promise<string[]> {
+    const knex = await getKnex();
+    const result = await knex.raw<{ rows: { agency_tracking_id: string }[] }>(
+      `UPDATE transactions
+          SET transaction_status = 'cancelled',
+              payment_status = 'failed'
+        WHERE agency_tracking_id IN (
+          SELECT agency_tracking_id
+            FROM transactions
+           WHERE transaction_status = 'initiated'
+             AND created_at < now() - make_interval(secs => ?)
+           ORDER BY created_at
+           LIMIT ?
+             FOR UPDATE SKIP LOCKED
+        )
+        RETURNING agency_tracking_id`,
+      [MAX_TOKEN_AGE_MS / 1000, limit],
+    );
+
+    return result.rows.map((row) => row.agency_tracking_id);
+  }
+
+  static async updateToCancelled(
+    agencyTrackingId: string,
+    trx?: Knex.Transaction,
+  ): Promise<number> {
+    await getKnex();
+    return TransactionModel.query(trx)
+      .patch({ transactionStatus: "cancelled", paymentStatus: "failed" })
+      .where("agencyTrackingId", agencyTrackingId)
+      .where("transactionStatus", "initiated");
+  }
 }

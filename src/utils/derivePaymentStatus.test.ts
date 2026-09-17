@@ -26,6 +26,28 @@ describe("derivePaymentStatus", () => {
     );
   });
 
+  it('returns "failed" when the only attempt was cancelled', () => {
+    expect(derivePaymentStatus([makeRow("cancelled")])).toBe("failed");
+  });
+
+  it('returns "failed" for a mix of failed and cancelled attempts', () => {
+    expect(
+      derivePaymentStatus([makeRow("failed"), makeRow("cancelled")]),
+    ).toBe("failed");
+  });
+
+  it('still returns "success" when a cancelled attempt sits beside a processed one', () => {
+    expect(
+      derivePaymentStatus([makeRow("cancelled"), makeRow("processed")]),
+    ).toBe("success");
+  });
+
+  it('returns "pending" when a cancelled attempt sits beside an in-flight one', () => {
+    expect(
+      derivePaymentStatus([makeRow("cancelled"), makeRow("initiated")]),
+    ).toBe("pending");
+  });
+
   it('returns "pending" when statuses are a mix without processed', () => {
     expect(derivePaymentStatus([makeRow("pending"), makeRow("failed")])).toBe(
       "pending",
@@ -66,5 +88,11 @@ describe("derivePaymentStatusFromSingleTransaction", () => {
 
   it('returns "pending" for "pending"', () => {
     expect(derivePaymentStatusFromSingleTransaction("pending")).toBe("pending");
+  });
+
+  it('returns "failed" for "cancelled"', () => {
+    expect(derivePaymentStatusFromSingleTransaction("cancelled")).toBe(
+      "failed",
+    );
   });
 });
