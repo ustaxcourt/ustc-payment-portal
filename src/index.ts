@@ -4,6 +4,7 @@ export * from "@entities/GetDetailsRequest";
 export * from "@errors/invalidRequest";
 export * from "@errors/failedTransaction";
 export { getAllTransactionsHandler } from "@handlers/getAllTransactionsHandler";
+export { getRevenueSummaryHandler } from "@handlers/getRevenueSummaryHandler";
 export { getTransactionLogHandler } from "@handlers/getTransactionLogHandler";
 export { getTransactionsByStatusHandler } from "@handlers/getTransactionsByStatusHandler";
 export { getTransactionPaymentStatusHandler } from "@handlers/getTransactionPaymentStatusHandler";
@@ -20,3 +21,4 @@ export type {
   GetDetailsPathParams,
   GetDetailsResponse,
 } from "@schemas/GetDetails.schema";
+export type { ValidateClientResponse } from "@schemas/ValidateClient.schema";

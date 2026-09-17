@@ -14,6 +14,10 @@ variable "getDetails_s3_key" {
   type = string
 }
 
+variable "validateClient_s3_key" {
+  type = string
+}
+
 variable "testCert_s3_key" {
   type = string
 }
@@ -30,6 +34,11 @@ variable "processPayment_source_code_hash" {
 }
 
 variable "getDetails_source_code_hash" {
+  type    = string
+  default = ""
+}
+
+variable "validateClient_source_code_hash" {
   type    = string
   default = ""
 }
@@ -108,3 +117,14 @@ variable "teams_channel_id" {
   default = null
 }
 
+variable "cancelExpired_s3_key" {
+  description = "S3 key for cancelExpired Lambda artifact"
+  type        = string
+  default     = ""
+}
+
+variable "cancelExpired_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for cancelExpired artifact"
+  type        = string
+  default     = ""
+}

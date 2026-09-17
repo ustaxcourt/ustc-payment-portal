@@ -28,13 +28,19 @@ import {
   TransactionPaymentStatusResponseSchema,
   TransactionsByStatusPathParamsSchema,
   TransactionsByStatusResponseSchema,
+  RevenueSummaryQuerySchema,
+  RevenueSummaryResponseSchema,
   TransactionLogQuerySchema,
   TransactionLogResponseSchema,
   MetadataDawsonSchema,
   MetadataNonattorneyExamSchema,
   MetadataSchema,
   DeployHealthReportSchema,
+  ValidateClientResponseSchema,
 } from "../schemas";
+
+import { CLIENT_NOT_REGISTERED_MESSAGE } from "@clients/permissionsClient";
+import { MISCONFIGURED_FEES_MESSAGE } from "@useCases/validateClient";
 
 export const registry = new OpenAPIRegistry();
 
@@ -81,6 +87,7 @@ registry.register(
   "TransactionPaymentStatusResponse",
   TransactionPaymentStatusResponseSchema,
 );
+registry.register("ValidateClientResponse", ValidateClientResponseSchema);
 
 // ============================================
 // AWS Signature Version 4 Security Scheme
@@ -399,6 +406,66 @@ registry.registerPath({
 });
 
 // ============================================
+// GET /revenue-summary - Revenue Summary
+// ============================================
+registry.registerPath({
+  method: "get",
+  path: "/revenue-summary",
+  summary: "Get the dashboard revenue summary",
+  description:
+    "Everything the dashboard's revenue totals table needs in one call: " +
+    "summed revenue and per-fee tallies for five fixed periods to date — " +
+    "day, week, month, fiscal quarter and fiscal year — plus year-over-year " +
+    "comparisons. Successful payments only. Periods open at Court-local " +
+    "midnight in America/New_York; the week opens on Sunday and the fiscal " +
+    "year on Oct 1. Totals and tallies are computed in a single statement, " +
+    "so a period's total always equals its summed fees. `yoyTrends` is " +
+    "omitted when the prior-year totals cannot be computed. Takes no " +
+    "parameters: the summary is always all periods, as of now — a consumer " +
+    "needing anything else wants a different endpoint, not a flag here.",
+  tags: ["Payments"],
+  security: [{ sigv4: [] }],
+  request: {
+    query: RevenueSummaryQuerySchema,
+  },
+  responses: {
+    200: {
+      description: "Revenue summary retrieved successfully",
+      content: {
+        "application/json": {
+          schema: RevenueSummaryResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: "Unexpected query parameters",
+      content: {
+        "application/json": {
+          schema: BadRequestErrorSchema,
+        },
+      },
+    },
+    403: {
+      description:
+        "Forbidden - invalid SigV4 signature or client not authorized",
+      content: {
+        "application/json": {
+          schema: ForbiddenErrorSchema,
+        },
+      },
+    },
+    500: {
+      description: "Internal server error",
+      content: {
+        "application/json": {
+          schema: ServerErrorSchema,
+        },
+      },
+    },
+  },
+});
+
+// ============================================
 // GET /transaction-log - Transaction Log
 // ============================================
 registry.registerPath({
@@ -417,10 +484,16 @@ registry.registerPath({
     "`pageSize` ceiling to 5000 for file exports that walk every page; on " +
     "export pages after the first, `counts` and `total` are omitted. " +
     "`includeTotals=true` adds summed revenue for five fixed periods to date " +
-    "— day, week, month, fiscal quarter and fiscal year — covering successful " +
-    "payments only and ignoring both the timeframe and the status, fee, " +
-    "paymentMethod, and transactionStatus filters. It follows the same rule " +
-    "as `counts` on export pages after the first.",
+    "and matching year-over-year comparisons — day, week, month, fiscal " +
+    "quarter and fiscal year — covering successful payments only and ignoring " +
+    "both the timeframe and the status, fee, paymentMethod, and " +
+    "transactionStatus filters. `includeFeeBreakdown=true` adds successful " +
+    "payments tallied per fee — count and summed amount — for the requested " +
+    "timeframe, ignoring the status, fee, paymentMethod, and " +
+    "transactionStatus filters, ordered by subtotal descending with every " +
+    "configured fee present even at zero. Both `includeTotals` and " +
+    "`includeFeeBreakdown` follow the same rule as `counts` on export pages " +
+    "after the first.",
   tags: ["Payments"],
   security: [{ sigv4: [] }],
   request: {
@@ -537,6 +610,55 @@ registry.registerPath({
     403: {
       description:
         "Forbidden - invalid SigV4 signature or client not authorized",
+      content: {
+        "application/json": {
+          schema: ForbiddenErrorSchema,
+        },
+      },
+    },
+    500: {
+      description: "Internal server error",
+      content: {
+        "application/json": {
+          schema: ServerErrorSchema,
+        },
+      },
+    },
+  },
+});
+
+// ============================================
+// GET /validate-client - Pre-golive Client Credential Check
+// ============================================
+registry.registerPath({
+  method: "get",
+  path: "/validate-client",
+  summary: "Validate a client's registration before go-live",
+  description:
+    "Confirms that a newly registered client's AWS account, IAM role ARN, and registered fees " +
+    "were entered correctly, without creating a Pay.gov session or writing any transaction state. " +
+    "Where the call fails is the diagnostic: a 403 from API Gateway means the account ID or the " +
+    `signing setup is wrong; a 403 reading '${CLIENT_NOT_REGISTERED_MESSAGE}' means the resolved ` +
+    "role ARN is not present in the client-permissions secret; and a 403 reading " +
+    `'${MISCONFIGURED_FEES_MESSAGE}' means the role resolved but the fees registered to it ` +
+    "are not usable.",
+  tags: ["Payments"],
+  security: [{ sigv4: [] }],
+  responses: {
+    200: {
+      description:
+        "Client is registered. Returns the resolved client name and every fee key registered to it.",
+      content: {
+        "application/json": {
+          schema: ValidateClientResponseSchema,
+        },
+      },
+    },
+    403: {
+      description:
+        "Forbidden - invalid SigV4 signature; or the resolved IAM role ARN is not registered in " +
+        "client-permissions; or the client's registered fee keys are misconfigured (the `*` " +
+        "wildcard, an empty set, or a key that does not resolve to an active fee).",
       content: {
         "application/json": {
           schema: ForbiddenErrorSchema,

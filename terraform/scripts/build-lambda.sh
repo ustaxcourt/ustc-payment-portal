@@ -83,6 +83,21 @@ npx esbuild src/handlers/getDetailsHandler.ts \
   --minify \
   --keep-names
 
+# Bundle Validate Client Lambda
+echo "Bundling validateClient..."
+mkdir -p dist/validateClient
+npx esbuild src/handlers/validateClientHandler.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/validateClient/validateClientHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
+
 # Bundle Test Cert Lambda
 echo "Bundling testCert..."
 mkdir -p dist/testCert
@@ -128,6 +143,21 @@ npx esbuild src/handlers/getTransactionLogHandler.ts \
   --minify \
   --keep-names
 
+# Bundle getRevenueSummary Lambda
+echo "Bundling getRevenueSummary..."
+mkdir -p dist/getRevenueSummary
+npx esbuild src/handlers/getRevenueSummaryHandler.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/getRevenueSummary/getRevenueSummaryHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
+
 # Bundle getTransactionsByStatus Lambda
 echo "Bundling getTransactionsByStatus..."
 mkdir -p dist/getTransactionsByStatus
@@ -152,6 +182,21 @@ npx esbuild src/handlers/getTransactionPaymentStatusHandler.ts \
   --target=node22 \
   --format=cjs \
   --outfile=dist/getTransactionPaymentStatus/getTransactionPaymentStatusHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  --minify \
+  --keep-names
+
+# Bundle Cancel Expired Lambda (EventBridge-scheduled sweep, no API Gateway route)
+echo "Bundling cancelExpired..."
+mkdir -p dist/cancelExpired
+npx esbuild src/handlers/cancelExpiredHandler.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=dist/cancelExpired/cancelExpiredHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
@@ -228,7 +273,7 @@ npx esbuild src/powerTuning/powerTuningCleanUp.ts \
 # Copy certificate files if they exist
 if [ -d "certs" ]; then
     echo "Copying certificate files..."
-    for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog; do
+    for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog getRevenueSummary; do
         if [ -d "dist/$func" ]; then
             cp -r certs dist/$func/
         fi
@@ -242,7 +287,12 @@ curl -sSf -o /tmp/rds-ca-bundle.pem \
 
 # Copy CA bundle to all Lambda functions that connect to RDS (testCert included:
 # its bundle is reused by healthCheck, whose RDS check must validate the CA).
-for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog powerTuningCleanUp; do
+# validateClient is deliberately absent from this list and from the certs loop
+# above: it reads the client-permissions secret and nothing else — no RDS, no
+# Pay.gov mTLS. It transitively imports knex via lambdaHandler, but with no
+# RDS_SECRET_ARN set that pool is never opened.
+# cancelExpired is absent from the certs loop above: it never calls Pay.gov, so RDS CA only.
+for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog getRevenueSummary cancelExpired powerTuningCleanUp; do
   cp /tmp/rds-ca-bundle.pem "dist/${func}/rds-ca-bundle.pem"
 done
 
@@ -271,17 +321,20 @@ echo "Bundled Lambda functions ready:"
 echo "  - dist/initPayment/initPaymentHandler.js"
 echo "  - dist/processPayment/processPaymentHandler.js"
 echo "  - dist/getDetails/getDetailsHandler.js"
+echo "  - dist/validateClient/validateClientHandler.js"
 echo "  - dist/testCert/lambdaHandler.js"
 echo "  - dist/getAllTransactions/getAllTransactionsHandler.js"
 echo "  - dist/getTransactionsByStatus/getTransactionsByStatusHandler.js"
 echo "  - dist/getTransactionPaymentStatus/getTransactionPaymentStatusHandler.js"
 echo "  - dist/getTransactionLog/getTransactionLogHandler.js"
+echo "  - dist/getRevenueSummary/getRevenueSummaryHandler.js"
+echo "  - dist/cancelExpired/cancelExpiredHandler.js"
 echo "  - dist/migrationRunner/lambdaHandler.js"
 
 # Show file sizes
 echo ""
 echo "Bundle sizes:"
-for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog migrationRunner; do
+for func in initPayment processPayment getDetails validateClient testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog getRevenueSummary cancelExpired migrationRunner; do
   output_file="lambdaHandler.js"
   if [ "$func" = "initPayment" ]; then
     output_file="initPaymentHandler.js"
@@ -289,6 +342,8 @@ for func in initPayment processPayment getDetails testCert getAllTransactions ge
     output_file="processPaymentHandler.js"
   elif [ "$func" = "getDetails" ]; then
     output_file="getDetailsHandler.js"
+  elif [ "$func" = "validateClient" ]; then
+    output_file="validateClientHandler.js"
   elif [ "$func" = "getAllTransactions" ]; then
     output_file="getAllTransactionsHandler.js"
   elif [ "$func" = "getTransactionsByStatus" ]; then
@@ -297,6 +352,10 @@ for func in initPayment processPayment getDetails testCert getAllTransactions ge
     output_file="getTransactionPaymentStatusHandler.js"
   elif [ "$func" = "getTransactionLog" ]; then
     output_file="getTransactionLogHandler.js"
+  elif [ "$func" = "getRevenueSummary" ]; then
+    output_file="getRevenueSummaryHandler.js"
+  elif [ "$func" = "cancelExpired" ]; then
+    output_file="cancelExpiredHandler.js"
   fi
 
   if [ -f "dist/$func/$output_file" ]; then

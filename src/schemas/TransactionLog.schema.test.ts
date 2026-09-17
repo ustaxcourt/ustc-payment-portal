@@ -4,6 +4,7 @@ import {
   TransactionLogQuerySchema,
   TransactionLogResponseSchema,
 } from "./TransactionLog.schema";
+import { mapCourtPeriods } from "@utils/courtDayBounds";
 
 const parse = (query: Record<string, string>) =>
   TransactionLogQuerySchema.safeParse(query);
@@ -210,8 +211,70 @@ describe("TransactionLogQuerySchema", () => {
       expect(result.data).toMatchObject({ transactionStatus: "processed" });
     });
 
+    it("accepts the cancelled transaction status filter", () => {
+      const result = parse({ transactionStatus: "cancelled" });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({ transactionStatus: "cancelled" });
+    });
+
     it("rejects a transaction status that is not a known value", () => {
-      expect(parse({ transactionStatus: "cancelled" }).success).toBe(false);
+      expect(parse({ transactionStatus: "abandoned" }).success).toBe(false);
+    });
+
+    it("accepts a metadata key and value supplied together", () => {
+      const result = parse({
+        metadataKey: "docketNumber",
+        metadataValue: "123-26",
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({
+        metadataSearch: { key: "docketNumber", value: "123-26" },
+      });
+    });
+
+    it("trims surrounding whitespace from the metadata value", () => {
+      const result = parse({
+        metadataKey: "email",
+        metadataValue: "  foo@example.com  ",
+      });
+
+      expect(result.data).toMatchObject({
+        metadataSearch: { value: "foo@example.com" },
+      });
+    });
+
+    // The whitelist is what keeps the key out of SQL, so an unknown key has to
+    // fail parsing rather than fall through.
+    it("rejects a metadata key that is not on the whitelist", () => {
+      expect(
+        parse({ metadataKey: "paygovToken", metadataValue: "x" }).success,
+      ).toBe(false);
+    });
+
+    it("rejects a metadata key without a value", () => {
+      const result = parse({ metadataKey: "docketNumber" });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0].message).toBe(
+        "`metadataKey` and `metadataValue` must be supplied together",
+      );
+    });
+
+    it("rejects a metadata value without a key", () => {
+      const result = parse({ metadataValue: "123-26" });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0].message).toBe(
+        "`metadataKey` and `metadataValue` must be supplied together",
+      );
+    });
+
+    it("rejects a blank metadata value", () => {
+      expect(
+        parse({ metadataKey: "docketNumber", metadataValue: "   " }).success,
+      ).toBe(false);
     });
   });
 
@@ -231,6 +294,38 @@ describe("TransactionLogQuerySchema", () => {
 
     it("rejects a value that is neither true nor false", () => {
       expect(parse({ includeTotals: "yes" }).success).toBe(false);
+    });
+  });
+
+  describe("includeFeeBreakdown", () => {
+    it("stays off when it is not asked for", () => {
+      expect(parse({}).data?.includeFeeBreakdown).toBe(false);
+    });
+
+    it('turns on for the string "true"', () => {
+      expect(
+        parse({ includeFeeBreakdown: "true" }).data?.includeFeeBreakdown,
+      ).toBe(true);
+    });
+
+    it('stays off for the string "false"', () => {
+      expect(
+        parse({ includeFeeBreakdown: "false" }).data?.includeFeeBreakdown,
+      ).toBe(false);
+    });
+
+    it("rejects a value that is neither true nor false", () => {
+      expect(parse({ includeFeeBreakdown: "yes" }).success).toBe(false);
+    });
+
+    it("survives the timeframe transform", () => {
+      const result = parse({
+        from: FROM,
+        to: TO,
+        includeFeeBreakdown: "true",
+      });
+
+      expect(result.data?.includeFeeBreakdown).toBe(true);
     });
   });
 });
@@ -259,18 +354,47 @@ describe("TransactionLogResponseSchema", () => {
 
     expect(result.success).toBe(true);
     expect(result.data).not.toHaveProperty("totals");
+    expect(result.data).not.toHaveProperty("feeBreakdown");
+  });
+
+  it("parses with a fee breakdown", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      feeBreakdown: [
+        {
+          fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+          feeName: "Non-Attorney Exam Registration Fee",
+          qty: 3,
+          subtotal: 750,
+        },
+        {
+          fee: "PETITION_FILING_FEE",
+          feeName: "Petition Filing Fee",
+          qty: 2,
+          subtotal: 120,
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.feeBreakdown?.[0].subtotal).toBe(750);
+  });
+
+  it("rejects a breakdown row missing its tally", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      feeBreakdown: [
+        { fee: "PETITION_FILING_FEE", feeName: "Petition Filing Fee" },
+      ],
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it("parses with a total for each of the five periods", () => {
     const result = TransactionLogResponseSchema.safeParse({
       ...response,
-      totals: {
-        day: period,
-        week: period,
-        month: period,
-        quarter: period,
-        fiscalYear: period,
-      },
+      totals: mapCourtPeriods(() => period),
     });
 
     expect(result.success).toBe(true);
@@ -293,16 +417,59 @@ describe("TransactionLogResponseSchema", () => {
     const result = TransactionLogResponseSchema.safeParse({
       ...response,
       totals: {
+        ...mapCourtPeriods(() => period),
         day: { ...period, total: -1 },
-        week: period,
-        month: period,
-        quarter: period,
-        fiscalYear: period,
       },
     });
 
     expect(result.success).toBe(true);
     expect(result.data?.totals?.day.total).toBe(-1);
+  });
+
+  it("parses YoY trends with one comparison per period", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      yoyTrends: mapCourtPeriods(() => ({
+        current: 100,
+        previous: 80,
+        difference: 20,
+        percentChange: 25,
+      })),
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.yoyTrends?.fiscalYear.percentChange).toBe(25);
+  });
+
+  it("parses a null YoY percent change when the previous total is zero", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      yoyTrends: mapCourtPeriods(() => ({
+        current: 100,
+        previous: 0,
+        difference: 100,
+        percentChange: null,
+      })),
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.yoyTrends?.fiscalYear.percentChange).toBeNull();
+  });
+
+  it("rejects YoY trends missing a period", () => {
+    const result = TransactionLogResponseSchema.safeParse({
+      ...response,
+      yoyTrends: {
+        day: {
+          current: 100,
+          previous: 80,
+          difference: 20,
+          percentChange: 25,
+        },
+      },
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 

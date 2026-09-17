@@ -28,6 +28,12 @@ variable "getDetails_s3_key" {
   default     = ""
 }
 
+variable "validateClient_s3_key" {
+  description = "S3 key for validateClient Lambda artifact"
+  type        = string
+  default     = ""
+}
+
 variable "testCert_s3_key" {
   description = "S3 key for testCert Lambda artifact"
   type        = string
@@ -59,6 +65,11 @@ variable "getTransactionLog_s3_key" {
   type        = string
   default     = ""
 }
+variable "getRevenueSummary_s3_key" {
+  description = "S3 key for getRevenueSummary Lambda artifact"
+  type        = string
+  default     = ""
+}
 
 variable "getAllTransactions_source_code_hash" {
   description = "Base64-encoded SHA256 hash for getAllTransactions artifact"
@@ -85,6 +96,11 @@ variable "getTransactionLog_source_code_hash" {
   type        = string
   default     = ""
 }
+variable "getRevenueSummary_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for getRevenueSummary artifact"
+  type        = string
+  default     = ""
+}
 
 variable "initPayment_source_code_hash" {
   description = "Base64-encoded SHA256 hash for initPayment artifact"
@@ -100,6 +116,12 @@ variable "processPayment_source_code_hash" {
 
 variable "getDetails_source_code_hash" {
   description = "Base64-encoded SHA256 hash for getDetails artifact"
+  type        = string
+  default     = ""
+}
+
+variable "validateClient_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for validateClient artifact"
   type        = string
   default     = ""
 }
@@ -161,4 +183,14 @@ variable "powerTuningCleanUp_source_code_hash" {
   default     = ""
 }
 
+variable "cancelExpired_s3_key" {
+  description = "S3 key for cancelExpired Lambda artifact"
+  type        = string
+  default     = ""
+}
 
+variable "cancelExpired_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for cancelExpired artifact"
+  type        = string
+  default     = ""
+}

@@ -1,5 +1,6 @@
 import TransactionModel from "./TransactionModel";
 import { getKnex } from "./knex";
+import { staticFees } from "../config/fees";
 
 jest.mock("./knex", () => ({ getKnex: jest.fn() }));
 
@@ -9,12 +10,14 @@ const TO = new Date("2026-08-04T04:00:00.000Z");
 const METHODS = [
   "where",
   "andWhere",
+  "whereRaw",
   "orderBy",
   "orderByRaw",
   "limit",
   "offset",
   "select",
   "count",
+  "sum",
   "groupBy",
 ];
 
@@ -148,6 +151,23 @@ describe("TransactionModel.queryLog", () => {
       );
     }
   });
+
+  it("applies a metadata search to both the page and its count", async () => {
+    const chains = stubQuery([], 2);
+
+    await TransactionModel.queryLog({
+      ...page,
+      metadataSearch: { key: "docketNumber", value: "123" },
+    });
+
+    expect(chains).toHaveLength(2);
+    for (const q of chains) {
+      expect(q.whereRaw).toHaveBeenCalledWith("metadata ->> ? ILIKE ?", [
+        "docketNumber",
+        "%123%",
+      ]);
+    }
+  });
 });
 
 describe("TransactionModel.countsInRange", () => {
@@ -181,6 +201,73 @@ describe("TransactionModel.countsInRange", () => {
       pending: 0,
       total: 9,
     });
+  });
+});
+
+describe("TransactionModel.countsAndFeeBreakdownInRange", () => {
+  const grouped = [
+    { paymentStatus: "success", fee: "PETITION_FILING_FEE", qty: "2", subtotal: "120.50" },
+    { paymentStatus: "success", fee: "NONATTORNEY_EXAM_REGISTRATION_FEE", qty: "1", subtotal: "250.00" },
+    { paymentStatus: "failed", fee: "PETITION_FILING_FEE", qty: "3", subtotal: "180.00" },
+    { paymentStatus: "pending", fee: "PETITION_FILING_FEE", qty: "1", subtotal: "60.00" },
+  ];
+
+  it("reads one statement, bounded on lastUpdatedAt with no status filter", async () => {
+    const chains = stubQuery([]);
+
+    await TransactionModel.countsAndFeeBreakdownInRange(FROM, TO);
+
+    expect(chains).toHaveLength(1);
+    const [q] = chains;
+    expect(q.where).toHaveBeenCalledWith("lastUpdatedAt", ">=", FROM);
+    expect(q.andWhere).toHaveBeenCalledWith("lastUpdatedAt", "<", TO);
+    expect(q.where).not.toHaveBeenCalledWith("paymentStatus", expect.anything());
+    expect(q.groupBy).toHaveBeenCalledWith("paymentStatus", "fee");
+    expect(q.count).toHaveBeenCalledWith("* as qty");
+    expect(q.sum).toHaveBeenCalledWith("transactionAmount as subtotal");
+  });
+
+  it("derives both aggregates from the same rows, so they cannot disagree", async () => {
+    stubQuery(grouped);
+
+    const { counts, tallies } = await TransactionModel.countsAndFeeBreakdownInRange(FROM, TO);
+
+    expect(counts).toEqual({ success: 3, failed: 3, pending: 1, total: 7 });
+    expect(tallies).toEqual([
+      { fee: "PETITION_FILING_FEE", qty: 2, subtotal: 120.5 },
+      { fee: "NONATTORNEY_EXAM_REGISTRATION_FEE", qty: 1, subtotal: 250 },
+    ]);
+    expect(counts.success).toBe(tallies.reduce((sum, tally) => sum + tally.qty, 0));
+  });
+
+  it("returns zero counts and no tallies for an empty timeframe", async () => {
+    stubQuery([]);
+
+    expect(await TransactionModel.countsAndFeeBreakdownInRange(FROM, TO)).toEqual({
+      counts: { success: 0, failed: 0, pending: 0, total: 0 },
+      tallies: [],
+    });
+  });
+
+  it("throws rather than reporting a silent $0 for a fee", async () => {
+    stubQuery([
+      { paymentStatus: "success", fee: "PETITION_FILING_FEE", qty: "2", subtotal: null },
+    ]);
+
+    await expect(
+      TransactionModel.countsAndFeeBreakdownInRange(FROM, TO),
+    ).rejects.toThrow('no usable tally for the "PETITION_FILING_FEE" fee');
+  });
+
+  it("tolerates a bad subtotal on a group the breakdown discards", async () => {
+    stubQuery([
+      { paymentStatus: "failed", fee: "PETITION_FILING_FEE", qty: "3", subtotal: null },
+    ]);
+
+    const { counts, tallies } = await TransactionModel.countsAndFeeBreakdownInRange(FROM, TO);
+
+    expect(counts).toEqual({ success: 0, failed: 3, pending: 0, total: 3 });
+    expect(tallies).toEqual([]);
   });
 });
 
@@ -377,5 +464,95 @@ describe("TransactionModel.totalsToDate", () => {
         "no usable total",
       );
     });
+  });
+});
+
+describe("TransactionModel.yoyTrends", () => {
+  const CURRENT_TOTALS = {
+    day: 120,
+    week: 1200,
+    month: 4800,
+    quarter: 14400,
+    fiscalYear: 57600,
+  };
+
+  const PREVIOUS_TOTALS = {
+    day: 100,
+    week: 1000,
+    month: 4000,
+    quarter: 12000,
+    fiscalYear: 48000,
+  };
+
+  it("returns one comparison object for every Court period", () => {
+    const result = TransactionModel.yoyTrends(CURRENT_TOTALS, PREVIOUS_TOTALS);
+
+    expect(result).toEqual({
+      day: { current: 120, previous: 100, difference: 20, percentChange: 20 },
+      week: {
+        current: 1200,
+        previous: 1000,
+        difference: 200,
+        percentChange: 20,
+      },
+      month: {
+        current: 4800,
+        previous: 4000,
+        difference: 800,
+        percentChange: 20,
+      },
+      quarter: {
+        current: 14400,
+        previous: 12000,
+        difference: 2400,
+        percentChange: 20,
+      },
+      fiscalYear: {
+        current: 57600,
+        previous: 48000,
+        difference: 9600,
+        percentChange: 20,
+      },
+    });
+  });
+
+  it("returns null when the previous period total is zero", () => {
+    const result = TransactionModel.yoyTrends(
+      {
+        day: 10,
+        week: 0,
+        month: 0,
+        quarter: 0,
+        fiscalYear: 0,
+      },
+      {
+        day: 0,
+        week: 0,
+        month: 0,
+        quarter: 0,
+        fiscalYear: 0,
+      },
+    );
+
+    expect(result.day.percentChange).toBeNull();
+    expect(result.week.percentChange).toBeNull();
+  });
+});
+
+describe("TransactionModel.attachFeeName", () => {
+  it("uses the stable fee-definition name for historical rows before activation", async () => {
+    const historicalRow = {
+      fee: "PETITION_FILING_FEE",
+      createdAt: "2025-01-15T12:00:00.000Z",
+    } as TransactionModel;
+
+    const attachFeeName = Object.getOwnPropertyDescriptor(
+      TransactionModel,
+      "attachFeeName",
+    )?.value as (row: TransactionModel) => TransactionModel;
+
+    const result = attachFeeName(historicalRow);
+
+    expect(result.feeName).toBe(staticFees.PETITION_FILING_FEE.name);
   });
 });

@@ -26,6 +26,7 @@ env:
   TF_VAR_initPayment_s3_key: "plan-only-no-artifact"
   TF_VAR_processPayment_s3_key: "plan-only-no-artifact"
   TF_VAR_getDetails_s3_key: "plan-only-no-artifact"
+  TF_VAR_validateClient_s3_key: "plan-only-no-artifact"
   TF_VAR_testCert_s3_key: "plan-only-no-artifact"
   TF_VAR_migrationRunner_s3_key: "plan-only-no-artifact"
 
@@ -44,9 +45,43 @@ jobs:
             echo "is_dependabot=false" >> $GITHUB_OUTPUT
           fi
 
+  # Cheap detection so three parallel AWS role assumptions only happen when
+  # Terraform changed. Same shape as migration-safety-pr.yml.
+  changes:
+    name: Detect Terraform changes
+    runs-on: ubuntu-latest
+    outputs:
+      terraform: ${{ steps.detect.outputs.terraform }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # terraform/ only — this workflow file is deliberately not a trigger.
+          # Array, not a string: zsh doesn't word-split. See PAY-428 plan.
+          PATHS=( terraform/ )
+          # Substitution, not a pipe: an early-exiting reader would SIGPIPE git
+          # mid-write, and pipefail would report that as "nothing changed".
+          MATCHED=$(git diff --name-only "$BASE_SHA...$HEAD_SHA" -- "${PATHS[@]}")
+          if [ -n "$MATCHED" ]; then
+            CHANGED=true
+            echo "Matched paths:"
+            echo "$MATCHED"
+          else
+            CHANGED=false
+          fi
+          echo "terraform=$CHANGED" >> "$GITHUB_OUTPUT"
+          echo "Terraform files changed: $CHANGED"
+
   plan:
-    needs: check_actor
-    if: needs.check_actor.outputs.is_dependabot != 'true'
+    needs: [check_actor, changes]
+    if: needs.check_actor.outputs.is_dependabot != 'true' && needs.changes.outputs.terraform == 'true'
     name: Plan (${{ matrix.env }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -166,8 +201,10 @@ jobs:
 
   comment:
     name: Post unified plan comment
-    needs: [check_actor, plan]
-    if: ${{ always() && github.event.pull_request.number && needs.check_actor.outputs.is_dependabot != 'true' }}
+    needs: [check_actor, changes, plan]
+    # Without the `changes` guard the artifact fallbacks below render a false
+    # "job did not produce output" for every env on non-Terraform PRs.
+    if: ${{ always() && github.event.pull_request.number && needs.check_actor.outputs.is_dependabot != 'true' && needs.changes.outputs.terraform == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -291,3 +328,40 @@ jobs:
           comment-id: ${{ steps.find_comment.outputs.comment-id }}
           edit-mode: replace
           body-file: comment-body.md
+
+  # The required status check — always runs so every PR gets a real red/green.
+  # Point branch protection at THIS, not the `Plan (env)` matrix jobs.
+  terraform-plan-gate:
+    name: Terraform Plan Gate
+    needs: [check_actor, changes, plan]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require the plan to have succeeded
+        env:
+          IS_DEPENDABOT: ${{ needs.check_actor.outputs.is_dependabot }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          TERRAFORM: ${{ needs.changes.outputs.terraform }}
+          # Matrix result aggregates: 'success' only if all three envs succeeded.
+          PLAN_RESULT: ${{ needs.plan.result }}
+        run: |
+          set -euo pipefail
+          if [ "$IS_DEPENDABOT" = "true" ]; then
+            echo "Dependabot PR — exempt by policy. Passing."
+            exit 0
+          fi
+          if [ "$CHANGES_RESULT" != "success" ]; then
+            echo "::error::Could not determine whether Terraform changed (changes job: $CHANGES_RESULT)."
+            exit 1
+          fi
+          if [ "$TERRAFORM" != "true" ]; then
+            echo "No Terraform changes in this PR — nothing to plan."
+            exit 0
+          fi
+          if [ "$PLAN_RESULT" = "success" ]; then
+            echo "Terraform plan succeeded for all environments."
+            exit 0
+          fi
+          echo "::error::Terraform plan did not succeed (result='$PLAN_RESULT'). See the PR comment."
+          exit 1

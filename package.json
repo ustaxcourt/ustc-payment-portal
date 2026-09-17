@@ -24,10 +24,11 @@
     "start": "node -r dotenv/config .",
     "test": "npx jest --config jest-unit.config.ts",
     "test:coverage": "npm run test -- --coverage",
-    "test:integration:dev": "APP_ENV=local npx jest ./src/test/integration/ --testPathIgnorePatterns=sigv4Smoke.test.ts --testPathIgnorePatterns=deployHealthSmoke.test.ts --testPathIgnorePatterns=/dist/ --testTimeout=30000",
-    "test:integration": "npx jest ./src/test/integration/ --testPathIgnorePatterns=sigv4Smoke.test.ts --testPathIgnorePatterns=deployHealthSmoke.test.ts --testTimeout=30000",
-    "test:integration:deployed": "npx jest ./src/test/integration/ --testPathIgnorePatterns=sigv4Smoke.test.ts --testPathIgnorePatterns=deployHealthSmoke.test.ts --testPathIgnorePatterns=migration.test.ts --testPathIgnorePatterns=proxyLoad.test.ts --testTimeout=30000",
+    "test:integration:dev": "APP_ENV=local npx jest ./src/test/integration/ --testPathIgnorePatterns=sigv4Smoke.test.ts --testPathIgnorePatterns=deployHealthSmoke.test.ts --testPathIgnorePatterns=validateClient.test.ts --testPathIgnorePatterns=/dist/ --testTimeout=30000",
+    "test:integration": "npx jest ./src/test/integration/ --testPathIgnorePatterns=sigv4Smoke.test.ts --testPathIgnorePatterns=deployHealthSmoke.test.ts --testPathIgnorePatterns=validateClient.test.ts --testTimeout=30000",
+    "test:integration:deployed": "npx jest ./src/test/integration/ --testPathIgnorePatterns=sigv4Smoke.test.ts --testPathIgnorePatterns=deployHealthSmoke.test.ts --testPathIgnorePatterns=validateClient.test.ts --testPathIgnorePatterns=migration.test.ts --testPathIgnorePatterns=proxyLoad.test.ts --testTimeout=30000",
     "test:integration:sigv4": "BASE_URL=$BASE_URL npx jest ./src/test/integration/sigv4Smoke.test.ts --coverage --verbose",
+    "test:integration:validate-client": "BASE_URL=$BASE_URL npx jest ./src/test/integration/validateClient.test.ts --verbose",
     "test:staging-e2e": "playwright test --config src/test/staging-e2e/playwright.config.ts",
     "test:staging-e2e:report": "playwright show-report src/test/staging-e2e/playwright-report",
     "test:deploy-health": "BASE_URL=$BASE_URL npx jest ./src/test/integration/deployHealthSmoke.test.ts --verbose",
@@ -35,6 +36,7 @@
     "test:types": "tsc --project tsconfig.test-types.json",
     "ci:publish": "npm run build && changeset publish",
     "generate:openapi": "ts-node -r tsconfig-paths/register src/openapi/generate.ts",
+    "print:fee-keys": "ts-node -r tsconfig-paths/register src/config/printFeeKeys.ts",
     "check:migration-safety": "ts-node src/migrationSafety/checkMigrationSafety.ts",
     "start:dev-server": "node scripts/start-dev-server-runtime.js",
     "start:all": "node -r dotenv/config scripts/start-local-stack.js",
@@ -140,23 +142,14 @@
     "access": "public"
   },
   "overrides": {
-    "read-yaml-file": "^2.1.0",
     "@istanbuljs/load-nyc-config": {
       "js-yaml": "^4.2.0"
     },
     "tsup": {
       "esbuild": "^0.28.2"
     },
-    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.221.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "^0.221.0",
-    "@opentelemetry/exporter-metrics-otlp-proto": "^0.221.0",
-    "@opentelemetry/exporter-trace-otlp-grpc": "^0.221.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.221.0",
-    "@opentelemetry/exporter-trace-otlp-proto": "^0.221.0",
     "babel-plugin-istanbul": "^8.0.2",
     "test-exclude": "^8.0.0",
-    "ejs": "^6.0.1",
-    "glob": "^13.0.6",
     "matcher-collection": {
       "minimatch": "^10.2.2"
     }

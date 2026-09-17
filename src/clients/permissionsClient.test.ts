@@ -65,6 +65,24 @@ describe("permissionsClient", () => {
       expect(mockGetSecretString).toHaveBeenCalledTimes(1);
     });
 
+    it("refetches on every call when the TTL is 0", async () => {
+      process.env.CLIENT_PERMISSIONS_CACHE_TTL_MS = "0";
+      jest.resetModules();
+
+      const freshPermissions = await import("./permissionsClient");
+      const freshSecrets = await import("./secretsClient");
+      const freshGetSecretString =
+        freshSecrets.getSecretString as jest.MockedFunction<
+          typeof getSecretString
+        >;
+      freshGetSecretString.mockResolvedValue(JSON.stringify(validPermissions));
+
+      await freshPermissions.getClientPermissions();
+      await freshPermissions.getClientPermissions();
+
+      expect(freshGetSecretString).toHaveBeenCalledTimes(2);
+    });
+
     it("throws ServerError when CLIENT_PERMISSIONS_SECRET_ID is not set", async () => {
       delete process.env.CLIENT_PERMISSIONS_SECRET_ID;
 

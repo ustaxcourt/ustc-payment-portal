@@ -45,6 +45,15 @@ resource "aws_api_gateway_resource" "transaction_log" {
   path_part   = "transaction-log"
 }
 
+# One-call summary for the dashboard's revenue totals table. Same posture as
+# transaction-log: SigV4, server-to-server only, no CORS.
+resource "aws_api_gateway_resource" "revenue_summary" {
+  count       = local.enable_dashboard_endpoints ? 1 : 0
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
+  path_part   = "revenue-summary"
+}
+
 ###################
 # GET Methods
 ###################
@@ -77,6 +86,14 @@ resource "aws_api_gateway_method" "transaction_log_get" {
   count         = local.enable_dashboard_endpoints ? 1 : 0
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   resource_id   = aws_api_gateway_resource.transaction_log[0].id
+  http_method   = "GET"
+  authorization = "AWS_IAM"
+}
+
+resource "aws_api_gateway_method" "revenue_summary_get" {
+  count         = local.enable_dashboard_endpoints ? 1 : 0
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.revenue_summary[0].id
   http_method   = "GET"
   authorization = "AWS_IAM"
 }
@@ -123,6 +140,16 @@ resource "aws_api_gateway_integration" "transaction_log_integration" {
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
   uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionLog"]}/invocations"
+}
+
+resource "aws_api_gateway_integration" "revenue_summary_integration" {
+  count                   = local.enable_dashboard_endpoints ? 1 : 0
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.revenue_summary[0].id
+  http_method             = aws_api_gateway_method.revenue_summary_get[0].http_method
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getRevenueSummary"]}/invocations"
 }
 
 ###################
@@ -278,6 +305,14 @@ resource "aws_lambda_permission" "transaction_log_permission" {
   function_name = var.lambda_function_arns["getTransactionLog"]
   principal     = "apigateway.amazonaws.com"
 }
+
+resource "aws_lambda_permission" "revenue_summary_permission" {
+  count         = local.enable_dashboard_endpoints ? 1 : 0
+  statement_id  = "AllowAPIGatewayInvokeRevenueSummary"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_function_arns["getRevenueSummary"]
+  principal     = "apigateway.amazonaws.com"
+}
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
@@ -311,6 +346,13 @@ resource "aws_api_gateway_resource" "test" {
   rest_api_id = aws_api_gateway_rest_api.rest.id
   parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
   path_part   = "test"
+}
+
+#GET /validate-client — pre-golive credential check for a newly registered client.
+resource "aws_api_gateway_resource" "validate_client" {
+  rest_api_id = aws_api_gateway_rest_api.rest.id
+  parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
+  path_part   = "validate-client"
 }
 
 #GET /health
@@ -351,6 +393,13 @@ resource "aws_api_gateway_method" "process_post" {
 resource "aws_api_gateway_method" "test_get" {
   rest_api_id   = aws_api_gateway_rest_api.rest.id
   resource_id   = aws_api_gateway_resource.test.id
+  http_method   = "GET"
+  authorization = "AWS_IAM"
+}
+
+resource "aws_api_gateway_method" "validate_client_get" {
+  rest_api_id   = aws_api_gateway_rest_api.rest.id
+  resource_id   = aws_api_gateway_resource.validate_client.id
   http_method   = "GET"
   authorization = "AWS_IAM"
 }
@@ -440,6 +489,15 @@ resource "aws_api_gateway_integration" "test_integration" {
   uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["testCert"]}/invocations"
 }
 
+resource "aws_api_gateway_integration" "validate_client_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.rest.id
+  resource_id             = aws_api_gateway_resource.validate_client.id
+  http_method             = aws_api_gateway_method.validate_client_get.http_method
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["validateClient"]}/invocations"
+}
+
 resource "aws_api_gateway_integration" "details_integration" {
   rest_api_id             = aws_api_gateway_rest_api.rest.id
   resource_id             = aws_api_gateway_resource.details_tracking.id
@@ -469,6 +527,7 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_resource.init.id,
       aws_api_gateway_resource.process.id,
       aws_api_gateway_resource.test.id,
+      aws_api_gateway_resource.validate_client.id,
       aws_api_gateway_resource.health.id,
       aws_api_gateway_resource.details.id,
       aws_api_gateway_resource.details_tracking.id,
@@ -477,10 +536,12 @@ resource "aws_api_gateway_deployment" "deployment" {
       try(aws_api_gateway_resource.transactions_by_status[0].id, ""),
       try(aws_api_gateway_resource.transaction_payment_status[0].id, ""),
       try(aws_api_gateway_resource.transaction_log[0].id, ""),
+      try(aws_api_gateway_resource.revenue_summary[0].id, ""),
 
       aws_api_gateway_method.init_post.id,
       aws_api_gateway_method.process_post.id,
       aws_api_gateway_method.test_get.id,
+      aws_api_gateway_method.validate_client_get.id,
       aws_api_gateway_method.health_get.id,
       aws_api_gateway_method.details_get.id,
 
@@ -488,6 +549,7 @@ resource "aws_api_gateway_deployment" "deployment" {
       try(aws_api_gateway_method.transactions_by_status_get[0].id, ""),
       try(aws_api_gateway_method.transaction_payment_status_get[0].id, ""),
       try(aws_api_gateway_method.transaction_log_get[0].id, ""),
+      try(aws_api_gateway_method.revenue_summary_get[0].id, ""),
 
       try(aws_api_gateway_method.transactions_options[0].id, ""),
       try(aws_api_gateway_method.transactions_by_status_options[0].id, ""),
@@ -496,12 +558,14 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_integration.init_integration.id,
       aws_api_gateway_integration.process_integration.id,
       aws_api_gateway_integration.test_integration.id,
+      aws_api_gateway_integration.validate_client_integration.id,
       aws_api_gateway_integration.health_integration.id,
       aws_api_gateway_integration.details_integration.id,
 
       aws_api_gateway_integration.init_integration.uri,
       aws_api_gateway_integration.process_integration.uri,
       aws_api_gateway_integration.test_integration.uri,
+      aws_api_gateway_integration.validate_client_integration.uri,
       aws_api_gateway_integration.health_integration.uri,
       aws_api_gateway_integration.details_integration.uri,
 
@@ -509,11 +573,13 @@ resource "aws_api_gateway_deployment" "deployment" {
       try(aws_api_gateway_integration.transactions_by_status_integration[0].id, ""),
       try(aws_api_gateway_integration.transaction_payment_status_integration[0].id, ""),
       try(aws_api_gateway_integration.transaction_log_integration[0].id, ""),
+      try(aws_api_gateway_integration.revenue_summary_integration[0].id, ""),
 
       try(aws_api_gateway_integration.transactions_integration[0].uri, ""),
       try(aws_api_gateway_integration.transactions_by_status_integration[0].uri, ""),
       try(aws_api_gateway_integration.transaction_payment_status_integration[0].uri, ""),
       try(aws_api_gateway_integration.transaction_log_integration[0].uri, ""),
+      try(aws_api_gateway_integration.revenue_summary_integration[0].uri, ""),
 
       try(aws_api_gateway_integration.transactions_options_integration[0].id, ""),
       try(aws_api_gateway_integration.transactions_by_status_options_integration[0].id, ""),
@@ -535,11 +601,13 @@ resource "aws_api_gateway_deployment" "deployment" {
     aws_api_gateway_integration.init_integration,
     aws_api_gateway_integration.process_integration,
     aws_api_gateway_integration.test_integration,
+    aws_api_gateway_integration.validate_client_integration,
     aws_api_gateway_integration.health_integration,
     aws_api_gateway_integration.details_integration,
     aws_api_gateway_integration.transactions_integration,
     aws_api_gateway_integration.transactions_by_status_integration,
     aws_api_gateway_integration.transaction_payment_status_integration,
+    aws_api_gateway_integration.revenue_summary_integration,
     aws_api_gateway_integration.transactions_options_integration,
     aws_api_gateway_integration.transactions_by_status_options_integration,
     aws_api_gateway_integration.transaction_payment_status_options_integration,
@@ -665,6 +733,16 @@ resource "aws_lambda_permission" "test_permissions" {
   function_name = var.lambda_function_arns["testCert"]
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/test"
+}
+
+# No alias qualifier: validateClient is not a payment-flow lambda, so it is
+# neither published nor aliased (see local.payment_flow_lambdas).
+resource "aws_lambda_permission" "validate_client_permissions" {
+  statement_id  = "AllowAPIGatewayInvokeValidateClient"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_function_arns["validateClient"]
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/validate-client"
 }
 
 resource "aws_lambda_permission" "health_permissions" {

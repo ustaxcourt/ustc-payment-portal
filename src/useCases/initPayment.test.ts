@@ -16,12 +16,19 @@ jest.mock("../db/TransactionModel", () => {
       ),
       updateToInitiated: jest.fn(() => Promise.resolve()),
       updateToFailed: jest.fn(() => Promise.resolve()),
+      updateToCancelled: jest.fn(() => Promise.resolve()),
     },
   };
 });
 
 jest.mock("../config/fees", () => ({
   __esModule: true,
+
+  getFeeNamesByKey: jest.fn(() => ({
+    PETITION_FILING_FEE: "Petition Filing Fee",
+    NONATTORNEY_EXAM_REGISTRATION_FEE: "Non-Attorney Exam Registration Fee",
+  })),
+
   getActiveFee: jest.fn((fee) => {
     if (fee === "PETITION_FILING_FEE") {
       return {
@@ -31,6 +38,7 @@ jest.mock("../config/fees", () => ({
         isVariable: false,
       };
     }
+
     if (fee === "NONATTORNEY_EXAM_REGISTRATION_FEE") {
       return {
         fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
@@ -39,6 +47,7 @@ jest.mock("../config/fees", () => ({
         isVariable: false,
       };
     }
+
     const { FeeNotFoundError } = jest.requireActual("../errors/feeNotFound");
     throw new FeeNotFoundError(fee);
   }),
@@ -243,6 +252,7 @@ describe("initPayment", () => {
       transactionReferenceId: validPetitionRequest.transactionReferenceId,
       transactionStatus: "initiated",
       paygovToken: "stale-token",
+      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
       lastUpdatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
     });
 
@@ -304,7 +314,8 @@ describe("initPayment", () => {
       transactionReferenceId: validPetitionRequest.transactionReferenceId,
       transactionStatus: "initiated",
       paygovToken: "existing-token-abc",
-      lastUpdatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+      createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+      lastUpdatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
     });
 
     const result = await initPayment(appContext, {
@@ -326,6 +337,7 @@ describe("initPayment", () => {
       transactionReferenceId: validPetitionRequest.transactionReferenceId,
       transactionStatus: "processing",
       paygovToken: "processing-token-abc",
+      createdAt: new Date().toISOString(),
       lastUpdatedAt: new Date().toISOString(),
     });
 
@@ -356,6 +368,7 @@ describe("initPayment", () => {
       transactionReferenceId: validPetitionRequest.transactionReferenceId,
       transactionStatus: "processing",
       paygovToken: stalePaygovToken,
+      createdAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
       lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
     });
 
@@ -369,11 +382,12 @@ describe("initPayment", () => {
       5009,
       "Existing token expired",
     );
+    expect(TransactionModel.updateToCancelled).not.toHaveBeenCalled();
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(result.token).toBe(freshPaygovToken);
   });
 
-  it("marks expired in-flight transaction as failed and creates a new one when token age >= 3 hours", async () => {
+  it("cancels an expired in-flight transaction and creates a new one when token age >= 3 hours", async () => {
     const expiredPaygovToken = crypto.randomUUID().replace(/-/g, "");
     const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
 
@@ -385,7 +399,8 @@ describe("initPayment", () => {
       transactionReferenceId: validPetitionRequest.transactionReferenceId,
       transactionStatus: "initiated",
       paygovToken: expiredPaygovToken,
-      lastUpdatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+      lastUpdatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
     });
 
     const result = await initPayment(appContext, {
@@ -393,11 +408,10 @@ describe("initPayment", () => {
       request: validPetitionRequest,
     });
 
-    expect(TransactionModel.updateToFailed).toHaveBeenCalledWith(
+    expect(TransactionModel.updateToCancelled).toHaveBeenCalledWith(
       "existing-id",
-      5009,
-      "Existing token expired",
     );
+    expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(result.token).toBe(freshPaygovToken);
   });
@@ -412,7 +426,8 @@ describe("initPayment", () => {
       transactionReferenceId: validPetitionRequest.transactionReferenceId,
       transactionStatus: "initiated",
       paygovToken: null,
-      lastUpdatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+      createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+      lastUpdatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
     });
 
     const result = await initPayment(appContext, {

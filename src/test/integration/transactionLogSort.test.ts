@@ -57,7 +57,8 @@ describe("GET /transaction-log ordering", () => {
     for (const row of rows) {
       const value = pick(row);
       if (value === null || value === undefined) continue;
-      if (runs.length === 0 || runs[runs.length - 1] !== value) runs.push(value);
+      if (runs.length === 0 || runs[runs.length - 1] !== value)
+        runs.push(value);
     }
     return runs;
   };
@@ -89,7 +90,10 @@ describe("GET /transaction-log ordering", () => {
       const expected = Object.values(PAYMENT_METHOD_LABELS).sort();
 
       const asc = await fetchLog({ sort: "paymentMethod", order: "asc" });
-      expectRelativeOrder(runsOf(asc.data, (r) => r.paymentMethod), expected);
+      expectRelativeOrder(
+        runsOf(asc.data, (r) => r.paymentMethod),
+        expected,
+      );
 
       const desc = await fetchLog({ sort: "paymentMethod", order: "desc" });
       expectRelativeOrder(
@@ -102,7 +106,10 @@ describe("GET /transaction-log ordering", () => {
       const expected = Object.values(getFeeNamesByKey()).sort();
 
       const asc = await fetchLog({ sort: "feeName", order: "asc" });
-      expectRelativeOrder(runsOf(asc.data, (r) => r.feeName), expected);
+      expectRelativeOrder(
+        runsOf(asc.data, (r) => r.feeName),
+        expected,
+      );
 
       const desc = await fetchLog({ sort: "feeName", order: "desc" });
       expectRelativeOrder(
@@ -158,7 +165,19 @@ describe("GET /transaction-log ordering", () => {
           (row) => row.agencyTrackingId,
         );
 
-      expect(await ids()).toEqual(await ids());
+      const first = await ids();
+      const second = await ids();
+
+      // A concurrent suite updating a row bumps its lastUpdatedAt past `to`,
+      // dropping it from the window between the calls and shifting the page
+      // boundary. Ordering is only comparable over the rows both calls saw.
+      const common = new Set(first.filter((id) => second.includes(id)));
+      if (first.length > 0 && second.length > 0) {
+        expect(common.size).toBeGreaterThan(0);
+      }
+      expect(first.filter((id) => common.has(id))).toEqual(
+        second.filter((id) => common.has(id)),
+      );
     });
   });
 

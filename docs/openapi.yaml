@@ -518,11 +518,15 @@ components:
             - processed
             - failed
             - pending
+            - cancelled
           description: >-
             The status of a single payment transaction attempt. `processing` is
             transient: POST /process has claimed the token and may be calling
             Pay.gov. `pending` usually means Pay.gov is still settling (e.g.
-            ACH). `processed` / `failed` are terminal for the attempt.
+            ACH). `cancelled` means the payer never completed the Pay.gov
+            session and the token outlived its TTL; nothing failed, the payment
+            simply never happened. `processed` / `failed` / `cancelled` are
+            terminal for the attempt.
           example: processed
         paymentMethod:
           type: string
@@ -564,11 +568,15 @@ components:
             - processed
             - failed
             - pending
+            - cancelled
           description: >-
             The status of a single payment transaction attempt. `processing` is
             transient: POST /process has claimed the token and may be calling
             Pay.gov. `pending` usually means Pay.gov is still settling (e.g.
-            ACH). `processed` / `failed` are terminal for the attempt.
+            ACH). `cancelled` means the payer never completed the Pay.gov
+            session and the token outlived its TTL; nothing failed, the payment
+            simply never happened. `processed` / `failed` / `cancelled` are
+            terminal for the attempt.
           example: processed
         paymentMethod:
           type: string
@@ -608,11 +616,15 @@ components:
         - processed
         - failed
         - pending
+        - cancelled
       description: >-
         The status of a single payment transaction attempt. `processing` is
         transient: POST /process has claimed the token and may be calling
         Pay.gov. `pending` usually means Pay.gov is still settling (e.g. ACH).
-        `processed` / `failed` are terminal for the attempt.
+        `cancelled` means the payer never completed the Pay.gov session and the
+        token outlived its TTL; nothing failed, the payment simply never
+        happened. `processed` / `failed` / `cancelled` are terminal for the
+        attempt.
       example: processed
     PaymentStatus:
       type: string
@@ -777,12 +789,16 @@ components:
             - processed
             - failed
             - pending
+            - cancelled
             - null
           description: >-
             The status of a single payment transaction attempt. `processing` is
             transient: POST /process has claimed the token and may be calling
             Pay.gov. `pending` usually means Pay.gov is still settling (e.g.
-            ACH). `processed` / `failed` are terminal for the attempt.
+            ACH). `cancelled` means the payer never completed the Pay.gov
+            session and the token outlived its TTL; nothing failed, the payment
+            simply never happened. `processed` / `failed` / `cancelled` are
+            terminal for the attempt.
           example: processed
         paymentMethod:
           type:
@@ -874,6 +890,29 @@ components:
         - success
         - failed
         - total
+    ValidateClientResponse:
+      type: object
+      properties:
+        clientName:
+          type: string
+          description: >-
+            Display name of the registered client, resolved from the
+            client-permissions secret using the IAM role ARN the request was
+            signed with.
+          example: DAWSON
+        allowedFeeKeys:
+          type: array
+          items:
+            type: string
+          description: >-
+            Every fee key registered to this client in the client-permissions
+            secret.
+          example:
+            - PETITION_FILING_FEE
+            - NONATTORNEY_EXAM_REGISTRATION_FEE
+      required:
+        - clientName
+        - allowedFeeKeys
     DeployHealthReport:
       type: object
       properties:
@@ -927,6 +966,249 @@ components:
       required:
         - status
         - latencyMs
+    RevenueSummaryResponse:
+      type: object
+      properties:
+        totals:
+          $ref: '#/components/schemas/RevenueSummaryTotals'
+        yoyTrends:
+          $ref: '#/components/schemas/TransactionYoYTrends'
+      required:
+        - totals
+      description: >-
+        Everything the dashboard's revenue totals table needs in one call:
+        per-period totals with fee tallies, and year-over-year trends. Replaces
+        composing `includeTotals` and per-period `includeFeeBreakdown` calls on
+        /transaction-log.
+    RevenueSummaryTotals:
+      type: object
+      properties:
+        day:
+          $ref: '#/components/schemas/RevenueSummaryPeriod'
+        week:
+          $ref: '#/components/schemas/RevenueSummaryPeriod'
+        month:
+          $ref: '#/components/schemas/RevenueSummaryPeriod'
+        quarter:
+          $ref: '#/components/schemas/RevenueSummaryPeriod'
+        fiscalYear:
+          $ref: '#/components/schemas/RevenueSummaryPeriod'
+      required:
+        - day
+        - week
+        - month
+        - quarter
+        - fiscalYear
+      description: >-
+        Successful payments only, in fixed periods to date. Periods open at
+        Court-local midnight; the week opens on Sunday, and the quarter and year
+        are fiscal — the year opens on Oct 1.
+    RevenueSummaryPeriod:
+      allOf:
+        - $ref: '#/components/schemas/TransactionTotalPeriod'
+        - type: object
+          properties:
+            fees:
+              $ref: '#/components/schemas/TransactionFeeBreakdown'
+          required:
+            - fees
+      description: >-
+        One dashboard period's collected total plus its per-fee tallies,
+        computed over the same window.
+    TransactionFeeBreakdown:
+      type: array
+      items:
+        $ref: '#/components/schemas/TransactionFeeBreakdownRow'
+      description: >-
+        Successful payments in the requested timeframe, tallied per fee and
+        ordered by subtotal descending. Every fee the Portal handles appears,
+        even with nothing collected. Honours `from`/`to` but ignores the status
+        filter. Computed in the same statement as `counts`, so `counts.success`
+        always equals the summed quantities. Omitted on export requests for
+        pages after the first.
+    TransactionFeeBreakdownRow:
+      type: object
+      properties:
+        fee:
+          type: string
+          description: Stable fee key (e.g. PETITION_FILING_FEE)
+          example: PETITION_FILING_FEE
+        feeName:
+          type: string
+          description: Human-readable fee name
+          example: Petition Filing Fee
+        qty:
+          type: integer
+          minimum: 0
+          description: Successful payments for the fee in the requested timeframe
+        subtotal:
+          type: number
+          description: Summed transaction amounts in USD
+      required:
+        - fee
+        - feeName
+        - qty
+        - subtotal
+    TransactionTotalPeriod:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+          description: Court-local midnight the period opened at
+        to:
+          type: string
+          format: date-time
+          description: Instant the period was totalled at — now, not period end
+        total:
+          type: number
+          description: Summed transaction amounts in USD
+      required:
+        - from
+        - to
+        - total
+    TransactionYoYTrends:
+      type: object
+      properties:
+        day:
+          type: object
+          properties:
+            current:
+              type: number
+              description: Amount collected during the current timeframe
+            previous:
+              type: number
+              description: >-
+                Amount collected during the corresponding timeframe one year
+                earlier
+            difference:
+              type: number
+              description: Current amount minus previous amount
+            percentChange:
+              type:
+                - number
+                - 'null'
+              description: >-
+                Percentage change from the previous period, or null when the
+                previous total is zero
+          required:
+            - current
+            - previous
+            - difference
+            - percentChange
+        week:
+          type: object
+          properties:
+            current:
+              type: number
+              description: Amount collected during the current timeframe
+            previous:
+              type: number
+              description: >-
+                Amount collected during the corresponding timeframe one year
+                earlier
+            difference:
+              type: number
+              description: Current amount minus previous amount
+            percentChange:
+              type:
+                - number
+                - 'null'
+              description: >-
+                Percentage change from the previous period, or null when the
+                previous total is zero
+          required:
+            - current
+            - previous
+            - difference
+            - percentChange
+        month:
+          type: object
+          properties:
+            current:
+              type: number
+              description: Amount collected during the current timeframe
+            previous:
+              type: number
+              description: >-
+                Amount collected during the corresponding timeframe one year
+                earlier
+            difference:
+              type: number
+              description: Current amount minus previous amount
+            percentChange:
+              type:
+                - number
+                - 'null'
+              description: >-
+                Percentage change from the previous period, or null when the
+                previous total is zero
+          required:
+            - current
+            - previous
+            - difference
+            - percentChange
+        quarter:
+          type: object
+          properties:
+            current:
+              type: number
+              description: Amount collected during the current timeframe
+            previous:
+              type: number
+              description: >-
+                Amount collected during the corresponding timeframe one year
+                earlier
+            difference:
+              type: number
+              description: Current amount minus previous amount
+            percentChange:
+              type:
+                - number
+                - 'null'
+              description: >-
+                Percentage change from the previous period, or null when the
+                previous total is zero
+          required:
+            - current
+            - previous
+            - difference
+            - percentChange
+        fiscalYear:
+          type: object
+          properties:
+            current:
+              type: number
+              description: Amount collected during the current timeframe
+            previous:
+              type: number
+              description: >-
+                Amount collected during the corresponding timeframe one year
+                earlier
+            difference:
+              type: number
+              description: Current amount minus previous amount
+            percentChange:
+              type:
+                - number
+                - 'null'
+              description: >-
+                Percentage change from the previous period, or null when the
+                previous total is zero
+          required:
+            - current
+            - previous
+            - difference
+            - percentChange
+      required:
+        - day
+        - week
+        - month
+        - quarter
+        - fiscalYear
+      description: >-
+        Year-over-year comparison of successful payment totals for each
+        dashboard period.
     TransactionLogResponse:
       type: object
       properties:
@@ -965,6 +1247,10 @@ components:
             filter. Omitted on export requests for pages after the first.
         totals:
           $ref: '#/components/schemas/TransactionTotals'
+        yoyTrends:
+          $ref: '#/components/schemas/TransactionYoYTrends'
+        feeBreakdown:
+          $ref: '#/components/schemas/TransactionFeeBreakdown'
       required:
         - data
         - from
@@ -1060,24 +1346,17 @@ components:
         Periods open at Court-local midnight; the week opens on Sunday, and the
         quarter and year are fiscal — the year opens on Oct 1. Omitted on export
         requests for pages after the first.
-    TransactionTotalPeriod:
-      type: object
-      properties:
-        from:
-          type: string
-          format: date-time
-          description: Court-local midnight the period opened at
-        to:
-          type: string
-          format: date-time
-          description: Instant the period was totalled at — now, not period end
-        total:
-          type: number
-          description: Summed transaction amounts in USD
-      required:
-        - from
-        - to
-        - total
+    TransactionLogMetadataKey:
+      type: string
+      enum:
+        - docketNumber
+        - email
+        - fullName
+        - accessCode
+      description: >-
+        Which metadata field to search. Must be supplied together with
+        `metadataValue`. `counts` and `totals` ignore it.
+      example: docketNumber
   parameters: {}
 paths:
   /init:
@@ -1325,6 +1604,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServerError'
+  /revenue-summary:
+    get:
+      summary: Get the dashboard revenue summary
+      description: >-
+        Everything the dashboard's revenue totals table needs in one call:
+        summed revenue and per-fee tallies for five fixed periods to date — day,
+        week, month, fiscal quarter and fiscal year — plus year-over-year
+        comparisons. Successful payments only. Periods open at Court-local
+        midnight in America/New_York; the week opens on Sunday and the fiscal
+        year on Oct 1. Totals and tallies are computed in a single statement, so
+        a period's total always equals its summed fees. `yoyTrends` is omitted
+        when the prior-year totals cannot be computed. Takes no parameters: the
+        summary is always all periods, as of now — a consumer needing anything
+        else wants a different endpoint, not a flag here.
+      tags:
+        - Payments
+      security:
+        - sigv4: []
+      responses:
+        '200':
+          description: Revenue summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueSummaryResponse'
+        '400':
+          description: Unexpected query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestError'
+        '403':
+          description: Forbidden - invalid SigV4 signature or client not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
   /transaction-log:
     get:
       summary: Get the transaction log
@@ -1340,10 +1662,16 @@ paths:
         `pageSize` ceiling to 5000 for file exports that walk every page; on
         export pages after the first, `counts` and `total` are omitted.
         `includeTotals=true` adds summed revenue for five fixed periods to date
-        — day, week, month, fiscal quarter and fiscal year — covering successful
-        payments only and ignoring both the timeframe and the status, fee,
-        paymentMethod, and transactionStatus filters. It follows the same rule
-        as `counts` on export pages after the first.
+        and matching year-over-year comparisons — day, week, month, fiscal
+        quarter and fiscal year — covering successful payments only and ignoring
+        both the timeframe and the status, fee, paymentMethod, and
+        transactionStatus filters. `includeFeeBreakdown=true` adds successful
+        payments tallied per fee — count and summed amount — for the requested
+        timeframe, ignoring the status, fee, paymentMethod, and
+        transactionStatus filters, ordered by subtotal descending with every
+        configured fee present even at zero. Both `includeTotals` and
+        `includeFeeBreakdown` follow the same rule as `counts` on export pages
+        after the first.
       tags:
         - Payments
       security:
@@ -1427,6 +1755,7 @@ paths:
               - processed
               - failed
               - pending
+              - cancelled
             description: >-
               Restricts rows to one transaction attempt status. `counts` and
               `totals` ignore it.
@@ -1436,6 +1765,29 @@ paths:
             Restricts rows to one transaction attempt status. `counts` and
             `totals` ignore it.
           name: transactionStatus
+          in: query
+        - schema:
+            $ref: '#/components/schemas/TransactionLogMetadataKey'
+          required: false
+          description: >-
+            Which metadata field to search. Must be supplied together with
+            `metadataValue`. `counts` and `totals` ignore it.
+          name: metadataKey
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+            description: >-
+              Case-insensitive substring matched against the metadata field
+              named by `metadataKey`. Must be supplied together with
+              `metadataKey`.
+            example: 123-26
+          required: false
+          description: >-
+            Case-insensitive substring matched against the metadata field named
+            by `metadataKey`. Must be supplied together with `metadataKey`.
+          name: metadataValue
           in: query
         - schema:
             type: integer
@@ -1516,16 +1868,38 @@ paths:
               - 'false'
             default: 'false'
             description: >-
-              Adds `totals` to the response. Fixed periods to date; ignores
-              `from`/`to`, `status`, `fee`, `paymentMethod`, and
+              Adds `totals` and `yoyTrends` to the response. Fixed periods to
+              date; ignores `from`/`to`, `status`, `fee`, `paymentMethod`, and
               `transactionStatus`.
             example: 'true'
           required: false
           description: >-
-            Adds `totals` to the response. Fixed periods to date; ignores
-            `from`/`to`, `status`, `fee`, `paymentMethod`, and
+            Adds `totals` and `yoyTrends` to the response. Fixed periods to
+            date; ignores `from`/`to`, `status`, `fee`, `paymentMethod`, and
             `transactionStatus`.
           name: includeTotals
+          in: query
+        - schema:
+            type: string
+            enum:
+              - 'true'
+              - 'false'
+            default: 'false'
+            description: >-
+              Adds `feeBreakdown` to the response: successful payments in the
+              requested timeframe, tallied per fee. Honours `from`/`to` but
+              ignores `status`, `fee`, `paymentMethod`, and `transactionStatus`,
+              so the figures stay stable as the caller filters. Omitted on
+              export requests for pages after the first, as `totals` is.
+            example: 'true'
+          required: false
+          description: >-
+            Adds `feeBreakdown` to the response: successful payments in the
+            requested timeframe, tallied per fee. Honours `from`/`to` but
+            ignores `status`, `fee`, `paymentMethod`, and `transactionStatus`,
+            so the figures stay stable as the caller filters. Omitted on export
+            requests for pages after the first, as `totals` is.
+          name: includeFeeBreakdown
           in: query
       responses:
         '200':
@@ -1615,6 +1989,47 @@ paths:
                 $ref: '#/components/schemas/TransactionPaymentStatusResponse'
         '403':
           description: Forbidden - invalid SigV4 signature or client not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+  /validate-client:
+    get:
+      summary: Validate a client's registration before go-live
+      description: >-
+        Confirms that a newly registered client's AWS account, IAM role ARN, and
+        registered fees were entered correctly, without creating a Pay.gov
+        session or writing any transaction state. Where the call fails is the
+        diagnostic: a 403 from API Gateway means the account ID or the signing
+        setup is wrong; a 403 reading 'Client not registered' means the resolved
+        role ARN is not present in the client-permissions secret; and a 403
+        reading 'Forbidden - authorized Fees was misconfigured.' means the role
+        resolved but the fees registered to it are not usable.
+      tags:
+        - Payments
+      security:
+        - sigv4: []
+      responses:
+        '200':
+          description: >-
+            Client is registered. Returns the resolved client name and every fee
+            key registered to it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateClientResponse'
+        '403':
+          description: >-
+            Forbidden - invalid SigV4 signature; or the resolved IAM role ARN is
+            not registered in client-permissions; or the client's registered fee
+            keys are misconfigured (the `*` wildcard, an empty set, or a key
+            that does not resolve to an active fee).
           content:
             application/json:
               schema:
