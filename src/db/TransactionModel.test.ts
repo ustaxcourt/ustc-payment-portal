@@ -585,6 +585,77 @@ describe("TransactionModel", () => {
     });
   });
 
+  describe("findByReferenceIdAndTransactionStatus", () => {
+    const clientName = "test-client";
+    const referenceId = "TXN-REF-001";
+
+    it("filters by clientName, transactionReferenceId, and the given transactionStatus list", async () => {
+      const builder = spyOnQuery();
+      const row = { agencyTrackingId: "TEST-INFLIGHT" };
+      builder.first.mockResolvedValueOnce(row);
+
+      const found = await TransactionModel.findByReferenceIdAndTransactionStatus(
+        clientName,
+        referenceId,
+        ["initiated", "processing", "pending", "processed"],
+      );
+
+      expect(builder.where).toHaveBeenCalledWith("clientName", clientName);
+      expect(builder.where).toHaveBeenCalledWith(
+        "transactionReferenceId",
+        referenceId,
+      );
+      expect(builder.whereIn).toHaveBeenCalledWith("transactionStatus", [
+        "initiated",
+        "processing",
+        "pending",
+        "processed",
+      ]);
+      expect(found).toBe(row);
+    });
+
+    it("passes the caller's transactionStatus list through as-is rather than hardcoding one", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+
+      await TransactionModel.findByReferenceIdAndTransactionStatus(
+        clientName,
+        referenceId,
+        ["failed"],
+      );
+
+      expect(builder.whereIn).toHaveBeenCalledWith("transactionStatus", [
+        "failed",
+      ]);
+    });
+
+    it("orders by createdAt ascending so the oldest matching attempt wins", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+
+      await TransactionModel.findByReferenceIdAndTransactionStatus(
+        clientName,
+        referenceId,
+        ["initiated"],
+      );
+
+      expect(builder.orderBy).toHaveBeenCalledWith("createdAt", "asc");
+    });
+
+    it("returns undefined when there is no matching attempt", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+
+      const found = await TransactionModel.findByReferenceIdAndTransactionStatus(
+        clientName,
+        "NO-MATCH",
+        ["initiated", "processing", "pending", "processed"],
+      );
+
+      expect(found).toBeUndefined();
+    });
+  });
+
   describe("queryLog", () => {
     const baseFilter = {
       from: new Date("2026-08-01T00:00:00Z"),
