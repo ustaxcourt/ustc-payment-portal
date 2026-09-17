@@ -68,25 +68,8 @@ export const initPayment: InitPayment = async (
   /* istanbul ignore next */
   appContext.logger.info("Authorized client for initPayment", clientLogFields);
 
-  let fee: ActiveFee;
   const hasAmount = amount !== undefined;
-
-  try {
-    fee = getActiveFee(feeKey);
-  } catch (error) {
-    if (error instanceof FeeNotFoundError) {
-      throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
-    }
-    throw error;
-  }
-
-  if (hasAmount !== fee.isVariable) {
-    throw new InvalidRequestError(
-      hasAmount
-        ? `Fee ${feeKey} does not allow variable amounts`
-        : `Fee ${feeKey} requires an amount`,
-    );
-  }
+  const fee = resolveFeeForRequest(feeKey, hasAmount);
 
   const shortCircuitResponse = await handleIfPaymentProcessedOrPending(
     appContext,
@@ -145,7 +128,12 @@ export const initPayment: InitPayment = async (
   try {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
-    logError(appContext, "Error making SOAP request to Pay.gov", err, baseLogFields);
+    logError(
+      appContext,
+      "Error making SOAP request to Pay.gov",
+      err,
+      baseLogFields,
+    );
     if (!(err instanceof ZodError || err instanceof FailedTransactionError)) {
       emitPayGovErrorMetric();
     }
@@ -164,7 +152,12 @@ export const initPayment: InitPayment = async (
     await TransactionModel.updateToInitiated(agencyTrackingId, result.token);
   } catch (err) {
     /* istanbul ignore next */
-    logError(appContext, "Failed to mark transaction as initiated", err, baseLogFields);
+    logError(
+      appContext,
+      "Failed to mark transaction as initiated",
+      err,
+      baseLogFields,
+    );
     await safeUpdateToFailed(appContext, agencyTrackingId);
     throw new ServerError(
       "Failed to record payment session. Please retry your transaction.",
@@ -180,6 +173,32 @@ export const initPayment: InitPayment = async (
     token: result.token,
     paymentRedirect: `${process.env.PAYMENT_URL}?token=${result.token}&tcsAppID=${fee.tcsAppId}`,
   };
+};
+
+const resolveFeeForRequest = (
+  feeKey: string,
+  hasAmount: boolean,
+): ActiveFee => {
+  let fee: ActiveFee;
+
+  try {
+    fee = getActiveFee(feeKey);
+  } catch (error) {
+    if (error instanceof FeeNotFoundError) {
+      throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
+    }
+    throw error;
+  }
+
+  if (hasAmount !== fee.isVariable) {
+    throw new InvalidRequestError(
+      hasAmount
+        ? `Fee ${feeKey} does not allow variable amounts`
+        : `Fee ${feeKey} requires an amount`,
+    );
+  }
+
+  return fee;
 };
 
 const rejectAlreadyPaidTransaction = (
@@ -239,12 +258,22 @@ const recordReceivedTransaction = async (
 
       const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
         "A payment session is already in-flight for this transactionReferenceId";
-      logError(appContext, EXISTING_IN_FLIGHT_TRANSACTION_ERROR, err, baseLogFields);
+      logError(
+        appContext,
+        EXISTING_IN_FLIGHT_TRANSACTION_ERROR,
+        err,
+        baseLogFields,
+      );
       emitInitPaymentConflictMetric("persist_race");
       throw new ConflictError(EXISTING_IN_FLIGHT_TRANSACTION_ERROR);
     }
 
-    logError(appContext, "Failed to record received transaction", err, baseLogFields);
+    logError(
+      appContext,
+      "Failed to record received transaction",
+      err,
+      baseLogFields,
+    );
 
     /* istanbul ignore next */
     throw new Error(
