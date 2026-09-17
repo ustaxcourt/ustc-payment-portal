@@ -86,7 +86,7 @@ export const initPayment: InitPayment = async (
   /* istanbul ignore next */
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
   const agencyTrackingId = generateAgencyTrackingId();
-  const baseLogFields = { transactionReferenceId, agencyTrackingId };
+  const baseLogFields = { transactionReferenceId, agencyTrackingId, clientName };
 
   const req = new StartOnlineCollectionRequest({
     tcsAppId: fee.tcsAppId,
@@ -100,7 +100,6 @@ export const initPayment: InitPayment = async (
     ...baseLogFields,
     transactionAmount,
     fee: feeKey,
-    clientName,
   });
 
   await recordReceivedTransaction(
@@ -120,7 +119,6 @@ export const initPayment: InitPayment = async (
     ...baseLogFields,
     transactionAmount,
     fee: feeKey,
-    clientName,
     metadata: request.metadata,
   });
 
@@ -247,15 +245,15 @@ const rejectIfAlreadyPaid = async (
 const recordReceivedTransaction = async (
   appContext: AppContext,
   createReceivedParams: ReceivedTransactionParams,
-  baseLogFields: { transactionReferenceId: string; agencyTrackingId: string },
+  baseLogFields: { transactionReferenceId: string; agencyTrackingId: string, clientName: string },
 ): Promise<void> => {
-  const { clientName, transactionReferenceId } = createReceivedParams;
+  const { transactionReferenceId } = createReceivedParams;
 
   try {
     await TransactionModel.createReceived(createReceivedParams);
   } catch (err) {
     if (isUniqueViolation(err)) {
-      await rejectIfAlreadyPaid(clientName, transactionReferenceId, appContext);
+      await rejectIfAlreadyPaid(baseLogFields.clientName, transactionReferenceId, appContext);
 
       const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
         "A payment session is already in-flight for this transactionReferenceId";
