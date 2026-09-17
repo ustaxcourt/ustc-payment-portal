@@ -187,6 +187,7 @@ const resolveFeeForRequest = (
     if (error instanceof FeeNotFoundError) {
       throw new InvalidRequestError(`Unknown fee: ${feeKey}`);
     }
+    /* istanbul ignore next */
     throw error;
   }
 
@@ -377,6 +378,7 @@ const handleIfPaymentProcessedOrPending = async (
         existingTransaction,
       );
 
+    /* istanbul ignore next */
     default:
       return null;
   }

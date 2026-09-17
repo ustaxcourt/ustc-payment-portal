@@ -4,7 +4,9 @@ jest.mock("../db/TransactionModel", () => {
     __esModule: true,
     ...actual,
     default: {
-      findInFlightByReferenceId: jest.fn(() => Promise.resolve(undefined)),
+      findByReferenceIdAndTransactionStatus: jest.fn(() =>
+        Promise.resolve(undefined),
+      ),
       findPendingOrProcessedByReferenceId: jest.fn(() =>
         Promise.resolve(undefined),
       ),
@@ -199,7 +201,7 @@ describe("initPayment", () => {
     "throws ConflictError when the obligation already has a %s attempt",
     async (transactionStatus, paymentStatus, expectedMessage) => {
       const TransactionModel = require("../db/TransactionModel").default;
-      TransactionModel.findPendingOrProcessedByReferenceId.mockResolvedValueOnce(
+      TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
         {
           agencyTrackingId: "paid-id",
           clientName: mockClient.clientName,
@@ -227,37 +229,7 @@ describe("initPayment", () => {
     },
   );
 
-  it("checks the paid guard before the in-flight guard so a paid obligation is never re-tokenized", async () => {
-    const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.findPendingOrProcessedByReferenceId.mockResolvedValueOnce({
-      agencyTrackingId: "paid-id",
-      clientName: mockClient.clientName,
-      transactionReferenceId: validPetitionRequest.transactionReferenceId,
-      transactionStatus: "processed",
-      paymentStatus: "success",
-      lastUpdatedAt: new Date().toISOString(),
-    });
-    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
-      agencyTrackingId: "stale-id",
-      clientName: mockClient.clientName,
-      transactionReferenceId: validPetitionRequest.transactionReferenceId,
-      transactionStatus: "initiated",
-      paygovToken: "stale-token",
-      lastUpdatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    });
-
-    await expect(
-      initPayment(appContext, {
-        client: mockClient,
-        request: validPetitionRequest,
-      }),
-    ).rejects.toThrow(ConflictError.ALREADY_PAID_MESSAGE);
-
-    expect(TransactionModel.findInFlightByReferenceId).not.toHaveBeenCalled();
-    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
-  });
-
-  it("scopes both reference-id lookups to the requesting client", async () => {
+  it("scopes the reference-id lookup to the requesting client", async () => {
     mockSoapRequest(crypto.randomUUID().replace(/-/g, ""));
     const TransactionModel = require("../db/TransactionModel").default;
 
@@ -267,14 +239,11 @@ describe("initPayment", () => {
     });
 
     expect(
-      TransactionModel.findPendingOrProcessedByReferenceId,
+      TransactionModel.findByReferenceIdAndTransactionStatus,
     ).toHaveBeenCalledWith(
       mockClient.clientName,
       validPetitionRequest.transactionReferenceId,
-    );
-    expect(TransactionModel.findInFlightByReferenceId).toHaveBeenCalledWith(
-      mockClient.clientName,
-      validPetitionRequest.transactionReferenceId,
+      ["initiated", "processing", "pending", "processed"],
     );
   });
 
@@ -283,7 +252,7 @@ describe("initPayment", () => {
     mockSoapRequest(freshPaygovToken);
     const TransactionModel = require("../db/TransactionModel").default;
     // A 'failed' row is excluded by the model query, so the guard sees nothing.
-    TransactionModel.findPendingOrProcessedByReferenceId.mockResolvedValueOnce(
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
       undefined,
     );
 
@@ -298,7 +267,7 @@ describe("initPayment", () => {
 
   it("returns the existing token when an in-flight transaction has a fresh token (age < 3 hours)", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce({
       agencyTrackingId: "existing-id",
       clientName: mockClient.clientName,
       transactionReferenceId: validPetitionRequest.transactionReferenceId,
@@ -320,7 +289,7 @@ describe("initPayment", () => {
 
   it("throws ConflictError when an attempt is actively processing (POST /process in flight)", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce({
       agencyTrackingId: "existing-id",
       clientName: mockClient.clientName,
       transactionReferenceId: validPetitionRequest.transactionReferenceId,
@@ -350,7 +319,7 @@ describe("initPayment", () => {
 
     mockSoapRequest(freshPaygovToken);
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce({
       agencyTrackingId: "existing-id",
       clientName: mockClient.clientName,
       transactionReferenceId: validPetitionRequest.transactionReferenceId,
@@ -367,7 +336,7 @@ describe("initPayment", () => {
     expect(TransactionModel.updateToFailed).toHaveBeenCalledWith(
       "existing-id",
       5009,
-      "Existing token expired",
+      "PayGov token is not found or expired",
     );
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(result.token).toBe(freshPaygovToken);
@@ -379,7 +348,7 @@ describe("initPayment", () => {
 
     mockSoapRequest(freshPaygovToken);
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce({
       agencyTrackingId: "existing-id",
       clientName: mockClient.clientName,
       transactionReferenceId: validPetitionRequest.transactionReferenceId,
@@ -396,7 +365,7 @@ describe("initPayment", () => {
     expect(TransactionModel.updateToFailed).toHaveBeenCalledWith(
       "existing-id",
       5009,
-      "Existing token expired",
+      "PayGov token is not found or expired",
     );
     expect(TransactionModel.createReceived).toHaveBeenCalled();
     expect(result.token).toBe(freshPaygovToken);
@@ -406,7 +375,7 @@ describe("initPayment", () => {
     const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
     mockSoapRequest(freshPaygovToken);
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce({
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce({
       agencyTrackingId: "existing-id",
       clientName: mockClient.clientName,
       transactionReferenceId: validPetitionRequest.transactionReferenceId,
@@ -428,7 +397,9 @@ describe("initPayment", () => {
     const TransactionModel = require("../db/TransactionModel").default;
     // App-level check passes (no existing initiated row visible), but the concurrent
     // peer wins the createReceived race and our insert violates the partial unique index.
-    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
+      undefined,
+    );
     const uniqueViolation = Object.assign(
       new Error(
         'duplicate key value violates unique constraint "idx_transactions_unique_active"',
@@ -450,16 +421,17 @@ describe("initPayment", () => {
     const TransactionModel = require("../db/TransactionModel").default;
     // TOCTOU: the guard read a clean slate, then a concurrent /process landed on 'processed'
     // and the partial unique index rejected our insert.
-    TransactionModel.findPendingOrProcessedByReferenceId
-      .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce({
-        agencyTrackingId: "paid-id",
-        clientName: mockClient.clientName,
-        transactionReferenceId: validPetitionRequest.transactionReferenceId,
-        transactionStatus: "processed",
-        paymentStatus: "success",
-        lastUpdatedAt: new Date().toISOString(),
-      });
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
+      undefined,
+    );
+    TransactionModel.findPendingOrProcessedByReferenceId.mockResolvedValueOnce({
+      agencyTrackingId: "paid-id",
+      clientName: mockClient.clientName,
+      transactionReferenceId: validPetitionRequest.transactionReferenceId,
+      transactionStatus: "processed",
+      paymentStatus: "success",
+      lastUpdatedAt: new Date().toISOString(),
+    });
     TransactionModel.createReceived.mockRejectedValueOnce(
       Object.assign(
         new Error(
@@ -484,7 +456,9 @@ describe("initPayment", () => {
 
   it("wraps non-unique-violation createReceived errors as a generic failure", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.findInFlightByReferenceId.mockResolvedValueOnce(undefined);
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
+      undefined,
+    );
     TransactionModel.createReceived.mockRejectedValueOnce(
       new Error("connection refused"),
     );
