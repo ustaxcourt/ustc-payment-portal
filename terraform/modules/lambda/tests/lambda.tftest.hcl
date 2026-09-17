@@ -240,3 +240,52 @@ run "supports_custom_prefix_and_runtime" {
     error_message = "runtime should match configured override"
   }
 }
+
+# A promoted build that predates a function yields an empty key. Failing here, at plan,
+# is what stops a partial apply from rewriting the functions that DO have artifacts.
+run "rejects_an_empty_artifact_key" {
+  command         = plan
+  expect_failures = [aws_lambda_function.functions]
+
+  variables {
+    lambda_execution_role_arn = "arn:aws:iam::123456789012:role/lambda-exec"
+    subnet_ids                = ["subnet-111111"]
+    security_group_ids        = ["sg-111111"]
+    artifact_bucket           = "ustc-payment-portal-build-artifacts"
+
+    artifact_s3_keys = {
+      initPayment = "artifacts/dev/initPayment.zip"
+      testCert    = ""
+    }
+    source_code_hashes = {
+      initPayment = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+      testCert    = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+    }
+    environment_variables_by_function = {
+      initPayment = { APP_ENV = "dev" }
+      testCert    = { APP_ENV = "dev" }
+    }
+  }
+}
+
+run "rejects_an_empty_source_code_hash" {
+  command         = plan
+  expect_failures = [aws_lambda_function.functions]
+
+  variables {
+    lambda_execution_role_arn = "arn:aws:iam::123456789012:role/lambda-exec"
+    subnet_ids                = ["subnet-111111"]
+    security_group_ids        = ["sg-111111"]
+    artifact_bucket           = "ustc-payment-portal-build-artifacts"
+
+    artifact_s3_keys = {
+      initPayment = "artifacts/dev/initPayment.zip"
+    }
+    source_code_hashes = {
+      initPayment = ""
+    }
+    environment_variables_by_function = {
+      initPayment = { APP_ENV = "dev" }
+    }
+  }
+}
