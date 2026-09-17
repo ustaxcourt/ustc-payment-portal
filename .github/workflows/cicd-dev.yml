@@ -623,6 +623,32 @@ jobs:
           echo "sha=$DEPLOY_SHA" >> $GITHUB_OUTPUT
           echo "Resolved deploy SHA (from promoted artifacts): $DEPLOY_SHA"
 
+      - name: Verify the promoted build contains every Lambda
+        run: |
+          set -euo pipefail
+          # The function list Terraform will apply, read from the module so this cannot
+          # drift as functions are added.
+          EXPECTED=$(grep -oE '^    [A-Za-z][A-Za-z0-9]* = \{' terraform/modules/lambda/main.tf \
+            | awk '{print $1}' | sort -u)
+          MISSING=""
+          for FUNC in $EXPECTED; do
+            # healthCheck deliberately reuses the testCert artifact.
+            KEY_FUNC="$FUNC"
+            [ "$FUNC" = "healthCheck" ] && KEY_FUNC="testCert"
+            if ! aws s3 ls "s3://${ARTIFACT_BUCKET}/artifacts/dev/${{ steps.resolve_deploy_sha.outputs.sha }}/${KEY_FUNC}.zip" >/dev/null 2>&1; then
+              MISSING="${MISSING} ${FUNC}"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Promoted build is missing artifacts for:${MISSING}"
+            echo "The promoted PR predates these functions. Merge a PR branched from current main"
+            echo "so its build contains every Lambda, then re-run this deploy."
+            exit 1
+          fi
+          echo "All ${EXPECTED} artifacts present in the promoted build."
+        env:
+          ARTIFACT_BUCKET: ${{ env.ARTIFACT_BUCKET }}
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:

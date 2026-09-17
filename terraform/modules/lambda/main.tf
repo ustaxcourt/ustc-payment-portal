@@ -92,6 +92,20 @@ resource "aws_lambda_function" "functions" {
   }
 
   tags = var.tags
+
+  # An empty key means artifact promotion did not produce a build for this function —
+  # usually because the promoted PR predates it. Failing at plan time stops a partial
+  # apply from rolling the functions that DO have artifacts back to that older build.
+  lifecycle {
+    precondition {
+      condition     = trimspace(each.value) != ""
+      error_message = "No artifact for Lambda '${each.key}'. The promoted build predates this function; promote a build that contains every function before applying."
+    }
+    precondition {
+      condition     = trimspace(var.source_code_hashes[each.key]) != ""
+      error_message = "No source_code_hash for Lambda '${each.key}'. Terraform cannot tell whether the code changed; promote a complete build before applying."
+    }
+  }
 }
 
 resource "aws_lambda_alias" "payment_flow_live" {
