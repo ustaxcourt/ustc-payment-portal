@@ -16,6 +16,7 @@ import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { ZodError } from "zod";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { type ActiveFee, getActiveFee } from "@/config/fees";
+import { getReturnCode } from "@/config/payGovReturnCodes";
 import { authorizeClient } from "../authorizeClient";
 import { isUniqueViolation } from "../db/pgErrors";
 import TransactionModel, {
@@ -25,7 +26,14 @@ import { FailedTransactionError } from "../errors/failedTransaction";
 import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 
-const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
+type ReceivedTransactionParams = {
+  agencyTrackingId: string;
+  fee: string;
+  clientName: string;
+  transactionReferenceId: string;
+  transactionAmount: number;
+  metadata: InitPaymentRequest["metadata"];
+};
 
 export type InitPayment = (
   appContext: AppContext,
@@ -112,36 +120,18 @@ export const initPayment: InitPayment = async (
     clientName,
   });
 
-  let result: Awaited<ReturnType<typeof req.makeSoapRequest>>;
-  try {
-    await TransactionModel.createReceived({
+  await recordReceivedTransaction(
+    appContext,
+    {
       agencyTrackingId,
       fee: feeKey,
       clientName,
       transactionReferenceId,
       transactionAmount,
       metadata: request.metadata,
-    });
-  } catch (err) {
-    if (isUniqueViolation(err)) {
-      await rejectIfAlreadyPaid(clientName, transactionReferenceId, appContext);
-
-      const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
-        "A payment session is already in-flight for this transactionReferenceId";
-      logError(appContext, EXISTING_IN_FLIGHT_TRANSACTION_ERROR, err, baseLogFields);
-      emitInitPaymentConflictMetric("persist_race");
-      throw new ConflictError(EXISTING_IN_FLIGHT_TRANSACTION_ERROR);
-    }
-
-    logError(appContext, "Failed to record received transaction", err, baseLogFields);
-
-    /* istanbul ignore next */
-    throw new Error(
-      `Failed to record received transaction: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-    );
-  }
+    },
+    baseLogFields,
+  );
 
   appContext.logger.info("Transaction received and recorded", {
     ...baseLogFields,
@@ -151,6 +141,7 @@ export const initPayment: InitPayment = async (
     metadata: request.metadata,
   });
 
+  let result: Awaited<ReturnType<typeof req.makeSoapRequest>>;
   try {
     result = await req.makeSoapRequest(appContext);
   } catch (err) {
@@ -223,9 +214,7 @@ const rejectIfAlreadyPaid = async (
       transactionReferenceId,
     );
 
-  if (!alreadyPaid) {
-    return;
-  }
+  if (!alreadyPaid) return;
 
   rejectAlreadyPaidTransaction(
     appContext,
@@ -233,6 +222,37 @@ const rejectIfAlreadyPaid = async (
     transactionReferenceId,
     alreadyPaid,
   );
+};
+
+const recordReceivedTransaction = async (
+  appContext: AppContext,
+  createReceivedParams: ReceivedTransactionParams,
+  baseLogFields: { transactionReferenceId: string; agencyTrackingId: string },
+): Promise<void> => {
+  const { clientName, transactionReferenceId } = createReceivedParams;
+
+  try {
+    await TransactionModel.createReceived(createReceivedParams);
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      await rejectIfAlreadyPaid(clientName, transactionReferenceId, appContext);
+
+      const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
+        "A payment session is already in-flight for this transactionReferenceId";
+      logError(appContext, EXISTING_IN_FLIGHT_TRANSACTION_ERROR, err, baseLogFields);
+      emitInitPaymentConflictMetric("persist_race");
+      throw new ConflictError(EXISTING_IN_FLIGHT_TRANSACTION_ERROR);
+    }
+
+    logError(appContext, "Failed to record received transaction", err, baseLogFields);
+
+    /* istanbul ignore next */
+    throw new Error(
+      `Failed to record received transaction: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
 };
 
 const resolveInFlightTransaction = async (
@@ -286,8 +306,8 @@ const resolveInFlightTransaction = async (
   });
   await TransactionModel.updateToFailed(
     existingTransaction.agencyTrackingId,
-    EXISTING_TOKEN_ERROR_CODE,
-    "Existing token expired",
+    5009,
+    getReturnCode(5009)?.returnDetail,
   );
   return null;
 };
