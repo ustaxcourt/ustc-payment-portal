@@ -289,3 +289,42 @@ run "rejects_an_empty_source_code_hash" {
     }
   }
 }
+
+# plan-only mode supplies the sentinel bucket and no artifacts; it must still plan.
+run "plan_only_mode_skips_the_artifact_guards" {
+  command = plan
+
+  variables {
+    lambda_execution_role_arn = "arn:aws:iam::123456789012:role/lambda-exec"
+    subnet_ids                = ["subnet-111111"]
+    security_group_ids        = ["sg-111111"]
+    artifact_bucket           = "plan-only-no-artifact"
+
+    artifact_s3_keys = {
+      initPayment     = ""
+      processPayment  = ""
+      getDetails      = ""
+      testCert        = ""
+      migrationRunner = ""
+    }
+    source_code_hashes = {
+      initPayment     = ""
+      processPayment  = ""
+      getDetails      = ""
+      testCert        = ""
+      migrationRunner = ""
+    }
+    environment_variables_by_function = {
+      initPayment     = { APP_ENV = "dev" }
+      processPayment  = { APP_ENV = "dev" }
+      getDetails      = { APP_ENV = "dev" }
+      testCert        = { APP_ENV = "dev" }
+      migrationRunner = { APP_ENV = "dev" }
+    }
+  }
+
+  assert {
+    condition     = aws_lambda_function.functions["initPayment"].s3_bucket == "plan-only-no-artifact"
+    error_message = "plan-only mode should plan without real artifacts"
+  }
+}

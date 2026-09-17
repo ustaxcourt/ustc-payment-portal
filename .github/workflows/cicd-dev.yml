@@ -630,12 +630,17 @@ jobs:
           # drift as functions are added.
           EXPECTED=$(grep -oE '^    [A-Za-z][A-Za-z0-9]* = \{' terraform/modules/lambda/main.tf \
             | awk '{print $1}' | sort -u)
+          if [ -z "${ARTIFACT_BUCKET}" ]; then
+            echo "::error::ARTIFACT_BUCKET is empty; cannot verify the promoted build."
+            exit 1
+          fi
           MISSING=""
           for FUNC in $EXPECTED; do
             # healthCheck deliberately reuses the testCert artifact.
             KEY_FUNC="$FUNC"
             [ "$FUNC" = "healthCheck" ] && KEY_FUNC="testCert"
-            if ! aws s3 ls "s3://${ARTIFACT_BUCKET}/artifacts/dev/${{ steps.resolve_deploy_sha.outputs.sha }}/${KEY_FUNC}.zip" >/dev/null 2>&1; then
+            if ! aws s3api head-object --bucket "${ARTIFACT_BUCKET}" \
+                 --key "artifacts/dev/${{ steps.resolve_deploy_sha.outputs.sha }}/${KEY_FUNC}.zip" >/dev/null 2>&1; then
               MISSING="${MISSING} ${FUNC}"
             fi
           done
@@ -647,7 +652,7 @@ jobs:
           fi
           echo "All ${EXPECTED} artifacts present in the promoted build."
         env:
-          ARTIFACT_BUCKET: ${{ env.ARTIFACT_BUCKET }}
+          ARTIFACT_BUCKET: ${{ steps.promote_artifacts.outputs.artifact_bucket }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
