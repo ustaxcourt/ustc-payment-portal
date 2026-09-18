@@ -1,4 +1,8 @@
 locals {
+  # terraform-plan.yml validates without building artifacts and passes this sentinel
+  # bucket; a plan that cannot apply does not need the artifact guards below.
+  plan_only = var.artifact_bucket == "plan-only-no-artifact"
+
   payment_flow_lambdas = toset(["initPayment", "processPayment", "getDetails"])
 
   lambda_functions = {
@@ -92,6 +96,20 @@ resource "aws_lambda_function" "functions" {
   }
 
   tags = var.tags
+
+  # An empty key means promotion omitted this function. Failing at plan stops a partial
+  # apply from rolling the functions that DO have artifacts back to that older build.
+  # Skipped in terraform-plan.yml's plan-only mode, which supplies no real artifacts.
+  lifecycle {
+    precondition {
+      condition     = local.plan_only || trimspace(each.value) != ""
+      error_message = "No artifact for Lambda '${each.key}'. The promoted build predates this function; promote a build that contains every function before applying."
+    }
+    precondition {
+      condition     = local.plan_only || trimspace(var.source_code_hashes[each.key]) != ""
+      error_message = "No source_code_hash for Lambda '${each.key}'. Terraform cannot tell whether the code changed; promote a complete build before applying."
+    }
+  }
 }
 
 resource "aws_lambda_alias" "payment_flow_live" {
