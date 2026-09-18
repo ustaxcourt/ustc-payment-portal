@@ -16,7 +16,7 @@ Context for all items: [`deploy-pre-golive.md`](runbooks/deploy/deploy-pre-goliv
 
 ---
 
-## Part 1 — Automated tests to build
+##  Part 1 — Automated tests to build
 
 ### T1. Prod post-deploy smoke / health check _(synthetic, read-only)_ — DONE
 

@@ -13,7 +13,7 @@ const isAppEnv = (value: string): value is AppEnv =>
 /**
  * Throws on unset or unrecognized APP_ENV — fail fast beats silent
  * miscategorization. Falls back to "test" when only Jest's auto-set
- * NODE_ENV=test is present, so unit tests don't have to set both.
+ * NODE_ENV=test is present,  so unit tests don't have to set both.
  */
 export const getAppEnv = (): AppEnv => {
   const raw = process.env.APP_ENV;
