@@ -7,7 +7,7 @@
     "payment-portal": "bin/ustc-payment-portal.js"
   },
   "engines": {
-    "node": ">=24.19.0 <25.0.0"
+    "node": ">=24.20.0 <25.0.0"
   },
   "scripts": {
     "clean": "rimraf dist/*",
@@ -142,9 +142,6 @@
     "access": "public"
   },
   "overrides": {
-    "@istanbuljs/load-nyc-config": {
-      "js-yaml": "^4.2.0"
-    },
     "tsup": {
       "esbuild": "^0.28.2"
     },
