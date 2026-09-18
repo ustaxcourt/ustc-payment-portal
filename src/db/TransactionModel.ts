@@ -700,7 +700,7 @@ export default class TransactionModel extends Model {
   static async findByReferenceIdAndTransactionStatus(
     clientName: string,
     transactionReferenceId: string,
-    transactionStatus: string[],
+    transactionStatus: TransactionStatus[],
   ): Promise<TransactionModel | undefined> {
     await getKnex();
     return TransactionModel.query()
