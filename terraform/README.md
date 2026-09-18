@@ -4,7 +4,7 @@ This directory contains Infrastructure as Code for the USTC Payment Portal. It i
 
 ## Terraform Version
 
-This project requires **Terraform ~> 1.15.0**. The `~>` constraint means any 1.15.x version is supported, but 1.16+ is not until explicitly upgraded.
+This project requires **Terraform ~> 1.16.0**. The `~>` constraint means any 1.16.x version is supported, but 1.17+ is not until explicitly upgraded.
 
 See [Upgrading Terraform](#upgrading-terraform) for the complete upgrade process.
 
@@ -213,11 +213,15 @@ When upgrading Terraform, update the version constraint in **all** of these loca
 | `terraform/environments/foundation/dev-networking/main.tf`  | Dev networking          |
 | `terraform/environments/foundation/stg-networking/main.tf`  | Staging networking      |
 | `terraform/environments/foundation/prod-networking/main.tf` | Production networking   |
+| `terraform/environments/foundation/github/main.tf`          | GitHub OIDC/foundation  |
 | `terraform/modules/api-gateway/versions.tf`                 | API Gateway module      |
 | `terraform/modules/artifacts_bucket/versions.tf`            | Artifacts bucket module |
+| `terraform/modules/cancel-sweep/versions.tf`                | Cancel sweep module     |
 | `terraform/modules/iam/versions.tf`                         | IAM module              |
 | `terraform/modules/lambda/versions.tf`                      | Lambda module           |
+| `terraform/modules/monitoring/versions.tf`                  | Monitoring module       |
 | `terraform/modules/networking/versions.tf`                  | Networking module       |
+| `terraform/modules/paygov-health/versions.tf`               | Pay.gov health module   |
 | `terraform/modules/rds/versions.tf`                         | RDS module              |
 | `terraform/modules/rds-proxy/versions.tf`                   | RDS Proxy module        |
 
@@ -227,9 +231,16 @@ Update the Terraform version in GitHub Actions workflows:
 
 | File                                   | Lines to Update                             |
 | -------------------------------------- | ------------------------------------------- |
-| `.github/workflows/cicd-dev.yml`       | `terraform_version` parameter (3 locations) |
+| `.github/workflows/cicd-dev.yml`       | `terraform_version` parameter (2 locations) |
 | `.github/workflows/staging-deploy.yml` | `terraform_version` parameter               |
 | `.github/workflows/prod-deploy.yml`    | `terraform_version` parameter               |
+| `.github/workflows/terraform-plan.yml` | `terraform_version` parameter               |
+| `.github/workflows/pr-cleanup.yml`     | `terraform_version` parameter               |
+| `.github/workflows/db-rollback.yml`    | `terraform_version` parameter               |
+
+Every `hashicorp/setup-terraform` step must pin `terraform_version`. Leaving it
+unset installs the latest release, which will violate the `required_version`
+constraint as soon as a new Terraform minor ships.
 
 Example change:
 
@@ -237,7 +248,7 @@ Example change:
 - name: Setup Terraform
   uses: hashicorp/setup-terraform@v4
   with:
-    terraform_version: "1.15.9" # Update this version
+    terraform_version: "1.16.3" # Update this version
 ```
 
 ### GitHub Action Updates
