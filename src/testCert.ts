@@ -35,9 +35,7 @@ async function runWsdlProbe(
       body,
     };
   } catch (err) {
-    logError(appContext, "Pay.gov health probe failed", err, {
-      errorStack: err instanceof Error ? err.stack : undefined,
-    });
+    logError(appContext, "Pay.gov health probe failed", err);
     // -1 latency = the probe failed before Pay.gov responded (no meaningful timing).
     if (isScheduledProbe) {
       emitPayGovHealthMetric(false, -1);

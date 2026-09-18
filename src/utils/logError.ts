@@ -10,5 +10,6 @@ export const logError = (
     ...context,
     errorName: err instanceof Error ? err.name : undefined,
     errorMessage: err instanceof Error ? err.message : String(err),
+    errorStack: err instanceof Error ? err.stack : undefined,
   });
 };

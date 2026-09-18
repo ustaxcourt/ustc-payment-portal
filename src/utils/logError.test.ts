@@ -19,6 +19,7 @@ describe("logError", () => {
     expect(error).toHaveBeenCalledWith("something failed", {
       errorName: "TypeError",
       errorMessage: "boom",
+      errorStack: err.stack,
     });
   });
 
@@ -36,6 +37,7 @@ describe("logError", () => {
       agencyTrackingId: "track-1",
       errorName: "Error",
       errorMessage: "db unreachable",
+      errorStack: err.stack,
     });
   });
 
@@ -48,6 +50,7 @@ describe("logError", () => {
       fee: "AGN",
       errorName: undefined,
       errorMessage: "raw string",
+      errorStack: undefined,
     });
   });
 });
