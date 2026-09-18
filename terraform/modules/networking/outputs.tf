@@ -10,7 +10,7 @@ output "public_subnet_id" {
 
 output "private_subnet_id" {
   value       = aws_subnet.private["us-east-1a"].id
-  description = "Private Subnet ID (us-east-1a, back-compat — prefer private_subnet_ids for new consumers)"
+  description = "Private Subnet ID (us-east-1a, back-compat — prefer  private_subnet_ids for new consumers)"
 }
 
 output "private_subnet_ids" {
