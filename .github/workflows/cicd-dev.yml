@@ -630,6 +630,17 @@ jobs:
           # drift as functions are added.
           EXPECTED=$(grep -oE '^    [A-Za-z][A-Za-z0-9]* = \{' terraform/modules/lambda/main.tf \
             | awk '{print $1}' | sort -u)
+          # An unmatched grep yields an empty list, and the loop below would then pass
+          # having checked nothing. initPayment is the canary: it predates every other
+          # function, so its absence means the parse broke rather than the module changing.
+          if [ -z "$EXPECTED" ] || ! echo "$EXPECTED" | grep -qx "initPayment"; then
+            echo "::error::Could not parse the function list from terraform/modules/lambda/main.tf."
+            echo "Parsed: ${EXPECTED:-<empty>}"
+            echo "The module's formatting likely changed; update the pattern in this step."
+            exit 1
+          fi
+          echo "Verifying $(echo "$EXPECTED" | wc -w | tr -d ' ') functions against the promoted build."
+
           if [ -z "${ARTIFACT_BUCKET}" ]; then
             echo "::error::ARTIFACT_BUCKET is empty; cannot verify the promoted build."
             exit 1
