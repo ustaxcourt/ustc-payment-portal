@@ -225,9 +225,9 @@ const rejectAlreadyPaidTransaction = (
 };
 
 const rejectIfAlreadyPaid = async (
+  appContext: AppContext,
   clientName: string,
   transactionReferenceId: string,
-  appContext: AppContext,
 ): Promise<void> => {
   const alreadyPaid =
     await TransactionModel.findPendingOrProcessedByReferenceId(
@@ -256,7 +256,7 @@ const recordReceivedTransaction = async (
     await TransactionModel.createReceived(createReceivedParams);
   } catch (err) {
     if (isUniqueViolation(err)) {
-      await rejectIfAlreadyPaid(baseLogFields.clientName, transactionReferenceId, appContext);
+      await rejectIfAlreadyPaid(appContext, baseLogFields.clientName, transactionReferenceId);
 
       const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
         "A payment session is already in-flight for this transactionReferenceId";
