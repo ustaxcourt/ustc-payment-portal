@@ -697,18 +697,17 @@ export default class TransactionModel extends Model {
     });
   }
 
-  // Returns the in-flight attempt for the obligation, if one exists. Scoped by clientName to
-  // match `idx_transactions_unique_active`, which is the actual enforcement mechanism; 'received'
-  // is not checked here because the index is the sole guard for that window.
-  static async findInFlightByReferenceId(
+  static async findByReferenceIdAndTransactionStatus(
     clientName: string,
     transactionReferenceId: string,
+    transactionStatus: TransactionStatus[],
   ): Promise<TransactionModel | undefined> {
     await getKnex();
     return TransactionModel.query()
       .where("clientName", clientName)
       .where("transactionReferenceId", transactionReferenceId)
-      .whereIn("transactionStatus", ["initiated", "processing"])
+      .whereIn("transactionStatus", transactionStatus)
+      .orderBy("createdAt", "asc")
       .first();
   }
 
