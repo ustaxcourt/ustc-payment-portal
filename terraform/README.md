@@ -236,6 +236,11 @@ Update the Terraform version in GitHub Actions workflows:
 | `.github/workflows/prod-deploy.yml`    | `terraform_version` parameter               |
 | `.github/workflows/terraform-plan.yml` | `terraform_version` parameter               |
 | `.github/workflows/pr-cleanup.yml`     | `terraform_version` parameter               |
+| `.github/workflows/db-rollback.yml`    | `terraform_version` parameter               |
+
+Every `hashicorp/setup-terraform` step must pin `terraform_version`. Leaving it
+unset installs the latest release, which will violate the `required_version`
+constraint as soon as a new Terraform minor ships.
 
 Example change:
 
