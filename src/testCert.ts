@@ -1,4 +1,5 @@
 import { getPayGovAuthHeaders } from "@clients/payGovAuthHeaders";
+import { logError } from "@utils/logError";
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "./appContext";
 import { emitPayGovHealthMetric } from "./health/payGovHealthMetric";
@@ -34,11 +35,7 @@ async function runWsdlProbe(
       body,
     };
   } catch (err) {
-    appContext.logger.error("Pay.gov health probe failed", {
-      errorName: err instanceof Error ? err.name : undefined,
-      errorMessage: err instanceof Error ? err.message : String(err),
-      errorStack: err instanceof Error ? err.stack : undefined,
-    });
+    logError(appContext, "Pay.gov health probe failed", err);
     // -1 latency = the probe failed before Pay.gov responded (no meaningful timing).
     if (isScheduledProbe) {
       emitPayGovHealthMetric(false, -1);

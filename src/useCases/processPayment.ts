@@ -1,26 +1,27 @@
-import { ZodError } from "zod";
 import type { AppContext } from "@appTypes/AppContext";
-import { CompleteOnlineCollectionWithDetailsRequest } from "@entities/CompleteOnlineCollectionWithDetailsRequest";
+import type { ClientPermission } from "@appTypes/ClientPermission";
 import type { ProcessPaymentRequest } from "@appTypes/ProcessPaymentRequest";
-import { ProcessPaymentResponse } from "@schemas/ProcessPayment.schema";
+import { CompleteOnlineCollectionWithDetailsRequest } from "@entities/CompleteOnlineCollectionWithDetailsRequest";
 import { ConflictError } from "@errors/conflict";
 import { FailedTransactionError } from "@errors/failedTransaction";
 import { GoneError } from "@errors/gone";
 import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
-import { parseTransactionStatus } from "./parseTransactionStatus";
+import type { ProcessPaymentResponse } from "@schemas/ProcessPayment.schema";
 import { derivePaymentStatusFromSingleTransaction } from "@utils/derivePaymentStatus";
-import type { ClientPermission } from "@appTypes/ClientPermission";
-import TransactionModel from "../db/TransactionModel";
-import { getActiveFee, type ActiveFee } from "../config/fees";
+import { logError } from "@utils/logError";
+import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { toPaymentMethod } from "@utils/toPaymentMethod";
 import { toTransactionRecordSummary } from "@utils/toTransactionRecordSummary";
-import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
-import { getPostgresErrorCode, isClaimContentionError } from "../db/pgErrors";
+import { ZodError } from "zod";
 import { authorizeClient } from "../authorizeClient";
-import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
+import { type ActiveFee, getActiveFee } from "../config/fees";
+import { getPostgresErrorCode, isClaimContentionError } from "../db/pgErrors";
+import TransactionModel from "../db/TransactionModel";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
+import { parseTransactionStatus } from "./parseTransactionStatus";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -87,11 +88,7 @@ const loadAuthorizedContext = async (
       "Fee configuration not found for this transaction",
     );
     /* istanbul ignore next */
-    appContext.logger.error("Fee lookup failed", {
-      ...baseLogFields,
-      errorName: err instanceof Error ? err.name : undefined,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
+    logError(appContext, "Fee lookup failed", err, baseLogFields);
     throw new ServerError("Fee configuration not found for this transaction");
   }
 
@@ -208,11 +205,9 @@ export const processPayment: ProcessPayment = async (
     }
 
     if (err instanceof ZodError) {
-      appContext.logger.error("Pay.gov response failed schema validation", {
+      logError(appContext, "Pay.gov response failed schema validation", err, {
         ...baseLogFields,
         fee: fee.fee,
-        errorName: err.name,
-        errorMessage: err.message,
       });
 
       await safeUpdateToFailed(
@@ -225,11 +220,9 @@ export const processPayment: ProcessPayment = async (
     }
 
     /* istanbul ignore next: This branch is for Pay.gov communication failures, which are rare in normal operation */
-    appContext.logger.error("Error communicating with Pay.gov", {
+    logError(appContext, "Error communicating with Pay.gov", err, {
       ...baseLogFields,
       fee: fee.fee,
-      errorName: err instanceof Error ? err.name : undefined,
-      errorMessage: err instanceof Error ? err.message : String(err),
     });
 
     emitPayGovErrorMetric();
@@ -276,14 +269,12 @@ export const processPayment: ProcessPayment = async (
     }
 
     /* istanbul ignore next: This branch is for database failures, which are rare in normal operation */
-    appContext.logger.error("Failed to persist Pay.gov response", {
+    logError(appContext, "Failed to persist Pay.gov response", err, {
       ...baseLogFields,
       fee: fee.fee,
       paygovTrackingId: result.paygov_tracking_id,
       parsedStatus,
       paymentStatus,
-      errorName: err instanceof Error ? err.name : undefined,
-      errorMessage: err instanceof Error ? err.message : String(err),
     });
 
     await safeUpdateToFailed(
