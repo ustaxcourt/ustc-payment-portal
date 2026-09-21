@@ -52,9 +52,10 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ### Terraform provider lockfiles — what is and isn't in scope (2026-09-17)
 
-- **Current:** the Terraform CLI was taken to `~> 1.16.0` / CI pin `1.16.3`
-  repo-wide, and the deprecated `data.aws_region.current.name` was replaced with
-  `.region` in the `api-gateway` and `rds-proxy` modules.
+- **Current:** the Terraform CLI was taken to `~> 1.16.0` repo-wide, with CI's
+  `terraform_version` set to the matching npm-semver range `~1.16.0`. The
+  deprecated `data.aws_region.current.name` was replaced with `.region` in the
+  `api-gateway` and `rds-proxy` modules.
 - **Why module lockfiles are not in scope at all:** `.gitignore` excludes
   `terraform/modules/**/.terraform.lock.hcl`, so module-level lockfiles are
   never committed. A clean checkout has none, and `terraform init` simply

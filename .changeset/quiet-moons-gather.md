@@ -16,7 +16,9 @@ Dependency updates for the week of 2026-09-14.
   `tsx`, `fast-xml-parser`, `js-yaml`, and `@asteasolutions/zod-to-openapi`.
 - Bumped `@ustaxcourt/ustc-pay-gov-test-server` to `^0.3.0`.
 - Upgraded Terraform from `~> 1.15.0` to `~> 1.16.0` across all modules and
-  environments, with the CI pin moved from `1.15.9` to `1.16.3`.
+  environments. The CI `terraform_version` moved from the exact `1.15.9` to the
+  range `~1.16.0`, so workflows track patch releases within the same minor the
+  `required_version` constraint allows.
 - Dropped the inert `@istanbuljs/load-nyc-config` → `js-yaml` override. It
   forced a major over the `^3.13.1` that package declares, guarded a code path
   this repo never executes (no `.nycrc`), and no advisory covers the version it

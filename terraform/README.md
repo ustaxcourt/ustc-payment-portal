@@ -238,9 +238,15 @@ Update the Terraform version in GitHub Actions workflows:
 | `.github/workflows/pr-cleanup.yml`     | `terraform_version` parameter               |
 | `.github/workflows/db-rollback.yml`    | `terraform_version` parameter               |
 
-Every `hashicorp/setup-terraform` step must pin `terraform_version`. Leaving it
+Every `hashicorp/setup-terraform` step must set `terraform_version`. Leaving it
 unset installs the latest release, which will violate the `required_version`
 constraint as soon as a new Terraform minor ships.
+
+Pin it to a tilde range matching the `required_version` constraint above, so CI
+picks up patch releases automatically but never crosses a minor. Note that
+`setup-terraform` uses [npm semver ranges](https://www.npmjs.com/package/semver#ranges),
+not Terraform's `~>` syntax — so the equivalent of `~> 1.16.0` is written
+`~1.16.0`, and both mean `>=1.16.0 <1.17.0`.
 
 Example change:
 
@@ -248,7 +254,7 @@ Example change:
 - name: Setup Terraform
   uses: hashicorp/setup-terraform@v4
   with:
-    terraform_version: "1.16.3" # Update this version
+    terraform_version: "~1.16.0" # Bump when required_version moves to a new minor
 ```
 
 ### GitHub Action Updates
