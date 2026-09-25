@@ -13,6 +13,13 @@ import {
 const hoursBetween = (start: Date, end: Date): number =>
   (end.getTime() - start.getTime()) / 3_600_000;
 
+const courtTimeOfDay = (
+  instant: Date,
+): { hour: number; minute: number; second: number } => {
+  const { hour, minute, second } = partsInZone(instant, "America/New_York");
+  return { hour, minute, second };
+};
+
 describe("courtDayBounds", () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -211,10 +218,8 @@ describe("courtPeriodBounds", () => {
     expect(previousPeriods.week.end.toISOString()).toBe(
       "2025-08-18T15:00:00.000Z",
     );
-    expect(
-      previousPeriods.week.end.getTime() - previousPeriods.week.start.getTime(),
-    ).toBe(
-      currentPeriods.week.end.getTime() - currentPeriods.week.start.getTime(),
+    expect(courtTimeOfDay(previousPeriods.week.end)).toEqual(
+      courtTimeOfDay(currentPeriods.week.end),
     );
   });
 
@@ -324,6 +329,68 @@ describe("previousCourtPeriodBounds", () => {
       expect(day.end.toISOString()).toBe(expectedPreviousEnd);
     },
   );
+
+  describe("week", () => {
+    it.each([
+      // The prior week never crosses the change, so elapsed hours and Court
+      // wall-clock hours disagree by one across it.
+      [
+        "spring transition gap",
+        "2025-03-09T15:00:00.000Z", // Sunday, 11:00 AM EDT
+        "2024-03-03T05:00:00.000Z", // Sunday midnight EST
+        "2024-03-03T16:00:00.000Z", // 11:00 AM EST
+      ],
+      [
+        "fall transition gap",
+        "2026-11-01T15:00:00.000Z", // Sunday, 10:00 AM EST
+        "2025-10-26T04:00:00.000Z", // Sunday midnight EDT
+        "2025-10-26T14:00:00.000Z", // 10:00 AM EDT
+      ],
+    ])(
+      "closes the previous week-to-date on the Court wall clock across the %s",
+      (_label, now, expectedStart, expectedEnd) => {
+        const { week } = previousCourtPeriodBounds(new Date(now));
+
+        expect(week.start.toISOString()).toBe(expectedStart);
+        expect(week.end.toISOString()).toBe(expectedEnd);
+      },
+    );
+
+    it.each([
+      ["spring transition gap", "2025-03-09T15:00:00.000Z"],
+      ["fall transition gap", "2026-11-01T15:00:00.000Z"],
+    ])(
+      "ends both weeks at the same Court time of day across the %s",
+      (_label, now) => {
+        const previous = previousCourtPeriodBounds(new Date(now));
+        const current = courtPeriodBounds(new Date(now));
+
+        expect(courtTimeOfDay(previous.week.end)).toEqual(
+          courtTimeOfDay(current.week.end),
+        );
+      },
+    );
+
+    it("keeps the elapsed duration when neither week crosses a change", () => {
+      const now = new Date("2026-08-17T15:00:00.000Z");
+      const previous = previousCourtPeriodBounds(now);
+      const current = courtPeriodBounds(now);
+
+      expect(hoursBetween(previous.week.start, previous.week.end)).toBe(
+        hoursBetween(current.week.start, current.week.end),
+      );
+    });
+
+    it("carries the weekday offset past the end of the month", () => {
+      // Tuesday 2026-09-01; the prior year's week opened Sunday 2025-08-31.
+      const { week } = previousCourtPeriodBounds(
+        new Date("2026-09-01T15:00:00.000Z"),
+      );
+
+      expect(week.start.toISOString()).toBe("2025-08-31T04:00:00.000Z");
+      expect(week.end.toISOString()).toBe("2025-09-02T15:00:00.000Z");
+    });
+  });
 });
 
 describe("shiftCourtYear", () => {
