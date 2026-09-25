@@ -127,11 +127,11 @@ export const shiftCourtYear = (instant: Date, yearDelta: number): Date => {
   const targetYear = parts.year + yearDelta;
   const targetDay =
     parts.month === 2 &&
-    parts.day === 29 &&
-    !(
-      targetYear % 4 === 0 &&
-      (targetYear % 100 !== 0 || targetYear % 400 === 0)
-    )
+      parts.day === 29 &&
+      !(
+        targetYear % 4 === 0 &&
+        (targetYear % 100 !== 0 || targetYear % 400 === 0)
+      )
       ? 28
       : parts.day;
 
@@ -255,14 +255,11 @@ export const courtPeriodBounds = (
 export const previousCourtPeriodBounds = (
   now: Date = new Date(),
 ): CourtPeriodRecord<Bounds> => {
-  // Shift by Court-local year and preserve the America/New_York wall-clock
-  // time across DST boundaries (for example 11:00 EDT -> 11:00 EST).
+
   const shiftedNow = shiftCourtYear(now, -1);
   const previousPeriods = courtPeriodBounds(shiftedNow);
   const shiftedWeek = previousPeriods.week;
 
-  // A year shift moves the weekday, so the shifted instant sits at a different
-  // position in its week and cannot close it.
   const nowParts = partsInZone(now, COURT_TIME_ZONE);
   const weekday = courtWeekday(nowParts);
   const shiftedWeekStart = partsInZone(shiftedWeek.start, COURT_TIME_ZONE);
@@ -271,8 +268,6 @@ export const previousCourtPeriodBounds = (
     ...previousPeriods,
     week: {
       start: shiftedWeek.start,
-      // Elapsed milliseconds are not a position in the Court-local week: a week
-      // holding a DST change moves its wall clock an hour more or less than the epoch.
       end: zonedDateTimeToUtc(
         {
           year: shiftedWeekStart.year,
