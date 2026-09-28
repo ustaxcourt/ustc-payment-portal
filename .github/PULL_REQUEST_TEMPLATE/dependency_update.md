@@ -56,6 +56,9 @@ Verification of these is usually covered by CI (`npm run lint`, `npm run tsc`, `
 - [ ] I have run `npm audit --audit-level=high` and resolved or consciously accepted any findings.
 - [ ] `package-lock.json` reflects a clean `npm ci` install — no hand edits.
 - [ ] If a security advisory motivated this update, I've named the CVE/advisory above.
+- [ ] I have updated Terraform Providers in our IaC code, and confirmed that Terraform plan succeeds on the PR.
+- [ ] Any deferred updates have been listed in `dependency-caveats.md`
+- [ ] I have included a changeset file covering the dependency updates.
 - [ ] I have reviewed CHANGELOG.md / release notes for any breaking changes in the updated packages and reflected them in the tables above.
 
 ---
