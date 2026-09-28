@@ -16,14 +16,14 @@
 
 ## Dependencies Updated
 
-For each runtime package (or group of related packages), document **affected application areas in plain language** under "Possible areas of testing" so reviewers know what to exercise. Prefer workflows over file paths — for example:
+For each runtime package (or group of related packages), check off the **affected application areas in plain language** below so reviewers know what to exercise. Prefer workflows over file paths — for example:
 
 - [ ] initiating a payment (`POST /init`)
 - [ ] processing a payment (`POST /process`)
 - [ ] retrieving payment/transaction details (`GET /details`)
 - [ ] client authorization (`authorizeClient`, `/validate-client`)
 - [ ] dashboard read endpoints (CORS-scoped GETs)
-- [ ] local dev stack startup (`npm run start:all`, mock Pay.gov Test Server OR (`npm run start:dev-server` and `npm run start:pay-gov-test-server`))
+- [ ] local dev stack startup (`npm run start:all`, or `npm run start:dev-server` + `npm run start:pay-gov-test-server` separately)
 - [ ] database migrations (`npm run migrate:latest`)
 - [ ] Lambda deploy artifact (`npm run build:lambda`)
 
@@ -49,15 +49,14 @@ Verification of these is usually covered by CI (`npm run lint`, `npm run tsc`, `
 
 - [ ] I have listed the updated packages, their purpose, where they're used, and the plain-language application areas to test (`@aws-sdk/*` packages are optional to list individually).
 - [ ] **Mandatory manual testing:** I have exercised the affected application areas listed above:
-  - [ ] Locally (`npm run start:all` OR `npm run start:dev-server` and `npm run start:pay-gov-test-server`)
-  - [ ] Hit `/init` locally to confirm Dev server still functions.
+  - [ ] Locally (`npm run start:all`, or `npm run start:dev-server` + `npm run start:pay-gov-test-server` separately)
   - [ ] In this PR's ephemeral dev environment
-- [ ] Confirm that all integration tests pass in this PR.
+- [ ] I have confirmed that integration tests pass for this PR.
 - [ ] I have run `npm audit --audit-level=high` and resolved or consciously accepted any findings.
 - [ ] `package-lock.json` reflects a clean `npm ci` install — no hand edits.
 - [ ] If a security advisory motivated this update, I've named the CVE/advisory above.
-- [ ] I have updated Terraform Providers in our IaC code, and confirmed that Terraform plan succeeds on the PR.
-- [ ] Any deferred updates have been listed in `dependency-caveats.md`
+- [ ] I have updated Terraform providers in our IaC code, and confirmed that `terraform plan` succeeds on the PR.
+- [ ] Any deferred updates have been listed in `docs/dependency-caveats.md`.
 - [ ] I have included a changeset file covering the dependency updates.
 - [ ] I have reviewed CHANGELOG.md / release notes for any breaking changes in the updated packages and reflected them in the tables above.
 
