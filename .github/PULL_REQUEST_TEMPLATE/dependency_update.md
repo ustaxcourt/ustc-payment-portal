@@ -23,7 +23,7 @@ For each runtime package (or group of related packages), document **affected app
 - [ ] retrieving payment/transaction details (`GET /details`)
 - [ ] client authorization (`authorizeClient`, `/validate-client`)
 - [ ] dashboard read endpoints (CORS-scoped GETs)
-- [ ] local dev stack startup (`npm run start:all`, mock Pay.gov Test Server)
+- [ ] local dev stack startup (`npm run start:all`, mock Pay.gov Test Server OR (`npm run start:dev-server` and `npm run start:pay-gov-test-server`))
 - [ ] database migrations (`npm run migrate:latest`)
 - [ ] Lambda deploy artifact (`npm run build:lambda`)
 
@@ -49,7 +49,9 @@ Verification of these is usually covered by CI (`npm run lint`, `npm run tsc`, `
 
 - [ ] I have listed the updated packages, their purpose, where they're used, and the plain-language application areas to test (`@aws-sdk/*` packages are optional to list individually).
 - [ ] **Mandatory manual testing:** I have exercised the affected application areas listed above:
-  - [ ] Locally (`npm run start:all` + `npm run check:local-flow`)
+  - [ ] Locally (`npm run start:all` OR `npm run start:dev-server` and `npm run start:pay-gov-test-server`)
+  - [ ] Hit `/init` locally to confirm Dev server still functions.
+- [ ] Confirm that all Integration tests pass in PR
   - [ ] In this PR's ephemeral dev environment
 - [ ] I have run `npm audit --audit-level=high` and resolved or consciously accepted any findings.
 - [ ] `package-lock.json` reflects a clean `npm ci` install — no hand edits.
