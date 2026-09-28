@@ -51,8 +51,8 @@ Verification of these is usually covered by CI (`npm run lint`, `npm run tsc`, `
 - [ ] **Mandatory manual testing:** I have exercised the affected application areas listed above:
   - [ ] Locally (`npm run start:all` OR `npm run start:dev-server` and `npm run start:pay-gov-test-server`)
   - [ ] Hit `/init` locally to confirm Dev server still functions.
-- [ ] Confirm that all Integration tests pass in PR
   - [ ] In this PR's ephemeral dev environment
+- [ ] Confirm that all integration tests pass in this PR.
 - [ ] I have run `npm audit --audit-level=high` and resolved or consciously accepted any findings.
 - [ ] `package-lock.json` reflects a clean `npm ci` install — no hand edits.
 - [ ] If a security advisory motivated this update, I've named the CVE/advisory above.
