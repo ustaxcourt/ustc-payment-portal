@@ -118,7 +118,11 @@ export const zonedDateTimeToUtc = (
   // Second pass settles DST-transition cases.
   const resolved = naive - zoneOffsetMs(new Date(first), timeZone);
 
-  return new Date(resolved);
+  // A time inside the spring-forward gap never happened. Land after the jump, so the caller can detect the gap and handle it (for example, by skipping the day).
+  const landed = partsInZone(new Date(resolved), timeZone);
+  const exists = landed.hour === value.hour && landed.minute === value.minute;
+
+  return new Date(exists ? resolved : first);
 };
 
 export const shiftCourtYear = (instant: Date, yearDelta: number): Date => {

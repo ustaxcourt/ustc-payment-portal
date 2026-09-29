@@ -380,6 +380,28 @@ describe("previousCourtPeriodBounds", () => {
       );
     });
 
+    it("advances past the gap when the matching Court time never occurred", () => {
+      // Sunday 2026-03-15 02:30 EDT. The prior week opens on 2025-03-09, whose
+      // 02:00-02:59 the clocks skipped, so no instant there reads 02:30: the
+      // week closes after the gap rather than an hour before it.
+      const now = new Date("2026-03-15T06:30:00.000Z");
+      const { week } = previousCourtPeriodBounds(now);
+
+      expect(week.end.toISOString()).toBe("2025-03-09T07:30:00.000Z");
+      expect(courtTimeOfDay(week.end)).toEqual({
+        hour: 3,
+        minute: 30,
+        second: 0,
+      });
+      // With no wall-clock match available, both weeks run the same elapsed time.
+      expect(hoursBetween(week.start, week.end)).toBe(
+        hoursBetween(
+          courtPeriodBounds(now).week.start,
+          courtPeriodBounds(now).week.end,
+        ),
+      );
+    });
+
     it("carries the weekday offset past the end of the month", () => {
       // Tuesday 2026-09-01; the prior year's week opened Sunday 2025-08-31.
       const { week } = previousCourtPeriodBounds(
@@ -468,6 +490,63 @@ describe("zonedDateTimeToUtc", () => {
       instant,
     );
   });
+
+  it.each([
+    // The clocks jump 02:00 -> 03:00, so this whole hour never happened.
+    ["02:00", 0, "2025-03-09T07:00:00.000Z", 3],
+    ["02:30", 30, "2025-03-09T07:30:00.000Z", 3],
+    ["02:59", 59, "2025-03-09T07:59:00.000Z", 3],
+  ])(
+    "advances %s on the spring-forward day, which never occurred",
+    (_label, minute, expected, expectedHour) => {
+      const utcDate = zonedDateTimeToUtc(
+        { year: 2025, month: 3, day: 9, hour: 2, minute, second: 0 },
+        COURT_TIME_ZONE,
+      );
+
+      expect(utcDate.toISOString()).toBe(expected);
+      expect(courtTimeOfDay(utcDate).hour).toBe(expectedHour);
+    },
+  );
+
+  it("keeps the hour either side of the gap where the local time exists", () => {
+    const before = zonedDateTimeToUtc(
+      { year: 2025, month: 3, day: 9, hour: 1, minute: 30, second: 0 },
+      COURT_TIME_ZONE,
+    );
+    const after = zonedDateTimeToUtc(
+      { year: 2025, month: 3, day: 9, hour: 3, minute: 30, second: 0 },
+      COURT_TIME_ZONE,
+    );
+
+    expect(before.toISOString()).toBe("2025-03-09T06:30:00.000Z");
+    expect(after.toISOString()).toBe("2025-03-09T07:30:00.000Z");
+  });
+
+  it.each([
+    ["spring", Date.UTC(2025, 2, 1), Date.UTC(2025, 2, 16)],
+    ["fall", Date.UTC(2025, 10, 1), Date.UTC(2025, 10, 16)],
+  ])(
+    "leaves every %s instant that really happened where it was",
+    (_label, from, to) => {
+      // Every half hour across the transition: the gap check must fire on the
+      // missing hour alone and perturb nothing else.
+      const drifted: string[] = [];
+      for (let t = from; t < to; t += 1_800_000) {
+        const instant = new Date(t);
+        const parts = partsInZone(instant, COURT_TIME_ZONE);
+        const resolved = zonedDateTimeToUtc(parts, COURT_TIME_ZONE);
+
+        // The fall-back hour maps to two instants, so only its wall clock can
+        // round-trip; every other reading must return the instant it came from.
+        if (courtTimeOfDay(resolved).hour !== parts.hour) {
+          drifted.push(instant.toISOString());
+        }
+      }
+
+      expect(drifted).toEqual([]);
+    },
+  );
 });
 
 describe("partsInZone", () => {
