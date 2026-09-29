@@ -1,5 +1,6 @@
 import {
   COURT_PERIOD_NAMES,
+  COURT_TIME_ZONE,
   courtDayBounds,
   courtDayBoundsForDateString,
   courtPeriodBounds,
@@ -16,7 +17,7 @@ const hoursBetween = (start: Date, end: Date): number =>
 const courtTimeOfDay = (
   instant: Date,
 ): { hour: number; minute: number; second: number } => {
-  const { hour, minute, second } = partsInZone(instant, "America/New_York");
+  const { hour, minute, second } = partsInZone(instant, COURT_TIME_ZONE);
   return { hour, minute, second };
 };
 
@@ -332,8 +333,6 @@ describe("previousCourtPeriodBounds", () => {
 
   describe("week", () => {
     it.each([
-      // The prior week never crosses the change, so elapsed hours and Court
-      // wall-clock hours disagree by one across it.
       [
         "spring transition gap",
         "2025-03-09T15:00:00.000Z", // Sunday, 11:00 AM EDT
@@ -346,6 +345,18 @@ describe("previousCourtPeriodBounds", () => {
         "2025-10-26T04:00:00.000Z", // Sunday midnight EDT
         "2025-10-26T14:00:00.000Z", // 10:00 AM EDT
       ],
+      [
+        "spring transition gap held by the prior week alone",
+        "2026-03-15T14:00:00.000Z", // Sunday, 10:00 AM EDT
+        "2025-03-09T05:00:00.000Z", // Sunday midnight EST
+        "2025-03-09T14:00:00.000Z", // 10:00 AM EDT, past that day's 02:00 jump
+      ],
+      [
+        "fall transition gap held by the prior week alone",
+        "2026-11-08T15:00:00.000Z", // Sunday, 10:00 AM EST
+        "2025-11-02T04:00:00.000Z", // Sunday midnight EDT
+        "2025-11-02T15:00:00.000Z", // 10:00 AM EST, past that day's 02:00 fall back
+      ],
     ])(
       "closes the previous week-to-date on the Court wall clock across the %s",
       (_label, now, expectedStart, expectedEnd) => {
@@ -353,20 +364,8 @@ describe("previousCourtPeriodBounds", () => {
 
         expect(week.start.toISOString()).toBe(expectedStart);
         expect(week.end.toISOString()).toBe(expectedEnd);
-      },
-    );
-
-    it.each([
-      ["spring transition gap", "2025-03-09T15:00:00.000Z"],
-      ["fall transition gap", "2026-11-01T15:00:00.000Z"],
-    ])(
-      "ends both weeks at the same Court time of day across the %s",
-      (_label, now) => {
-        const previous = previousCourtPeriodBounds(new Date(now));
-        const current = courtPeriodBounds(new Date(now));
-
-        expect(courtTimeOfDay(previous.week.end)).toEqual(
-          courtTimeOfDay(current.week.end),
+        expect(courtTimeOfDay(week.end)).toEqual(
+          courtTimeOfDay(courtPeriodBounds(new Date(now)).week.end),
         );
       },
     );
@@ -436,7 +435,7 @@ describe("zonedDateTimeToUtc", () => {
         minute: 0,
         second: 0,
       },
-      "America/New_York",
+      COURT_TIME_ZONE,
     );
 
     expect(utcDate.toISOString()).toBe("2026-01-15T10:00:00.000Z");
@@ -452,7 +451,7 @@ describe("zonedDateTimeToUtc", () => {
         minute: 0,
         second: 0,
       },
-      "America/New_York",
+      COURT_TIME_ZONE,
     );
 
     expect(utcDate.toISOString()).toBe("2026-08-03T09:00:00.000Z");
@@ -463,9 +462,9 @@ describe("zonedDateTimeToUtc", () => {
     "2025-03-09T15:00:00.000Z", // DST transition scenario
     "2026-11-01T15:00:00.000Z", // DST transition scenario
   ])("round-trips %s through America/New_York", (instant) => {
-    const parts = partsInZone(new Date(instant), "America/New_York");
+    const parts = partsInZone(new Date(instant), COURT_TIME_ZONE);
 
-    expect(zonedDateTimeToUtc(parts, "America/New_York").toISOString()).toBe(
+    expect(zonedDateTimeToUtc(parts, COURT_TIME_ZONE).toISOString()).toBe(
       instant,
     );
   });
@@ -474,7 +473,7 @@ describe("zonedDateTimeToUtc", () => {
 describe("partsInZone", () => {
   it("returns the correct parts for a given instant and time zone", () => {
     const instant = new Date("2026-01-15T12:34:56Z");
-    const parts = partsInZone(instant, "America/New_York");
+    const parts = partsInZone(instant, COURT_TIME_ZONE);
     expect(parts).toEqual({
       year: 2026,
       month: 1,
