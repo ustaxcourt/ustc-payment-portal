@@ -19,7 +19,10 @@ const stubPreviousTotals = () =>
     .spyOn(TransactionModel, "totalsToDate")
     .mockResolvedValue(mapCourtPeriods(() => 100));
 
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+  jest.useRealTimers();
+  jest.restoreAllMocks();
+});
 
 describe("getRevenueSummary", () => {
   it("derives each period's total from its tallies", async () => {
@@ -71,6 +74,21 @@ describe("getRevenueSummary", () => {
 
     expect(result.yoyTrends).toBeUndefined();
     expect(result.totals.day.total).toBe(120);
+  });
+
+  it("queries the prior year on Court wall-clock week bounds across a DST change", async () => {
+    // Sunday 2026-11-01, 10:00 EST — the fall-back day. The 2025 comparison week
+    // never crosses one, so elapsed-duration bounds would land an hour late.
+    jest.useFakeTimers().setSystemTime(new Date("2026-11-01T15:00:00.000Z"));
+    stubTallies();
+    const totalsToDate = stubPreviousTotals();
+
+    await getRevenueSummary(appContext);
+
+    expect(totalsToDate.mock.calls[0][0].week).toEqual({
+      start: new Date("2025-10-26T04:00:00.000Z"),
+      end: new Date("2025-10-26T14:00:00.000Z"),
+    });
   });
 
   it("echoes the summed window on every period", async () => {
