@@ -65,16 +65,6 @@ enough context that the next person doesn't have to re-derive the decision.
   artifact, not a repo defect — `terraform init -upgrade` in that module clears
   it, and nothing about it reaches CI or another developer.
 
-### npm-run-all2@^9.0.3 — not a deferral; `npm outdated` false positive (2026-09-17)
-
-- **Current:** `^9.0.3`. `npm outdated` reports **"Latest 8.0.4"**, which looks
-  like we are ahead of latest and invites a "downgrade" that would be wrong.
-- **Reality:** `npm view npm-run-all2 dist-tags` resolves `latest` to `9.0.3` —
-  the version we are already on. The published version list confirms `9.0.0`
-  through `9.0.3` all exist above `8.0.4`.
-- **Action:** none. Recorded here so the next person doesn't re-derive it or
-  "fix" the package back down to the 8.x line.
-
 ### @changesets/cli 3.x — publish-job gotcha (2026-08-26)
 
 - Since v3, `changeset version` exits `1` (previously `0`) when there are no
@@ -136,6 +126,15 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   `brace-expansion@5.0.12`, and `npm audit` reports no `brace-expansion`
   finding. Full unit suite green (1051/1051 across 89 suites), coverage 96.46%
   statements / 90% branches.
+- **Verified (2026-10-02, after `ts-jest` 29.4.12 → 29.4.14 and `@jest/transform`
+  → 30.5.2):** overrides still required. The tree resolves to
+  `babel-plugin-istanbul@8.0.2`, `test-exclude@8.0.0`, `minimatch@10.2.6` (one
+  deduped copy) and `brace-expansion@5.0.12`; `npm audit` reports no
+  `brace-expansion` finding. `matcher-collection` is still unmaintained
+  (`latest` is `2.0.1`, still `minimatch@^3.0.2`); `artillery`'s `walk-sync`
+  actually resolves `1.1.2`, which has the same `minimatch@^3.0.2` range.
+  Full unit suite green (1069/1069 across 90 suites), coverage 96.55%
+  statements / 90.53% branches.
 
 ### GHSA-g7r4-m6w7-qqqr — esbuild (0.27.3–0.28.0) (low) — resolved via override (2026-09-17)
 
@@ -203,3 +202,6 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   exist anywhere in the repo and `scripts/run-performance-test.sh` still passes
   no `--payload`/CSV flag. Remains the only finding in `npm audit`
   (2 moderate, both this one chain).
+- **Re-confirmed (2026-10-02):** `artillery` is still `2.0.34` and the tree
+  still resolves to `csv-parse@4.16.3`. No `.csv` files in the repo and
+  `scripts/run-performance-test.sh` still has no `payload`/CSV reference.
