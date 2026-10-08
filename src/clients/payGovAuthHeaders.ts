@@ -4,20 +4,13 @@ import type { AppContextLogger } from "@appTypes/AppContext";
 
 // Dev's SOAP_URL points at the mock ustc-pay-gov-test-server, which authenticates
 // requests via this bearer token instead of the mTLS cert stg/prod use against real Pay.gov.
+// The local test server skips the check entirely (APP_ENV=local), so no token is sent there.
 export async function getPayGovAuthHeaders(
   logger: AppContextLogger,
 ): Promise<{ Authorization?: string; Authentication?: string }> {
   const tokenSecretId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
-  const env = getAppEnv();
 
-  if (!tokenSecretId) return {};
-  
-  if (env !== "dev" && env !== "local") {
-    return {};
-  } else if (env === "local") {
-    const bearer = `Bearer ${tokenSecretId}`;
-    return { Authorization: bearer, Authentication: bearer };
-  }
+  if (!tokenSecretId || getAppEnv() !== "dev") return {};
 
   try {
     const token = await getSecretString(tokenSecretId);

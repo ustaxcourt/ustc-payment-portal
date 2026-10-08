@@ -65,6 +65,24 @@ enough context that the next person doesn't have to re-derive the decision.
   artifact, not a repo defect — `terraform init -upgrade` in that module clears
   it, and nothing about it reaches CI or another developer.
 
+### dotenv@18 — `dotenv/config` types unresolved under `moduleResolution: node` (2026-10-08)
+
+- **Current:** `dotenv@^18.0.6`. Upstream issue:
+  [motdotla/dotenv#1067](https://github.com/motdotla/dotenv/issues/1067), "fixed"
+  in 18.0.5 by [#1068](https://github.com/motdotla/dotenv/pull/1068).
+- **Reason:** v18 removed the root `config.js`/`config.d.ts`; `./config` is only
+  reachable through the `exports` map. Upstream's fix adds a `types` entry there,
+  which `moduleResolution: node` (node10) never reads, so `import "dotenv/config"`
+  still fails `tsc` with TS2882 even on 18.0.6. Runtime (Node, Jest) is unaffected.
+- **Workaround:** the ambient declaration in
+  [`src/types/dotenv-config.d.ts`](../src/types/dotenv-config.d.ts), which is the
+  workaround suggested in the upstream issue.
+- **Plan:** delete the declaration when `moduleResolution` moves off node10, which
+  TS 7 requires anyway (`ignoreDeprecations: "6.0"` only defers it). Trial runs of
+  `tsc --noEmit` showed `module: commonjs` + `moduleResolution: bundler` type-checks
+  with zero errors and fixes this directly; `nodenext` needs ~8 test-file fixes.
+  Fold that into the TS7 toolchain ticket above.
+
 ### @changesets/cli 3.x — publish-job gotcha (2026-08-26)
 
 - Since v3, `changeset version` exits `1` (previously `0`) when there are no
@@ -175,6 +193,48 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
 - **Mitigation:** ...
 - **Revisit:** <condition or date>
 -->
+
+### GHSA-vfj7-8cjw-p6xm — braces (high) — accepted (2026-10-08)
+
+**From: Artillery** (`artillery` → `chokidar@3.6.0` → `braces@3.0.3`)
+
+- **Reason it can't be fixed now:** the advisory covers every published version
+  of `braces`, and `3.0.3` is the latest, so there is no patched release to
+  override to. `artillery@2.0.34` (latest) still pins `chokidar@^3.6.0`, which
+  needs `braces@~3.0.2`; `chokidar@5` (which drops `braces`) is not in range.
+  `npm audit fix --force` suggests downgrading `artillery` to `0.0.2`, which is
+  not a real fix.
+- **Previously also reached production** via `nodemon` inside
+  `@ustaxcourt/ustc-pay-gov-test-server@0.3.0` (a runtime dependency). Resolved
+  by upgrading to `0.4.0`, which no longer depends on `nodemon`; `npm audit
+  --omit=dev` should now be clean for this advisory.
+- **Mitigation:** the issue is stack exhaustion from deeply nested brace
+  patterns. `artillery` is a devDependency, only runs via
+  `scripts/run-performance-test.sh`, and `chokidar` only watches paths it is
+  handed — nothing in this repo feeds attacker-controlled glob patterns to it.
+  Nothing from this chain ships in the Lambda artifact.
+- **Revisit:** when `braces` publishes a patched version, or `artillery` moves
+  to `chokidar@4+`.
+
+### GHSA-hp3w-g68c-fv3c — sprintf-js (moderate) — accepted (2026-10-08)
+
+**From: Jest and Artillery** (`js-yaml@3.15.2` → `argparse@1.0.10` →
+`sprintf-js@1.0.3`, reached via `@istanbuljs/load-nyc-config` under
+`babel-plugin-istanbul` → `@jest/transform`, and via `artillery`)
+
+- **Reason it can't be fixed now:** the advisory covers every version, and
+  `sprintf-js@1.1.3` is the latest. This is why `npm audit` lists most of the
+  Jest package family (`jest`, `@jest/core`, `ts-jest`, …): they are flagged
+  only because they transitively depend on this chain, not because they have
+  their own advisory. The `--force` remediation is again the nonsensical
+  `artillery@0.0.2`.
+- **Mitigation:** devDependencies only; nothing ships in the Lambda artifact.
+  The vulnerable code is `argparse`'s CLI-argument formatting with
+  unbounded precision specifiers, which is never fed untrusted input here. The
+  related `load-nyc-config` → `js-yaml` path is already known to be inert (see
+  "Removed" above — no `.nycrc` exists).
+- **Revisit:** when `sprintf-js` publishes a patched version, or Jest's
+  `babel-plugin-istanbul` / `artillery` drop `js-yaml@3`.
 
 ### GHSA-8cw4-87c7-c6xx — csv-parse@<7.0.2 (moderate) — accepted (2026-09-09, re-confirmed 2026-09-17)
 

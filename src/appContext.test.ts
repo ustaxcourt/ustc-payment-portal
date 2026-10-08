@@ -174,7 +174,7 @@ describe("postHttpRequest", () => {
     );
   });
 
-  it("should include authentication and authorization headers when PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID is set and retrieved locally", async () => {
+  it("should not send authentication headers locally, even if PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID is set", async () => {
     process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "local-token-secret-id";
     process.env.APP_ENV = "local";
 
@@ -186,11 +186,7 @@ describe("postHttpRequest", () => {
     expect(mockFetch).toHaveBeenCalledWith(
       "https://test-soap-url.com",
       expect.objectContaining({
-        headers: {
-          "Content-type": "application/soap+xml",
-          Authentication: "Bearer local-token-secret-id",
-          Authorization: "Bearer local-token-secret-id",
-        },
+        headers: { "Content-type": "application/soap+xml" },
       }),
     );
   });
