@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Read(**/\u002eenv)",
+      "Read(**/\u002eenv.local)",
+      "Read(**/\u002eenv.*.local)",
+      "Read(**/\u002eenv.development)",
+      "Read(**/\u002eenv.production)",
+      "Read(**/\u002eenv.staging)",
+      "Read(**/\u002eenv.test)",
+      "Edit(**/\u002eenv)",
+      "Edit(**/\u002eenv.local)",
+      "Edit(**/\u002eenv.*.local)",
+      "Edit(**/\u002eenv.development)",
+      "Edit(**/\u002eenv.production)",
+      "Edit(**/\u002eenv.staging)",
+      "Edit(**/\u002eenv.test)",
+      "Write(**/\u002eenv)",
+      "Write(**/\u002eenv.local)",
+      "Write(**/\u002eenv.*.local)",
+      "Write(**/\u002eenv.development)",
+      "Write(**/\u002eenv.production)",
+      "Write(**/\u002eenv.staging)",
+      "Write(**/\u002eenv.test)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write|MultiEdit|NotebookEdit|Grep|Glob|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-env-access.js\""
+          }
+        ]
+      }
+    ]
+  }
+}

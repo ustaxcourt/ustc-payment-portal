@@ -6,6 +6,12 @@ const { createLogger } = require("./log");
 const log = createLogger(process.env.npm_lifecycle_event || "start");
 let warnedMissingLsof = false;
 
+// Killing Docker's port forwarder takes down Docker Desktop itself, so these are
+// never offered for termination. A container that really owns a required port
+// surfaces as a clear `docker compose up` error instead.
+const DOCKER_OWNED = /Docker\.app|com\.docker\.|docker-proxy|dockerd|vpnkit|rootlesskit/i;
+const commandByPid = new Map();
+
 function getListeningPids(port) {
   const result = spawnSync(
     "lsof",
@@ -39,18 +45,44 @@ function getListeningPids(port) {
     .filter((pid) => Number.isInteger(pid) && pid > 0);
 }
 
+function getCommand(pid) {
+  if (!commandByPid.has(pid)) {
+    const result = spawnSync("ps", ["-p", String(pid), "-o", "comm="], {
+      encoding: "utf8",
+    });
+    commandByPid.set(pid, (result.stdout || "").trim());
+  }
+  return commandByPid.get(pid);
+}
+
+function isDockerOwned(pid) {
+  return DOCKER_OWNED.test(getCommand(pid));
+}
+
 function describePid(pid) {
-  const result = spawnSync("ps", ["-p", String(pid), "-o", "comm="], {
-    encoding: "utf8",
-  });
-  const command = (result.stdout || "").trim();
+  const command = getCommand(pid);
   return command ? `${pid} (${command})` : String(pid);
 }
 
+function getKillablePids(port) {
+  return getListeningPids(port).filter((pid) => !isDockerOwned(pid));
+}
+
 function listUsedPorts(requiredPorts) {
-  return requiredPorts
-    .map((port) => ({ port, pids: getListeningPids(port) }))
+  const listening = requiredPorts.map((port) => ({
+    port,
+    pids: getListeningPids(port),
+  }));
+  const used = listening
+    .map(({ port, pids }) => ({
+      port,
+      pids: pids.filter((pid) => !isDockerOwned(pid)),
+    }))
     .filter((item) => item.pids.length > 0);
+  const dockerHeld = listening
+    .filter(({ pids }) => pids.some(isDockerOwned))
+    .map(({ port }) => port);
+  return { used, dockerHeld };
 }
 
 function killPids(pids) {
@@ -77,7 +109,7 @@ function formatUsedPorts(usedPorts) {
 async function waitForPortsFree(ports, timeoutMs = 5000, intervalMs = 100) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const stillBound = ports.filter((port) => getListeningPids(port).length > 0);
+    const stillBound = ports.filter((port) => getKillablePids(port).length > 0);
     if (stillBound.length === 0) {
       return true;
     }
@@ -102,7 +134,14 @@ async function killAndConfirm(usedPorts) {
 }
 
 async function ensurePortsAvailable(requiredPorts) {
-  const usedPorts = listUsedPorts(requiredPorts);
+  commandByPid.clear();
+  const { used: usedPorts, dockerHeld } = listUsedPorts(requiredPorts);
+  if (dockerHeld.length > 0) {
+    log.info(
+      `Leaving Docker-managed port(s) ${dockerHeld.join(", ")} alone; ` +
+        "run `docker compose down` if a stale container is holding them.",
+    );
+  }
   if (usedPorts.length === 0) {
     return true;
   }

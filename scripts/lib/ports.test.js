@@ -118,8 +118,7 @@ describe("ensurePortsAvailable", () => {
     mockSpawnSync
       .mockReturnValueOnce(occupiedPortResult("999")) // listUsedPorts: port 8080 (lsof)
       .mockReturnValueOnce(occupiedPortResult("999")) // listUsedPorts: port 3366 (lsof)
-      .mockReturnValueOnce(describePidResult("node")) // formatUsedPorts: describePid for port 8080 (ps)
-      .mockReturnValueOnce(describePidResult("node")) // formatUsedPorts: describePid for port 3366 (ps)
+      .mockReturnValueOnce(describePidResult("node")) // ps for PID 999, cached for the second port
       .mockReturnValueOnce(freePortResult()) // waitForPortsFree: port 8080 (lsof)
       .mockReturnValueOnce(freePortResult()); // waitForPortsFree: port 3366 (lsof)
 
@@ -166,5 +165,39 @@ describe("ensurePortsAvailable", () => {
 
     expect(await ensurePortsAvailable([8080])).toBe(false);
     expect(process.kill).not.toHaveBeenCalled();
+  });
+
+  it("never offers to kill Docker's port forwarder and proceeds without prompting", async () => {
+    mockSpawnSync
+      .mockReturnValueOnce(occupiedPortResult("28668")) // lsof
+      .mockReturnValueOnce(
+        describePidResult(
+          "/Applications/Docker.app/Contents/MacOS/com.docker.backend",
+        ),
+      ); // ps
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+
+    expect(await ensurePortsAvailable([5433])).toBe(true);
+    expect(process.kill).not.toHaveBeenCalled();
+    expect(mockLog.info).toHaveBeenCalledWith(
+      expect.stringContaining("Docker-managed port(s) 5433"),
+    );
+  });
+
+  it("still kills a non-Docker holder on another port while leaving Docker alone", async () => {
+    process.env.AUTO_KILL_PORTS = "true";
+    mockSpawnSync
+      .mockReturnValueOnce(occupiedPortResult("111")) // lsof 8080
+      .mockReturnValueOnce(occupiedPortResult("222")) // lsof 5433
+      .mockReturnValueOnce(describePidResult("node")) // ps 111
+      .mockReturnValueOnce(describePidResult("com.docker.backend")) // ps 222
+      .mockReturnValueOnce(freePortResult()); // waitForPortsFree 8080
+
+    expect(await ensurePortsAvailable([8080, 5433])).toBe(true);
+    expect(process.kill).toHaveBeenCalledTimes(1);
+    expect(process.kill).toHaveBeenCalledWith(111, "SIGTERM");
   });
 });
