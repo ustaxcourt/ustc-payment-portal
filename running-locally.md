@@ -26,7 +26,7 @@ One-time steps after cloning the repo.
    See [.env.example](./.env.example). The defaults are pre-tuned for local development — you don't usually need to change anything.
 
    Notes on a few values:
-   - `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` must match `PAY_GOV_TEST_SERVER_ACCESS_TOKEN`. Both default to `development-token`.
+   - No Pay.gov test server token is needed locally; the mock server skips its bearer-token check when `APP_ENV=local`.
    - `LOCAL_DEV=true` bypasses AWS SigV4 authentication. Locally there is no API Gateway to verify signatures, so the auth pipeline returns a dummy IAM role ARN (`arn:aws:iam::000000000000:role/local-dev-role`) and skips the Secrets Manager permissions fetch entirely.
    - `PAY_GOV_NODE_ENV=local` makes the mock Pay.gov server use local file persistence instead of S3. Keep this as `local` for development.
 

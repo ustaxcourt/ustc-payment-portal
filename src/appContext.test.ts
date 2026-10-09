@@ -174,27 +174,6 @@ describe("postHttpRequest", () => {
     );
   });
 
-  it("should include authentication and authorization headers when PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID is set and retrieved locally", async () => {
-    process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "local-token-secret-id";
-    process.env.APP_ENV = "local";
-
-    const appContext = createAppContext();
-    const body = "<soap>request</soap>";
-
-    await appContext.postHttpRequest(appContext, body);
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      "https://test-soap-url.com",
-      expect.objectContaining({
-        headers: {
-          "Content-type": "application/soap+xml",
-          Authentication: "Bearer local-token-secret-id",
-          Authorization: "Bearer local-token-secret-id",
-        },
-      }),
-    );
-  });
-
   it("should use HTTPS agent when key/cert secret IDs are set", async () => {
     process.env.PRIVATE_KEY_SECRET_ID = "key-id";
     process.env.CERTIFICATE_SECRET_ID = "secret-id";
@@ -204,8 +183,7 @@ describe("postHttpRequest", () => {
 
     await appContext.postHttpRequest(appContext, body);
 
-    expect(mockFetch).toHaveBeenNthCalledWith(
-      4,
+    expect(mockFetch).toHaveBeenLastCalledWith(
       "https://test-soap-url.com",
       expect.objectContaining({
         agent: expect.any(https.Agent),

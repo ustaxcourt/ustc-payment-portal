@@ -5,7 +5,7 @@ import type {
   DeployHealthReport,
   HealthCheckResult,
 } from "@schemas/DeployHealthReport.schema";
-import { getAppEnv } from "../config/appEnv";
+import { getAppEnv, isLocal } from "../config/appEnv";
 import { getKnex } from "../db/knex";
 import { probePayGovWsdl } from "../health/probePayGovWsdl";
 
@@ -42,7 +42,7 @@ export async function runDeployHealthCheck(
         if (!MTLS_OPTIONAL_ENVS.has(getAppEnv())) {
           throw new Error("mTLS agent (Secrets Manager) not configured");
         }
-        if (!process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID) {
+        if (!process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID && !isLocal()) {
           throw new Error("PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID not set");
         }
         return;
