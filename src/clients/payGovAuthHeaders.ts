@@ -10,7 +10,8 @@ export async function getPayGovAuthHeaders(
 ): Promise<{ Authorization?: string; Authentication?: string }> {
   const tokenSecretId = process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
 
-  if (!tokenSecretId || getAppEnv() !== "dev") return {};
+  const env = getAppEnv();
+  if (!tokenSecretId || env !== "dev") return {};
 
   try {
     const token = await getSecretString(tokenSecretId);
