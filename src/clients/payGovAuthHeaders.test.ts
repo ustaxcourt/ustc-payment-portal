@@ -36,16 +36,13 @@ describe("getPayGovAuthHeaders", () => {
     expect(mockGetSecretString).not.toHaveBeenCalled();
   });
 
-  it("uses the raw secret id as the bearer token when running locally", async () => {
+  it("returns no headers locally even when the token secret id is set", async () => {
     process.env.APP_ENV = "local";
     process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "local-token-secret-id";
 
     const headers = await getPayGovAuthHeaders(logger);
 
-    expect(headers).toEqual({
-      Authorization: "Bearer local-token-secret-id",
-      Authentication: "Bearer local-token-secret-id",
-    });
+    expect(headers).toEqual({});
     expect(mockGetSecretString).not.toHaveBeenCalled();
   });
 
