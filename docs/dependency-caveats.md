@@ -24,21 +24,21 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ## Deferred upgrades
 
-### TypeScript 6.0.3 → 7.0.2 — deferred (2026-07-09, re-confirmed 2026-09-17)
+### TypeScript 6.0.3 → 7.0.2 — deferred (2026-07-09, re-confirmed 2026-10-14)
 
 - **Current:** `^6.0.3`. **Available latest:** `7.0.2`.
 - **Reason:** TypeScript 7 is a major release. Our toolchain still targets the
-  6.x line — `ts-jest@^29.4.12`, `tsup@^8.5.1`, `ts-node@^10.9.2`, and
-  `@biomejs/biome@^2.5.14` — and none are confirmed compatible with the TS7
+  6.x line — `ts-jest@^29.4.14`, `tsup@^8.5.1`, `ts-node@^10.9.2`, and
+  `@biomejs/biome@^2.5.15` — and none are confirmed compatible with the TS7
   compiler/API. A blind bump risks breaking type-check, the Jest transform, and
   the build in one step, with a blast radius across the whole package.
 - **Plan:** Cut a dedicated follow-up ticket to validate the toolchain against
   TS7 (upgrade `ts-jest`/`tsup`/`ts-node` first, then the compiler), and flag
   the PO. Not appropriate to bundle into recurring dependency maintenance.
 
-### @types/node@^24.13.5 → ^26.6.1 — deferred (2026-07-20, re-confirmed 2026-09-17)
+### @types/node@^24.19.2 → ^26.6.5 — deferred (2026-07-20, re-confirmed 2026-10-14)
 
-- **Current:** `@types/node@^24.13.5`. **Available latest:** `^26.6.1`.
+- **Current:** `@types/node@^24.19.2`. **Available latest:** `^26.6.5`.
 - **Reason:** `@types/node` must track the runtime, not lead it. `engines.node`
   is `>=24.20.0 <25.0.0` and `.nvmrc` pins `24.20.0`, so the ambient Node types
   are intentionally held on the 24 line. A proposed upgrade to
@@ -49,6 +49,19 @@ enough context that the next person doesn't have to re-derive the decision.
   project's supported Node version.
 - **Plan:** Revisit only when the Node runtime itself moves off 24 (new
   `engines`/`.nvmrc` floor); bump `@types/node` to match in the same change.
+- **Known mismatch (2026-10-14):** the deployed Lambdas still run `nodejs22.x`
+  and esbuild targets `node22` (`terraform/modules/lambda/variables.tf`,
+  `terraform/scripts/build-lambda.sh`). So the Node 24 types are ahead of
+  production. Moving Lambda to `nodejs24.x` is being proposed as its own ticket.
+
+### tsup 8.5.1 → 9.0.0 — deferred (2026-10-14)
+
+- **Current:** `^8.5.1`. **Available latest:** `9.0.0`.
+- **Reason:** 9.0.0 was published to npm the same day as this update. A major
+  release that new hasn't been through any real-world use yet, and our `npm run
+  build` output is the published package.
+- **Plan:** take it in the next rotation. 9.0.0 declares `esbuild@^0.28.2`, so
+  the `tsup` → `esbuild` override below can be dropped in the same change.
 
 ### Terraform provider lockfiles — what is and isn't in scope (2026-09-17)
 
@@ -203,3 +216,53 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   exist anywhere in the repo and `scripts/run-performance-test.sh` still passes
   no `--payload`/CSV flag. Remains the only finding in `npm audit`
   (2 moderate, both this one chain).
+- **Re-confirmed (2026-10-14):** `artillery` is still `2.0.34` and still declares
+  `csv-parse@^4.16.3`. No longer the only finding: see `braces` and `sprintf-js`
+  below, which account for the rest of the 25 findings `npm audit` reports.
+
+### GHSA-vfj7-8cjw-p6xm — braces@<=3.0.3 (high) — accepted (2026-10-13)
+
+**From: nodemon, Artillery (both via `chokidar@3`)**
+
+- **Reason it can't be fixed now:** no patched release exists. `3.0.3` is the
+  latest `braces` and is inside the vulnerable range. It is reached only through
+  `chokidar@3.6.0`, and both parents still declare chokidar 3 in their latest
+  releases: `nodemon@3.1.14` (`chokidar@^3.5.2`) and `artillery@2.0.34`
+  (`chokidar@^3.6.0`). `npm audit fix --force` proposes `artillery@0.0.2`, which
+  is not a real fix. No override was taken. Forcing `chokidar@4` (which drops
+  `braces`) would be a major jump outside both parents' declared ranges. That is
+  the same risk this file turned down for `csv-parse`.
+- **Mitigation:** the advisory is a stack-exhaustion DoS from deeply nested
+  brace patterns. chokidar only expands the watch globs it is given, and those
+  come from our own config (`nodemon --watch src` in `npm run dev`, artillery's
+  CLI). They never come from request input. Both packages are
+  `devDependencies`, so neither ships to Lambda or to package consumers. The one
+  runtime path, `@ustaxcourt/ustc-pay-gov-test-server@0.3.0` → `nodemon`, was
+  removed by bumping that dependency to `^0.4.0` in the same change.
+  `npm audit --omit=dev` reports 0 vulnerabilities.
+- **CI impact:** listed in `ACCEPTED_ADVISORIES` in the `dependabot-validate.yml`
+  security audit step, which fails on any other high/critical advisory. Remove
+  it from there when this entry is resolved.
+- **Revisit:** when `nodemon` or `artillery` moves to `chokidar@4`, or when
+  `braces` publishes a fix. Replacing `nodemon` with `tsx watch` (`tsx` is
+  already a dependency) would remove one of the two paths.
+
+### GHSA-hp3w-g68c-fv3c — sprintf-js@<=1.1.3 (moderate) — accepted (2026-10-13)
+
+**From: Jest coverage, Artillery (both via `js-yaml@3` → `argparse@1`)**
+
+- **Reason it can't be fixed now:** no patched release exists. `1.1.3` is the
+  latest `sprintf-js` and is inside the vulnerable range. It is reached through
+  `js-yaml@3.15.2` → `argparse@1.0.10` from `@istanbuljs/load-nyc-config`
+  (via `ts-jest` → `babel-plugin-istanbul`) and from `artillery@2.0.34`
+  (`js-yaml@^3.15.1`).
+- **Mitigation:** `js-yaml@3` only loads `argparse` in its `bin/js-yaml.js`
+  command-line entry point. The library code that `load-nyc-config` and
+  `artillery` import never calls it, so `sprintf-js` is never loaded by
+  anything this repo runs. All of these are `devDependencies`.
+- **Not re-adding the `load-nyc-config` → `js-yaml` override:** this advisory
+  names `sprintf-js`, not `js-yaml`. Re-adding the override would also only
+  clear one of the two paths, because the `artillery` path would remain. The
+  "do not re-add" note above still stands.
+- **Revisit:** when `artillery` and `@istanbuljs/load-nyc-config` move off
+  `js-yaml@3`, or when `sprintf-js` publishes a fix.
