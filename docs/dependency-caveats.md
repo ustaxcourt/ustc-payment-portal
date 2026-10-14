@@ -96,15 +96,23 @@ enough context that the next person doesn't have to re-derive the decision.
   artifact, not a repo defect — `terraform init -upgrade` in that module clears
   it, and nothing about it reaches CI or another developer.
 
-### npm-run-all2@^9.0.3 — not a deferral; `npm outdated` false positive (2026-09-17)
+### dotenv@18 — `dotenv/config` types unresolved under `moduleResolution: node` (2026-10-08)
 
-- **Current:** `^9.0.3`. `npm outdated` reports **"Latest 8.0.4"**, which looks
-  like we are ahead of latest and invites a "downgrade" that would be wrong.
-- **Reality:** `npm view npm-run-all2 dist-tags` resolves `latest` to `9.0.3` —
-  the version we are already on. The published version list confirms `9.0.0`
-  through `9.0.3` all exist above `8.0.4`.
-- **Action:** none. Recorded here so the next person doesn't re-derive it or
-  "fix" the package back down to the 8.x line.
+- **Current:** `dotenv@^18.0.7`. Upstream issue:
+  [motdotla/dotenv#1067](https://github.com/motdotla/dotenv/issues/1067), "fixed"
+  in 18.0.5 by [#1068](https://github.com/motdotla/dotenv/pull/1068).
+- **Reason:** v18 removed the root `config.js`/`config.d.ts`; `./config` is only
+  reachable through the `exports` map. Upstream's fix adds a `types` entry there,
+  which `moduleResolution: node` (node10) never reads, so `import "dotenv/config"`
+  still fails `tsc` with TS2882 even on 18.0.6. Runtime (Node, Jest) is unaffected.
+- **Workaround:** the ambient declaration in
+  [`src/types/dotenv-config.d.ts`](../src/types/dotenv-config.d.ts), which is the
+  workaround suggested in the upstream issue.
+- **Plan:** delete the declaration when `moduleResolution` moves off node10, which
+  TS 7 requires anyway (`ignoreDeprecations: "6.0"` only defers it). Trial runs of
+  `tsc --noEmit` showed `module: commonjs` + `moduleResolution: bundler` type-checks
+  with zero errors and fixes this directly; `nodenext` needs ~8 test-file fixes.
+  Fold that into the TS7 toolchain ticket above.
 
 ### @changesets/cli 3.x — publish-job gotcha (2026-08-26)
 
@@ -167,6 +175,15 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   `brace-expansion@5.0.12`, and `npm audit` reports no `brace-expansion`
   finding. Full unit suite green (1051/1051 across 89 suites), coverage 96.46%
   statements / 90% branches.
+- **Verified (2026-10-02, after `ts-jest` 29.4.12 → 29.4.14 and `@jest/transform`
+  → 30.5.2):** overrides still required. The tree resolves to
+  `babel-plugin-istanbul@8.0.2`, `test-exclude@8.0.0`, `minimatch@10.2.6` (one
+  deduped copy) and `brace-expansion@5.0.12`; `npm audit` reports no
+  `brace-expansion` finding. `matcher-collection` is still unmaintained
+  (`latest` is `2.0.1`, still `minimatch@^3.0.2`); `artillery`'s `walk-sync`
+  actually resolves `1.1.2`, which has the same `minimatch@^3.0.2` range.
+  Full unit suite green (1069/1069 across 90 suites), coverage 96.55%
+  statements / 90.53% branches.
 
 ### GHSA-g7r4-m6w7-qqqr — esbuild (0.27.3–0.28.0) (low) — resolved via override (2026-09-17)
 
@@ -208,6 +225,51 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
 - **Revisit:** <condition or date>
 -->
 
+### GHSA-vfj7-8cjw-p6xm — braces (high) — accepted (2026-10-08)
+
+**From: Artillery** (`artillery` → `chokidar@3.6.0` → `braces@3.0.3`)
+
+- **Reason it can't be fixed now:** the advisory covers every published version
+  of `braces`, and `3.0.3` is the latest, so there is no patched release to
+  override to. `artillery@2.0.34` (latest) still pins `chokidar@^3.6.0`, which
+  needs `braces@~3.0.2`; `chokidar@5` (which drops `braces`) is not in range.
+  `npm audit fix --force` suggests downgrading `artillery` to `0.0.2`, which is
+  not a real fix.
+- **Previously also reached production** via `nodemon` inside
+  `@ustaxcourt/ustc-pay-gov-test-server@0.3.0` (a runtime dependency). Resolved
+  by upgrading to `0.4.0`, which no longer depends on `nodemon`. Verified
+  2026-10-14: `npm audit --omit=dev` reports 0 vulnerabilities.
+- **CI impact:** listed in `ACCEPTED_ADVISORIES` in the `audit` job of `ci.yml`,
+  which runs on every push and fails on any other high/critical advisory. Remove
+  it from there when this entry is resolved.
+- **Mitigation:** the issue is stack exhaustion from deeply nested brace
+  patterns. `artillery` is a devDependency, only runs via
+  `scripts/run-performance-test.sh`, and `chokidar` only watches paths it is
+  handed — nothing in this repo feeds attacker-controlled glob patterns to it.
+  Nothing from this chain ships in the Lambda artifact.
+- **Revisit:** when `braces` publishes a patched version, or `artillery` moves
+  to `chokidar@4+`.
+
+### GHSA-hp3w-g68c-fv3c — sprintf-js (moderate) — accepted (2026-10-08)
+
+**From: Jest and Artillery** (`js-yaml@3.15.2` → `argparse@1.0.10` →
+`sprintf-js@1.0.3`, reached via `@istanbuljs/load-nyc-config` under
+`babel-plugin-istanbul` → `@jest/transform`, and via `artillery`)
+
+- **Reason it can't be fixed now:** the advisory covers every version, and
+  `sprintf-js@1.1.3` is the latest. This is why `npm audit` lists most of the
+  Jest package family (`jest`, `@jest/core`, `ts-jest`, …): they are flagged
+  only because they transitively depend on this chain, not because they have
+  their own advisory. The `--force` remediation is again the nonsensical
+  `artillery@0.0.2`.
+- **Mitigation:** devDependencies only; nothing ships in the Lambda artifact.
+  The vulnerable code is `argparse`'s CLI-argument formatting with
+  unbounded precision specifiers, which is never fed untrusted input here. The
+  related `load-nyc-config` → `js-yaml` path is already known to be inert (see
+  "Removed" above — no `.nycrc` exists).
+- **Revisit:** when `sprintf-js` publishes a patched version, or Jest's
+  `babel-plugin-istanbul` / `artillery` drop `js-yaml@3`.
+
 ### GHSA-8cw4-87c7-c6xx — csv-parse@<7.0.2 (moderate) — accepted (2026-09-09, re-confirmed 2026-09-17)
 
 **From: Artillery**
@@ -234,53 +296,10 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   exist anywhere in the repo and `scripts/run-performance-test.sh` still passes
   no `--payload`/CSV flag. Remains the only finding in `npm audit`
   (2 moderate, both this one chain).
+- **Re-confirmed (2026-10-02):** `artillery` is still `2.0.34` and the tree
+  still resolves to `csv-parse@4.16.3`. No `.csv` files in the repo and
+  `scripts/run-performance-test.sh` still has no `payload`/CSV reference.
 - **Re-confirmed (2026-10-14):** `artillery` is still `2.0.34` and still declares
-  `csv-parse@^4.16.3`. No longer the only finding: see `braces` and `sprintf-js`
-  below, which account for the rest of the 25 findings `npm audit` reports.
-
-### GHSA-vfj7-8cjw-p6xm — braces@<=3.0.3 (high) — accepted (2026-10-13)
-
-**From: nodemon, Artillery (both via `chokidar@3`)**
-
-- **Reason it can't be fixed now:** no patched release exists. `3.0.3` is the
-  latest `braces` and is inside the vulnerable range. It is reached only through
-  `chokidar@3.6.0`, and both parents still declare chokidar 3 in their latest
-  releases: `nodemon@3.1.14` (`chokidar@^3.5.2`) and `artillery@2.0.34`
-  (`chokidar@^3.6.0`). `npm audit fix --force` proposes `artillery@0.0.2`, which
-  is not a real fix. No override was taken. Forcing `chokidar@4` (which drops
-  `braces`) would be a major jump outside both parents' declared ranges. That is
-  the same risk this file turned down for `csv-parse`.
-- **Mitigation:** the advisory is a stack-exhaustion DoS from deeply nested
-  brace patterns. chokidar only expands the watch globs it is given, and those
-  come from our own config (`nodemon --watch src` in `npm run dev`, artillery's
-  CLI). They never come from request input. Both packages are
-  `devDependencies`, so neither ships to Lambda or to package consumers. The one
-  runtime path, `@ustaxcourt/ustc-pay-gov-test-server@0.3.0` → `nodemon`, was
-  removed by bumping that dependency to `^0.4.0` in the same change.
-  `npm audit --omit=dev` reports 0 vulnerabilities.
-- **CI impact:** listed in `ACCEPTED_ADVISORIES` in the `audit` job of `ci.yml`,
-  which runs on every push and fails on any other high/critical advisory. Remove
-  it from there when this entry is resolved.
-- **Revisit:** when `nodemon` or `artillery` moves to `chokidar@4`, or when
-  `braces` publishes a fix. Replacing `nodemon` with `tsx watch` (`tsx` is
-  already a dependency) would remove one of the two paths.
-
-### GHSA-hp3w-g68c-fv3c — sprintf-js@<=1.1.3 (moderate) — accepted (2026-10-13)
-
-**From: Jest coverage, Artillery (both via `js-yaml@3` → `argparse@1`)**
-
-- **Reason it can't be fixed now:** no patched release exists. `1.1.3` is the
-  latest `sprintf-js` and is inside the vulnerable range. It is reached through
-  `js-yaml@3.15.2` → `argparse@1.0.10` from `@istanbuljs/load-nyc-config`
-  (via `ts-jest` → `babel-plugin-istanbul`) and from `artillery@2.0.34`
-  (`js-yaml@^3.15.1`).
-- **Mitigation:** `js-yaml@3` only loads `argparse` in its `bin/js-yaml.js`
-  command-line entry point. The library code that `load-nyc-config` and
-  `artillery` import never calls it, so `sprintf-js` is never loaded by
-  anything this repo runs. All of these are `devDependencies`.
-- **Not re-adding the `load-nyc-config` → `js-yaml` override:** this advisory
-  names `sprintf-js`, not `js-yaml`. Re-adding the override would also only
-  clear one of the two paths, because the `artillery` path would remain. The
-  "do not re-add" note above still stands.
-- **Revisit:** when `artillery` and `@istanbuljs/load-nyc-config` move off
-  `js-yaml@3`, or when `sprintf-js` publishes a fix.
+  `csv-parse@^4.16.3`. No longer the only finding: with `braces` and
+  `sprintf-js` above, these three advisories account for all 24 findings
+  `npm audit` reports.

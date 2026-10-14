@@ -101,7 +101,7 @@ npm run generate:openapi
 Start the dev server and check the Swagger UI:
 
 ```bash
-npm run dev
+npm run start:dev-server
 # Visit http://localhost:8080/docs
 ```
 
