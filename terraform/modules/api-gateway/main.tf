@@ -109,7 +109,7 @@ resource "aws_api_gateway_integration" "transactions_integration" {
   http_method             = aws_api_gateway_method.transactions_get[0].http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getAllTransactions"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getAllTransactions"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "transactions_by_status_integration" {
@@ -119,7 +119,7 @@ resource "aws_api_gateway_integration" "transactions_by_status_integration" {
   http_method             = aws_api_gateway_method.transactions_by_status_get[0].http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionsByStatus"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionsByStatus"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "transaction_payment_status_integration" {
@@ -129,7 +129,7 @@ resource "aws_api_gateway_integration" "transaction_payment_status_integration" 
   http_method             = aws_api_gateway_method.transaction_payment_status_get[0].http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionPaymentStatus"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionPaymentStatus"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "transaction_log_integration" {
@@ -139,7 +139,7 @@ resource "aws_api_gateway_integration" "transaction_log_integration" {
   http_method             = aws_api_gateway_method.transaction_log_get[0].http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionLog"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionLog"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "revenue_summary_integration" {
@@ -149,7 +149,7 @@ resource "aws_api_gateway_integration" "revenue_summary_integration" {
   http_method             = aws_api_gateway_method.revenue_summary_get[0].http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getRevenueSummary"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getRevenueSummary"]}/invocations"
 }
 
 ###################
@@ -468,7 +468,7 @@ resource "aws_api_gateway_integration" "init_integration" {
   http_method             = aws_api_gateway_method.init_post.http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["initPayment"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["initPayment"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "process_integration" {
@@ -477,7 +477,7 @@ resource "aws_api_gateway_integration" "process_integration" {
   http_method             = aws_api_gateway_method.process_post.http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["processPayment"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["processPayment"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "test_integration" {
@@ -486,7 +486,7 @@ resource "aws_api_gateway_integration" "test_integration" {
   http_method             = aws_api_gateway_method.test_get.http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["testCert"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["testCert"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "validate_client_integration" {
@@ -495,7 +495,7 @@ resource "aws_api_gateway_integration" "validate_client_integration" {
   http_method             = aws_api_gateway_method.validate_client_get.http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["validateClient"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["validateClient"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "details_integration" {
@@ -504,7 +504,7 @@ resource "aws_api_gateway_integration" "details_integration" {
   http_method             = aws_api_gateway_method.details_get.http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getDetails"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getDetails"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "health_integration" {
@@ -513,7 +513,7 @@ resource "aws_api_gateway_integration" "health_integration" {
   http_method             = aws_api_gateway_method.health_get.http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
-  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["healthCheck"]}/invocations"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["healthCheck"]}/invocations"
 }
 
 #Deployment

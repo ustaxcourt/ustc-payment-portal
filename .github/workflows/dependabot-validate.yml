@@ -55,8 +55,6 @@ jobs:
           DB_NAME: 'mydb'
 
           PAY_GOV_TEST_SERVER_PORT: 3366
-          PAY_GOV_TEST_SERVER_ACCESS_TOKEN: 'development-token'
-          PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID: 'development-token'
           PAY_GOV_NODE_ENV: 'local'
           SOAP_URL: 'http://localhost:3366/wsdl'
           PAYMENT_URL: 'http://localhost:3366/pay'

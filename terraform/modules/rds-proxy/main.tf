@@ -38,7 +38,7 @@ resource "aws_iam_role_policy" "secret_access" {
         Resource = var.secret_kms_key_arn != null ? var.secret_kms_key_arn : "*"
         Condition = {
           StringEquals = {
-            "kms:ViaService" = "secretsmanager.${data.aws_region.current.name}.amazonaws.com"
+            "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
           }
         }
       }

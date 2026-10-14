@@ -41,6 +41,10 @@ export const partsInZone = (
   };
 };
 
+/** Read in UTC so the zone's clock time can't tip the date into a neighbouring day. */
+const courtWeekday = ({ year, month, day }: CourtDayParts): number =>
+  new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+
 const zoneOffsetMs = (instant: Date, timeZone: string): number => {
   const p = partsInZone(instant, timeZone);
   const asIfUtc = Date.UTC(
@@ -114,7 +118,11 @@ export const zonedDateTimeToUtc = (
   // Second pass settles DST-transition cases.
   const resolved = naive - zoneOffsetMs(new Date(first), timeZone);
 
-  return new Date(resolved);
+  // A time inside the spring-forward gap never happened. Land after the jump, so the caller can detect the gap and handle it (for example, by skipping the day).
+  const landed = partsInZone(new Date(resolved), timeZone);
+  const exists = landed.hour === value.hour && landed.minute === value.minute;
+
+  return new Date(exists ? resolved : first);
 };
 
 export const shiftCourtYear = (instant: Date, yearDelta: number): Date => {
@@ -123,11 +131,11 @@ export const shiftCourtYear = (instant: Date, yearDelta: number): Date => {
   const targetYear = parts.year + yearDelta;
   const targetDay =
     parts.month === 2 &&
-    parts.day === 29 &&
-    !(
-      targetYear % 4 === 0 &&
-      (targetYear % 100 !== 0 || targetYear % 400 === 0)
-    )
+      parts.day === 29 &&
+      !(
+        targetYear % 4 === 0 &&
+        (targetYear % 100 !== 0 || targetYear % 400 === 0)
+      )
       ? 28
       : parts.day;
 
@@ -223,8 +231,7 @@ export const courtPeriodBounds = (
 ): CourtPeriodRecord<Bounds> => {
   const { year, month, day } = partsInZone(now, COURT_TIME_ZONE);
 
-  // Read in UTC so the zone's clock time can't tip the date into a neighbouring day.
-  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  const weekday = courtWeekday({ year, month, day });
   const quarterStartMonth = month - ((month - 1) % 3);
   const fiscalYear = month >= FISCAL_YEAR_START_MONTH ? year : year - 1;
 
@@ -252,22 +259,30 @@ export const courtPeriodBounds = (
 export const previousCourtPeriodBounds = (
   now: Date = new Date(),
 ): CourtPeriodRecord<Bounds> => {
-  const currentPeriods = courtPeriodBounds(now);
 
-  // Shift by Court-local year and preserve the America/New_York wall-clock
-  // time across DST boundaries (for example 11:00 EDT -> 11:00 EST).
   const shiftedNow = shiftCourtYear(now, -1);
   const previousPeriods = courtPeriodBounds(shiftedNow);
   const shiftedWeek = previousPeriods.week;
 
-  const currentWeekDurationMs =
-    currentPeriods.week.end.getTime() - currentPeriods.week.start.getTime();
+  const nowParts = partsInZone(now, COURT_TIME_ZONE);
+  const weekday = courtWeekday(nowParts);
+  const shiftedWeekStart = partsInZone(shiftedWeek.start, COURT_TIME_ZONE);
 
   return {
     ...previousPeriods,
     week: {
       start: shiftedWeek.start,
-      end: new Date(shiftedWeek.start.getTime() + currentWeekDurationMs),
+      end: zonedDateTimeToUtc(
+        {
+          year: shiftedWeekStart.year,
+          month: shiftedWeekStart.month,
+          day: shiftedWeekStart.day + weekday,
+          hour: nowParts.hour,
+          minute: nowParts.minute,
+          second: nowParts.second,
+        },
+        COURT_TIME_ZONE,
+      ),
     },
   } satisfies CourtPeriodRecord<Bounds>;
 };
