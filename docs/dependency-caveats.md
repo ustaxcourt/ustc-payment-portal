@@ -54,6 +54,24 @@ enough context that the next person doesn't have to re-derive the decision.
   `terraform/scripts/build-lambda.sh`). So the Node 24 types are ahead of
   production. Moving Lambda to `nodejs24.x` is being proposed as its own ticket.
 
+### objection 3.1.5 → 3.9.1 — deferred, pinned `~3.1.5` (2026-10-14)
+
+- **Current:** `~3.1.5` (was `^3.1.5`, which resolves to `3.9.1`). **Available
+  latest:** `3.9.1`.
+- **Reason:** after no releases since 2024-09, `3.2.0`–`3.9.1` were published
+  over 2026-10-09 to 2026-10-13. They have no changelog entries, no GitHub
+  releases and no tags. They are built from `ditojs/objection`, a fork by the
+  same maintainer that is 306 commits and 288 files ahead of
+  `Vincit/objection.js` `main`. Two of the changes touch APIs we rely on:
+  `select()` is now applied to `patchAndFetchById`'s fetch query (#1938), and
+  the snake-case mappers changed (#2805). `TransactionModel` uses both, including
+  in `claimForProcessing`. Our tests passed on `3.9.1`, but that is not a
+  substitute for reviewing a fork-sized ORM change under payment state.
+- **Plan:** follow-up ticket to review the `ditojs/objection` changes against
+  `TransactionModel`, wait for the release line to settle, and decide whether
+  to adopt the fork. The tilde keeps routine rotations from picking it up
+  until then. Widen it back to `^` in that ticket.
+
 ### tsup 8.5.1 → 9.0.0 — deferred (2026-10-14)
 
 - **Current:** `^8.5.1`. **Available latest:** `9.0.0`.
@@ -240,8 +258,8 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   runtime path, `@ustaxcourt/ustc-pay-gov-test-server@0.3.0` → `nodemon`, was
   removed by bumping that dependency to `^0.4.0` in the same change.
   `npm audit --omit=dev` reports 0 vulnerabilities.
-- **CI impact:** listed in `ACCEPTED_ADVISORIES` in the `dependabot-validate.yml`
-  security audit step, which fails on any other high/critical advisory. Remove
+- **CI impact:** listed in `ACCEPTED_ADVISORIES` in the `audit` job of `ci.yml`,
+  which runs on every push and fails on any other high/critical advisory. Remove
   it from there when this entry is resolved.
 - **Revisit:** when `nodemon` or `artillery` moves to `chokidar@4`, or when
   `braces` publishes a fix. Replacing `nodemon` with `tsx watch` (`tsx` is

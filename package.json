@@ -107,7 +107,7 @@
     "knex": "^3.3.0",
     "node-fetch": "^3.3.2",
     "npm-run-all2": "^9.0.3",
-    "objection": "^3.9.1",
+    "objection": "~3.1.5",
     "pg": "^8.23.1",
     "pino": "^10.4.0",
     "pino-pretty": "^13.2.0",

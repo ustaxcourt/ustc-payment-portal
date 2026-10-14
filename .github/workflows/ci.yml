@@ -75,6 +75,33 @@ jobs:
       - run: npm run test:types
       - run: npm test
 
+  audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      # Every ID here must have an "Accepted vulnerabilities" entry in docs/dependency-caveats.md.
+      - env:
+          ACCEPTED_ADVISORIES: GHSA-vfj7-8cjw-p6xm
+        run: |
+          npm audit --package-lock-only --json > audit.json || true
+          jq -e '.vulnerabilities' audit.json > /dev/null
+          unaccepted=$(jq -r --arg accepted "$ACCEPTED_ADVISORIES" '
+            ($accepted | split(" ")) as $ok
+            | [.vulnerabilities[].via[] | objects
+               | select(.severity == "high" or .severity == "critical")
+               | .url | split("/") | last]
+            | unique | map(select(. as $id | $ok | index($id) | not)) | .[]
+          ' audit.json)
+          if [ -n "$unaccepted" ]; then
+            echo "Unaccepted high/critical advisories:"
+            echo "$unaccepted"
+            exit 1
+          fi
+
   migration-check:
     runs-on: ubuntu-latest
     needs: [build, changes]
