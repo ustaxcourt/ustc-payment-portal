@@ -1,0 +1,37 @@
+name: CI (fork PRs)
+# ci.yml is push-only, so it never runs for PRs from forks. This is a separate workflow,
+# not a pull_request trigger on ci.yml, because publish.yml runs on any completed "CI" run
+# with write and npm-publish permissions, and a stranger's PR must not be able to start it.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:ci
+      - run: npm run tsc
+      - run: npm run build
+      - run: npm run test:types
+      - run: npm test
+
+  audit:
+    name: Security audit
+    if: github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: bash scripts/security-audit.sh

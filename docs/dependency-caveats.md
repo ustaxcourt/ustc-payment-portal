@@ -239,8 +239,9 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   `@ustaxcourt/ustc-pay-gov-test-server@0.3.0` (a runtime dependency). Resolved
   by upgrading to `0.4.0`, which no longer depends on `nodemon`. Verified
   2026-10-14: `npm audit --omit=dev` reports 0 vulnerabilities.
-- **CI impact:** listed in `ACCEPTED_ADVISORIES` in the `audit` job of `ci.yml`,
-  which runs on every push and fails on any other high/critical advisory. Remove
+- **CI impact:** listed in `ACCEPTED_ADVISORIES` in `scripts/security-audit.sh`,
+  which the `Security audit` job runs on every push and fork PR and which fails
+  on any other high/critical advisory. Remove
   it from there when this entry is resolved.
 - **Mitigation:** the issue is stack exhaustion from deeply nested brace
   patterns. `artillery` is a devDependency, only runs via
