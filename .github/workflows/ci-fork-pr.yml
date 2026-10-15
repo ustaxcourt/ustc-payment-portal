@@ -1,7 +1,6 @@
 name: CI (fork PRs)
-# ci.yml is push-only, so it never runs for PRs from forks. This is a separate workflow,
-# not a pull_request trigger on ci.yml, because publish.yml runs on any completed "CI" run
-# with write and npm-publish permissions, and a stranger's PR must not be able to start it.
+# Not a pull_request trigger on ci.yml: publish.yml runs after any completed "CI" run
+# with publish permissions, and a fork PR must not be able to start it.
 on:
   pull_request:
 
