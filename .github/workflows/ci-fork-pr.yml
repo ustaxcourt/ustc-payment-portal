@@ -9,7 +9,10 @@ permissions:
   contents: read
 
 jobs:
+  # Names must differ from ci.yml's: required checks match by job name across workflows,
+  # and these jobs are skipped on same-repo PRs, which would satisfy the requirement.
   build:
+    name: Fork PR build
     if: github.event.pull_request.head.repo.fork
     runs-on: ubuntu-latest
     steps:
@@ -26,7 +29,7 @@ jobs:
       - run: npm test
 
   audit:
-    name: Security audit
+    name: Fork PR security audit
     if: github.event.pull_request.head.repo.fork
     runs-on: ubuntu-latest
     steps:
