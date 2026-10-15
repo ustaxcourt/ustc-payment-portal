@@ -11,6 +11,7 @@ permissions:
 jobs:
   # Names must differ from ci.yml's: required checks match by job name across workflows,
   # and these jobs are skipped on same-repo PRs, which would satisfy the requirement.
+  # Keep these steps in sync with ci.yml's build job.
   build:
     name: Fork PR build
     if: github.event.pull_request.head.repo.fork

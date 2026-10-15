@@ -60,6 +60,7 @@ jobs:
           echo "migrations=$CHANGED" >> "$GITHUB_OUTPUT"
           echo "Migration-related files changed: $CHANGED"
 
+  # Keep these steps in sync with ci-fork-pr.yml's build job.
   build:
     runs-on: ubuntu-latest
     steps:

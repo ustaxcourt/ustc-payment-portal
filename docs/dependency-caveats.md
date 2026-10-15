@@ -98,13 +98,13 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ### dotenv@18 — `dotenv/config` types unresolved under `moduleResolution: node` (2026-10-08)
 
-- **Current:** `dotenv@^18.0.7`. Upstream issue:
+- **Current:** `dotenv@^18.0.8`. Upstream issue:
   [motdotla/dotenv#1067](https://github.com/motdotla/dotenv/issues/1067), "fixed"
   in 18.0.5 by [#1068](https://github.com/motdotla/dotenv/pull/1068).
 - **Reason:** v18 removed the root `config.js`/`config.d.ts`; `./config` is only
   reachable through the `exports` map. Upstream's fix adds a `types` entry there,
   which `moduleResolution: node` (node10) never reads, so `import "dotenv/config"`
-  still fails `tsc` with TS2882 even on 18.0.6. Runtime (Node, Jest) is unaffected.
+  still fails `tsc` with TS2882 even on 18.0.8. Runtime (Node, Jest) is unaffected.
 - **Workaround:** the ambient declaration in
   [`src/types/dotenv-config.d.ts`](../src/types/dotenv-config.d.ts), which is the
   workaround suggested in the upstream issue.
@@ -242,7 +242,10 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
 - **CI impact:** listed in `ACCEPTED_ADVISORIES` in `scripts/security-audit.sh`,
   which the `Security audit` job runs on every push and fork PR and which fails
   on any other high/critical advisory. Remove
-  it from there when this entry is resolved.
+  it from there when this entry is resolved. Because `publish.yml` waits for CI
+  to succeed, a newly disclosed unaccepted advisory, even in a dev-only
+  dependency, blocks npm publishes from `main` until it is fixed or accepted.
+  This is intended: triage the advisory rather than bypass the job.
 - **Mitigation:** the issue is stack exhaustion from deeply nested brace
   patterns. `artillery` is a devDependency, only runs via
   `scripts/run-performance-test.sh`, and `chokidar` only watches paths it is

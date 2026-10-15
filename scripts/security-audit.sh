@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Shared by ci.yml and ci-fork-pr.yml so the accepted list lives in one place.
+# A failure on main also blocks publish.yml, which only runs after CI succeeds.
 
 set -euo pipefail
 
