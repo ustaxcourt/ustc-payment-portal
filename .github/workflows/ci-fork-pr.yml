@@ -1,0 +1,40 @@
+name: CI (fork PRs)
+# Not a pull_request trigger on ci.yml: publish.yml runs after any completed "CI" run
+# with publish permissions, and a fork PR must not be able to start it.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Names must differ from ci.yml's: required checks match by job name across workflows,
+  # and these jobs are skipped on same-repo PRs, which would satisfy the requirement.
+  # Keep these steps in sync with ci.yml's build job.
+  build:
+    name: Fork PR build
+    if: github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:ci
+      - run: npm run tsc
+      - run: npm run build
+      - run: npm run test:types
+      - run: npm test
+
+  audit:
+    name: Fork PR security audit
+    if: github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: bash scripts/security-audit.sh

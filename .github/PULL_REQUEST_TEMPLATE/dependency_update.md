@@ -52,7 +52,7 @@ Verification of these is usually covered by CI (`npm run lint`, `npm run tsc`, `
   - [ ] Locally (`npm run start:all`, or `npm run start:dev-server` + `npm run start:pay-gov-test-server` separately)
   - [ ] In this PR's ephemeral dev environment
 - [ ] I have confirmed that integration tests pass for this PR.
-- [ ] I have run `npm audit --audit-level=high` and resolved or consciously accepted any findings.
+- [ ] The `Security audit` CI job passes, and any newly accepted **high/critical** advisory is added to the `ACCEPTED_ADVISORIES` list in `scripts/security-audit.sh` and to `docs/dependency-caveats.md`.
 - [ ] `package-lock.json` reflects a clean `npm ci` install — no hand edits.
 - [ ] If a security advisory motivated this update, I've named the CVE/advisory above.
 - [ ] I have updated Terraform providers in our IaC code, and confirmed that `terraform plan` succeeds on the PR.
