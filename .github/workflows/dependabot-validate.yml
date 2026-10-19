@@ -82,9 +82,6 @@ jobs:
           BASE_URL: http://localhost:8080
         run: npm run test:integration:dev
 
-      - name: Security audit
-        run: npm audit --audit-level=high
-
       - name: Dump local stack log
         if: ${{ always() }}
         run: cat local-stack.log

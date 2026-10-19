@@ -24,21 +24,21 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ## Deferred upgrades
 
-### TypeScript 6.0.3 → 7.0.2 — deferred (2026-07-09, re-confirmed 2026-09-17)
+### TypeScript 6.0.3 → 7.0.2 — deferred (2026-07-09, re-confirmed 2026-10-14)
 
 - **Current:** `^6.0.3`. **Available latest:** `7.0.2`.
 - **Reason:** TypeScript 7 is a major release. Our toolchain still targets the
-  6.x line — `ts-jest@^29.4.12`, `tsup@^8.5.1`, `ts-node@^10.9.2`, and
-  `@biomejs/biome@^2.5.14` — and none are confirmed compatible with the TS7
+  6.x line — `ts-jest@^29.4.14`, `tsup@^8.5.1`, `ts-node@^10.9.2`, and
+  `@biomejs/biome@^2.5.15` — and none are confirmed compatible with the TS7
   compiler/API. A blind bump risks breaking type-check, the Jest transform, and
   the build in one step, with a blast radius across the whole package.
 - **Plan:** Cut a dedicated follow-up ticket to validate the toolchain against
   TS7 (upgrade `ts-jest`/`tsup`/`ts-node` first, then the compiler), and flag
   the PO. Not appropriate to bundle into recurring dependency maintenance.
 
-### @types/node@^24.13.5 → ^26.6.1 — deferred (2026-07-20, re-confirmed 2026-09-17)
+### @types/node@^24.19.2 → ^26.6.5 — deferred (2026-07-20, re-confirmed 2026-10-14)
 
-- **Current:** `@types/node@^24.13.5`. **Available latest:** `^26.6.1`.
+- **Current:** `@types/node@^24.19.2`. **Available latest:** `^26.6.5`.
 - **Reason:** `@types/node` must track the runtime, not lead it. `engines.node`
   is `>=24.20.0 <25.0.0` and `.nvmrc` pins `24.20.0`, so the ambient Node types
   are intentionally held on the 24 line. A proposed upgrade to
@@ -49,6 +49,37 @@ enough context that the next person doesn't have to re-derive the decision.
   project's supported Node version.
 - **Plan:** Revisit only when the Node runtime itself moves off 24 (new
   `engines`/`.nvmrc` floor); bump `@types/node` to match in the same change.
+- **Known mismatch (2026-10-14):** the deployed Lambdas still run `nodejs22.x`
+  and esbuild targets `node22` (`terraform/modules/lambda/variables.tf`,
+  `terraform/scripts/build-lambda.sh`). So the Node 24 types are ahead of
+  production. Moving Lambda to `nodejs24.x` is being proposed as its own ticket.
+
+### objection 3.1.5 → 3.9.1 — deferred, pinned `~3.1.5` (2026-10-14)
+
+- **Current:** `~3.1.5` (was `^3.1.5`, which resolves to `3.9.1`). **Available
+  latest:** `3.9.1`.
+- **Reason:** after no releases since 2024-09, `3.2.0`–`3.9.1` were published
+  over 2026-10-09 to 2026-10-13. They have no changelog entries, no GitHub
+  releases and no tags. They are built from `ditojs/objection`, a fork by the
+  same maintainer that is 306 commits and 288 files ahead of
+  `Vincit/objection.js` `main`. Two of the changes touch APIs we rely on:
+  `select()` is now applied to `patchAndFetchById`'s fetch query (#1938), and
+  the snake-case mappers changed (#2805). `TransactionModel` uses both, including
+  in `claimForProcessing`. Our tests passed on `3.9.1`, but that is not a
+  substitute for reviewing a fork-sized ORM change under payment state.
+- **Plan:** follow-up ticket to review the `ditojs/objection` changes against
+  `TransactionModel`, wait for the release line to settle, and decide whether
+  to adopt the fork. The tilde keeps routine rotations from picking it up
+  until then. Widen it back to `^` in that ticket.
+
+### tsup 8.5.1 → 9.0.0 — deferred (2026-10-14)
+
+- **Current:** `^8.5.1`. **Available latest:** `9.0.0`.
+- **Reason:** 9.0.0 was published to npm the same day as this update. A major
+  release that new hasn't been through any real-world use yet, and our `npm run
+  build` output is the published package.
+- **Plan:** take it in the next rotation. 9.0.0 declares `esbuild@^0.28.2`, so
+  the `tsup` → `esbuild` override below can be dropped in the same change.
 
 ### Terraform provider lockfiles — what is and isn't in scope (2026-09-17)
 
@@ -67,13 +98,13 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ### dotenv@18 — `dotenv/config` types unresolved under `moduleResolution: node` (2026-10-08)
 
-- **Current:** `dotenv@^18.0.6`. Upstream issue:
+- **Current:** `dotenv@^18.0.8`. Upstream issue:
   [motdotla/dotenv#1067](https://github.com/motdotla/dotenv/issues/1067), "fixed"
   in 18.0.5 by [#1068](https://github.com/motdotla/dotenv/pull/1068).
 - **Reason:** v18 removed the root `config.js`/`config.d.ts`; `./config` is only
   reachable through the `exports` map. Upstream's fix adds a `types` entry there,
   which `moduleResolution: node` (node10) never reads, so `import "dotenv/config"`
-  still fails `tsc` with TS2882 even on 18.0.6. Runtime (Node, Jest) is unaffected.
+  still fails `tsc` with TS2882 even on 18.0.8. Runtime (Node, Jest) is unaffected.
 - **Workaround:** the ambient declaration in
   [`src/types/dotenv-config.d.ts`](../src/types/dotenv-config.d.ts), which is the
   workaround suggested in the upstream issue.
@@ -206,8 +237,15 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   not a real fix.
 - **Previously also reached production** via `nodemon` inside
   `@ustaxcourt/ustc-pay-gov-test-server@0.3.0` (a runtime dependency). Resolved
-  by upgrading to `0.4.0`, which no longer depends on `nodemon`; `npm audit
-  --omit=dev` should now be clean for this advisory.
+  by upgrading to `0.4.0`, which no longer depends on `nodemon`. Verified
+  2026-10-14: `npm audit --omit=dev` reports 0 vulnerabilities.
+- **CI impact:** listed in `ACCEPTED_ADVISORIES` in `scripts/security-audit.sh`,
+  which the `Security audit` job runs on every push and fork PR and which fails
+  on any other high/critical advisory. Remove
+  it from there when this entry is resolved. Because `publish.yml` waits for CI
+  to succeed, a newly disclosed unaccepted advisory, even in a dev-only
+  dependency, blocks npm publishes from `main` until it is fixed or accepted.
+  This is intended: triage the advisory rather than bypass the job.
 - **Mitigation:** the issue is stack exhaustion from deeply nested brace
   patterns. `artillery` is a devDependency, only runs via
   `scripts/run-performance-test.sh`, and `chokidar` only watches paths it is
@@ -265,3 +303,7 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
 - **Re-confirmed (2026-10-02):** `artillery` is still `2.0.34` and the tree
   still resolves to `csv-parse@4.16.3`. No `.csv` files in the repo and
   `scripts/run-performance-test.sh` still has no `payload`/CSV reference.
+- **Re-confirmed (2026-10-14):** `artillery` is still `2.0.34` and still declares
+  `csv-parse@^4.16.3`. No longer the only finding: with `braces` and
+  `sprintf-js` above, these three advisories account for all 24 findings
+  `npm audit` reports.
