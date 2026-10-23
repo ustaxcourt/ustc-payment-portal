@@ -90,7 +90,8 @@ enough context that the next person doesn't have to re-derive the decision.
 
 - **Current:** the Terraform CLI was taken to `~> 1.17.0` repo-wide on
   2026-10-23 (from `~> 1.16.0` on 2026-09-17), with CI's `terraform_version`
-  set to the matching npm-semver range `~1.17.0`. On 2026-09-17 the
+  set to the matching npm-semver range `~1.17.0`. Tracked root lockfiles were
+  refreshed to `hashicorp/aws` 6.70.0 the same day. On 2026-09-17 the
   deprecated `data.aws_region.current.name` was replaced with `.region` in the
   `api-gateway` and `rds-proxy` modules.
 - **Why module lockfiles are not in scope at all:** `.gitignore` excludes
@@ -104,13 +105,14 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ### dotenv@18 — `dotenv/config` types unresolved under `moduleResolution: node` (2026-10-08)
 
-- **Current:** `dotenv@^18.0.8`. Upstream issue:
+- **Current:** `dotenv@^18.0.9`. Upstream issue:
   [motdotla/dotenv#1067](https://github.com/motdotla/dotenv/issues/1067), "fixed"
   in 18.0.5 by [#1068](https://github.com/motdotla/dotenv/pull/1068).
 - **Reason:** v18 removed the root `config.js`/`config.d.ts`; `./config` is only
   reachable through the `exports` map. Upstream's fix adds a `types` entry there,
   which `moduleResolution: node` (node10) never reads, so `import "dotenv/config"`
-  still fails `tsc` with TS2882 even on 18.0.8. Runtime (Node, Jest) is unaffected.
+  still fails `tsc` with TS2882 even on 18.0.9 (re-checked 2026-10-23 by
+  removing the declaration). Runtime (Node, Jest) is unaffected.
 - **Workaround:** the ambient declaration in
   [`src/types/dotenv-config.d.ts`](../src/types/dotenv-config.d.ts), which is the
   workaround suggested in the upstream issue.
@@ -236,6 +238,15 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   branches, and the full suite stays green.
 - **Do not re-add** without an advisory that actually names `js-yaml`.
 
+### Removed: GHSA-hp3w-g68c-fv3c — sprintf-js (moderate) — advisory withdrawn (2026-10-22)
+
+- **Was:** accepted on 2026-10-08. Reached `sprintf-js@1.0.3` via
+  `js-yaml@3.15.2` → `argparse@1.0.10`, under both Jest's
+  `@istanbuljs/load-nyc-config` and `artillery`, with no patched release.
+- **Why it was dropped:** GitHub withdrew the advisory on 2026-10-22, so
+  `npm audit` no longer reports it even though `sprintf-js@1.0.3` is still in
+  the tree. It was never in `ACCEPTED_ADVISORIES` (moderate is below the gate).
+
 ### Accepted vulnerabilities
 
 <!-- Format:
@@ -274,30 +285,6 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   Nothing from this chain ships in the Lambda artifact.
 - **Revisit:** when `braces` publishes a patched version, or `artillery` moves
   to `chokidar@4+`.
-
-### GHSA-hp3w-g68c-fv3c — sprintf-js (moderate) — withdrawn (2026-10-22)
-
-- **No longer reported:** GitHub withdrew the advisory on 2026-10-22, so
-  `npm audit` dropped it even though `sprintf-js@1.0.3` is still in the tree.
-  Nothing to do; the original entry is kept below for context.
-
-**From: Jest and Artillery** (`js-yaml@3.15.2` → `argparse@1.0.10` →
-`sprintf-js@1.0.3`, reached via `@istanbuljs/load-nyc-config` under
-`babel-plugin-istanbul` → `@jest/transform`, and via `artillery`)
-
-- **Reason it can't be fixed now:** the advisory covers every version, and
-  `sprintf-js@1.1.3` is the latest. This is why `npm audit` lists most of the
-  Jest package family (`jest`, `@jest/core`, `ts-jest`, …): they are flagged
-  only because they transitively depend on this chain, not because they have
-  their own advisory. The `--force` remediation is again the nonsensical
-  `artillery@0.0.2`.
-- **Mitigation:** devDependencies only; nothing ships in the Lambda artifact.
-  The vulnerable code is `argparse`'s CLI-argument formatting with
-  unbounded precision specifiers, which is never fed untrusted input here. The
-  related `load-nyc-config` → `js-yaml` path is already known to be inert (see
-  "Removed" above — no `.nycrc` exists).
-- **Revisit:** when `sprintf-js` publishes a patched version, or Jest's
-  `babel-plugin-istanbul` / `artillery` drop `js-yaml@3`.
 
 ### GHSA-8cw4-87c7-c6xx — csv-parse@<7.0.2 (moderate) — accepted (2026-09-09, re-confirmed 2026-09-17)
 

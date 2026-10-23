@@ -10,4 +10,5 @@ Scheduled update for NPM and Terraform dependencies - Week of 2026-10-19
   9.0.0 no longer needs. Published JS output is unchanged.
 - Pin `.nvmrc` to Node 24.22.1 for the October Node.js security release.
   `engines.node` stays `>=24.20.0 <25.0.0`.
-- Move the Terraform CLI to `~> 1.17.0`.
+- Move the Terraform CLI to `~> 1.17.0` (all roots, modules and CI) and
+  refresh the provider lockfiles to `hashicorp/aws` 6.70.0.
