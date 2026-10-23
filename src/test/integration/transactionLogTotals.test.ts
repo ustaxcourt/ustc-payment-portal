@@ -149,18 +149,22 @@ describe("GET /transaction-log totals", () => {
   });
 
   it("holds the figures steady while the log is filtered", async () => {
-    const unfiltered = await fetchLog({ includeTotals: "true" });
+    // Suites running in parallel can complete payments between reads, so bracket
+    // the filtered read; totals only grow while the suite runs.
+    const before = await fetchTotals();
     const filtered = await fetchLog({
       includeTotals: "true",
       status: "failed",
       from: "2026-01-01T00:00:00Z",
       to: "2026-01-02T00:00:00Z",
     });
+    const after = await fetchTotals();
 
     for (const period of PERIODS) {
-      expect(filtered.totals?.[period].total).toBe(
-        unfiltered.totals?.[period].total,
-      );
+      const total = filtered.totals?.[period].total ?? Number.NaN;
+
+      expect(total).toBeGreaterThanOrEqual(before[period].total);
+      expect(total).toBeLessThanOrEqual(after[period].total);
     }
   });
 

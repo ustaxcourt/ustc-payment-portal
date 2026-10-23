@@ -56,15 +56,18 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ### Node.js 24.20.0 → 24.22.1 in `.nvmrc`; `engines.node` floor held at 24.20.0 (2026-10-23)
 
-- **Why:** 24.22.1 is the security release fixing the Brotli decoder CVE among
-  others. `.nvmrc` drives every CI `setup-node` step, including `publish.yml`.
+- **Why:** 24.22.1 (2026-10-20) is the security release for CVE-2026-111497
+  (Brotli decoder), plus CVE-2026-105481, -105482, -105483, -106069, -106073
+  and -106074. `.nvmrc` drives every CI `setup-node` step, including `publish.yml`.
 - **Why the floor stays:** DAWSON installs with `engine-strict=true` (see
   `.changeset/quiet-moons-gather.md`), so raising `engines.node` past its Node
   version fails its install. The floor states compatibility; patching is each
   consumer's runtime decision.
-- **Lambda:** no `runtime_management_config` is set, so the managed runtime is in
-  Auto mode and picks up AWS's patched Node without a deploy. Confirm via the
-  runtime version ARN in each function's `INIT_START` log line.
+- **Lambda:** prod runs `nodejs22.x`, which `.nvmrc` does not affect. No
+  `runtime_management_config` is set, so the managed runtime is in Auto mode and
+  picks up AWS's patched Node without a deploy; the 22.x fix is 22.23.4. Confirm
+  via the runtime version ARN in a function's `INIT_START` log line. Not yet
+  observed as of 2026-10-23 (AWS: rolling out, no us-east-1 ETA).
 
 ### objection 3.1.5 → 4.2.0 — deferred, pinned `~3.1.5` (2026-10-14, re-confirmed 2026-10-23)
 
@@ -285,8 +288,10 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   Nothing from this chain ships in the Lambda artifact.
 - **Revisit:** when `braces` publishes a patched version, or `artillery` moves
   to `chokidar@4+`.
+- **Re-confirmed (2026-10-23):** `braces@3.0.3` is still the latest and
+  `artillery@2.0.34` still pulls `chokidar@3.6.0`.
 
-### GHSA-8cw4-87c7-c6xx — csv-parse@<7.0.2 (moderate) — accepted (2026-09-09, re-confirmed 2026-09-17)
+### GHSA-8cw4-87c7-c6xx — csv-parse@<7.0.2 (moderate) — accepted (2026-09-09, re-confirmed 2026-10-23)
 
 **From: Artillery**
 
