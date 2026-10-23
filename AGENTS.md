@@ -62,7 +62,7 @@ The portal is published as `@ustaxcourt/payment-portal` and serves two purposes:
   - SigV4 smoke only: `BASE_URL=$BASE_URL npm run test:integration:sigv4`
   - `/validate-client` only: `BASE_URL=$BASE_URL npm run test:integration:validate-client`
   - The `sigv4Smoke`, `deployHealthSmoke`, and `validateClient` suites need a deployed API Gateway, so they are excluded from the generic `test:integration*` scripts and run in their own lanes. A new integration test that cannot run against the local devServer belongs in a lane too, not in the shared folder run.
-  - The shared folder runs use `--runInBand`. The transaction-log suites assert on database-wide totals, which payment suites in the same run would otherwise change mid-test. Separate runs don't collide: each PR environment gets its own database, and `cicd-dev` serializes runs per ref. Keep it serial rather than loosening those assertions.
+  - The shared folder runs use `--runInBand`. The transaction-log suites assert on database-wide totals, which payment suites in the same run would otherwise change mid-test. Separate CI runs don't collide: each PR environment gets its own database, and `cicd-dev` serializes runs per ref. The shared dev environment (`test:integration:deployed`) can still be shifted by power-tuning runs or manual testing. Keep it serial rather than loosening those assertions.
 - **Smoke-check** the running local stack: `npm run check:local-flow`
 - **Database migrations**: `npm run migrate:latest` (Knex). See other `migrate:*` and `seed:*` scripts in `package.json`.
 

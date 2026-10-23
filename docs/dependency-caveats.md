@@ -66,7 +66,8 @@ enough context that the next person doesn't have to re-derive the decision.
   `nodejs24.x` in the same change. That does not deliver the fix by itself: no
   `runtime_management_config` is set, so the managed runtime is in Auto mode and
   picks up AWS's patched Node (24.22.1) as AWS rolls it out. Confirm via the
-  runtime version ARN in a function's `INIT_START` log line.
+  runtime version ARN in a function's `INIT_START` log line. The exposure until
+  then is recorded under Accepted vulnerabilities (CVE-2026-111497).
 - **Checked 2026-10-23, before the move: not yet rolled out.** Every dev cold
   start over the prior 7 days ran `nodejs:22.mainline.v122` (ARN
   `…runtime:fcbc5912…10e9`); prod and stg had no cold starts to inspect. After
@@ -262,6 +263,25 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
 - **Mitigation:** ...
 - **Revisit:** <condition or date>
 -->
+
+### CVE-2026-111497 / GHSA-9v8h-qqgm-4m35 — Node.js Brotli decoder (critical) — accepted until AWS patches the Lambda runtime (2026-10-23)
+
+**From: the AWS Lambda managed runtime** (`nodejs24.x`, Auto runtime mode)
+
+- **Reason it can't be fixed now:** the fix ships in Node 24.22.1, but Lambda
+  runtime patch versions are AWS-managed. AWS has patched its base images and is
+  rolling the managed runtime out gradually, with no us-east-1 ETA. We can't pin
+  a patch version, and a deploy doesn't speed it up. `.nvmrc` already covers CI,
+  local dev and publish. `npm audit` doesn't see this, so it isn't in
+  `ACCEPTED_ADVISORIES`.
+- **Mitigation:** the bug needs attacker-controlled Brotli data. No code here
+  calls `zlib` directly; the only automatic `br` decoding is `node-fetch` on the
+  Pay.gov SOAP calls (`src/appContext.ts`, `src/health/probePayGovWsdl.ts`), and
+  those responses come only from Pay.gov over TLS. Request bodies reach the
+  Lambdas as decoded API Gateway JSON.
+- **Revisit:** when a function's `INIT_START` shows a `nodejs:24` runtime
+  version released after 2026-10-20. Record the ARN here and move this entry to
+  "Removed".
 
 ### GHSA-vfj7-8cjw-p6xm — braces (high) — accepted (2026-10-08)
 
