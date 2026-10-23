@@ -473,7 +473,7 @@ describe("TransactionLogResponseSchema", () => {
   });
 });
 
-describe("TransactionLogResponseSchema", () => {
+describe("TransactionLogResponseSchema counts and total", () => {
   const counts = { all: 47, success: 40, failed: 4, pending: 3 };
   const page = {
     data: [],

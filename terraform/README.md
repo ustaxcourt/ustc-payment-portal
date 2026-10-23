@@ -4,7 +4,7 @@ This directory contains Infrastructure as Code for the USTC Payment Portal. It i
 
 ## Terraform Version
 
-This project requires **Terraform ~> 1.16.0**. The `~>` constraint means any 1.16.x version is supported, but 1.17+ is not until explicitly upgraded.
+This project requires **Terraform ~> 1.17.0**. The `~>` constraint means any 1.17.x version is supported, but 1.18+ is not until explicitly upgraded.
 
 See [Upgrading Terraform](#upgrading-terraform) for the complete upgrade process.
 
@@ -245,8 +245,8 @@ constraint as soon as a new Terraform minor ships.
 Pin it to a tilde range matching the `required_version` constraint above, so CI
 picks up patch releases automatically but never crosses a minor. Note that
 `setup-terraform` uses [npm semver ranges](https://www.npmjs.com/package/semver#ranges),
-not Terraform's `~>` syntax — so the equivalent of `~> 1.16.0` is written
-`~1.16.0`, and both mean `>=1.16.0 <1.17.0`.
+not Terraform's `~>` syntax — so the equivalent of `~> 1.17.0` is written
+`~1.17.0`, and both mean `>=1.17.0 <1.18.0`.
 
 Example change:
 
@@ -254,7 +254,7 @@ Example change:
 - name: Setup Terraform
   uses: hashicorp/setup-terraform@v4
   with:
-    terraform_version: "~1.16.0" # Bump when required_version moves to a new minor
+    terraform_version: "~1.17.0" # Bump when required_version moves to a new minor
 ```
 
 ### GitHub Action Updates
