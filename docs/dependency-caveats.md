@@ -49,10 +49,9 @@ enough context that the next person doesn't have to re-derive the decision.
   project's supported Node version.
 - **Plan:** Revisit only when the Node runtime itself moves off 24 (new
   `engines`/`.nvmrc` floor); bump `@types/node` to match in the same change.
-- **Known mismatch (2026-10-14):** the deployed Lambdas still run `nodejs22.x`
-  and esbuild targets `node22` (`terraform/modules/lambda/variables.tf`,
-  `terraform/scripts/build-lambda.sh`). So the Node 24 types are ahead of
-  production. Moving Lambda to `nodejs24.x` is being proposed as its own ticket.
+- **Mismatch resolved (2026-10-23):** the Lambdas moved from `nodejs22.x` to
+  `nodejs24.x` and esbuild now targets `node24`, so the Node 24 types match
+  production.
 
 ### Node.js 24.20.0 → 24.22.1 in `.nvmrc`; `engines.node` floor held at 24.20.0 (2026-10-23)
 
@@ -63,13 +62,15 @@ enough context that the next person doesn't have to re-derive the decision.
   `.changeset/quiet-moons-gather.md`), so raising `engines.node` past its Node
   version fails its install. The floor states compatibility; patching is each
   consumer's runtime decision.
-- **Lambda:** prod runs `nodejs22.x`, which `.nvmrc` does not affect. No
+- **Lambda:** `.nvmrc` does not affect the Lambda runtime. The Lambdas move to
+  `nodejs24.x` in the same change. That does not deliver the fix by itself: no
   `runtime_management_config` is set, so the managed runtime is in Auto mode and
-  picks up AWS's patched Node without a deploy; the 22.x fix is 22.23.4. Confirm
-  via the runtime version ARN in a function's `INIT_START` log line.
-- **Checked 2026-10-23: not yet rolled out.** Every dev cold start over the prior
-  7 days ran `nodejs:22.mainline.v122` (ARN `…runtime:fcbc5912…10e9`); prod and
-  stg had no cold starts to inspect. A new version after that date is the patch.
+  picks up AWS's patched Node (24.22.1) as AWS rolls it out. Confirm via the
+  runtime version ARN in a function's `INIT_START` log line.
+- **Checked 2026-10-23, before the move: not yet rolled out.** Every dev cold
+  start over the prior 7 days ran `nodejs:22.mainline.v122` (ARN
+  `…runtime:fcbc5912…10e9`); prod and stg had no cold starts to inspect. After
+  deploy, check the `nodejs:24` runtime version the same way.
 
 ### objection 3.1.5 → 4.2.0 — deferred, pinned `~3.1.5` (2026-10-14, re-confirmed 2026-10-23)
 

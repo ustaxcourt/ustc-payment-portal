@@ -202,7 +202,7 @@ run "supports_custom_prefix_and_runtime" {
 
   variables {
     function_name_prefix      = "ustc-custom"
-    runtime                   = "nodejs22.x"
+    runtime                   = "nodejs24.x"
     lambda_execution_role_arn = "arn:aws:iam::123456789012:role/lambda-exec"
     subnet_ids                = ["subnet-111111", "subnet-222222"]
     security_group_ids        = ["sg-111111"]
@@ -236,7 +236,7 @@ run "supports_custom_prefix_and_runtime" {
   }
 
   assert {
-    condition     = aws_lambda_function.functions["processPayment"].runtime == "nodejs22.x"
+    condition     = aws_lambda_function.functions["processPayment"].runtime == "nodejs24.x"
     error_message = "runtime should match configured override"
   }
 }
