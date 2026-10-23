@@ -40,6 +40,11 @@ run "creates_expected_payment_functions" {
   }
 
   assert {
+    condition     = aws_lambda_function.functions["initPayment"].runtime == "nodejs24.x"
+    error_message = "lambda functions should default to the nodejs24.x runtime"
+  }
+
+  assert {
     condition     = aws_lambda_function.functions["initPayment"].timeout == var.payment_lambda_timeout
     error_message = "payment-flow lambdas should use shared payment_lambda_timeout"
   }
@@ -200,9 +205,10 @@ run "rejects_invalid_memory_size" {
 run "supports_custom_prefix_and_runtime" {
   command = plan
 
+  # runtime is deliberately not the default, so the assert proves the override is applied.
   variables {
     function_name_prefix      = "ustc-custom"
-    runtime                   = "nodejs24.x"
+    runtime                   = "nodejs22.x"
     lambda_execution_role_arn = "arn:aws:iam::123456789012:role/lambda-exec"
     subnet_ids                = ["subnet-111111", "subnet-222222"]
     security_group_ids        = ["sg-111111"]
@@ -236,7 +242,7 @@ run "supports_custom_prefix_and_runtime" {
   }
 
   assert {
-    condition     = aws_lambda_function.functions["processPayment"].runtime == "nodejs24.x"
+    condition     = aws_lambda_function.functions["processPayment"].runtime == "nodejs22.x"
     error_message = "runtime should match configured override"
   }
 }
