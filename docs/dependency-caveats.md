@@ -66,8 +66,10 @@ enough context that the next person doesn't have to re-derive the decision.
 - **Lambda:** prod runs `nodejs22.x`, which `.nvmrc` does not affect. No
   `runtime_management_config` is set, so the managed runtime is in Auto mode and
   picks up AWS's patched Node without a deploy; the 22.x fix is 22.23.4. Confirm
-  via the runtime version ARN in a function's `INIT_START` log line. Not yet
-  observed as of 2026-10-23 (AWS: rolling out, no us-east-1 ETA).
+  via the runtime version ARN in a function's `INIT_START` log line.
+- **Checked 2026-10-23: not yet rolled out.** Every dev cold start over the prior
+  7 days ran `nodejs:22.mainline.v122` (ARN `…runtime:fcbc5912…10e9`); prod and
+  stg had no cold starts to inspect. A new version after that date is the patch.
 
 ### objection 3.1.5 → 4.2.0 — deferred, pinned `~3.1.5` (2026-10-14, re-confirmed 2026-10-23)
 
