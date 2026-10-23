@@ -24,23 +24,23 @@ enough context that the next person doesn't have to re-derive the decision.
 
 ## Deferred upgrades
 
-### TypeScript 6.0.3 → 7.0.2 — deferred (2026-07-09, re-confirmed 2026-10-14)
+### TypeScript 6.0.3 → 7.0.2 — deferred (2026-07-09, re-confirmed 2026-10-23)
 
 - **Current:** `^6.0.3`. **Available latest:** `7.0.2`.
 - **Reason:** TypeScript 7 is a major release. Our toolchain still targets the
-  6.x line — `ts-jest@^29.4.14`, `tsup@^8.5.1`, `ts-node@^10.9.2`, and
-  `@biomejs/biome@^2.5.15` — and none are confirmed compatible with the TS7
+  6.x line — `ts-jest@^29.4.15`, `tsup@^9.0.0`, `ts-node@^10.9.2`, and
+  `@biomejs/biome@^2.6.2` — and none are confirmed compatible with the TS7
   compiler/API. A blind bump risks breaking type-check, the Jest transform, and
   the build in one step, with a blast radius across the whole package.
 - **Plan:** Cut a dedicated follow-up ticket to validate the toolchain against
   TS7 (upgrade `ts-jest`/`tsup`/`ts-node` first, then the compiler), and flag
   the PO. Not appropriate to bundle into recurring dependency maintenance.
 
-### @types/node@^24.19.2 → ^26.6.5 — deferred (2026-07-20, re-confirmed 2026-10-14)
+### @types/node@^24.19.2 → ^26.6.5 — deferred (2026-07-20, re-confirmed 2026-10-23)
 
 - **Current:** `@types/node@^24.19.2`. **Available latest:** `^26.6.5`.
 - **Reason:** `@types/node` must track the runtime, not lead it. `engines.node`
-  is `>=24.20.0 <25.0.0` and `.nvmrc` pins `24.20.0`, so the ambient Node types
+  is `>=24.20.0 <25.0.0` and `.nvmrc` pins `24.22.1`, so the ambient Node types
   are intentionally held on the 24 line. A proposed upgrade to
   `@types/node@^26.1.1` was reverted because it would expose Node 26 APIs in
   TypeScript that are not available in the supported Node 24 runtime. This could
@@ -54,10 +54,23 @@ enough context that the next person doesn't have to re-derive the decision.
   `terraform/scripts/build-lambda.sh`). So the Node 24 types are ahead of
   production. Moving Lambda to `nodejs24.x` is being proposed as its own ticket.
 
-### objection 3.1.5 → 3.9.1 — deferred, pinned `~3.1.5` (2026-10-14)
+### Node.js 24.20.0 → 24.22.1 in `.nvmrc`; `engines.node` floor held at 24.20.0 (2026-10-23)
+
+- **Why:** 24.22.1 is the security release fixing the Brotli decoder CVE among
+  others. `.nvmrc` drives every CI `setup-node` step, including `publish.yml`.
+- **Why the floor stays:** DAWSON installs with `engine-strict=true` (see
+  `.changeset/quiet-moons-gather.md`), so raising `engines.node` past its Node
+  version fails its install. The floor states compatibility; patching is each
+  consumer's runtime decision.
+- **Lambda:** no `runtime_management_config` is set, so the managed runtime is in
+  Auto mode and picks up AWS's patched Node without a deploy. Confirm via the
+  runtime version ARN in each function's `INIT_START` log line.
+
+### objection 3.1.5 → 4.2.0 — deferred, pinned `~3.1.5` (2026-10-14, re-confirmed 2026-10-23)
 
 - **Current:** `~3.1.5` (was `^3.1.5`, which resolves to `3.9.1`). **Available
-  latest:** `3.9.1`.
+  latest:** `4.2.0`. `4.0.0`–`4.2.0` landed on the same `ditojs` line over
+  2026-10-16 to 2026-10-18, so adopting it is now a major upgrade.
 - **Reason:** after no releases since 2024-09, `3.2.0`–`3.9.1` were published
   over 2026-10-09 to 2026-10-13. They have no changelog entries, no GitHub
   releases and no tags. They are built from `ditojs/objection`, a fork by the
@@ -70,21 +83,14 @@ enough context that the next person doesn't have to re-derive the decision.
 - **Plan:** follow-up ticket to review the `ditojs/objection` changes against
   `TransactionModel`, wait for the release line to settle, and decide whether
   to adopt the fork. The tilde keeps routine rotations from picking it up
-  until then. Widen it back to `^` in that ticket.
+  until then. Widen it back to `^` in that ticket. Follow-up ticket: not yet
+  cut (2026-10-23).
 
-### tsup 8.5.1 → 9.0.0 — deferred (2026-10-14)
+### Terraform provider lockfiles — what is and isn't in scope (2026-09-17, updated 2026-10-23)
 
-- **Current:** `^8.5.1`. **Available latest:** `9.0.0`.
-- **Reason:** 9.0.0 was published to npm the same day as this update. A major
-  release that new hasn't been through any real-world use yet, and our `npm run
-  build` output is the published package.
-- **Plan:** take it in the next rotation. 9.0.0 declares `esbuild@^0.28.2`, so
-  the `tsup` → `esbuild` override below can be dropped in the same change.
-
-### Terraform provider lockfiles — what is and isn't in scope (2026-09-17)
-
-- **Current:** the Terraform CLI was taken to `~> 1.16.0` repo-wide, with CI's
-  `terraform_version` set to the matching npm-semver range `~1.16.0`. The
+- **Current:** the Terraform CLI was taken to `~> 1.17.0` repo-wide on
+  2026-10-23 (from `~> 1.16.0` on 2026-09-17), with CI's `terraform_version`
+  set to the matching npm-semver range `~1.17.0`. On 2026-09-17 the
   deprecated `data.aws_region.current.name` was replaced with `.region` in the
   `api-gateway` and `rds-proxy` modules.
 - **Why module lockfiles are not in scope at all:** `.gitignore` excludes
@@ -184,8 +190,23 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   actually resolves `1.1.2`, which has the same `minimatch@^3.0.2` range.
   Full unit suite green (1069/1069 across 90 suites), coverage 96.55%
   statements / 90.53% branches.
+- **Verified (2026-10-23, after `ts-jest` 29.4.14 → 29.4.15):** overrides still
+  required. `@jest/transform@30.5.2` still declares `babel-plugin-istanbul@^8.0.0`
+  (`latest` still `8.0.0`), `babel-plugin-istanbul@8.0.2` still declares
+  `test-exclude@^7.0.1`, and `matcher-collection` is still `2.0.1`. The tree
+  resolves to `babel-plugin-istanbul@8.0.2`, `test-exclude@8.0.0`,
+  `minimatch@10.2.6` and `brace-expansion@5.0.12`; `npm audit` reports no
+  `brace-expansion` finding. Full unit suite green (1067/1067 across 90 suites),
+  coverage 96.54% statements / 90.48% branches.
 
-### GHSA-g7r4-m6w7-qqqr — esbuild (0.27.3–0.28.0) (low) — resolved via override (2026-09-17)
+### Removed: GHSA-g7r4-m6w7-qqqr — esbuild `tsup` override (2026-10-23)
+
+- **Removed because:** `tsup@9.0.0` declares `esbuild@^0.28.2`. Without the
+  override, `npm ls esbuild` shows a single `0.28.2` deduped across the direct
+  devDependency, `tsup`, `bundle-require` and `tsx`, and `npm audit` reports no
+  esbuild finding. `npm run build` JS output is byte-identical to `tsup@8.5.1`;
+  the `.d.ts` only reorders union members and splits `export type {}`.
+- **History below** is kept for context.
 
 **From: tsup**
 
@@ -254,7 +275,11 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
 - **Revisit:** when `braces` publishes a patched version, or `artillery` moves
   to `chokidar@4+`.
 
-### GHSA-hp3w-g68c-fv3c — sprintf-js (moderate) — accepted (2026-10-08)
+### GHSA-hp3w-g68c-fv3c — sprintf-js (moderate) — withdrawn (2026-10-22)
+
+- **No longer reported:** GitHub withdrew the advisory on 2026-10-22, so
+  `npm audit` dropped it even though `sprintf-js@1.0.3` is still in the tree.
+  Nothing to do; the original entry is kept below for context.
 
 **From: Jest and Artillery** (`js-yaml@3.15.2` → `argparse@1.0.10` →
 `sprintf-js@1.0.3`, reached via `@istanbuljs/load-nyc-config` under
@@ -307,3 +332,7 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
   `csv-parse@^4.16.3`. No longer the only finding: with `braces` and
   `sprintf-js` above, these three advisories account for all 24 findings
   `npm audit` reports.
+- **Re-confirmed (2026-10-23):** `artillery` is still `2.0.34` and still declares
+  `csv-parse@^4.16.3`. With `sprintf-js` withdrawn, `npm audit` reports 4
+  findings: this one (moderate) and the `braces` → `chokidar` → `artillery`
+  chain (3 high). `npm audit --omit=dev` reports 0.
