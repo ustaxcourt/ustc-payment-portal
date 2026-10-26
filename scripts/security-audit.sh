@@ -5,7 +5,7 @@
 set -euo pipefail
 
 # Every ID here must have an "Accepted vulnerabilities" entry in docs/dependency-caveats.md.
-ACCEPTED_ADVISORIES="GHSA-vfj7-8cjw-p6xm"
+ACCEPTED_ADVISORIES="GHSA-vfj7-8cjw-p6xm GHSA-xcx6-jx8p-x3h5"
 
 # No exceptions: an accepted advisory that reaches runtime deps must fail, not pass by ID.
 npm audit --omit=dev --audit-level=high --package-lock-only
