@@ -314,8 +314,8 @@ jobs:
           echo "Running signed /init smoke test against: $API_URL"
 
           TRANSACTION_REFERENCE_ID=$(uuidgen | tr 'A-Z' 'a-z')
-          # Non-attorney fee is the only one registered against Pay.gov QA; unique
-          # email per run since Pay.gov allows one obligation per address.
+          # Non-attorney fee: this role must lack PETITION_FILING_FEE to serve as the Petition
+          # 403 caller. Unique email per run since Pay.gov allows one obligation per address.
           SMOKE_EMAIL="staging-smoke+${TRANSACTION_REFERENCE_ID}@example.com"
 
           echo "Using transactionReferenceId=$TRANSACTION_REFERENCE_ID"
