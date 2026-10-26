@@ -126,7 +126,8 @@ Client permissions are stored in the `ustc/pay-gov/{env}/client-permissions` sec
 - **Adding a `feeKey` to `allowedFeeKeys`** — permits that app to charge the fee. Requests with that fee key will proceed.
 - **Omitting a `feeKey` from `allowedFeeKeys`** — blocks that app from charging the fee. Requests with an unauthorized fee key return `403 Forbidden` with `"Client not authorized for fee"`.
 - **A client not present in the secret at all** — returns `403 Forbidden` with `"Client not registered"`.
-- **`"*"` in `allowedFeeKeys`** — wildcard that permits all fee keys. **Used only in local development and CI.** Never configure `"*"` in production secrets.
+- **`"*"` in `allowedFeeKeys`** — wildcard that permits all fee keys. **Used only in local development.** Never configure `"*"` in a deployed environment's secret; CI roles get concrete fee keys.
+- **The stg CI role** must hold only `NONATTORNEY_EXAM_REGISTRATION_FEE` — never `PETITION_FILING_FEE` or `"*"`. The staging deploy uses it as the unauthorized caller for a Petition `/init` and fails unless that returns `"Client not authorized for fee"`.
 
 ### Currently supported fee keys
 
