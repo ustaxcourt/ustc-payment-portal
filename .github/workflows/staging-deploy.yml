@@ -314,8 +314,7 @@ jobs:
           echo "Running signed /init smoke test against: $API_URL"
 
           TRANSACTION_REFERENCE_ID=$(uuidgen | tr 'A-Z' 'a-z')
-          # Non-attorney fee is the only one registered against Pay.gov QA; unique
-          # email per run since Pay.gov allows one obligation per address.
+          # Unique email per run since Pay.gov allows one obligation per address.
           SMOKE_EMAIL="staging-smoke+${TRANSACTION_REFERENCE_ID}@example.com"
 
           echo "Using transactionReferenceId=$TRANSACTION_REFERENCE_ID"
@@ -349,6 +348,41 @@ jobs:
           else
             echo "Signed /init reached Lambda but returned HTTP $INIT_STATUS; continuing so the Playwright E2E gate can capture the full Pay.gov flow failure if it persists."
           fi
+
+      - name: Smoke test fee-level authorization boundary
+        shell: bash
+        env:
+          API_URL: ${{ steps.tf_outputs.outputs.api_url }}
+        run: |
+          set -euo pipefail
+          trap 'echo "Fee authorization smoke FAILED"; [ -f forbidden.json ] && { echo "--- forbidden.json ---"; cat forbidden.json; echo "----------------------"; } || true' ERR
+
+          # This role must never be granted PETITION_FILING_FEE (or "*"): it is the
+          # unauthorized caller, so a 200 here would also open a real Pay.gov QA obligation.
+          TRANSACTION_REFERENCE_ID=$(uuidgen | tr 'A-Z' 'a-z')
+          echo "Using transactionReferenceId=$TRANSACTION_REFERENCE_ID"
+          printf '{"transactionReferenceId":"%s","fee":"PETITION_FILING_FEE","urlSuccess":"https://example.com","urlCancel":"https://example.com","metadata":{"docketNumber":"101-26"}}' "$TRANSACTION_REFERENCE_ID" > forbidden-body.json
+
+          FORBIDDEN_STATUS=$(curl -s -o forbidden.json -w '%{http_code}' -X POST "$API_URL/init" \
+            -H 'Content-Type: application/json' \
+            --aws-sigv4 "aws:amz:us-east-1:execute-api" \
+            --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+            -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
+            --data-binary @forbidden-body.json)
+          echo "FORBIDDEN_STATUS=$FORBIDDEN_STATUS" && cat forbidden.json
+
+          if [ "$FORBIDDEN_STATUS" != "403" ]; then
+            echo "ERROR: Expected 403 for a fee this role is not authorized for, got HTTP $FORBIDDEN_STATUS." >&2
+            exit 1
+          fi
+
+          # API Gateway's own IAM 403 would also pass the status check; the message proves authorizeClient rejected it.
+          MESSAGE=$(jq -r '.message // empty' forbidden.json)
+          if [ "$MESSAGE" != "Client not authorized for fee" ]; then
+            echo "ERROR: 403 did not come from fee authorization (message: '$MESSAGE')." >&2
+            exit 1
+          fi
+          echo "Unauthorized fee request was rejected by authorizeClient."
 
   staging-e2e:
     runs-on: ubuntu-latest

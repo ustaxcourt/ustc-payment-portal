@@ -124,7 +124,7 @@ describe("getDetails", () => {
     );
     getActiveFeeMock.mockReturnValue({
       fee: "PETITION_FILING_FEE",
-      tcsAppId: "TCSUSTAXCOURTPETITION",
+      tcsAppId: "USTAXCOURTPETITION",
     });
   });
 
@@ -200,7 +200,7 @@ describe("getDetails", () => {
 
     expect(appContext.postHttpRequest).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining("<tcs_app_id>TCSUSTAXCOURTPETITION</tcs_app_id>"),
+      expect.stringContaining("<tcs_app_id>USTAXCOURTPETITION</tcs_app_id>"),
     );
   });
 
