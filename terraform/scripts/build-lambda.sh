@@ -24,6 +24,9 @@ fi
 # Bundle each Lambda function individually using esbuild
 echo "Bundling Lambda functions with esbuild..."
 
+# Must match the Lambda runtime default in terraform/modules/lambda/variables.tf.
+NODE_TARGET=node24
+
 # Knex optional dialect modules — not used at runtime (pg is used); must be excluded
 # from all bundles that transitively import knex (lambdaHandler.ts → knex.ts → knex).
 KNEX_EXTERNALS=(
@@ -44,7 +47,7 @@ mkdir -p dist/initPayment
 npx esbuild src/handlers/initPaymentHandler.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/initPayment/initPaymentHandler.js \
   --external:aws-sdk \
@@ -59,7 +62,7 @@ mkdir -p dist/processPayment
 npx esbuild src/handlers/processPaymentHandler.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/processPayment/processPaymentHandler.js \
   --external:aws-sdk \
@@ -74,7 +77,7 @@ mkdir -p dist/getDetails
 npx esbuild src/handlers/getDetailsHandler.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/getDetails/getDetailsHandler.js \
   --external:aws-sdk \
@@ -89,7 +92,7 @@ mkdir -p dist/validateClient
 npx esbuild src/handlers/validateClientHandler.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/validateClient/validateClientHandler.js \
   --external:aws-sdk \
@@ -104,7 +107,7 @@ mkdir -p dist/testCert
 npx esbuild src/testCert.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/testCert/lambdaHandler.js \
   --external:aws-sdk \
@@ -119,7 +122,7 @@ mkdir -p dist/getAllTransactions
 npx esbuild src/handlers/getAllTransactionsHandler.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/getAllTransactions/getAllTransactionsHandler.js \
   --external:aws-sdk \
@@ -134,7 +137,7 @@ mkdir -p dist/getTransactionLog
 npx esbuild src/handlers/getTransactionLogHandler.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/getTransactionLog/getTransactionLogHandler.js \
   --external:aws-sdk \
@@ -149,7 +152,7 @@ mkdir -p dist/getRevenueSummary
 npx esbuild src/handlers/getRevenueSummaryHandler.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/getRevenueSummary/getRevenueSummaryHandler.js \
   --external:aws-sdk \
@@ -164,7 +167,7 @@ mkdir -p dist/getTransactionsByStatus
 npx esbuild src/handlers/getTransactionsByStatusHandler.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/getTransactionsByStatus/getTransactionsByStatusHandler.js \
   --external:aws-sdk \
@@ -179,7 +182,7 @@ mkdir -p dist/getTransactionPaymentStatus
 npx esbuild src/handlers/getTransactionPaymentStatusHandler.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/getTransactionPaymentStatus/getTransactionPaymentStatusHandler.js \
   --external:aws-sdk \
@@ -194,7 +197,7 @@ mkdir -p dist/cancelExpired
 npx esbuild src/handlers/cancelExpiredHandler.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/cancelExpired/cancelExpiredHandler.js \
   --external:aws-sdk \
@@ -209,7 +212,7 @@ mkdir -p dist/migrationRunner
 npx esbuild src/migrationHandler.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/migrationRunner/lambdaHandler.js \
   --external:aws-sdk \
@@ -228,7 +231,7 @@ mkdir -p dist/initRefGenerator
 npx esbuild src/powerTuning/initRefGenerator.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/initRefGenerator/initRefGenerator.js \
   --external:aws-sdk \
@@ -245,7 +248,7 @@ mkdir -p dist/processTokenMinter
 npx esbuild src/powerTuning/processTokenMinter.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/processTokenMinter/processTokenMinter.js \
   --external:aws-sdk \
@@ -261,7 +264,7 @@ mkdir -p dist/powerTuningCleanUp
 npx esbuild src/powerTuning/powerTuningCleanUp.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/powerTuningCleanUp/powerTuningCleanUp.js \
   --external:aws-sdk \
@@ -302,7 +305,7 @@ mkdir -p dist/migrationRunner/db/migrations
 npx esbuild db/migrations/*.ts \
   --bundle=false \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outdir=dist/migrationRunner/db/migrations/
 
@@ -311,7 +314,7 @@ mkdir -p dist/migrationRunner/db/seeds
 npx esbuild db/seeds/*.ts \
   --bundle \
   --platform=node \
-  --target=node24 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   "${KNEX_EXTERNALS[@]}" \
   --outdir=dist/migrationRunner/db/seeds/
