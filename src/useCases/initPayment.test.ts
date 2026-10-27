@@ -35,7 +35,7 @@ jest.mock("../config/fees", () => ({
     if (fee === "PETITION_FILING_FEE") {
       return {
         fee: "PETITION_FILING_FEE",
-        tcsAppId: "TCSUSTAXCOURTPETITION",
+        tcsAppId: "USTAXCOURTPETITION",
         amount: 60,
         isVariable: false,
       };
@@ -119,7 +119,7 @@ describe("initPayment", () => {
         client: mockClient,
         request: {
           transactionReferenceId: "550e8400-e29b-41d4-a716-446655440000",
-          fee: "UNKNOWN_FEE" as any,
+          fee: "UNKNOWN_FEE" as InitPaymentRequest["fee"],
           urlCancel: "https://example.com/cancel",
           urlSuccess: "https://example.com/success",
           metadata: { docketNumber: "123-26" },
@@ -139,7 +139,7 @@ describe("initPayment", () => {
 
     expect(result.token).toBe("test-token-123");
     expect(result.paymentRedirect).toContain("test-token-123");
-    expect(result.paymentRedirect).toContain("TCSUSTAXCOURTPETITION");
+    expect(result.paymentRedirect).toContain("USTAXCOURTPETITION");
     expect(TransactionModel.createReceived).toHaveBeenCalledWith(
       expect.objectContaining({
         fee: "PETITION_FILING_FEE",
@@ -177,11 +177,41 @@ describe("initPayment", () => {
     );
   });
 
+  it("rejects a client not authorized for the fee before any lookup, write, or Pay.gov call", async () => {
+    const soapSpy = jest
+      .spyOn(
+        SoapRequestModule.StartOnlineCollectionRequest.prototype,
+        "makeSoapRequest",
+      )
+      .mockResolvedValue({ token: "should-not-be-issued" });
+    const TransactionModel = require("../db/TransactionModel").default;
+    const nonattorneyOnlyClient: ClientPermission = {
+      ...mockClient,
+      allowedFeeKeys: ["NONATTORNEY_EXAM_REGISTRATION_FEE"],
+    };
+
+    await expect(
+      initPayment(appContext, {
+        client: nonattorneyOnlyClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      message: "Client not authorized for fee",
+    });
+
+    expect(
+      TransactionModel.findByReferenceIdAndTransactionStatus,
+    ).not.toHaveBeenCalled();
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+    expect(soapSpy).not.toHaveBeenCalled();
+  });
+
   it("throws InvalidRequestError when amount is missing for a variable fee", async () => {
     const feesConfig = require("../config/fees");
     feesConfig.getActiveFee.mockReturnValueOnce({
       fee: "PETITION_FILING_FEE",
-      tcsAppId: "TCSUSTAXCOURTPETITION",
+      tcsAppId: "USTAXCOURTPETITION",
       amount: 60,
       isVariable: true,
     });

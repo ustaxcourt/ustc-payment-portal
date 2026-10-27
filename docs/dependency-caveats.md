@@ -254,6 +254,26 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
 - **Revisit:** when `braces` publishes a patched version, or `artillery` moves
   to `chokidar@4+`.
 
+### GHSA-xcx6-jx8p-x3h5 — @azure/msal-node@6.0.1 (high) — accepted (2026-10-26)
+
+**From: Artillery** (`artillery@2.0.34` → `@azure/identity@4.14.0` →
+`@azure/msal-node@6.0.1`)
+
+- **Reason it can't be fixed now:** the fix is in `@azure/msal-node@7.1.0`, but
+  `@azure/identity@4.14.0` (latest) requires `^6.0.0`, so `npm audit fix` cannot
+  reach it. No override was taken: forcing a major version under
+  `@azure/identity` is untested, for a path this repo doesn't exercise.
+- **CI impact:** listed in `ACCEPTED_ADVISORIES` in `scripts/security-audit.sh`.
+  Remove it from there when this entry is resolved.
+- **Mitigation:** the advisory affects MSAL's authorization code flow, which can
+  disclose request parameters to an attacker-controlled endpoint. `artillery` is
+  a devDependency; `@azure/identity` backs only its Azure (ACI) platform, and
+  `scripts/run-performance-test.sh` uses `run-lambda` (AWS). Nothing in `src/`
+  imports an `@azure` package, and nothing from this chain ships in the Lambda
+  artifact.
+- **Revisit:** when `@azure/identity` allows `@azure/msal-node@^7.1.0`, or
+  `artillery` drops `@azure/identity`.
+
 ### GHSA-hp3w-g68c-fv3c — sprintf-js (moderate) — accepted (2026-10-08)
 
 **From: Jest and Artillery** (`js-yaml@3.15.2` → `argparse@1.0.10` →
