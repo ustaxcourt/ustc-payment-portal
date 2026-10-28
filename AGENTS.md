@@ -1,6 +1,6 @@
 # USTC Payment Portal
 
-**Instructions here should only be updated through `AGENTS.md`. `copilot-instructions.md` and `CLAUDE.md` are symlinks to `AGENTS.md`**
+**Instructions here should only be updated through `AGENTS.md`. `CLAUDE.md` and `.github/copilot-instructions.md` are one-line pointers to this file, not symlinks: Copilot code review reads all three, so symlinks would send these instructions three times per review.**
 
 This is the United States Tax Court's payment portal — a TypeScript Node.js package and AWS Lambda-based service for integrating with Pay.gov for electronic payment processing.
 
