@@ -11,6 +11,11 @@ output "api_function_arns" {
   )
 }
 
+output "runtime" {
+  description = "Lambda runtime used by the module's functions. Lets sibling Lambdas (e.g. power tuning) track it instead of hardcoding."
+  value       = var.runtime
+}
+
 output "function_names" {
   description = "Map of Lambda function names"
   value       = { for k, v in aws_lambda_function.functions : k => v.function_name }

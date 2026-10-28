@@ -35,7 +35,7 @@ variable "node_env" {
 variable "lambda_runtime" {
   description = "Runtime for Lambda functions"
   type        = string
-  default     = "nodejs22.x"
+  default     = "nodejs24.x"
 }
 
 
