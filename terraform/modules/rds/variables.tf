@@ -3,6 +3,16 @@ variable "identifier" {
   type        = string
 }
 
+variable "engine_version" {
+  description = "PostgreSQL major (e.g. \"17\") or explicit minor (e.g. \"17.6\"). A major-only value lets RDS auto-upgrade minors without Terraform drift."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+(\\.[0-9]+)?$", var.engine_version))
+    error_message = "Must be a major version (e.g. \"17\") or major.minor (e.g. \"17.6\")."
+  }
+}
+
 variable "db_name" {
   description = "Name of the default database to create on the instance"
   type        = string
