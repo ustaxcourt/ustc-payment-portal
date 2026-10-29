@@ -131,6 +131,7 @@ LOG_LEVEL=debug npm run start:all
 - `Ctrl-C` in the `start:all` terminal stops everything and calls `docker compose stop` (containers preserved, data preserved).
 - `docker compose down` removes the containers but keeps the volume with your DB data.
 - `docker compose down -v` removes the containers **and wipes the DB volume**. Use this when you want a clean DB.
+- After the move to Postgres 17, the stack uses a new volume (`postgres17_data`) and starts with an empty DB, so run `npm run test:db:setup` again before the integration tests. The old Postgres 14 volume is no longer used; find it with `docker volume ls | grep postgres_data` and remove it with `docker volume rm <name>` once you no longer need its data.
 
 ### Individual scripts (advanced / debugging)
 
