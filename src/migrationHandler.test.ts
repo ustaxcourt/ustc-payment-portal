@@ -201,6 +201,33 @@ describe("migrationHandler", () => {
     });
   });
 
+  it("analyze rebuilds planner statistics and returns the server version", async () => {
+    mockRaw
+      .mockResolvedValueOnce({ rows: [{ serverVersion: "17.6" }] })
+      .mockResolvedValueOnce(undefined);
+
+    const result = await migrationHandler({ command: "analyze" });
+
+    expect(mockRaw).toHaveBeenNthCalledWith(2, "ANALYZE");
+    expect(mockLatest).not.toHaveBeenCalled();
+    expect(mockDestroy).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      statusCode: 200,
+      body: JSON.stringify({ serverVersion: "17.6" }),
+    });
+  });
+
+  it("destroys the knex connection when analyze fails", async () => {
+    mockRaw
+      .mockResolvedValueOnce({ rows: [{ serverVersion: "17.6" }] })
+      .mockRejectedValueOnce(new Error("analyze failed"));
+
+    await expect(migrationHandler({ command: "analyze" })).rejects.toThrow(
+      "analyze failed",
+    );
+    expect(mockDestroy).toHaveBeenCalledTimes(1);
+  });
+
   it("seed runs seed files and returns success", async () => {
     const result = await migrationHandler({ command: "seed" });
 
