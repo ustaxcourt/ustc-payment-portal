@@ -81,7 +81,7 @@ module "rds" {
   count  = local.environment == "dev" ? 1 : 0
   source = "../../modules/rds"
 
-  engine_version = "16"
+  engine_version = "17"
 
   identifier = "${local.name_prefix}-db"
   db_name    = "paymentportal"

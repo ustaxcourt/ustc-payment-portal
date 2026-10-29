@@ -550,7 +550,7 @@ jobs:
       id-token: write
       issues: write # trstringer/manual-approval opens an approval issue
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@v6
