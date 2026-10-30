@@ -1,5 +1,11 @@
 # PAY-049: Database Provisioning
 
+> **Superseded (PAY-471):** all environments now run PostgreSQL 17. The engine
+> version is set per environment by `engine_version` in
+> `terraform/environments/<env>/main.tf`, and `ignore_changes = [engine_version]`
+> was removed. See the
+> [RDS major version upgrade runbook](runbooks/rds-major-version-upgrade.md).
+
 ## Summary
 
 Provisioned a PostgreSQL 16.6 RDS instance across all environments (dev, stg, prod) via Terraform, with per-environment configuration and CI/CD pipeline support.
@@ -67,6 +73,7 @@ Provisioned a PostgreSQL 16.6 RDS instance across all environments (dev, stg, pr
 
 - **Cause:** Role existed in AWS but not in local Terraform state (different workspace)
 - **Fix:** Imported the role and policy into state, then applied:
+
   ```bash
   terraform import 'module.iam_cicd.aws_iam_role.github_actions_deployer[0]' ustc-payment-processor-dev-cicd-deployer-role
   terraform import 'module.iam_cicd.aws_iam_role_policy.github_actions_permissions[0]' 'ustc-payment-processor-dev-cicd-deployer-role:ustc-payment-portal-dev-ci-deployer'
