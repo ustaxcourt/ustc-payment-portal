@@ -5,6 +5,12 @@ How to move an environment's RDS instance to a new PostgreSQL major version
 `terraform/environments/<env>/main.tf`; the shared [`rds` module](../../terraform/modules/rds/main.tf)
 derives the parameter group family and name from it.
 
+Until its own upgrade, each environment pins the **exact** live minor
+(e.g. `"16.13"`). State already holds that value, so a major-only `"16"` would
+show as a diff and send a ModifyDBInstance call on the next apply. Each
+environment also leaves the module's `apply_immediately` at its default `false`,
+so routine size or storage changes still wait for the maintenance window.
+
 > **This procedure has not been rehearsed end to end, and neither has the
 > rollback.** Read the whole page before the first upgrade, and update it with
 > anything that differed in practice.
@@ -58,6 +64,13 @@ aws rds describe-db-engine-versions --engine postgres --engine-version 17 --defa
 - If the default 17 minor is in the valid-target list, set `engine_version = "17"`.
   If not, set the lowest valid `17.x`, and move it back to `"17"` in a later PR so
   minor versions auto-upgrade again.
+- In the same change, set `apply_immediately = true` for that environment's
+  `module "rds"`. Without it, RDS defers the upgrade to the maintenance window
+  while the apply reports success.
+- **Environments not being upgraded:** check their pin still matches the live
+  version (`aws rds describe-db-instances ... EngineVersion`). If RDS auto-upgraded
+  the minor, for example to 16.14, update the pin first. Otherwise the plan tries
+  to move it back to 16.13.
 - Confirm in the AWS docs that RDS Proxy supports PostgreSQL 17 in our region.
 - **Dev only:** the `deploy_dev` job's `timeout-minutes` in `cicd-dev.yml` must be
   at least 90. If the job is killed mid-apply, it leaves a stuck Terraform state lock.
@@ -79,9 +92,12 @@ plan for stg, `plan_only=true` for prod). It should show exactly:
 
 - `aws_db_parameter_group.main` **replaced**: a new `<id>-pg17` group (family
   `postgres17`) is created before the old `<id>-pg` group is destroyed.
-- `aws_db_instance.main` **updated in place**: `engine_version` and
-  `parameter_group_name` change. **It must not say "must be replaced".** If it
-  does, stop.
+- `aws_db_instance.main` **updated in place**: `engine_version`,
+  `parameter_group_name`, and `apply_immediately` (`false -> true`) change.
+  **It must not say "must be replaced".** If it does, stop.
+- **Other environments:** no `engine_version`, `parameter_group_name` or
+  `apply_immediately` change. An `engine_version` diff there means the pin no
+  longer matches the live version.
 - Lambda, proxy and SSM changes only if the same release also changes them.
 
 ---
@@ -137,6 +153,10 @@ The instance status goes `upgrading` → `available`. The apply waits for this.
 5. **Upgrade log is clean:** read `/aws/rds/instance/<id>/upgrade` for errors and
    note the result on the ticket.
 
+6. **Stg and prod:** in a follow-up PR, set `apply_immediately` back to `false`
+   (remove the line), so later changes go back to waiting for the maintenance
+   window. Dev can keep `true`.
+
 Expect one round of connection errors from warm Lambdas whose connections were cut
 by the restart. They should clear on their own within a few minutes. If they
 continue, check the proxy targets again.
@@ -174,7 +194,8 @@ Outline (not rehearsed — work it through with ops before relying on it):
    `--manage-master-user-password`. Restoring under the same identifier keeps
    the endpoint hostname, so the proxy target and the dev SSM endpoint parameter
    resolve to the restored instance.
-4. Set `engine_version = "16"` for that environment, then fix Terraform state so
+4. Set `engine_version` back to the snapshot's exact 16.x version for that
+   environment, then fix Terraform state so
    it tracks the restored instance (`terraform state rm` and `terraform import`
    for `module.rds.aws_db_instance.main`, or `module.rds[0].aws_db_instance.main`
    in dev, run by a human). Apply: this recreates

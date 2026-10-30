@@ -14,6 +14,7 @@ run "major_only_version_derives_family_and_group_name" {
     password               = "fake-not-a-real-password"
     vpc_security_group_ids = ["sg-1234567890"]
     db_subnet_group_name   = "db-subnet-group"
+    apply_immediately      = true
   }
 
   assert {
@@ -38,7 +39,31 @@ run "major_only_version_derives_family_and_group_name" {
 
   assert {
     condition     = aws_db_instance.main.apply_immediately == true
-    error_message = "apply_immediately must be true or the upgrade is deferred to the maintenance window"
+    error_message = "apply_immediately should pass through so an upgrading environment is not deferred to the maintenance window"
+  }
+}
+
+run "pinned_minor_keeps_legacy_group_and_defers_changes" {
+  command = plan
+
+  variables {
+    identifier             = "ustc-payments-stg"
+    db_name                = "payments"
+    username               = "portal"
+    password               = "fake-not-a-real-password"
+    vpc_security_group_ids = ["sg-1234567890"]
+    db_subnet_group_name   = "db-subnet-group"
+    engine_version         = "16.13"
+  }
+
+  assert {
+    condition     = aws_db_parameter_group.main.name == "ustc-payments-stg-pg"
+    error_message = "a pinned 16.x minor must keep the existing group name"
+  }
+
+  assert {
+    condition     = aws_db_instance.main.apply_immediately == false
+    error_message = "apply_immediately should default to false so environments not being upgraded keep using the maintenance window"
   }
 }
 

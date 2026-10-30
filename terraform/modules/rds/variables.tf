@@ -4,13 +4,19 @@ variable "identifier" {
 }
 
 variable "engine_version" {
-  description = "PostgreSQL major (e.g. \"17\") or explicit minor (e.g. \"17.6\"). A major-only value lets RDS auto-upgrade minors without Terraform drift."
+  description = "PostgreSQL major (e.g. \"17\") or explicit minor (e.g. \"16.13\"). An environment not being upgraded pins its exact live minor: state holds that value, so a major-only value would send a ModifyDBInstance on the next apply."
   type        = string
 
   validation {
     condition     = can(regex("^[0-9]+(\\.[0-9]+)?$", var.engine_version))
     error_message = "Must be a major version (e.g. \"17\") or major.minor (e.g. \"17.6\")."
   }
+}
+
+variable "apply_immediately" {
+  description = "Apply instance modifications on the next apply instead of the maintenance window. Must be true for a version upgrade, or RDS defers it while apply reports success; leave false otherwise so size or storage changes don't restart the DB mid-deploy."
+  type        = bool
+  default     = false
 }
 
 variable "db_name" {

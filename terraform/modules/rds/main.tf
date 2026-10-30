@@ -44,8 +44,7 @@ resource "aws_db_instance" "main" {
 
   allow_major_version_upgrade = true
   auto_minor_version_upgrade  = true
-  # Without this, RDS defers a version change to the next maintenance window while apply reports success.
-  apply_immediately = true
+  apply_immediately           = var.apply_immediately
 
   instance_class        = var.instance_class
   allocated_storage     = var.allocated_storage
