@@ -71,7 +71,10 @@ aws rds describe-db-engine-versions --engine postgres --engine-version 17 --defa
   version (`aws rds describe-db-instances ... EngineVersion`). If RDS auto-upgraded
   the minor, for example to 16.14, update the pin first. Otherwise the plan tries
   to move it back to 16.13.
-- Confirm in the AWS docs that RDS Proxy supports PostgreSQL 17 in our region.
+- RDS Proxy supports all PostgreSQL 17 (and 18) versions in `us-east-1`, checked
+  2026-10-30 against
+  [Supported Regions and DB engines for RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RDS_Fea_Regions_DB-eng.Feature.RDSProxy.html).
+  Re-check that page for a later target version.
 - **Dev only:** the `deploy_dev` job's `timeout-minutes` in `cicd-dev.yml` must be
   at least 90. If the job is killed mid-apply, it leaves a stuck Terraform state lock.
 - **Prod only:** take a named manual snapshot before the window (RDS also takes an
@@ -113,6 +116,10 @@ aws logs tail /aws/rds/instance/<id>/postgresql --since 30m
 ```
 
 The instance status goes `upgrading` → `available`. The apply waits for this.
+
+The `upgrade` log group only exists once RDS writes its first upgrade log, so
+`aws logs tail` returns `ResourceNotFoundException` until the upgrade starts.
+Follow `describe-events` until then.
 
 ---
 
