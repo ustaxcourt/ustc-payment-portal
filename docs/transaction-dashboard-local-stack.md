@@ -15,7 +15,7 @@ The local stack is used to verify transaction dashboard behavior end-to-end:
 `docker compose up` starts these services in order:
 
 1. `postgres`
-- Image: `postgres:14`
+- Image: `postgres:17`
 - Host port: `5433` (container port remains `5432`)
 - Env: `POSTGRES_USER=user`, `POSTGRES_PASSWORD=password`, `POSTGRES_DB=mydb`
 - Healthcheck: `pg_isready -U user -d mydb`

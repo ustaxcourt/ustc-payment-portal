@@ -29,7 +29,7 @@ That's it. No `.env` file required.
 
 What happens under the hood:
 
-1. Postgres starts in Docker with a named volume (`payment_portal_dev_db`).
+1. Postgres starts in Docker with a named volume (`payment_portal_dev_db_pg17`).
 2. The application schema is dropped and recreated (`DROP SCHEMA public CASCADE`).
 3. Knex migrations run to the latest version.
 4. Reference-data seeds (fee definitions) are inserted.

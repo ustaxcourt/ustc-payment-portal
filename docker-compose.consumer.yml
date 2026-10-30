@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:14
+    image: postgres:17
     ports:
       - "${DB_PORT:-5433}:5432"
     environment:
@@ -13,7 +13,7 @@ services:
       timeout: 5s
       retries: 10
     volumes:
-      - payment_portal_dev_db:/var/lib/postgresql/data
+      - payment_portal_dev_db_pg17:/var/lib/postgresql/data
 
 volumes:
-  payment_portal_dev_db:
+  payment_portal_dev_db_pg17:

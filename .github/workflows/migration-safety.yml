@@ -40,9 +40,9 @@ jobs:
       has_destructive: ${{ steps.scan.outputs.has_destructive }}
       has_unacknowledged: ${{ steps.scan.outputs.has_unacknowledged }}
     services:
-      # Mirrors ci.yml's migration-check service (postgres:14, port 5432).
+      # Mirrors ci.yml's migration-check service (postgres:17, port 5432).
       postgres:
-        image: postgres:14
+        image: postgres:17
         env:
           POSTGRES_USER: user
           POSTGRES_PASSWORD: password
