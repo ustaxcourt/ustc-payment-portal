@@ -24,7 +24,7 @@ run "major_only_version_derives_family_and_group_name" {
 
   assert {
     condition     = aws_db_parameter_group.main.name == "ustc-payments-dev-pg17"
-    error_message = "a non-16 parameter group name should carry the major version so it can be created before the old one is destroyed"
+    error_message = "the parameter group name should carry the major version so it can be created before the old one is destroyed"
   }
 
   assert {
@@ -43,7 +43,7 @@ run "major_only_version_derives_family_and_group_name" {
   }
 }
 
-run "pinned_minor_keeps_legacy_group_and_defers_changes" {
+run "apply_immediately_defaults_to_false" {
   command = plan
 
   variables {
@@ -53,12 +53,6 @@ run "pinned_minor_keeps_legacy_group_and_defers_changes" {
     password               = "fake-not-a-real-password"
     vpc_security_group_ids = ["sg-1234567890"]
     db_subnet_group_name   = "db-subnet-group"
-    engine_version         = "16.13"
-  }
-
-  assert {
-    condition     = aws_db_parameter_group.main.name == "ustc-payments-stg-pg"
-    error_message = "a pinned 16.x minor must keep the existing group name"
   }
 
   assert {
@@ -83,30 +77,6 @@ run "explicit_minor_derives_family" {
   assert {
     condition     = aws_db_parameter_group.main.family == "postgres17"
     error_message = "family should ignore the minor version"
-  }
-}
-
-run "pg16_keeps_legacy_group_name" {
-  command = plan
-
-  variables {
-    identifier             = "ustc-payments-dev"
-    db_name                = "payments"
-    username               = "portal"
-    password               = "fake-not-a-real-password"
-    vpc_security_group_ids = ["sg-1234567890"]
-    db_subnet_group_name   = "db-subnet-group"
-    engine_version         = "16"
-  }
-
-  assert {
-    condition     = aws_db_parameter_group.main.name == "ustc-payments-dev-pg"
-    error_message = "16 must keep the existing group name so in-use groups are not replaced"
-  }
-
-  assert {
-    condition     = aws_db_parameter_group.main.family == "postgres16"
-    error_message = "family should be postgres16"
   }
 }
 
