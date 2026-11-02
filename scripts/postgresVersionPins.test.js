@@ -6,13 +6,12 @@ const repoRoot = path.resolve(__dirname, "..");
 const read = (relativePath) =>
   fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
 
-const composeImage = (relativePath) =>
-  yaml.load(read(relativePath)).services.postgres.image;
+const load = (relativePath) => yaml.load(read(relativePath));
 
-const workflowImages = (relativePath) =>
-  Object.values(yaml.load(read(relativePath)).jobs)
-    .map((job) => job.services?.postgres?.image)
-    .filter(Boolean);
+const workflows = [
+  ".github/workflows/ci.yml",
+  ".github/workflows/migration-safety.yml",
+];
 
 const engineVersion = (environment) => {
   const matches = [
@@ -27,35 +26,50 @@ const engineVersion = (environment) => {
 const major = (version) => Number(String(version).split(".")[0]);
 
 describe("Postgres version pins", () => {
-  const containerPins = {
-    "docker-compose.yml": [composeImage("docker-compose.yml")],
-    "docker-compose.consumer.yml": [
-      composeImage("docker-compose.consumer.yml"),
-    ],
-    ".github/workflows/ci.yml": workflowImages(".github/workflows/ci.yml"),
-    ".github/workflows/migration-safety.yml": workflowImages(
-      ".github/workflows/migration-safety.yml",
-    ),
-  };
+  const consumer = load("docker-compose.consumer.yml");
+  const { image } = consumer.services.postgres;
+  const imageMajor = major(image.split(":")[1]);
 
-  it.each(Object.keys(containerPins))("%s pins a postgres image", (file) => {
-    expect(containerPins[file].length).toBeGreaterThan(0);
-    for (const image of containerPins[file]) {
-      expect(image).toMatch(/^postgres:\d+(\.\d+)?$/);
-    }
+  it("docker-compose.consumer.yml pins the postgres image", () => {
+    expect(image).toMatch(/^postgres:\d+(\.\d+)?$/);
   });
 
-  it("every container pin uses the same image", () => {
-    const images = new Set(Object.values(containerPins).flat());
-    expect([...images]).toHaveLength(1);
+  it("docker-compose.yml takes its postgres image from the consumer file", () => {
+    const { postgres } = load("docker-compose.yml").services;
+    expect(postgres.image).toBeUndefined();
+    expect(postgres.extends).toEqual({
+      file: "docker-compose.consumer.yml",
+      service: "postgres",
+    });
+  });
+
+  it.each(workflows)("%s starts postgres from the consumer file", (file) => {
+    const jobs = Object.values(load(file).jobs);
+    const runs = jobs.flatMap((job) => job.steps ?? []).map((s) => s.run ?? "");
+
+    expect(jobs.some((job) => job.services?.postgres)).toBe(false);
+    expect(
+      runs.some((run) => run.includes("-f docker-compose.consumer.yml up")),
+    ).toBe(true);
+  });
+
+  // A new major cannot open the previous major's data directory, so a bump
+  // that reuses the old volume leaves the container crash-looping.
+  it.each([
+    ["docker-compose.yml", load("docker-compose.yml")],
+    ["docker-compose.consumer.yml", consumer],
+  ])("%s volume names carry the image major", (_file, compose) => {
+    for (const name of Object.keys(compose.volumes)) {
+      if (name.startsWith("db_init")) continue;
+      expect(name).toMatch(new RegExp(`(pg|postgres)${imageMajor}(_|$)`));
+    }
   });
 
   // A rollout goes dev, then stg, then prod, so an environment ahead of the one
   // before it means a step was skipped and prod would upgrade untested.
   it("rollout order holds: container >= dev >= stg >= prod", () => {
-    const [image] = Object.values(containerPins).flat();
     const majors = [
-      major(image.split(":")[1]),
+      imageMajor,
       major(engineVersion("dev")),
       major(engineVersion("stg")),
       major(engineVersion("prod")),

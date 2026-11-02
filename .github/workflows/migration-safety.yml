@@ -39,21 +39,6 @@ jobs:
     outputs:
       has_destructive: ${{ steps.scan.outputs.has_destructive }}
       has_unacknowledged: ${{ steps.scan.outputs.has_unacknowledged }}
-    services:
-      # Mirrors ci.yml's migration-check service (postgres:17, port 5432).
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: user
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: mydb
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     env:
       DB_HOST: localhost
       DB_PORT: 5432
@@ -70,6 +55,8 @@ jobs:
           ref: ${{ inputs.ref || github.sha }}
           # Full history + tags so we can diff new migrations against the baseline ref.
           fetch-depth: 0
+      - name: Start Postgres
+        run: docker compose -f docker-compose.consumer.yml up -d --wait postgres
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc

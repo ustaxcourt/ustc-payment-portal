@@ -1,8 +1,9 @@
 services:
   postgres:
-    image: postgres:17
-    ports:
-      - "${DB_PORT:-5433}:5432"
+    # The image is pinned only in the consumer file, which CI also starts, so the three can't drift.
+    extends:
+      file: docker-compose.consumer.yml
+      service: postgres
     environment:
       POSTGRES_PASSWORD: password
       POSTGRES_USER: user
