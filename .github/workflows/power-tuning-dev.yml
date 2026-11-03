@@ -30,6 +30,15 @@ on:
         required: false
         default: "128,256,512,768,1024,1536"
         type: string
+      strategy:
+        description: "Optimization strategy: cost (cheapest), speed (fastest), or balanced"
+        required: false
+        default: "balanced"
+        type: choice
+        options:
+          - balanced
+          - cost
+          - speed
 
 permissions:
   id-token: write
@@ -128,6 +137,7 @@ jobs:
           TUNE_FUNCTION: ${{ matrix.function }}
           TUNE_NUM: ${{ inputs.num }}
           TUNE_POWER_VALUES: ${{ inputs.power_values }}
+          TUNE_STRATEGY: ${{ inputs.strategy }}
           LAMBDA_ARN: ${{ steps.resolve.outputs.lambda_arn }}
           PRE_PROCESSOR_ARN: ${{ steps.resolve.outputs.pre_processor_arn }}
         run: |
@@ -157,13 +167,14 @@ jobs:
             --argjson num "$TUNE_NUM" \
             --argjson payload "$PAYLOAD" \
             --arg preProcessorARN "$PRE_PROCESSOR_ARN" \
+            --arg strategy "$TUNE_STRATEGY" \
             '{
                lambdaARN: $lambdaARN,
                powerValues: $powerValues,
                num: $num,
                payload: $payload,
                parallelInvocation: true,
-               strategy: "balanced",
+               strategy: $strategy,
                autoOptimize: false
              } + (if $preProcessorARN != "" then {preProcessorARN: $preProcessorARN} else {} end)')
 
@@ -241,7 +252,7 @@ jobs:
           # directly in the run summary, instead of requiring a trip through
           # the downloaded JSON artifact.
           {
-            echo "### Power tuning results: ${{ matrix.function }}"
+            echo "### Power tuning results: ${{ matrix.function }} (strategy: ${{ inputs.strategy }})"
             echo ""
             echo "| Recommended power | Cost/invocation | Duration (ms) |"
             echo "|---|---|---|"
