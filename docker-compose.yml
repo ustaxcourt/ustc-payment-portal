@@ -1,6 +1,6 @@
 services:
   postgres:
-    # The image is pinned only in the consumer file, which CI also starts, so the three can't drift.
+    # The image is pinned only in the consumer file, which CI also starts, so local, consumer and CI can't drift.
     extends:
       file: docker-compose.consumer.yml
       service: postgres

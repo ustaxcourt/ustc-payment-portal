@@ -5,11 +5,12 @@ How to move an environment's RDS instance to a new PostgreSQL major version
 `terraform/environments/<env>/main.tf`; the shared [`rds` module](../../terraform/modules/rds/main.tf)
 derives the parameter group family and name from it.
 
-Until its own upgrade, each environment pins the **exact** live minor
-(e.g. `"16.13"`). State already holds that value, so a major-only `"16"` would
-show as a diff and send a ModifyDBInstance call on the next apply. Each
-environment also leaves the module's `apply_immediately` at its default `false`,
-so routine size or storage changes still wait for the maintenance window.
+During a rollout, an environment not yet being upgraded pins the **exact** live
+minor (e.g. `"16.13"`). State already holds that value, so a major-only `"16"`
+would show as a diff and send a ModifyDBInstance call on the next apply. An
+environment sets the module's `apply_immediately` to `true` only for its own
+upgrade; otherwise it stays at the default `false`, so routine size or storage
+changes still wait for the maintenance window.
 
 > **This procedure has not been rehearsed end to end, and neither has the
 > rollback.** Read the whole page before the first upgrade, and update it with
@@ -205,8 +206,8 @@ Outline (not rehearsed — work it through with ops before relying on it):
    environment, then fix Terraform state so
    it tracks the restored instance (`terraform state rm` and `terraform import`
    for `module.rds.aws_db_instance.main`, or `module.rds[0].aws_db_instance.main`
-   in dev, run by a human). Apply: this recreates
-   the `-pg` parameter group, and on stg/prod picks up the restored instance's new
+   in dev, run by a human). Apply: this replaces `<id>-pg17` with an
+   `<id>-pg16` parameter group, and on stg/prod picks up the restored instance's new
    master secret ARN for the proxy and Lambdas.
 5. Run the post-upgrade checks above, expecting 16.x. Delete
    `<id>-pg17-failed` only once you're sure you don't need it.

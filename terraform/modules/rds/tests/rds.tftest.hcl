@@ -78,6 +78,11 @@ run "explicit_minor_derives_family" {
     condition     = aws_db_parameter_group.main.family == "postgres17"
     error_message = "family should ignore the minor version"
   }
+
+  assert {
+    condition     = aws_db_parameter_group.main.name == "ustc-payments-dev-pg17"
+    error_message = "the parameter group name should carry only the major, or a rollback to 16.x would not produce -pg16"
+  }
 }
 
 run "rejects_invalid_engine_version" {
