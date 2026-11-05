@@ -3,6 +3,22 @@ variable "identifier" {
   type        = string
 }
 
+variable "engine_version" {
+  description = "Exact PostgreSQL version (e.g. \"18.6\"). Pinned so the version, and the restart that comes with changing it, only moves in a reviewed PR."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+$", var.engine_version))
+    error_message = "Must be an exact major.minor version (e.g. \"18.6\"). A major-only value lets RDS pick the minor."
+  }
+}
+
+variable "apply_immediately" {
+  description = "Apply instance modifications on the next apply instead of the maintenance window. Must be true for a version upgrade, or RDS defers it while apply reports success; leave false otherwise so size or storage changes don't restart the DB mid-deploy."
+  type        = bool
+  default     = false
+}
+
 variable "db_name" {
   description = "Name of the default database to create on the instance"
   type        = string
