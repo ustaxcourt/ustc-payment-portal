@@ -46,6 +46,11 @@ run "pinned_version_derives_family_and_group_name" {
     condition     = aws_db_instance.main.apply_immediately == true
     error_message = "apply_immediately should pass through so an upgrading environment is not deferred to the maintenance window"
   }
+
+  assert {
+    condition     = [for p in aws_db_parameter_group.main.parameter : p.value if p.name == "log_connections"] == ["all"]
+    error_message = "18 rejects the boolean \"1\" for log_connections; it must be a list value such as \"all\""
+  }
 }
 
 run "pinned_minor_keeps_legacy_group_and_defers_changes" {
@@ -69,6 +74,11 @@ run "pinned_minor_keeps_legacy_group_and_defers_changes" {
   assert {
     condition     = aws_db_parameter_group.main.family == "postgres16"
     error_message = "family should be postgres16"
+  }
+
+  assert {
+    condition     = [for p in aws_db_parameter_group.main.parameter : p.value if p.name == "log_connections"] == ["1"]
+    error_message = "16 only accepts a boolean log_connections; stg, prod and a 16.x rollback depend on \"1\""
   }
 
   assert {
