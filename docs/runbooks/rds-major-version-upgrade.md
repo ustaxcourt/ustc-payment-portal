@@ -1,15 +1,16 @@
 # Runbook: RDS PostgreSQL major version upgrade
 
 How to move an environment's RDS instance to a new PostgreSQL major version
-(written for 16 → 17). The version is set per environment by `engine_version` in
+(written for 16 → 18). The version is set per environment by `engine_version` in
 `terraform/environments/<env>/main.tf`; the shared [`rds` module](../../terraform/modules/rds/main.tf)
 derives the parameter group family and name from it.
 
-Until its own upgrade, each environment pins the **exact** live minor
-(e.g. `"16.13"`). State already holds that value, so a major-only `"16"` would
-show as a diff and send a ModifyDBInstance call on the next apply. Each
-environment also leaves the module's `apply_immediately` at its default `false`,
-so routine size or storage changes still wait for the maintenance window.
+Every environment pins an **exact** version (e.g. `"18.6"`), and the module turns
+off `auto_minor_version_upgrade`. Any engine change, minor or major, restarts the
+database, so the version only moves in a reviewed PR applied in a planned window.
+Each environment also leaves the module's `apply_immediately` at its default
+`false` outside its own upgrade, so routine size or storage changes still wait for
+the maintenance window.
 
 > **This procedure has not been rehearsed end to end, and neither has the
 > rollback.** Read the whole page before the first upgrade, and update it with
@@ -37,7 +38,7 @@ above dev.
 - **Stg and prod** need a window approved by the PO and ops. Being Multi-AZ
   doesn't avoid downtime: both nodes upgrade together, so expect **10–30+ minutes**
   of downtime. Hold other merges and promotions until the environment is done.
-- **Once stg and prod are set to 17 on `main`, the next promotion upgrades them**,
+- **Once stg and prod are set to 18 on `main`, the next promotion upgrades them**,
   whatever else it ships. Dispatch those promotions yourself, in the window.
 
 ---
@@ -52,29 +53,41 @@ from the table above.
 aws rds describe-db-instances --db-instance-identifier <id> \
   --query 'DBInstances[0].[EngineVersion,DBParameterGroups[0].DBParameterGroupName,OptionGroupMemberships[0].OptionGroupName]'
 
-# Which 17.x versions are valid major-upgrade targets from the current version
+# Which 18.x versions are valid major-upgrade targets from the current version
 aws rds describe-db-engine-versions --engine postgres --engine-version <current-version> \
   --query 'DBEngineVersions[0].ValidUpgradeTarget[?IsMajorVersionUpgrade==`true`].EngineVersion'
-
-# The version RDS picks for a major-only "17"
-aws rds describe-db-engine-versions --engine postgres --engine-version 17 --default-only \
-  --query 'DBEngineVersions[0].EngineVersion'
 ```
 
-- If the default 17 minor is in the valid-target list, set `engine_version = "17"`.
-  If not, set the lowest valid `17.x`, and move it back to `"17"` in a later PR so
-  minor versions auto-upgrade again.
+- Set `engine_version` to an exact `18.x` from the valid-target list, the same one
+  for every environment (dev was upgraded to `18.6`).
 - In the same change, set `apply_immediately = true` for that environment's
   `module "rds"`. Without it, RDS defers the upgrade to the maintenance window
   while the apply reports success.
 - **Environments not being upgraded:** check their pin still matches the live
-  version (`aws rds describe-db-instances ... EngineVersion`). If RDS auto-upgraded
-  the minor, for example to 16.14, update the pin first. Otherwise the plan tries
-  to move it back to 16.13.
-- RDS Proxy supports all PostgreSQL 17 (and 18) versions in `us-east-1`, checked
+  version (`aws rds describe-db-instances ... EngineVersion`). If AWS upgraded the
+  minor, for example to 16.14, update the pin first. Otherwise the plan tries to
+  move it back to 16.13.
+- RDS Proxy supports all PostgreSQL 18 versions in `us-east-1`, checked
   2026-10-30 against
   [Supported Regions and DB engines for RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RDS_Fea_Regions_DB-eng.Feature.RDSProxy.html).
   Re-check that page for a later target version.
+- **Foundation applied first:** the deployer role in
+  [`role-deployer.tf`](../../terraform/modules/iam/role-deployer.tf) must allow
+  `og:default:postgres-*`, because the upgrade moves the instance onto the new
+  default option group. That role lives in foundation, so a human runs the
+  foundation apply for the account (`foundation/<env>-networking`) before the
+  window. Check it's live in the role's `<role>-rds` managed policy (dev's role is
+  `ustc-payment-processor-dev-cicd-deployer-role`):
+
+  ```bash
+  ROLE=<deployer-role>
+  ARN=$(aws iam list-attached-role-policies --role-name "$ROLE" \
+    --query "AttachedPolicies[?PolicyName=='${ROLE}-rds'].PolicyArn" --output text)
+  VER=$(aws iam get-policy --policy-arn "$ARN" --query Policy.DefaultVersionId --output text)
+  aws iam get-policy-version --policy-arn "$ARN" --version-id "$VER" \
+    --query PolicyVersion.Document | grep 'og:default:postgres'
+  ```
+
 - **Dev only:** the `deploy_dev` job's `timeout-minutes` in `cicd-dev.yml` must be
   at least 90. If the job is killed mid-apply, it leaves a stuck Terraform state lock.
 - **Prod only:** take a named manual snapshot before the window (RDS also takes an
@@ -82,8 +95,8 @@ aws rds describe-db-engine-versions --engine postgres --engine-version 17 --defa
 
   ```bash
   aws rds create-db-snapshot --db-instance-identifier ustc-payment-portal-prod-db \
-    --db-snapshot-identifier ustc-payment-portal-prod-db-pre-pg17
-  aws rds wait db-snapshot-available --db-snapshot-identifier ustc-payment-portal-prod-db-pre-pg17
+    --db-snapshot-identifier ustc-payment-portal-prod-db-pre-pg18
+  aws rds wait db-snapshot-available --db-snapshot-identifier ustc-payment-portal-prod-db-pre-pg18
   ```
 
 ---
@@ -93,14 +106,17 @@ aws rds describe-db-engine-versions --engine postgres --engine-version 17 --defa
 Review the plan before applying (the PR's plan comment for dev, the workflow
 plan for stg, `plan_only=true` for prod). It should show exactly:
 
-- `aws_db_parameter_group.main` **replaced**: a new `<id>-pg17` group (family
-  `postgres17`) is created before the old `<id>-pg` group is destroyed.
+- `aws_db_parameter_group.main` **replaced**: a new `<id>-pg18` group (family
+  `postgres18`) is created before the old `<id>-pg` group is destroyed.
 - `aws_db_instance.main` **updated in place**: `engine_version`,
   `parameter_group_name`, and `apply_immediately` (`false -> true`) change.
   **It must not say "must be replaced".** If it does, stop.
 - **Other environments:** no `engine_version`, `parameter_group_name` or
   `apply_immediately` change. An `engine_version` diff there means the pin no
   longer matches the live version.
+- **First apply after PAY-471 only:** every environment also shows
+  `auto_minor_version_upgrade` `true -> false`. That change doesn't restart the
+  database.
 - Lambda, proxy and SSM changes only if the same release also changes them.
 
 ---
@@ -125,8 +141,9 @@ Follow `describe-events` until then.
 
 ## After each upgrade
 
-1. **Confirm the version and rebuild planner statistics.** A major upgrade doesn't
-   carry statistics over, so queries run on default estimates until `ANALYZE` runs.
+1. **Confirm the version and rebuild planner statistics.** PostgreSQL 18 keeps most
+   planner statistics through the upgrade but not extended statistics, and older
+   targets keep none, so run `ANALYZE` every time.
    Prod doesn't run migrations automatically either, so this step is always manual.
 
    ```bash
@@ -137,7 +154,7 @@ Follow `describe-events` until then.
      response.json && cat response.json
    ```
 
-   `serverVersion` in the body must be `17.x`.
+   `serverVersion` in the body must be `18.x`.
 
 2. **Proxy targets healthy:**
 
@@ -149,7 +166,7 @@ Follow `describe-events` until then.
    Every target should be `AVAILABLE`.
 
 3. **Option and parameter groups:** re-run the first pre-flight command. The
-   parameter group should be `<id>-pg17` and the option group `default:postgres-17`.
+   parameter group should be `<id>-pg18` and the option group `default:postgres-18`.
    The old `<id>-pg` group should be gone:
    `aws rds describe-db-parameter-groups --db-parameter-group-name <id>-pg` should
    return `DBParameterGroupNotFound`.
@@ -170,17 +187,32 @@ continue, check the proxy targets again.
 
 ### If something fails
 
-- **`AccessDenied` on `og:default:postgres-17`** during apply: the deployer role
-  can't touch the new default option group. Add `og:default:postgres-*` to the
-  deployer role's RDS resource list in
-  [`role-deployer.tf`](../../terraform/modules/iam/role-deployer.tf), do a
-  **foundation** apply for that account, then re-run the deploy. Make the same
-  change in the other accounts before upgrading them.
-- **RDS rejects `"17"`**: switch to the explicit `17.x` from pre-flight.
+- **`AccessDenied` on `og:default:postgres-18`** during apply: the foundation
+  apply from pre-flight hasn't run in that account. Run it, then re-run the deploy.
+- **RDS rejects the pinned `18.x`**: pick another version from the pre-flight
+  valid-target list.
 - **Stuck state lock after a killed apply:** check that the instance shows
   `available` in RDS first, then release the lock with
   `terraform force-unlock <lock-id>`. Don't release it while the upgrade is still
   running.
+
+---
+
+## Minor version patches
+
+Minor patches (e.g. 18.6 → 18.7) are not automatic. They restart the database for
+a few minutes, so they follow the same path as a major upgrade, on a smaller
+scale: a PR that bumps `engine_version`, then dev, stg and prod in turn, with
+`apply_immediately = true` for the environment being patched. The parameter group
+doesn't change.
+
+- **Watch for security releases** on the
+  [PostgreSQL release notes](https://www.postgresql.org/docs/release/) and patch
+  when one affects us.
+- **AWS still forces deprecated minors.** When AWS announces the end of support
+  for a minor, it upgrades remaining instances on its own date, in the maintenance
+  window. Bump the pin before that date, or the forced upgrade lands unplanned and
+  the next plan shows drift.
 
 ---
 
@@ -195,7 +227,7 @@ Outline (not rehearsed — work it through with ops before relying on it):
 1. Find the pre-upgrade snapshot (`aws rds describe-db-snapshots --db-instance-identifier <id>`),
    or use the manual prod snapshot.
 2. Rename the upgraded instance so its identifier is free, e.g.
-   `aws rds modify-db-instance --db-instance-identifier <id> --new-db-instance-identifier <id>-pg17-failed --apply-immediately`.
+   `aws rds modify-db-instance --db-instance-identifier <id> --new-db-instance-identifier <id>-pg18-failed --apply-immediately`.
 3. Restore the snapshot under the original `<id>`, with the same subnet group,
    security groups and Multi-AZ setting, and on stg/prod with
    `--manage-master-user-password`. Restoring under the same identifier keeps
@@ -209,4 +241,4 @@ Outline (not rehearsed — work it through with ops before relying on it):
    the `-pg` parameter group, and on stg/prod picks up the restored instance's new
    master secret ARN for the proxy and Lambdas.
 5. Run the post-upgrade checks above, expecting 16.x. Delete
-   `<id>-pg17-failed` only once you're sure you don't need it.
+   `<id>-pg18-failed` only once you're sure you don't need it.

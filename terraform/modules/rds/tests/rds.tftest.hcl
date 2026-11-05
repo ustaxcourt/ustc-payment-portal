@@ -1,10 +1,10 @@
 mock_provider "aws" {}
 
 variables {
-  engine_version = "17"
+  engine_version = "18.6"
 }
 
-run "major_only_version_derives_family_and_group_name" {
+run "pinned_version_derives_family_and_group_name" {
   command = plan
 
   variables {
@@ -18,18 +18,23 @@ run "major_only_version_derives_family_and_group_name" {
   }
 
   assert {
-    condition     = aws_db_parameter_group.main.family == "postgres17"
+    condition     = aws_db_parameter_group.main.family == "postgres18"
     error_message = "family should be derived from the engine major version"
   }
 
   assert {
-    condition     = aws_db_parameter_group.main.name == "ustc-payments-dev-pg17"
+    condition     = aws_db_parameter_group.main.name == "ustc-payments-dev-pg18"
     error_message = "a non-16 parameter group name should carry the major version so it can be created before the old one is destroyed"
   }
 
   assert {
-    condition     = aws_db_instance.main.engine_version == "17"
+    condition     = aws_db_instance.main.engine_version == "18.6"
     error_message = "engine_version should pass through unchanged"
+  }
+
+  assert {
+    condition     = aws_db_instance.main.auto_minor_version_upgrade == false
+    error_message = "auto_minor_version_upgrade must be false, or AWS moves the instance off its pinned version"
   }
 
   assert {
@@ -62,12 +67,17 @@ run "pinned_minor_keeps_legacy_group_and_defers_changes" {
   }
 
   assert {
+    condition     = aws_db_parameter_group.main.family == "postgres16"
+    error_message = "family should be postgres16"
+  }
+
+  assert {
     condition     = aws_db_instance.main.apply_immediately == false
     error_message = "apply_immediately should default to false so environments not being upgraded keep using the maintenance window"
   }
 }
 
-run "explicit_minor_derives_family" {
+run "rejects_major_only_engine_version" {
   command = plan
 
   variables {
@@ -77,37 +87,10 @@ run "explicit_minor_derives_family" {
     password               = "fake-not-a-real-password"
     vpc_security_group_ids = ["sg-1234567890"]
     db_subnet_group_name   = "db-subnet-group"
-    engine_version         = "17.6"
+    engine_version         = "18"
   }
 
-  assert {
-    condition     = aws_db_parameter_group.main.family == "postgres17"
-    error_message = "family should ignore the minor version"
-  }
-}
-
-run "pg16_keeps_legacy_group_name" {
-  command = plan
-
-  variables {
-    identifier             = "ustc-payments-dev"
-    db_name                = "payments"
-    username               = "portal"
-    password               = "fake-not-a-real-password"
-    vpc_security_group_ids = ["sg-1234567890"]
-    db_subnet_group_name   = "db-subnet-group"
-    engine_version         = "16"
-  }
-
-  assert {
-    condition     = aws_db_parameter_group.main.name == "ustc-payments-dev-pg"
-    error_message = "16 must keep the existing group name so in-use groups are not replaced"
-  }
-
-  assert {
-    condition     = aws_db_parameter_group.main.family == "postgres16"
-    error_message = "family should be postgres16"
-  }
+  expect_failures = [var.engine_version]
 }
 
 run "rejects_invalid_engine_version" {
@@ -120,7 +103,7 @@ run "rejects_invalid_engine_version" {
     password               = "fake-not-a-real-password"
     vpc_security_group_ids = ["sg-1234567890"]
     db_subnet_group_name   = "db-subnet-group"
-    engine_version         = "postgres17"
+    engine_version         = "postgres18"
   }
 
   expect_failures = [var.engine_version]
