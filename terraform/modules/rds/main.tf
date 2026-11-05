@@ -42,8 +42,9 @@ resource "aws_db_instance" "main" {
   engine_version = var.engine_version
 
   allow_major_version_upgrade = true
-  auto_minor_version_upgrade  = true
-  apply_immediately           = var.apply_immediately
+  # engine_version is pinned exactly, so an AWS-applied minor would make the next apply try to move it back.
+  auto_minor_version_upgrade = false
+  apply_immediately          = var.apply_immediately
 
   instance_class        = var.instance_class
   allocated_storage     = var.allocated_storage

@@ -4,12 +4,12 @@ variable "identifier" {
 }
 
 variable "engine_version" {
-  description = "PostgreSQL major (e.g. \"17\") or explicit minor (e.g. \"16.13\"). An environment not being upgraded pins its exact live minor: state holds that value, so a major-only value would send a ModifyDBInstance on the next apply."
+  description = "Exact PostgreSQL version (e.g. \"18.6\"). Pinned so the version, and the restart that comes with changing it, only moves in a reviewed PR."
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+(\\.[0-9]+)?$", var.engine_version))
-    error_message = "Must be a major version (e.g. \"17\") or major.minor (e.g. \"17.6\")."
+    condition     = can(regex("^[0-9]+\\.[0-9]+$", var.engine_version))
+    error_message = "Must be an exact major.minor version (e.g. \"18.6\"). A major-only value lets RDS pick the minor."
   }
 }
 

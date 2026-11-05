@@ -52,7 +52,7 @@ module "lambda" {
 module "rds" {
   source = "../../modules/rds"
 
-  engine_version    = "17"
+  engine_version    = "18.6"
   apply_immediately = true
 
   identifier = "${local.name_prefix}-db"

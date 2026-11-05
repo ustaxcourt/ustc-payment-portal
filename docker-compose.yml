@@ -14,7 +14,8 @@ services:
       timeout: 5s
       retries: 10
     volumes:
-      - postgres17_data:/var/lib/postgresql/data
+      # 18+ images keep data in a per-major subdirectory and refuse to start with a mount at /var/lib/postgresql/data.
+      - postgres18_data:/var/lib/postgresql
 
   db-init:
     image: node:24
@@ -49,5 +50,5 @@ services:
       '
 
 volumes:
-  postgres17_data:
+  postgres18_data:
   db_init_node_modules:

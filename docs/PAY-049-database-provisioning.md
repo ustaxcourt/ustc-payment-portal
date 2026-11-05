@@ -1,6 +1,6 @@
 # PAY-049: Database Provisioning
 
-> **Superseded (PAY-471):** all environments are configured for PostgreSQL 17;
+> **Superseded (PAY-471):** all environments are pinned to PostgreSQL 18.6;
 > stg and prod upgrade in their own deploy windows. The engine
 > version is set per environment by `engine_version` in
 > `terraform/environments/<env>/main.tf`, and `ignore_changes = [engine_version]`
