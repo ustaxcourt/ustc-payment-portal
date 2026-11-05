@@ -73,25 +73,34 @@ enough context that the next person doesn't have to re-derive the decision.
   `…runtime:fcbc5912…10e9`); prod and stg had no cold starts to inspect. After
   deploy, check the `nodejs:24` runtime version the same way.
 
-### objection 3.1.5 → 4.2.0 — deferred, pinned `~3.1.5` (2026-10-14, re-confirmed 2026-10-23)
+### objection 3.1.5 → 4.4.3 — deferred, pinned `~3.1.5` (2026-10-14, updated 2026-11-05)
 
-- **Current:** `~3.1.5` (was `^3.1.5`, which resolves to `3.9.1`). **Available
-  latest:** `4.2.0`. `4.0.0`–`4.2.0` landed on the same `ditojs` line over
-  2026-10-16 to 2026-10-18, so adopting it is now a major upgrade.
-- **Reason:** after no releases since 2024-09, `3.2.0`–`3.9.1` were published
-  over 2026-10-09 to 2026-10-13. They have no changelog entries, no GitHub
-  releases and no tags. They are built from `ditojs/objection`, a fork by the
-  same maintainer that is 306 commits and 288 files ahead of
-  `Vincit/objection.js` `main`. Two of the changes touch APIs we rely on:
-  `select()` is now applied to `patchAndFetchById`'s fetch query (#1938), and
-  the snake-case mappers changed (#2805). `TransactionModel` uses both, including
-  in `claimForProcessing`. Our tests passed on `3.9.1`, but that is not a
-  substitute for reviewing a fork-sized ORM change under payment state.
-- **Plan:** follow-up ticket to review the `ditojs/objection` changes against
-  `TransactionModel`, wait for the release line to settle, and decide whether
-  to adopt the fork. The tilde keeps routine rotations from picking it up
-  until then. Widen it back to `^` in that ticket. Follow-up ticket: not yet
-  cut (2026-10-23).
+- **Current:** `~3.1.5`. **Available latest:** `4.4.3`.
+- **Reason:** upgrading to `4.4.3` causes the Jest unit test suite to fail. Test runs that import `TransactionModel` fail with:
+
+Must use import to load ES Module: node_modules/objection/lib/objection.js
+
+The 4.x line publishes ESM artifacts that are not compatible with the repo's
+current Jest/TypeScript configuration. The failure occurs in tests that load
+`objection` through `TransactionModel`, resulting in widespread test-suite
+failures. Reverting to `3.1.5` restores the test suite.
+
+This is therefore not a routine dependency update. Adopting Objection 4.x
+would require investigation of Jest ESM support, potential updates to
+`ts-jest`, transform configuration, module resolution settings, and/or Node
+runtime requirements before the upgrade can be safely taken.
+
+- **Verified (2026-11-05):** upgrade attempt to `4.4.3` produced 19 failing test
+  suites with the error:
+
+Must use import to load ES Module: node_modules/objection/lib/objection.js
+
+Reverting to `3.1.5` resolved the failures.
+
+- **Plan:** keep `objection` pinned to `~3.1.5`. Create a dedicated follow-up
+  ticket to evaluate migration to Objection 4.x, including Jest ESM
+  compatibility, Node version requirements, and ORM behavior differences before
+  widening the version range.
 
 ### Terraform provider lockfiles — what is and isn't in scope (2026-09-17, updated 2026-10-23)
 
@@ -227,7 +236,7 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
 - **Verified (2026-09-17):** removing the override reintroduces the advisory
   (`npm audit` reports the finding against
   `node_modules/tsup/node_modules/esbuild@0.27.7`); restoring it returns `npm
-  audit` to the `csv-parse` finding alone. `npm run build` succeeds and `tsc` is
+audit` to the `csv-parse` finding alone. `npm run build` succeeds and `tsc` is
   clean with the override in place.
 - **Revisit:** drop it once `tsup` declares `esbuild@^0.28.1` or newer. The
   override sits outside tsup's declared range, so re-verify the build whenever
