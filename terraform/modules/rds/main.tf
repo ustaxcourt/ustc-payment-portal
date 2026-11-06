@@ -2,6 +2,7 @@ locals {
   engine_major = split(".", var.engine_version)[0]
   # 16 keeps its original name so in-use groups are not replaced before their env upgrades.
   parameter_group_name = local.engine_major == "16" ? "${var.identifier}-pg" : "${var.identifier}-pg${local.engine_major}"
+  log_connections      = tonumber(local.engine_major) >= 18 ? "all" : "1"
 }
 
 resource "aws_db_parameter_group" "main" {
@@ -20,7 +21,7 @@ resource "aws_db_parameter_group" "main" {
 
   parameter {
     name  = "log_connections"
-    value = "1"
+    value = local.log_connections
   }
 
   parameter {

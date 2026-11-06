@@ -71,6 +71,17 @@ aws rds describe-db-engine-versions --engine postgres --engine-version <current-
   2026-10-30 against
   [Supported Regions and DB engines for RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RDS_Fea_Regions_DB-eng.Feature.RDSProxy.html).
   Re-check that page for a later target version.
+- **Parameter values for a new major:** the module's tests use a mock provider,
+  so only RDS validates parameter values. Compare each parameter
+  [`modules/rds/main.tf`](../../terraform/modules/rds/main.tf) sets against the new
+  family's allowed values (once per new major; it caught `log_connections` on 18):
+
+  ```bash
+  aws rds describe-engine-default-parameters --db-parameter-group-family postgres18 \
+    --query "EngineDefaults.Parameters[?ParameterName=='log_connections' || ParameterName=='log_disconnections' || ParameterName=='log_statement' || ParameterName=='log_min_duration_statement'].[ParameterName,AllowedValues,DataType]" \
+    --output table
+  ```
+
 - **Foundation applied first:** the deployer role in
   [`role-deployer.tf`](../../terraform/modules/iam/role-deployer.tf) must allow
   `og:default:postgres-*`, because the upgrade moves the instance onto the new
@@ -191,6 +202,14 @@ continue, check the proxy targets again.
   apply from pre-flight hasn't run in that account. Run it, then re-run the deploy.
 - **RDS rejects the pinned `18.x`**: pick another version from the pre-flight
   valid-target list.
+- **`InvalidParameterValue` on `ModifyDBParameterGroup`** for the new group: a
+  parameter the module sets changed type in the new major (18 made
+  `log_connections` a list). The instance hasn't been touched yet. Fix the value
+  in [`modules/rds/main.tf`](../../terraform/modules/rds/main.tf), then run a plan:
+  if the new group shows as `tainted`, a human runs
+  `terraform untaint 'module.rds.aws_db_parameter_group.main'`
+  (`module.rds[0]` in dev) before the next deploy, or `create_before_destroy` fails
+  on the existing name.
 - **Stuck state lock after a killed apply:** check that the instance shows
   `available` in RDS first, then release the lock with
   `terraform force-unlock <lock-id>`. Don't release it while the upgrade is still
