@@ -1,5 +1,124 @@
 mock_provider "aws" {}
 
+variables {
+  engine_version = "18.6"
+}
+
+run "pinned_version_derives_family_and_group_name" {
+  command = plan
+
+  variables {
+    identifier             = "ustc-payments-dev"
+    db_name                = "payments"
+    username               = "portal"
+    password               = "fake-not-a-real-password"
+    vpc_security_group_ids = ["sg-1234567890"]
+    db_subnet_group_name   = "db-subnet-group"
+    apply_immediately      = true
+  }
+
+  assert {
+    condition     = aws_db_parameter_group.main.family == "postgres18"
+    error_message = "family should be derived from the engine major version"
+  }
+
+  assert {
+    condition     = aws_db_parameter_group.main.name == "ustc-payments-dev-pg18"
+    error_message = "a non-16 parameter group name should carry the major version so it can be created before the old one is destroyed"
+  }
+
+  assert {
+    condition     = aws_db_instance.main.engine_version == "18.6"
+    error_message = "engine_version should pass through unchanged"
+  }
+
+  assert {
+    condition     = aws_db_instance.main.auto_minor_version_upgrade == false
+    error_message = "auto_minor_version_upgrade must be false, or AWS moves the instance off its pinned version"
+  }
+
+  assert {
+    condition     = aws_db_instance.main.allow_major_version_upgrade == true
+    error_message = "allow_major_version_upgrade must be true or a major bump is rejected"
+  }
+
+  assert {
+    condition     = aws_db_instance.main.apply_immediately == true
+    error_message = "apply_immediately should pass through so an upgrading environment is not deferred to the maintenance window"
+  }
+
+  assert {
+    condition     = [for p in aws_db_parameter_group.main.parameter : p.value if p.name == "log_connections"] == ["all"]
+    error_message = "18 rejects the boolean \"1\" for log_connections; it must be a list value such as \"all\""
+  }
+}
+
+run "pinned_minor_keeps_legacy_group_and_defers_changes" {
+  command = plan
+
+  variables {
+    identifier             = "ustc-payments-stg"
+    db_name                = "payments"
+    username               = "portal"
+    password               = "fake-not-a-real-password"
+    vpc_security_group_ids = ["sg-1234567890"]
+    db_subnet_group_name   = "db-subnet-group"
+    engine_version         = "16.13"
+  }
+
+  assert {
+    condition     = aws_db_parameter_group.main.name == "ustc-payments-stg-pg"
+    error_message = "a pinned 16.x minor must keep the existing group name"
+  }
+
+  assert {
+    condition     = aws_db_parameter_group.main.family == "postgres16"
+    error_message = "family should be postgres16"
+  }
+
+  assert {
+    condition     = [for p in aws_db_parameter_group.main.parameter : p.value if p.name == "log_connections"] == ["1"]
+    error_message = "16 only accepts a boolean log_connections; stg, prod and a 16.x rollback depend on \"1\""
+  }
+
+  assert {
+    condition     = aws_db_instance.main.apply_immediately == false
+    error_message = "apply_immediately should default to false so environments not being upgraded keep using the maintenance window"
+  }
+}
+
+run "rejects_major_only_engine_version" {
+  command = plan
+
+  variables {
+    identifier             = "ustc-payments-dev"
+    db_name                = "payments"
+    username               = "portal"
+    password               = "fake-not-a-real-password"
+    vpc_security_group_ids = ["sg-1234567890"]
+    db_subnet_group_name   = "db-subnet-group"
+    engine_version         = "18"
+  }
+
+  expect_failures = [var.engine_version]
+}
+
+run "rejects_invalid_engine_version" {
+  command = plan
+
+  variables {
+    identifier             = "ustc-payments-dev"
+    db_name                = "payments"
+    username               = "portal"
+    password               = "fake-not-a-real-password"
+    vpc_security_group_ids = ["sg-1234567890"]
+    db_subnet_group_name   = "db-subnet-group"
+    engine_version         = "postgres18"
+  }
+
+  expect_failures = [var.engine_version]
+}
+
 run "default_branch_uses_inline_password" {
   command = plan
 

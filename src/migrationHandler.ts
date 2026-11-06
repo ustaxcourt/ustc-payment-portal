@@ -1,11 +1,11 @@
+import fs from "node:fs";
+import path from "node:path";
 import {
   GetSecretValueCommand,
   SecretsManagerClient,
 } from "@aws-sdk/client-secrets-manager";
-import fs from "fs";
 import Knex from "knex";
 import { knexSnakeCaseMappers } from "objection";
-import path from "path";
 import { parseRdsEndpoint } from "./db/getRdsCredentials";
 
 type Command =
@@ -20,6 +20,7 @@ type Command =
   | "unlock"
   | "seed"
   | "verify"
+  | "analyze"
   | "gc-dbs"
   | "gc-roles"
   | "debug-transactions"
@@ -660,6 +661,19 @@ export const migrationHandler = async (
       return {
         statusCode: 200,
         body: JSON.stringify({ version: version ?? "none" }),
+      };
+    }
+
+    if (command === "analyze") {
+      // A major-version upgrade does not carry planner statistics over, so
+      // queries run on default estimates until ANALYZE rebuilds them.
+      const result = await knex.raw<{ rows: { serverVersion: string }[] }>(
+        `SELECT current_setting('server_version') AS "serverVersion"`,
+      );
+      await knex.raw("ANALYZE");
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ serverVersion: result.rows[0].serverVersion }),
       };
     }
 
