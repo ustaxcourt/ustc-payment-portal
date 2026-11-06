@@ -46,6 +46,11 @@ run "pinned_version_derives_family_and_group_name" {
     condition     = aws_db_instance.main.apply_immediately == true
     error_message = "apply_immediately should pass through so an upgrading environment is not deferred to the maintenance window"
   }
+
+  assert {
+    condition     = [for p in aws_db_parameter_group.main.parameter : p.value if p.name == "log_connections"] == ["all"]
+    error_message = "18 rejects the boolean \"1\" for log_connections; it must be a list value such as \"all\""
+  }
 }
 
 run "apply_immediately_defaults_to_false" {
@@ -103,6 +108,11 @@ run "rollback_pin_derives_pg16_group" {
   assert {
     condition     = aws_db_parameter_group.main.name == "ustc-payments-dev-pg16"
     error_message = "the runbook's rollback expects a 16.x pin to create -pg16, not reuse the destroyed -pg"
+  }
+
+  assert {
+    condition     = [for p in aws_db_parameter_group.main.parameter : p.value if p.name == "log_connections"] == ["1"]
+    error_message = "16 only accepts a boolean log_connections; a 16.x rollback depends on \"1\""
   }
 }
 

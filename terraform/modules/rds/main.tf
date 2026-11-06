@@ -1,5 +1,6 @@
 locals {
-  engine_major = split(".", var.engine_version)[0]
+  engine_major    = split(".", var.engine_version)[0]
+  log_connections = tonumber(local.engine_major) >= 18 ? "all" : "1"
 }
 
 resource "aws_db_parameter_group" "main" {
@@ -19,7 +20,7 @@ resource "aws_db_parameter_group" "main" {
 
   parameter {
     name  = "log_connections"
-    value = "1"
+    value = local.log_connections
   }
 
   parameter {
