@@ -8,10 +8,15 @@ const read = (relativePath) =>
 
 const load = (relativePath) => yaml.load(read(relativePath));
 
-const workflows = [
+const dbWorkflows = [
   ".github/workflows/ci.yml",
   ".github/workflows/migration-safety.yml",
 ];
+
+const allWorkflows = fs
+  .readdirSync(path.join(repoRoot, ".github/workflows"))
+  .filter((name) => /\.ya?ml$/.test(name))
+  .map((name) => `.github/workflows/${name}`);
 
 const engineVersion = (environment) => {
   const matches = [
@@ -31,7 +36,7 @@ describe("Postgres version pins", () => {
   const imageMajor = major(image.split(":")[1]);
 
   it("docker-compose.consumer.yml pins the postgres image", () => {
-    expect(image).toMatch(/^postgres:\d+(\.\d+)?$/);
+    expect(image).toMatch(/^postgres:\d+\.\d+$/);
   });
 
   it("docker-compose.yml takes its postgres image from the consumer file", () => {
@@ -43,14 +48,25 @@ describe("Postgres version pins", () => {
     });
   });
 
-  it.each(workflows)("%s starts postgres from the consumer file", (file) => {
-    const jobs = Object.values(load(file).jobs);
-    const runs = jobs.flatMap((job) => job.steps ?? []).map((s) => s.run ?? "");
+  it.each(dbWorkflows)("%s starts postgres from the consumer file", (file) => {
+    const runs = Object.values(load(file).jobs)
+      .flatMap((job) => job.steps ?? [])
+      .map((s) => s.run ?? "");
 
-    expect(jobs.some((job) => job.services?.postgres)).toBe(false);
     expect(
       runs.some((run) => run.includes("-f docker-compose.consumer.yml up")),
     ).toBe(true);
+  });
+
+  it.each(allWorkflows)("%s has no postgres image of its own", (file) => {
+    const services = Object.values(load(file).jobs).flatMap((job) =>
+      Object.values(job.services ?? {}),
+    );
+
+    expect(
+      services.some((s) => /^postgres(:|$)/.test(s?.image ?? String(s))),
+    ).toBe(false);
+    expect(read(file)).not.toMatch(/\bpostgres:\d/);
   });
 
   // A new major cannot open the previous major's data directory, so a bump
