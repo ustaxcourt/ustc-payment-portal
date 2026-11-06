@@ -73,41 +73,79 @@ enough context that the next person doesn't have to re-derive the decision.
   `…runtime:fcbc5912…10e9`); prod and stg had no cold starts to inspect. After
   deploy, check the `nodejs:24` runtime version the same way.
 
-### objection 3.1.5 → 4.2.0 — deferred, pinned `~3.1.5` (2026-10-14, re-confirmed 2026-10-23)
+### objection 3.1.5 → 4.4.3 — deferred, pinned `~3.1.5` (2026-10-14, updated 2026-11-05)
 
-- **Current:** `~3.1.5` (was `^3.1.5`, which resolves to `3.9.1`). **Available
-  latest:** `4.2.0`. `4.0.0`–`4.2.0` landed on the same `ditojs` line over
-  2026-10-16 to 2026-10-18, so adopting it is now a major upgrade.
-- **Reason:** after no releases since 2024-09, `3.2.0`–`3.9.1` were published
-  over 2026-10-09 to 2026-10-13. They have no changelog entries, no GitHub
-  releases and no tags. They are built from `ditojs/objection`, a fork by the
-  same maintainer that is 306 commits and 288 files ahead of
-  `Vincit/objection.js` `main`. Two of the changes touch APIs we rely on:
-  `select()` is now applied to `patchAndFetchById`'s fetch query (#1938), and
-  the snake-case mappers changed (#2805). `TransactionModel` uses both, including
-  in `claimForProcessing`. Our tests passed on `3.9.1`, but that is not a
-  substitute for reviewing a fork-sized ORM change under payment state.
-- **Plan:** follow-up ticket to review the `ditojs/objection` changes against
-  `TransactionModel`, wait for the release line to settle, and decide whether
-  to adopt the fork. The tilde keeps routine rotations from picking it up
-  until then. Widen it back to `^` in that ticket. Follow-up ticket: not yet
-  cut (2026-10-23).
+- **Current:** `~3.1.5`. **Available latest:** `4.4.3`.
 
-### Terraform provider lockfiles — what is and isn't in scope (2026-09-17, updated 2026-10-23)
+- **Reason:** there are now two independent blockers to adopting the 4.x line.
+
+  **1. Jest / ESM compatibility**
+
+  Upgrading to `4.4.3` causes the Jest unit test suite to fail. Test runs that
+  import `TransactionModel` fail with:
+
+  ```text
+  Must use import to load ES Module:
+  node_modules/objection/lib/objection.js
+  ```
+
+  The 4.x line publishes ESM artifacts that are not compatible with the repo's
+  current Jest/TypeScript configuration. The failure occurs in tests that load
+  `objection` through `TransactionModel`, resulting in 19 failing test suites.
+  Reverting to `3.1.5` restores the test suite.
+
+  **2. Substantive ORM changes in the ditojs fork**
+
+  Even if the ESM issue is resolved, the 4.x line still requires review. After
+  no releases since 2024-09, `3.2.0`–`3.9.1` and later 4.x releases were
+  published from the `ditojs/objection` fork. That fork is materially ahead of
+  `Vincit/objection.js` and includes behavior changes that touch code paths we use:
+  - `select()` is now applied to `patchAndFetchById()` fetch queries (#1938).
+  - The snake-case mappers changed (#2805).
+  - `TransactionModel` relies on both behaviors, including
+    `claimForProcessing`.
+
+  Passing tests on a newer version would not by itself be sufficient evidence
+  that payment-processing behavior is unchanged.
+
+- **Verified (2026-11-05):** an upgrade attempt to `4.4.3` produced 19 failing
+  test suites with the error:
+
+  ```text
+  Must use import to load ES Module:
+  node_modules/objection/lib/objection.js
+  ```
+
+  Reverting to `3.1.5` resolved the failures.
+
+- **Plan:** keep `objection` pinned to `~3.1.5`. Follow-up ticket:
+  **PAY-506: Upgrade Objection.js from 3.1.5 to the latest supported 4.x
+  release**.
+
+  The ticket should evaluate:
+  - Jest ESM compatibility (`ts-jest`, transforms, module resolution, and Node
+    requirements).
+  - Review of `ditojs/objection` behavioral changes affecting
+    `TransactionModel`.
+  - Validation that payment-processing flows, including
+    `claimForProcessing`, behave identically before widening the version range.
+
+### Terraform provider lockfiles — what is and isn't in scope (2026-09-17, updated 2026-11-05)
 
 - **Current:** the Terraform CLI was taken to `~> 1.17.0` repo-wide on
   2026-10-23 (from `~> 1.16.0` on 2026-09-17), with CI's `terraform_version`
   set to the matching npm-semver range `~1.17.0`. Tracked root lockfiles were
-  refreshed to `hashicorp/aws` 6.70.0 the same day. On 2026-09-17 the
-  deprecated `data.aws_region.current.name` was replaced with `.region` in the
-  `api-gateway` and `rds-proxy` modules.
+  refreshed to `hashicorp/aws` 6.72.0 on 2026-11-05 (from 6.70.0). On
+  2026-09-17 the deprecated `data.aws_region.current.name` was replaced with
+  `.region` in the `api-gateway` and `rds-proxy` modules.
+
 - **Why module lockfiles are not in scope at all:** `.gitignore` excludes
   `terraform/modules/**/.terraform.lock.hcl`, so module-level lockfiles are
   never committed. A clean checkout has none, and `terraform init` simply
   resolves the newest provider satisfying each module's `~> 6.0` constraint.
   Any stale module lockfile you see locally (e.g. one still pinned to
   `aws 5.100.0` with `constraints = "~> 5.0"`) is a leftover working-directory
-  artifact, not a repo defect — `terraform init -upgrade` in that module clears
+  artifact, not a repo defect. `terraform init -upgrade` in that module clears
   it, and nothing about it reaches CI or another developer.
 
 ### dotenv@18 — `dotenv/config` types unresolved under `moduleResolution: node` (2026-10-08)
@@ -227,7 +265,7 @@ Be cautious about doing overrides — reserve them for cases where the dependenc
 - **Verified (2026-09-17):** removing the override reintroduces the advisory
   (`npm audit` reports the finding against
   `node_modules/tsup/node_modules/esbuild@0.27.7`); restoring it returns `npm
-  audit` to the `csv-parse` finding alone. `npm run build` succeeds and `tsc` is
+audit` to the `csv-parse` finding alone. `npm run build` succeeds and `tsc` is
   clean with the override in place.
 - **Revisit:** drop it once `tsup` declares `esbuild@^0.28.1` or newer. The
   override sits outside tsup's declared range, so re-verify the build whenever
