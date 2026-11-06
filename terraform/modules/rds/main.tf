@@ -1,12 +1,11 @@
 locals {
-  engine_major = split(".", var.engine_version)[0]
-  # 16 keeps its original name so in-use groups are not replaced before their env upgrades.
-  parameter_group_name = local.engine_major == "16" ? "${var.identifier}-pg" : "${var.identifier}-pg${local.engine_major}"
-  log_connections      = tonumber(local.engine_major) >= 18 ? "all" : "1"
+  engine_major    = split(".", var.engine_version)[0]
+  log_connections = tonumber(local.engine_major) >= 18 ? "all" : "1"
 }
 
 resource "aws_db_parameter_group" "main" {
-  name   = local.parameter_group_name
+  # The major is in the name so create_before_destroy can create the next group while this one is still attached.
+  name   = "${var.identifier}-pg${local.engine_major}"
   family = "postgres${local.engine_major}"
 
   parameter {
