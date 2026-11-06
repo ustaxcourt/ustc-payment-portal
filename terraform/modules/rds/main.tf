@@ -1,6 +1,13 @@
+locals {
+  engine_major = split(".", var.engine_version)[0]
+  # 16 keeps its original name so in-use groups are not replaced before their env upgrades.
+  parameter_group_name = local.engine_major == "16" ? "${var.identifier}-pg" : "${var.identifier}-pg${local.engine_major}"
+  log_connections      = tonumber(local.engine_major) >= 18 ? "all" : "1"
+}
+
 resource "aws_db_parameter_group" "main" {
-  name   = "${var.identifier}-pg"
-  family = "postgres16"
+  name   = local.parameter_group_name
+  family = "postgres${local.engine_major}"
 
   parameter {
     name  = "log_statement"
@@ -14,7 +21,7 @@ resource "aws_db_parameter_group" "main" {
 
   parameter {
     name  = "log_connections"
-    value = "1"
+    value = local.log_connections
   }
 
   parameter {
@@ -25,12 +32,21 @@ resource "aws_db_parameter_group" "main" {
   tags = merge(var.tags, {
     Name = "${var.identifier}-parameter-group"
   })
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_db_instance" "main" {
   identifier     = var.identifier
   engine         = "postgres"
-  engine_version = "16.6"
+  engine_version = var.engine_version
+
+  allow_major_version_upgrade = true
+  # engine_version is pinned exactly, so an AWS-applied minor would make the next apply try to move it back.
+  auto_minor_version_upgrade = false
+  apply_immediately          = var.apply_immediately
 
   instance_class        = var.instance_class
   allocated_storage     = var.allocated_storage
@@ -64,12 +80,4 @@ resource "aws_db_instance" "main" {
   tags = merge(var.tags, {
     Name = var.identifier
   })
-
-  lifecycle {
-    # RDS auto-upgrades minor versions, so the live engine_version drifts ahead of
-    # the configured value; ignoring it stops TF from trying to "downgrade" it back.
-    # Trade-off: TF ignores engine_version entirely, so a *deliberate* version
-    # upgrade requires temporarily removing this rule (otherwise the bump no-ops).
-    ignore_changes = [engine_version]
-  }
 }
