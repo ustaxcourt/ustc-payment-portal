@@ -14,7 +14,7 @@ run "pinned_version_derives_family_and_group_name" {
     password               = "fake-not-a-real-password"
     vpc_security_group_ids = ["sg-1234567890"]
     db_subnet_group_name   = "db-subnet-group"
-    apply_immediately      = true
+    apply_immediately      = false
   }
 
   assert {
@@ -43,8 +43,8 @@ run "pinned_version_derives_family_and_group_name" {
   }
 
   assert {
-    condition     = aws_db_instance.main.apply_immediately == true
-    error_message = "apply_immediately should pass through so an upgrading environment is not deferred to the maintenance window"
+    condition     = aws_db_instance.main.apply_immediately == false
+    error_message = "apply_immediately should pass through when a caller overrides the default"
   }
 
   assert {
@@ -53,7 +53,7 @@ run "pinned_version_derives_family_and_group_name" {
   }
 }
 
-run "apply_immediately_defaults_to_false" {
+run "apply_immediately_defaults_to_true" {
   command = plan
 
   variables {
@@ -66,8 +66,8 @@ run "apply_immediately_defaults_to_false" {
   }
 
   assert {
-    condition     = aws_db_instance.main.apply_immediately == false
-    error_message = "apply_immediately should default to false, matching AWS, so a new caller opts in explicitly"
+    condition     = aws_db_instance.main.apply_immediately == true
+    error_message = "apply_immediately should default to true, or a new environment silently defers restarts to the maintenance window"
   }
 }
 

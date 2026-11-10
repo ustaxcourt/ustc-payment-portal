@@ -8,7 +8,8 @@ derives the parameter group family and name from it.
 Every environment pins an **exact** version (e.g. `"18.6"`), and the module turns
 off `auto_minor_version_upgrade`. Any engine change, minor or major, restarts the
 database, so the version only moves in a reviewed PR applied in a planned window.
-Every environment also sets `apply_immediately = true`, so a change that restarts
+The module defaults `apply_immediately` to `true` (each environment also sets it
+explicitly), so a change that restarts
 the database takes effect when we apply it, never later in the maintenance window.
 That makes the Terraform plan the place to catch a restart: any change to
 `aws_db_instance.main` other than tags needs a planned window.
@@ -61,8 +62,8 @@ aws rds describe-db-engine-versions --engine postgres --engine-version <current-
 
 - Set `engine_version` to an exact `18.x` from the valid-target list, the same one
   for every environment (dev was upgraded to `18.6`).
-- Check that environment's `module "rds"` still sets `apply_immediately = true`.
-  Without it, RDS defers the upgrade to the maintenance window while the apply
+- Check that environment's `module "rds"` doesn't set `apply_immediately = false`.
+  With `false`, RDS defers the upgrade to the maintenance window while the apply
   reports success.
 - **Environments not being upgraded:** check their pin still matches the live
   version (`aws rds describe-db-instances ... EngineVersion`). If AWS upgraded the
