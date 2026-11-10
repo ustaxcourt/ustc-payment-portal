@@ -8,9 +8,10 @@ derives the parameter group family and name from it.
 Every environment pins an **exact** version (e.g. `"18.6"`), and the module turns
 off `auto_minor_version_upgrade`. Any engine change, minor or major, restarts the
 database, so the version only moves in a reviewed PR applied in a planned window.
-Each environment also leaves the module's `apply_immediately` at its default
-`false` outside its own upgrade, so routine size or storage changes still wait for
-the maintenance window.
+Every environment also sets `apply_immediately = true`, so a change that restarts
+the database takes effect when we apply it, never later in the maintenance window.
+That makes the Terraform plan the place to catch a restart: any change to
+`aws_db_instance.main` other than tags needs a planned window.
 
 > **This procedure has not been rehearsed end to end, and neither has the
 > rollback.** Read the whole page before the first upgrade, and update it with
@@ -60,9 +61,9 @@ aws rds describe-db-engine-versions --engine postgres --engine-version <current-
 
 - Set `engine_version` to an exact `18.x` from the valid-target list, the same one
   for every environment (dev was upgraded to `18.6`).
-- In the same change, set `apply_immediately = true` for that environment's
-  `module "rds"`. Without it, RDS defers the upgrade to the maintenance window
-  while the apply reports success.
+- Check that environment's `module "rds"` still sets `apply_immediately = true`.
+  Without it, RDS defers the upgrade to the maintenance window while the apply
+  reports success.
 - **Environments not being upgraded:** check their pin still matches the live
   version (`aws rds describe-db-instances ... EngineVersion`). If AWS upgraded the
   minor, for example to 16.14, update the pin first. Otherwise the plan tries to
@@ -119,15 +120,11 @@ plan for stg, `plan_only=true` for prod). It should show exactly:
 
 - `aws_db_parameter_group.main` **replaced**: a new `<id>-pg18` group (family
   `postgres18`) is created before the old `<id>-pg` group is destroyed.
-- `aws_db_instance.main` **updated in place**: `engine_version`,
-  `parameter_group_name`, and `apply_immediately` (`false -> true`) change.
+- `aws_db_instance.main` **updated in place**: `engine_version` and
+  `parameter_group_name` change.
   **It must not say "must be replaced".** If it does, stop.
-- **Other environments:** no `engine_version`, `parameter_group_name` or
-  `apply_immediately` change. An `engine_version` diff there means the pin no
-  longer matches the live version.
-- **First apply after PAY-471 only:** every environment also shows
-  `auto_minor_version_upgrade` `true -> false`. That change doesn't restart the
-  database.
+- **Other environments:** no `aws_db_instance.main` change. An `engine_version`
+  diff there means the pin no longer matches the live version.
 - Lambda, proxy and SSM changes only if the same release also changes them.
 
 ---
@@ -188,10 +185,6 @@ Follow `describe-events` until then.
 5. **Upgrade log is clean:** read `/aws/rds/instance/<id>/upgrade` for errors and
    note the result on the ticket.
 
-6. **Stg and prod:** in a follow-up PR, set `apply_immediately` back to `false`
-   (remove the line), so later changes go back to waiting for the maintenance
-   window. Dev can keep `true`.
-
 Expect one round of connection errors from warm Lambdas whose connections were cut
 by the restart. They should clear on their own within a few minutes. If they
 continue, check the proxy targets again.
@@ -221,9 +214,8 @@ continue, check the proxy targets again.
 
 Minor patches (e.g. 18.6 → 18.7) are not automatic. They restart the database for
 a few minutes, so they follow the same path as a major upgrade, on a smaller
-scale: a PR that bumps `engine_version`, then dev, stg and prod in turn, with
-`apply_immediately = true` for the environment being patched. The parameter group
-doesn't change.
+scale: a PR that bumps `engine_version`, then dev, stg and prod in turn. The
+parameter group doesn't change.
 
 - **Watch for security releases** on the
   [PostgreSQL release notes](https://www.postgresql.org/docs/release/) and patch

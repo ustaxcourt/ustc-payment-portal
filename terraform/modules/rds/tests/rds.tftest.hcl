@@ -67,7 +67,7 @@ run "apply_immediately_defaults_to_false" {
 
   assert {
     condition     = aws_db_instance.main.apply_immediately == false
-    error_message = "apply_immediately should default to false so environments not being upgraded keep using the maintenance window"
+    error_message = "apply_immediately should default to false, matching AWS, so a new caller opts in explicitly"
   }
 }
 

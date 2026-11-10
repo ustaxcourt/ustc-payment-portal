@@ -14,7 +14,7 @@ variable "engine_version" {
 }
 
 variable "apply_immediately" {
-  description = "Apply instance modifications on the next apply instead of the maintenance window. Must be true for a version upgrade, or RDS defers it while apply reports success; leave false otherwise so size or storage changes don't restart the DB mid-deploy."
+  description = "Apply instance modifications on the next apply instead of the maintenance window. Every environment sets true so a restart only happens in a deploy someone planned; with false, RDS defers it to the window while apply reports success."
   type        = bool
   default     = false
 }
