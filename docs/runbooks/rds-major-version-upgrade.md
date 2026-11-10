@@ -253,11 +253,18 @@ Outline (not rehearsed — work it through with ops before relying on it):
    the endpoint hostname, so the proxy target and the dev SSM endpoint parameter
    resolve to the restored instance.
 4. Set `engine_version` back to the snapshot's exact 16.x version for that
-   environment, then fix Terraform state so
-   it tracks the restored instance (`terraform state rm` and `terraform import`
-   for `module.rds.aws_db_instance.main`, or `module.rds[0].aws_db_instance.main`
-   in dev, run by a human). Apply: this recreates
-   the `-pg` parameter group, and on stg/prod picks up the restored instance's new
-   master secret ARN for the proxy and Lambdas.
-5. Run the post-upgrade checks above, expecting 16.x. Delete
-   `<id>-pg18-failed` only once you're sure you don't need it.
+   environment, then fix Terraform state. A human runs these, with
+   `module.rds[0]` in place of `module.rds` in dev:
+   - `terraform state rm` and `terraform import` for `module.rds.aws_db_instance.main`,
+     so state tracks the restored instance.
+   - `terraform state rm module.rds.aws_db_parameter_group.main`. `<id>-pg18` is
+     still attached to `<id>-pg18-failed`, so an apply that tries to replace it
+     fails with `InvalidDBParameterGroupState`.
+
+   Apply: this creates an `<id>-pg16` parameter group and attaches it, and on
+   stg/prod picks up the restored instance's new master secret ARN for the proxy
+   and Lambdas. RDS only uses a newly attached group after a reboot, so if the
+   instance shows `pending-reboot`, reboot it.
+5. Run the post-upgrade checks above, expecting 16.x and `<id>-pg16`. Once you're
+   sure you don't need `<id>-pg18-failed`, delete it, then the group it held:
+   `aws rds delete-db-parameter-group --db-parameter-group-name <id>-pg18`.

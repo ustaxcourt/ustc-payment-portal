@@ -24,7 +24,7 @@ run "pinned_version_derives_family_and_group_name" {
 
   assert {
     condition     = aws_db_parameter_group.main.name == "ustc-payments-dev-pg18"
-    error_message = "a non-16 parameter group name should carry the major version so it can be created before the old one is destroyed"
+    error_message = "the parameter group name should carry the major version so it can be created before the old one is destroyed"
   }
 
   assert {
@@ -53,7 +53,7 @@ run "pinned_version_derives_family_and_group_name" {
   }
 }
 
-run "pinned_minor_keeps_legacy_group_and_defers_changes" {
+run "apply_immediately_defaults_to_false" {
   command = plan
 
   variables {
@@ -63,22 +63,6 @@ run "pinned_minor_keeps_legacy_group_and_defers_changes" {
     password               = "fake-not-a-real-password"
     vpc_security_group_ids = ["sg-1234567890"]
     db_subnet_group_name   = "db-subnet-group"
-    engine_version         = "16.13"
-  }
-
-  assert {
-    condition     = aws_db_parameter_group.main.name == "ustc-payments-stg-pg"
-    error_message = "a pinned 16.x minor must keep the existing group name"
-  }
-
-  assert {
-    condition     = aws_db_parameter_group.main.family == "postgres16"
-    error_message = "family should be postgres16"
-  }
-
-  assert {
-    condition     = [for p in aws_db_parameter_group.main.parameter : p.value if p.name == "log_connections"] == ["1"]
-    error_message = "16 only accepts a boolean log_connections; stg, prod and a 16.x rollback depend on \"1\""
   }
 
   assert {
@@ -101,6 +85,35 @@ run "rejects_major_only_engine_version" {
   }
 
   expect_failures = [var.engine_version]
+}
+
+run "rollback_pin_derives_pg16_group" {
+  command = plan
+
+  variables {
+    identifier             = "ustc-payments-dev"
+    db_name                = "payments"
+    username               = "portal"
+    password               = "fake-not-a-real-password"
+    vpc_security_group_ids = ["sg-1234567890"]
+    db_subnet_group_name   = "db-subnet-group"
+    engine_version         = "16.13"
+  }
+
+  assert {
+    condition     = aws_db_parameter_group.main.family == "postgres16"
+    error_message = "family should ignore the minor version"
+  }
+
+  assert {
+    condition     = aws_db_parameter_group.main.name == "ustc-payments-dev-pg16"
+    error_message = "the runbook's rollback expects a 16.x pin to create -pg16, not reuse the destroyed -pg"
+  }
+
+  assert {
+    condition     = [for p in aws_db_parameter_group.main.parameter : p.value if p.name == "log_connections"] == ["1"]
+    error_message = "16 only accepts a boolean log_connections; a 16.x rollback depends on \"1\""
+  }
 }
 
 run "rejects_invalid_engine_version" {
