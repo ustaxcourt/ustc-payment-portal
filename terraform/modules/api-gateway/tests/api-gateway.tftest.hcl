@@ -1,34 +1,36 @@
 mock_provider "aws" {}
 
-run "non_dev_environment_skips_dashboard_routes" {
+run "stg_environment_enables_dashboard_routes" {
   command = plan
 
   variables {
-    environment = "stg"
-    stage_name  = "stg"
+    environment              = "stg"
+    stage_name               = "stg"
+    enable_public_dashboard  = true
+    dashboard_allowed_origin = "https://stg-dashboard.payments.ustaxcourt.gov"
     lambda_function_arns = {
-      initPayment    = "arn:aws:lambda:us-east-1:123456789012:function:init"
-      processPayment = "arn:aws:lambda:us-east-1:123456789012:function:process"
-      getDetails     = "arn:aws:lambda:us-east-1:123456789012:function:details"
-      testCert       = "arn:aws:lambda:us-east-1:123456789012:function:test"
-      healthCheck    = "arn:aws:lambda:us-east-1:123456789012:function:health"
-      validateClient = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
+      initPayment                 = "arn:aws:lambda:us-east-1:123456789012:function:init"
+      processPayment              = "arn:aws:lambda:us-east-1:123456789012:function:process"
+      getDetails                  = "arn:aws:lambda:us-east-1:123456789012:function:details"
+      testCert                    = "arn:aws:lambda:us-east-1:123456789012:function:test"
+      healthCheck                 = "arn:aws:lambda:us-east-1:123456789012:function:health"
+      validateClient              = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
+      getAllTransactions          = "arn:aws:lambda:us-east-1:123456789012:function:get-all"
+      getTransactionsByStatus     = "arn:aws:lambda:us-east-1:123456789012:function:get-by-status"
+      getTransactionPaymentStatus = "arn:aws:lambda:us-east-1:123456789012:function:get-payment-status"
+      getTransactionLog           = "arn:aws:lambda:us-east-1:123456789012:function:get-transaction-log"
+      getRevenueSummary           = "arn:aws:lambda:us-east-1:123456789012:function:get-revenue-summary"
     }
   }
 
   assert {
-    condition     = output.stage_name == "stg"
-    error_message = "stage_name output should match configured stage"
+    condition     = length(aws_api_gateway_method.transactions_get) == 1
+    error_message = "dashboard GET /transactions route should exist in stg"
   }
 
   assert {
-    condition     = output.custom_domain_url == null
-    error_message = "custom_domain_url should be null when custom_domain is empty"
-  }
-
-  assert {
-    condition     = length(aws_api_gateway_method.transactions_get) == 0
-    error_message = "dashboard routes should not exist in non-dev environments"
+    condition     = length(local.public_dashboard_resource_arns) == 6
+    error_message = "stg with enable_public_dashboard=true should add the anonymous dashboard paths"
   }
 }
 

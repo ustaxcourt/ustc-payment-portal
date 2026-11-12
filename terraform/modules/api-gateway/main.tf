@@ -1,8 +1,8 @@
 ###############################
-# Dashboard endpoints (dev only)
+# Dashboard endpoints (dev, stg, PR envs; no prod yet.)
 ###############################
 locals {
-  enable_dashboard_endpoints = var.environment == "dev" || startswith(var.environment, "pr-")
+  enable_dashboard_endpoints = var.environment == "dev" || var.environment == "stg" || startswith(var.environment, "pr-")
 
   # Anonymous invoke paths added to the API resource policy when enable_public_dashboard is set.
   public_dashboard_resource_arns = var.enable_public_dashboard ? [

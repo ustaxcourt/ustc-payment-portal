@@ -1,6 +1,6 @@
 
 variable "enable_public_dashboard" {
-  description = "If true, enables unauthenticated public access to dashboard endpoints (GET/OPTIONS for /transactions, /transactions/{status}, /transaction-payment-status). Should only be true in dev."
+  description = "If true, enables unauthenticated public access to dashboard endpoints (GET/OPTIONS for /transactions, /transactions/{status}, /transaction-payment-status). Must stay false in prod (for now)."
   type        = bool
   default     = false
 }
