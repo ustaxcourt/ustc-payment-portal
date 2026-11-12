@@ -115,8 +115,7 @@ in the same backlog.
 - **Priority:** Medium
 - **Status:** Staging delivered — the dashboard endpoints are enabled in `stg`
   with anonymous read access (CORS locked to the staging dashboard origin).
-  Prod remains open and needs real access control first; the anonymous policy
-  must not be copied there.
+  Prod remains offline, but will need a policy that only permits access to the Prod Dashboard alone for dashboard endpoints.
 - **Why:** The transaction dashboard endpoints are gated to `dev`/`stg`/`pr-*` in
   `terraform/modules/api-gateway/main.tf`, so there is **no dashboard in Prod**.
   Verification there relies on `getDetails`/CloudWatch logs.
