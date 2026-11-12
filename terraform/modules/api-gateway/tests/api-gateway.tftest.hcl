@@ -24,6 +24,16 @@ run "stg_environment_enables_dashboard_routes" {
   }
 
   assert {
+    condition     = output.stage_name == "stg"
+    error_message = "stage_name output should match configured stage"
+  }
+
+  assert {
+    condition     = output.custom_domain_url == null
+    error_message = "custom_domain_url should be null when custom_domain is empty"
+  }
+
+  assert {
     condition     = length(aws_api_gateway_method.transactions_get) == 1
     error_message = "dashboard GET /transactions route should exist in stg"
   }
@@ -31,6 +41,17 @@ run "stg_environment_enables_dashboard_routes" {
   assert {
     condition     = length(local.public_dashboard_resource_arns) == 6
     error_message = "stg with enable_public_dashboard=true should add the anonymous dashboard paths"
+  }
+
+  assert {
+    condition = alltrue([
+      for r in [
+        aws_api_gateway_integration_response.transactions_options_response[0],
+        aws_api_gateway_integration_response.transactions_by_status_options_response[0],
+        aws_api_gateway_integration_response.transaction_payment_status_options_response[0],
+      ] : r.response_parameters["method.response.header.Access-Control-Allow-Origin"] == "'https://stg-dashboard.payments.ustaxcourt.gov'"
+    ])
+    error_message = "every dashboard OPTIONS preflight response must return the allowed CORS origin"
   }
 }
 

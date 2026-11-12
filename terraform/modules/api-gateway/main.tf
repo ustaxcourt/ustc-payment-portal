@@ -224,6 +224,11 @@ resource "aws_api_gateway_method_response" "transactions_by_status_options_200" 
   resource_id = aws_api_gateway_resource.transactions_by_status[0].id
   http_method = aws_api_gateway_method.transactions_by_status_options[0].http_method
   status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Headers" = true
+  }
 }
 
 resource "aws_api_gateway_integration_response" "transactions_by_status_options_response" {
@@ -232,7 +237,12 @@ resource "aws_api_gateway_integration_response" "transactions_by_status_options_
   resource_id = aws_api_gateway_resource.transactions_by_status[0].id
   http_method = aws_api_gateway_method.transactions_by_status_options[0].http_method
   status_code = aws_api_gateway_method_response.transactions_by_status_options_200[0].status_code
-  depends_on  = [aws_api_gateway_integration.transactions_by_status_options_integration[0]]
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'${var.dashboard_allowed_origin}'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type'"
+  }
+  depends_on = [aws_api_gateway_integration.transactions_by_status_options_integration[0]]
 }
 
 # transaction_payment_status
@@ -259,6 +269,11 @@ resource "aws_api_gateway_method_response" "transaction_payment_status_options_2
   resource_id = aws_api_gateway_resource.transaction_payment_status[0].id
   http_method = aws_api_gateway_method.transaction_payment_status_options[0].http_method
   status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Headers" = true
+  }
 }
 
 resource "aws_api_gateway_integration_response" "transaction_payment_status_options_response" {
@@ -267,7 +282,12 @@ resource "aws_api_gateway_integration_response" "transaction_payment_status_opti
   resource_id = aws_api_gateway_resource.transaction_payment_status[0].id
   http_method = aws_api_gateway_method.transaction_payment_status_options[0].http_method
   status_code = aws_api_gateway_method_response.transaction_payment_status_options_200[0].status_code
-  depends_on  = [aws_api_gateway_integration.transaction_payment_status_options_integration[0]]
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'${var.dashboard_allowed_origin}'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type'"
+  }
+  depends_on = [aws_api_gateway_integration.transaction_payment_status_options_integration[0]]
 }
 
 ###################
@@ -584,6 +604,13 @@ resource "aws_api_gateway_deployment" "deployment" {
       try(aws_api_gateway_integration.transactions_options_integration[0].id, ""),
       try(aws_api_gateway_integration.transactions_by_status_options_integration[0].id, ""),
       try(aws_api_gateway_integration.transaction_payment_status_options_integration[0].id, ""),
+
+      # Response IDs never change when only their header parameters do, so hash the
+      # parameters themselves; otherwise a CORS fix would not redeploy an existing stage.
+      try(aws_api_gateway_method_response.transactions_by_status_options_200[0].response_parameters, {}),
+      try(aws_api_gateway_integration_response.transactions_by_status_options_response[0].response_parameters, {}),
+      try(aws_api_gateway_method_response.transaction_payment_status_options_200[0].response_parameters, {}),
+      try(aws_api_gateway_integration_response.transaction_payment_status_options_response[0].response_parameters, {}),
 
       # Use the data source JSON (not the applied resource field) to avoid
       # provider-side normalization changing this value mid-apply.
