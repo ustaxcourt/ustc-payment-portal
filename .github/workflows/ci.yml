@@ -42,6 +42,10 @@ jobs:
             jest.config.ts
             src/test/integration/transactionModel.test.ts
             src/test/integration/cancelExpiredSweep.test.ts
+            src/test/testAppContext.ts
+            src/useCases/cancelExpiredTransactions.ts
+            src/health/cancelSweepMetric.ts
+            src/health/emf.ts
             .github/workflows/ci.yml
           )
           # Push events have no PR base SHA, and github.event.before is unreliable,
@@ -122,6 +126,7 @@ jobs:
       - name: Run ORM integration tests
         env:
           APP_ENV: local
+          NODE_ENV: test
         run: npx jest --config jest.config.ts --runInBand src/test/integration/transactionModel.test.ts src/test/integration/cancelExpiredSweep.test.ts
       - name: Run migrate:rollback
         run: npm run migrate:rollback -- --all

@@ -107,7 +107,8 @@ enough context that the next person doesn't have to re-derive the decision.
   branch. The SQL is compared with parentheses stripped, so a regrouped
   `where` clause (objection 3.7 wraps the id condition) doesn't count as a
   change. The unit suite (1092 tests) and integration suite (93 passed / 16
-  skipped) match the 3.1.5 baseline, and migrations roll back and forward with
+  skipped before this test's 3 aggregate cases, 96 after) match the 3.1.5
+  baseline, and migrations roll back and forward with
   seeds on 4.4.3. CI's `migration-check` job runs this test and
   `cancelExpiredSweep.test.ts` against Postgres on every dependency or
   `src/db/` change; deployed-environment runs skip both.
