@@ -13,7 +13,7 @@
     "clean": "rimraf dist/*",
     "lint": "biome lint .",
     "lint:ci": "biome lint --reporter=github .",
-    "build": "tsup src/index.ts --format cjs,esm --dts && tsup src/devServer.ts --format cjs",
+    "build": "tsup",
     "build:lambda": "terraform/scripts/build-lambda.sh",
     "prepack": "npm run clean && npm run build",
     "tsc": "tsc --noEmit",
