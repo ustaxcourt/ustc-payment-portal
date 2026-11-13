@@ -34,7 +34,7 @@ locals {
     RDS_DB_NAME    = local.rds_db_name
   }
 
-  # Dashboard Lambdas: authorization=NONE, so they must not receive payment secrets.
+  # Dashboard Lambdas: read only, so they get no payment secrets.
   lambda_env_dashboard = {
     NODE_ENV                 = local.node_env
     APP_ENV                  = local.app_env
