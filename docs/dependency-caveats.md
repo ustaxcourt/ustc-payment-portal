@@ -31,7 +31,7 @@ enough context that the next person doesn't have to re-derive the decision.
 - **Current:** `^6.0.3`. **Available latest:** `7.0.2`.
 - **Reason:** TypeScript 7 is a major release. Our toolchain still targets the
   6.x line — `ts-jest@^29.4.15`, `tsup@^9.0.0`, `ts-node@^10.9.2`, and
-  `@biomejs/biome@^2.6.6` — and none are confirmed compatible with the TS7
+  `@biomejs/biome@^2.6.7` — and none are confirmed compatible with the TS7
   compiler/API. A blind bump risks breaking type-check, the Jest transform, and
   the build in one step, with a blast radius across the whole package.
 - **Plan:** Cut a dedicated follow-up ticket to validate the toolchain against
@@ -134,15 +134,16 @@ enough context that the next person doesn't have to re-derive the decision.
   - Validation that payment-processing flows, including
     `claimForProcessing`, behave identically before widening the version range.
 
-### Terraform provider lockfiles — what is and isn't in scope (2026-09-17, updated 2026-11-10)
+### Terraform provider lockfiles — what is and isn't in scope (2026-09-17, updated 2026-11-13)
 
 - **Current:** the Terraform CLI was taken to `~> 1.17.0` repo-wide on
   2026-10-23 (from `~> 1.16.0` on 2026-09-17), with CI's `terraform_version`
   set to the matching npm-semver range `~1.17.0`. Tracked root lockfiles were
-  refreshed to `hashicorp/aws` 6.72.0 on 2026-11-05 (from 6.70.0);
-  `terraform/bootstrap/` was missed then and caught up on 2026-11-10. As of
-  2026-11-10, 1.17.1, aws 6.72.0, archive 2.8.1, random 3.9.1 and
-  `integrations/github` 6.13.0 are all the latest releases.
+  refreshed to `hashicorp/aws` 6.72.0 on 2026-11-05 (from 6.70.0), with
+  `terraform/bootstrap/` caught up on 2026-11-10, then to 6.73.0 on 2026-11-12.
+  As of 2026-11-13, aws 6.73.0, archive 2.8.1, random 3.9.1 and
+  `integrations/github` 6.13.0 are the latest releases; CLI 1.17.2 is within
+  `~> 1.17.0`, so CI already picks it up.
 - **All 8 tracked roots:** `bootstrap/`, `environments/{dev,stg,prod}/`,
   `environments/foundation/{dev,stg,prod}-networking/` and
   `environments/foundation/github/`. Refresh every one in each pass. On
