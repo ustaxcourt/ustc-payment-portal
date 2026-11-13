@@ -86,7 +86,6 @@ locals {
     getTransactionPaymentStatus = local.lambda_env_dashboard
   }
 
-  # Origin allowed to call dashboard endpoints from the browser (CORS).
   dashboard_allowed_origin = "https://stg-dashboard.payments.ustaxcourt.gov"
 
   # Seeded from PAY-361's dev tuning results (aws-lambda-power-tuning against
