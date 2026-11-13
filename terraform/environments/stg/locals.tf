@@ -34,6 +34,16 @@ locals {
     RDS_DB_NAME    = local.rds_db_name
   }
 
+  # Dashboard Lambdas: read only, so they get no payment secrets.
+  lambda_env_dashboard = {
+    NODE_ENV                 = local.node_env
+    APP_ENV                  = local.app_env
+    RDS_ENDPOINT             = module.rds_proxy.endpoint
+    RDS_SECRET_ARN           = module.rds.master_user_secret_arn
+    RDS_DB_NAME              = local.rds_db_name
+    DASHBOARD_ALLOWED_ORIGIN = local.dashboard_allowed_origin
+  }
+
   # Client-validation Lambda: validateClient
   # Reads the client-permissions secret and nothing else. Deliberately not
   # lambda_env_payment — this endpoint has no business holding the Pay.gov cert
@@ -68,7 +78,15 @@ locals {
     healthCheck     = local.lambda_env_payment
     cancelExpired   = local.lambda_env_cancel_sweep
     migrationRunner = local.lambda_env_migration
+
+    getAllTransactions          = local.lambda_env_dashboard
+    getTransactionLog           = local.lambda_env_dashboard
+    getRevenueSummary           = local.lambda_env_dashboard
+    getTransactionsByStatus     = local.lambda_env_dashboard
+    getTransactionPaymentStatus = local.lambda_env_dashboard
   }
+
+  dashboard_allowed_origin = "https://stg-dashboard.payments.ustaxcourt.gov"
 
   # Seeded from PAY-361's dev tuning results (aws-lambda-power-tuning against
   # dev's mock Pay.gov server).
@@ -81,6 +99,12 @@ locals {
     healthCheck     = 768
     cancelExpired   = 256
     migrationRunner = 256
+
+    getAllTransactions          = 256
+    getTransactionLog           = 256
+    getRevenueSummary           = 256
+    getTransactionsByStatus     = 256
+    getTransactionPaymentStatus = 256
   }
   github_oidc_provider_arn = "arn:aws:iam::747103385969:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"

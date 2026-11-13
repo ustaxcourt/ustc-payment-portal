@@ -73,7 +73,7 @@ jobs:
           set -euo pipefail
           SHA='${{ steps.resolve.outputs.sha }}'
           echo "Validating artifacts for $SHA in s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
-          for f in initPayment processPayment getDetails validateClient testCert migrationRunner; do
+          for f in initPayment processPayment getDetails validateClient testCert cancelExpired migrationRunner getAllTransactions getTransactionLog getRevenueSummary getTransactionsByStatus getTransactionPaymentStatus; do
             KEY="artifacts/dev/${SHA}/${f}.zip"
             aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "$KEY" >/dev/null 2>&1 || {
               echo "Missing $KEY" >&2; exit 1; }
@@ -209,6 +209,11 @@ jobs:
           echo "testCert=${PREFIX}/testCert.zip" >> $GITHUB_OUTPUT
           echo "cancelExpired=${PREFIX}/cancelExpired.zip" >> $GITHUB_OUTPUT
           echo "migrationRunner=${PREFIX}/migrationRunner.zip" >> $GITHUB_OUTPUT
+          echo "getAllTransactions=${PREFIX}/getAllTransactions.zip" >> $GITHUB_OUTPUT
+          echo "getTransactionLog=${PREFIX}/getTransactionLog.zip" >> $GITHUB_OUTPUT
+          echo "getRevenueSummary=${PREFIX}/getRevenueSummary.zip" >> $GITHUB_OUTPUT
+          echo "getTransactionsByStatus=${PREFIX}/getTransactionsByStatus.zip" >> $GITHUB_OUTPUT
+          echo "getTransactionPaymentStatus=${PREFIX}/getTransactionPaymentStatus.zip" >> $GITHUB_OUTPUT
 
       # - name: Fetch artifact hashes (to see if tf change is needed)
       #   id: hashes
@@ -247,6 +252,11 @@ jobs:
           TF_VAR_testCert_s3_key: ${{ steps.artifacts.outputs.testCert }}
           TF_VAR_cancelExpired_s3_key: ${{ steps.artifacts.outputs.cancelExpired }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.artifacts.outputs.migrationRunner }}
+          TF_VAR_getAllTransactions_s3_key: ${{ steps.artifacts.outputs.getAllTransactions }}
+          TF_VAR_getTransactionLog_s3_key: ${{ steps.artifacts.outputs.getTransactionLog }}
+          TF_VAR_getRevenueSummary_s3_key: ${{ steps.artifacts.outputs.getRevenueSummary }}
+          TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.artifacts.outputs.getTransactionsByStatus }}
+          TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.artifacts.outputs.getTransactionPaymentStatus }}
           # AWS Chatbot → Microsoft Teams routing. Missing secrets disable Teams routing (enable_teams=false).
           TF_VAR_teams_tenant_id: ${{ secrets.STAGING_TEAMS_TENANT_ID }}
           TF_VAR_teams_team_id: ${{ secrets.STAGING_TEAMS_TEAM_ID }}
