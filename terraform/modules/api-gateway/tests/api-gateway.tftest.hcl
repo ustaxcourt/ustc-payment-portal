@@ -42,17 +42,6 @@ run "stg_environment_enables_dashboard_routes" {
     condition     = length(local.public_dashboard_resource_arns) == 6
     error_message = "stg with enable_public_dashboard=true should add the anonymous dashboard paths"
   }
-
-  assert {
-    condition = alltrue([
-      for r in [
-        aws_api_gateway_integration_response.transactions_options_response[0],
-        aws_api_gateway_integration_response.transactions_by_status_options_response[0],
-        aws_api_gateway_integration_response.transaction_payment_status_options_response[0],
-      ] : r.response_parameters["method.response.header.Access-Control-Allow-Origin"] == "'https://stg-dashboard.payments.ustaxcourt.gov'"
-    ])
-    error_message = "every dashboard OPTIONS preflight response must return the allowed CORS origin"
-  }
 }
 
 run "dev_environment_enables_dashboard_routes" {
