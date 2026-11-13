@@ -41,6 +41,13 @@ KNEX_EXTERNALS=(
   --external:oracledb
 )
 
+# objection 4 is ESM-only and calls createRequire(import.meta.url); esbuild's CJS
+# output leaves import.meta empty, so every bundle would throw at load without this.
+IMPORT_META_SHIM=(
+  "--banner:js=const __importMetaUrl=require('url').pathToFileURL(__filename).href;"
+  --define:import.meta.url=__importMetaUrl
+)
+
 # Bundle Init Payment Lambda
 echo "Bundling initPayment..."
 mkdir -p dist/initPayment
@@ -53,6 +60,7 @@ npx esbuild src/handlers/initPaymentHandler.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -68,6 +76,7 @@ npx esbuild src/handlers/processPaymentHandler.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -83,6 +92,7 @@ npx esbuild src/handlers/getDetailsHandler.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -98,6 +108,7 @@ npx esbuild src/handlers/validateClientHandler.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -113,6 +124,7 @@ npx esbuild src/testCert.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -128,6 +140,7 @@ npx esbuild src/handlers/getAllTransactionsHandler.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -143,6 +156,7 @@ npx esbuild src/handlers/getTransactionLogHandler.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -158,6 +172,7 @@ npx esbuild src/handlers/getRevenueSummaryHandler.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -173,6 +188,7 @@ npx esbuild src/handlers/getTransactionsByStatusHandler.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -188,6 +204,7 @@ npx esbuild src/handlers/getTransactionPaymentStatusHandler.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -203,6 +220,7 @@ npx esbuild src/handlers/cancelExpiredHandler.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -218,6 +236,7 @@ npx esbuild src/migrationHandler.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -237,6 +256,7 @@ npx esbuild src/powerTuning/initRefGenerator.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -253,6 +273,7 @@ npx esbuild src/powerTuning/processTokenMinter.ts \
   --outfile=dist/processTokenMinter/processTokenMinter.js \
   --external:aws-sdk \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -270,6 +291,7 @@ npx esbuild src/powerTuning/powerTuningCleanUp.ts \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -317,6 +339,7 @@ npx esbuild db/seeds/*.ts \
   --target="$NODE_TARGET" \
   --format=cjs \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --outdir=dist/migrationRunner/db/seeds/
 
 echo "Build completed successfully!"
