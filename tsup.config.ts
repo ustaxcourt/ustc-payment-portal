@@ -1,7 +1,6 @@
 import { defineConfig } from "tsup";
 
-// ESM-only dependencies: left external, consumers' Jest (CommonJS) fails to load
-// them. shims supplies the import.meta.url objection's CJS bundle would lack.
+// Left external, these ESM-only deps break consumers' Jest; shims supplies import.meta.url.
 const bundleEsmOnlyDeps = {
   noExternal: ["objection", "node-fetch"],
   shims: true,

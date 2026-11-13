@@ -7,8 +7,7 @@ import { getKnex } from "../../db/knex";
 import { getPostgresErrorCode, isUniqueViolation } from "../../db/pgErrors";
 import TransactionModel, { PROCESSING_STALE_MS } from "../../db/TransactionModel";
 
-// Pins TransactionModel's ORM-facing behavior against real Postgres so an
-// objection upgrade must pass it unedited; see docs/dependency-caveats.md.
+// An objection upgrade must pass this unedited; see docs/dependency-caveats.md.
 const describeIfLocal = isLocal() ? describe : describe.skip;
 
 const CLIENT_NAME = "transaction-model-integration";
@@ -62,8 +61,7 @@ const backdate = async (
 ) => {
   const knex = await getKnex();
   const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
-  // The set_last_updated_at trigger overwrites any explicit value, so it is
-  // bypassed for this one transaction (the local DB user is a superuser).
+  // set_last_updated_at overwrites explicit values; replica mode (superuser only) skips it.
   await knex.transaction(async (trx) => {
     await trx.raw("set local session_replication_role = replica");
     await trx("transactions")
@@ -79,8 +77,7 @@ const backdate = async (
   });
 };
 
-// Parentheses are stripped so a harmless regrouping of the where clause
-// (objection 3.7 wraps the id condition) doesn't count as a behavior change.
+// Parentheses stripped: objection 3.7 harmlessly regroups the id condition.
 const captureSql = async <T>(run: () => Promise<T>) => {
   const knex = await getKnex();
   const queries: Array<{ sql: string; txId?: string }> = [];
@@ -181,6 +178,87 @@ describeIfLocal("TransactionModel against real Postgres", () => {
         row.agencyTrackingId,
       ]);
       expect(result.rows[0].metadata).toEqual({ docketNumber });
+    });
+  });
+
+  describe("aggregates", () => {
+    // Seed data never reaches back this far, so the window holds only our rows.
+    const WINDOW_AGO_MS = 20 * 365 * 24 * 60 * 60 * 1000;
+    const window = () => ({
+      from: new Date(Date.now() - WINDOW_AGO_MS - 3_600_000),
+      to: new Date(Date.now() - WINDOW_AGO_MS + 3_600_000),
+    });
+
+    const seedOnePerStatus = async () => {
+      const pending = await createRow();
+      const paid = await createInitiated();
+      await TransactionModel.updateAfterPayGovResponse(
+        paid.agencyTrackingId,
+        "PG-TMI-5",
+        "processed",
+        "success",
+        "plastic_card",
+        undefined,
+        undefined,
+      );
+      const declined = await createInitiated();
+      await TransactionModel.updateToFailed(
+        declined.agencyTrackingId,
+        3001,
+        "declined",
+      );
+      for (const row of [pending, paid, declined]) {
+        await backdate(row.agencyTrackingId, { lastUpdatedAt: WINDOW_AGO_MS });
+      }
+    };
+
+    it("countsInRange tallies each payment status in the window", async () => {
+      await seedOnePerStatus();
+      const { from, to } = window();
+
+      const { result, queries } = await captureSql(() =>
+        TransactionModel.countsInRange(from, to),
+      );
+
+      expect(result).toEqual({ success: 1, failed: 1, pending: 1, total: 3 });
+      expect(queries.map((q) => q.sql)).toEqual([
+        'select "payment_status", count* as "count" from "transactions" where "last_updated_at" >= $1 and "last_updated_at" < $2 group by "payment_status"',
+      ]);
+    });
+
+    it("countsAndFeeBreakdownInRange sums success amounts per fee", async () => {
+      await seedOnePerStatus();
+      const { from, to } = window();
+
+      const { result, queries } = await captureSql(() =>
+        TransactionModel.countsAndFeeBreakdownInRange(from, to),
+      );
+
+      expect(result).toEqual({
+        counts: { success: 1, failed: 1, pending: 1, total: 3 },
+        tallies: [{ fee: "PETITION_FILING_FEE", qty: 1, subtotal: 60 }],
+      });
+      expect(queries.map((q) => q.sql)).toEqual([
+        'select "payment_status", "fee", count* as "qty", sum"transaction_amount" as "subtotal" from "transactions" where "last_updated_at" >= $1 and "last_updated_at" < $2 group by "payment_status", "fee"',
+      ]);
+    });
+
+    it("getAggregatedPaymentStatus counts every row by payment status", async () => {
+      const before = await TransactionModel.getAggregatedPaymentStatus();
+      await createRow();
+
+      const { result, queries } = await captureSql(() =>
+        TransactionModel.getAggregatedPaymentStatus(),
+      );
+
+      expect(result).toEqual({
+        ...before,
+        pending: before.pending + 1,
+        total: before.total + 1,
+      });
+      expect(queries.map((q) => q.sql)).toEqual([
+        'select "payment_status", count* as "count" from "transactions" group by "payment_status"',
+      ]);
     });
   });
 

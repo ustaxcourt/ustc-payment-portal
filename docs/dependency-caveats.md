@@ -92,37 +92,54 @@ enough context that the next person doesn't have to re-derive the decision.
   - Snake-case mapper changes (#2805). Output is identical to 3.1.5 for every
     column; raw `rows` keep snake_case and nested `metadata` keys stay unmapped,
     as before.
-  - `where(undefined)` now throws, and aggregates select only their alias. No
-    call sites.
+  - Aggregates now select only their alias. `countsInRange`,
+    `countsAndFeeBreakdownInRange`, and `getAggregatedPaymentStatus` use
+    `.count()`/`.sum()`, but each selects its group-by columns explicitly, so
+    their SQL is unchanged (pinned in the test below).
+  - `where(undefined)` now throws. No call sites.
   - Stricter typings (`PartialModelPatch` rejects unknown columns). `tsc` is
     clean.
-- **Evidence:** `src/test/integration/transactionModel.test.ts` was written
-  against 3.1.5 and passes unedited on 4.4.3. It pins the exact SQL and
-  transaction boundaries of `claimForProcessing` and
-  `updateAfterPayGovResponse`, plus every typed-error branch. The unit suite
-  (1092 tests) and integration suite (93 passed / 16 skipped) match the 3.1.5
-  baseline, and migrations roll back and forward with seeds on 4.4.3.
+- **Evidence:** `src/test/integration/transactionModel.test.ts` passes
+  unedited on both 3.1.5 and 4.4.3 (20 tests; on 3.1.5, run by installing
+  `objection@3.1.5 --no-save`). It pins the SQL of `claimForProcessing`,
+  `updateAfterPayGovResponse`, and the three aggregates, plus
+  `claimForProcessing`'s single-transaction boundary and every typed-error
+  branch. The SQL is compared with parentheses stripped, so a regrouped
+  `where` clause (objection 3.7 wraps the id condition) doesn't count as a
+  change. The unit suite (1092 tests) and integration suite (93 passed / 16
+  skipped) match the 3.1.5 baseline, and migrations roll back and forward with
+  seeds on 4.4.3. CI's `migration-check` job runs this test and
+  `cancelExpiredSweep.test.ts` against Postgres on every dependency or
+  `src/db/` change; deployed-environment runs skip both.
 - **ESM-only workarounds.** Keep all three until the repo moves to ESM, or Jest
   can load ESM without `--experimental-vm-modules`:
   1. **Jest:** `scripts/jest/esmToCjsTransform.js`, wired into both Jest
-     configs, compiles objection to CommonJS. It drops objection's
-     `createRequire(import.meta.url)` line and throws on any other
-     `import.meta`, so a release that adds one fails loudly instead of silently.
+     configs, compiles objection to CommonJS with `ts.transpileModule`, using
+     the same `target`, `module`, and `esModuleInterop` as `tsconfig.json`. It
+     drops objection's `createRequire(import.meta.url)` line and throws on any
+     other `import.meta`, so a release that adds one fails loudly instead of
+     silently.
   2. **Lambda:** `terraform/scripts/build-lambda.sh` passes `IMPORT_META_SHIM`
-     to every bundle. Without it, esbuild's CJS output leaves
-     `import.meta.url` undefined and every Lambda throws
-     `ERR_INVALID_ARG_VALUE` at load.
+     to every bundle: `--inject:scripts/esbuild/importMetaUrl.js` plus
+     `--define:import.meta.url=importMetaUrl`. Without it, esbuild's CJS
+     output leaves `import.meta.url` undefined and every Lambda throws
+     `ERR_INVALID_ARG_VALUE` at load. Do not switch to `--banner`: it lands
+     above `"use strict"` and silently turns off strict mode in every bundle.
   3. **npm package:** `tsup.config.ts` bundles objection and `node-fetch` into
      `dist/`, so consumers' Jest can `require` the package. `node-fetch` 3.x is
      also ESM-only — a break that predates this upgrade, fixed in the same
-     config. Verified by installing the packed tarball into a CommonJS consumer:
-     default Jest, `require`, `import`, and the packaged `devServer` running
-     the integration suite all pass.
+     config. `shims: true` also defines `__dirname` in `index.mjs`, so the
+     ESM build's `__dirname` uses (`getRdsCredentials`, `migrationHandler`)
+     now resolve to `dist/` instead of throwing. Verified by installing the
+     packed tarball into a CommonJS consumer: default Jest, `require`,
+     `import`, and the packaged `devServer` running the integration suite all
+     pass.
 - **Open:** both packages stay in `dependencies`, so consumers still install
   copies the bundle no longer uses. Moving them to `devDependencies` is a
   separate decision.
-- **Revisit on any objection bump:** rerun `transactionModel.test.ts`, then
-  `npm run build:lambda` and load each bundle in Node.
+- **Revisit on any objection bump:** CI reruns `transactionModel.test.ts`. Also
+  run `npm run build:lambda` and check that each bundle loads in Node and
+  starts with `"use strict"`.
 
 ### Terraform provider lockfiles — what is and isn't in scope (2026-09-17, updated 2026-11-05)
 

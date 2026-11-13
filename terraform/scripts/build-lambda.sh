@@ -41,11 +41,11 @@ KNEX_EXTERNALS=(
   --external:oracledb
 )
 
-# objection 4 is ESM-only and calls createRequire(import.meta.url); esbuild's CJS
-# output leaves import.meta empty, so every bundle would throw at load without this.
+# objection 4 calls createRequire(import.meta.url), undefined in esbuild CJS output.
+# Inject, not --banner: a banner lands above "use strict" and silently disables it.
 IMPORT_META_SHIM=(
-  "--banner:js=const __importMetaUrl=require('url').pathToFileURL(__filename).href;"
-  --define:import.meta.url=__importMetaUrl
+  --inject:scripts/esbuild/importMetaUrl.js
+  --define:import.meta.url=importMetaUrl
 )
 
 # Bundle Init Payment Lambda

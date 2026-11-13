@@ -37,6 +37,11 @@ jobs:
             src/schemas/
             src/errors/
             src/utils/
+            src/db/
+            scripts/jest/
+            jest.config.ts
+            src/test/integration/transactionModel.test.ts
+            src/test/integration/cancelExpiredSweep.test.ts
             .github/workflows/ci.yml
           )
           # Push events have no PR base SHA, and github.event.before is unreliable,
@@ -111,6 +116,13 @@ jobs:
         run: npm run migrate:latest
       - name: Run seed:run
         run: npm run seed:run
+      # Deployed runs skip these Postgres-only suites (describeIfLocal); this is their CI run.
+      - name: Set up test database
+        run: npm run test:db:setup
+      - name: Run ORM integration tests
+        env:
+          APP_ENV: local
+        run: npx jest --config jest.config.ts --runInBand src/test/integration/transactionModel.test.ts src/test/integration/cancelExpiredSweep.test.ts
       - name: Run migrate:rollback
         run: npm run migrate:rollback -- --all
 

@@ -1,9 +1,16 @@
-// Compiles ESM-only node_modules (objection 4) to CommonJS for Jest, which
-// cannot require ESM without --experimental-vm-modules.
-const { TsJestTransformer } = require("ts-jest");
+// Jest cannot require ESM without --experimental-vm-modules, so objection 4 is compiled to CJS.
+const { createHash } = require("node:crypto");
+const { readFileSync } = require("node:fs");
+const ts = require("typescript");
 
-// CommonJS already provides a require() relative to the file, and redeclaring
-// it collides with the module wrapper's parameter.
+const COMPILER_OPTIONS = {
+  allowJs: true,
+  esModuleInterop: true,
+  module: ts.ModuleKind.CommonJS,
+  target: ts.ScriptTarget.ES2022,
+};
+
+// CJS already has a file-relative require(); redeclaring it is a SyntaxError.
 const ESM_REQUIRE_SHIM =
   /^const require = createRequire\(import\.meta\.url\);$/m;
 
@@ -17,17 +24,23 @@ const rewrite = (source, path) => {
   return result;
 };
 
+const OWN_SOURCE = readFileSync(__filename, "utf8");
+
 module.exports = {
-  createTransformer() {
-    const tsJest = new TsJestTransformer({
-      tsconfig: { allowJs: true, module: "commonjs" },
+  process(source, path) {
+    const { outputText } = ts.transpileModule(rewrite(source, path), {
+      fileName: path,
+      compilerOptions: COMPILER_OPTIONS,
     });
-    return {
-      canInstrument: false,
-      process: (source, path, options) =>
-        tsJest.process(rewrite(source, path), path, options),
-      getCacheKey: (source, path, options) =>
-        tsJest.getCacheKey(rewrite(source, path), path, options),
-    };
+    return { code: outputText };
+  },
+  getCacheKey(source, path, { configString }) {
+    return createHash("sha256")
+      .update(OWN_SOURCE)
+      .update(ts.version)
+      .update(configString)
+      .update(path)
+      .update(source)
+      .digest("hex");
   },
 };
