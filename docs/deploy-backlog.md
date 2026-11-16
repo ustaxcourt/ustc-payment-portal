@@ -113,12 +113,13 @@ in the same backlog.
 ### G5. Add a transaction read-view for Staging/Prod
 
 - **Priority:** Medium
-- **Status:** Staging delivered — the dashboard endpoints are enabled in `stg`
-  with anonymous read access (CORS locked to the staging dashboard origin).
-  Prod remains offline, but will need a policy that only permits access to the Prod Dashboard alone for dashboard endpoints.
-- **Why:** The transaction dashboard endpoints are gated to `dev`/`stg`/`pr-*` in
-  `terraform/modules/api-gateway/main.tf`, so there is **no dashboard in Prod**.
-  Verification there relies on `getDetails`/CloudWatch logs.
+- **Status:** Staging delivered — `stg` deploys only the two SigV4 dashboard
+  endpoints, `/transaction-log` and `/revenue-summary`, the only ones the
+  dashboard calls. **Prod is wired the same way** (Lambdas, artifacts and routes)
+  but remains offline.
+- **Why:** The anonymous dashboard endpoints are gated to `dev`/`pr-*` in
+  `terraform/modules/api-gateway/main.tf`, while the two SigV4 endpoints exist in
+  every environment (`/transaction-log` and `/revenue-summary`).
 - **Build:** a read-only transaction view (or equivalent) available in non-Dev
   environments, with appropriate access control.
 - **Effort:** M
