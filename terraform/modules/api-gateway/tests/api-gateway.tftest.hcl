@@ -43,8 +43,8 @@ run "stg_environment_enables_only_sigv4_dashboard_routes" {
   }
 
   assert {
-    condition     = length(aws_api_gateway_method.transaction_log_get) == 1 && length(aws_api_gateway_method.revenue_summary_get) == 1
-    error_message = "the SigV4 routes the dashboard calls must exist in stg"
+    condition     = aws_api_gateway_method.transaction_log_get.authorization == "AWS_IAM" && aws_api_gateway_method.revenue_summary_get.authorization == "AWS_IAM"
+    error_message = "the dashboard routes must exist in stg and require SigV4"
   }
 
   assert {
@@ -126,7 +126,7 @@ run "dev_routes_stay_private_without_public_dashboard_flag" {
   }
 }
 
-run "prod_environment_skips_dashboard_routes" {
+run "prod_environment_enables_only_sigv4_dashboard_routes" {
   command = plan
 
   variables {
@@ -146,7 +146,17 @@ run "prod_environment_skips_dashboard_routes" {
 
   assert {
     condition     = length(aws_api_gateway_method.transactions_get) == 0
-    error_message = "dashboard GET /transactions route must not exist in prod"
+    error_message = "anonymous GET /transactions route must not exist in prod"
+  }
+
+  assert {
+    condition     = length(aws_api_gateway_method.transaction_payment_status_get) == 0
+    error_message = "anonymous GET /transaction-payment-status route must not exist in prod"
+  }
+
+  assert {
+    condition     = aws_api_gateway_method.transaction_log_get.authorization == "AWS_IAM" && aws_api_gateway_method.revenue_summary_get.authorization == "AWS_IAM"
+    error_message = "the dashboard routes must exist in prod and require SigV4"
   }
 
   assert {
