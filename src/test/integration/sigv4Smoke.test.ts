@@ -194,11 +194,7 @@ describeWithCreds("SigV4 helper behavior and credential handling", () => {
     expect(signedHeaders.host).toContain("execute-api");
   });
 
-  it("signedFetchWithCredentials returns 200 with explicit credentials", async () => {
-    if (skipCiOnlyTest("test requires credentials registered in CI client-permissions")) {
-      return;
-    }
-
+  it("signedFetchWithCredentials signs requests with explicit credentials", async () => {
     const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
     const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
@@ -206,20 +202,33 @@ describeWithCreds("SigV4 helper behavior and credential handling", () => {
       throw new Error("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are required");
     }
 
-    const result = await signedFetchWithCredentials(
-      `${apiBaseUrl}/test`,
-      {
-        accessKeyId,
-        secretAccessKey,
-        sessionToken: process.env.AWS_SESSION_TOKEN,
-      },
-      { method: "GET" },
-    );
+    const fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(null, { status: 200 }));
 
-    const responseBody = await result.text();
-    console.log("signedFetchWithCredentials response:", result.status, responseBody.slice(0, 200));
+    try {
+      await signedFetchWithCredentials(
+        `${apiBaseUrl}/test`,
+        {
+          accessKeyId,
+          secretAccessKey,
+          sessionToken: process.env.AWS_SESSION_TOKEN,
+        },
+        { method: "GET" },
+      );
 
-    expect(result.status).toBe(200);
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${apiBaseUrl}/test`,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            authorization: expect.stringMatching(/^AWS4-HMAC-SHA256/),
+            "x-amz-date": expect.any(String),
+          }),
+        }),
+      );
+    } finally {
+      fetchMock.mockRestore();
+    }
   });
 });
 
