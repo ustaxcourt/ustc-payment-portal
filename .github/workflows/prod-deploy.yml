@@ -89,7 +89,7 @@ jobs:
           set -euo pipefail
           SHA='${{ steps.select.outputs.sha}}'
           echo "Validating artifacts for $SHA in s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
-          for f in initPayment processPayment getDetails validateClient testCert migrationRunner getTransactionLog getRevenueSummary; do
+          for f in initPayment processPayment getDetails validateClient testCert migrationRunner cancelExpired getTransactionLog getRevenueSummary; do
             KEY="artifacts/dev/${SHA}/${f}.zip"
             aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "$KEY" >/dev/null 2>&1 || {
               echo "Missing $KEY" >&2; exit 1; }
