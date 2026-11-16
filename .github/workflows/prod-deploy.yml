@@ -178,6 +178,7 @@ jobs:
           echo "testCert=${PREFIX}/testCert.zip" >> $GITHUB_OUTPUT
           echo "cancelExpired=${PREFIX}/cancelExpired.zip" >> $GITHUB_OUTPUT
           echo "migrationRunner=${PREFIX}/migrationRunner.zip" >> $GITHUB_OUTPUT
+          echo "cancelExpired=${PREFIX}/cancelExpired.zip" >> $GITHUB_OUTPUT
           echo "getTransactionLog=${PREFIX}/getTransactionLog.zip" >> $GITHUB_OUTPUT
           echo "getRevenueSummary=${PREFIX}/getRevenueSummary.zip" >> $GITHUB_OUTPUT
 
@@ -201,8 +202,8 @@ jobs:
           TF_VAR_getDetails_s3_key: ${{ steps.artifacts.outputs.getDetails }}
           TF_VAR_validateClient_s3_key: ${{ steps.artifacts.outputs.validateClient }}
           TF_VAR_testCert_s3_key: ${{ steps.artifacts.outputs.testCert }}
-          TF_VAR_cancelExpired_s3_key: ${{ steps.artifacts.outputs.cancelExpired }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.artifacts.outputs.migrationRunner }}
+          TF_VAR_cancelExpired_s3_key: ${{ steps.artifacts.outputs.cancelExpired }}
           TF_VAR_getTransactionLog_s3_key: ${{ steps.artifacts.outputs.getTransactionLog }}
           TF_VAR_getRevenueSummary_s3_key: ${{ steps.artifacts.outputs.getRevenueSummary }}
           # AWS Chatbot → Microsoft Teams routing. Missing secrets disable Teams routing (enable_teams=false).
