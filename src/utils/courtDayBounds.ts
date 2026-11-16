@@ -1,12 +1,16 @@
 /** Observes DST, unlike a fixed -05:00 "EST" offset. */
 export const COURT_TIME_ZONE = "America/New_York";
 
-type DayParts = { year: number; month: number; day: number };
+type CourtDayParts = { year: number; month: number; day: number };
 
-const partsInZone = (
+const FISCAL_YEAR_START_MONTH = 10;
+const MONTH_DAY_YEAR_DATE_PATTERN =
+  /^(?<month>\d{2})\/(?<day>\d{2})\/(?<year>\d{4})$/;
+
+export const partsInZone = (
   instant: Date,
   timeZone: string,
-): DayParts & { hour: number; minute: number; second: number } => {
+): CourtDayParts & { hour: number; minute: number; second: number } => {
   const formatted = new Intl.DateTimeFormat("en-US", {
     timeZone,
     hourCycle: "h23",
@@ -37,6 +41,10 @@ const partsInZone = (
   };
 };
 
+/** Read in UTC so the zone's clock time can't tip the date into a neighbouring day. */
+const courtWeekday = ({ year, month, day }: CourtDayParts): number =>
+  new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+
 const zoneOffsetMs = (instant: Date, timeZone: string): number => {
   const p = partsInZone(instant, timeZone);
   const asIfUtc = Date.UTC(
@@ -51,13 +59,146 @@ const zoneOffsetMs = (instant: Date, timeZone: string): number => {
 };
 
 const startOfZoneDay = (
-  { year, month, day }: DayParts,
+  { year, month, day }: CourtDayParts,
   timeZone: string,
 ): Date => {
   const naive = Date.UTC(year, month - 1, day);
   // Second pass settles DST-transition days, where the first guess lands wrong.
   const first = naive - zoneOffsetMs(new Date(naive), timeZone);
   return new Date(naive - zoneOffsetMs(new Date(first), timeZone));
+};
+
+export type Bounds = { start: Date; end: Date };
+
+export const COURT_PERIOD_NAMES = [
+  "day",
+  "week",
+  "month",
+  "quarter",
+  "fiscalYear",
+] as const;
+
+export type CourtPeriodName = (typeof COURT_PERIOD_NAMES)[number];
+export type CourtPeriodRecord<T> = Record<CourtPeriodName, T>;
+
+export const mapCourtPeriods = <T>(
+  getValue: (name: CourtPeriodName) => T,
+): CourtPeriodRecord<T> =>
+  COURT_PERIOD_NAMES.reduce((periods, name) => {
+    periods[name] = getValue(name);
+    return periods;
+  }, {} as CourtPeriodRecord<T>);
+
+type ZonedDateTime = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+export const zonedDateTimeToUtc = (
+  value: ZonedDateTime,
+  timeZone: string,
+): Date => {
+  // First guess: treat the local date/time as UTC.
+  const naive = Date.UTC(
+    value.year,
+    value.month - 1,
+    value.day,
+    value.hour,
+    value.minute,
+    value.second,
+  );
+
+  // Resolve the actual offset in the target zone.
+  const first = naive - zoneOffsetMs(new Date(naive), timeZone);
+
+  // Second pass settles DST-transition cases.
+  const resolved = naive - zoneOffsetMs(new Date(first), timeZone);
+
+  // A time inside the spring-forward gap never happened. Land after the jump, so the caller can detect the gap and handle it (for example, by skipping the day).
+  const landed = partsInZone(new Date(resolved), timeZone);
+  const exists = landed.hour === value.hour && landed.minute === value.minute;
+
+  return new Date(exists ? resolved : first);
+};
+
+export const shiftCourtYear = (instant: Date, yearDelta: number): Date => {
+  const parts = partsInZone(instant, COURT_TIME_ZONE);
+
+  const targetYear = parts.year + yearDelta;
+  const targetDay =
+    parts.month === 2 &&
+      parts.day === 29 &&
+      !(
+        targetYear % 4 === 0 &&
+        (targetYear % 100 !== 0 || targetYear % 400 === 0)
+      )
+      ? 28
+      : parts.day;
+
+  return zonedDateTimeToUtc(
+    {
+      year: targetYear,
+      month: parts.month,
+      day: targetDay,
+      hour: parts.hour,
+      minute: parts.minute,
+      second: parts.second,
+    },
+    COURT_TIME_ZONE,
+  );
+};
+
+export const parseMonthDayYearDate = (
+  value: string,
+): CourtDayParts | undefined => {
+  const match = MONTH_DAY_YEAR_DATE_PATTERN.exec(value);
+  if (!match?.groups) {
+    return undefined;
+  }
+
+  const month = Number(match.groups.month);
+  const day = Number(match.groups.day);
+  const year = Number(match.groups.year);
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    candidate.getUTCFullYear() !== year ||
+    candidate.getUTCMonth() + 1 !== month ||
+    candidate.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+
+  return { year, month, day };
+};
+
+export const courtDayBoundsForDate = (
+  day: CourtDayParts,
+): { start: Date; end: Date } => {
+  const nextDay = new Date(Date.UTC(day.year, day.month - 1, day.day + 1));
+
+  return {
+    start: startOfZoneDay(day, COURT_TIME_ZONE),
+    end: startOfZoneDay(
+      {
+        year: nextDay.getUTCFullYear(),
+        month: nextDay.getUTCMonth() + 1,
+        day: nextDay.getUTCDate(),
+      },
+      COURT_TIME_ZONE,
+    ),
+  };
+};
+
+export const courtDayBoundsForDateString = (
+  value: string,
+): { start: Date; end: Date } | undefined => {
+  const day = parseMonthDayYearDate(value);
+  return day ? courtDayBoundsForDate(day) : undefined;
 };
 
 /** Court-local day containing `now`, as half-open [start, end) instants.
@@ -81,4 +222,67 @@ export const courtDayBounds = (
       COURT_TIME_ZONE,
     ),
   };
+};
+
+/** The five revenue periods, each opening at Court-local midnight and running
+ *  to date — every `end` is `now`, not the end of the period. */
+export const courtPeriodBounds = (
+  now: Date = new Date(),
+): CourtPeriodRecord<Bounds> => {
+  const { year, month, day } = partsInZone(now, COURT_TIME_ZONE);
+
+  const weekday = courtWeekday({ year, month, day });
+  const quarterStartMonth = month - ((month - 1) % 3);
+  const fiscalYear = month >= FISCAL_YEAR_START_MONTH ? year : year - 1;
+
+  const end = new Date(now.getTime());
+  // Date.UTC normalises out-of-range days, so a Sunday in the previous month
+  // or year needs no special casing.
+  const openingAt = (parts: CourtDayParts): Bounds => ({
+    start: startOfZoneDay(parts, COURT_TIME_ZONE),
+    end,
+  });
+
+  return {
+    day: openingAt({ year, month, day }),
+    week: openingAt({ year, month, day: day - weekday }),
+    month: openingAt({ year, month, day: 1 }),
+    quarter: openingAt({ year, month: quarterStartMonth, day: 1 }),
+    fiscalYear: openingAt({
+      year: fiscalYear,
+      month: FISCAL_YEAR_START_MONTH,
+      day: 1,
+    }),
+  } satisfies CourtPeriodRecord<Bounds>;
+};
+
+export const previousCourtPeriodBounds = (
+  now: Date = new Date(),
+): CourtPeriodRecord<Bounds> => {
+
+  const shiftedNow = shiftCourtYear(now, -1);
+  const previousPeriods = courtPeriodBounds(shiftedNow);
+  const shiftedWeek = previousPeriods.week;
+
+  const nowParts = partsInZone(now, COURT_TIME_ZONE);
+  const weekday = courtWeekday(nowParts);
+  const shiftedWeekStart = partsInZone(shiftedWeek.start, COURT_TIME_ZONE);
+
+  return {
+    ...previousPeriods,
+    week: {
+      start: shiftedWeek.start,
+      end: zonedDateTimeToUtc(
+        {
+          year: shiftedWeekStart.year,
+          month: shiftedWeekStart.month,
+          day: shiftedWeekStart.day + weekday,
+          hour: nowParts.hour,
+          minute: nowParts.minute,
+          second: nowParts.second,
+        },
+        COURT_TIME_ZONE,
+      ),
+    },
+  } satisfies CourtPeriodRecord<Bounds>;
 };

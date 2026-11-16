@@ -4,8 +4,6 @@ describe("start-pay-gov-test-server", () => {
   let mockSpawn;
   let mockLog;
   let startPayGovTestServer;
-  let resolveAccessToken;
-  let DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN;
 
   function makeChildProcess() {
     const handlers = {};
@@ -35,15 +33,13 @@ describe("start-pay-gov-test-server", () => {
 
     ({
       startPayGovTestServer,
-      resolveAccessToken,
-      DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN,
     } = require("./start-pay-gov-test-server"));
   });
 
   afterEach(() => {
     delete process.env.PAY_GOV_TEST_SERVER_PORT;
     delete process.env.PAY_GOV_NODE_ENV;
-    delete process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN;
+    delete process.env.APP_ENV;
     jest.restoreAllMocks();
     process.removeAllListeners("SIGINT");
     process.removeAllListeners("SIGTERM");
@@ -59,29 +55,18 @@ describe("start-pay-gov-test-server", () => {
       [expect.stringContaining("server.js")],
       expect.objectContaining({
         stdio: "inherit",
-        env: expect.objectContaining({
-          ACCESS_TOKEN: resolveAccessToken(),
-        }),
+        env: expect.objectContaining({ APP_ENV: "local" }),
       }),
     );
   });
 
-  it("defaults ACCESS_TOKEN to the shared local development token", () => {
-    expect(resolveAccessToken()).toBe(
-      DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN,
-    );
-    expect(DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN).toBe("development-token");
-  });
-
-  it("forwards PAY_GOV_TEST_SERVER_ACCESS_TOKEN to the child as ACCESS_TOKEN when set", () => {
-    process.env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN = "hosted-dev-token";
+  it("forces APP_ENV=local regardless of the parent environment", () => {
+    process.env.APP_ENV = "dev";
     mockSpawn.mockReturnValue(makeChildProcess());
 
     startPayGovTestServer();
 
-    const spawnEnv = mockSpawn.mock.calls[0][2].env;
-    expect(spawnEnv.ACCESS_TOKEN).toBe("hosted-dev-token");
-    expect(resolveAccessToken()).toBe("hosted-dev-token");
+    expect(mockSpawn.mock.calls[0][2].env.APP_ENV).toBe("local");
   });
 
   it("sets PORT in the child environment from the resolved port", () => {

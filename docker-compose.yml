@@ -1,8 +1,9 @@
 services:
   postgres:
-    image: postgres:14
-    ports:
-      - "${DB_PORT:-5433}:5432"
+    # The image is pinned only in the consumer file, which CI also starts, so local, consumer and CI can't drift.
+    extends:
+      file: docker-compose.consumer.yml
+      service: postgres
     environment:
       POSTGRES_PASSWORD: password
       POSTGRES_USER: user
@@ -13,7 +14,8 @@ services:
       timeout: 5s
       retries: 10
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # 18+ images keep data in a per-major subdirectory and refuse to start with a mount at /var/lib/postgresql/data.
+      - postgres18_data:/var/lib/postgresql
 
   db-init:
     image: node:24
@@ -48,5 +50,5 @@ services:
       '
 
 volumes:
-  postgres_data:
+  postgres18_data:
   db_init_node_modules:

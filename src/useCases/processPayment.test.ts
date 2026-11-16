@@ -246,7 +246,7 @@ describe("processPayment", () => {
     TransactionModelMock.findByReferenceId.mockResolvedValue([]);
     getActiveFeeMock.mockReturnValue({
       fee: "fee-123",
-      tcsAppId: "TCSUSTAXCOURTPETITION",
+      tcsAppId: "USTAXCOURTPETITION",
     });
   });
 
@@ -523,7 +523,7 @@ describe("processPayment", () => {
 
     expect(appContext.postHttpRequest).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining("<tcs_app_id>TCSUSTAXCOURTPETITION</tcs_app_id>"),
+      expect.stringContaining("<tcs_app_id>USTAXCOURTPETITION</tcs_app_id>"),
     );
   });
 

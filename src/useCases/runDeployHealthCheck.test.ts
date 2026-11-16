@@ -1,15 +1,20 @@
 import { runDeployHealthCheck } from "./runDeployHealthCheck";
+import { getPayGovAuthHeaders } from "@clients/payGovAuthHeaders";
 import { getParameterString } from "@clients/ssmClient";
 import { probePayGovWsdl } from "../health/probePayGovWsdl";
 import { getKnex } from "../db/knex";
 import type { AppContext } from "@appTypes/AppContext";
 
 jest.mock("@clients/ssmClient");
+jest.mock("@clients/payGovAuthHeaders");
 jest.mock("../health/probePayGovWsdl", () => ({ probePayGovWsdl: jest.fn() }));
 jest.mock("../db/knex", () => ({ getKnex: jest.fn() }));
 
 const mockGetParam = getParameterString as jest.MockedFunction<
   typeof getParameterString
+>;
+const mockGetPayGovAuthHeaders = getPayGovAuthHeaders as jest.MockedFunction<
+  typeof getPayGovAuthHeaders
 >;
 const mockProbe = probePayGovWsdl as jest.MockedFunction<typeof probePayGovWsdl>;
 const mockGetKnex = getKnex as jest.MockedFunction<typeof getKnex>;
@@ -17,6 +22,7 @@ const mockGetKnex = getKnex as jest.MockedFunction<typeof getKnex>;
 const mockRaw = jest.fn();
 const appContext = {
   getHttpsAgent: jest.fn(),
+  logger: { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn() },
 } as unknown as AppContext;
 
 describe("runDeployHealthCheck", () => {
@@ -24,11 +30,20 @@ describe("runDeployHealthCheck", () => {
     jest.clearAllMocks();
     process.env.APP_ENV = "test";
     process.env.MONITORING_SUBSCRIBERS_PARAMETER_NAME = "/ustc/pay-gov/test/x";
+    process.env.PRIVATE_KEY_SECRET_ID = "key-id";
+    process.env.CERTIFICATE_SECRET_ID = "cert-id";
     (appContext.getHttpsAgent as jest.Mock).mockResolvedValue({ agent: true });
     mockGetParam.mockResolvedValue("[]");
     mockGetKnex.mockResolvedValue({ raw: mockRaw } as any);
     mockRaw.mockResolvedValue(undefined);
     mockProbe.mockResolvedValue({ ok: true, latencyMs: 1, body: "" });
+    mockGetPayGovAuthHeaders.mockResolvedValue({});
+  });
+
+  afterEach(() => {
+    delete process.env.PRIVATE_KEY_SECRET_ID;
+    delete process.env.CERTIFICATE_SECRET_ID;
+    delete process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
   });
 
   it("reports healthy when every check passes", async () => {
@@ -143,6 +158,92 @@ describe("runDeployHealthCheck", () => {
       privateKey: true,
       certificate: true,
       passphraseConfigured: false,
+    });
+  });
+
+  describe("when mTLS is not configured (e.g. dev, which uses the mock Pay.gov test server)", () => {
+    beforeEach(() => {
+      process.env.APP_ENV = "dev";
+      delete process.env.PRIVATE_KEY_SECRET_ID;
+      delete process.env.CERTIFICATE_SECRET_ID;
+      process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID = "paygov-token-id";
+    });
+
+    it.each(["stg", "prod"] as const)(
+      "still fails the secrets check in %s, which must not fall back to the token",
+      async (appEnv) => {
+        process.env.APP_ENV = appEnv;
+        (appContext.getHttpsAgent as jest.Mock).mockResolvedValue(undefined);
+
+        const report = await runDeployHealthCheck(appContext);
+
+        expect(report.status).toBe("unhealthy");
+        expect(report.checks.secrets).toMatchObject({
+          status: "failed",
+          error: "mTLS agent (Secrets Manager) not configured",
+        });
+      },
+    );
+
+    it("fails the secrets check on a typo'd APP_ENV instead of falling back to the token", async () => {
+      (process.env as Record<string, string>).APP_ENV = "prd";
+      (appContext.getHttpsAgent as jest.Mock).mockResolvedValue(undefined);
+
+      const report = await runDeployHealthCheck(appContext);
+
+      expect(report.checks.secrets).toMatchObject({
+        status: "failed",
+        error: expect.stringContaining('Invalid APP_ENV "prd"'),
+      });
+    });
+
+    it("does not treat the jest 'test' env as an mTLS-optional environment", async () => {
+      delete (process.env as Record<string, string | undefined>).APP_ENV;
+      (appContext.getHttpsAgent as jest.Mock).mockResolvedValue(undefined);
+
+      const report = await runDeployHealthCheck(appContext);
+
+      expect(report.checks.secrets).toMatchObject({
+        status: "failed",
+        error: "mTLS agent (Secrets Manager) not configured",
+      });
+    });
+
+    it("passes the secrets check without requiring an mTLS agent", async () => {
+      (appContext.getHttpsAgent as jest.Mock).mockResolvedValue(undefined);
+
+      const report = await runDeployHealthCheck(appContext);
+
+      expect(report.checks.secrets).toMatchObject({
+        status: "ok",
+        details: { mtlsEnabled: false },
+      });
+      expect(report.status).toBe("healthy");
+    });
+
+    it("fails the secrets check when PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID is also unset", async () => {
+      delete process.env.PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID;
+
+      const report = await runDeployHealthCheck(appContext);
+
+      expect(report.checks.secrets).toMatchObject({
+        status: "failed",
+        error: "PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID not set",
+      });
+    });
+
+    it("passes the auth headers from getPayGovAuthHeaders to the WSDL probe", async () => {
+      mockGetPayGovAuthHeaders.mockResolvedValue({
+        Authorization: "Bearer paygov-token-id",
+        Authentication: "Bearer paygov-token-id",
+      });
+
+      await runDeployHealthCheck(appContext);
+
+      expect(mockProbe).toHaveBeenCalledWith(expect.anything(), {
+        Authorization: "Bearer paygov-token-id",
+        Authentication: "Bearer paygov-token-id",
+      });
     });
   });
 });

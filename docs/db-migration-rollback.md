@@ -44,7 +44,7 @@ Returns `{ batchNo, migrations }` — the batch rolled back and the files revert
 ## Stale lock recovery
 
 Knex serializes migration runs with a lock (`knex_migrations_lock`). A run that ends
-normally — success *or* error — releases it. A run that is **killed abruptly** (Lambda
+normally — success _or_ error — releases it. A run that is **killed abruptly** (Lambda
 timeout, crash) does not, leaving the lock held; the next `migrate`/`rollback` then fails
 with **"Migration table is already locked."**
 
@@ -71,5 +71,5 @@ before the deploy — an operational event that loses all writes since that poin
 
 ## One-time setup
 
-- Configure **required reviewers** on the `prod` GitHub Environment (enables the prod gate).
+- Confirm the `production` GitHub Environment still has its **required reviewers** configured before attempting a rollback deploy.
 - Deployer role already has `lambda:InvokeFunction` on `*-migrationRunner` (from PAY-355) — no new IAM.

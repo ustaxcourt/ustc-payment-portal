@@ -24,6 +24,9 @@ fi
 # Bundle each Lambda function individually using esbuild
 echo "Bundling Lambda functions with esbuild..."
 
+# Must match the Lambda runtime default in terraform/modules/lambda/variables.tf.
+NODE_TARGET=node24
+
 # Knex optional dialect modules — not used at runtime (pg is used); must be excluded
 # from all bundles that transitively import knex (lambdaHandler.ts → knex.ts → knex).
 KNEX_EXTERNALS=(
@@ -38,18 +41,26 @@ KNEX_EXTERNALS=(
   --external:oracledb
 )
 
+# objection 4 calls createRequire(import.meta.url), undefined in esbuild CJS output.
+# Inject, not --banner: a banner lands above "use strict" and silently disables it.
+IMPORT_META_SHIM=(
+  --inject:scripts/esbuild/importMetaUrl.js
+  --define:import.meta.url=importMetaUrl
+)
+
 # Bundle Init Payment Lambda
 echo "Bundling initPayment..."
 mkdir -p dist/initPayment
 npx esbuild src/handlers/initPaymentHandler.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/initPayment/initPaymentHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -59,12 +70,13 @@ mkdir -p dist/processPayment
 npx esbuild src/handlers/processPaymentHandler.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/processPayment/processPaymentHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -74,12 +86,29 @@ mkdir -p dist/getDetails
 npx esbuild src/handlers/getDetailsHandler.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/getDetails/getDetailsHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
+  --minify \
+  --keep-names
+
+# Bundle Validate Client Lambda
+echo "Bundling validateClient..."
+mkdir -p dist/validateClient
+npx esbuild src/handlers/validateClientHandler.ts \
+  --bundle \
+  --platform=node \
+  --target="$NODE_TARGET" \
+  --format=cjs \
+  --outfile=dist/validateClient/validateClientHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -89,12 +118,13 @@ mkdir -p dist/testCert
 npx esbuild src/testCert.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/testCert/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -104,12 +134,13 @@ mkdir -p dist/getAllTransactions
 npx esbuild src/handlers/getAllTransactionsHandler.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/getAllTransactions/getAllTransactionsHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -119,12 +150,29 @@ mkdir -p dist/getTransactionLog
 npx esbuild src/handlers/getTransactionLogHandler.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/getTransactionLog/getTransactionLogHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
+  --minify \
+  --keep-names
+
+# Bundle getRevenueSummary Lambda
+echo "Bundling getRevenueSummary..."
+mkdir -p dist/getRevenueSummary
+npx esbuild src/handlers/getRevenueSummaryHandler.ts \
+  --bundle \
+  --platform=node \
+  --target="$NODE_TARGET" \
+  --format=cjs \
+  --outfile=dist/getRevenueSummary/getRevenueSummaryHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -134,12 +182,13 @@ mkdir -p dist/getTransactionsByStatus
 npx esbuild src/handlers/getTransactionsByStatusHandler.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/getTransactionsByStatus/getTransactionsByStatusHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -149,12 +198,29 @@ mkdir -p dist/getTransactionPaymentStatus
 npx esbuild src/handlers/getTransactionPaymentStatusHandler.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/getTransactionPaymentStatus/getTransactionPaymentStatusHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
+  --minify \
+  --keep-names
+
+# Bundle Cancel Expired Lambda (EventBridge-scheduled sweep, no API Gateway route)
+echo "Bundling cancelExpired..."
+mkdir -p dist/cancelExpired
+npx esbuild src/handlers/cancelExpiredHandler.ts \
+  --bundle \
+  --platform=node \
+  --target="$NODE_TARGET" \
+  --format=cjs \
+  --outfile=dist/cancelExpired/cancelExpiredHandler.js \
+  --external:aws-sdk \
+  --external:@aws-sdk/* \
+  "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -164,12 +230,13 @@ mkdir -p dist/migrationRunner
 npx esbuild src/migrationHandler.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/migrationRunner/lambdaHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -183,12 +250,13 @@ mkdir -p dist/initRefGenerator
 npx esbuild src/powerTuning/initRefGenerator.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/initRefGenerator/initRefGenerator.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -200,11 +268,12 @@ mkdir -p dist/processTokenMinter
 npx esbuild src/powerTuning/processTokenMinter.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/processTokenMinter/processTokenMinter.js \
   --external:aws-sdk \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
@@ -216,19 +285,20 @@ mkdir -p dist/powerTuningCleanUp
 npx esbuild src/powerTuning/powerTuningCleanUp.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/powerTuningCleanUp/powerTuningCleanUp.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --minify \
   --keep-names
 
 # Copy certificate files if they exist
 if [ -d "certs" ]; then
     echo "Copying certificate files..."
-    for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog; do
+    for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog getRevenueSummary; do
         if [ -d "dist/$func" ]; then
             cp -r certs dist/$func/
         fi
@@ -242,7 +312,12 @@ curl -sSf -o /tmp/rds-ca-bundle.pem \
 
 # Copy CA bundle to all Lambda functions that connect to RDS (testCert included:
 # its bundle is reused by healthCheck, whose RDS check must validate the CA).
-for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog powerTuningCleanUp; do
+# validateClient is deliberately absent from this list and from the certs loop
+# above: it reads the client-permissions secret and nothing else — no RDS, no
+# Pay.gov mTLS. It transitively imports knex via lambdaHandler, but with no
+# RDS_SECRET_ARN set that pool is never opened.
+# cancelExpired is absent from the certs loop above: it never calls Pay.gov, so RDS CA only.
+for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog getRevenueSummary cancelExpired powerTuningCleanUp; do
   cp /tmp/rds-ca-bundle.pem "dist/${func}/rds-ca-bundle.pem"
 done
 
@@ -252,7 +327,7 @@ mkdir -p dist/migrationRunner/db/migrations
 npx esbuild db/migrations/*.ts \
   --bundle=false \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   --outdir=dist/migrationRunner/db/migrations/
 
@@ -261,9 +336,10 @@ mkdir -p dist/migrationRunner/db/seeds
 npx esbuild db/seeds/*.ts \
   --bundle \
   --platform=node \
-  --target=node22 \
+  --target="$NODE_TARGET" \
   --format=cjs \
   "${KNEX_EXTERNALS[@]}" \
+  "${IMPORT_META_SHIM[@]}" \
   --outdir=dist/migrationRunner/db/seeds/
 
 echo "Build completed successfully!"
@@ -271,17 +347,20 @@ echo "Bundled Lambda functions ready:"
 echo "  - dist/initPayment/initPaymentHandler.js"
 echo "  - dist/processPayment/processPaymentHandler.js"
 echo "  - dist/getDetails/getDetailsHandler.js"
+echo "  - dist/validateClient/validateClientHandler.js"
 echo "  - dist/testCert/lambdaHandler.js"
 echo "  - dist/getAllTransactions/getAllTransactionsHandler.js"
 echo "  - dist/getTransactionsByStatus/getTransactionsByStatusHandler.js"
 echo "  - dist/getTransactionPaymentStatus/getTransactionPaymentStatusHandler.js"
 echo "  - dist/getTransactionLog/getTransactionLogHandler.js"
+echo "  - dist/getRevenueSummary/getRevenueSummaryHandler.js"
+echo "  - dist/cancelExpired/cancelExpiredHandler.js"
 echo "  - dist/migrationRunner/lambdaHandler.js"
 
 # Show file sizes
 echo ""
 echo "Bundle sizes:"
-for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog migrationRunner; do
+for func in initPayment processPayment getDetails validateClient testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog getRevenueSummary cancelExpired migrationRunner; do
   output_file="lambdaHandler.js"
   if [ "$func" = "initPayment" ]; then
     output_file="initPaymentHandler.js"
@@ -289,6 +368,8 @@ for func in initPayment processPayment getDetails testCert getAllTransactions ge
     output_file="processPaymentHandler.js"
   elif [ "$func" = "getDetails" ]; then
     output_file="getDetailsHandler.js"
+  elif [ "$func" = "validateClient" ]; then
+    output_file="validateClientHandler.js"
   elif [ "$func" = "getAllTransactions" ]; then
     output_file="getAllTransactionsHandler.js"
   elif [ "$func" = "getTransactionsByStatus" ]; then
@@ -297,6 +378,10 @@ for func in initPayment processPayment getDetails testCert getAllTransactions ge
     output_file="getTransactionPaymentStatusHandler.js"
   elif [ "$func" = "getTransactionLog" ]; then
     output_file="getTransactionLogHandler.js"
+  elif [ "$func" = "getRevenueSummary" ]; then
+    output_file="getRevenueSummaryHandler.js"
+  elif [ "$func" = "cancelExpired" ]; then
+    output_file="cancelExpiredHandler.js"
   fi
 
   if [ -f "dist/$func/$output_file" ]; then

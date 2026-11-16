@@ -66,6 +66,7 @@ describe("safeUpdateToFailed", () => {
       {
         errorName: dbError.name,
         errorMessage: dbError.message,
+        errorStack: dbError.stack,
       },
     );
   });

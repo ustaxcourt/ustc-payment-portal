@@ -25,6 +25,29 @@ locals {
     CERTIFICATE_SECRET_ID = module.secrets.certificate_secret_id
   } : {})
 
+  # Scheduled sweep: transactions table only, no Pay.gov URLs or certs.
+  lambda_env_cancel_sweep = {
+    NODE_ENV       = local.node_env
+    APP_ENV        = local.app_env
+    RDS_ENDPOINT   = module.rds_proxy.endpoint
+    RDS_SECRET_ARN = module.rds.master_user_secret_arn
+    RDS_DB_NAME    = local.rds_db_name
+  }
+
+  # Client-validation Lambda: validateClient
+  # Reads the client-permissions secret and nothing else. Deliberately not
+  # lambda_env_payment — this endpoint has no business holding the Pay.gov cert
+  # passphrase or RDS credentials.
+  # TTL 0 disables the permissions cache for this function only: a stale read would
+  # tell a just-registered client their ARN is still unknown. Payment Lambdas keep
+  # the 5-minute default.
+  lambda_env_validate_client = {
+    NODE_ENV                        = local.node_env
+    APP_ENV                         = local.app_env
+    CLIENT_PERMISSIONS_SECRET_ID    = module.secrets.client_permissions_secret_id
+    CLIENT_PERMISSIONS_CACHE_TTL_MS = "0"
+  }
+
   # Migration Lambda: migrationRunner
   # Needs RDS only — no payment secrets. Connects directly, not via proxy (CREATE/DROP DATABASE breaks through a proxy).
   lambda_env_migration = {
@@ -40,8 +63,10 @@ locals {
     initPayment     = local.lambda_env_payment
     processPayment  = local.lambda_env_payment
     getDetails      = local.lambda_env_payment
+    validateClient  = local.lambda_env_validate_client
     testCert        = local.lambda_env_payment
     healthCheck     = local.lambda_env_payment
+    cancelExpired   = local.lambda_env_cancel_sweep
     migrationRunner = local.lambda_env_migration
   }
 
@@ -51,8 +76,10 @@ locals {
     initPayment     = 512
     processPayment  = 256
     getDetails      = 512
+    validateClient  = 256
     testCert        = 768
     healthCheck     = 768
+    cancelExpired   = 256
     migrationRunner = 256
   }
   github_oidc_provider_arn = "arn:aws:iam::747103385969:oidc-provider/token.actions.githubusercontent.com"

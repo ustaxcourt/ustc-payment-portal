@@ -2,6 +2,11 @@ import TransactionModel from "../db/TransactionModel";
 import { testAppContext as appContext } from "../test/testAppContext";
 import { getTransactionLog } from "./getTransactionLog";
 import type { TransactionLogQuery } from "@appTypes/TransactionLog";
+import {
+  TRANSACTION_LOG_DEFAULT_ORDER,
+  TRANSACTION_LOG_DEFAULT_SORT,
+} from "@schemas/TransactionLog.schema";
+import { previousCourtPeriodBounds } from "@utils/courtDayBounds";
 
 const createdAt = new Date("2026-08-03T12:00:00.000Z");
 const lastUpdatedAt = new Date("2026-08-03T13:00:00.000Z");
@@ -23,23 +28,100 @@ const failedRow = {
   lastUpdatedAt,
 };
 
+const failedQueryRow = failedRow as unknown as TransactionModel;
+
 const counts = { success: 40, failed: 4, pending: 3, total: 47 };
 
+// Mirrors what the schema hands the use case, defaults already applied.
 const query = (overrides: Partial<TransactionLogQuery> = {}) =>
-  ({ page: 1, pageSize: 50, ...overrides }) as TransactionLogQuery;
+  ({
+    page: 1,
+    pageSize: 50,
+    sort: TRANSACTION_LOG_DEFAULT_SORT,
+    order: TRANSACTION_LOG_DEFAULT_ORDER,
+    ...overrides,
+  }) as TransactionLogQuery;
+
+const totals = {
+  day: 120,
+  week: 1200,
+  month: 4800,
+  quarter: 14400,
+  fiscalYear: 57600,
+};
+
+const previousTotals = {
+  day: 100,
+  week: 1000,
+  month: 4000,
+  quarter: 12000,
+  fiscalYear: 48000,
+};
+
+const yoyTrends = {
+  day: { current: 120, previous: 100, difference: 20, percentChange: 20 },
+  week: {
+    current: 1200,
+    previous: 1000,
+    difference: 200,
+    percentChange: 20,
+  },
+  month: {
+    current: 4800,
+    previous: 4000,
+    difference: 800,
+    percentChange: 20,
+  },
+  quarter: {
+    current: 14400,
+    previous: 12000,
+    difference: 2400,
+    percentChange: 20,
+  },
+  fiscalYear: {
+    current: 57600,
+    previous: 48000,
+    difference: 9600,
+    percentChange: 20,
+  },
+};
 
 describe("getTransactionLog", () => {
   let queryLog: jest.SpyInstance;
   let countsInRange: jest.SpyInstance;
+  let totalsToDate: jest.SpyInstance;
+  let queryYoYTrends: jest.SpyInstance;
+  let countsAndFeeBreakdown: jest.SpyInstance;
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date("2026-08-03T15:00:00.000Z"));
+
     queryLog = jest
       .spyOn(TransactionModel, "queryLog")
-      .mockResolvedValue({ rows: [failedRow as any], total: 4 });
+      .mockResolvedValue({ rows: [failedQueryRow], total: 4 });
+
     countsInRange = jest
       .spyOn(TransactionModel, "countsInRange")
       .mockResolvedValue(counts);
+
+    totalsToDate = jest
+      .spyOn(TransactionModel, "totalsToDate")
+      .mockResolvedValueOnce(totals)
+      .mockResolvedValueOnce(previousTotals);
+
+    queryYoYTrends = jest
+      .spyOn(TransactionModel, "yoyTrends")
+      .mockReturnValue(yoyTrends);
+
+    countsAndFeeBreakdown = jest
+      .spyOn(TransactionModel, "countsAndFeeBreakdownInRange")
+      .mockResolvedValue({
+        counts,
+        tallies: [
+          { fee: "PETITION_FILING_FEE", qty: 2, subtotal: 120 },
+          { fee: "NONATTORNEY_EXAM_REGISTRATION_FEE", qty: 1, subtotal: 250 },
+        ],
+      });
   });
 
   afterEach(() => {
@@ -69,7 +151,10 @@ describe("getTransactionLog", () => {
   });
 
   it("counts the whole timeframe even when a status filter is applied", async () => {
-    const result = await getTransactionLog(appContext, query({ status: "failed" }));
+    const result = await getTransactionLog(
+      appContext,
+      query({ status: "failed" }),
+    );
 
     expect(queryLog.mock.calls[0][0]).toMatchObject({ status: "failed" });
     // countsInRange takes only the bounds, so the tallies cannot be narrowed.
@@ -92,11 +177,405 @@ describe("getTransactionLog", () => {
     expect(queryLog.mock.calls[0][0]).toMatchObject({ limit: 25, offset: 50 });
   });
 
+  it("passes the requested sort down and echoes it back", async () => {
+    const result = await getTransactionLog(
+      appContext,
+      query({ sort: "clientName", order: "asc" }),
+    );
+
+    expect(queryLog.mock.calls[0][0]).toMatchObject({
+      sort: "clientName",
+      order: "asc",
+    });
+    expect(result).toMatchObject({ sort: "clientName", order: "asc" });
+  });
+
+  it("defaults to the newest activity first", async () => {
+    const result = await getTransactionLog(appContext, query());
+
+    expect(result).toMatchObject({ sort: "lastUpdatedAt", order: "desc" });
+  });
+
+  it("applies default sort/order when they are absent", async () => {
+    const result = await getTransactionLog(
+      appContext,
+      query({ sort: undefined, order: undefined }),
+    );
+
+    expect(queryLog.mock.calls[0][0]).toMatchObject({
+      sort: TRANSACTION_LOG_DEFAULT_SORT,
+      order: TRANSACTION_LOG_DEFAULT_ORDER,
+    });
+    expect(result).toMatchObject({
+      sort: TRANSACTION_LOG_DEFAULT_SORT,
+      order: TRANSACTION_LOG_DEFAULT_ORDER,
+    });
+  });
+
   it("returns the failure reason and the display payment method", async () => {
     const result = await getTransactionLog(appContext, query());
 
     expect(result.data[0].returnCode).toBe(102);
     expect(result.data[0].returnDetail).toBe("Insufficient funds");
     expect(result.data[0].paymentMethod).toBe("Credit/Debit Card");
+  });
+
+  describe("filters", () => {
+    it("passes fee straight through and translates the payment method label to the stored value", async () => {
+      await getTransactionLog(
+        appContext,
+        query({ fee: "PETITION_FILING_FEE", paymentMethod: "ACH" }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        fee: "PETITION_FILING_FEE",
+        paymentMethod: "ach",
+      });
+    });
+
+    it("passes transactionStatus straight through", async () => {
+      await getTransactionLog(
+        appContext,
+        query({ transactionStatus: "processed" }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        transactionStatus: "processed",
+      });
+    });
+
+    it("passes the metadata search straight through", async () => {
+      await getTransactionLog(
+        appContext,
+        query({ metadataSearch: { key: "docketNumber", value: "123-26" } }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        metadataSearch: { key: "docketNumber", value: "123-26" },
+      });
+    });
+
+    it("leaves the metadata filter unset when it is not requested", async () => {
+      await getTransactionLog(appContext, query());
+
+      expect(queryLog.mock.calls[0][0].metadataSearch).toBeUndefined();
+    });
+
+    it("combines an explicit timeframe with filters in the same request", async () => {
+      const from = new Date("2026-07-01T00:00:00.000Z");
+      const to = new Date("2026-07-02T00:00:00.000Z");
+
+      const result = await getTransactionLog(
+        appContext,
+        query({
+          from,
+          to,
+          fee: "PETITION_FILING_FEE",
+          transactionStatus: "processed",
+        }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        from,
+        to,
+        fee: "PETITION_FILING_FEE",
+        transactionStatus: "processed",
+      });
+      expect(result.from).toBe(from.toISOString());
+      expect(result.to).toBe(to.toISOString());
+    });
+  });
+
+  describe("export requests", () => {
+    it("computes the totals on the first page", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 1, pageSize: 5000 }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({ withTotal: true });
+      expect(countsInRange).toHaveBeenCalled();
+      expect(result.total).toBe(4);
+      expect(result.counts).toBeDefined();
+    });
+
+    it("skips both COUNT queries on pages after the first", async () => {
+      queryLog.mockResolvedValue({ rows: [failedQueryRow] });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 2, pageSize: 5000 }),
+      );
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({
+        withTotal: false,
+        limit: 5000,
+        offset: 5000,
+      });
+      expect(countsInRange).not.toHaveBeenCalled();
+      expect(result.total).toBeUndefined();
+      expect(result.counts).toBeUndefined();
+    });
+
+    it("keeps the totals on every page of a non-export request", async () => {
+      await getTransactionLog(appContext, query({ export: false, page: 2 }));
+
+      expect(queryLog.mock.calls[0][0]).toMatchObject({ withTotal: true });
+      expect(countsInRange).toHaveBeenCalled();
+    });
+
+    // Each page would close its periods at a different `now`, so an export
+    // would carry a different set of figures on every page.
+    it("skips the period totals on pages after the first", async () => {
+      queryLog.mockResolvedValue({ rows: [failedQueryRow] });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 2, includeTotals: true }),
+      );
+
+      expect(totalsToDate).not.toHaveBeenCalled();
+      expect(queryYoYTrends).not.toHaveBeenCalled();
+      expect(result.totals).toBeUndefined();
+      expect(result.yoyTrends).toBeUndefined();
+    });
+
+    it("returns the period totals on the first page", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 1, includeTotals: true }),
+      );
+
+      expect(result.totals?.day.total).toBe(120);
+    });
+  });
+
+  describe("totals", () => {
+    it("leaves them out — and does not query them — unless asked", async () => {
+      const result = await getTransactionLog(appContext, query());
+
+      expect(totalsToDate).not.toHaveBeenCalled();
+      expect(result).not.toHaveProperty("totals");
+    });
+
+    it("returns a total per period when asked", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true }),
+      );
+
+      expect(totalsToDate).toHaveBeenCalledTimes(2);
+      expect(result.totals?.day.total).toBe(120);
+      expect(result.totals?.fiscalYear.total).toBe(57600);
+    });
+
+    it("echoes the period each total was summed over", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true }),
+      );
+
+      expect(result.totals?.day).toMatchObject({
+        from: "2026-08-03T04:00:00.000Z",
+        to: "2026-08-03T15:00:00.000Z",
+      });
+      expect(result.totals?.fiscalYear.from).toBe("2025-10-01T04:00:00.000Z");
+      expect(totalsToDate.mock.calls[0][0].fiscalYear.start).toEqual(
+        new Date("2025-10-01T04:00:00.000Z"),
+      );
+      expect(totalsToDate.mock.calls[1][0]).toEqual(
+        previousCourtPeriodBounds(new Date("2026-08-03T15:00:00.000Z")),
+      );
+    });
+
+    // Both derive from a single clock read, so they always name the same Court
+    // day. Fake timers freeze the clock here, so this pins the relationship
+    // rather than reproducing the midnight race it protects against.
+    it("opens the day period on the same instant as the default timeframe", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true }),
+      );
+
+      expect(result.totals?.day.from).toBe(result.from);
+    });
+
+    it("ignores the requested timeframe and status", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({
+          from: new Date("2026-07-01T00:00:00.000Z"),
+          to: new Date("2026-07-02T00:00:00.000Z"),
+          status: "failed",
+          includeTotals: true,
+        }),
+      );
+
+      expect(totalsToDate.mock.calls[0][0].day.start).toEqual(
+        new Date("2026-08-03T04:00:00.000Z"),
+      );
+      expect(result.totals?.day.total).toBe(120);
+    });
+
+    it("returns YoY trends using the prior year's matching periods", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeTotals: true }),
+      );
+
+      expect(queryYoYTrends).toHaveBeenCalledTimes(1);
+      expect(queryYoYTrends.mock.calls[0][0]).toEqual(totals);
+      expect(queryYoYTrends.mock.calls[0][1]).toEqual(previousTotals);
+      expect(totalsToDate.mock.calls[1][0]).toEqual(
+        previousCourtPeriodBounds(new Date("2026-08-03T15:00:00.000Z")),
+      );
+      expect(result.yoyTrends?.fiscalYear.percentChange).toBe(20);
+    });
+  });
+
+  describe("fee breakdown", () => {
+    it("leaves it out — and does not query it — unless asked", async () => {
+      const result = await getTransactionLog(appContext, query());
+
+      expect(countsAndFeeBreakdown).not.toHaveBeenCalled();
+      expect(result).not.toHaveProperty("feeBreakdown");
+    });
+
+    it("tallies the requested timeframe, unlike the period totals", async () => {
+      const from = new Date("2026-07-01T00:00:00.000Z");
+      const to = new Date("2026-07-02T00:00:00.000Z");
+
+      await getTransactionLog(
+        appContext,
+        query({ from, to, includeFeeBreakdown: true }),
+      );
+
+      expect(countsAndFeeBreakdown).toHaveBeenCalledWith(from, to);
+    });
+
+    it("tallies the whole timeframe even when a status filter is applied", async () => {
+      await getTransactionLog(
+        appContext,
+        query({ status: "failed", includeFeeBreakdown: true }),
+      );
+
+      expect(countsAndFeeBreakdown).toHaveBeenCalledWith(
+        new Date("2026-08-03T04:00:00.000Z"),
+        new Date("2026-08-04T04:00:00.000Z"),
+      );
+    });
+
+    it("names each fee and orders by subtotal descending", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeFeeBreakdown: true }),
+      );
+
+      expect(result.feeBreakdown).toEqual([
+        {
+          fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+          feeName: "Non-Attorney Exam Registration Fee",
+          qty: 1,
+          subtotal: 250,
+        },
+        {
+          fee: "PETITION_FILING_FEE",
+          feeName: "Petition Filing Fee",
+          qty: 2,
+          subtotal: 120,
+        },
+      ]);
+    });
+
+    it("keeps a zero row for every configured fee", async () => {
+      countsAndFeeBreakdown.mockResolvedValue({ counts, tallies: [] });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeFeeBreakdown: true }),
+      );
+
+      expect(result.feeBreakdown).toEqual([
+        {
+          fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+          feeName: "Non-Attorney Exam Registration Fee",
+          qty: 0,
+          subtotal: 0,
+        },
+        {
+          fee: "PETITION_FILING_FEE",
+          feeName: "Petition Filing Fee",
+          qty: 0,
+          subtotal: 0,
+        },
+      ]);
+    });
+
+    it("keeps revenue under a fee key the config no longer knows", async () => {
+      countsAndFeeBreakdown.mockResolvedValue({
+        counts,
+        tallies: [{ fee: "RETIRED_FEE", qty: 4, subtotal: 400 }],
+      });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeFeeBreakdown: true }),
+      );
+
+      expect(result.feeBreakdown?.[0]).toEqual({
+        fee: "RETIRED_FEE",
+        feeName: "RETIRED_FEE",
+        qty: 4,
+        subtotal: 400,
+      });
+      expect(result.feeBreakdown).toHaveLength(3);
+    });
+
+    it("sources the counts from the same statement as the tallies", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeFeeBreakdown: true }),
+      );
+
+      expect(countsInRange).not.toHaveBeenCalled();
+      expect(result.counts).toEqual({
+        all: 47,
+        success: 40,
+        failed: 4,
+        pending: 3,
+      });
+    });
+
+    it("works independently of includeTotals", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ includeFeeBreakdown: true }),
+      );
+
+      expect(totalsToDate).not.toHaveBeenCalled();
+      expect(result).not.toHaveProperty("totals");
+      expect(result.feeBreakdown).toHaveLength(2);
+    });
+
+    it("returns the breakdown on the first export page", async () => {
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 1, includeFeeBreakdown: true }),
+      );
+
+      expect(result.feeBreakdown).toHaveLength(2);
+    });
+
+    it("skips the breakdown on export pages after the first", async () => {
+      queryLog.mockResolvedValue({ rows: [failedRow as any] });
+
+      const result = await getTransactionLog(
+        appContext,
+        query({ export: true, page: 2, includeFeeBreakdown: true }),
+      );
+
+      expect(countsAndFeeBreakdown).not.toHaveBeenCalled();
+      expect(result.feeBreakdown).toBeUndefined();
+    });
   });
 });

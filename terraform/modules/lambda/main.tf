@@ -16,6 +16,11 @@ locals {
       handler = "getDetailsHandler.getDetailsHandler"
       timeout = var.payment_lambda_timeout
     }
+
+    validateClient = {
+      handler = "validateClientHandler.validateClientHandler"
+      timeout = 15
+    }
     testCert = {
       handler = "lambdaHandler.handler"
     }
@@ -34,6 +39,15 @@ locals {
     }
     getTransactionLog = {
       handler = "getTransactionLogHandler.getTransactionLogHandler"
+      timeout = 29
+    }
+    getRevenueSummary = {
+      handler = "getRevenueSummaryHandler.getRevenueSummaryHandler"
+      timeout = 29
+    }
+    cancelExpired = {
+      handler = "cancelExpiredHandler.cancelExpiredHandler"
+      timeout = 60
     }
     migrationRunner = {
       handler           = "lambdaHandler.migrationHandler"

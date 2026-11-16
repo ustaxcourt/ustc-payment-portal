@@ -1,6 +1,11 @@
-import { ConflictError } from "@errors/conflict";
+import type { DbPaymentMethod } from "@schemas/PaymentMethod.schema";
+import { ConflictError } from "@/errors/conflict";
 import { getKnex } from "./knex";
-import TransactionModel, { isStaleProcessingTransaction, type PaymentMethod } from "./TransactionModel";
+import { MAX_TOKEN_AGE_MS } from "@/config/constants";
+import TransactionModel, {
+  isExpiredInitiatedTransaction,
+  isStaleProcessingTransaction,
+} from "./TransactionModel";
 
 jest.mock("./knex", () => ({
   getKnex: jest.fn(),
@@ -13,11 +18,16 @@ const CHAINABLE_METHODS = [
   "join",
   "select",
   "where",
+  "andWhere",
+  "andWhereILike",
+  "whereRaw",
   "whereIn",
   "whereNot",
   "whereNotIn",
   "orderBy",
+  "orderByRaw",
   "limit",
+  "offset",
   "count",
   "groupBy",
   "patch",
@@ -30,13 +40,13 @@ const RESOLVING_METHODS = [
   "findById",
   "insertAndFetch",
   "patchAndFetchById",
+  "resultSize",
 ] as const;
 
-interface QueryBuilderStub
-  extends Record<
-    (typeof CHAINABLE_METHODS)[number] | (typeof RESOLVING_METHODS)[number],
-    jest.Mock
-  > {
+interface QueryBuilderStub extends Record<
+  (typeof CHAINABLE_METHODS)[number] | (typeof RESOLVING_METHODS)[number],
+  jest.Mock
+> {
   resolvesTo: unknown;
   then: (
     onFulfilled?: (value: unknown) => unknown,
@@ -101,6 +111,36 @@ describe("TransactionModel", () => {
         agencyTrackingId: "TEST-123",
       });
       expect(result.transactionAmount).toBeUndefined();
+    });
+
+    it("passes through a known paymentMethod value", () => {
+      const instance = new TransactionModel();
+      const result = instance.$parseDatabaseJson({ paymentMethod: "ach" });
+      expect(result.paymentMethod).toBe("ach");
+    });
+
+    it("leaves paymentMethod null when the column is null", () => {
+      const instance = new TransactionModel();
+      const result = instance.$parseDatabaseJson({ paymentMethod: null });
+      expect(result.paymentMethod).toBeNull();
+    });
+
+    it("leaves paymentMethod absent when the column is not in the row", () => {
+      const instance = new TransactionModel();
+      const result = instance.$parseDatabaseJson({
+        agencyTrackingId: "TEST-123",
+      });
+      expect(result.paymentMethod).toBeUndefined();
+    });
+
+    // The column is a plain varchar with no DB-level enum/CHECK constraint, so
+    // this is the only guard against a legacy row or manual edit silently
+    // reaching the API with a value outside the union.
+    it("throws when paymentMethod holds a value outside the known union", () => {
+      const instance = new TransactionModel();
+      expect(() =>
+        instance.$parseDatabaseJson({ paymentMethod: "venmo" }),
+      ).toThrow("Unknown payment method: venmo");
     });
   });
 
@@ -174,7 +214,7 @@ describe("TransactionModel", () => {
         clientName: "test-client",
         transactionReferenceId: "TXN-REF-001",
         transactionAmount: 60,
-        paymentMethod: "plastic_card" as PaymentMethod,
+        paymentMethod: "plastic_card" as DbPaymentMethod,
       };
       builder.insertAndFetch.mockResolvedValueOnce({
         ...data,
@@ -188,6 +228,71 @@ describe("TransactionModel", () => {
       expect(transaction.agencyTrackingId).toBe(data.agencyTrackingId);
       expect(transaction.transactionStatus).toBe("received");
       expect(transaction.paymentStatus).toBe("pending");
+    });
+  });
+
+  describe("cancelExpiredBatch", () => {
+    it("bounds the sweep, skips locked rows, and returns the cancelled ids", async () => {
+      const raw = jest
+        .fn()
+        .mockResolvedValue({ rows: [{ agency_tracking_id: "AGENCY-1" }] });
+      getKnexMock.mockResolvedValue({ raw } as never);
+
+      const cancelled = await TransactionModel.cancelExpiredBatch(500);
+
+      expect(cancelled).toEqual(["AGENCY-1"]);
+
+      const [sql, bindings] = raw.mock.calls[0];
+      expect(sql).toContain("FOR UPDATE SKIP LOCKED");
+      expect(sql).toContain("transaction_status = 'initiated'");
+      expect(sql).toContain("RETURNING agency_tracking_id");
+      // Seconds derived from the shared TTL constant, not a hard-coded '3 hours'.
+      expect(bindings).toEqual([MAX_TOKEN_AGE_MS / 1000, 500]);
+    });
+
+    it("returns an empty array when nothing is expired", async () => {
+      const raw = jest.fn().mockResolvedValue({ rows: [] });
+      getKnexMock.mockResolvedValue({ raw } as never);
+
+      await expect(TransactionModel.cancelExpiredBatch(500)).resolves.toEqual(
+        [],
+      );
+    });
+  });
+
+  describe("updateToCancelled", () => {
+    // No returnCode/returnDetail, and lastUpdatedAt is the trigger's business.
+    it("sets cancelled/failed and writes nothing else", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = 1;
+
+      const cancelled =
+        await TransactionModel.updateToCancelled("TEST-CANCEL-01");
+
+      expect(builder.patch).toHaveBeenCalledWith({
+        transactionStatus: "cancelled",
+        paymentStatus: "failed",
+      });
+      expect(cancelled).toBe(1);
+    });
+
+    // Guards the claimForProcessing race: a row that moved on must not be clobbered.
+    it("scopes the write to the id and an still-initiated row", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = 0;
+
+      const cancelled =
+        await TransactionModel.updateToCancelled("TEST-CANCEL-02");
+
+      expect(builder.where).toHaveBeenCalledWith(
+        "agencyTrackingId",
+        "TEST-CANCEL-02",
+      );
+      expect(builder.where).toHaveBeenCalledWith(
+        "transactionStatus",
+        "initiated",
+      );
+      expect(cancelled).toBe(0);
     });
   });
 
@@ -426,8 +531,7 @@ describe("TransactionModel", () => {
       };
       builder.findOne.mockResolvedValueOnce(row);
 
-      const found =
-        await TransactionModel.findByPaygovTrackingId("TRACK-123");
+      const found = await TransactionModel.findByPaygovTrackingId("TRACK-123");
 
       expect(builder.findOne).toHaveBeenCalledWith({
         paygovTrackingId: "TRACK-123",
@@ -495,9 +599,8 @@ describe("TransactionModel", () => {
       const builder = spyOnQuery();
       builder.findOne.mockResolvedValueOnce(undefined);
 
-      const found = await TransactionModel.findByPaygovToken(
-        "NON-EXISTENT-TOKEN",
-      );
+      const found =
+        await TransactionModel.findByPaygovToken("NON-EXISTENT-TOKEN");
       expect(found).toBeUndefined();
     });
   });
@@ -538,7 +641,10 @@ describe("TransactionModel", () => {
 
     it("returns a transaction when status is pending/processed and referenceId matches", async () => {
       const builder = spyOnQuery();
-      const row = { agencyTrackingId: "TEST-789", transactionReferenceId: referenceId };
+      const row = {
+        agencyTrackingId: "TEST-789",
+        transactionReferenceId: referenceId,
+      };
       builder.first.mockResolvedValueOnce(row);
 
       const found = await TransactionModel.findPendingOrProcessedByReferenceId(
@@ -618,39 +724,184 @@ describe("TransactionModel", () => {
     });
   });
 
-  describe("findInFlightByReferenceId", () => {
-    it("filters by clientName, transactionReferenceId and the initiated/processing statuses", async () => {
+  describe("findByReferenceIdAndTransactionStatus", () => {
+    const clientName = "test-client";
+    const referenceId = "TXN-REF-001";
+
+    it("filters by clientName, transactionReferenceId, and the given transactionStatus list", async () => {
       const builder = spyOnQuery();
       const row = { agencyTrackingId: "TEST-INFLIGHT" };
       builder.first.mockResolvedValueOnce(row);
 
-      const found = await TransactionModel.findInFlightByReferenceId(
-        "test-client",
-        "TXN-REF-001",
+      const found = await TransactionModel.findByReferenceIdAndTransactionStatus(
+        clientName,
+        referenceId,
+        ["initiated", "processing", "pending", "processed"],
       );
 
-      expect(builder.where).toHaveBeenCalledWith("clientName", "test-client");
+      expect(builder.where).toHaveBeenCalledWith("clientName", clientName);
       expect(builder.where).toHaveBeenCalledWith(
         "transactionReferenceId",
-        "TXN-REF-001",
+        referenceId,
       );
       expect(builder.whereIn).toHaveBeenCalledWith("transactionStatus", [
         "initiated",
         "processing",
+        "pending",
+        "processed",
       ]);
       expect(found).toBe(row);
     });
 
-    it("returns undefined when there is no in-flight attempt", async () => {
+    it("passes the caller's transactionStatus list through as-is rather than hardcoding one", async () => {
       const builder = spyOnQuery();
       builder.first.mockResolvedValueOnce(undefined);
 
-      const found = await TransactionModel.findInFlightByReferenceId(
-        "test-client",
+      await TransactionModel.findByReferenceIdAndTransactionStatus(
+        clientName,
+        referenceId,
+        ["failed"],
+      );
+
+      expect(builder.whereIn).toHaveBeenCalledWith("transactionStatus", [
+        "failed",
+      ]);
+    });
+
+    it("orders by createdAt ascending so the oldest matching attempt wins", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+
+      await TransactionModel.findByReferenceIdAndTransactionStatus(
+        clientName,
+        referenceId,
+        ["initiated"],
+      );
+
+      expect(builder.orderBy).toHaveBeenCalledWith("createdAt", "asc");
+    });
+
+    it("returns undefined when there is no matching attempt", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+
+      const found = await TransactionModel.findByReferenceIdAndTransactionStatus(
+        clientName,
         "NO-MATCH",
+        ["initiated", "processing", "pending", "processed"],
       );
 
       expect(found).toBeUndefined();
+    });
+  });
+
+  describe("queryLog", () => {
+    const baseFilter = {
+      from: new Date("2026-08-01T00:00:00Z"),
+      to: new Date("2026-08-02T00:00:00Z"),
+      sort: "lastUpdatedAt" as const,
+      order: "desc" as const,
+      limit: 50,
+      offset: 0,
+    };
+
+    it("filters by timeframe only when no optional filters are given", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog(baseFilter);
+
+      expect(builder.where).toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        ">=",
+        baseFilter.from,
+      );
+      expect(builder.andWhere).toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        "<",
+        baseFilter.to,
+      );
+      expect(builder.andWhere).not.toHaveBeenCalledWith(
+        "paymentStatus",
+        expect.anything(),
+      );
+      expect(builder.andWhereILike).not.toHaveBeenCalled();
+    });
+
+    it("filters by status, fee, and payment method when given", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({
+        ...baseFilter,
+        status: "failed",
+        fee: "PETITION_FILING_FEE",
+        paymentMethod: "ach" as DbPaymentMethod,
+      });
+
+      expect(builder.andWhere).toHaveBeenCalledWith("paymentStatus", "failed");
+      expect(builder.andWhere).toHaveBeenCalledWith(
+        "fee",
+        "PETITION_FILING_FEE",
+      );
+      expect(builder.andWhere).toHaveBeenCalledWith("paymentMethod", "ach");
+    });
+
+    it("filters by transaction status when given", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({
+        ...baseFilter,
+        transactionStatus: "processed",
+      });
+
+      expect(builder.andWhere).toHaveBeenCalledWith(
+        "transactionStatus",
+        "processed",
+      );
+    });
+
+    it("matches a metadata key with a case-insensitive substring, escaping LIKE wildcards", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({
+        ...baseFilter,
+        metadataSearch: { key: "docketNumber", value: "50%_x" },
+      });
+
+      expect(builder.whereRaw).toHaveBeenCalledWith("metadata ->> ? ILIKE ?", [
+        "docketNumber",
+        "%50\\%\\_x%",
+      ]);
+    });
+
+    it("omits the metadata predicate when no metadata search is given", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({ ...baseFilter });
+
+      expect(builder.whereRaw).not.toHaveBeenCalled();
+    });
+
+    it("skips the total query when withTotal is false", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog({ ...baseFilter, withTotal: false });
+
+      expect(builder.resultSize).not.toHaveBeenCalled();
+    });
+
+    it("runs the total query when withTotal is not false", async () => {
+      const builder = spyOnQuery();
+      builder.resolvesTo = [];
+
+      await TransactionModel.queryLog(baseFilter);
+
+      expect(builder.resultSize).toHaveBeenCalled();
     });
   });
 
@@ -683,5 +934,61 @@ describe("TransactionModel", () => {
       const result = isStaleProcessingTransaction(transaction);
       expect(result).toBe(false);
     });
+  });
+
+  describe("isExpiredInitiatedTransaction", () => {
+    const agoIso = (ms: number) => new Date(Date.now() - ms).toISOString();
+
+    it("returns true for an 'initiated' transaction created past the token TTL", () => {
+      const transaction = {
+        transactionStatus: "initiated",
+        createdAt: agoIso(MAX_TOKEN_AGE_MS + 1000),
+      } as TransactionModel;
+
+      expect(isExpiredInitiatedTransaction(transaction)).toBe(true);
+    });
+
+    it("returns false for an 'initiated' transaction created within the token TTL", () => {
+      const transaction = {
+        transactionStatus: "initiated",
+        createdAt: agoIso(MAX_TOKEN_AGE_MS - 1000),
+      } as TransactionModel;
+
+      expect(isExpiredInitiatedTransaction(transaction)).toBe(false);
+    });
+
+    // Date.now() is frozen: reading it twice can straddle a millisecond and flip the result.
+    it("returns false exactly at the TTL boundary", () => {
+      const now = Date.now();
+      jest.spyOn(Date, "now").mockReturnValue(now);
+      const transaction = {
+        transactionStatus: "initiated",
+        createdAt: new Date(now - MAX_TOKEN_AGE_MS).toISOString(),
+      } as TransactionModel;
+
+      expect(isExpiredInitiatedTransaction(transaction)).toBe(false);
+    });
+
+    it("ignores lastUpdatedAt when deciding expiry", () => {
+      const transaction = {
+        transactionStatus: "initiated",
+        createdAt: agoIso(MAX_TOKEN_AGE_MS + 1000),
+        lastUpdatedAt: new Date().toISOString(),
+      } as TransactionModel;
+
+      expect(isExpiredInitiatedTransaction(transaction)).toBe(true);
+    });
+
+    it.each(["received", "processing", "processed", "failed", "pending"])(
+      "returns false for a '%s' transaction however old",
+      (transactionStatus) => {
+        const transaction = {
+          transactionStatus,
+          createdAt: agoIso(MAX_TOKEN_AGE_MS * 10),
+        } as TransactionModel;
+
+        expect(isExpiredInitiatedTransaction(transaction)).toBe(false);
+      },
+    );
   });
 });

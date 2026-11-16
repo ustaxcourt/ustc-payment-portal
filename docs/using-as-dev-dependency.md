@@ -8,7 +8,7 @@ every start.
 ## Prerequisites
 
 - **Docker** must be installed and running (`docker --version`).
-- **Node.js** `>=24.18.0 <25.0.0` (match the portal's engine requirement).
+- **Node.js** `>=24.20.0 <25.0.0` (match the portal's engine requirement).
 
 ## Install
 
@@ -29,7 +29,7 @@ That's it. No `.env` file required.
 
 What happens under the hood:
 
-1. Postgres starts in Docker with a named volume (`payment_portal_dev_db`).
+1. Postgres starts in Docker with a named volume (`payment_portal_dev_db_pg18`).
 2. The application schema is dropped and recreated (`DROP SCHEMA public CASCADE`).
 3. Knex migrations run to the latest version.
 4. Reference-data seeds (fee definitions) are inserted.
@@ -105,7 +105,7 @@ Postgres is healthy (`docker ps`).
 
 ### Engine mismatch
 
-`@ustaxcourt/payment-portal` requires Node `>=24.18.0 <25.0.0`. Run
+`@ustaxcourt/payment-portal` requires Node `>=24.20.0 <25.0.0`. Run
 `node --version` to confirm. Use `nvm` or `volta` if you need to switch.
 
 ### `dist/devServer.js` not found

@@ -454,7 +454,9 @@ resource "aws_iam_policy" "deployer_rds" {
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:db:*-pr-*-db",
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:subgrp:*",
           "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:snapshot:*",
-          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:pg:${var.lambda_name_prefix}-*"
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:pg:${var.lambda_name_prefix}-*",
+          # A major upgrade moves the instance onto RDS's default option group for the new major.
+          "arn:aws:rds:${local.aws_region}:${data.aws_caller_identity.current.account_id}:og:default:postgres-*"
         ]
       },
       {

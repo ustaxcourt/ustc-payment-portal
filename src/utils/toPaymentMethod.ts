@@ -1,6 +1,8 @@
-import { PaymentMethod } from "../db/TransactionModel";
+import type { DbPaymentMethod } from "@schemas/PaymentMethod.schema";
 
-export const toPaymentMethod = (paymentType: string): PaymentMethod | null => {
+export const toPaymentMethod = (
+  paymentType: string,
+): DbPaymentMethod | null => {
   switch (paymentType.toUpperCase()) {
     case "PLASTIC_CARD":
       return "plastic_card";

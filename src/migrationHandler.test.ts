@@ -23,7 +23,7 @@ import {
   SecretsManagerClient,
 } from "@aws-sdk/client-secrets-manager";
 import Knex from "knex";
-import { migrationHandler } from "./migrationHandler";
+import { getApplicationKnex, migrationHandler } from "./migrationHandler";
 
 const mockKnex = Knex as unknown as jest.Mock;
 const mockSecretsManagerClient = SecretsManagerClient as unknown as jest.Mock;
@@ -73,7 +73,10 @@ describe("migrationHandler", () => {
     mockLatest = jest.fn().mockResolvedValue([3, []]);
     mockRollback = jest
       .fn()
-      .mockResolvedValue([3, ["20260629120000_add_processing_transaction_status"]]);
+      .mockResolvedValue([
+        3,
+        ["20260629120000_add_processing_transaction_status"],
+      ]);
     mockForceFreeMigrationsLock = jest.fn().mockResolvedValue(undefined);
     mockCurrentVersion = jest.fn().mockResolvedValue("20260305195503_init_db");
     mockSeedRun = jest.fn().mockResolvedValue(undefined);
@@ -198,6 +201,33 @@ describe("migrationHandler", () => {
     });
   });
 
+  it("analyze rebuilds planner statistics and returns the server version", async () => {
+    mockRaw
+      .mockResolvedValueOnce({ rows: [{ serverVersion: "18.6" }] })
+      .mockResolvedValueOnce(undefined);
+
+    const result = await migrationHandler({ command: "analyze" });
+
+    expect(mockRaw).toHaveBeenNthCalledWith(2, "ANALYZE");
+    expect(mockLatest).not.toHaveBeenCalled();
+    expect(mockDestroy).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      statusCode: 200,
+      body: JSON.stringify({ serverVersion: "18.6" }),
+    });
+  });
+
+  it("destroys the knex connection when analyze fails", async () => {
+    mockRaw
+      .mockResolvedValueOnce({ rows: [{ serverVersion: "18.6" }] })
+      .mockRejectedValueOnce(new Error("analyze failed"));
+
+    await expect(migrationHandler({ command: "analyze" })).rejects.toThrow(
+      "analyze failed",
+    );
+    expect(mockDestroy).toHaveBeenCalledTimes(1);
+  });
+
   it("seed runs seed files and returns success", async () => {
     const result = await migrationHandler({ command: "seed" });
 
@@ -210,7 +240,10 @@ describe("migrationHandler", () => {
   });
 
   it("rollback with confirm:true rolls back the last batch", async () => {
-    const result = await migrationHandler({ command: "rollback", confirm: true });
+    const result = await migrationHandler({
+      command: "rollback",
+      confirm: true,
+    });
 
     expect(mockRollback).toHaveBeenCalledTimes(1);
     expect(mockRollback).toHaveBeenCalledWith(undefined, false);
@@ -229,7 +262,10 @@ describe("migrationHandler", () => {
   it("rollback signals a no-op when there is nothing to revert", async () => {
     mockRollback.mockResolvedValueOnce([0, []]);
 
-    const result = await migrationHandler({ command: "rollback", confirm: true });
+    const result = await migrationHandler({
+      command: "rollback",
+      confirm: true,
+    });
 
     expect(result).toEqual({
       statusCode: 200,
@@ -456,6 +492,165 @@ describe("migrationHandler", () => {
     });
   });
 
+  describe("debug-transactions", () => {
+    it("returns transaction summary information", async () => {
+      mockRaw
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              count: "35000",
+              minCreatedAt: "2024-10-01T00:00:00.000Z",
+              maxCreatedAt: "2026-09-08T12:00:00.000Z",
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              year: 2024,
+              count: "1000",
+              total: "60000",
+            },
+            {
+              year: 2025,
+              count: "34000",
+              total: "2040000",
+            },
+          ],
+        });
+
+      const result = await migrationHandler({
+        command: "debug-transactions",
+      });
+
+      expect(mockRaw).toHaveBeenCalledWith(
+        expect.stringContaining("FROM transactions"),
+      );
+
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify(
+          {
+            database: "paymentportal_pr_99",
+            summary: {
+              count: "35000",
+              minCreatedAt: "2024-10-01T00:00:00.000Z",
+              maxCreatedAt: "2026-09-08T12:00:00.000Z",
+            },
+            yearly: [
+              {
+                year: 2024,
+                count: "1000",
+                total: "60000",
+              },
+              {
+                year: 2025,
+                count: "34000",
+                total: "2040000",
+              },
+            ],
+          },
+          null,
+          2,
+        ),
+      });
+    });
+
+    it("destroys the knex connection when transaction diagnostics fail", async () => {
+      mockRaw.mockRejectedValueOnce(
+        new Error('relation "transactions" does not exist'),
+      );
+
+      await expect(
+        migrationHandler({ command: "debug-transactions" }),
+      ).rejects.toThrow('relation "transactions" does not exist');
+
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("getApplicationKnex connects to the application database", async () => {
+    await getApplicationKnex();
+
+    expect(mockKnex).toHaveBeenCalledWith(
+      expect.objectContaining({
+        client: "pg",
+        connection: expect.objectContaining({
+          host: "db.example.us-east-1.rds.amazonaws.com",
+          port: 5432,
+          user: "db_user",
+          password: "db_password",
+          database: "paymentportal_pr_99",
+        }),
+        pool: {
+          min: 0,
+          max: 1,
+          acquireTimeoutMillis: 10000,
+        },
+      }),
+    );
+  });
+
+  describe("debug-tables", () => {
+    it("returns the list of tables in the database", async () => {
+      mockRaw.mockResolvedValueOnce({
+        rows: [
+          {
+            schemaname: "public",
+            tablename: "transactions",
+          },
+          {
+            schemaname: "public",
+            tablename: "knex_migrations",
+          },
+        ],
+      });
+
+      const result = await migrationHandler({
+        command: "debug-tables",
+      });
+
+      expect(mockRaw).toHaveBeenCalledWith(
+        expect.stringContaining("pg_tables"),
+      );
+
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+
+      expect(result).toEqual({
+        statusCode: 200,
+        body: JSON.stringify(
+          {
+            database: "paymentportal_pr_99",
+            tables: [
+              {
+                schemaname: "public",
+                tablename: "transactions",
+              },
+              {
+                schemaname: "public",
+                tablename: "knex_migrations",
+              },
+            ],
+          },
+          null,
+          2,
+        ),
+      });
+    });
+
+    it("destroys the knex connection when listing tables fails", async () => {
+      mockRaw.mockRejectedValueOnce(new Error("list tables failed"));
+
+      await expect(
+        migrationHandler({ command: "debug-tables" }),
+      ).rejects.toThrow("list tables failed");
+
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("deprovision-user", () => {
     it("returns a no-op response when PR_USER_SECRET_ARN is not set", async () => {
       delete process.env.PR_USER_SECRET_ARN;
@@ -540,7 +735,8 @@ describe("migrationHandler", () => {
       expect(result).toEqual({
         statusCode: 200,
         body: JSON.stringify({
-          message: 'Role "pr_user_pr_99" does not exist; nothing to deprovision',
+          message:
+            'Role "pr_user_pr_99" does not exist; nothing to deprovision',
         }),
       });
     });
@@ -828,12 +1024,11 @@ describe("migrationHandler", () => {
     it("continues past individual drop failures and reports them", async () => {
       mockRaw
         .mockResolvedValueOnce({
-          rows: [
-            { rolname: "pr_user_pr_10" },
-            { rolname: "pr_user_pr_20" },
-          ],
+          rows: [{ rolname: "pr_user_pr_10" }, { rolname: "pr_user_pr_20" }],
         })
-        .mockRejectedValueOnce(new Error("role pr_user_pr_10 cannot be dropped"))
+        .mockRejectedValueOnce(
+          new Error("role pr_user_pr_10 cannot be dropped"),
+        )
         .mockResolvedValueOnce(undefined);
 
       const result = await migrationHandler({

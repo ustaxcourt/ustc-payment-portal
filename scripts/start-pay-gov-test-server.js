@@ -7,17 +7,8 @@ const { wireChild } = require("./lib/wireChild");
 const log = createLogger("start:pay-gov-test-server");
 const PACKAGE_NAME = "@ustaxcourt/ustc-pay-gov-test-server";
 
-const DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN = "development-token";
-
 function resolveTestServerEntry() {
   return require.resolve(`${PACKAGE_NAME}/dist/server.js`);
-}
-
-function resolveAccessToken(env = process.env) {
-  return (
-    env.PAY_GOV_TEST_SERVER_ACCESS_TOKEN ||
-    DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN
-  );
 }
 
 function resolvePayGovNodeEnv(env = process.env) {
@@ -30,7 +21,6 @@ function startPayGovTestServer() {
     3366,
     "PAY_GOV_TEST_SERVER_PORT",
   );
-  const token = resolveAccessToken();
   const payGovNodeEnv = resolvePayGovNodeEnv();
 
   const entry = resolveTestServerEntry();
@@ -46,7 +36,8 @@ function startPayGovTestServer() {
     env: {
       ...process.env,
       PORT: String(port),
-      ACCESS_TOKEN: token,
+      // The test server only skips its bearer-token check when APP_ENV=local.
+      APP_ENV: "local",
       NODE_ENV: payGovNodeEnv,
     },
   });
@@ -64,8 +55,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  DEFAULT_PAY_GOV_TEST_SERVER_ACCESS_TOKEN,
-  resolveAccessToken,
   resolvePayGovNodeEnv,
   resolveTestServerEntry,
   startPayGovTestServer,

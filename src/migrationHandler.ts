@@ -1,11 +1,11 @@
+import fs from "node:fs";
+import path from "node:path";
 import {
   GetSecretValueCommand,
   SecretsManagerClient,
 } from "@aws-sdk/client-secrets-manager";
-import fs from "fs";
 import Knex from "knex";
 import { knexSnakeCaseMappers } from "objection";
-import path from "path";
 import { parseRdsEndpoint } from "./db/getRdsCredentials";
 
 type Command =
@@ -20,8 +20,11 @@ type Command =
   | "unlock"
   | "seed"
   | "verify"
+  | "analyze"
   | "gc-dbs"
-  | "gc-roles";
+  | "gc-roles"
+  | "debug-transactions"
+  | "debug-tables";
 
 type MigrationHandlerEvent = {
   command?: Command;
@@ -90,6 +93,9 @@ const getLocalConnection = (): DatabaseConnection => {
     throw new Error(`Invalid DB_PORT: ${DB_PORT}`);
   }
 
+  console.log(
+    `Connecting to local database at ${DB_HOST}:${DB_PORT} with user ${DB_USER}`,
+  );
   return {
     host: DB_HOST,
     port,
@@ -118,8 +124,9 @@ const getDatabaseConnection = async (): Promise<DatabaseConnection> => {
   if (!secretArn || !endpoint) {
     throw new Error(
       `Misconfiguration: RDS_SECRET_ARN and RDS_ENDPOINT must both be set or both be unset. ` +
-      `RDS_SECRET_ARN=${secretArn ? "set" : "unset"}, RDS_ENDPOINT=${endpoint ? "set" : "unset"
-      }`,
+        `RDS_SECRET_ARN=${secretArn ? "set" : "unset"}, RDS_ENDPOINT=${
+          endpoint ? "set" : "unset"
+        }`,
     );
   }
 
@@ -166,6 +173,18 @@ const getMaintenanceKnex = async (): Promise<ReturnType<typeof Knex>> => {
   });
 };
 
+export const getApplicationKnex = async (): Promise<
+  ReturnType<typeof Knex>
+> => {
+  const connection = await getDatabaseConnection();
+
+  return Knex({
+    client: "pg",
+    connection,
+    pool: { min: 0, max: 1, acquireTimeoutMillis: 10000 },
+  });
+};
+
 const getMigrationsDirectory = (): string => {
   const bundledDirectory = path.join(__dirname, "db", "migrations");
 
@@ -193,6 +212,44 @@ const getSeedsDirectory = (): string => {
   return path.join(__dirname, "..", "db", "seeds");
 };
 
+export const debugTransactions = async () => {
+  const knexInstance = await getApplicationKnex();
+
+  try {
+    const summary = await knexInstance.raw(`
+      SELECT
+        COUNT(*)::text AS count,
+        MIN(created_at)::text AS "minCreatedAt",
+        MAX(created_at)::text AS "maxCreatedAt"
+      FROM transactions
+    `);
+    const yearly = await knexInstance.raw(`
+      SELECT
+        EXTRACT(YEAR FROM created_at) AS year,
+        COUNT(*)::text AS count,
+        COALESCE(SUM(transaction_amount), 0)::text AS total
+      FROM transactions
+      GROUP BY year
+      ORDER BY year
+    `);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify(
+        {
+          database: process.env.RDS_DB_NAME,
+          summary: summary.rows[0],
+          yearly: yearly.rows,
+        },
+        null,
+        2,
+      ),
+    };
+  } finally {
+    await knexInstance.destroy();
+  }
+};
+
 const provisionUser = async (): Promise<MigrationHandlerResult> => {
   const prUserSecretArn = process.env.PR_USER_SECRET_ARN;
   if (!prUserSecretArn) {
@@ -207,9 +264,8 @@ const provisionUser = async (): Promise<MigrationHandlerResult> => {
   const dbName = process.env.RDS_DB_NAME;
   if (!dbName) throw new Error("RDS_DB_NAME is not set");
 
-  const { username: prRole, password: prPassword } = await getRdsSecret(
-    prUserSecretArn,
-  );
+  const { username: prRole, password: prPassword } =
+    await getRdsSecret(prUserSecretArn);
 
   const maintenanceKnex = await getMaintenanceKnex();
   try {
@@ -504,6 +560,35 @@ const gcRoles = async (
   return { statusCode: 200, body: JSON.stringify({ dropped, failed }) };
 };
 
+export const debugTables = async () => {
+  const knexInstance = await getApplicationKnex();
+
+  try {
+    const result = await knexInstance.raw(`
+      SELECT
+        schemaname,
+        tablename
+      FROM pg_tables
+      WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+      ORDER BY schemaname, tablename
+    `);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify(
+        {
+          database: process.env.RDS_DB_NAME,
+          tables: result.rows,
+        },
+        null,
+        2,
+      ),
+    };
+  } finally {
+    await knexInstance.destroy();
+  }
+};
+
 // THIS WILL ONLY BE FOR CI/CD USAGE AND SHOULD NOT BE EXPOSED IN API GATEWAY
 // If we ever write integration tests for this Lambda or any of the dashboard endpoints,
 // we will need to setup PR ephemeral environments to spin up a RDS instance, otherwise the tests
@@ -514,7 +599,8 @@ export const migrationHandler = async (
   const command: Command = event?.command ?? "migrate";
 
   console.log(
-    `[migrationHandler] command=${command} db=${process.env.RDS_DB_NAME ?? "(local)"
+    `[migrationHandler] command=${command} db=${
+      process.env.RDS_DB_NAME ?? "(local)"
     }`,
   );
 
@@ -540,22 +626,24 @@ export const migrationHandler = async (
   }
   if (command === "show-users") return showUsers();
   if (command === "show-databases") return showDatabases();
-
+  if (command === "debug-transactions") return debugTransactions();
 
   const dbLabel = process.env.RDS_DB_NAME ?? "(local)";
   if (command === "rollback" && event?.confirm !== true) {
     throw new Error(
       `rollback requires confirm:true — refusing to roll back the last batch on ` +
-      `"${dbLabel}" without explicit confirmation`,
+        `"${dbLabel}" without explicit confirmation`,
     );
   }
   if (command === "unlock" && event?.confirm !== true) {
     throw new Error(
       `unlock requires confirm:true — refusing to force-free the migration lock on ` +
-      `"${dbLabel}" without explicit confirmation. Confirm the interrupted run is ` +
-      `actually dead first; unlocking a live run risks corruption.`,
+        `"${dbLabel}" without explicit confirmation. Confirm the interrupted run is ` +
+        `actually dead first; unlocking a live run risks corruption.`,
     );
   }
+
+  if (command === "debug-tables") return debugTables();
 
   const connection = await getDatabaseConnection();
 
@@ -576,8 +664,32 @@ export const migrationHandler = async (
       };
     }
 
+    if (command === "analyze") {
+      // A major-version upgrade does not carry planner statistics over, so
+      // queries run on default estimates until ANALYZE rebuilds them.
+      const result = await knex.raw<{ rows: { serverVersion: string }[] }>(
+        `SELECT current_setting('server_version') AS "serverVersion"`,
+      );
+      await knex.raw("ANALYZE");
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ serverVersion: result.rows[0].serverVersion }),
+      };
+    }
+
     if (command === "seed") {
-      await knex.seed.run({ directory: getSeedsDirectory() });
+      const directory = getSeedsDirectory();
+
+      console.log("Database", {
+        database: connection.database,
+        host: connection.host,
+        user: connection.user,
+      });
+      console.log("Seed directory:", directory);
+      console.log("Seed files:", fs.readdirSync(directory));
+
+      await knex.seed.run({ directory });
+
       return {
         statusCode: 200,
         body: JSON.stringify({ message: "Seeds completed" }),
@@ -587,7 +699,10 @@ export const migrationHandler = async (
     if (command === "rollback") {
       // Roll back only the last batch (= the most recent deploy that applied
       // migrations). `false` disables all-history rollback intentionally.
-      const [batchNo, migrations] = await knex.migrate.rollback(undefined, false);
+      const [batchNo, migrations] = await knex.migrate.rollback(
+        undefined,
+        false,
+      );
       // Knex returns [0, []] when there is nothing to revert. Signal that no-op
       // explicitly rather than leaving the caller to infer it from an empty list.
       const message =
@@ -598,8 +713,8 @@ export const migrationHandler = async (
         migrations.length === 0
           ? `[migrationHandler] rollback: nothing to revert`
           : `[migrationHandler] rollback: reverted batch ${batchNo} — ${migrations.join(
-            ", ",
-          )}`,
+              ", ",
+            )}`,
       );
       return {
         statusCode: 200,

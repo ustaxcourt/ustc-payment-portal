@@ -29,7 +29,7 @@ This design ensures:
 
 - **`fee`** — Stable client-facing identifier for a fee type (e.g., `PETITION_FILING_FEE`). This is what clients send in the `fee` field of API requests, what is stored in the `transactions.fee` column, and what keys the `staticFees` object in [`src/config/fees.ts`](../../../src/config/fees.ts). Shared across all versions of a fee. Internally typed as `FeeKey` in schemas / permissions.
 - **`tcsAppId`** — Pay.gov application identifier (e.g., `TCSUSTAXCOURTANAEF`). Resolved from the active fee version using the `fee` provided by the client.
-- **`activationDate`** — When a fee version becomes active. The Portal always uses the most recent version whose `activationDate` is `<=` the reference date (see "Version resolution" below).
+- **`activationDate`** — The date and time when a fee version becomes effective for resolution. The Portal uses the most recent version whose `activationDate` is `<=` the reference date (see "Version resolution" below). For the initial fee catalog, activation dates are aligned with the beginning of the supported fiscal-year reporting period (2024-10-01) to ensure historical transactions resolve to a valid fee configuration throughout the seeded dataset.
 - **`isVariable`** — Boolean indicating whether the fee amount is client-provided (`true`) or portal-determined (`false`)
 - **metadata** — Business context provided by clients to identify transaction type
 - **Payment Portal (PP)** — This system
@@ -176,9 +176,13 @@ export type FeeVersion = {
 export const staticFees: StaticFees = {
   PETITION_FILING_FEE: {
     name: "Petition Filing Fee",
-    tcsAppId: "TCSUSTAXCOURTPETITION",
+    tcsAppId: "USTAXCOURTPETITION",
     versions: [
-      { isVariable: false, amount: 60, activationDate: "2026-03-05T00:00:00Z" },
+      {
+        isVariable: false,
+        amount: 60,
+        activationDate: "2024-10-01T00:00:00Z",
+      },
       // Add a new entry with a future `activationDate` to change the amount.
     ],
     description: "Fee charged for filing a petition with the U.S. Tax Court.",
@@ -190,7 +194,7 @@ export const staticFees: StaticFees = {
       {
         isVariable: false,
         amount: 250,
-        activationDate: "2026-03-05T00:00:00Z",
+        activationDate: "2024-10-01T00:00:00Z",
       },
     ],
     description:
@@ -198,6 +202,8 @@ export const staticFees: StaticFees = {
   },
 };
 ```
+
+**Note:** The initial fee versions are effective as of the start of the supported fiscal-year reporting period (2024-10-01). This allows historical transaction data and seeded datasets within the reporting range to resolve fee definitions consistently. Future fee changes should be modeled by appending additional versions with later `activationDate` values rather than modifying existing versions.
 
 ### Resolution API
 
@@ -209,7 +215,7 @@ export const getActiveFee = (
 ```
 
 - `fee` — the stable key (e.g. `"PETITION_FILING_FEE"`)
-- `date` — the point in time to resolve against. Callers pass the transaction's `createdAt` so historical rows always reflect the version that was in effect **when the transaction was created**, even after a future version has activated.
+- `date` — the point in time to resolve against when versioned fee attributes must be evaluated. This is primarily used for fee validation and amount resolution because fee versions are selected by activationDate.
 - Returns a merged `ActiveFee` (definition fields + the winning `FeeVersion` fields + the echoed `fee` key).
 - Throws `FeeNotFoundError` if the key is unknown, the date is invalid, or no version has activated by `date`; throws `FeeConfigurationError` when a configured fee definition/version is malformed.
 
@@ -217,13 +223,13 @@ The resolution rule: filter versions with `activationDate <= date`, pick the one
 
 **Example (post-refactor):**
 
-| fee                                 | version | tcsAppId                | isVariable | amount | activationDate                 |
-| ----------------------------------- | ------- | ----------------------- | ---------- | ------ | ------------------------------ |
-| `PETITION_FILING_FEE`               | v1      | `TCSUSTAXCOURTPETITION` | false      | 60.00  | 2026-03-05T00:00:00Z           |
-| `PETITION_FILING_FEE`               | v2      | `TCSUSTAXCOURTPETITION` | false      | 70.00  | 2026-06-01T00:00:00Z (planned) |
-| `NONATTORNEY_EXAM_REGISTRATION_FEE` | v1      | `TCSUSTAXCOURTANAEF`    | false      | 250.00 | 2026-03-05T00:00:00Z           |
+| fee                                 | version | tcsAppId             | isVariable | amount | activationDate                 |
+| ----------------------------------- | ------- | -------------------- | ---------- | ------ | ------------------------------ |
+| `PETITION_FILING_FEE`               | v1      | `USTAXCOURTPETITION` | false      | 60.00  | 2024-10-01T00:00:00Z           |
+| `NONATTORNEY_EXAM_REGISTRATION_FEE` | v1      | `TCSUSTAXCOURTANAEF` | false      | 250.00 | 2024-10-01T00:00:00Z           |
+| `PETITION_FILING_FEE`               | v2      | `USTAXCOURTPETITION` | false      | 70.00  | 2026-06-01T00:00:00Z (planned) |
 
-**Amount derivation on dashboard reads:** `TransactionModel.getAll` / `getByPaymentStatus` call `getActiveFee(row.fee, row.createdAt)` and hydrate `transactionAmount` and `feeName` from the result. This keeps historical rows accurate without persisting the amount per transaction.
+**Dashboard reads:** Transaction log queries use the persisted `transactionAmount` stored on each transaction record. Fee display names are hydrated from the fee definition via `staticFees` because `name` is definition-level data and is not versioned. Historical fee resolution via `getActiveFee(fee, date)` remains relevant for versioned attributes such as `amount`, `isVariable`, and `activationDate`.
 
 ### Amount Resolution Logic
 
@@ -282,15 +288,15 @@ After authorization is confirmed, the Payment Portal constructs the SOAP request
 
 ### Request Payload
 
-| Field                | Source                                                  | Example                 |
-| -------------------- | ------------------------------------------------------- | ----------------------- |
-| `tcs_app_id`         | `ActiveFee.tcsAppId` (from `getActiveFee(fee)`)         | `TCSUSTAXCOURTPETITION` |
-| `agency_tracking_id` | Generated by Payment Portal                             | `550e8400...`           |
-| `transaction_amount` | `ActiveFee.amount` (fixed) OR client request (variable) | `60.00`                 |
+| Field                | Source                                                  | Example              |
+| -------------------- | ------------------------------------------------------- | -------------------- |
+| `tcs_app_id`         | `ActiveFee.tcsAppId` (from `getActiveFee(fee)`)         | `USTAXCOURTPETITION` |
+| `agency_tracking_id` | Generated by Payment Portal                             | `550e8400...`        |
+| `transaction_amount` | `ActiveFee.amount` (fixed) OR client request (variable) | `60.00`              |
 
 ```xml
 <startOnlineCollection>
-  <tcs_app_id>TCSUSTAXCOURTPETITION</tcs_app_id>
+  <tcs_app_id>USTAXCOURTPETITION</tcs_app_id>
   <agency_tracking_id>550e8400e29b41d4a716446655440000</agency_tracking_id>
   <transaction_amount>60.00</transaction_amount>
   <url_success>https://dawson.ustaxcourt.gov/payment/success</url_success>
@@ -362,7 +368,8 @@ Response Hydration: feeName, transactionAmount, tcsAppId (for Pay.gov refresh) f
 **Why not migrations any more:**
 
 - The catalog is small (a handful of court fees), rarely changes, and every change is a coordinated PP + client-permissions rollout anyway. Keeping it in code eliminates a hot DB round-trip on every payment operation and removes the previous foot-gun where a `fees` row could drift from the code that referenced it.
-- Historical audit is preserved by the `versions` array — old versions are never removed, so `getActiveFee(fee, oldRow.createdAt)` still returns exactly the version that was in effect when the transaction was created.
+- Historical audit is preserved by the `versions` array — old versions are never removed, so `getActiveFee(fee, oldRow.createdAt)` resolves the fee version associated with the transaction's creation date.
+- Fee version activation dates determine both production fee resolution and historical reporting behavior. Transactions created within the supported reporting range resolve against the version definitions present in the catalog at the time of lookup.
 
 **Versioning Strategy:**
 
@@ -408,7 +415,7 @@ export const staticFees: StaticFees = {
 
 To update an existing fee's amount, **append** a new `FeeVersion` with a future `activationDate` — do not mutate the existing version.
 
-**Important:** The `tcsAppId` value must match the TCS application configured in Pay.gov.
+**Important:** The `tcsAppId` value must match the TCS application configured in Pay.gov. Each fee needs its own TCS application: fees that share a `tcsAppId` share a Pay.gov hosted page, so payers see the wrong fee.
 
 **2. Extend the schemas**
 

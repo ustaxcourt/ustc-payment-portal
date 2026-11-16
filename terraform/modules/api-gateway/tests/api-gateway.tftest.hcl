@@ -12,6 +12,7 @@ run "non_dev_environment_skips_dashboard_routes" {
       getDetails     = "arn:aws:lambda:us-east-1:123456789012:function:details"
       testCert       = "arn:aws:lambda:us-east-1:123456789012:function:test"
       healthCheck    = "arn:aws:lambda:us-east-1:123456789012:function:health"
+      validateClient = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
     }
   }
 
@@ -45,9 +46,12 @@ run "dev_environment_enables_dashboard_routes" {
       getDetails                  = "arn:aws:lambda:us-east-1:123456789012:function:details"
       testCert                    = "arn:aws:lambda:us-east-1:123456789012:function:test"
       healthCheck                 = "arn:aws:lambda:us-east-1:123456789012:function:health"
+      validateClient              = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
       getAllTransactions          = "arn:aws:lambda:us-east-1:123456789012:function:get-all"
       getTransactionsByStatus     = "arn:aws:lambda:us-east-1:123456789012:function:get-by-status"
       getTransactionPaymentStatus = "arn:aws:lambda:us-east-1:123456789012:function:get-payment-status"
+      getTransactionLog           = "arn:aws:lambda:us-east-1:123456789012:function:get-transaction-log"
+      getRevenueSummary           = "arn:aws:lambda:us-east-1:123456789012:function:get-revenue-summary"
     }
   }
 
@@ -81,9 +85,12 @@ run "dev_routes_stay_private_without_public_dashboard_flag" {
       getDetails                  = "arn:aws:lambda:us-east-1:123456789012:function:details"
       testCert                    = "arn:aws:lambda:us-east-1:123456789012:function:test"
       healthCheck                 = "arn:aws:lambda:us-east-1:123456789012:function:health"
+      validateClient              = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
       getAllTransactions          = "arn:aws:lambda:us-east-1:123456789012:function:get-all"
       getTransactionsByStatus     = "arn:aws:lambda:us-east-1:123456789012:function:get-by-status"
       getTransactionPaymentStatus = "arn:aws:lambda:us-east-1:123456789012:function:get-payment-status"
+      getTransactionLog           = "arn:aws:lambda:us-east-1:123456789012:function:get-transaction-log"
+      getRevenueSummary           = "arn:aws:lambda:us-east-1:123456789012:function:get-revenue-summary"
     }
   }
 
@@ -111,6 +118,7 @@ run "rejects_invalid_log_retention_days" {
       getDetails     = "arn:aws:lambda:us-east-1:123456789012:function:details"
       testCert       = "arn:aws:lambda:us-east-1:123456789012:function:test"
       healthCheck    = "arn:aws:lambda:us-east-1:123456789012:function:health"
+      validateClient = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
     }
   }
 

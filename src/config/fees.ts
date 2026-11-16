@@ -31,12 +31,12 @@ export type ActiveFee = Omit<FeeDefinition, "versions"> &
 export const staticFees: StaticFees = {
   PETITION_FILING_FEE: {
     name: "Petition Filing Fee",
-    tcsAppId: "TCSUSTAXCOURTANAEF", // TODO: This is a placeholder value; the actual TCS app ID is TBD
+    tcsAppId: "USTAXCOURTPETITION",
     versions: [
       {
         isVariable: false,
         amount: 60,
-        activationDate: "2026-03-05T00:00:00Z",
+        activationDate: "2024-10-01T00:00:00Z",
       },
     ],
     description: "Fee charged for filing a petition with the U.S. Tax Court.",
@@ -48,7 +48,7 @@ export const staticFees: StaticFees = {
       {
         isVariable: false,
         amount: 250,
-        activationDate: "2026-03-05T00:00:00Z",
+        activationDate: "2024-10-01T00:00:00Z",
       },
     ],
     description:
@@ -62,6 +62,19 @@ export const staticFees: StaticFees = {
 export const getAllFees = (): FeeDefinition[] => {
   return Object.values(staticFees);
 };
+
+/**
+ * Stable fee key to display name. `name` lives on the definition rather than the
+ * version, so unlike `amount` it never depends on a resolution date — which is
+ * what lets SQL order by fee name.
+ */
+export const getFeeNamesByKey = (): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(staticFees).map(([fee, definition]) => [
+      fee,
+      definition.name,
+    ]),
+  );
 
 /**
  * Resolves a fee by its stable key to the version active at the given date.

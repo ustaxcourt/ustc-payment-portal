@@ -124,7 +124,7 @@ describe("getDetails", () => {
     );
     getActiveFeeMock.mockReturnValue({
       fee: "PETITION_FILING_FEE",
-      tcsAppId: "TCSUSTAXCOURTPETITION",
+      tcsAppId: "USTAXCOURTPETITION",
     });
   });
 
@@ -200,7 +200,7 @@ describe("getDetails", () => {
 
     expect(appContext.postHttpRequest).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining("<tcs_app_id>TCSUSTAXCOURTPETITION</tcs_app_id>"),
+      expect.stringContaining("<tcs_app_id>USTAXCOURTPETITION</tcs_app_id>"),
     );
   });
 
@@ -230,6 +230,37 @@ describe("getDetails", () => {
     it("returns paymentStatus 'failed' when all attempts are failed", async () => {
       TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
         buildRow({ transactionStatus: "failed", paymentStatus: "failed" }),
+      ]);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(result.paymentStatus).toBe("failed");
+    });
+
+    it("returns paymentStatus 'failed' for a cancelled attempt without refreshing Pay.gov", async () => {
+      const postHttpRequestSpy = jest.fn();
+      appContext.postHttpRequest = postHttpRequestSpy;
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({ transactionStatus: "cancelled", paymentStatus: "failed" }),
+      ]);
+
+      const result = await getDetails(appContext, {
+        client: mockClient,
+        request: { transactionReferenceId: mockTransactionReferenceId },
+      });
+
+      expect(result.paymentStatus).toBe("failed");
+      expect(result.transactions[0].transactionStatus).toBe("cancelled");
+      expect(postHttpRequestSpy).not.toHaveBeenCalled();
+    });
+
+    it("returns paymentStatus 'failed' for a mix of failed and cancelled attempts", async () => {
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        buildRow({ transactionStatus: "failed", paymentStatus: "failed" }),
+        buildRow({ transactionStatus: "cancelled", paymentStatus: "failed" }),
       ]);
 
       const result = await getDetails(appContext, {

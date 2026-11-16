@@ -27,6 +27,9 @@ export type RequestType =
   | "completeOnlineCollectionWithDetails"
   | "completeOnlineCollection";
 
+const builder = new XMLBuilder(xmlOptions);
+const parser = new XMLParser(xmlOptions);
+
 export class SoapRequest {
   public tcsAppId: string;
 
@@ -53,12 +56,10 @@ export class SoapRequest {
       },
     };
 
-    const builder = new XMLBuilder(xmlOptions);
     return builder.build(respObj);
   }
 
   parseXml(xml: string) {
-    const parser = new XMLParser(xmlOptions);
     const response = parser.parse(xml);
     return response["S:Envelope"]["S:Body"];
   }

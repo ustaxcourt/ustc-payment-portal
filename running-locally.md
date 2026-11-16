@@ -26,7 +26,7 @@ One-time steps after cloning the repo.
    See [.env.example](./.env.example). The defaults are pre-tuned for local development — you don't usually need to change anything.
 
    Notes on a few values:
-   - `PAY_GOV_DEV_SERVER_TOKEN_SECRET_ID` must match `PAY_GOV_TEST_SERVER_ACCESS_TOKEN`. Both default to `development-token`.
+   - No Pay.gov test server token is needed locally; the mock server skips its bearer-token check when `APP_ENV=local`.
    - `LOCAL_DEV=true` bypasses AWS SigV4 authentication. Locally there is no API Gateway to verify signatures, so the auth pipeline returns a dummy IAM role ARN (`arn:aws:iam::000000000000:role/local-dev-role`) and skips the Secrets Manager permissions fetch entirely.
    - `PAY_GOV_NODE_ENV=local` makes the mock Pay.gov server use local file persistence instead of S3. Keep this as `local` for development.
 
@@ -131,6 +131,7 @@ LOG_LEVEL=debug npm run start:all
 - `Ctrl-C` in the `start:all` terminal stops everything and calls `docker compose stop` (containers preserved, data preserved).
 - `docker compose down` removes the containers but keeps the volume with your DB data.
 - `docker compose down -v` removes the containers **and wipes the DB volume**. Use this when you want a clean DB.
+- After the move to Postgres 18, the stack uses a new volume (`postgres18_data`) and starts with an empty DB, so run `npm run test:db:setup` again before the integration tests. The old Postgres 14 volume is no longer used; find it with `docker volume ls | grep postgres_data` and remove it with `docker volume rm <name>` once you no longer need its data.
 
 ### Individual scripts (advanced / debugging)
 

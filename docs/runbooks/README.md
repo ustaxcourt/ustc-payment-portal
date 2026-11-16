@@ -16,6 +16,12 @@ go-live; what changes is the discipline around it.
 3. [`deploy/deploy-rollback.md`](deploy/deploy-rollback.md) — how to reverse a
    deploy safely (code rollback is clean; database rollback is not automated).
 
+## Database
+
+- [`rds-major-version-upgrade.md`](rds-major-version-upgrade.md) — moving an
+  environment's RDS instance to a new PostgreSQL major version, with pre-flight,
+  post-upgrade checks and rollback.
+
 ## Incidents
 
 - [`lambda-error-alerts.md`](lambda-error-alerts.md) — what to check when a Lambda

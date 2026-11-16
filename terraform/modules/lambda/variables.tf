@@ -12,7 +12,7 @@ variable "lambda_execution_role_arn" {
 variable "runtime" {
   description = "Lambda runtime"
   type        = string
-  default     = "nodejs22.x"
+  default     = "nodejs24.x"
 }
 
 variable "payment_lambda_timeout" {
