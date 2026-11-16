@@ -117,6 +117,33 @@ run "dev_routes_stay_private_without_public_dashboard_flag" {
   }
 }
 
+run "prod_environment_skips_dashboard_routes" {
+  command = plan
+
+  variables {
+    environment = "prod"
+    stage_name  = "prod"
+    lambda_function_arns = {
+      initPayment    = "arn:aws:lambda:us-east-1:123456789012:function:init"
+      processPayment = "arn:aws:lambda:us-east-1:123456789012:function:process"
+      getDetails     = "arn:aws:lambda:us-east-1:123456789012:function:details"
+      testCert       = "arn:aws:lambda:us-east-1:123456789012:function:test"
+      healthCheck    = "arn:aws:lambda:us-east-1:123456789012:function:health"
+      validateClient = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
+    }
+  }
+
+  assert {
+    condition     = length(aws_api_gateway_method.transactions_get) == 0
+    error_message = "dashboard GET /transactions route must not exist in prod"
+  }
+
+  assert {
+    condition     = length(local.public_dashboard_resource_arns) == 0
+    error_message = "prod must add no anonymous dashboard paths to the resource policy"
+  }
+}
+
 run "rejects_invalid_log_retention_days" {
   command = plan
 
@@ -125,12 +152,17 @@ run "rejects_invalid_log_retention_days" {
     stage_name         = "stg"
     log_retention_days = 2
     lambda_function_arns = {
-      initPayment    = "arn:aws:lambda:us-east-1:123456789012:function:init"
-      processPayment = "arn:aws:lambda:us-east-1:123456789012:function:process"
-      getDetails     = "arn:aws:lambda:us-east-1:123456789012:function:details"
-      testCert       = "arn:aws:lambda:us-east-1:123456789012:function:test"
-      healthCheck    = "arn:aws:lambda:us-east-1:123456789012:function:health"
-      validateClient = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
+      initPayment                 = "arn:aws:lambda:us-east-1:123456789012:function:init"
+      processPayment              = "arn:aws:lambda:us-east-1:123456789012:function:process"
+      getDetails                  = "arn:aws:lambda:us-east-1:123456789012:function:details"
+      testCert                    = "arn:aws:lambda:us-east-1:123456789012:function:test"
+      healthCheck                 = "arn:aws:lambda:us-east-1:123456789012:function:health"
+      validateClient              = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
+      getAllTransactions          = "arn:aws:lambda:us-east-1:123456789012:function:get-all"
+      getTransactionsByStatus     = "arn:aws:lambda:us-east-1:123456789012:function:get-by-status"
+      getTransactionPaymentStatus = "arn:aws:lambda:us-east-1:123456789012:function:get-payment-status"
+      getTransactionLog           = "arn:aws:lambda:us-east-1:123456789012:function:get-transaction-log"
+      getRevenueSummary           = "arn:aws:lambda:us-east-1:123456789012:function:get-revenue-summary"
     }
   }
 

@@ -394,6 +394,33 @@ jobs:
           fi
           echo "Unauthorized fee request was rejected by authorizeClient."
 
+      - name: Smoke test dashboard endpoint access
+        shell: bash
+        env:
+          API_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          EXPECTED_UNSIGNED_TRANSACTIONS_STATUS: "200"
+        run: |
+          set -euo pipefail
+          trap 'echo "Dashboard smoke FAILED"; for f in transactions.json unsigned-init.json; do [ -f "$f" ] && { echo "--- $f ---"; cat "$f"; } || true; done' ERR
+
+          TX_STATUS=$(curl -s -o transactions.json -w '%{http_code}' "$API_URL/transactions")
+          echo "Unsigned GET /transactions -> $TX_STATUS (expected $EXPECTED_UNSIGNED_TRANSACTIONS_STATUS)"
+          if [ "$TX_STATUS" != "$EXPECTED_UNSIGNED_TRANSACTIONS_STATUS" ]; then
+            echo "ERROR: Unsigned /transactions returned $TX_STATUS, expected $EXPECTED_UNSIGNED_TRANSACTIONS_STATUS." >&2
+            exit 1
+          fi
+          if [ "$EXPECTED_UNSIGNED_TRANSACTIONS_STATUS" = "200" ]; then
+            jq -e . transactions.json >/dev/null || { echo "ERROR: /transactions did not return JSON." >&2; exit 1; }
+          fi
+
+          INIT_STATUS=$(curl -s -o unsigned-init.json -w '%{http_code}' -X POST "$API_URL/init" \
+            -H 'Content-Type: application/json' --data-binary '{}')
+          echo "Unsigned POST /init -> $INIT_STATUS (expected 403)"
+          if [ "$INIT_STATUS" != "403" ]; then
+            echo "ERROR: Unsigned /init returned $INIT_STATUS; payment routes must stay SigV4-protected." >&2
+            exit 1
+          fi
+
   staging-e2e:
     runs-on: ubuntu-latest
     # Job typically finishes in ~1 min; 15 covers a slow-QA run hitting the
