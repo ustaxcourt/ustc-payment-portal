@@ -297,6 +297,7 @@ resource "aws_lambda_permission" "transaction_log_permission" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_arns["getTransactionLog"]
   principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transaction-log"
 }
 
 resource "aws_lambda_permission" "revenue_summary_permission" {
@@ -304,9 +305,10 @@ resource "aws_lambda_permission" "revenue_summary_permission" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_arns["getRevenueSummary"]
   principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/revenue-summary"
 }
 
-// TODO: Remove moved blocks after next apply on Dev, Stg, and Prod
+// TODO: Remove moved blocks after next apply on Dev and PR enviroments
 moved {
   from = aws_api_gateway_resource.transaction_log[0]
   to   = aws_api_gateway_resource.transaction_log
