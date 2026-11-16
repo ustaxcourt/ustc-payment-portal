@@ -305,6 +305,8 @@ resource "aws_lambda_permission" "revenue_summary_permission" {
   function_name = var.lambda_function_arns["getRevenueSummary"]
   principal     = "apigateway.amazonaws.com"
 }
+
+// TODO: Remove moved blocks after next apply on Dev, Stg, and Prod
 moved {
   from = aws_api_gateway_resource.transaction_log[0]
   to   = aws_api_gateway_resource.transaction_log
