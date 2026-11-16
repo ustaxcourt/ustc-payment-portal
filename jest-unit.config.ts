@@ -15,6 +15,11 @@ const moduleNameMapper = {
 const config: Config = {
   preset: "ts-jest",
   testEnvironment: "node",
+  transform: {
+    "^.+\\.tsx?$": "ts-jest",
+    "/node_modules/objection/.+\\.js$": "<rootDir>/scripts/jest/esmToCjsTransform.js",
+  },
+  transformIgnorePatterns: ["/node_modules/(?!objection/)"],
   testPathIgnorePatterns: [
     "/node_modules/",
     "/test/integration/",

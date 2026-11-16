@@ -73,62 +73,74 @@ enough context that the next person doesn't have to re-derive the decision.
   `…runtime:fcbc5912…10e9`); prod and stg had no cold starts to inspect. After
   deploy, check the `nodejs:24` runtime version the same way.
 
-### objection 3.1.5 → 4.4.3 — deferred, pinned `~3.1.5` (2026-10-14, updated 2026-11-05)
+### Removed: objection 3.1.5 → 4.4.3 deferral — upgraded to `~4.4.3` (2026-11-13)
 
-- **Current:** `~3.1.5`. **Available latest:** `4.4.3`.
-
-- **Reason:** there are now two independent blockers to adopting the 4.x line.
-
-  **1. Jest / ESM compatibility**
-
-  Upgrading to `4.4.3` causes the Jest unit test suite to fail. Test runs that
-  import `TransactionModel` fail with:
-
-  ```text
-  Must use import to load ES Module:
-  node_modules/objection/lib/objection.js
-  ```
-
-  The 4.x line publishes ESM artifacts that are not compatible with the repo's
-  current Jest/TypeScript configuration. The failure occurs in tests that load
-  `objection` through `TransactionModel`, resulting in 19 failing test suites.
-  Reverting to `3.1.5` restores the test suite.
-
-  **2. Substantive ORM changes in the ditojs fork**
-
-  Even if the ESM issue is resolved, the 4.x line still requires review. After
-  no releases since 2024-09, `3.2.0`–`3.9.1` and later 4.x releases were
-  published from the `ditojs/objection` fork. That fork is materially ahead of
-  `Vincit/objection.js` and includes behavior changes that touch code paths we use:
-  - `select()` is now applied to `patchAndFetchById()` fetch queries (#1938).
-  - The snake-case mappers changed (#2805).
-  - `TransactionModel` relies on both behaviors, including
-    `claimForProcessing`.
-
-  Passing tests on a newer version would not by itself be sufficient evidence
-  that payment-processing behavior is unchanged.
-
-- **Verified (2026-11-05):** an upgrade attempt to `4.4.3` produced 19 failing
-  test suites with the error:
-
-  ```text
-  Must use import to load ES Module:
-  node_modules/objection/lib/objection.js
-  ```
-
-  Reverting to `3.1.5` resolved the failures.
-
-- **Plan:** keep `objection` pinned to `~3.1.5`. Follow-up ticket:
-  **PAY-506: Upgrade Objection.js from 3.1.5 to the latest supported 4.x
-  release**.
-
-  The ticket should evaluate:
-  - Jest ESM compatibility (`ts-jest`, transforms, module resolution, and Node
-    requirements).
-  - Review of `ditojs/objection` behavioral changes affecting
-    `TransactionModel`.
-  - Validation that payment-processing flows, including
-    `claimForProcessing`, behave identically before widening the version range.
+- **Removed because:** PAY-506 upgraded `objection` to `~4.4.3`. It was
+  deferred on 2026-10-14 for two blockers: Jest could not load the ESM-only 4.x
+  build (19 failing suites), and the `ditojs/objection` fork's behavior changes
+  needed review against `TransactionModel`. Both are resolved below. The tilde
+  pin stays: later releases on this fork line get the same review before the
+  range widens.
+- **The fork:** 3.2+ and 4.x are published from `ditojs/objection`, maintained
+  by the original author with two long-time contributors, with npm provenance.
+  4.x is ESM-only and needs Node `^20.19.0 || >=22.12.0`, `knex ^3.3.0`, and
+  `typescript >=5.8`. `db-errors` is no longer a dependency; objection's own
+  error classes still expose `nativeError`, which `src/db/pgErrors.ts` reads.
+- **Behavior changes reviewed — none change our queries:**
+  - `select()` now applies to `*AndFetch` refetches (#1938). We never call
+    `select()` before `patchAndFetchById`, so the refetch SQL is unchanged.
+  - Snake-case mapper changes (#2805). Output is identical to 3.1.5 for every
+    column; raw `rows` keep snake_case and nested `metadata` keys stay unmapped,
+    as before.
+  - Aggregates now select only their alias. `countsInRange`,
+    `countsAndFeeBreakdownInRange`, and `getAggregatedPaymentStatus` use
+    `.count()`/`.sum()`, but each selects its group-by columns explicitly, so
+    their SQL is unchanged (pinned in the test below).
+  - `where(undefined)` now throws. No call sites.
+  - Stricter typings (`PartialModelPatch` rejects unknown columns). `tsc` is
+    clean.
+- **Evidence:** `src/test/integration/transactionModel.test.ts` passes
+  unedited on both 3.1.5 and 4.4.3 (20 tests; on 3.1.5, run by installing
+  `objection@3.1.5 --no-save`). It pins the SQL of `claimForProcessing`,
+  `updateAfterPayGovResponse`, and the three aggregates, plus
+  `claimForProcessing`'s single-transaction boundary and every typed-error
+  branch. The SQL is compared with parentheses stripped, so a regrouped
+  `where` clause (objection 3.7 wraps the id condition) doesn't count as a
+  change. The unit suite (1092 tests) and integration suite (93 passed / 16
+  skipped before this test's 3 aggregate cases, 96 after) match the 3.1.5
+  baseline, and migrations roll back and forward with
+  seeds on 4.4.3. CI's `migration-check` job runs this test and
+  `cancelExpiredSweep.test.ts` against Postgres on every dependency or
+  `src/db/` change; deployed-environment runs skip both.
+- **ESM-only workarounds.** Keep all three until the repo moves to ESM, or Jest
+  can load ESM without `--experimental-vm-modules`:
+  1. **Jest:** `scripts/jest/esmToCjsTransform.js`, wired into both Jest
+     configs, compiles objection to CommonJS with `ts.transpileModule`, using
+     the same `target`, `module`, and `esModuleInterop` as `tsconfig.json`. It
+     drops objection's `createRequire(import.meta.url)` line and throws on any
+     other `import.meta`, so a release that adds one fails loudly instead of
+     silently.
+  2. **Lambda:** `terraform/scripts/build-lambda.sh` passes `IMPORT_META_SHIM`
+     to every bundle: `--inject:scripts/esbuild/importMetaUrl.js` plus
+     `--define:import.meta.url=importMetaUrl`. Without it, esbuild's CJS
+     output leaves `import.meta.url` undefined and every Lambda throws
+     `ERR_INVALID_ARG_VALUE` at load. Do not switch to `--banner`: it lands
+     above `"use strict"` and silently turns off strict mode in every bundle.
+  3. **npm package:** `tsup.config.ts` bundles objection and `node-fetch` into
+     `dist/`, so consumers' Jest can `require` the package. `node-fetch` 3.x is
+     also ESM-only — a break that predates this upgrade, fixed in the same
+     config. `shims: true` also defines `__dirname` in `index.mjs`, so the
+     ESM build's `__dirname` uses (`getRdsCredentials`, `migrationHandler`)
+     now resolve to `dist/` instead of throwing. Verified by installing the
+     packed tarball into a CommonJS consumer: default Jest, `require`,
+     `import`, and the packaged `devServer` running the integration suite all
+     pass.
+- **Open:** both packages stay in `dependencies`, so consumers still install
+  copies the bundle no longer uses. Moving them to `devDependencies` is a
+  separate decision.
+- **Revisit on any objection bump:** CI reruns `transactionModel.test.ts`. Also
+  run `npm run build:lambda` and check that each bundle loads in Node and
+  starts with `"use strict"`.
 
 ### Terraform provider lockfiles — what is and isn't in scope (2026-09-17, updated 2026-11-05)
 
