@@ -16,6 +16,11 @@ const config: Config = {
   preset: "ts-jest",
   testEnvironment: "node",
   setupFiles: ["dotenv/config"],
+  transform: {
+    "^.+\\.tsx?$": "ts-jest",
+    "/node_modules/objection/.+\\.js$": "<rootDir>/scripts/jest/esmToCjsTransform.js",
+  },
+  transformIgnorePatterns: ["/node_modules/(?!objection/)"],
   testPathIgnorePatterns: ["/node_modules/", "/dist/", "/resources/"],
   moduleNameMapper,
 };
