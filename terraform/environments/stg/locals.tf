@@ -79,11 +79,8 @@ locals {
     cancelExpired   = local.lambda_env_cancel_sweep
     migrationRunner = local.lambda_env_migration
 
-    getAllTransactions          = local.lambda_env_dashboard
-    getTransactionLog           = local.lambda_env_dashboard
-    getRevenueSummary           = local.lambda_env_dashboard
-    getTransactionsByStatus     = local.lambda_env_dashboard
-    getTransactionPaymentStatus = local.lambda_env_dashboard
+    getTransactionLog = local.lambda_env_dashboard
+    getRevenueSummary = local.lambda_env_dashboard
   }
 
   dashboard_allowed_origin = "https://stg-dashboard.payments.ustaxcourt.gov"
@@ -100,11 +97,8 @@ locals {
     cancelExpired   = 256
     migrationRunner = 256
 
-    getAllTransactions          = 256
-    getTransactionLog           = 256
-    getRevenueSummary           = 256
-    getTransactionsByStatus     = 256
-    getTransactionPaymentStatus = 256
+    getTransactionLog = 256
+    getRevenueSummary = 256
   }
   github_oidc_provider_arn = "arn:aws:iam::747103385969:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"
