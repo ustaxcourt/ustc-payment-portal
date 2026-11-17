@@ -341,6 +341,46 @@ describe("TransactionModel", () => {
     });
   });
 
+  describe("updateToFailedIfNotProcessed", () => {
+    it("does not overwrite a processed transaction", async () => {
+      const builder = spyOnQuery();
+
+      builder.first.mockResolvedValueOnce(undefined);
+
+      await expect(
+        TransactionModel.updateToFailedIfNotProcessed(
+          "existing-id",
+          5009,
+          "expired",
+        ),
+      ).rejects.toThrow(ConflictError);
+
+      expect(builder.whereNot).toHaveBeenCalledWith(
+        "transactionStatus",
+        "processed",
+      );
+    });
+
+    it("guards against overwriting processed transactions", async () => {
+      const builder = spyOnQuery();
+
+      builder.first.mockResolvedValueOnce(undefined);
+
+      await expect(
+        TransactionModel.updateToFailedIfNotProcessed(
+          "TEST-123",
+          5009,
+          "expired",
+        ),
+      ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
+
+      expect(builder.whereNot).toHaveBeenCalledWith(
+        "transactionStatus",
+        "processed",
+      );
+    });
+  });
+
   describe("updateAfterPayGovResponse", () => {
     it("persists paygovTrackingId, statuses, paymentMethod, and dates", async () => {
       const builder = spyOnQuery();
@@ -663,11 +703,12 @@ describe("TransactionModel", () => {
       const row = { agencyTrackingId: "TEST-INFLIGHT" };
       builder.first.mockResolvedValueOnce(row);
 
-      const found = await TransactionModel.findByReferenceIdAndTransactionStatus(
-        clientName,
-        referenceId,
-        ["initiated", "processing", "pending", "processed"],
-      );
+      const found =
+        await TransactionModel.findByReferenceIdAndTransactionStatus(
+          clientName,
+          referenceId,
+          ["initiated", "processing", "pending", "processed"],
+        );
 
       expect(builder.where).toHaveBeenCalledWith("clientName", clientName);
       expect(builder.where).toHaveBeenCalledWith(
@@ -715,11 +756,12 @@ describe("TransactionModel", () => {
       const builder = spyOnQuery();
       builder.first.mockResolvedValueOnce(undefined);
 
-      const found = await TransactionModel.findByReferenceIdAndTransactionStatus(
-        clientName,
-        "NO-MATCH",
-        ["initiated", "processing", "pending", "processed"],
-      );
+      const found =
+        await TransactionModel.findByReferenceIdAndTransactionStatus(
+          clientName,
+          "NO-MATCH",
+          ["initiated", "processing", "pending", "processed"],
+        );
 
       expect(found).toBeUndefined();
     });

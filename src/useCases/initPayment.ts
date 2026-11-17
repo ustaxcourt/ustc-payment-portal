@@ -17,6 +17,9 @@ import { ZodError } from "zod";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { type ActiveFee, getActiveFee } from "@/config/fees";
 import { getReturnCode } from "@/config/payGovReturnCodes";
+import { GetRequestRequest } from "@/entities/GetDetailsRequest";
+import { derivePaymentStatusFromSingleTransaction } from "@/utils/derivePaymentStatus";
+import { toPaymentMethod } from "@/utils/toPaymentMethod";
 import { authorizeClient } from "../authorizeClient";
 import { isUniqueViolation } from "../db/pgErrors";
 import TransactionModel, {
@@ -26,6 +29,7 @@ import TransactionModel, {
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
+import { parseTransactionStatus } from "./parseTransactionStatus";
 
 const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
 
@@ -89,7 +93,11 @@ export const initPayment: InitPayment = async (
   /* istanbul ignore next */
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
   const agencyTrackingId = generateAgencyTrackingId();
-  const baseLogFields = { transactionReferenceId, agencyTrackingId, clientName };
+  const baseLogFields = {
+    transactionReferenceId,
+    agencyTrackingId,
+    clientName,
+  };
 
   const req = new StartOnlineCollectionRequest({
     tcsAppId: fee.tcsAppId,
@@ -248,7 +256,11 @@ const rejectIfAlreadyPaid = async (
 const recordReceivedTransaction = async (
   appContext: AppContext,
   createReceivedParams: ReceivedTransactionParams,
-  baseLogFields: { transactionReferenceId: string; agencyTrackingId: string, clientName: string },
+  baseLogFields: {
+    transactionReferenceId: string;
+    agencyTrackingId: string;
+    clientName: string;
+  },
 ): Promise<void> => {
   const { transactionReferenceId } = createReceivedParams;
 
@@ -256,7 +268,11 @@ const recordReceivedTransaction = async (
     await TransactionModel.createReceived(createReceivedParams);
   } catch (err) {
     if (isUniqueViolation(err)) {
-      await rejectIfAlreadyPaid(appContext, baseLogFields.clientName, transactionReferenceId);
+      await rejectIfAlreadyPaid(
+        appContext,
+        baseLogFields.clientName,
+        transactionReferenceId,
+      );
 
       const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
         "A payment session is already in-flight for this transactionReferenceId";
@@ -286,7 +302,7 @@ const recordReceivedTransaction = async (
   }
 };
 
-const resolveInFlightTransaction = async (
+export const resolveInFlightTransaction = async (
   appContext: AppContext,
   transactionReferenceId: string,
   existingTransaction: TransactionModel,
@@ -341,9 +357,40 @@ const resolveInFlightTransaction = async (
   // An abandoned `initiated` session never reached Pay.gov, so it's cancelled rather
   // than failed; a stale `processing` row did reach Pay.gov, so it stays a failure.
   if (isExpiredInitiatedTransaction(existingTransaction)) {
-    await TransactionModel.updateToCancelled(existingTransaction.agencyTrackingId);
+    await TransactionModel.updateToCancelled(
+      existingTransaction.agencyTrackingId,
+    );
   } else {
-    await TransactionModel.updateToFailed(
+    if (
+      existingTransaction.transactionStatus === "processing" &&
+      staleProcessing &&
+      existingTransaction.paygovTrackingId
+    ) {
+      const req = new GetRequestRequest({
+        tcsAppId: fee.tcsAppId,
+        payGovTrackingId: existingTransaction.paygovTrackingId,
+      });
+
+      const result = await req.makeSoapRequest(appContext);
+
+      const refreshedStatus = parseTransactionStatus(result.transaction_status);
+
+      if (refreshedStatus === "processed") {
+        await TransactionModel.updateAfterPayGovResponse(
+          existingTransaction.agencyTrackingId,
+          result.paygov_tracking_id,
+          refreshedStatus,
+          derivePaymentStatusFromSingleTransaction(refreshedStatus),
+          result.payment_type ? toPaymentMethod(result.payment_type) : null,
+          result.transaction_date,
+          result.payment_date,
+        );
+
+        throw new ConflictError(ConflictError.ALREADY_PAID_MESSAGE);
+      }
+    }
+
+    await TransactionModel.updateToFailedIfNotProcessed(
       existingTransaction.agencyTrackingId,
       EXISTING_TOKEN_ERROR_CODE,
       getReturnCode(EXISTING_TOKEN_ERROR_CODE)?.returnDetail,
