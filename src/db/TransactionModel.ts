@@ -725,6 +725,30 @@ export default class TransactionModel extends Model {
     });
   }
 
+  static async updateToFailedIfNotProcessed(
+    agencyTrackingId: string,
+    returnCode?: number,
+    returnDetail?: string,
+  ): Promise<TransactionModel> {
+    await getKnex();
+    const updated = (await TransactionModel.query()
+      .patch({
+        transactionStatus: "failed",
+        paymentStatus: "failed",
+        returnCode,
+        returnDetail,
+      })
+      .where("agencyTrackingId", agencyTrackingId)
+      .whereNot("transactionStatus", "processed")
+      .returning("*")
+      .first()) as TransactionModel | undefined;
+
+    if (!updated) {
+      throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
+    }
+    return updated;
+  }
+
   // One statement, so Postgres re-checks the predicate after each row lock and SKIP LOCKED
   // yields to a live POST /process, which takes locks with NOWAIT and would fail fast.
   static async cancelExpiredBatch(limit: number): Promise<string[]> {
