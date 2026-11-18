@@ -744,7 +744,7 @@ describe("initPayment", () => {
     expect(emitErrorMock).not.toHaveBeenCalled();
   });
 
-  it("rejects a stale processing transaction when Pay.gov confirms it was already processed", async () => {
+  it("returns 409 and updates the transaction when Pay.gov confirms a stale processing transaction was already processed", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
 
     TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
@@ -775,7 +775,11 @@ describe("initPayment", () => {
 
     expect(TransactionModel.updateAfterPayGovResponse).toHaveBeenCalled();
 
-    expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
+    expect(
+      TransactionModel.updateToFailedIfNotProcessed,
+    ).not.toHaveBeenCalled();
+
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
   });
 
   it("marks a stale processing transaction as failed when Pay.gov confirms it was not processed", async () => {
@@ -814,43 +818,5 @@ describe("initPayment", () => {
     );
 
     expect(result.token).toBe(freshPaygovToken);
-  });
-
-  it("returns 409 and updates the transaction when Pay.gov confirms a stale processing transaction was already processed", async () => {
-    const TransactionModel = require("../db/TransactionModel").default;
-
-    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
-      {
-        agencyTrackingId: "existing-id",
-        clientName: mockClient.clientName,
-        transactionReferenceId: validPetitionRequest.transactionReferenceId,
-        transactionStatus: "processing",
-        paymentStatus: "pending",
-        paygovTrackingId: "paygov-123",
-        paygovToken: "stale-token",
-        createdAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
-        lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
-      },
-    );
-
-    mockGetDetailsRequest("Success");
-
-    await expect(
-      initPayment(appContext, {
-        client: mockClient,
-        request: validPetitionRequest,
-      }),
-    ).rejects.toMatchObject({
-      statusCode: 409,
-      message: ConflictError.ALREADY_PAID_MESSAGE,
-    });
-
-    expect(TransactionModel.updateAfterPayGovResponse).toHaveBeenCalled();
-
-    expect(
-      TransactionModel.updateToFailedIfNotProcessed,
-    ).not.toHaveBeenCalled();
-
-    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
   });
 });
