@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 
+// migration-safety: acknowledged — already in main, existed before migration safety tooling was added.
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('fees', (t) => {
     t.string('fee_id', 100).primary().comment('Fee Identifier');

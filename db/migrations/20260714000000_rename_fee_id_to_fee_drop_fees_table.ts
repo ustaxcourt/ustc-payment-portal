@@ -5,6 +5,7 @@ import type { Knex } from "knex";
  * so the `fees` table and its FK from `transactions` are no longer needed.
  * Each transaction stores the stable fee key directly in the `fee` column.
  */
+// migration-safety: acknowledged — already in main, existed before migration safety tooling was added.
 export async function up(knex: Knex): Promise<void> {
   // Drop the FK from transactions → fees before renaming the column so the
   // rename does not trip up any dependent constraint.

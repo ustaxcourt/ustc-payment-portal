@@ -1,6 +1,7 @@
 import type { Knex } from "knex";
 
 /** Restores transaction_amount after fee amounts moved into application code. */
+// migration-safety: acknowledged - Part of PAY-341, moving Fees to code instead of DB.
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("transactions", (table) => {
     table

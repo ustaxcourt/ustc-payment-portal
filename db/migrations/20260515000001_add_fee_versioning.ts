@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 
+// migration-safety: acknowledged — already in main, existed before migration safety tooling was added.
 export async function up(knex: Knex): Promise<void> {
   // Add fee_key nullable so existing rows can be backfilled before enforcing NOT NULL
   await knex.schema.alterTable('fees', (t) => {
