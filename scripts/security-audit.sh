@@ -5,8 +5,8 @@ set -euo pipefail
 # Every ID here must have an entry in docs/dependency-caveats.md
 ACCEPTED_ADVISORIES="GHSA-fc5q-39xc-vjpf"
 
-# Runtime dependencies must still be checked, but do not exit yet.
-npm audit --omit=dev --audit-level=high --package-lock-only || true
+# Runtime dependencies remain a hard gate.
+npm audit --omit=dev --audit-level=high --package-lock-only
 
 audit_json=$(mktemp)
 
