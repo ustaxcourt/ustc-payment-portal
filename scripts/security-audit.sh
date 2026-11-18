@@ -10,7 +10,7 @@ npm audit --omit=dev --audit-level=high --package-lock-only
 
 audit_json=$(mktemp)
 
-npm audit --omit=dev --package-lock-only --json > "$audit_json" || true
+npm audit --package-lock-only --json > "$audit_json" || true
 
 jq -e '.vulnerabilities' "$audit_json" > /dev/null || {
   cat "$audit_json"
