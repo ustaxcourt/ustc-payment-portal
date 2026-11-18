@@ -128,3 +128,27 @@ variable "cancelExpired_source_code_hash" {
   type        = string
   default     = ""
 }
+
+variable "getTransactionLog_s3_key" {
+  description = "S3 key for getTransactionLog Lambda artifact"
+  type        = string
+  default     = ""
+}
+
+variable "getRevenueSummary_s3_key" {
+  description = "S3 key for getRevenueSummary Lambda artifact"
+  type        = string
+  default     = ""
+}
+
+variable "getTransactionLog_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for getTransactionLog artifact"
+  type        = string
+  default     = ""
+}
+
+variable "getRevenueSummary_source_code_hash" {
+  description = "Base64-encoded SHA256 hash for getRevenueSummary artifact"
+  type        = string
+  default     = ""
+}
