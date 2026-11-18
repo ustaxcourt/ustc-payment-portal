@@ -570,6 +570,7 @@ export default class TransactionModel extends Model {
     transactionDate: string | undefined,
     paymentDate: string | undefined,
     expectedTransactionStatus?: TransactionStatus,
+    expectedLastUpdatedAt?: string,
   ): Promise<TransactionModel> {
     await getKnex();
     const patch = {
@@ -581,23 +582,29 @@ export default class TransactionModel extends Model {
       ...(paymentDate && { paymentDate }),
     };
 
-    if (expectedTransactionStatus === undefined) {
+    if (
+      expectedTransactionStatus === undefined ||
+      expectedLastUpdatedAt === undefined
+    ) {
       const updated = await TransactionModel.query().patchAndFetchById(
         agencyTrackingId,
         patch,
       );
+
       if (!updated) {
         throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
       }
+
       return updated;
     }
 
-    const updated = (await TransactionModel.query()
+    const updated = await TransactionModel.query()
       .patch(patch)
       .where("agencyTrackingId", agencyTrackingId)
       .where("transactionStatus", expectedTransactionStatus)
+      .where("lastUpdatedAt", expectedLastUpdatedAt)
       .returning("*")
-      .first()) as TransactionModel | undefined;
+      .first();
 
     if (!updated) {
       throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);

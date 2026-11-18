@@ -146,11 +146,8 @@ export const processPayment: ProcessPayment = async (
     token: request.token,
   });
 
-  const { fee, baseLogFields, existingTransaction } = await loadAuthorizedContext(
-    appContext,
-    client,
-    request,
-  );
+  const { fee, baseLogFields, existingTransaction } =
+    await loadAuthorizedContext(appContext, client, request);
 
   // Reconcile before the claim's token-expiry check: Pay.gov may have completed
   // the payment before the original Lambda timed out.
@@ -173,6 +170,7 @@ export const processPayment: ProcessPayment = async (
         details.transaction_date,
         details.payment_date,
         "processing",
+        existingTransaction.lastUpdatedAt,
       );
       const allRows = await TransactionModel.findByReferenceId(
         existingTransaction.transactionReferenceId,

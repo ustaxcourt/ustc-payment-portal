@@ -440,6 +440,8 @@ describe("TransactionModel", () => {
     it("patches conditionally on the current transactionStatus and returns the updated row when the guard matches", async () => {
       const builder = spyOnQuery();
       const updatedRow = { agencyTrackingId: "TEST-OK-03" };
+      const lastUpdatedAt = "2026-11-18T19:02:13.325Z";
+
       builder.first.mockResolvedValueOnce(updatedRow);
 
       const result = await TransactionModel.updateAfterPayGovResponse(
@@ -451,6 +453,7 @@ describe("TransactionModel", () => {
         undefined,
         undefined,
         "processing",
+        lastUpdatedAt,
       );
 
       expect(builder.patch).toHaveBeenCalledWith({
@@ -459,16 +462,25 @@ describe("TransactionModel", () => {
         paymentStatus: "success",
         paymentMethod: "ach",
       });
+
       expect(builder.where).toHaveBeenNthCalledWith(
         1,
         "agencyTrackingId",
         "TEST-OK-03",
       );
+
       expect(builder.where).toHaveBeenNthCalledWith(
         2,
         "transactionStatus",
         "processing",
       );
+
+      expect(builder.where).toHaveBeenNthCalledWith(
+        3,
+        "lastUpdatedAt",
+        lastUpdatedAt,
+      );
+
       expect(builder.returning).toHaveBeenCalledWith("*");
       expect(result).toBe(updatedRow);
     });
@@ -487,6 +499,7 @@ describe("TransactionModel", () => {
           undefined,
           undefined,
           "processing",
+          "2026-11-18T19:02:13.325Z",
         ),
       ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
     });

@@ -25,8 +25,8 @@ jest.mock("../health/processPaymentConcurrencyMetric", () => ({
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
-  isStaleProcessingTransaction:
-    jest.requireActual("../db/TransactionModel").isStaleProcessingTransaction,
+  isStaleProcessingTransaction: jest.requireActual("../db/TransactionModel")
+    .isStaleProcessingTransaction,
   default: {
     findByPaygovToken: jest.fn(),
     claimForProcessing: jest.fn(),
@@ -79,7 +79,7 @@ const mockUpdatedTransaction = (paymentMethod: string | null) =>
     ...mockTransaction,
     paymentMethod,
     lastUpdatedAt: "2026-01-15T10:35:01Z",
-  } as unknown as TransactionModel);
+  }) as unknown as TransactionModel;
 
 const mockPayGovTrackingId = "211d8c91c046404fb159b52d042a12ba";
 
@@ -256,11 +256,13 @@ describe("processPayment", () => {
   });
 
   const mockStaleTransaction = () => {
-    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce(Object.assign({}, mockTransaction, {
-      paygovTrackingId: mockPayGovTrackingId,
-      createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-      lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
-    }));
+    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce(
+      Object.assign({}, mockTransaction, {
+        paygovTrackingId: mockPayGovTrackingId,
+        createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+        lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+      }),
+    );
   };
 
   it.each(["ACH", undefined])(
@@ -286,7 +288,9 @@ describe("processPayment", () => {
       });
 
       expect(details).toHaveBeenCalledWith(appContext);
-      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+      expect(
+        TransactionModelMock.updateAfterPayGovResponse,
+      ).toHaveBeenCalledWith(
         mockTransaction.agencyTrackingId,
         mockPayGovTrackingId,
         "processed",
@@ -295,6 +299,7 @@ describe("processPayment", () => {
         "2026-11-17T16:53:50.789Z",
         "2026-11-17",
         "processing",
+        expect.any(String),
       );
       expect(result).toEqual({
         paymentStatus: "success",
@@ -309,32 +314,42 @@ describe("processPayment", () => {
 
   it("preserves claim validation when Pay.gov has not completed the stale payment", async () => {
     mockStaleTransaction();
-    jest.spyOn(GetRequestRequest.prototype, "makeSoapRequest").mockResolvedValueOnce({
-      paygov_tracking_id: mockPayGovTrackingId,
-      transaction_status: "Failed",
-    });
+    jest
+      .spyOn(GetRequestRequest.prototype, "makeSoapRequest")
+      .mockResolvedValueOnce({
+        paygov_tracking_id: mockPayGovTrackingId,
+        transaction_status: "Failed",
+      });
     TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
       new GoneError("Transaction token has expired."),
     );
 
-    await expect(processPayment(appContext, {
-      client: mockClient,
-      request: { token: "mock-token" },
-    })).rejects.toThrow(GoneError);
-    expect(TransactionModelMock.claimForProcessing).toHaveBeenCalledWith("mock-token");
-    expect(TransactionModelMock.updateAfterPayGovResponse).not.toHaveBeenCalled();
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(GoneError);
+    expect(TransactionModelMock.claimForProcessing).toHaveBeenCalledWith(
+      "mock-token",
+    );
+    expect(
+      TransactionModelMock.updateAfterPayGovResponse,
+    ).not.toHaveBeenCalled();
   });
 
   it("does not fail or complete the payment when reconciliation is unavailable", async () => {
     mockStaleTransaction();
-    jest.spyOn(GetRequestRequest.prototype, "makeSoapRequest").mockRejectedValueOnce(
-      new PayGovError("Pay.gov unavailable"),
-    );
+    jest
+      .spyOn(GetRequestRequest.prototype, "makeSoapRequest")
+      .mockRejectedValueOnce(new PayGovError("Pay.gov unavailable"));
 
-    await expect(processPayment(appContext, {
-      client: mockClient,
-      request: { token: "mock-token" },
-    })).rejects.toThrow(PayGovError);
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(PayGovError);
     expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
     expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
   });
