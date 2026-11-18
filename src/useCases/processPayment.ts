@@ -2,6 +2,7 @@ import type { AppContext } from "@appTypes/AppContext";
 import type { ClientPermission } from "@appTypes/ClientPermission";
 import type { ProcessPaymentRequest } from "@appTypes/ProcessPaymentRequest";
 import { CompleteOnlineCollectionWithDetailsRequest } from "@entities/CompleteOnlineCollectionWithDetailsRequest";
+import { GetRequestRequest } from "@entities/GetDetailsRequest";
 import { ConflictError } from "@errors/conflict";
 import { FailedTransactionError } from "@errors/failedTransaction";
 import { GoneError } from "@errors/gone";
@@ -18,7 +19,9 @@ import { ZodError } from "zod";
 import { authorizeClient } from "../authorizeClient";
 import { type ActiveFee, getActiveFee } from "../config/fees";
 import { getPostgresErrorCode, isClaimContentionError } from "../db/pgErrors";
-import TransactionModel from "../db/TransactionModel";
+import TransactionModel, {
+  isStaleProcessingTransaction,
+} from "../db/TransactionModel";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
 import { parseTransactionStatus } from "./parseTransactionStatus";
@@ -45,6 +48,7 @@ type ProcessPaymentLogFields = {
 type AuthorizedProcessPaymentContext = {
   fee: ActiveFee;
   baseLogFields: ProcessPaymentLogFields;
+  existingTransaction: TransactionModel;
 };
 
 const buildLogFields = (
@@ -94,7 +98,7 @@ const loadAuthorizedContext = async (
 
   authorizeClient(client, fee.fee);
 
-  return { fee, baseLogFields };
+  return { fee, baseLogFields, existingTransaction };
 };
 
 const claimProcessingTransaction = async (
@@ -142,11 +146,43 @@ export const processPayment: ProcessPayment = async (
     token: request.token,
   });
 
-  const { fee, baseLogFields } = await loadAuthorizedContext(
+  const { fee, baseLogFields, existingTransaction } = await loadAuthorizedContext(
     appContext,
     client,
     request,
   );
+
+  // Reconcile before the claim's token-expiry check: Pay.gov may have completed
+  // the payment before the original Lambda timed out.
+  if (
+    isStaleProcessingTransaction(existingTransaction) &&
+    existingTransaction.paygovTrackingId
+  ) {
+    const details = await new GetRequestRequest({
+      tcsAppId: fee.tcsAppId,
+      payGovTrackingId: existingTransaction.paygovTrackingId,
+    }).makeSoapRequest(appContext);
+
+    if (parseTransactionStatus(details.transaction_status) === "processed") {
+      await TransactionModel.updateAfterPayGovResponse(
+        existingTransaction.agencyTrackingId,
+        details.paygov_tracking_id,
+        "processed",
+        "success",
+        details.payment_type ? toPaymentMethod(details.payment_type) : null,
+        details.transaction_date,
+        details.payment_date,
+        "processing",
+      );
+      const allRows = await TransactionModel.findByReferenceId(
+        existingTransaction.transactionReferenceId,
+      );
+      return {
+        paymentStatus: "success",
+        transactions: allRows.map((row) => toTransactionRecordSummary(row)),
+      };
+    }
+  }
 
   const transaction = await claimProcessingTransaction(
     appContext,

@@ -1,4 +1,5 @@
 import type { ClientPermission } from "@appTypes/ClientPermission";
+import { GetRequestRequest } from "@entities/GetDetailsRequest";
 import { ConflictError } from "@errors/conflict";
 import { FeeNotFoundError } from "@errors/feeNotFound";
 import { ForbiddenError } from "@errors/forbidden";
@@ -24,6 +25,8 @@ jest.mock("../health/processPaymentConcurrencyMetric", () => ({
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
+  isStaleProcessingTransaction:
+    jest.requireActual("../db/TransactionModel").isStaleProcessingTransaction,
   default: {
     findByPaygovToken: jest.fn(),
     claimForProcessing: jest.fn(),
@@ -35,6 +38,7 @@ jest.mock("../db/TransactionModel", () => ({
 
 jest.mock("../config/fees", () => ({
   __esModule: true,
+  ...jest.requireActual("../config/fees"),
   getActiveFee: jest.fn(),
 }));
 
@@ -231,6 +235,7 @@ const mockInitiatedTransaction = {
 
 describe("processPayment", () => {
   beforeEach(() => {
+    jest.restoreAllMocks();
     jest.clearAllMocks();
     TransactionModelMock.findByPaygovToken.mockResolvedValue(
       mockInitiatedTransaction,
@@ -248,6 +253,90 @@ describe("processPayment", () => {
       fee: "fee-123",
       tcsAppId: "USTAXCOURTPETITION",
     });
+  });
+
+  const mockStaleTransaction = () => {
+    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce(Object.assign({}, mockTransaction, {
+      paygovTrackingId: mockPayGovTrackingId,
+      createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+    }));
+  };
+
+  it.each(["ACH", undefined])(
+    "returns normal success for a stale payment confirmed by Pay.gov (payment type: %s)",
+    async (paymentType) => {
+      mockStaleTransaction();
+      const details = jest
+        .spyOn(GetRequestRequest.prototype, "makeSoapRequest")
+        .mockResolvedValueOnce({
+          paygov_tracking_id: mockPayGovTrackingId,
+          transaction_status: "Success",
+          payment_type: paymentType,
+          transaction_date: "2026-11-17T16:53:50.789Z",
+          payment_date: "2026-11-17",
+        });
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        mockProcessedRow,
+      ]);
+
+      const result = await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      });
+
+      expect(details).toHaveBeenCalledWith(appContext);
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+        mockTransaction.agencyTrackingId,
+        mockPayGovTrackingId,
+        "processed",
+        "success",
+        paymentType ? "ach" : null,
+        "2026-11-17T16:53:50.789Z",
+        "2026-11-17",
+        "processing",
+      );
+      expect(result).toEqual({
+        paymentStatus: "success",
+        transactions: [
+          expect.objectContaining({ transactionStatus: "processed" }),
+        ],
+      });
+      expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+      expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
+    },
+  );
+
+  it("preserves claim validation when Pay.gov has not completed the stale payment", async () => {
+    mockStaleTransaction();
+    jest.spyOn(GetRequestRequest.prototype, "makeSoapRequest").mockResolvedValueOnce({
+      paygov_tracking_id: mockPayGovTrackingId,
+      transaction_status: "Failed",
+    });
+    TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
+      new GoneError("Transaction token has expired."),
+    );
+
+    await expect(processPayment(appContext, {
+      client: mockClient,
+      request: { token: "mock-token" },
+    })).rejects.toThrow(GoneError);
+    expect(TransactionModelMock.claimForProcessing).toHaveBeenCalledWith("mock-token");
+    expect(TransactionModelMock.updateAfterPayGovResponse).not.toHaveBeenCalled();
+  });
+
+  it("does not fail or complete the payment when reconciliation is unavailable", async () => {
+    mockStaleTransaction();
+    jest.spyOn(GetRequestRequest.prototype, "makeSoapRequest").mockRejectedValueOnce(
+      new PayGovError("Pay.gov unavailable"),
+    );
+
+    await expect(processPayment(appContext, {
+      client: mockClient,
+      request: { token: "mock-token" },
+    })).rejects.toThrow(PayGovError);
+    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+    expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
   });
 
   it("throws NotFoundError when token is not in the database", async () => {

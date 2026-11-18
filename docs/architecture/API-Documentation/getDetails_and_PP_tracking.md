@@ -32,6 +32,16 @@ Payment Portal (PP) supports multiple payment attempts for the same obligation w
 
 Once PAID, further successful attempts for that `transactionReferenceId` are rejected.
 
+### Recovering a timed-out completion
+
+When `/process` is retried for a stale `processing` attempt with a stored
+Pay.gov tracking ID, PP calls Pay.gov's `getDetails` before attempting completion
+again. If Pay.gov reports `Success`, PP records the processed result and returns
+the normal successful `/process` response, including the attempt summaries.
+This recovery also works after the original token expires. A failed details
+lookup leaves the attempt unchanged and propagates the error; a non-success
+status continues through the existing claim and token validation.
+
 ---
 
 This design separates **obligation identity** (`transactionReferenceId`) from **attempt identity** (`agencyTrackingId`), allowing safe retries while preventing duplicate payments.
