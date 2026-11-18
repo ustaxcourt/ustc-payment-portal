@@ -1,18 +1,24 @@
 mock_provider "aws" {}
 
-run "non_dev_environment_skips_dashboard_routes" {
+# stg deploys only the routes the dashboard calls: the legacy anonymous routes and
+# their Lambdas are absent from the map, so indexing them would fail the plan.
+run "stg_environment_enables_only_sigv4_dashboard_routes" {
   command = plan
 
   variables {
-    environment = "stg"
-    stage_name  = "stg"
+    environment              = "stg"
+    stage_name               = "stg"
+    enable_public_dashboard  = false
+    dashboard_allowed_origin = "https://stg-dashboard.payments.ustaxcourt.gov"
     lambda_function_arns = {
-      initPayment    = "arn:aws:lambda:us-east-1:123456789012:function:init"
-      processPayment = "arn:aws:lambda:us-east-1:123456789012:function:process"
-      getDetails     = "arn:aws:lambda:us-east-1:123456789012:function:details"
-      testCert       = "arn:aws:lambda:us-east-1:123456789012:function:test"
-      healthCheck    = "arn:aws:lambda:us-east-1:123456789012:function:health"
-      validateClient = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
+      initPayment       = "arn:aws:lambda:us-east-1:123456789012:function:init"
+      processPayment    = "arn:aws:lambda:us-east-1:123456789012:function:process"
+      getDetails        = "arn:aws:lambda:us-east-1:123456789012:function:details"
+      testCert          = "arn:aws:lambda:us-east-1:123456789012:function:test"
+      healthCheck       = "arn:aws:lambda:us-east-1:123456789012:function:health"
+      validateClient    = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
+      getTransactionLog = "arn:aws:lambda:us-east-1:123456789012:function:get-transaction-log"
+      getRevenueSummary = "arn:aws:lambda:us-east-1:123456789012:function:get-revenue-summary"
     }
   }
 
@@ -28,7 +34,22 @@ run "non_dev_environment_skips_dashboard_routes" {
 
   assert {
     condition     = length(aws_api_gateway_method.transactions_get) == 0
-    error_message = "dashboard routes should not exist in non-dev environments"
+    error_message = "anonymous GET /transactions route must not exist in stg"
+  }
+
+  assert {
+    condition     = length(aws_api_gateway_method.transaction_payment_status_get) == 0
+    error_message = "anonymous GET /transaction-payment-status route must not exist in stg"
+  }
+
+  assert {
+    condition     = aws_api_gateway_method.transaction_log_get.authorization == "AWS_IAM" && aws_api_gateway_method.revenue_summary_get.authorization == "AWS_IAM"
+    error_message = "the dashboard routes must exist in stg and require SigV4"
+  }
+
+  assert {
+    condition     = length(local.public_dashboard_resource_arns) == 0
+    error_message = "stg must add no anonymous dashboard paths to the resource policy"
   }
 }
 
@@ -105,6 +126,45 @@ run "dev_routes_stay_private_without_public_dashboard_flag" {
   }
 }
 
+run "prod_environment_enables_only_sigv4_dashboard_routes" {
+  command = plan
+
+  variables {
+    environment = "prod"
+    stage_name  = "prod"
+    lambda_function_arns = {
+      initPayment       = "arn:aws:lambda:us-east-1:123456789012:function:init"
+      processPayment    = "arn:aws:lambda:us-east-1:123456789012:function:process"
+      getDetails        = "arn:aws:lambda:us-east-1:123456789012:function:details"
+      testCert          = "arn:aws:lambda:us-east-1:123456789012:function:test"
+      healthCheck       = "arn:aws:lambda:us-east-1:123456789012:function:health"
+      validateClient    = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
+      getTransactionLog = "arn:aws:lambda:us-east-1:123456789012:function:get-transaction-log"
+      getRevenueSummary = "arn:aws:lambda:us-east-1:123456789012:function:get-revenue-summary"
+    }
+  }
+
+  assert {
+    condition     = length(aws_api_gateway_method.transactions_get) == 0
+    error_message = "anonymous GET /transactions route must not exist in prod"
+  }
+
+  assert {
+    condition     = length(aws_api_gateway_method.transaction_payment_status_get) == 0
+    error_message = "anonymous GET /transaction-payment-status route must not exist in prod"
+  }
+
+  assert {
+    condition     = aws_api_gateway_method.transaction_log_get.authorization == "AWS_IAM" && aws_api_gateway_method.revenue_summary_get.authorization == "AWS_IAM"
+    error_message = "the dashboard routes must exist in prod and require SigV4"
+  }
+
+  assert {
+    condition     = length(local.public_dashboard_resource_arns) == 0
+    error_message = "prod must add no anonymous dashboard paths to the resource policy"
+  }
+}
+
 run "rejects_invalid_log_retention_days" {
   command = plan
 
@@ -113,12 +173,14 @@ run "rejects_invalid_log_retention_days" {
     stage_name         = "stg"
     log_retention_days = 2
     lambda_function_arns = {
-      initPayment    = "arn:aws:lambda:us-east-1:123456789012:function:init"
-      processPayment = "arn:aws:lambda:us-east-1:123456789012:function:process"
-      getDetails     = "arn:aws:lambda:us-east-1:123456789012:function:details"
-      testCert       = "arn:aws:lambda:us-east-1:123456789012:function:test"
-      healthCheck    = "arn:aws:lambda:us-east-1:123456789012:function:health"
-      validateClient = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
+      initPayment       = "arn:aws:lambda:us-east-1:123456789012:function:init"
+      processPayment    = "arn:aws:lambda:us-east-1:123456789012:function:process"
+      getDetails        = "arn:aws:lambda:us-east-1:123456789012:function:details"
+      testCert          = "arn:aws:lambda:us-east-1:123456789012:function:test"
+      healthCheck       = "arn:aws:lambda:us-east-1:123456789012:function:health"
+      validateClient    = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
+      getTransactionLog = "arn:aws:lambda:us-east-1:123456789012:function:get-transaction-log"
+      getRevenueSummary = "arn:aws:lambda:us-east-1:123456789012:function:get-revenue-summary"
     }
   }
 

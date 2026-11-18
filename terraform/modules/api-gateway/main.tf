@@ -1,5 +1,5 @@
 ###############################
-# Dashboard endpoints (dev only)
+# Dashboard endpoints
 ###############################
 locals {
   enable_dashboard_endpoints = var.environment == "dev" || startswith(var.environment, "pr-")
@@ -39,7 +39,6 @@ resource "aws_api_gateway_resource" "transaction_payment_status" {
 # Serves the Case Services & Finance log. Reached only by that dashboard's
 # server, never a browser, so it takes SigV4 and needs no CORS.
 resource "aws_api_gateway_resource" "transaction_log" {
-  count       = local.enable_dashboard_endpoints ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
   parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
   path_part   = "transaction-log"
@@ -48,7 +47,6 @@ resource "aws_api_gateway_resource" "transaction_log" {
 # One-call summary for the dashboard's revenue totals table. Same posture as
 # transaction-log: SigV4, server-to-server only, no CORS.
 resource "aws_api_gateway_resource" "revenue_summary" {
-  count       = local.enable_dashboard_endpoints ? 1 : 0
   rest_api_id = aws_api_gateway_rest_api.rest.id
   parent_id   = aws_api_gateway_rest_api.rest.root_resource_id
   path_part   = "revenue-summary"
@@ -83,17 +81,15 @@ resource "aws_api_gateway_method" "transaction_payment_status_get" {
 }
 
 resource "aws_api_gateway_method" "transaction_log_get" {
-  count         = local.enable_dashboard_endpoints ? 1 : 0
   rest_api_id   = aws_api_gateway_rest_api.rest.id
-  resource_id   = aws_api_gateway_resource.transaction_log[0].id
+  resource_id   = aws_api_gateway_resource.transaction_log.id
   http_method   = "GET"
   authorization = "AWS_IAM"
 }
 
 resource "aws_api_gateway_method" "revenue_summary_get" {
-  count         = local.enable_dashboard_endpoints ? 1 : 0
   rest_api_id   = aws_api_gateway_rest_api.rest.id
-  resource_id   = aws_api_gateway_resource.revenue_summary[0].id
+  resource_id   = aws_api_gateway_resource.revenue_summary.id
   http_method   = "GET"
   authorization = "AWS_IAM"
 }
@@ -133,20 +129,18 @@ resource "aws_api_gateway_integration" "transaction_payment_status_integration" 
 }
 
 resource "aws_api_gateway_integration" "transaction_log_integration" {
-  count                   = local.enable_dashboard_endpoints ? 1 : 0
   rest_api_id             = aws_api_gateway_rest_api.rest.id
-  resource_id             = aws_api_gateway_resource.transaction_log[0].id
-  http_method             = aws_api_gateway_method.transaction_log_get[0].http_method
+  resource_id             = aws_api_gateway_resource.transaction_log.id
+  http_method             = aws_api_gateway_method.transaction_log_get.http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
   uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getTransactionLog"]}/invocations"
 }
 
 resource "aws_api_gateway_integration" "revenue_summary_integration" {
-  count                   = local.enable_dashboard_endpoints ? 1 : 0
   rest_api_id             = aws_api_gateway_rest_api.rest.id
-  resource_id             = aws_api_gateway_resource.revenue_summary[0].id
-  http_method             = aws_api_gateway_method.revenue_summary_get[0].http_method
+  resource_id             = aws_api_gateway_resource.revenue_summary.id
+  http_method             = aws_api_gateway_method.revenue_summary_get.http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
   uri                     = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.lambda_function_arns["getRevenueSummary"]}/invocations"
@@ -299,20 +293,62 @@ resource "aws_lambda_permission" "transaction_payment_status_permission" {
 }
 
 resource "aws_lambda_permission" "transaction_log_permission" {
-  count         = local.enable_dashboard_endpoints ? 1 : 0
   statement_id  = "AllowAPIGatewayInvokeTransactionLog"
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_arns["getTransactionLog"]
   principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/transaction-log"
 }
 
 resource "aws_lambda_permission" "revenue_summary_permission" {
-  count         = local.enable_dashboard_endpoints ? 1 : 0
   statement_id  = "AllowAPIGatewayInvokeRevenueSummary"
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_arns["getRevenueSummary"]
   principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/revenue-summary"
 }
+
+// TODO: Remove moved blocks after next apply on Dev and PR enviroments
+moved {
+  from = aws_api_gateway_resource.transaction_log[0]
+  to   = aws_api_gateway_resource.transaction_log
+}
+
+moved {
+  from = aws_api_gateway_resource.revenue_summary[0]
+  to   = aws_api_gateway_resource.revenue_summary
+}
+
+moved {
+  from = aws_api_gateway_method.transaction_log_get[0]
+  to   = aws_api_gateway_method.transaction_log_get
+}
+
+moved {
+  from = aws_api_gateway_method.revenue_summary_get[0]
+  to   = aws_api_gateway_method.revenue_summary_get
+}
+
+moved {
+  from = aws_api_gateway_integration.transaction_log_integration[0]
+  to   = aws_api_gateway_integration.transaction_log_integration
+}
+
+moved {
+  from = aws_api_gateway_integration.revenue_summary_integration[0]
+  to   = aws_api_gateway_integration.revenue_summary_integration
+}
+
+moved {
+  from = aws_lambda_permission.transaction_log_permission[0]
+  to   = aws_lambda_permission.transaction_log_permission
+}
+
+moved {
+  from = aws_lambda_permission.revenue_summary_permission[0]
+  to   = aws_lambda_permission.revenue_summary_permission
+}
+
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
@@ -535,8 +571,8 @@ resource "aws_api_gateway_deployment" "deployment" {
       try(aws_api_gateway_resource.transactions[0].id, ""),
       try(aws_api_gateway_resource.transactions_by_status[0].id, ""),
       try(aws_api_gateway_resource.transaction_payment_status[0].id, ""),
-      try(aws_api_gateway_resource.transaction_log[0].id, ""),
-      try(aws_api_gateway_resource.revenue_summary[0].id, ""),
+      aws_api_gateway_resource.transaction_log.id,
+      aws_api_gateway_resource.revenue_summary.id,
 
       aws_api_gateway_method.init_post.id,
       aws_api_gateway_method.process_post.id,
@@ -548,8 +584,8 @@ resource "aws_api_gateway_deployment" "deployment" {
       try(aws_api_gateway_method.transactions_get[0].id, ""),
       try(aws_api_gateway_method.transactions_by_status_get[0].id, ""),
       try(aws_api_gateway_method.transaction_payment_status_get[0].id, ""),
-      try(aws_api_gateway_method.transaction_log_get[0].id, ""),
-      try(aws_api_gateway_method.revenue_summary_get[0].id, ""),
+      aws_api_gateway_method.transaction_log_get.id,
+      aws_api_gateway_method.revenue_summary_get.id,
 
       try(aws_api_gateway_method.transactions_options[0].id, ""),
       try(aws_api_gateway_method.transactions_by_status_options[0].id, ""),
@@ -572,14 +608,14 @@ resource "aws_api_gateway_deployment" "deployment" {
       try(aws_api_gateway_integration.transactions_integration[0].id, ""),
       try(aws_api_gateway_integration.transactions_by_status_integration[0].id, ""),
       try(aws_api_gateway_integration.transaction_payment_status_integration[0].id, ""),
-      try(aws_api_gateway_integration.transaction_log_integration[0].id, ""),
-      try(aws_api_gateway_integration.revenue_summary_integration[0].id, ""),
+      aws_api_gateway_integration.transaction_log_integration.id,
+      aws_api_gateway_integration.revenue_summary_integration.id,
 
       try(aws_api_gateway_integration.transactions_integration[0].uri, ""),
       try(aws_api_gateway_integration.transactions_by_status_integration[0].uri, ""),
       try(aws_api_gateway_integration.transaction_payment_status_integration[0].uri, ""),
-      try(aws_api_gateway_integration.transaction_log_integration[0].uri, ""),
-      try(aws_api_gateway_integration.revenue_summary_integration[0].uri, ""),
+      aws_api_gateway_integration.transaction_log_integration.uri,
+      aws_api_gateway_integration.revenue_summary_integration.uri,
 
       try(aws_api_gateway_integration.transactions_options_integration[0].id, ""),
       try(aws_api_gateway_integration.transactions_by_status_options_integration[0].id, ""),

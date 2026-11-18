@@ -73,7 +73,7 @@ jobs:
           set -euo pipefail
           SHA='${{ steps.resolve.outputs.sha }}'
           echo "Validating artifacts for $SHA in s3://${DEV_ARTIFACT_BUCKET}/artifacts/dev/$SHA/"
-          for f in initPayment processPayment getDetails validateClient testCert migrationRunner; do
+          for f in initPayment processPayment getDetails validateClient testCert cancelExpired migrationRunner getTransactionLog getRevenueSummary; do
             KEY="artifacts/dev/${SHA}/${f}.zip"
             aws s3api head-object --bucket "${DEV_ARTIFACT_BUCKET}" --key "$KEY" >/dev/null 2>&1 || {
               echo "Missing $KEY" >&2; exit 1; }
@@ -209,6 +209,8 @@ jobs:
           echo "testCert=${PREFIX}/testCert.zip" >> $GITHUB_OUTPUT
           echo "cancelExpired=${PREFIX}/cancelExpired.zip" >> $GITHUB_OUTPUT
           echo "migrationRunner=${PREFIX}/migrationRunner.zip" >> $GITHUB_OUTPUT
+          echo "getTransactionLog=${PREFIX}/getTransactionLog.zip" >> $GITHUB_OUTPUT
+          echo "getRevenueSummary=${PREFIX}/getRevenueSummary.zip" >> $GITHUB_OUTPUT
 
       # - name: Fetch artifact hashes (to see if tf change is needed)
       #   id: hashes
@@ -247,6 +249,8 @@ jobs:
           TF_VAR_testCert_s3_key: ${{ steps.artifacts.outputs.testCert }}
           TF_VAR_cancelExpired_s3_key: ${{ steps.artifacts.outputs.cancelExpired }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.artifacts.outputs.migrationRunner }}
+          TF_VAR_getTransactionLog_s3_key: ${{ steps.artifacts.outputs.getTransactionLog }}
+          TF_VAR_getRevenueSummary_s3_key: ${{ steps.artifacts.outputs.getRevenueSummary }}
           # AWS Chatbot → Microsoft Teams routing. Missing secrets disable Teams routing (enable_teams=false).
           TF_VAR_teams_tenant_id: ${{ secrets.STAGING_TEAMS_TENANT_ID }}
           TF_VAR_teams_team_id: ${{ secrets.STAGING_TEAMS_TEAM_ID }}
@@ -383,6 +387,33 @@ jobs:
             exit 1
           fi
           echo "Unauthorized fee request was rejected by authorizeClient."
+
+      - name: Smoke test dashboard endpoint access
+        shell: bash
+        env:
+          API_URL: ${{ steps.tf_outputs.outputs.api_url }}
+          EXPECTED_UNSIGNED_TRANSACTIONS_STATUS: "403"
+        run: |
+          set -euo pipefail
+          trap 'echo "Dashboard smoke FAILED"; for f in transactions.json unsigned-init.json; do [ -f "$f" ] && { echo "--- $f ---"; cat "$f"; } || true; done' ERR
+
+          TX_STATUS=$(curl -s -o transactions.json -w '%{http_code}' "$API_URL/transactions")
+          echo "Unsigned GET /transactions -> $TX_STATUS (expected $EXPECTED_UNSIGNED_TRANSACTIONS_STATUS)"
+          if [ "$TX_STATUS" != "$EXPECTED_UNSIGNED_TRANSACTIONS_STATUS" ]; then
+            echo "ERROR: Unsigned /transactions returned $TX_STATUS, expected $EXPECTED_UNSIGNED_TRANSACTIONS_STATUS." >&2
+            exit 1
+          fi
+          if [ "$EXPECTED_UNSIGNED_TRANSACTIONS_STATUS" = "200" ]; then
+            jq -e . transactions.json >/dev/null || { echo "ERROR: /transactions did not return JSON." >&2; exit 1; }
+          fi
+
+          INIT_STATUS=$(curl -s -o unsigned-init.json -w '%{http_code}' -X POST "$API_URL/init" \
+            -H 'Content-Type: application/json' --data-binary '{}')
+          echo "Unsigned POST /init -> $INIT_STATUS (expected 403)"
+          if [ "$INIT_STATUS" != "403" ]; then
+            echo "ERROR: Unsigned /init returned $INIT_STATUS; payment routes must stay SigV4-protected." >&2
+            exit 1
+          fi
 
   staging-e2e:
     runs-on: ubuntu-latest
