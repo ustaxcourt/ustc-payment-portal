@@ -402,6 +402,8 @@ describe("initPayment", () => {
 
     expect(TransactionModel.updateToFailedIfNotProcessed).toHaveBeenCalledWith(
       "existing-id",
+      "processing",
+      expect.any(String),
       5009,
       "PayGov token is not found or expired",
     );
@@ -813,10 +815,11 @@ describe("initPayment", () => {
 
     expect(TransactionModel.updateToFailedIfNotProcessed).toHaveBeenCalledWith(
       "existing-id",
+      "processing",
+      expect.any(String),
       5009,
       "PayGov token is not found or expired",
     );
-
     expect(result.token).toBe(freshPaygovToken);
   });
 });

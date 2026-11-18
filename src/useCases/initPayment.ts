@@ -16,7 +16,6 @@ import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { ZodError } from "zod";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { type ActiveFee, getActiveFee } from "@/config/fees";
-import { getReturnCode } from "@/config/payGovReturnCodes";
 import { GetRequestRequest } from "@/entities/GetDetailsRequest";
 import { derivePaymentStatusFromSingleTransaction } from "@/utils/derivePaymentStatus";
 import { toPaymentMethod } from "@/utils/toPaymentMethod";
@@ -30,8 +29,6 @@ import { FailedTransactionError } from "../errors/failedTransaction";
 import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 import { parseTransactionStatus } from "./parseTransactionStatus";
-
-const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
 
 type ReceivedTransactionParams = {
   agencyTrackingId: string;
@@ -390,11 +387,15 @@ export const resolveInFlightTransaction = async (
       }
     }
 
-    await TransactionModel.updateToFailedIfNotProcessed(
-      existingTransaction.agencyTrackingId,
-      EXISTING_TOKEN_ERROR_CODE,
-      getReturnCode(EXISTING_TOKEN_ERROR_CODE)?.returnDetail,
-    );
+    if (existingTransaction.transactionStatus === "processing") {
+      await TransactionModel.updateToFailedIfNotProcessed(
+        existingTransaction.agencyTrackingId,
+        existingTransaction.transactionStatus,
+        existingTransaction.lastUpdatedAt,
+        5009,
+        "PayGov token is not found or expired",
+      );
+    }
   }
   return null;
 };
