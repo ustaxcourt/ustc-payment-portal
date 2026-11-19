@@ -2,7 +2,6 @@ import type { AppContext } from "@appTypes/AppContext";
 import type { ClientPermission } from "@appTypes/ClientPermission";
 import type { ProcessPaymentRequest } from "@appTypes/ProcessPaymentRequest";
 import { CompleteOnlineCollectionWithDetailsRequest } from "@entities/CompleteOnlineCollectionWithDetailsRequest";
-import { GetRequestRequest } from "@entities/GetDetailsRequest";
 import { ConflictError } from "@errors/conflict";
 import { FailedTransactionError } from "@errors/failedTransaction";
 import { GoneError } from "@errors/gone";
@@ -25,6 +24,7 @@ import TransactionModel, {
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
 import { emitProcessPaymentConflictMetric } from "../health/processPaymentConcurrencyMetric";
 import { parseTransactionStatus } from "./parseTransactionStatus";
+import { getProcessingTransactionDetails } from "./getProcessingTransactionDetails";
 
 export type ProcessPayment = (
   appContext: AppContext,
@@ -151,21 +151,20 @@ export const processPayment: ProcessPayment = async (
 
   // Reconcile before the claim's token-expiry check: Pay.gov may have completed
   // the payment before the original Lambda timed out.
-  if (
-    isStaleProcessingTransaction(existingTransaction) &&
-    existingTransaction.paygovTrackingId
-  ) {
-    const details = await new GetRequestRequest({
-      tcsAppId: fee.tcsAppId,
-      payGovTrackingId: existingTransaction.paygovTrackingId,
-    }).makeSoapRequest(appContext);
+  if (isStaleProcessingTransaction(existingTransaction)) {
+    const { result: details, status } = await getProcessingTransactionDetails(
+      appContext,
+      existingTransaction,
+      fee.tcsAppId,
+    );
 
-    if (parseTransactionStatus(details.transaction_status) === "processed") {
+    if (status === "processed" || status === "pending") {
+      const paymentStatus = derivePaymentStatusFromSingleTransaction(status);
       await TransactionModel.updateAfterPayGovResponse(
         existingTransaction.agencyTrackingId,
         details.paygov_tracking_id,
-        "processed",
-        "success",
+        status,
+        paymentStatus,
         details.payment_type ? toPaymentMethod(details.payment_type) : null,
         details.transaction_date,
         details.payment_date,
@@ -176,7 +175,7 @@ export const processPayment: ProcessPayment = async (
         existingTransaction.transactionReferenceId,
       );
       return {
-        paymentStatus: "success",
+        paymentStatus,
         transactions: allRows.map((row) => toTransactionRecordSummary(row)),
       };
     }

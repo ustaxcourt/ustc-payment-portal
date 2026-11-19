@@ -7,6 +7,7 @@ import { GoneError } from "@errors/gone";
 import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
+import { ZodError } from "zod";
 import { getActiveFee } from "../config/fees";
 import TransactionModel from "../db/TransactionModel";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
@@ -256,13 +257,15 @@ describe("processPayment", () => {
   });
 
   const mockStaleTransaction = () => {
+    const row = Object.assign({}, mockTransaction, {
+      paygovTrackingId: mockPayGovTrackingId,
+      createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+    });
     TransactionModelMock.findByPaygovToken.mockResolvedValueOnce(
-      Object.assign({}, mockTransaction, {
-        paygovTrackingId: mockPayGovTrackingId,
-        createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-        lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
-      }),
+      row,
     );
+    return row;
   };
 
   it.each(["ACH", undefined])(
@@ -291,7 +294,7 @@ describe("processPayment", () => {
       expect(
         TransactionModelMock.updateAfterPayGovResponse,
       ).toHaveBeenCalledWith(
-        mockTransaction.agencyTrackingId,
+        "agency-tracking-id-001",
         mockPayGovTrackingId,
         "processed",
         "success",
@@ -338,18 +341,73 @@ describe("processPayment", () => {
     ).not.toHaveBeenCalled();
   });
 
-  it("does not fail or complete the payment when reconciliation is unavailable", async () => {
+  it.each([new ZodError([]), new PayGovError("Pay.gov unavailable")])(
+    "does not fail or complete the payment when reconciliation is unavailable (%s)", async (error) => {
     mockStaleTransaction();
     jest
       .spyOn(GetRequestRequest.prototype, "makeSoapRequest")
-      .mockRejectedValueOnce(new PayGovError("Pay.gov unavailable"));
+      .mockRejectedValueOnce(error);
 
     await expect(
       processPayment(appContext, {
         client: mockClient,
         request: { token: "mock-token" },
       }),
-    ).rejects.toThrow(PayGovError);
+    ).rejects.toMatchObject({ statusCode: 502 });
+    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+    expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
+  });
+
+  it("blocks stale completion without a tracking ID", async () => {
+    const row = mockStaleTransaction();
+    row.paygovTrackingId = "";
+    const details = jest.spyOn(GetRequestRequest.prototype, "makeSoapRequest");
+
+    await expect(processPayment(appContext, {
+      client: mockClient, request: { token: "mock-token" },
+    })).rejects.toMatchObject({
+      statusCode: 409, message: ConflictError.PAYMENT_OUTCOME_UNKNOWN_MESSAGE,
+    });
+    expect(details).not.toHaveBeenCalled();
+    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+    expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
+  });
+
+  it.each(["Pending", "Received", "Waiting", "Submitted"] as const)(
+    "returns pending without completing the token again when Pay.gov reports %s",
+    async (status) => {
+      const row = mockStaleTransaction();
+      jest.spyOn(GetRequestRequest.prototype, "makeSoapRequest").mockResolvedValueOnce({
+        paygov_tracking_id: mockPayGovTrackingId, transaction_status: status,
+      });
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([mockPendingRow]);
+
+      await expect(processPayment(appContext, {
+        client: mockClient, request: { token: "mock-token" },
+      })).resolves.toMatchObject({
+        paymentStatus: "pending",
+        transactions: [expect.objectContaining({ transactionStatus: "pending" })],
+      });
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+        row.agencyTrackingId, mockPayGovTrackingId, "pending", "pending", null,
+        undefined, undefined, "processing", row.lastUpdatedAt,
+      );
+      expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+      expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
+    },
+  );
+
+  it("returns a conflict if a newer claim owns the stale transaction", async () => {
+    mockStaleTransaction();
+    jest.spyOn(GetRequestRequest.prototype, "makeSoapRequest").mockResolvedValueOnce({
+      paygov_tracking_id: mockPayGovTrackingId, transaction_status: "Success",
+    });
+    const conflict = new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
+    TransactionModelMock.updateAfterPayGovResponse.mockRejectedValueOnce(conflict);
+
+    await expect(processPayment(appContext, {
+      client: mockClient, request: { token: "mock-token" },
+    })).rejects.toBe(conflict);
     expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
     expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
   });

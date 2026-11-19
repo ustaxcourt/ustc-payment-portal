@@ -17,7 +17,7 @@ import {
   type CourtPeriodRecord,
 } from "@utils/courtDayBounds";
 import type { Knex } from "knex";
-import { Model } from "objection";
+import { Model, raw } from "objection";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { getFeeNamesByKey } from "../config/fees";
 import { getKnex } from "./knex";
@@ -539,7 +539,10 @@ export default class TransactionModel extends Model {
     token: string,
   ): Promise<TransactionModel | undefined> {
     await getKnex();
-    return TransactionModel.query().findOne({ paygovToken: token });
+    // Keep Postgres microseconds for compare-and-swap; pg's Date parser loses them.
+    return TransactionModel.query()
+      .select("transactions.*", raw("last_updated_at::text as last_updated_at"))
+      .findOne({ paygovToken: token });
   }
 
   static async findByPaygovTrackingId(
@@ -582,10 +585,7 @@ export default class TransactionModel extends Model {
       ...(paymentDate && { paymentDate }),
     };
 
-    if (
-      expectedTransactionStatus === undefined ||
-      expectedLastUpdatedAt === undefined
-    ) {
+    if (expectedTransactionStatus === undefined) {
       const updated = await TransactionModel.query().patchAndFetchById(
         agencyTrackingId,
         patch,
@@ -598,11 +598,16 @@ export default class TransactionModel extends Model {
       return updated;
     }
 
-    const updated = await TransactionModel.query()
+    const query = TransactionModel.query()
       .patch(patch)
       .where("agencyTrackingId", agencyTrackingId)
-      .where("transactionStatus", expectedTransactionStatus)
-      .where("lastUpdatedAt", expectedLastUpdatedAt)
+      .where("transactionStatus", expectedTransactionStatus);
+
+    if (expectedLastUpdatedAt !== undefined) {
+      query.where("lastUpdatedAt", expectedLastUpdatedAt);
+    }
+
+    const updated = await query
       .returning("*")
       .first();
 
@@ -711,6 +716,7 @@ export default class TransactionModel extends Model {
   ): Promise<TransactionModel | undefined> {
     await getKnex();
     return TransactionModel.query()
+      .select("transactions.*", raw("last_updated_at::text as last_updated_at"))
       .where("clientName", clientName)
       .where("transactionReferenceId", transactionReferenceId)
       .whereIn("transactionStatus", transactionStatus)
@@ -734,7 +740,7 @@ export default class TransactionModel extends Model {
 
   static async updateToFailedIfNotProcessed(
     agencyTrackingId: string,
-    expectedTransactionStatus: TransactionStatus,
+    expectedTransactionStatus: "processing",
     expectedLastUpdatedAt: string,
     returnCode?: number,
     returnDetail?: string,

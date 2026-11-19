@@ -16,7 +16,6 @@ import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { ZodError } from "zod";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { type ActiveFee, getActiveFee } from "@/config/fees";
-import { GetRequestRequest } from "@/entities/GetDetailsRequest";
 import { derivePaymentStatusFromSingleTransaction } from "@/utils/derivePaymentStatus";
 import { toPaymentMethod } from "@/utils/toPaymentMethod";
 import { authorizeClient } from "../authorizeClient";
@@ -28,7 +27,7 @@ import TransactionModel, {
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
-import { parseTransactionStatus } from "./parseTransactionStatus";
+import { getProcessingTransactionDetails } from "./getProcessingTransactionDetails";
 
 type ReceivedTransactionParams = {
   agencyTrackingId: string;
@@ -305,6 +304,12 @@ export const resolveInFlightTransaction = async (
   existingTransaction: TransactionModel,
   fee: ActiveFee,
 ): Promise<InitPaymentResponse | null> => {
+  if (existingTransaction.fee !== fee.fee) {
+    throw new ConflictError(
+      "The requested fee does not match the existing payment attempt.",
+    );
+  }
+
   // Token age is measured from createdAt: the token is issued when the row goes
   // initiated, and lastUpdatedAt moves for unrelated writes.
   const tokenAgeMs =
@@ -351,8 +356,7 @@ export const resolveInFlightTransaction = async (
     staleProcessing,
   });
 
-  // An abandoned `initiated` session never reached Pay.gov, so it's cancelled rather
-  // than failed; a stale `processing` row did reach Pay.gov, so it stays a failure.
+  // Only a confirmed failure can release a processing attempt for a new session.
   if (isExpiredInitiatedTransaction(existingTransaction)) {
     await TransactionModel.updateToCancelled(
       existingTransaction.agencyTrackingId,
@@ -360,19 +364,16 @@ export const resolveInFlightTransaction = async (
   } else {
     if (
       existingTransaction.transactionStatus === "processing" &&
-      staleProcessing &&
-      existingTransaction.paygovTrackingId
+      staleProcessing
     ) {
-      const req = new GetRequestRequest({
-        tcsAppId: fee.tcsAppId,
-        payGovTrackingId: existingTransaction.paygovTrackingId,
-      });
+      const { result, status: refreshedStatus } =
+        await getProcessingTransactionDetails(
+          appContext,
+          existingTransaction,
+          getActiveFee(existingTransaction.fee, existingTransaction.createdAt).tcsAppId,
+        );
 
-      const result = await req.makeSoapRequest(appContext);
-
-      const refreshedStatus = parseTransactionStatus(result.transaction_status);
-
-      if (refreshedStatus === "processed") {
+      if (refreshedStatus === "processed" || refreshedStatus === "pending") {
         await TransactionModel.updateAfterPayGovResponse(
           existingTransaction.agencyTrackingId,
           result.paygov_tracking_id,
@@ -381,9 +382,15 @@ export const resolveInFlightTransaction = async (
           result.payment_type ? toPaymentMethod(result.payment_type) : null,
           result.transaction_date,
           result.payment_date,
+          "processing",
+          existingTransaction.lastUpdatedAt,
         );
 
-        throw new ConflictError(ConflictError.ALREADY_PAID_MESSAGE);
+        throw new ConflictError(
+          refreshedStatus === "pending"
+            ? ConflictError.PAYMENT_SETTLING_MESSAGE
+            : ConflictError.ALREADY_PAID_MESSAGE,
+        );
       }
     }
 
