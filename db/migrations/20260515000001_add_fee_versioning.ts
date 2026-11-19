@@ -1,3 +1,4 @@
+// migration-safety: acknowledged - existed before safety check
 import type { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
