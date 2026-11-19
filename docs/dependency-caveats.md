@@ -43,7 +43,7 @@ enough context that the next person doesn't have to re-derive the decision.
 
 - **Current:** `@types/node@^24.19.2`. **Available latest:** `^26.6.6`.
 - **Reason:** `@types/node` must track the runtime, not lead it. `engines.node`
-  is `>=24.20.0 <25.0.0` and `.nvmrc` pins `24.22.1`, so the ambient Node types
+  is `>=24.20.0 <25.0.0` and `.nvmrc` pins `24.22.3`, so the ambient Node types
   are intentionally held on the 24 line. A proposed upgrade to
   `@types/node@^26.1.1` was reverted because it would expose Node 26 APIs in
   TypeScript that are not available in the supported Node 24 runtime. This could
@@ -55,6 +55,29 @@ enough context that the next person doesn't have to re-derive the decision.
 - **Mismatch resolved (2026-10-23):** the Lambdas moved from `nodejs22.x` to
   `nodejs24.x` and esbuild now targets `node24`, so the Node 24 types match
   production.
+
+### Node.js 24.22.1 → 24.22.3 in `.nvmrc`; `engines.node` floor still held at 24.20.0 (2026-11-19, PAY-508)
+
+- **Why:** 24.22.3 (2026-11-11) is a security release. Nine high CVEs: http2
+  (CVE-2026-123863, -123865, -123866, -123874), tls/http (-123864), tls
+  (-123872, -126051 remotely reachable server crash), plus medium and low
+  fixes in http2, tls, https, zlib and the permission model. Bundled
+  dependency updates include undici 7.30.2 and brotli 1.2.1. `.nvmrc` drives
+  every CI `setup-node` step, including `publish.yml`.
+- **Source:** [Node.js 24.22.3 release and security notes](https://nodejs.org/en/blog/release/v24.22.3).
+- **Why the floor stays:** same reason as the 24.22.1 entry below. DAWSON
+  installs with `engine-strict=true`, so raising `engines.node` would fail its
+  install.
+- **Lambda:** unchanged mechanism. `.nvmrc` does not affect the Lambda runtime,
+  which is AWS-managed (Auto mode) and can't be pinned. These CVEs apply to the
+  deployed functions only once AWS rolls out 24.22.3. The Lambdas are API
+  Gateway-fronted and make outbound mTLS calls to Pay.gov, so the inbound
+  http2/tls server fixes are most relevant to CI and local dev. Not yet
+  verified against the deployed runtime; check `process.version` from a deployed
+  function, as in the 24.22.1 entry.
+- **Not an `ACCEPTED_ADVISORIES` item:** `npm audit` doesn't see Node runtime
+  CVEs. The Lambda exposure is tracked in the CVE-2026-111497 entry under
+  Accepted vulnerabilities, whose revisit check should now look for 24.22.3.
 
 ### Node.js 24.20.0 → 24.22.1 in `.nvmrc`; `engines.node` floor held at 24.20.0 (2026-10-23)
 
@@ -366,7 +389,9 @@ audit` to the `csv-parse` finding alone. `npm run build` succeeds and `tsc` is
   those responses come only from Pay.gov over TLS. Request bodies reach the
   Lambdas as decoded API Gateway JSON.
 - **Revisit:** when a deployed function's `process.version` is 24.22.1 or
-  later. Record it here and move this entry to "Removed".
+  later. Record it here and move this entry to "Removed". Prefer checking for
+  24.22.3, which also carries the November security fixes (see the 24.22.3
+  entry under Deferred upgrades).
 - **Not yet verified (2026-11-10):** no runtime reading was taken this pass. The
   PO was asked for a ticket to check the version after the next deploy and to
   evaluate pinning the runtime, matching the test server's follow-up.
