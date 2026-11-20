@@ -109,6 +109,9 @@ export default class TransactionModel extends Model {
   returnCode?: number | null;
   returnDetail?: string | null;
   createdAt!: string;
+  // Usually an ISO timestamp. Some concurrency-sensitive queries override this
+  // with raw Postgres timestamp text so compare-and-swap checks preserve
+  // microsecond precision.
   lastUpdatedAt!: string;
   metadata?: Record<string, string> | null;
 
@@ -607,9 +610,7 @@ export default class TransactionModel extends Model {
       query.where("lastUpdatedAt", expectedLastUpdatedAt);
     }
 
-    const updated = await query
-      .returning("*")
-      .first();
+    const updated = await query.returning("*").first();
 
     if (!updated) {
       throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
