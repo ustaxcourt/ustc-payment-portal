@@ -342,32 +342,6 @@ describe("TransactionModel", () => {
   });
 
   describe("updateToFailedIfNotProcessed", () => {
-    it("does not overwrite a transaction whose state changed", async () => {
-      const builder = spyOnQuery();
-
-      builder.first.mockResolvedValueOnce(undefined);
-
-      await expect(
-        TransactionModel.updateToFailedIfNotProcessed(
-          "existing-id",
-          "processing",
-          "2026-11-18T19:02:13.325Z",
-          5009,
-          "expired",
-        ),
-      ).rejects.toThrow(ConflictError);
-
-      expect(builder.where).toHaveBeenCalledWith(
-        "transactionStatus",
-        "processing",
-      );
-
-      expect(builder.where).toHaveBeenCalledWith(
-        "lastUpdatedAt",
-        "2026-11-18T19:02:13.325Z",
-      );
-    });
-
     it("guards against overwriting a transaction whose state changed", async () => {
       const builder = spyOnQuery();
 
