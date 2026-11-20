@@ -71,7 +71,6 @@ describeWithCreds("GET /validate-client — registered client", () => {
     ) {
       return;
     }
-    console.log("DEBUG VERSION 2");
     const result = await signedFetch(validateClientUrl, {
       method: "GET",
     });
