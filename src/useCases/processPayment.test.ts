@@ -1,4 +1,5 @@
 import type { ClientPermission } from "@appTypes/ClientPermission";
+import { GetRequestRequest } from "@entities/GetDetailsRequest";
 import { ConflictError } from "@errors/conflict";
 import { FeeNotFoundError } from "@errors/feeNotFound";
 import { ForbiddenError } from "@errors/forbidden";
@@ -6,6 +7,7 @@ import { GoneError } from "@errors/gone";
 import { NotFoundError } from "@errors/notFound";
 import { PayGovError } from "@errors/payGovError";
 import { ServerError } from "@errors/serverError";
+import { ZodError } from "zod";
 import { getActiveFee } from "../config/fees";
 import TransactionModel from "../db/TransactionModel";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
@@ -24,6 +26,8 @@ jest.mock("../health/processPaymentConcurrencyMetric", () => ({
 
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
+  isStaleProcessingTransaction: jest.requireActual("../db/TransactionModel")
+    .isStaleProcessingTransaction,
   default: {
     findByPaygovToken: jest.fn(),
     claimForProcessing: jest.fn(),
@@ -35,6 +39,7 @@ jest.mock("../db/TransactionModel", () => ({
 
 jest.mock("../config/fees", () => ({
   __esModule: true,
+  ...jest.requireActual("../config/fees"),
   getActiveFee: jest.fn(),
 }));
 
@@ -75,7 +80,7 @@ const mockUpdatedTransaction = (paymentMethod: string | null) =>
     ...mockTransaction,
     paymentMethod,
     lastUpdatedAt: "2026-01-15T10:35:01Z",
-  } as unknown as TransactionModel);
+  }) as unknown as TransactionModel;
 
 const mockPayGovTrackingId = "211d8c91c046404fb159b52d042a12ba";
 
@@ -231,6 +236,7 @@ const mockInitiatedTransaction = {
 
 describe("processPayment", () => {
   beforeEach(() => {
+    jest.restoreAllMocks();
     jest.clearAllMocks();
     TransactionModelMock.findByPaygovToken.mockResolvedValue(
       mockInitiatedTransaction,
@@ -248,6 +254,162 @@ describe("processPayment", () => {
       fee: "fee-123",
       tcsAppId: "USTAXCOURTPETITION",
     });
+  });
+
+  const mockStaleTransaction = () => {
+    const row = Object.assign({}, mockTransaction, {
+      paygovTrackingId: mockPayGovTrackingId,
+      createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+    });
+    TransactionModelMock.findByPaygovToken.mockResolvedValueOnce(
+      row,
+    );
+    return row;
+  };
+
+  it.each(["ACH", undefined])(
+    "returns normal success for a stale payment confirmed by Pay.gov (payment type: %s)",
+    async (paymentType) => {
+      mockStaleTransaction();
+      const details = jest
+        .spyOn(GetRequestRequest.prototype, "makeSoapRequest")
+        .mockResolvedValueOnce({
+          paygov_tracking_id: mockPayGovTrackingId,
+          transaction_status: "Success",
+          payment_type: paymentType,
+          transaction_date: "2026-11-17T16:53:50.789Z",
+          payment_date: "2026-11-17",
+        });
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([
+        mockProcessedRow,
+      ]);
+
+      const result = await processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      });
+
+      expect(details).toHaveBeenCalledWith(appContext);
+      expect(
+        TransactionModelMock.updateAfterPayGovResponse,
+      ).toHaveBeenCalledWith(
+        "agency-tracking-id-001",
+        mockPayGovTrackingId,
+        "processed",
+        "success",
+        paymentType ? "ach" : null,
+        "2026-11-17T16:53:50.789Z",
+        "2026-11-17",
+        "processing",
+        expect.any(String),
+      );
+      expect(result).toEqual({
+        paymentStatus: "success",
+        transactions: [
+          expect.objectContaining({ transactionStatus: "processed" }),
+        ],
+      });
+      expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+      expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
+    },
+  );
+
+  it("preserves claim validation when Pay.gov has not completed the stale payment", async () => {
+    mockStaleTransaction();
+    jest
+      .spyOn(GetRequestRequest.prototype, "makeSoapRequest")
+      .mockResolvedValueOnce({
+        paygov_tracking_id: mockPayGovTrackingId,
+        transaction_status: "Failed",
+      });
+    TransactionModelMock.claimForProcessing.mockRejectedValueOnce(
+      new GoneError("Transaction token has expired."),
+    );
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toThrow(GoneError);
+    expect(TransactionModelMock.claimForProcessing).toHaveBeenCalledWith(
+      "mock-token",
+    );
+    expect(
+      TransactionModelMock.updateAfterPayGovResponse,
+    ).not.toHaveBeenCalled();
+  });
+
+  it.each([new ZodError([]), new PayGovError("Pay.gov unavailable")])(
+    "does not fail or complete the payment when reconciliation is unavailable (%s)", async (error) => {
+    mockStaleTransaction();
+    jest
+      .spyOn(GetRequestRequest.prototype, "makeSoapRequest")
+      .mockRejectedValueOnce(error);
+
+    await expect(
+      processPayment(appContext, {
+        client: mockClient,
+        request: { token: "mock-token" },
+      }),
+    ).rejects.toMatchObject({ statusCode: 502 });
+    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+    expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
+  });
+
+  it("blocks stale completion without a tracking ID", async () => {
+    const row = mockStaleTransaction();
+    row.paygovTrackingId = "";
+    const details = jest.spyOn(GetRequestRequest.prototype, "makeSoapRequest");
+
+    await expect(processPayment(appContext, {
+      client: mockClient, request: { token: "mock-token" },
+    })).rejects.toMatchObject({
+      statusCode: 409, message: ConflictError.PAYMENT_OUTCOME_UNKNOWN_MESSAGE,
+    });
+    expect(details).not.toHaveBeenCalled();
+    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+    expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
+  });
+
+  it.each(["Pending", "Received", "Waiting", "Submitted"] as const)(
+    "returns pending without completing the token again when Pay.gov reports %s",
+    async (status) => {
+      const row = mockStaleTransaction();
+      jest.spyOn(GetRequestRequest.prototype, "makeSoapRequest").mockResolvedValueOnce({
+        paygov_tracking_id: mockPayGovTrackingId, transaction_status: status,
+      });
+      TransactionModelMock.findByReferenceId.mockResolvedValueOnce([mockPendingRow]);
+
+      await expect(processPayment(appContext, {
+        client: mockClient, request: { token: "mock-token" },
+      })).resolves.toMatchObject({
+        paymentStatus: "pending",
+        transactions: [expect.objectContaining({ transactionStatus: "pending" })],
+      });
+      expect(TransactionModelMock.updateAfterPayGovResponse).toHaveBeenCalledWith(
+        row.agencyTrackingId, mockPayGovTrackingId, "pending", "pending", null,
+        undefined, undefined, "processing", row.lastUpdatedAt,
+      );
+      expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+      expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
+    },
+  );
+
+  it("returns a conflict if a newer claim owns the stale transaction", async () => {
+    mockStaleTransaction();
+    jest.spyOn(GetRequestRequest.prototype, "makeSoapRequest").mockResolvedValueOnce({
+      paygov_tracking_id: mockPayGovTrackingId, transaction_status: "Success",
+    });
+    const conflict = new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
+    TransactionModelMock.updateAfterPayGovResponse.mockRejectedValueOnce(conflict);
+
+    await expect(processPayment(appContext, {
+      client: mockClient, request: { token: "mock-token" },
+    })).rejects.toBe(conflict);
+    expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
+    expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
   });
 
   it("throws NotFoundError when token is not in the database", async () => {

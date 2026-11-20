@@ -1,9 +1,9 @@
 import type { AppContext } from "@appTypes/AppContext";
-import { RequestType, SoapRequest } from "./SoapRequest";
 import {
   PayGovGetDetailsResponseSchema,
   PayGovGetDetailsTransaction,
 } from "@schemas/PayGovGetDetailsResponse.schema";
+import { RequestType, SoapRequest } from "./SoapRequest";
 
 export type RawGetDetailsRequest = {
   tcsAppId: string;
@@ -24,11 +24,11 @@ export class GetRequestRequest extends SoapRequest {
     this.payGovTrackingId = request.payGovTrackingId;
   }
 
-  makeSoapRequest = async (
+  async makeSoapRequest(
     appContext: AppContext,
-  ): Promise<PayGovGetDetailsTransaction> => {
+  ): Promise<PayGovGetDetailsTransaction> {
     return this.useHttp(appContext);
-  };
+  }
 
   useHttp = async (
     appContext: AppContext,
@@ -67,4 +67,3 @@ export class GetRequestRequest extends SoapRequest {
     throw this.handleFault(responseBody["S:Fault"]);
   };
 }
-

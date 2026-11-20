@@ -17,7 +17,7 @@ import {
   type CourtPeriodRecord,
 } from "@utils/courtDayBounds";
 import type { Knex } from "knex";
-import { Model } from "objection";
+import { Model, raw } from "objection";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { getFeeNamesByKey } from "../config/fees";
 import { getKnex } from "./knex";
@@ -109,6 +109,9 @@ export default class TransactionModel extends Model {
   returnCode?: number | null;
   returnDetail?: string | null;
   createdAt!: string;
+  // Usually an ISO timestamp. Some concurrency-sensitive queries override this
+  // with raw Postgres timestamp text so compare-and-swap checks preserve
+  // microsecond precision.
   lastUpdatedAt!: string;
   metadata?: Record<string, string> | null;
 
@@ -539,7 +542,10 @@ export default class TransactionModel extends Model {
     token: string,
   ): Promise<TransactionModel | undefined> {
     await getKnex();
-    return TransactionModel.query().findOne({ paygovToken: token });
+    // Keep Postgres microseconds for compare-and-swap; pg's Date parser loses them.
+    return TransactionModel.query()
+      .select("transactions.*", raw("last_updated_at::text as last_updated_at"))
+      .findOne({ paygovToken: token });
   }
 
   static async findByPaygovTrackingId(
@@ -570,6 +576,7 @@ export default class TransactionModel extends Model {
     transactionDate: string | undefined,
     paymentDate: string | undefined,
     expectedTransactionStatus?: TransactionStatus,
+    expectedLastUpdatedAt?: string,
   ): Promise<TransactionModel> {
     await getKnex();
     const patch = {
@@ -586,18 +593,24 @@ export default class TransactionModel extends Model {
         agencyTrackingId,
         patch,
       );
+
       if (!updated) {
         throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
       }
+
       return updated;
     }
 
-    const updated = (await TransactionModel.query()
+    const query = TransactionModel.query()
       .patch(patch)
       .where("agencyTrackingId", agencyTrackingId)
-      .where("transactionStatus", expectedTransactionStatus)
-      .returning("*")
-      .first()) as TransactionModel | undefined;
+      .where("transactionStatus", expectedTransactionStatus);
+
+    if (expectedLastUpdatedAt !== undefined) {
+      query.where("lastUpdatedAt", expectedLastUpdatedAt);
+    }
+
+    const updated = await query.returning("*").first();
 
     if (!updated) {
       throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
@@ -704,6 +717,7 @@ export default class TransactionModel extends Model {
   ): Promise<TransactionModel | undefined> {
     await getKnex();
     return TransactionModel.query()
+      .select("transactions.*", raw("last_updated_at::text as last_updated_at"))
       .where("clientName", clientName)
       .where("transactionReferenceId", transactionReferenceId)
       .whereIn("transactionStatus", transactionStatus)
@@ -723,6 +737,35 @@ export default class TransactionModel extends Model {
       returnCode,
       returnDetail,
     });
+  }
+
+  static async updateToFailedIfNotProcessed(
+    agencyTrackingId: string,
+    expectedTransactionStatus: "processing",
+    expectedLastUpdatedAt: string,
+    returnCode?: number,
+    returnDetail?: string,
+  ): Promise<TransactionModel> {
+    await getKnex();
+
+    const updated = (await TransactionModel.query()
+      .patch({
+        transactionStatus: "failed",
+        paymentStatus: "failed",
+        returnCode,
+        returnDetail,
+      })
+      .where("agencyTrackingId", agencyTrackingId)
+      .where("transactionStatus", expectedTransactionStatus)
+      .where("lastUpdatedAt", expectedLastUpdatedAt)
+      .returning("*")
+      .first()) as TransactionModel | undefined;
+
+    if (!updated) {
+      throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
+    }
+
+    return updated;
   }
 
   // One statement, so Postgres re-checks the predicate after each row lock and SKIP LOCKED

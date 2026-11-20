@@ -32,6 +32,30 @@ Payment Portal (PP) supports multiple payment attempts for the same obligation w
 
 Once PAID, further successful attempts for that `transactionReferenceId` are rejected.
 
+### Recovering a timed-out completion
+
+Both `/init` and `/process` reconcile stale `processing` attempts through
+Pay.gov's `getDetails` when a tracking ID is available:
+
+- `Success` or `Settled`: record the processed result. `/process` returns its
+  normal success response, even after token expiration; `/init` rejects a new session.
+- `Pending`, `Received`, `Waiting`, or `Submitted`: record a pending result.
+  `/process` returns pending without completing the token again; `/init` rejects
+  a new session with the payment-settling message.
+- A confirmed failure allows `/init` to fail the old attempt and open a new session.
+  `/process` retains its existing claim and token validation for this outcome.
+
+Reconciliation writes atomically match the observed status and full-precision
+update timestamp. A concurrent claim or result produces a conflict instead of
+overwriting the newer state. `/init` rejects a different fee and uses the stored
+attempt's fee version for Pay.gov lookups.
+
+If there is no tracking ID, both endpoints return a conflict and block retries
+until the outcome can be confirmed. A Lambda timeout before the completion result
+was stored can cause this condition; it requires support reconciliation rather
+than assuming the payment failed. A failed or malformed details lookup returns
+a retryable gateway error without changing the attempt.
+
 ---
 
 This design separates **obligation identity** (`transactionReferenceId`) from **attempt identity** (`agencyTrackingId`), allowing safe retries while preventing duplicate payments.

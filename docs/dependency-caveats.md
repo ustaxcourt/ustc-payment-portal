@@ -350,6 +350,23 @@ audit` to the `csv-parse` finding alone. `npm run build` succeeds and `tsc` is
 - **Revisit:** <condition or date>
 -->
 
+### GHSA-fc5q-39xc-vjpf — picomatch@<version> (severity) — accepted (2026-11-20)
+ 
+**From:** Jest / <actual dependency chain>
+ 
+- **Reason it can't be fixed now:** the fix requires picomatch <fixed version>,
+but every parent package still declares a range that resolves to the vulnerable
+release. A direct override was evaluated but would place picomatch outside the
+compatibility range guaranteed by the consuming package.
+ 
+- **Mitigation:** the vulnerable code path is only exercised through repository-
+controlled glob patterns used by Jest and CI. No untrusted user input reaches
+picomatch in production, and nothing in this chain ships in the Lambda
+artifact.
+ 
+- **Revisit:** when Jest (or the affected parent package) adopts the fixed
+picomatch release.
+
 ### CVE-2026-111497 / GHSA-9v8h-qqgm-4m35 — Node.js Brotli decoder (critical) — accepted until AWS patches the Lambda runtime (2026-10-23)
 
 **From: the AWS Lambda managed runtime** (`nodejs24.x`, Auto runtime mode)
