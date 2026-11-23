@@ -96,8 +96,8 @@ enough context that the next person doesn't have to re-derive the decision.
   - Snake-case mapper changes (#2805). Output is identical to 3.1.5 for every
     column; raw `rows` keep snake_case and nested `metadata` keys stay unmapped,
     as before.
-  - Aggregates now select only their alias. `countsInRange`,
-    `countsAndFeeBreakdownInRange`, and `getAggregatedPaymentStatus` use
+  - Aggregates now select only their alias. `countsInRange` and
+    `countsAndFeeBreakdownInRange` use
     `.count()`/`.sum()`, but each selects its group-by columns explicitly, so
     their SQL is unchanged (pinned in the test below).
   - `where(undefined)` now throws. No call sites.

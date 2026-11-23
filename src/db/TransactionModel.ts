@@ -142,29 +142,6 @@ export default class TransactionModel extends Model {
     return parsed;
   }
 
-  // Fees are hardcoded into the codebase, new ones are versioned according
-  // to fee key & activation date, with the latest date accepted as the active fee.
-  static async getByPaymentStatus(
-    paymentStatus: PaymentStatus,
-  ): Promise<TransactionModel[]> {
-    await getKnex();
-    const rows = await TransactionModel.query()
-      .where("paymentStatus", paymentStatus)
-      .orderBy("createdAt", "desc")
-      .limit(100);
-
-    return rows.map(TransactionModel.attachFeeName);
-  }
-
-  static async getAll(): Promise<TransactionModel[]> {
-    await getKnex();
-    const rows = await TransactionModel.query()
-      .orderBy("createdAt", "desc")
-      .limit(100);
-
-    return rows.map(TransactionModel.attachFeeName);
-  }
-
   /** One page plus the total matching the same filter. Ordered by the caller's
    *  sort, defaulting to lastUpdatedAt — the column the timeframe also filters
    *  on — and always broken by the primary key so the order is total. */
@@ -464,6 +441,8 @@ export default class TransactionModel extends Model {
     return totals;
   }
 
+  // Fees are hardcoded into the codebase, new ones are versioned according
+  // to fee key & activation date, with the latest date accepted as the active fee.
   private static attachFeeName(row: TransactionModel): TransactionModel {
     const feeName = feeNamesByKey[row.fee];
     if (!feeName) {
@@ -472,41 +451,6 @@ export default class TransactionModel extends Model {
 
     row.feeName = feeName;
     return row;
-  }
-
-  static async getAggregatedPaymentStatus(): Promise<AggregatedPaymentStatus> {
-    await getKnex();
-    const rows = await TransactionModel.query()
-      .select("paymentStatus")
-      .count("* as count")
-      .groupBy("paymentStatus");
-
-    const totals: AggregatedPaymentStatus = {
-      success: 0,
-      failed: 0,
-      pending: 0,
-      total: 0,
-    };
-
-    rows.forEach((row) => {
-      const paymentStatus = row.paymentStatus;
-
-      /* istanbul ignore next */
-      if (
-        paymentStatus === "success" ||
-        paymentStatus === "failed" ||
-        paymentStatus === "pending"
-      ) {
-        const countValue = (row as unknown as { count: number | string }).count;
-        totals[paymentStatus] = Number(countValue);
-      }
-    });
-
-    totals.total = rows.reduce((sum, row) => {
-      const countValue = (row as unknown as { count: number | string }).count;
-      return sum + Number(countValue);
-    }, 0);
-    return totals;
   }
 
   static async createReceived(
