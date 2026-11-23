@@ -4,11 +4,8 @@ import type { AppContext } from "@appTypes/AppContext";
 import { getDetails } from "@useCases/getDetails";
 import { initPayment } from "@useCases/initPayment";
 import { processPayment } from "@useCases/processPayment";
-import { getRecentTransactions } from "@useCases/getRecentTransactions";
 import { getRevenueSummary } from "@useCases/getRevenueSummary";
 import { getTransactionLog } from "@useCases/getTransactionLog";
-import { getTransactionsByStatus } from "@useCases/getTransactionsByStatus";
-import { getTransactionPaymentStatus } from "@useCases/getTransactionPaymentStatus";
 import * as https from "https";
 import fetch from "node-fetch";
 import { createRequestLogger } from "@utils/logger";
@@ -151,11 +148,8 @@ export const createAppContext = (
       initPayment,
       processPayment,
       getDetails,
-      getRecentTransactions,
       getRevenueSummary,
       getTransactionLog,
-      getTransactionPaymentStatus,
-      getTransactionsByStatus,
     }),
     logger,
   };

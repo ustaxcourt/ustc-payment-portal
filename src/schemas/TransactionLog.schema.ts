@@ -327,8 +327,7 @@ export const TransactionLogQuerySchema = z
 
 export type TransactionLogQuery = z.infer<typeof TransactionLogQuerySchema>;
 
-/** Kept off DashboardTransactionSchema so Zod strips these from /transactions,
- *  which the dev dashboard depends on. */
+/** Kept off DashboardTransactionSchema so these fields stay specific to the log. */
 export const TransactionLogEntrySchema = DashboardTransactionSchema.extend({
   returnCode: z.number().int().nullable().optional().openapi({
     description: "Pay.gov return code, set when a payment fails",
