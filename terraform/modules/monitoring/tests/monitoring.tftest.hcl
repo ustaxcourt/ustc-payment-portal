@@ -43,6 +43,19 @@ run "core_topic_and_lambda_alarms" {
     condition     = aws_cloudwatch_metric_alarm.lambda_uncaught["initPayment"].dimensions.FunctionName == "ustc-payment-portal-dev-initPayment"
     error_message = "uncaught alarm FunctionName dimension should be the deployed function name (map value), not the key"
   }
+
+  assert {
+    condition = (
+      aws_cloudwatch_metric_alarm.payment_outcome_unknown[0].metric_name == "PaymentOutcomeUnknown" &&
+      aws_cloudwatch_metric_alarm.payment_outcome_unknown[0].namespace == "USTC/PaymentPortal" &&
+      aws_cloudwatch_metric_alarm.payment_outcome_unknown[0].dimensions.Environment == "dev" &&
+      aws_cloudwatch_metric_alarm.payment_outcome_unknown[0].threshold == 1 &&
+      aws_cloudwatch_metric_alarm.payment_outcome_unknown[0].evaluation_periods == 1 &&
+      aws_cloudwatch_metric_alarm.payment_outcome_unknown[0].datapoints_to_alarm == 1 &&
+      length(aws_cloudwatch_metric_alarm.payment_outcome_unknown[0].alarm_actions) == 1
+    )
+    error_message = "An unknown payment outcome must alert on the first event in the matching environment."
+  }
 }
 
 run "teams_routing_disabled_when_vars_missing" {
@@ -61,6 +74,11 @@ run "teams_routing_disabled_when_vars_missing" {
   assert {
     condition     = length(aws_chatbot_teams_channel_configuration.alerts) == 0
     error_message = "Teams channel config should not be created when Teams vars are unset"
+  }
+
+  assert {
+    condition     = length(aws_cloudwatch_metric_alarm.payment_outcome_unknown) == 0
+    error_message = "The unknown-outcome alarm must be absent when no payment functions are configured."
   }
 }
 

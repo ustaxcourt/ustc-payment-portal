@@ -89,7 +89,7 @@ describeWithEnv("POST /init", () => {
     expect(firstData.token).not.toBe(secondData.token);
   });
 
-  it("returns 409 instead of a new token when the obligation has already been paid", async () => {
+  it("returns 400 instead of a new token when the obligation has already been paid", async () => {
     const transactionReferenceId = crypto.randomUUID();
 
     const first = await portalFetch(initOptions(transactionReferenceId));
@@ -111,7 +111,7 @@ describeWithEnv("POST /init", () => {
     const second = await portalFetch(initOptions(transactionReferenceId));
     const secondData = await second.json();
 
-    expect(second.status).toBe(409);
+    expect(second.status).toBe(400);
     expect(secondData.token).toBeUndefined();
     expect(secondData.message).toMatch(/already been paid/i);
   });

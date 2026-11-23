@@ -408,6 +408,78 @@ describeIfLocal("TransactionModel against real Postgres", () => {
       ]);
     });
 
+    describe("stale processing ownership", () => {
+      const writeObserved = (row: TransactionModel, operation: "fail" | "reconcile") =>
+        operation === "fail"
+          ? TransactionModel.failObservedProcessing(
+              row.agencyTrackingId, row.lastUpdatedAt, 5009, "expired",
+            )
+          : TransactionModel.updateAfterPayGovResponse(
+              row.agencyTrackingId, "PG-RECOVERY", "processed", "success", "ach",
+              undefined, undefined, "processing", row.lastUpdatedAt,
+            );
+
+      it.each([
+        ["fail", "token"], ["reconcile", "token"],
+        ["fail", "reference"], ["reconcile", "reference"],
+      ] as const)(
+        "allows %s only while the processing snapshot read by %s still matches",
+        async (operation, lookup) => {
+          const row = await createInitiated();
+          await TransactionModel.claimForProcessing(row.paygovToken);
+          const knex = await getKnex();
+          await knex.transaction(async (trx) => {
+            await trx.raw("set local session_replication_role = replica");
+            await trx("transactions").where({ agencyTrackingId: row.agencyTrackingId })
+              .update({ lastUpdatedAt: "2026-11-18T19:02:13.123456Z" });
+          });
+          const observed = lookup === "token"
+            ? await TransactionModel.findByPaygovToken(row.paygovToken)
+            : await TransactionModel.findByReferenceIdAndTransactionStatus(
+                CLIENT_NAME, row.transactionReferenceId, ["processing"],
+              );
+          expect(observed).toBeDefined();
+          if (!observed) throw new Error("Missing observed transaction");
+
+          const result = await writeObserved(observed, operation);
+          expect(result.transactionStatus).toBe(
+            operation === "fail" ? "failed" : "processed",
+          );
+        },
+      );
+
+      it.each([
+        ["fail", "new-claim"], ["reconcile", "new-claim"],
+        ["fail", "pending"], ["reconcile", "pending"],
+        ["fail", "processed"], ["reconcile", "processed"],
+      ] as const)(
+        "rejects %s after the observed attempt changed to %s",
+        async (operation, nextState) => {
+          const row = await createInitiated();
+          await TransactionModel.claimForProcessing(row.paygovToken);
+          await backdate(row.agencyTrackingId, {
+            lastUpdatedAt: PROCESSING_STALE_MS + 60_000,
+          });
+          const observed = await TransactionModel.findByPaygovToken(row.paygovToken);
+          expect(observed).toBeDefined();
+          if (!observed) throw new Error("Missing observed transaction");
+
+          if (nextState === "new-claim") {
+            await TransactionModel.claimForProcessing(row.paygovToken);
+          } else {
+            await TransactionModel.updateAfterPayGovResponse(
+              row.agencyTrackingId, "PG-NEW-RESULT", nextState,
+              nextState === "pending" ? "pending" : "success", "ach",
+              undefined, undefined,
+            );
+          }
+          const current = await TransactionModel.findByPaygovToken(row.paygovToken);
+          await expect(writeObserved(observed, operation)).rejects.toBeInstanceOf(ConflictError);
+          expect(await TransactionModel.findByPaygovToken(row.paygovToken)).toEqual(current);
+        },
+      );
+    });
+
     it("patches with returning when the expected status matches", async () => {
       const row = await createInitiated();
       await TransactionModel.claimForProcessing(row.paygovToken);
@@ -463,6 +535,22 @@ describeIfLocal("TransactionModel against real Postgres", () => {
       returnDetail: "declined",
     });
   });
+
+  it.each(["processed", "pending"] as const)(
+      "updateToFailed cannot overwrite a %s transaction",
+      async (status) => {
+        const row = await createInitiated();
+        const paid = await TransactionModel.updateAfterPayGovResponse(
+          row.agencyTrackingId, "PG-PAID", status,
+          status === "processed" ? "success" : "pending", "ach", undefined, undefined,
+        );
+
+        await expect(TransactionModel.updateToFailed(
+          row.agencyTrackingId, 5009, "expired",
+        )).rejects.toBeInstanceOf(ConflictError);
+        expect(await TransactionModel.findByPaygovTrackingId("PG-PAID")).toEqual(paid);
+      },
+  );
 
   it("cancelExpiredBatch returns the ids it cancelled", async () => {
     const row = await createInitiated();

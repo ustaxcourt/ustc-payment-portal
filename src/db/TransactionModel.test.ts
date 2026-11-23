@@ -298,7 +298,7 @@ describe("TransactionModel", () => {
   describe("updateToFailed", () => {
     it("should set both transactionStatus and paymentStatus to failed", async () => {
       const builder = spyOnQuery();
-      builder.patchAndFetchById.mockResolvedValueOnce({
+      builder.first.mockResolvedValueOnce({
         agencyTrackingId: "TEST-123",
         transactionStatus: "failed",
         paymentStatus: "failed",
@@ -306,19 +306,21 @@ describe("TransactionModel", () => {
 
       const updated = await TransactionModel.updateToFailed("TEST-123");
 
-      expect(builder.patchAndFetchById).toHaveBeenCalledWith("TEST-123", {
+      expect(builder.patch).toHaveBeenCalledWith({
         transactionStatus: "failed",
         paymentStatus: "failed",
         returnCode: undefined,
         returnDetail: undefined,
       });
+      expect(builder.whereNot).toHaveBeenCalledWith("transactionStatus", "processed");
+      expect(builder.whereNot).toHaveBeenCalledWith("transactionStatus", "pending");
       expect(updated?.transactionStatus).toBe("failed");
       expect(updated?.paymentStatus).toBe("failed");
     });
 
     it("should persist returnCode and returnDetail when provided", async () => {
       const builder = spyOnQuery();
-      builder.patchAndFetchById.mockResolvedValueOnce({
+      builder.first.mockResolvedValueOnce({
         agencyTrackingId: "TEST-FAIL-01",
         returnCode: 3001,
         returnDetail: "Card declined",
@@ -330,7 +332,7 @@ describe("TransactionModel", () => {
         "Card declined",
       );
 
-      expect(builder.patchAndFetchById).toHaveBeenCalledWith("TEST-FAIL-01", {
+      expect(builder.patch).toHaveBeenCalledWith({
         transactionStatus: "failed",
         paymentStatus: "failed",
         returnCode: 3001,
@@ -338,6 +340,39 @@ describe("TransactionModel", () => {
       });
       expect(updated?.returnCode).toBe(3001);
       expect(updated?.returnDetail).toBe("Card declined");
+    });
+
+    it("returns a conflict rather than overwriting a paid or settling transaction", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+      await expect(TransactionModel.updateToFailed("TEST-PAID")).rejects.toThrow(ConflictError);
+    });
+  });
+
+  describe("failObservedProcessing", () => {
+    it("guards against overwriting a transaction whose state changed", async () => {
+      const builder = spyOnQuery();
+
+      builder.first.mockResolvedValueOnce(undefined);
+
+      await expect(
+        TransactionModel.failObservedProcessing(
+          "TEST-123",
+          "2026-11-18T19:02:13.325Z",
+          5009,
+          "expired",
+        ),
+      ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
+
+      expect(builder.where).toHaveBeenCalledWith(
+        "transactionStatus",
+        "processing",
+      );
+
+      expect(builder.where).toHaveBeenCalledWith(
+        "lastUpdatedAt",
+        "2026-11-18T19:02:13.325Z",
+      );
     });
   });
 
@@ -400,6 +435,8 @@ describe("TransactionModel", () => {
     it("patches conditionally on the current transactionStatus and returns the updated row when the guard matches", async () => {
       const builder = spyOnQuery();
       const updatedRow = { agencyTrackingId: "TEST-OK-03" };
+      const lastUpdatedAt = "2026-11-18T19:02:13.325Z";
+
       builder.first.mockResolvedValueOnce(updatedRow);
 
       const result = await TransactionModel.updateAfterPayGovResponse(
@@ -411,6 +448,7 @@ describe("TransactionModel", () => {
         undefined,
         undefined,
         "processing",
+        lastUpdatedAt,
       );
 
       expect(builder.patch).toHaveBeenCalledWith({
@@ -419,16 +457,25 @@ describe("TransactionModel", () => {
         paymentStatus: "success",
         paymentMethod: "ach",
       });
+
       expect(builder.where).toHaveBeenNthCalledWith(
         1,
         "agencyTrackingId",
         "TEST-OK-03",
       );
+
       expect(builder.where).toHaveBeenNthCalledWith(
         2,
         "transactionStatus",
         "processing",
       );
+
+      expect(builder.where).toHaveBeenNthCalledWith(
+        3,
+        "lastUpdatedAt",
+        lastUpdatedAt,
+      );
+
       expect(builder.returning).toHaveBeenCalledWith("*");
       expect(result).toBe(updatedRow);
     });
@@ -447,6 +494,7 @@ describe("TransactionModel", () => {
           undefined,
           undefined,
           "processing",
+          "2026-11-18T19:02:13.325Z",
         ),
       ).rejects.toThrow(new ConflictError(ConflictError.PERSIST_RACE_MESSAGE));
     });
@@ -663,11 +711,12 @@ describe("TransactionModel", () => {
       const row = { agencyTrackingId: "TEST-INFLIGHT" };
       builder.first.mockResolvedValueOnce(row);
 
-      const found = await TransactionModel.findByReferenceIdAndTransactionStatus(
-        clientName,
-        referenceId,
-        ["initiated", "processing", "pending", "processed"],
-      );
+      const found =
+        await TransactionModel.findByReferenceIdAndTransactionStatus(
+          clientName,
+          referenceId,
+          ["initiated", "processing", "pending", "processed"],
+        );
 
       expect(builder.where).toHaveBeenCalledWith("clientName", clientName);
       expect(builder.where).toHaveBeenCalledWith(
@@ -715,11 +764,12 @@ describe("TransactionModel", () => {
       const builder = spyOnQuery();
       builder.first.mockResolvedValueOnce(undefined);
 
-      const found = await TransactionModel.findByReferenceIdAndTransactionStatus(
-        clientName,
-        "NO-MATCH",
-        ["initiated", "processing", "pending", "processed"],
-      );
+      const found =
+        await TransactionModel.findByReferenceIdAndTransactionStatus(
+          clientName,
+          "NO-MATCH",
+          ["initiated", "processing", "pending", "processed"],
+        );
 
       expect(found).toBeUndefined();
     });

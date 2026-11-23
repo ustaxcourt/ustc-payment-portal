@@ -71,11 +71,22 @@ describeWithCreds("GET /validate-client — registered client", () => {
     ) {
       return;
     }
+    const result = await signedFetch(validateClientUrl, {
+      method: "GET",
+    });
 
-    const result = await signedFetch(validateClientUrl, { method: "GET" });
-    const data = (await result.json()) as ValidateClientBody;
-    console.log("Signed validate-client response:", result.status, data);
+    const text = await result.text();
 
+    let data: ValidateClientBody;
+
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      console.log("err", err);
+      throw new Error(
+        `Invalid JSON from /validate-client (status ${result.status}):\n${text}`,
+      );
+    }
     // Flat 200, not "200 or 403": cicd-dev.yml rewrites this caller's entry with
     // concrete fee keys, so a 403 here is a real failure, not an unknown fixture.
     expect(result.status).toBe(200);
@@ -163,7 +174,9 @@ describeLambdaAuth("GET /validate-client — Lambda layer", () => {
     // deployer role to assume it, and in CI the runner already IS that role.
     // Locally the assumption cannot be chained, so this is skipped.
     if (
-      skipCiOnlyTest("test requires CI execution (runner must be deployer role)")
+      skipCiOnlyTest(
+        "test requires CI execution (runner must be deployer role)",
+      )
     ) {
       return;
     }

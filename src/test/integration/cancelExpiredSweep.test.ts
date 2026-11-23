@@ -1,7 +1,7 @@
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { isLocal } from "../../config/appEnv";
 import { getKnex } from "../../db/knex";
-import TransactionModel from "../../db/TransactionModel";
+import TransactionModel, { PROCESSING_STALE_MS } from "../../db/TransactionModel";
 import { cancelExpiredTransactions } from "../../useCases/cancelExpiredTransactions";
 import { testAppContext } from "../testAppContext";
 
@@ -15,15 +15,21 @@ type Seed = {
   agencyTrackingId: string;
   transactionStatus: string;
   ageHours: number;
+  lastUpdatedAgeHours?: number;
+  paygovTrackingId?: string | null;
 };
 
 const seedRow = async ({
   agencyTrackingId,
   transactionStatus,
   ageHours,
+  lastUpdatedAgeHours = ageHours,
+  paygovTrackingId = null,
 }: Seed) => {
   const knex = await getKnex();
-  const at = new Date(Date.now() - ageHours * 60 * 60 * 1000).toISOString();
+  const now = Date.now();
+  const at = new Date(now - ageHours * 60 * 60 * 1000).toISOString();
+  const updatedAt = new Date(now - lastUpdatedAgeHours * 60 * 60 * 1000).toISOString();
 
   await knex("transactions").insert({
     agencyTrackingId,
@@ -34,7 +40,8 @@ const seedRow = async ({
     transactionStatus,
     transactionAmount: 60,
     createdAt: at,
-    lastUpdatedAt: at,
+    lastUpdatedAt: updatedAt,
+    paygovTrackingId,
   });
 
   return at;
@@ -137,6 +144,45 @@ describeIfLocal("cancellation sweep against real Postgres", () => {
     const result = await cancelExpiredTransactions(testAppContext);
 
     expect(result.cancelledCount).toBe(0);
+  });
+
+  it("detects unrecorded stale payments without retries and leaves every attempt unchanged", async () => {
+    const baseline = await TransactionModel.countStaleProcessingWithoutTrackingId();
+    const unknownId = trackingId();
+    const emptyId = trackingId();
+    const recentClaimId = trackingId();
+    const knownId = trackingId();
+    const initiatedId = trackingId();
+    await seedRow({
+      agencyTrackingId: unknownId, transactionStatus: "processing", ageHours: 4,
+      lastUpdatedAgeHours: PROCESSING_STALE_MS / 3_600_000,
+    });
+    await seedRow({ agencyTrackingId: emptyId, transactionStatus: "processing", ageHours: 1, paygovTrackingId: "" });
+    await seedRow({
+      agencyTrackingId: recentClaimId, transactionStatus: "processing", ageHours: 4,
+      lastUpdatedAgeHours: (PROCESSING_STALE_MS - 60_000) / 3_600_000,
+    });
+    await seedRow({
+      agencyTrackingId: knownId, transactionStatus: "processing", ageHours: 1,
+      paygovTrackingId: "PG-KNOWN",
+    });
+    await seedRow({ agencyTrackingId: initiatedId, transactionStatus: "initiated", ageHours: 1 });
+    const ids = [unknownId, emptyId, recentClaimId, knownId, initiatedId];
+    const before = await Promise.all(ids.map(readRow));
+    const write = jest.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    try {
+      expect(await TransactionModel.countStaleProcessingWithoutTrackingId()).toBe(baseline + 2);
+      await cancelExpiredTransactions(testAppContext);
+      const records = write.mock.calls.map(([line]) => JSON.parse(line as string));
+      expect(records).toContainEqual(expect.objectContaining({
+        PaymentOutcomeUnknown: baseline + 2,
+        Environment: "local",
+      }));
+      expect(await Promise.all(ids.map(readRow))).toEqual(before);
+    } finally {
+      write.mockRestore();
+    }
   });
 
   it("preserves last_updated_at through updateToCancelled as well", async () => {

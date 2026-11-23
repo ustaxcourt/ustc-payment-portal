@@ -1588,7 +1588,7 @@
             }
           },
           "400": {
-            "description": "Invalid request payload (e.g., missing body, validation error)",
+            "description": "Invalid request payload (e.g., missing body, validation error), or the transaction has already been paid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1608,7 +1608,7 @@
             }
           },
           "409": {
-            "description": "Returned when a prior attempt is still `initiated` (awaiting redirect) or is actively being finalized by an in-flight POST /process. The duplicate request does not call Pay.gov. Retry with backoff; once the in-flight attempt finishes, a subsequent POST /init returns 200 with the payment redirect (or a fresh session if the prior attempt expired or was abandoned).",
+            "description": "Returned when a payment is actively processing, is still settling, has an unknown outcome, or its state changed during reconciliation. Also returned when a different fee is requested while reusing or reconciling an existing attempt. An expired initiated session is cancelled before starting a new session, including one with a different authorized fee. Unknown outcomes require support confirmation; do not retry blindly.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1623,6 +1623,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Pay.gov status reconciliation failed; retry without opening another payment session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
                 }
               }
             }
@@ -1784,7 +1794,7 @@
             }
           },
           "409": {
-            "description": "Conflict - this token is already being processed by another in-flight POST /process request. The duplicate request does not call Pay.gov. Retry with backoff while responses are 409; once the in-flight request finishes, a retry returns 200 (success/failure/pending), 410 (token no longer valid), or 404.",
+            "description": "Conflict - this token is already being processed by another in-flight POST /process request. Also returned if the transaction changed during reconciliation or a stale attempt has an unknown outcome. Unknown outcomes require support confirmation before retrying. The duplicate request does not complete the token again. Retry with backoff while responses are 409; once the in-flight request finishes, a retry returns 200 (success/failure/pending), 410 (token no longer valid), or 404.",
             "content": {
               "application/json": {
                 "schema": {

@@ -16,7 +16,8 @@ import { safeUpdateToFailed } from "@utils/safeUpdateToFailed";
 import { ZodError } from "zod";
 import { MAX_TOKEN_AGE_MS } from "@/config/constants";
 import { type ActiveFee, getActiveFee } from "@/config/fees";
-import { getReturnCode } from "@/config/payGovReturnCodes";
+import { derivePaymentStatusFromSingleTransaction } from "@/utils/derivePaymentStatus";
+import { toPaymentMethod } from "@/utils/toPaymentMethod";
 import { authorizeClient } from "../authorizeClient";
 import { isUniqueViolation } from "../db/pgErrors";
 import TransactionModel, {
@@ -26,8 +27,7 @@ import TransactionModel, {
 import { FailedTransactionError } from "../errors/failedTransaction";
 import { emitInitPaymentConflictMetric } from "../health/initPaymentConcurrencyMetric";
 import { emitPayGovErrorMetric } from "../health/payGovHealthMetric";
-
-const EXISTING_TOKEN_ERROR_CODE = 5009; // Matches return code for existing token in Pay.gov response
+import { getProcessingTransactionDetails } from "./getProcessingTransactionDetails";
 
 type ReceivedTransactionParams = {
   agencyTrackingId: string;
@@ -89,7 +89,11 @@ export const initPayment: InitPayment = async (
   /* istanbul ignore next */
   const transactionAmount = fee.isVariable ? amount! : fee.amount!;
   const agencyTrackingId = generateAgencyTrackingId();
-  const baseLogFields = { transactionReferenceId, agencyTrackingId, clientName };
+  const baseLogFields = {
+    transactionReferenceId,
+    agencyTrackingId,
+    clientName,
+  };
 
   const req = new StartOnlineCollectionRequest({
     tcsAppId: fee.tcsAppId,
@@ -217,11 +221,10 @@ const rejectAlreadyPaidTransaction = (
     paymentStatus: alreadyPaid.paymentStatus,
   });
   emitInitPaymentConflictMetric("already_paid");
-  throw new ConflictError(
-    alreadyPaid.transactionStatus === "pending"
-      ? ConflictError.PAYMENT_SETTLING_MESSAGE
-      : ConflictError.ALREADY_PAID_MESSAGE,
-  );
+  if (alreadyPaid.transactionStatus === "pending") {
+    throw new ConflictError(ConflictError.PAYMENT_SETTLING_MESSAGE);
+  }
+  throw new InvalidRequestError(ConflictError.ALREADY_PAID_MESSAGE);
 };
 
 const rejectIfAlreadyPaid = async (
@@ -248,7 +251,11 @@ const rejectIfAlreadyPaid = async (
 const recordReceivedTransaction = async (
   appContext: AppContext,
   createReceivedParams: ReceivedTransactionParams,
-  baseLogFields: { transactionReferenceId: string; agencyTrackingId: string, clientName: string },
+  baseLogFields: {
+    transactionReferenceId: string;
+    agencyTrackingId: string;
+    clientName: string;
+  },
 ): Promise<void> => {
   const { transactionReferenceId } = createReceivedParams;
 
@@ -256,7 +263,11 @@ const recordReceivedTransaction = async (
     await TransactionModel.createReceived(createReceivedParams);
   } catch (err) {
     if (isUniqueViolation(err)) {
-      await rejectIfAlreadyPaid(appContext, baseLogFields.clientName, transactionReferenceId);
+      await rejectIfAlreadyPaid(
+        appContext,
+        baseLogFields.clientName,
+        transactionReferenceId,
+      );
 
       const EXISTING_IN_FLIGHT_TRANSACTION_ERROR =
         "A payment session is already in-flight for this transactionReferenceId";
@@ -286,7 +297,7 @@ const recordReceivedTransaction = async (
   }
 };
 
-const resolveInFlightTransaction = async (
+export const resolveInFlightTransaction = async (
   appContext: AppContext,
   transactionReferenceId: string,
   existingTransaction: TransactionModel,
@@ -322,6 +333,9 @@ const resolveInFlightTransaction = async (
     tokenAgeMs < MAX_TOKEN_AGE_MS &&
     !staleProcessing
   ) {
+    if (existingTransaction.fee !== fee.fee) {
+      throw new ConflictError(ConflictError.FEE_MISMATCH_MESSAGE);
+    }
     appContext.logger.info("Returning existing in-flight transaction", {
       ...inFlightLogFields,
       transactionStatus: existingTransaction.transactionStatus,
@@ -338,16 +352,54 @@ const resolveInFlightTransaction = async (
     staleProcessing,
   });
 
-  // An abandoned `initiated` session never reached Pay.gov, so it's cancelled rather
-  // than failed; a stale `processing` row did reach Pay.gov, so it stays a failure.
+  // Only a confirmed failure can release a processing attempt for a new session.
   if (isExpiredInitiatedTransaction(existingTransaction)) {
-    await TransactionModel.updateToCancelled(existingTransaction.agencyTrackingId);
-  } else {
-    await TransactionModel.updateToFailed(
+    await TransactionModel.updateToCancelled(
       existingTransaction.agencyTrackingId,
-      EXISTING_TOKEN_ERROR_CODE,
-      getReturnCode(EXISTING_TOKEN_ERROR_CODE)?.returnDetail,
     );
+  } else {
+    if (
+      existingTransaction.transactionStatus === "processing" &&
+      staleProcessing
+    ) {
+      if (existingTransaction.fee !== fee.fee) {
+        throw new ConflictError(ConflictError.FEE_MISMATCH_MESSAGE);
+      }
+      const { result, status: refreshedStatus } =
+        await getProcessingTransactionDetails(
+          appContext,
+          existingTransaction,
+          getActiveFee(existingTransaction.fee, existingTransaction.createdAt).tcsAppId,
+        );
+
+      if (refreshedStatus === "processed" || refreshedStatus === "pending") {
+        await TransactionModel.updateAfterPayGovResponse(
+          existingTransaction.agencyTrackingId,
+          result.paygov_tracking_id,
+          refreshedStatus,
+          derivePaymentStatusFromSingleTransaction(refreshedStatus),
+          result.payment_type ? toPaymentMethod(result.payment_type) : null,
+          result.transaction_date,
+          result.payment_date,
+          "processing",
+          existingTransaction.lastUpdatedAt,
+        );
+
+        if (refreshedStatus === "pending") {
+          throw new ConflictError(ConflictError.PAYMENT_SETTLING_MESSAGE);
+        }
+        throw new InvalidRequestError(ConflictError.ALREADY_PAID_MESSAGE);
+      }
+    }
+
+    if (existingTransaction.transactionStatus === "processing") {
+      await TransactionModel.failObservedProcessing(
+        existingTransaction.agencyTrackingId,
+        existingTransaction.lastUpdatedAt,
+        5009,
+        "PayGov token is not found or expired",
+      );
+    }
   }
   return null;
 };

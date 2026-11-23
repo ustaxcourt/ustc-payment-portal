@@ -1,3 +1,21 @@
+import type { PayGovTransactionStatus } from "@appTypes/TransactionStatus";
+import type TransactionModel from "../db/TransactionModel";
+import * as GetDetailsModule from "@entities/GetDetailsRequest";
+
+const mockGetDetailsRequest = (
+  transactionStatus: PayGovTransactionStatus = "Success",
+) => {
+  jest
+    .spyOn(GetDetailsModule.GetRequestRequest.prototype, "makeSoapRequest")
+    .mockResolvedValueOnce({
+      paygov_tracking_id: "paygov-123",
+      transaction_status: transactionStatus,
+      payment_type: "ACH",
+      transaction_date: "2026-11-17T16:53:50.789Z",
+      payment_date: "2026-11-17",
+    });
+};
+
 jest.mock("../db/TransactionModel", () => {
   const actual = jest.requireActual("../db/TransactionModel");
   return {
@@ -10,15 +28,19 @@ jest.mock("../db/TransactionModel", () => {
       findPendingOrProcessedByReferenceId: jest.fn(() =>
         Promise.resolve(undefined),
       ),
-      createReceived: jest.fn((data) =>
-        Promise.resolve({
-          ...data,
-          agencyTrackingId: data.agencyTrackingId || "MOCK-TRACKING-ID",
-        }),
+      createReceived: jest.fn((data: Partial<TransactionModel>) =>
+        Promise.resolve({ ...data, agencyTrackingId: data.agencyTrackingId }),
       ),
       updateToInitiated: jest.fn(() => Promise.resolve()),
       updateToFailed: jest.fn(() => Promise.resolve()),
+      failObservedProcessing: jest.fn(() => Promise.resolve()),
       updateToCancelled: jest.fn(() => Promise.resolve()),
+      updateAfterPayGovResponse: jest.fn(() =>
+        Promise.resolve({
+          transactionStatus: "processed",
+          paymentStatus: "success",
+        }),
+      ),
     },
   };
 });
@@ -237,7 +259,7 @@ describe("initPayment", () => {
     ["processed", "success", ConflictError.ALREADY_PAID_MESSAGE],
     ["pending", "pending", ConflictError.PAYMENT_SETTLING_MESSAGE],
   ])(
-    "throws ConflictError when the obligation already has a %s attempt",
+    "rejects initiation when the obligation already has a %s attempt",
     async (transactionStatus, paymentStatus, expectedMessage) => {
       const TransactionModel = require("../db/TransactionModel").default;
       TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
@@ -258,7 +280,7 @@ describe("initPayment", () => {
           request: validPetitionRequest,
         }),
       ).rejects.toMatchObject({
-        statusCode: 409,
+        statusCode: transactionStatus === "processed" ? 400 : 409,
         message: expectedMessage,
       });
 
@@ -306,15 +328,18 @@ describe("initPayment", () => {
 
   it("returns the existing token when an in-flight transaction has a fresh token (age < 3 hours)", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce({
-      agencyTrackingId: "existing-id",
-      clientName: mockClient.clientName,
-      transactionReferenceId: validPetitionRequest.transactionReferenceId,
-      transactionStatus: "initiated",
-      paygovToken: "existing-token-abc",
-      createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
-      lastUpdatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    });
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
+      {
+        agencyTrackingId: "existing-id",
+        clientName: mockClient.clientName,
+        transactionReferenceId: validPetitionRequest.transactionReferenceId,
+        transactionStatus: "initiated",
+        fee: validPetitionRequest.fee,
+        paygovToken: "existing-token-abc",
+        createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+        lastUpdatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      },
+    );
 
     const result = await initPayment(appContext, {
       client: mockClient,
@@ -329,15 +354,18 @@ describe("initPayment", () => {
 
   it("throws ConflictError when an attempt is actively processing (POST /process in flight)", async () => {
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce({
-      agencyTrackingId: "existing-id",
-      clientName: mockClient.clientName,
-      transactionReferenceId: validPetitionRequest.transactionReferenceId,
-      transactionStatus: "processing",
-      paygovToken: "processing-token-abc",
-      createdAt: new Date().toISOString(),
-      lastUpdatedAt: new Date().toISOString(),
-    });
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
+      {
+        agencyTrackingId: "existing-id",
+        clientName: mockClient.clientName,
+        transactionReferenceId: validPetitionRequest.transactionReferenceId,
+        transactionStatus: "processing",
+        fee: validPetitionRequest.fee,
+        paygovToken: "processing-token-abc",
+        createdAt: new Date().toISOString(),
+        lastUpdatedAt: new Date().toISOString(),
+      },
+    );
 
     await expect(
       initPayment(appContext, {
@@ -354,35 +382,37 @@ describe("initPayment", () => {
     expect(emitConflictMock).toHaveBeenCalledWith("processing_in_flight");
   });
 
-  it("marks stale processing in-flight transaction as failed and creates a new one", async () => {
+  it("blocks a stale processing attempt without a tracking ID", async () => {
+    const write = jest.spyOn(process.stdout, "write").mockImplementation(() => true);
     const stalePaygovToken = crypto.randomUUID().replace(/-/g, "");
-    const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
 
-    mockSoapRequest(freshPaygovToken);
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce({
-      agencyTrackingId: "existing-id",
-      clientName: mockClient.clientName,
-      transactionReferenceId: validPetitionRequest.transactionReferenceId,
-      transactionStatus: "processing",
-      paygovToken: stalePaygovToken,
-      createdAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
-      lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
-    });
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
+      {
+        agencyTrackingId: "existing-id",
+        clientName: mockClient.clientName,
+        transactionReferenceId: validPetitionRequest.transactionReferenceId,
+        transactionStatus: "processing",
+        fee: validPetitionRequest.fee,
+        paygovToken: stalePaygovToken,
+        createdAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+        lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+      },
+    );
 
-    const result = await initPayment(appContext, {
+    await expect(initPayment(appContext, {
       client: mockClient,
       request: validPetitionRequest,
+    })).rejects.toMatchObject({
+      statusCode: 409,
+      message: ConflictError.PAYMENT_OUTCOME_UNKNOWN_MESSAGE,
     });
 
-    expect(TransactionModel.updateToFailed).toHaveBeenCalledWith(
-      "existing-id",
-      5009,
-      "PayGov token is not found or expired",
-    );
+    expect(TransactionModel.failObservedProcessing).not.toHaveBeenCalled();
     expect(TransactionModel.updateToCancelled).not.toHaveBeenCalled();
-    expect(TransactionModel.createReceived).toHaveBeenCalled();
-    expect(result.token).toBe(freshPaygovToken);
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+    expect(TransactionModel.updateToFailed).not.toHaveBeenCalled();
+    expect(write).toHaveBeenCalledWith(expect.stringContaining('"PaymentOutcomeUnknown":1'));
   });
 
   it("cancels an expired in-flight transaction and creates a new one when token age >= 3 hours", async () => {
@@ -391,15 +421,18 @@ describe("initPayment", () => {
 
     mockSoapRequest(freshPaygovToken);
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce({
-      agencyTrackingId: "existing-id",
-      clientName: mockClient.clientName,
-      transactionReferenceId: validPetitionRequest.transactionReferenceId,
-      transactionStatus: "initiated",
-      paygovToken: expiredPaygovToken,
-      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-      lastUpdatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    });
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
+      {
+        agencyTrackingId: "existing-id",
+        clientName: mockClient.clientName,
+        transactionReferenceId: validPetitionRequest.transactionReferenceId,
+        transactionStatus: "initiated",
+        fee: validPetitionRequest.fee,
+        paygovToken: expiredPaygovToken,
+        createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+        lastUpdatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+      },
+    );
 
     const result = await initPayment(appContext, {
       client: mockClient,
@@ -418,15 +451,18 @@ describe("initPayment", () => {
     const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
     mockSoapRequest(freshPaygovToken);
     const TransactionModel = require("../db/TransactionModel").default;
-    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce({
-      agencyTrackingId: "existing-id",
-      clientName: mockClient.clientName,
-      transactionReferenceId: validPetitionRequest.transactionReferenceId,
-      transactionStatus: "initiated",
-      paygovToken: null,
-      createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
-      lastUpdatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    });
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
+      {
+        agencyTrackingId: "existing-id",
+        clientName: mockClient.clientName,
+        transactionReferenceId: validPetitionRequest.transactionReferenceId,
+        transactionStatus: "initiated",
+        fee: validPetitionRequest.fee,
+        paygovToken: null,
+        createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+        lastUpdatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      },
+    );
 
     const result = await initPayment(appContext, {
       client: mockClient,
@@ -491,7 +527,7 @@ describe("initPayment", () => {
         request: validPetitionRequest,
       }),
     ).rejects.toMatchObject({
-      statusCode: 409,
+      statusCode: 400,
       message: ConflictError.ALREADY_PAID_MESSAGE,
     });
     expect(emitConflictMock).toHaveBeenCalledWith("already_paid");
@@ -713,4 +749,220 @@ describe("initPayment", () => {
 
     expect(emitErrorMock).not.toHaveBeenCalled();
   });
+
+  it("returns 400 and updates the transaction when Pay.gov confirms a stale processing transaction was already processed", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
+      {
+        agencyTrackingId: "existing-id",
+        clientName: mockClient.clientName,
+        transactionReferenceId: validPetitionRequest.transactionReferenceId,
+        transactionStatus: "processing",
+        fee: validPetitionRequest.fee,
+        paymentStatus: "pending",
+        paygovTrackingId: "paygov-123",
+        paygovToken: "stale-token",
+        createdAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+        lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+      },
+    );
+
+    mockGetDetailsRequest("Success");
+
+    await expect(
+      initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: ConflictError.ALREADY_PAID_MESSAGE,
+    });
+
+    expect(TransactionModel.updateAfterPayGovResponse).toHaveBeenCalledWith(
+      "existing-id",
+      "paygov-123",
+      "processed",
+      "success",
+      "ach",
+      "2026-11-17T16:53:50.789Z",
+      "2026-11-17",
+      "processing",
+      expect.any(String),
+    );
+
+    expect(
+      TransactionModel.failObservedProcessing,
+    ).not.toHaveBeenCalled();
+
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+  });
+
+  it("marks a stale processing transaction as failed when Pay.gov confirms it was not processed", async () => {
+    const freshPaygovToken = crypto.randomUUID().replace(/-/g, "");
+    mockSoapRequest(freshPaygovToken);
+
+    const TransactionModel = require("../db/TransactionModel").default;
+
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(
+      {
+        agencyTrackingId: "existing-id",
+        clientName: mockClient.clientName,
+        transactionReferenceId: validPetitionRequest.transactionReferenceId,
+        transactionStatus: "processing",
+        fee: validPetitionRequest.fee,
+        paymentStatus: "pending",
+        paygovTrackingId: "paygov-123",
+        paygovToken: "stale-token",
+        createdAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+        lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+      },
+    );
+
+    mockGetDetailsRequest("Failed");
+
+    const result = await initPayment(appContext, {
+      client: mockClient,
+      request: validPetitionRequest,
+    });
+
+    expect(TransactionModel.updateAfterPayGovResponse).not.toHaveBeenCalled();
+
+    expect(TransactionModel.failObservedProcessing).toHaveBeenCalledWith(
+      "existing-id",
+      expect.any(String),
+      5009,
+      "PayGov token is not found or expired",
+    );
+    expect(result.token).toBe(freshPaygovToken);
+  });
+
+  const staleTransaction = () => ({
+    agencyTrackingId: "existing-id",
+    clientName: mockClient.clientName,
+    transactionReferenceId: validPetitionRequest.transactionReferenceId,
+    fee: validPetitionRequest.fee,
+    transactionStatus: "processing",
+    paymentStatus: "pending",
+    paygovTrackingId: "paygov-123",
+    paygovToken: "stale-token",
+    createdAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+    lastUpdatedAt: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+  });
+
+  it.each(["Pending", "Received", "Waiting", "Submitted"] as const)(
+    "preserves a settling payment when Pay.gov reports %s",
+    async (status) => {
+      const TransactionModel = require("../db/TransactionModel").default;
+      const row = staleTransaction();
+      TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(row);
+      mockGetDetailsRequest(status);
+
+      await expect(initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      })).rejects.toMatchObject({
+        statusCode: 409,
+        message: ConflictError.PAYMENT_SETTLING_MESSAGE,
+      });
+
+      expect(TransactionModel.updateAfterPayGovResponse).toHaveBeenCalledWith(
+        row.agencyTrackingId, row.paygovTrackingId, "pending", "pending", "ach",
+        "2026-11-17T16:53:50.789Z", "2026-11-17", "processing", row.lastUpdatedAt,
+      );
+      expect(TransactionModel.failObservedProcessing).not.toHaveBeenCalled();
+      expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects a different fee before looking up an existing attempt at Pay.gov", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(staleTransaction());
+    const details = jest.spyOn(GetDetailsModule.GetRequestRequest.prototype, "makeSoapRequest");
+
+    await expect(initPayment(appContext, {
+      client: mockClient,
+      request: { ...validPetitionRequest, fee: "NONATTORNEY_EXAM_REGISTRATION_FEE" },
+    })).rejects.toMatchObject({
+      statusCode: 409,
+      message: ConflictError.FEE_MISMATCH_MESSAGE,
+    });
+    expect(details).not.toHaveBeenCalled();
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+  });
+
+  it("rejects a different fee when reusing an unexpired token", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce({
+      ...staleTransaction(),
+      transactionStatus: "initiated",
+    });
+
+    await expect(initPayment(appContext, {
+      client: mockClient,
+      request: { ...validPetitionRequest, fee: "NONATTORNEY_EXAM_REGISTRATION_FEE" },
+    })).rejects.toMatchObject({
+      statusCode: 409,
+      message: ConflictError.FEE_MISMATCH_MESSAGE,
+    });
+    expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+  });
+
+  it("allows a different fee after cancelling an expired initiated session", async () => {
+    const TransactionModel = require("../db/TransactionModel").default;
+    TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce({
+      ...staleTransaction(),
+      transactionStatus: "initiated",
+      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    });
+    mockSoapRequest("new-fee-token");
+
+    await expect(initPayment(appContext, {
+      client: mockClient,
+      request: { ...validPetitionRequest, fee: "NONATTORNEY_EXAM_REGISTRATION_FEE" },
+    })).resolves.toMatchObject({ token: "new-fee-token" });
+    expect(TransactionModel.updateToCancelled).toHaveBeenCalledWith("existing-id");
+    expect(TransactionModel.createReceived).toHaveBeenCalledWith(expect.objectContaining({
+      fee: "NONATTORNEY_EXAM_REGISTRATION_FEE",
+    }));
+  });
+
+  it.each([new ZodError([]), new Error("Connection reset")])(
+    "returns a retryable lookup error without mutating the attempt (%s)",
+    async (error) => {
+      const TransactionModel = require("../db/TransactionModel").default;
+      TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(staleTransaction());
+      jest.spyOn(GetDetailsModule.GetRequestRequest.prototype, "makeSoapRequest").mockRejectedValueOnce(error);
+
+      await expect(initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      })).rejects.toMatchObject({ statusCode: 502 });
+      expect(TransactionModel.updateAfterPayGovResponse).not.toHaveBeenCalled();
+      expect(TransactionModel.failObservedProcessing).not.toHaveBeenCalled();
+      expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["Success", "Pending", "Failed"] as const)(
+    "does not open a session when the observed attempt changed during lookup (%s)",
+    async (status) => {
+      const TransactionModel = require("../db/TransactionModel").default;
+      TransactionModel.findByReferenceIdAndTransactionStatus.mockResolvedValueOnce(staleTransaction());
+      mockGetDetailsRequest(status);
+      const conflict = new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
+      if (status === "Failed") {
+        TransactionModel.failObservedProcessing.mockRejectedValueOnce(conflict);
+      } else {
+        TransactionModel.updateAfterPayGovResponse.mockRejectedValueOnce(conflict);
+      }
+
+      await expect(initPayment(appContext, {
+        client: mockClient,
+        request: validPetitionRequest,
+      })).rejects.toBe(conflict);
+      expect(TransactionModel.createReceived).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -8,6 +8,7 @@ The alert subject names the Lambda and one of these metric types:
 
 - **`*-uncaught-critical`** — AWS Lambda's built-in `Errors` metric crossed threshold. This means a Lambda invocation threw an error past `handleError` and the Lambda runtime caught it. In normal operation this stays at zero because `handleError` catches everything. A non-zero value here usually means a handler crash, OOM, init-time failure, or a bug in `handleError` itself.
 - **`*-5xx-critical`** — log-based metric. A use case called `appContext.logger.error(...)` before throwing on a 5xx path. This is the normal signal when the payment portal returns a 500-level response to a client.
+- **`*-payment-outcome-unknown-critical`** — a stale processing attempt lacks a Pay.gov tracking ID. One blocked retry is enough to alert; see [Unknown payment outcomes](#unknown-payment-outcomes).
 - **`*-init-payment-conflict-warning`** / **`*-process-payment-conflict-warning`** — **warning**, not critical. Elevated HTTP 409 concurrency conflicts (the `InitPaymentConflict` / `ProcessPaymentConflict` EMF metrics). These are the payment portal's idempotency guard working as designed — no client saw a 5xx and Pay.gov was not called twice. A sustained spike is what's actionable, not a single conflict. See [Concurrency conflict warnings (409)](#concurrency-conflict-warnings-409) below before touching anything else in this runbook.
 
 All of these also fire a recovery (`OK`) event when the metric returns to zero — you should see a second email/SMS when service is restored.
@@ -19,6 +20,7 @@ All of these also fire a recovery (`OK`) event when the metric returns to zero �
 | `initPayment` 5xx | Cannot start a new payment session. Pay.gov redirect URL is never returned. |
 | `processPayment` 5xx | Pay.gov callback fails. Transaction status may be inconsistent. |
 | `getDetails` 5xx | Polling for payment status fails. Front end sees stale data. |
+| `*-payment-outcome-unknown-critical` | Both `/init` and `/process` return HTTP 409 until support confirms whether the previous payment was charged. |
 | Any `*-uncaught` | The Lambda is failing to invoke at all. Symptoms look like a hard outage for that endpoint. |
 | `*-conflict-warning` | Nothing directly. The duplicate request got an HTTP 409 and the caller is expected to retry with backoff. Impact only appears if the conflict rate is high enough that a legitimate caller cannot make progress. |
 
@@ -51,12 +53,42 @@ aws logs tail /aws/lambda/ustc-payment-portal-stg-{lambda} --since 30m --follow 
 ```
 
 1. **Is it one client or many?** Group the 409 logs by `clientName` / `transactionReferenceId`. A single reference repeating hundreds of times points at a stuck retry loop in one calling app — contact that app's team; the fix is on their side (add backoff, stop the loop). Broad spread across references points at a genuine concurrency surge.
-2. **Are rows stuck in `processing`?** If `Reason=processing_in_flight` dominates, a `POST /process` may have died mid-flight (Lambda timeout/crash) and left a row `processing`. Legitimate retries will 409 until the row ages past `PROCESSING_STALE_MS` (see [`src/db/TransactionModel.ts`](../../src/db/TransactionModel.ts)), after which it is reclaimable. Correlate with any concurrent `*-5xx`/`*-uncaught` alarm on `processPayment`, and check for Lambda timeouts in the logs. If a stale row is blocking a real payment, the underlying `processPayment` failure — not the 409 — is the incident; triage it via the 5xx flow below.
+2. **Are rows stuck in `processing`?** If `Reason=processing_in_flight` dominates, a `POST /process` may have died mid-flight (Lambda timeout/crash) and left a row `processing`. Once the row ages past `PROCESSING_STALE_MS` (see [`src/db/TransactionModel.ts`](../../src/db/TransactionModel.ts)), retries first reconcile with Pay.gov. Missing tracking IDs remain blocked; follow [Unknown payment outcomes](#unknown-payment-outcomes). Correlate with concurrent `*-5xx`/`*-uncaught` alarms and Lambda timeout logs.
 3. **Recent deploys / traffic changes?** Same as the 5xx flow — see [Recent deploys](#3-recent-deploys). A conflict spike that starts right after a deploy suggests a regression in the in-flight/claim logic; a spike with no deploy suggests an upstream traffic or retry-config change.
 
 ### When to escalate
 
 If the 409s trace to the portal itself (stuck `processing` rows from repeated `processPayment` crashes, or conflicts with no plausible duplicate-request source), treat it as a `processPayment` incident and follow the escalation table below. If they trace to a misbehaving calling app, it is not a portal outage — notify that app's team and, if the volume is degrading the shared endpoint, consider muting this specific alarm (see [How to silence a known false positive](#how-to-silence-a-known-false-positive)) with a tracking ticket while they fix their retry logic.
+
+## Unknown payment outcomes
+
+The `PaymentOutcomeUnknown` EMF metric uses namespace `USTC/PaymentPortal` and
+the `Environment` dimension. Each successful cancellation sweep emits the number
+of `processing` attempts whose `lastUpdatedAt` is at least 10 minutes old and
+whose Pay.gov tracking ID is null or empty, including zero when none remain.
+This detects unknown outcomes even when nobody retries; retry requests also
+emit the metric. The sweep does not modify these attempts.
+
+Its critical alarm fires on `Sum >= 1` in one five-minute period and routes
+through the existing SNS alerts topic. An `OK` notification between scheduled
+sweeps does **not** prove the payment was reconciled. The existing sweep schedule
+must be enabled for proactive detection; the default cadence is 15 minutes.
+
+1. Find the `Payment outcome unknown: missing Pay.gov tracking ID` warning in
+   `/init` or `/process` logs, or the sweep's
+   `Found stale processing transactions with unknown payment outcomes` warning.
+   Retry warnings include `agencyTrackingId`; for sweep warnings, find the
+   attempts with status `processing`, a null/empty `paygovTrackingId`, and
+   `lastUpdatedAt` at least 10 minutes old in the database.
+2. Ask Pay.gov support to confirm that attempt's outcome. Do not retry payment,
+   mark it failed, or open a new session merely because the Lambda timed out.
+3. Once the outcome is confirmed, record the verified result using an approved
+   reconciliation procedure with the observed status and timestamp check. A paid
+   or settling attempt must remain paid or pending; only a confirmed non-payment
+   can be failed to permit another session.
+4. Track the affected attempt until reconciled, regardless of alarm recovery.
+   Automatic lookup by `agency_tracking_id` must not be enabled until Pay.gov
+   confirms its request contract.
 
 ## First three things to check
 

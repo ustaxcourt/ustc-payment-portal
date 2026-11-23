@@ -14,6 +14,12 @@ export class ConflictError extends Error {
   public static readonly PERSIST_RACE_MESSAGE =
     "Could not record the payment result because the transaction state changed. Use getDetails to check the current status.";
 
+  public static readonly PAYMENT_OUTCOME_UNKNOWN_MESSAGE =
+    "The previous payment outcome is unknown. A new payment cannot be attempted until the outcome has been confirmed. Contact support for assistance.";
+
+  public static readonly FEE_MISMATCH_MESSAGE =
+    "The requested fee does not match the existing payment attempt.";
+
   public statusCode: number = 409;
 
   constructor(
