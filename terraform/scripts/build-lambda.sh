@@ -128,22 +128,6 @@ npx esbuild src/testCert.ts \
   --minify \
   --keep-names
 
-# Bundle getAllTransactions Lambda
-echo "Bundling getAllTransactions..."
-mkdir -p dist/getAllTransactions
-npx esbuild src/handlers/getAllTransactionsHandler.ts \
-  --bundle \
-  --platform=node \
-  --target="$NODE_TARGET" \
-  --format=cjs \
-  --outfile=dist/getAllTransactions/getAllTransactionsHandler.js \
-  --external:aws-sdk \
-  --external:@aws-sdk/* \
-  "${KNEX_EXTERNALS[@]}" \
-  "${IMPORT_META_SHIM[@]}" \
-  --minify \
-  --keep-names
-
 # Bundle getTransactionLog Lambda
 echo "Bundling getTransactionLog..."
 mkdir -p dist/getTransactionLog
@@ -169,38 +153,6 @@ npx esbuild src/handlers/getRevenueSummaryHandler.ts \
   --target="$NODE_TARGET" \
   --format=cjs \
   --outfile=dist/getRevenueSummary/getRevenueSummaryHandler.js \
-  --external:aws-sdk \
-  --external:@aws-sdk/* \
-  "${KNEX_EXTERNALS[@]}" \
-  "${IMPORT_META_SHIM[@]}" \
-  --minify \
-  --keep-names
-
-# Bundle getTransactionsByStatus Lambda
-echo "Bundling getTransactionsByStatus..."
-mkdir -p dist/getTransactionsByStatus
-npx esbuild src/handlers/getTransactionsByStatusHandler.ts \
-  --bundle \
-  --platform=node \
-  --target="$NODE_TARGET" \
-  --format=cjs \
-  --outfile=dist/getTransactionsByStatus/getTransactionsByStatusHandler.js \
-  --external:aws-sdk \
-  --external:@aws-sdk/* \
-  "${KNEX_EXTERNALS[@]}" \
-  "${IMPORT_META_SHIM[@]}" \
-  --minify \
-  --keep-names
-
-# Bundle getTransactionPaymentStatus Lambda
-echo "Bundling getTransactionPaymentStatus..."
-mkdir -p dist/getTransactionPaymentStatus
-npx esbuild src/handlers/getTransactionPaymentStatusHandler.ts \
-  --bundle \
-  --platform=node \
-  --target="$NODE_TARGET" \
-  --format=cjs \
-  --outfile=dist/getTransactionPaymentStatus/getTransactionPaymentStatusHandler.js \
   --external:aws-sdk \
   --external:@aws-sdk/* \
   "${KNEX_EXTERNALS[@]}" \
@@ -298,7 +250,7 @@ npx esbuild src/powerTuning/powerTuningCleanUp.ts \
 # Copy certificate files if they exist
 if [ -d "certs" ]; then
     echo "Copying certificate files..."
-    for func in initPayment processPayment getDetails testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog getRevenueSummary; do
+    for func in initPayment processPayment getDetails testCert getTransactionLog getRevenueSummary; do
         if [ -d "dist/$func" ]; then
             cp -r certs dist/$func/
         fi
@@ -317,7 +269,7 @@ curl -sSf -o /tmp/rds-ca-bundle.pem \
 # Pay.gov mTLS. It transitively imports knex via lambdaHandler, but with no
 # RDS_SECRET_ARN set that pool is never opened.
 # cancelExpired is absent from the certs loop above: it never calls Pay.gov, so RDS CA only.
-for func in initPayment processPayment getDetails testCert migrationRunner getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog getRevenueSummary cancelExpired powerTuningCleanUp; do
+for func in initPayment processPayment getDetails testCert migrationRunner getTransactionLog getRevenueSummary cancelExpired powerTuningCleanUp; do
   cp /tmp/rds-ca-bundle.pem "dist/${func}/rds-ca-bundle.pem"
 done
 
@@ -349,9 +301,6 @@ echo "  - dist/processPayment/processPaymentHandler.js"
 echo "  - dist/getDetails/getDetailsHandler.js"
 echo "  - dist/validateClient/validateClientHandler.js"
 echo "  - dist/testCert/lambdaHandler.js"
-echo "  - dist/getAllTransactions/getAllTransactionsHandler.js"
-echo "  - dist/getTransactionsByStatus/getTransactionsByStatusHandler.js"
-echo "  - dist/getTransactionPaymentStatus/getTransactionPaymentStatusHandler.js"
 echo "  - dist/getTransactionLog/getTransactionLogHandler.js"
 echo "  - dist/getRevenueSummary/getRevenueSummaryHandler.js"
 echo "  - dist/cancelExpired/cancelExpiredHandler.js"
@@ -360,7 +309,7 @@ echo "  - dist/migrationRunner/lambdaHandler.js"
 # Show file sizes
 echo ""
 echo "Bundle sizes:"
-for func in initPayment processPayment getDetails validateClient testCert getAllTransactions getTransactionsByStatus getTransactionPaymentStatus getTransactionLog getRevenueSummary cancelExpired migrationRunner; do
+for func in initPayment processPayment getDetails validateClient testCert getTransactionLog getRevenueSummary cancelExpired migrationRunner; do
   output_file="lambdaHandler.js"
   if [ "$func" = "initPayment" ]; then
     output_file="initPaymentHandler.js"
@@ -370,12 +319,6 @@ for func in initPayment processPayment getDetails validateClient testCert getAll
     output_file="getDetailsHandler.js"
   elif [ "$func" = "validateClient" ]; then
     output_file="validateClientHandler.js"
-  elif [ "$func" = "getAllTransactions" ]; then
-    output_file="getAllTransactionsHandler.js"
-  elif [ "$func" = "getTransactionsByStatus" ]; then
-    output_file="getTransactionsByStatusHandler.js"
-  elif [ "$func" = "getTransactionPaymentStatus" ]; then
-    output_file="getTransactionPaymentStatusHandler.js"
   elif [ "$func" = "getTransactionLog" ]; then
     output_file="getTransactionLogHandler.js"
   elif [ "$func" = "getRevenueSummary" ]; then
