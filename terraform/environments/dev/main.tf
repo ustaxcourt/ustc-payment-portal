@@ -41,28 +41,28 @@ module "lambda" {
 
   artifact_bucket = var.artifact_bucket
   artifact_s3_keys = {
-    initPayment                 = var.initPayment_s3_key
-    processPayment              = var.processPayment_s3_key
-    getDetails                  = var.getDetails_s3_key
-    validateClient              = var.validateClient_s3_key
-    testCert                    = var.testCert_s3_key
-    healthCheck                 = var.testCert_s3_key
-    cancelExpired               = var.cancelExpired_s3_key
-    migrationRunner             = var.migrationRunner_s3_key
-    getTransactionLog           = var.getTransactionLog_s3_key
-    getRevenueSummary           = var.getRevenueSummary_s3_key
+    initPayment       = var.initPayment_s3_key
+    processPayment    = var.processPayment_s3_key
+    getDetails        = var.getDetails_s3_key
+    validateClient    = var.validateClient_s3_key
+    testCert          = var.testCert_s3_key
+    healthCheck       = var.testCert_s3_key
+    cancelExpired     = var.cancelExpired_s3_key
+    migrationRunner   = var.migrationRunner_s3_key
+    getTransactionLog = var.getTransactionLog_s3_key
+    getRevenueSummary = var.getRevenueSummary_s3_key
   }
   source_code_hashes = {
-    initPayment                 = var.initPayment_source_code_hash
-    processPayment              = var.processPayment_source_code_hash
-    getDetails                  = var.getDetails_source_code_hash
-    validateClient              = var.validateClient_source_code_hash
-    testCert                    = var.testCert_source_code_hash
-    healthCheck                 = var.testCert_source_code_hash
-    cancelExpired               = var.cancelExpired_source_code_hash
-    migrationRunner             = var.migrationRunner_source_code_hash
-    getTransactionLog           = var.getTransactionLog_source_code_hash
-    getRevenueSummary           = var.getRevenueSummary_source_code_hash
+    initPayment       = var.initPayment_source_code_hash
+    processPayment    = var.processPayment_source_code_hash
+    getDetails        = var.getDetails_source_code_hash
+    validateClient    = var.validateClient_source_code_hash
+    testCert          = var.testCert_source_code_hash
+    healthCheck       = var.testCert_source_code_hash
+    cancelExpired     = var.cancelExpired_source_code_hash
+    migrationRunner   = var.migrationRunner_source_code_hash
+    getTransactionLog = var.getTransactionLog_source_code_hash
+    getRevenueSummary = var.getRevenueSummary_source_code_hash
   }
 
   tags = {
@@ -170,7 +170,6 @@ module "api" {
   custom_domain                  = local.environment == "dev" ? local.custom_domain : ""
   certificate_arn                = local.environment == "dev" ? aws_acm_certificate_validation.this[0].certificate_arn : ""
   route53_zone_id                = local.environment == "dev" ? aws_route53_zone.this[0].zone_id : ""
-  enable_public_dashboard        = startswith(local.environment, "pr-") || local.environment == "dev"
   enable_access_logging          = false
   enable_per_endpoint_throttling = false
   stage_throttling_rate_limit    = local.api_stage_throttling_rate_limit

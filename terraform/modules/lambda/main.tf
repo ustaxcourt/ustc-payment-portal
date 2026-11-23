@@ -28,15 +28,6 @@ locals {
       handler = "lambdaHandler.healthHandler"
       timeout = 15
     }
-    getAllTransactions = {
-      handler = "getAllTransactionsHandler.getAllTransactionsHandler"
-    }
-    getTransactionsByStatus = {
-      handler = "getTransactionsByStatusHandler.getTransactionsByStatusHandler"
-    }
-    getTransactionPaymentStatus = {
-      handler = "getTransactionPaymentStatusHandler.getTransactionPaymentStatusHandler"
-    }
     getTransactionLog = {
       handler = "getTransactionLogHandler.getTransactionLogHandler"
       timeout = 29
