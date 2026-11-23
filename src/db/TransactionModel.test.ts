@@ -298,7 +298,7 @@ describe("TransactionModel", () => {
   describe("updateToFailed", () => {
     it("should set both transactionStatus and paymentStatus to failed", async () => {
       const builder = spyOnQuery();
-      builder.patchAndFetchById.mockResolvedValueOnce({
+      builder.first.mockResolvedValueOnce({
         agencyTrackingId: "TEST-123",
         transactionStatus: "failed",
         paymentStatus: "failed",
@@ -306,19 +306,21 @@ describe("TransactionModel", () => {
 
       const updated = await TransactionModel.updateToFailed("TEST-123");
 
-      expect(builder.patchAndFetchById).toHaveBeenCalledWith("TEST-123", {
+      expect(builder.patch).toHaveBeenCalledWith({
         transactionStatus: "failed",
         paymentStatus: "failed",
         returnCode: undefined,
         returnDetail: undefined,
       });
+      expect(builder.whereNot).toHaveBeenCalledWith("transactionStatus", "processed");
+      expect(builder.whereNot).toHaveBeenCalledWith("transactionStatus", "pending");
       expect(updated?.transactionStatus).toBe("failed");
       expect(updated?.paymentStatus).toBe("failed");
     });
 
     it("should persist returnCode and returnDetail when provided", async () => {
       const builder = spyOnQuery();
-      builder.patchAndFetchById.mockResolvedValueOnce({
+      builder.first.mockResolvedValueOnce({
         agencyTrackingId: "TEST-FAIL-01",
         returnCode: 3001,
         returnDetail: "Card declined",
@@ -330,7 +332,7 @@ describe("TransactionModel", () => {
         "Card declined",
       );
 
-      expect(builder.patchAndFetchById).toHaveBeenCalledWith("TEST-FAIL-01", {
+      expect(builder.patch).toHaveBeenCalledWith({
         transactionStatus: "failed",
         paymentStatus: "failed",
         returnCode: 3001,
@@ -339,18 +341,23 @@ describe("TransactionModel", () => {
       expect(updated?.returnCode).toBe(3001);
       expect(updated?.returnDetail).toBe("Card declined");
     });
+
+    it("returns a conflict rather than overwriting a paid or settling transaction", async () => {
+      const builder = spyOnQuery();
+      builder.first.mockResolvedValueOnce(undefined);
+      await expect(TransactionModel.updateToFailed("TEST-PAID")).rejects.toThrow(ConflictError);
+    });
   });
 
-  describe("updateToFailedIfNotProcessed", () => {
+  describe("failObservedProcessing", () => {
     it("guards against overwriting a transaction whose state changed", async () => {
       const builder = spyOnQuery();
 
       builder.first.mockResolvedValueOnce(undefined);
 
       await expect(
-        TransactionModel.updateToFailedIfNotProcessed(
+        TransactionModel.failObservedProcessing(
           "TEST-123",
-          "processing",
           "2026-11-18T19:02:13.325Z",
           5009,
           "expired",

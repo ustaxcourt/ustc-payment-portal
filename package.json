@@ -142,7 +142,6 @@
     "test-exclude": "^8.0.0",
     "matcher-collection": {
       "minimatch": "^10.2.2"
-    },
-    "picomatch": "^4.0.3"
+    }
   }
 }

@@ -221,11 +221,10 @@ const rejectAlreadyPaidTransaction = (
     paymentStatus: alreadyPaid.paymentStatus,
   });
   emitInitPaymentConflictMetric("already_paid");
-  throw new ConflictError(
-    alreadyPaid.transactionStatus === "pending"
-      ? ConflictError.PAYMENT_SETTLING_MESSAGE
-      : ConflictError.ALREADY_PAID_MESSAGE,
-  );
+  if (alreadyPaid.transactionStatus === "pending") {
+    throw new ConflictError(ConflictError.PAYMENT_SETTLING_MESSAGE);
+  }
+  throw new InvalidRequestError(ConflictError.ALREADY_PAID_MESSAGE);
 };
 
 const rejectIfAlreadyPaid = async (
@@ -304,12 +303,6 @@ export const resolveInFlightTransaction = async (
   existingTransaction: TransactionModel,
   fee: ActiveFee,
 ): Promise<InitPaymentResponse | null> => {
-  if (existingTransaction.fee !== fee.fee) {
-    throw new ConflictError(
-      "The requested fee does not match the existing payment attempt.",
-    );
-  }
-
   // Token age is measured from createdAt: the token is issued when the row goes
   // initiated, and lastUpdatedAt moves for unrelated writes.
   const tokenAgeMs =
@@ -340,6 +333,9 @@ export const resolveInFlightTransaction = async (
     tokenAgeMs < MAX_TOKEN_AGE_MS &&
     !staleProcessing
   ) {
+    if (existingTransaction.fee !== fee.fee) {
+      throw new ConflictError(ConflictError.FEE_MISMATCH_MESSAGE);
+    }
     appContext.logger.info("Returning existing in-flight transaction", {
       ...inFlightLogFields,
       transactionStatus: existingTransaction.transactionStatus,
@@ -366,6 +362,9 @@ export const resolveInFlightTransaction = async (
       existingTransaction.transactionStatus === "processing" &&
       staleProcessing
     ) {
+      if (existingTransaction.fee !== fee.fee) {
+        throw new ConflictError(ConflictError.FEE_MISMATCH_MESSAGE);
+      }
       const { result, status: refreshedStatus } =
         await getProcessingTransactionDetails(
           appContext,
@@ -386,18 +385,16 @@ export const resolveInFlightTransaction = async (
           existingTransaction.lastUpdatedAt,
         );
 
-        throw new ConflictError(
-          refreshedStatus === "pending"
-            ? ConflictError.PAYMENT_SETTLING_MESSAGE
-            : ConflictError.ALREADY_PAID_MESSAGE,
-        );
+        if (refreshedStatus === "pending") {
+          throw new ConflictError(ConflictError.PAYMENT_SETTLING_MESSAGE);
+        }
+        throw new InvalidRequestError(ConflictError.ALREADY_PAID_MESSAGE);
       }
     }
 
     if (existingTransaction.transactionStatus === "processing") {
-      await TransactionModel.updateToFailedIfNotProcessed(
+      await TransactionModel.failObservedProcessing(
         existingTransaction.agencyTrackingId,
-        existingTransaction.transactionStatus,
         existingTransaction.lastUpdatedAt,
         5009,
         "PayGov token is not found or expired",

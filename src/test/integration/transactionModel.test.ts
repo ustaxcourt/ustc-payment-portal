@@ -411,8 +411,8 @@ describeIfLocal("TransactionModel against real Postgres", () => {
     describe("stale processing ownership", () => {
       const writeObserved = (row: TransactionModel, operation: "fail" | "reconcile") =>
         operation === "fail"
-          ? TransactionModel.updateToFailedIfNotProcessed(
-              row.agencyTrackingId, "processing", row.lastUpdatedAt, 5009, "expired",
+          ? TransactionModel.failObservedProcessing(
+              row.agencyTrackingId, row.lastUpdatedAt, 5009, "expired",
             )
           : TransactionModel.updateAfterPayGovResponse(
               row.agencyTrackingId, "PG-RECOVERY", "processed", "success", "ach",
@@ -535,6 +535,22 @@ describeIfLocal("TransactionModel against real Postgres", () => {
       returnDetail: "declined",
     });
   });
+
+  it.each(["processed", "pending"] as const)(
+      "updateToFailed cannot overwrite a %s transaction",
+      async (status) => {
+        const row = await createInitiated();
+        const paid = await TransactionModel.updateAfterPayGovResponse(
+          row.agencyTrackingId, "PG-PAID", status,
+          status === "processed" ? "success" : "pending", "ach", undefined, undefined,
+        );
+
+        await expect(TransactionModel.updateToFailed(
+          row.agencyTrackingId, 5009, "expired",
+        )).rejects.toBeInstanceOf(ConflictError);
+        expect(await TransactionModel.findByPaygovTrackingId("PG-PAID")).toEqual(paid);
+      },
+  );
 
   it("cancelExpiredBatch returns the ids it cancelled", async () => {
     const row = await createInitiated();

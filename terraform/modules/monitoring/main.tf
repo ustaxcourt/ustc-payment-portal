@@ -223,6 +223,42 @@ resource "aws_cloudwatch_metric_alarm" "process_payment_conflict" {
   })
 }
 
+resource "aws_cloudwatch_metric_alarm" "payment_outcome_unknown" {
+  count = contains(keys(var.lambda_functions), "initPayment") || contains(keys(var.lambda_functions), "processPayment") ? 1 : 0
+
+  alarm_name          = "${var.name_prefix}-payment-outcome-unknown-critical"
+  alarm_description   = <<-EOT
+    A stale processing attempt has no Pay.gov tracking ID. The taxpayer cannot
+    retry /init or /process until support confirms whether Pay.gov charged them.
+    Do not mark the attempt failed or reopen the obligation without confirmation.
+    Service: payment-portal (${var.env})
+    Severity: critical
+    Runbook: ${var.runbook_url}
+  EOT
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  period              = 300
+  evaluation_periods  = 1
+  datapoints_to_alarm = 1
+  threshold           = 1
+  statistic           = "Sum"
+  metric_name         = "PaymentOutcomeUnknown"
+  namespace           = "USTC/PaymentPortal"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    Environment = var.env
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = merge(local.default_tags, {
+    Severity = "critical"
+    Metric   = "payment-outcome-unknown"
+    Runbook  = var.runbook_url
+  })
+}
+
 resource "aws_cloudwatch_metric_alarm" "init_payment_conflict" {
   count = contains(keys(var.lambda_functions), "initPayment") ? 1 : 0
 

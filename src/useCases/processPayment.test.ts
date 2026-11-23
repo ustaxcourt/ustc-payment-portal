@@ -362,6 +362,7 @@ describe("processPayment", () => {
     const row = mockStaleTransaction();
     row.paygovTrackingId = "";
     const details = jest.spyOn(GetRequestRequest.prototype, "makeSoapRequest");
+    const write = jest.spyOn(process.stdout, "write").mockImplementation(() => true);
 
     await expect(processPayment(appContext, {
       client: mockClient, request: { token: "mock-token" },
@@ -371,6 +372,22 @@ describe("processPayment", () => {
     expect(details).not.toHaveBeenCalled();
     expect(TransactionModelMock.claimForProcessing).not.toHaveBeenCalled();
     expect(TransactionModelMock.updateToFailed).not.toHaveBeenCalled();
+    const metric = JSON.parse(write.mock.calls[0][0] as string);
+    expect(metric).toMatchObject({
+      PaymentOutcomeUnknown: 1,
+      Environment: expect.any(String),
+      _aws: {
+        CloudWatchMetrics: [{
+          Namespace: "USTC/PaymentPortal",
+          Dimensions: [["Environment"]],
+          Metrics: [{ Name: "PaymentOutcomeUnknown", Unit: "Count" }],
+        }],
+      },
+    });
+    expect(appContext.logger.warn).toHaveBeenCalledWith(
+      "Payment outcome unknown: missing Pay.gov tracking ID",
+      { agencyTrackingId: row.agencyTrackingId },
+    );
   });
 
   it.each(["Pending", "Received", "Waiting", "Submitted"] as const)(

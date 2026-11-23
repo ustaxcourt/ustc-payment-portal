@@ -731,17 +731,27 @@ export default class TransactionModel extends Model {
     returnDetail?: string,
   ): Promise<TransactionModel> {
     await getKnex();
-    return TransactionModel.query().patchAndFetchById(agencyTrackingId, {
-      transactionStatus: "failed",
-      paymentStatus: "failed",
-      returnCode,
-      returnDetail,
-    });
+    const updated = await TransactionModel.query()
+      .patch({
+        transactionStatus: "failed",
+        paymentStatus: "failed",
+        returnCode,
+        returnDetail,
+      })
+      .where("agencyTrackingId", agencyTrackingId)
+      .whereNot("transactionStatus", "processed")
+      .whereNot("transactionStatus", "pending")
+      .returning("*")
+      .first();
+
+    if (!updated) {
+      throw new ConflictError(ConflictError.PERSIST_RACE_MESSAGE);
+    }
+    return updated;
   }
 
-  static async updateToFailedIfNotProcessed(
+  static async failObservedProcessing(
     agencyTrackingId: string,
-    expectedTransactionStatus: "processing",
     expectedLastUpdatedAt: string,
     returnCode?: number,
     returnDetail?: string,
@@ -756,7 +766,7 @@ export default class TransactionModel extends Model {
         returnDetail,
       })
       .where("agencyTrackingId", agencyTrackingId)
-      .where("transactionStatus", expectedTransactionStatus)
+      .where("transactionStatus", "processing")
       .where("lastUpdatedAt", expectedLastUpdatedAt)
       .returning("*")
       .first()) as TransactionModel | undefined;

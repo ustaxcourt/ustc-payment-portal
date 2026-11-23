@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Every ID here must have an entry in docs/dependency-caveats.md
-ACCEPTED_ADVISORIES="GHSA-fc5q-39xc-vjpf"
+ACCEPTED_ADVISORIES=""
 
 # Runtime dependencies remain a hard gate.
 npm audit --omit=dev --audit-level=high --package-lock-only
