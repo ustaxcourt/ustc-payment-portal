@@ -5,7 +5,6 @@ import swaggerUi from "swagger-ui-express";
 import { createAppContext } from "./appContext";
 import { isLocal } from "./config/appEnv";
 import { generateOpenAPIDocument } from "./openapi/registry";
-import type { TransactionsByStatusPathParams } from "@appTypes/TransactionsByStatus";
 import { migrationHandler } from "./migrationHandler";
 import { handleError } from "./handleError";
 import { InvalidRequestError } from "@errors/invalidRequest";
@@ -184,17 +183,6 @@ app.get("/", (_req, res) => {
   res.send("hello world!");
 });
 
-app.get("/transactions", async (_req, res, next) => {
-  try {
-    const result = await res.locals.appContext
-      .getUseCases()
-      .getRecentTransactions(res.locals.appContext);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
 app.get("/transaction-log", async (req, res, next) => {
   const query = TransactionLogQuerySchema.safeParse(req.query);
   if (!query.success) {
@@ -229,31 +217,6 @@ app.get("/revenue-summary", async (req, res, next) => {
     const result = await res.locals.appContext
       .getUseCases()
       .getRevenueSummary(res.locals.appContext);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.get("/transactions/:paymentStatus", async (req, res, next) => {
-  try {
-    const result = await res.locals.appContext
-      .getUseCases()
-      .getTransactionsByStatus(
-        res.locals.appContext,
-        req.params as unknown as TransactionsByStatusPathParams,
-      );
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.get("/transaction-payment-status", async (_req, res, next) => {
-  try {
-    const result = await res.locals.appContext
-      .getUseCases()
-      .getTransactionPaymentStatus(res.locals.appContext);
     res.json(result);
   } catch (err) {
     next(err);
