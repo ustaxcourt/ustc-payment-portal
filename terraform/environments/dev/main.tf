@@ -49,11 +49,8 @@ module "lambda" {
     healthCheck                 = var.testCert_s3_key
     cancelExpired               = var.cancelExpired_s3_key
     migrationRunner             = var.migrationRunner_s3_key
-    getAllTransactions          = var.getAllTransactions_s3_key
     getTransactionLog           = var.getTransactionLog_s3_key
     getRevenueSummary           = var.getRevenueSummary_s3_key
-    getTransactionsByStatus     = var.getTransactionsByStatus_s3_key
-    getTransactionPaymentStatus = var.getTransactionPaymentStatus_s3_key
   }
   source_code_hashes = {
     initPayment                 = var.initPayment_source_code_hash
@@ -64,11 +61,8 @@ module "lambda" {
     healthCheck                 = var.testCert_source_code_hash
     cancelExpired               = var.cancelExpired_source_code_hash
     migrationRunner             = var.migrationRunner_source_code_hash
-    getAllTransactions          = var.getAllTransactions_source_code_hash
     getTransactionLog           = var.getTransactionLog_source_code_hash
     getRevenueSummary           = var.getRevenueSummary_source_code_hash
-    getTransactionsByStatus     = var.getTransactionsByStatus_source_code_hash
-    getTransactionPaymentStatus = var.getTransactionPaymentStatus_source_code_hash
   }
 
   tags = {
