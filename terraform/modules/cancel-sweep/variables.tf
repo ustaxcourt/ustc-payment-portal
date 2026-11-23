@@ -25,7 +25,7 @@ variable "schedule_enabled" {
 }
 
 variable "schedule_expression" {
-  description = "Sweep cadence. The threshold is 3 hours, so minute-level precision buys nothing; this sets the worst-case lag between a token expiring and the row being cancelled (~3h15m at the default)."
+  description = "Cadence for expired-session cancellation and unknown-payment-outcome detection. At the default, cancellation may lag token expiration by 15 minutes; processing attempts with no tracking ID may be detected up to 15 minutes after the 10-minute stale threshold."
   type        = string
   default     = "rate(15 minutes)"
 }

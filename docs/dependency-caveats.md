@@ -350,19 +350,6 @@ audit` to the `csv-parse` finding alone. `npm run build` succeeds and `tsc` is
 - **Revisit:** <condition or date>
 -->
 
-### Removed: GHSA-fc5q-39xc-vjpf — picomatch (high) — advisory withdrawn (2026-11-18)
-
-- **Why removed:** [GitHub withdrew this advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)
-  because it is not a security issue. Removed the global `picomatch@^4.0.3`
-  override and its accepted-advisory entry rather than forcing a major version
-  outside a consumer's declared range.
-- **Compatibility:** `anymatch@3.1.3` and `readdirp@3.6.0` now resolve their
-  declared picomatch 2.x range to `2.3.2`; consumers of picomatch 4 retain `4.0.7`.
-- **Lockfile:** this correction preserves the AWS SDK client bumps to `3.1171.0`
-  already introduced in PAY-421 (from `3.1165.0`/`3.1167.0`), along with their
-  associated middleware and credential-provider bumps. No additional AWS SDK
-  upgrade is part of this correction.
-
 ### CVE-2026-111497 / GHSA-9v8h-qqgm-4m35 — Node.js Brotli decoder (critical) — accepted until AWS patches the Lambda runtime (2026-10-23)
 
 **From: the AWS Lambda managed runtime** (`nodejs24.x`, Auto runtime mode)

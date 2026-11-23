@@ -62,14 +62,24 @@ If the 409s trace to the portal itself (stuck `processing` rows from repeated `p
 
 ## Unknown payment outcomes
 
-The `PaymentOutcomeUnknown` EMF counter uses namespace `USTC/PaymentPortal` and
-the `Environment` dimension. Its critical alarm fires on `Sum >= 1` in one
-five-minute period and routes through the existing SNS alerts topic. An `OK`
-notification only means there were no further blocked retries; it does **not**
-prove the payment was reconciled.
+The `PaymentOutcomeUnknown` EMF metric uses namespace `USTC/PaymentPortal` and
+the `Environment` dimension. Each successful cancellation sweep emits the number
+of `processing` attempts whose `lastUpdatedAt` is at least 10 minutes old and
+whose Pay.gov tracking ID is null or empty, including zero when none remain.
+This detects unknown outcomes even when nobody retries; retry requests also
+emit the metric. The sweep does not modify these attempts.
+
+Its critical alarm fires on `Sum >= 1` in one five-minute period and routes
+through the existing SNS alerts topic. An `OK` notification between scheduled
+sweeps does **not** prove the payment was reconciled. The existing sweep schedule
+must be enabled for proactive detection; the default cadence is 15 minutes.
 
 1. Find the `Payment outcome unknown: missing Pay.gov tracking ID` warning in
-   `/init` or `/process` logs. Use its `agencyTrackingId` to identify the attempt.
+   `/init` or `/process` logs, or the sweep's
+   `Found stale processing transactions with unknown payment outcomes` warning.
+   Retry warnings include `agencyTrackingId`; for sweep warnings, find the
+   attempts with status `processing`, a null/empty `paygovTrackingId`, and
+   `lastUpdatedAt` at least 10 minutes old in the database.
 2. Ask Pay.gov support to confirm that attempt's outcome. Do not retry payment,
    mark it failed, or open a new session merely because the Lambda timed out.
 3. Once the outcome is confirmed, record the verified result using an approved

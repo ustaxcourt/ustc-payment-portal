@@ -1,6 +1,9 @@
 jest.mock("../db/TransactionModel", () => ({
   __esModule: true,
-  default: { cancelExpiredBatch: jest.fn() },
+  default: {
+    cancelExpiredBatch: jest.fn(),
+    countStaleProcessingWithoutTrackingId: jest.fn(),
+  },
 }));
 
 jest.mock("../health/cancelSweepMetric", () => ({
@@ -20,13 +23,20 @@ const cancelExpiredBatchMock =
 const emitMock = emitCancelSweepMetric as jest.MockedFunction<
   typeof emitCancelSweepMetric
 >;
+const countUnknownMock = jest.mocked(TransactionModel.countStaleProcessingWithoutTrackingId);
 
 describe("cancelExpiredTransactions", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    countUnknownMock.mockResolvedValue(0);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("reports a zero count and still emits when nothing is expired", async () => {
+    const write = jest.spyOn(process.stdout, "write").mockImplementation(() => true);
     cancelExpiredBatchMock.mockResolvedValueOnce([]);
 
     const result = await cancelExpiredTransactions(appContext);
@@ -36,6 +46,9 @@ describe("cancelExpiredTransactions", () => {
       CANCEL_SWEEP_BATCH_SIZE,
     );
     expect(emitMock).toHaveBeenCalledWith(0);
+    expect(JSON.parse(write.mock.calls[0][0] as string)).toMatchObject({
+      PaymentOutcomeUnknown: 0,
+    });
   });
 
   it("reports and emits the number of rows cancelled", async () => {
@@ -55,5 +68,39 @@ describe("cancelExpiredTransactions", () => {
       "connection reset",
     );
     expect(emitMock).not.toHaveBeenCalled();
+    expect(countUnknownMock).not.toHaveBeenCalled();
+  });
+
+  it("alerts on stale unknown outcomes even when nobody retries or cancels", async () => {
+    cancelExpiredBatchMock.mockResolvedValueOnce([]);
+    countUnknownMock.mockResolvedValueOnce(2);
+    const write = jest.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await expect(cancelExpiredTransactions(appContext)).resolves.toEqual({ cancelledCount: 0 });
+    expect(countUnknownMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(write.mock.calls[0][0] as string)).toMatchObject({
+      PaymentOutcomeUnknown: 2,
+      _aws: {
+        CloudWatchMetrics: [{
+          Namespace: "USTC/PaymentPortal",
+          Dimensions: [["Environment"]],
+          Metrics: [{ Name: "PaymentOutcomeUnknown", Unit: "Count" }],
+        }],
+      },
+    });
+    expect(appContext.logger.warn).toHaveBeenCalledWith(
+      "Found stale processing transactions with unknown payment outcomes",
+      { count: 2 },
+    );
+  });
+
+  it("surfaces detection failures instead of reporting a successful quiet sweep", async () => {
+    cancelExpiredBatchMock.mockResolvedValueOnce([]);
+    countUnknownMock.mockRejectedValueOnce(new Error("connection reset"));
+    const write = jest.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await expect(cancelExpiredTransactions(appContext)).rejects.toThrow("connection reset");
+    expect(emitMock).not.toHaveBeenCalled();
+    expect(write).not.toHaveBeenCalled();
   });
 });

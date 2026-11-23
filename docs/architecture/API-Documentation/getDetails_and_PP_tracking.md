@@ -66,7 +66,10 @@ an `agency_tracking_id` request field has not been verified against an official
 Pay.gov schema, so the portal does not send that unverified field. Automatic
 recovery for a timeout before the tracking ID was stored remains blocked pending
 that confirmation. These retries emit `PaymentOutcomeUnknown`; the matching
-critical alarm pages support on the first event. See the
+critical alarm pages support on the first event. The cancellation sweep also
+counts stale `processing` attempts with no tracking ID and emits this metric
+without changing those attempts, so detection does not depend on a retry.
+Proactive detection requires the sweep schedule to be enabled. See the
 [unknown-outcome runbook](../../runbooks/lambda-error-alerts.md#unknown-payment-outcomes).
 
 ---

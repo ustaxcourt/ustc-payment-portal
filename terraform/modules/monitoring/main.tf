@@ -228,7 +228,8 @@ resource "aws_cloudwatch_metric_alarm" "payment_outcome_unknown" {
 
   alarm_name          = "${var.name_prefix}-payment-outcome-unknown-critical"
   alarm_description   = <<-EOT
-    A stale processing attempt has no Pay.gov tracking ID. The taxpayer cannot
+    A retry or scheduled sweep found a stale processing attempt with no Pay.gov
+    tracking ID. The taxpayer cannot
     retry /init or /process until support confirms whether Pay.gov charged them.
     Do not mark the attempt failed or reopen the obligation without confirmation.
     Service: payment-portal (${var.env})

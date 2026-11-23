@@ -77,9 +77,6 @@ describeWithCreds("GET /validate-client — registered client", () => {
 
     const text = await result.text();
 
-    console.log("STATUS:", result.status);
-    console.log("BODY:", text);
-
     let data: ValidateClientBody;
 
     try {

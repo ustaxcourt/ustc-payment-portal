@@ -802,6 +802,19 @@ export default class TransactionModel extends Model {
     return result.rows.map((row) => row.agency_tracking_id);
   }
 
+  static async countStaleProcessingWithoutTrackingId(): Promise<number> {
+    const knex = await getKnex();
+    const result = await knex.raw<{ rows: { count: string }[] }>(
+      `SELECT count(*) AS count
+         FROM transactions
+        WHERE transaction_status = 'processing'
+          AND (paygov_tracking_id IS NULL OR paygov_tracking_id = '')
+          AND last_updated_at <= now() - make_interval(secs => ?)`,
+      [PROCESSING_STALE_MS / 1000],
+    );
+    return Number(result.rows[0].count);
+  }
+
   static async updateToCancelled(
     agencyTrackingId: string,
     trx?: Knex.Transaction,

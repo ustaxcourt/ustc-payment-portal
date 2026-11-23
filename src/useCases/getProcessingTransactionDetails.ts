@@ -4,7 +4,7 @@ import { ConflictError } from "@errors/conflict";
 import { PayGovError } from "@errors/payGovError";
 import { logError } from "@utils/logError";
 import type TransactionModel from "../db/TransactionModel";
-import { writeEmf } from "../health/emf";
+import { emitPaymentOutcomeUnknownMetric } from "../health/paymentOutcomeUnknownMetric";
 import { parseTransactionStatus } from "./parseTransactionStatus";
 
 export const getProcessingTransactionDetails = async (
@@ -13,16 +13,14 @@ export const getProcessingTransactionDetails = async (
   tcsAppId: string,
 ) => {
   if (!transaction.paygovTrackingId) {
-    writeEmf(
-      [{ Name: "PaymentOutcomeUnknown", Unit: "Count" }],
-      { PaymentOutcomeUnknown: 1 },
+    emitPaymentOutcomeUnknownMetric(1);
+    appContext.logger.warn(
+      "Payment outcome unknown: missing Pay.gov tracking ID",
+      {
+        agencyTrackingId: transaction.agencyTrackingId,
+      },
     );
-    appContext.logger.warn("Payment outcome unknown: missing Pay.gov tracking ID", {
-      agencyTrackingId: transaction.agencyTrackingId,
-    });
-    throw new ConflictError(
-      ConflictError.PAYMENT_OUTCOME_UNKNOWN_MESSAGE,
-    );
+    throw new ConflictError(ConflictError.PAYMENT_OUTCOME_UNKNOWN_MESSAGE);
   }
 
   try {
