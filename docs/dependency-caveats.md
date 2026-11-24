@@ -43,7 +43,7 @@ enough context that the next person doesn't have to re-derive the decision.
 
 - **Current:** `@types/node@^24.19.2`. **Available latest:** `^26.6.6`.
 - **Reason:** `@types/node` must track the runtime, not lead it. `engines.node`
-  is `>=24.20.0 <25.0.0` and `.nvmrc` pins `24.22.3`, so the ambient Node types
+  is `>=24.22.3 <25.0.0` and `.nvmrc` pins `24.22.3`, so the ambient Node types
   are intentionally held on the 24 line. A proposed upgrade to
   `@types/node@^26.1.1` was reverted because it would expose Node 26 APIs in
   TypeScript that are not available in the supported Node 24 runtime. This could
@@ -56,7 +56,7 @@ enough context that the next person doesn't have to re-derive the decision.
   `nodejs24.x` and esbuild now targets `node24`, so the Node 24 types match
   production.
 
-### Node.js 24.22.1 → 24.22.3 in `.nvmrc`; `engines.node` floor still held at 24.20.0 (2026-11-19, PAY-508)
+### Node.js 24.22.1 → 24.22.3 in `.nvmrc`; `engines.node` floor held at 24.22.3 (2026-11-24, PAY-508)
 
 - **Why:** 24.22.3 (2026-11-11) is a security release. Nine high CVEs: http2
   (CVE-2026-123863, -123865, -123866, -123874), tls/http (-123864), tls
