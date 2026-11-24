@@ -15,12 +15,14 @@ PAY-508: dependency updates for the week of 2026-11-16.
   recommend running 24.22.3 or later. The Lambda runtime is AWS-managed and
   picks up the fix when AWS rolls it out. See the Node.js 24.22.3 security
   release notes.
-- Refresh the lock file's in-range updates, including `@aws-sdk/*` 3.1171.0,
-  `@smithy/core` 3.41.0, `fast-xml-parser` 5.12.1 and `swagger-ui-dist` 5.35.0.
-  `@biomejs/biome` 2.6.8 and `@playwright/test` 1.65.1 are dev-only.
+- Bump direct dependency ranges and refresh the lock file's in-range updates:
+  `@aws-sdk/*` clients 3.1176.0, `fast-xml-parser` 5.12.1 and
+  `@ustaxcourt/ustc-pay-gov-test-server` 0.4.1. `@smithy/core` 3.41.1,
+  `@biomejs/biome` 2.6.9 and `@playwright/test` 1.65.1 are dev-only.
+- Bump the Terraform AWS provider lock from 6.73.0 to 6.74.0 in all six
+  `.terraform.lock.hcl` files.
 - Add an `allowScripts` policy to `package.json` so npm install scripts are
   explicit: `esbuild` and `@scarf/scarf` are allowed; `@parcel/watcher`,
   `@playwright/browser-chromium`, `protobufjs`, `unix-dgram` and `fsevents` are
   blocked. No install script is needed in CI or at runtime for the blocked
   packages.
-- `@ustaxcourt/ustc-pay-gov-test-server` update to 0.4.1.
