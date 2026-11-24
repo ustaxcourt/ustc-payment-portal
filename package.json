@@ -138,8 +138,8 @@
     "access": "public"
   },
   "allowScripts": {
-    "esbuild": true,
-    "@scarf/scarf": true,
+    "esbuild@0.28.2": true,
+    "@scarf/scarf": false,
     "@parcel/watcher": false,
     "@playwright/browser-chromium": false,
     "protobufjs": false,
