@@ -96,7 +96,7 @@
     "@aws-sdk/client-secrets-manager": "^3.1167.0",
     "@aws-sdk/client-ssm": "^3.1167.0",
     "@aws-sdk/client-sts": "^3.1167.0",
-    "@ustaxcourt/ustc-pay-gov-test-server": "^0.4.0",
+    "@ustaxcourt/ustc-pay-gov-test-server": "^0.4.1",
     "dayjs": "^1.11.23",
     "dotenv": "^18.0.10",
     "express": "^5.3.0",
