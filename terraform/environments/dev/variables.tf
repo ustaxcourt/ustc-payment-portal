@@ -45,6 +45,7 @@ variable "getTransactionLog_s3_key" {
   type        = string
   default     = ""
 }
+
 variable "getRevenueSummary_s3_key" {
   description = "S3 key for getRevenueSummary Lambda artifact"
   type        = string
