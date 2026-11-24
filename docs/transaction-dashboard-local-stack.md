@@ -49,37 +49,12 @@ This ordering prevents the API from starting before the `transactions` table exi
 
 ## API Endpoints
 
-The dashboard API serves the following endpoints:
+The dashboard API serves the following endpoints. Locally they take no SigV4 signature; deployed, both require it.
 
-- `GET /transactions` — all transactions (max 100)
-- `GET /transactions/:paymentStatus` — transactions filtered by status
-- `GET /transaction-payment-status` — aggregated counts
+- `GET /transaction-log` — paginated transaction log for a timeframe (`from`/`to`, filters, `includeTotals`, and more). The timeframe defaults to the current Court day.
+- `GET /revenue-summary` — per-period revenue totals with per-fee tallies. Takes no query parameters.
 
-Supported `paymentStatus` path values:
-
-- `success`
-- `failed`
-- `pending`
-
-`/transactions` and `/transactions/:paymentStatus` return:
-
-```json
-{
-  "data": [],
-  "total": 0
-}
-```
-
-`/transaction-payment-status` returns counts object:
-
-```json
-{
-  "success": 0,
-  "failed": 0,
-  "pending": 0,
-  "total": 0
-}
-```
+The full request and response shapes are in [openapi.yaml](openapi.yaml), or browse `http://localhost:8080/docs`.
 
 ## Seeded Data Behavior
 
@@ -119,9 +94,8 @@ docker compose logs -f postgres db-init
 Verify API quickly:
 
 ```bash
-curl http://localhost:8080/transactions
-curl http://localhost:8080/transactions/success
-curl http://localhost:8080/transaction-payment-status
+curl 'http://localhost:8080/transaction-log?from=2020-01-01T00:00:00Z&to=2030-01-01T00:00:00Z&pageSize=5'
+curl http://localhost:8080/revenue-summary
 ```
 
 Run root migrations/seeds from your shell against local Compose Postgres:

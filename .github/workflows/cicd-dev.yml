@@ -168,9 +168,6 @@ jobs:
           TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_pr.outputs.testCert_s3_key }}
           TF_VAR_cancelExpired_s3_key: ${{ steps.upload_artifacts_pr.outputs.cancelExpired_s3_key }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_s3_key }}
-          TF_VAR_getAllTransactions_s3_key: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_s3_key }}
-          TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_s3_key }}
-          TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_s3_key }}
           TF_VAR_getTransactionLog_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionLog_s3_key }}
           TF_VAR_getRevenueSummary_s3_key: ${{ steps.upload_artifacts_pr.outputs.getRevenueSummary_s3_key }}
           TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.initPayment_source_code_hash }}
@@ -180,9 +177,6 @@ jobs:
           TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.testCert_source_code_hash }}
           TF_VAR_cancelExpired_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.cancelExpired_source_code_hash }}
           TF_VAR_migrationRunner_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_source_code_hash }}
-          TF_VAR_getAllTransactions_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_source_code_hash }}
-          TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_source_code_hash }}
-          TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_source_code_hash }}
           TF_VAR_getTransactionLog_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionLog_source_code_hash }}
           TF_VAR_getRevenueSummary_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getRevenueSummary_source_code_hash }}
         run: |
@@ -210,9 +204,6 @@ jobs:
           TF_VAR_testCert_s3_key: ${{ steps.upload_artifacts_pr.outputs.testCert_s3_key }}
           TF_VAR_cancelExpired_s3_key: ${{ steps.upload_artifacts_pr.outputs.cancelExpired_s3_key }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_s3_key }}
-          TF_VAR_getAllTransactions_s3_key: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_s3_key }}
-          TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_s3_key }}
-          TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_s3_key }}
           TF_VAR_getTransactionLog_s3_key: ${{ steps.upload_artifacts_pr.outputs.getTransactionLog_s3_key }}
           TF_VAR_getRevenueSummary_s3_key: ${{ steps.upload_artifacts_pr.outputs.getRevenueSummary_s3_key }}
           TF_VAR_initPayment_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.initPayment_source_code_hash }}
@@ -222,9 +213,6 @@ jobs:
           TF_VAR_testCert_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.testCert_source_code_hash }}
           TF_VAR_cancelExpired_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.cancelExpired_source_code_hash }}
           TF_VAR_migrationRunner_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.migrationRunner_source_code_hash }}
-          TF_VAR_getAllTransactions_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getAllTransactions_source_code_hash }}
-          TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionsByStatus_source_code_hash }}
-          TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionPaymentStatus_source_code_hash }}
           TF_VAR_getTransactionLog_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getTransactionLog_source_code_hash }}
           TF_VAR_getRevenueSummary_source_code_hash: ${{ steps.upload_artifacts_pr.outputs.getRevenueSummary_source_code_hash }}
         run: terraform apply -auto-approve tfplan
@@ -646,9 +634,6 @@ jobs:
           TF_VAR_testCert_s3_key: ${{ steps.promote_artifacts.outputs.testCert_s3_key }}
           TF_VAR_cancelExpired_s3_key: ${{ steps.promote_artifacts.outputs.cancelExpired_s3_key }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.promote_artifacts.outputs.migrationRunner_s3_key }}
-          TF_VAR_getAllTransactions_s3_key: ${{ steps.promote_artifacts.outputs.getAllTransactions_s3_key }}
-          TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_s3_key }}
-          TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_s3_key }}
           TF_VAR_getTransactionLog_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionLog_s3_key }}
           TF_VAR_getRevenueSummary_s3_key: ${{ steps.promote_artifacts.outputs.getRevenueSummary_s3_key }}
           TF_VAR_initRefGenerator_s3_key: ${{ steps.promote_artifacts.outputs.initRefGenerator_s3_key }}
@@ -661,9 +646,6 @@ jobs:
           TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
           TF_VAR_cancelExpired_source_code_hash: ${{ steps.promote_artifacts.outputs.cancelExpired_source_code_hash }}
           TF_VAR_migrationRunner_source_code_hash: ${{ steps.promote_artifacts.outputs.migrationRunner_source_code_hash }}
-          TF_VAR_getAllTransactions_source_code_hash: ${{ steps.promote_artifacts.outputs.getAllTransactions_source_code_hash }}
-          TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_source_code_hash }}
-          TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_source_code_hash }}
           TF_VAR_getTransactionLog_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionLog_source_code_hash }}
           TF_VAR_getRevenueSummary_source_code_hash: ${{ steps.promote_artifacts.outputs.getRevenueSummary_source_code_hash }}
           TF_VAR_initRefGenerator_source_code_hash: ${{ steps.promote_artifacts.outputs.initRefGenerator_source_code_hash }}
@@ -706,9 +688,6 @@ jobs:
           TF_VAR_testCert_s3_key: ${{ steps.promote_artifacts.outputs.testCert_s3_key }}
           TF_VAR_cancelExpired_s3_key: ${{ steps.promote_artifacts.outputs.cancelExpired_s3_key }}
           TF_VAR_migrationRunner_s3_key: ${{ steps.promote_artifacts.outputs.migrationRunner_s3_key }}
-          TF_VAR_getAllTransactions_s3_key: ${{ steps.promote_artifacts.outputs.getAllTransactions_s3_key }}
-          TF_VAR_getTransactionsByStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_s3_key }}
-          TF_VAR_getTransactionPaymentStatus_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_s3_key }}
           TF_VAR_getTransactionLog_s3_key: ${{ steps.promote_artifacts.outputs.getTransactionLog_s3_key }}
           TF_VAR_getRevenueSummary_s3_key: ${{ steps.promote_artifacts.outputs.getRevenueSummary_s3_key }}
           TF_VAR_initRefGenerator_s3_key: ${{ steps.promote_artifacts.outputs.initRefGenerator_s3_key }}
@@ -721,9 +700,6 @@ jobs:
           TF_VAR_testCert_source_code_hash: ${{ steps.promote_artifacts.outputs.testCert_source_code_hash }}
           TF_VAR_cancelExpired_source_code_hash: ${{ steps.promote_artifacts.outputs.cancelExpired_source_code_hash }}
           TF_VAR_migrationRunner_source_code_hash: ${{ steps.promote_artifacts.outputs.migrationRunner_source_code_hash }}
-          TF_VAR_getAllTransactions_source_code_hash: ${{ steps.promote_artifacts.outputs.getAllTransactions_source_code_hash }}
-          TF_VAR_getTransactionsByStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionsByStatus_source_code_hash }}
-          TF_VAR_getTransactionPaymentStatus_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionPaymentStatus_source_code_hash }}
           TF_VAR_getTransactionLog_source_code_hash: ${{ steps.promote_artifacts.outputs.getTransactionLog_source_code_hash }}
           TF_VAR_getRevenueSummary_source_code_hash: ${{ steps.promote_artifacts.outputs.getRevenueSummary_source_code_hash }}
           TF_VAR_initRefGenerator_source_code_hash: ${{ steps.promote_artifacts.outputs.initRefGenerator_source_code_hash }}

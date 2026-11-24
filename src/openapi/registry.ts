@@ -24,10 +24,6 @@ import {
   ProcessPaymentResponseSchema,
   GoneErrorSchema,
   FeeKeySchema,
-  RecentTransactionsResponseSchema,
-  TransactionPaymentStatusResponseSchema,
-  TransactionsByStatusPathParamsSchema,
-  TransactionsByStatusResponseSchema,
   RevenueSummaryQuerySchema,
   RevenueSummaryResponseSchema,
   TransactionLogQuerySchema,
@@ -71,22 +67,6 @@ registry.register("PaymentMethod", PaymentMethodSchema);
 registry.register("ProcessPaymentRequest", ProcessPaymentRequestSchema);
 registry.register("ProcessPaymentResponse", ProcessPaymentResponseSchema);
 registry.register("GoneError", GoneErrorSchema);
-registry.register(
-  "RecentTransactionsResponse",
-  RecentTransactionsResponseSchema,
-);
-registry.register(
-  "TransactionsByStatusPathParams",
-  TransactionsByStatusPathParamsSchema,
-);
-registry.register(
-  "TransactionsByStatusResponse",
-  TransactionsByStatusResponseSchema,
-);
-registry.register(
-  "TransactionPaymentStatusResponse",
-  TransactionPaymentStatusResponseSchema,
-);
 registry.register("ValidateClientResponse", ValidateClientResponseSchema);
 
 // ============================================
@@ -366,46 +346,6 @@ registry.registerPath({
 });
 
 // ============================================
-// GET /transactions - Recent Transactions
-// ============================================
-registry.registerPath({
-  method: "get",
-  path: "/transactions",
-  summary: "Get recent transactions",
-  description:
-    "Returns up to 100 most recent transactions across all payment statuses.",
-  tags: ["Payments"],
-  security: [{ sigv4: [] }],
-  responses: {
-    200: {
-      description: "Recent transactions retrieved successfully",
-      content: {
-        "application/json": {
-          schema: RecentTransactionsResponseSchema,
-        },
-      },
-    },
-    403: {
-      description:
-        "Forbidden - invalid SigV4 signature or client not authorized",
-      content: {
-        "application/json": {
-          schema: ForbiddenErrorSchema,
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: ServerErrorSchema,
-        },
-      },
-    },
-  },
-});
-
-// ============================================
 // GET /revenue-summary - Revenue Summary
 // ============================================
 registry.registerPath({
@@ -513,97 +453,6 @@ registry.registerPath({
       content: {
         "application/json": {
           schema: BadRequestErrorSchema,
-        },
-      },
-    },
-    403: {
-      description:
-        "Forbidden - invalid SigV4 signature or client not authorized",
-      content: {
-        "application/json": {
-          schema: ForbiddenErrorSchema,
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: ServerErrorSchema,
-        },
-      },
-    },
-  },
-});
-
-// ============================================
-// GET /transactions/{paymentStatus} - Transactions By Status
-// ============================================
-registry.registerPath({
-  method: "get",
-  path: "/transactions/{paymentStatus}",
-  summary: "Get transactions by payment status",
-  description:
-    "Returns up to 100 transactions matching the requested payment status.",
-  tags: ["Payments"],
-  security: [{ sigv4: [] }],
-  request: {
-    params: TransactionsByStatusPathParamsSchema,
-  },
-  responses: {
-    200: {
-      description:
-        "Transactions for the requested status retrieved successfully",
-      content: {
-        "application/json": {
-          schema: TransactionsByStatusResponseSchema,
-        },
-      },
-    },
-    400: {
-      description: "Invalid payment status path parameter",
-      content: {
-        "application/json": {
-          schema: BadRequestErrorSchema,
-        },
-      },
-    },
-    403: {
-      description:
-        "Forbidden - invalid SigV4 signature or client not authorized",
-      content: {
-        "application/json": {
-          schema: ForbiddenErrorSchema,
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: ServerErrorSchema,
-        },
-      },
-    },
-  },
-});
-
-// ============================================
-// GET /transaction-payment-status - Aggregate Payment Status
-// ============================================
-registry.registerPath({
-  method: "get",
-  path: "/transaction-payment-status",
-  summary: "Get aggregate transaction payment status",
-  description: "Returns counts of transactions grouped by payment status.",
-  tags: ["Payments"],
-  security: [{ sigv4: [] }],
-  responses: {
-    200: {
-      description: "Aggregate status counts retrieved successfully",
-      content: {
-        "application/json": {
-          schema: TransactionPaymentStatusResponseSchema,
         },
       },
     },

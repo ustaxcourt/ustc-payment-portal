@@ -392,19 +392,15 @@ jobs:
         shell: bash
         env:
           API_URL: ${{ steps.tf_outputs.outputs.api_url }}
-          EXPECTED_UNSIGNED_TRANSACTIONS_STATUS: "403"
         run: |
           set -euo pipefail
-          trap 'echo "Dashboard smoke FAILED"; for f in transactions.json unsigned-init.json; do [ -f "$f" ] && { echo "--- $f ---"; cat "$f"; } || true; done' ERR
+          trap 'echo "Dashboard smoke FAILED"; for f in unsigned-log.json unsigned-init.json; do [ -f "$f" ] && { echo "--- $f ---"; cat "$f"; } || true; done' ERR
 
-          TX_STATUS=$(curl -s -o transactions.json -w '%{http_code}' "$API_URL/transactions")
-          echo "Unsigned GET /transactions -> $TX_STATUS (expected $EXPECTED_UNSIGNED_TRANSACTIONS_STATUS)"
-          if [ "$TX_STATUS" != "$EXPECTED_UNSIGNED_TRANSACTIONS_STATUS" ]; then
-            echo "ERROR: Unsigned /transactions returned $TX_STATUS, expected $EXPECTED_UNSIGNED_TRANSACTIONS_STATUS." >&2
+          LOG_STATUS=$(curl -s -o unsigned-log.json -w '%{http_code}' "$API_URL/transaction-log")
+          echo "Unsigned GET /transaction-log -> $LOG_STATUS (expected 403)"
+          if [ "$LOG_STATUS" != "403" ]; then
+            echo "ERROR: Unsigned /transaction-log returned $LOG_STATUS; dashboard routes must stay SigV4-protected." >&2
             exit 1
-          fi
-          if [ "$EXPECTED_UNSIGNED_TRANSACTIONS_STATUS" = "200" ]; then
-            jq -e . transactions.json >/dev/null || { echo "ERROR: /transactions did not return JSON." >&2; exit 1; }
           fi
 
           INIT_STATUS=$(curl -s -o unsigned-init.json -w '%{http_code}' -X POST "$API_URL/init" \

@@ -143,67 +143,6 @@ describe("TransactionModel", () => {
     });
   });
 
-  describe("getByPaymentStatus", () => {
-    it("queries by paymentStatus, orders by createdAt desc, limits to 100, and attaches feeName", async () => {
-      const builder = spyOnQuery();
-      builder.resolvesTo = [
-        {
-          agencyTrackingId: "TEST-1",
-          fee: "PETITION_FILING_FEE",
-          createdAt: "2026-04-01T00:00:00Z",
-        },
-      ];
-
-      const result = await TransactionModel.getByPaymentStatus("pending");
-
-      expect(builder.where).toHaveBeenCalledWith("paymentStatus", "pending");
-      expect(builder.orderBy).toHaveBeenCalledWith("createdAt", "desc");
-      expect(builder.limit).toHaveBeenCalledWith(100);
-      expect(result).toHaveLength(1);
-      expect(result[0].feeName).toBe("Petition Filing Fee");
-    });
-
-    it("returns an empty array when no transactions match the given paymentStatus", async () => {
-      const builder = spyOnQuery();
-      builder.resolvesTo = [];
-
-      const result = await TransactionModel.getByPaymentStatus("failed");
-
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe("getAll", () => {
-    it("resolves without error and returns an array", async () => {
-      const builder = spyOnQuery();
-      builder.resolvesTo = [];
-
-      const result = await TransactionModel.getAll();
-
-      expect(Array.isArray(result)).toBe(true);
-    });
-  });
-
-  describe("getAggregatedPaymentStatus", () => {
-    it("returns the expected totals object", async () => {
-      const builder = spyOnQuery();
-      builder.resolvesTo = [
-        { paymentStatus: "success", count: "4" },
-        { paymentStatus: "failed", count: "2" },
-        { paymentStatus: "pending", count: "3" },
-      ];
-
-      const totals = await TransactionModel.getAggregatedPaymentStatus();
-
-      expect(totals).toEqual({
-        success: 4,
-        failed: 2,
-        pending: 3,
-        total: 9,
-      });
-    });
-  });
-
   describe("createReceived", () => {
     it("should create a received transaction", async () => {
       const builder = spyOnQuery();

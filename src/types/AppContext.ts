@@ -2,11 +2,8 @@ import * as https from "https";
 import { InitPayment } from "@useCases/initPayment";
 import { ProcessPayment } from "@useCases/processPayment";
 import { GetDetails } from "@useCases/getDetails";
-import { GetRecentTransactions } from "@useCases/getRecentTransactions";
 import { GetRevenueSummary } from "@useCases/getRevenueSummary";
 import { GetTransactionLog } from "@useCases/getTransactionLog";
-import { GetTransactionPaymentStatus } from "@useCases/getTransactionPaymentStatus";
-import { GetTransactionsByStatus } from "@useCases/getTransactionsByStatus";
 
 export type AppContextLogger = {
   debug: (message: string, additionalFields?: Record<string, unknown>) => void;
@@ -22,11 +19,8 @@ export type AppContext = {
     initPayment: InitPayment;
     processPayment: ProcessPayment;
     getDetails: GetDetails;
-    getRecentTransactions: GetRecentTransactions;
     getRevenueSummary: GetRevenueSummary;
     getTransactionLog: GetTransactionLog;
-    getTransactionPaymentStatus: GetTransactionPaymentStatus;
-    getTransactionsByStatus: GetTransactionsByStatus;
   };
   logger: AppContextLogger;
 };

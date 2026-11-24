@@ -109,45 +109,45 @@ run "supports_custom_memory_sizes" {
     # outputs.tf unconditionally indexes processPayment/getDetails/testCert, so
     # they must be present in every fixture even when this test isn't asserting on them.
     artifact_s3_keys = {
-      initPayment        = "artifacts/dev/initPayment.zip"
-      processPayment     = "artifacts/dev/processPayment.zip"
-      getDetails         = "artifacts/dev/getDetails.zip"
-      testCert           = "artifacts/dev/testCert.zip"
-      getAllTransactions = "artifacts/dev/getAllTransactions.zip"
-      migrationRunner    = "artifacts/dev/migrationRunner.zip"
+      initPayment       = "artifacts/dev/initPayment.zip"
+      processPayment    = "artifacts/dev/processPayment.zip"
+      getDetails        = "artifacts/dev/getDetails.zip"
+      testCert          = "artifacts/dev/testCert.zip"
+      getTransactionLog = "artifacts/dev/getTransactionLog.zip"
+      migrationRunner   = "artifacts/dev/migrationRunner.zip"
     }
 
     source_code_hashes = {
-      initPayment        = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
-      processPayment     = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
-      getDetails         = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
-      testCert           = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
-      getAllTransactions = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
-      migrationRunner    = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+      initPayment       = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+      processPayment    = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+      getDetails        = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+      testCert          = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+      getTransactionLog = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+      migrationRunner   = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
     }
 
     environment_variables_by_function = {
-      initPayment        = { APP_ENV = "dev" }
-      processPayment     = { APP_ENV = "dev" }
-      getDetails         = { APP_ENV = "dev" }
-      testCert           = { APP_ENV = "dev" }
-      getAllTransactions = { APP_ENV = "dev" }
-      migrationRunner    = { APP_ENV = "dev" }
+      initPayment       = { APP_ENV = "dev" }
+      processPayment    = { APP_ENV = "dev" }
+      getDetails        = { APP_ENV = "dev" }
+      testCert          = { APP_ENV = "dev" }
+      getTransactionLog = { APP_ENV = "dev" }
+      migrationRunner   = { APP_ENV = "dev" }
     }
 
-    # Mirrors the dev seeding: tuned fns at the 128 placeholder, dashboard fn fixed at 512,
-    # migrationRunner fixed at 1024. getDetails/testCert are left unset to also exercise
+    # Mirrors the environments' lambda_memory_sizes: initPayment 512, processPayment,
+    # getTransactionLog and migrationRunner 256. getDetails/testCert are left unset to also exercise
     # the "falls back to 128 default while other functions are overridden" path.
     lambda_memory_sizes = {
-      initPayment        = 128
-      processPayment     = 256
-      getAllTransactions = 512
-      migrationRunner    = 1024
+      initPayment       = 512
+      processPayment    = 256
+      getTransactionLog = 256
+      migrationRunner   = 256
     }
   }
 
   assert {
-    condition     = aws_lambda_function.functions["initPayment"].memory_size == 128
+    condition     = aws_lambda_function.functions["initPayment"].memory_size == 512
     error_message = "initPayment should use its explicit lambda_memory_sizes override"
   }
 
@@ -162,13 +162,13 @@ run "supports_custom_memory_sizes" {
   }
 
   assert {
-    condition     = aws_lambda_function.functions["getAllTransactions"].memory_size == 512
-    error_message = "getAllTransactions should use its fixed 512 MB override"
+    condition     = aws_lambda_function.functions["getTransactionLog"].memory_size == 256
+    error_message = "getTransactionLog should use its fixed 256 MB override"
   }
 
   assert {
-    condition     = aws_lambda_function.functions["migrationRunner"].memory_size == 1024
-    error_message = "migrationRunner should use its fixed 1024 MB override"
+    condition     = aws_lambda_function.functions["migrationRunner"].memory_size == 256
+    error_message = "migrationRunner should use its fixed 256 MB override"
   }
 }
 

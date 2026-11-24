@@ -1,14 +1,13 @@
 mock_provider "aws" {}
 
-# stg deploys only the routes the dashboard calls: the legacy anonymous routes and
-# their Lambdas are absent from the map, so indexing them would fail the plan.
+# Every environment deploys only the SigV4 dashboard routes; the lambda_function_arns
+# map carries no anonymous-route Lambdas, so indexing them would fail the plan.
 run "stg_environment_enables_only_sigv4_dashboard_routes" {
   command = plan
 
   variables {
     environment              = "stg"
     stage_name               = "stg"
-    enable_public_dashboard  = false
     dashboard_allowed_origin = "https://stg-dashboard.payments.ustaxcourt.gov"
     lambda_function_arns = {
       initPayment       = "arn:aws:lambda:us-east-1:123456789012:function:init"
@@ -33,96 +32,33 @@ run "stg_environment_enables_only_sigv4_dashboard_routes" {
   }
 
   assert {
-    condition     = length(aws_api_gateway_method.transactions_get) == 0
-    error_message = "anonymous GET /transactions route must not exist in stg"
-  }
-
-  assert {
-    condition     = length(aws_api_gateway_method.transaction_payment_status_get) == 0
-    error_message = "anonymous GET /transaction-payment-status route must not exist in stg"
-  }
-
-  assert {
     condition     = aws_api_gateway_method.transaction_log_get.authorization == "AWS_IAM" && aws_api_gateway_method.revenue_summary_get.authorization == "AWS_IAM"
     error_message = "the dashboard routes must exist in stg and require SigV4"
   }
-
-  assert {
-    condition     = length(local.public_dashboard_resource_arns) == 0
-    error_message = "stg must add no anonymous dashboard paths to the resource policy"
-  }
 }
 
-run "dev_environment_enables_dashboard_routes" {
+run "dev_environment_enables_only_sigv4_dashboard_routes" {
   command = plan
 
   variables {
     environment              = "dev"
     stage_name               = "dev"
-    enable_public_dashboard  = true
     dashboard_allowed_origin = "https://dashboard.dev-payments.ustaxcourt.gov"
     lambda_function_arns = {
-      initPayment                 = "arn:aws:lambda:us-east-1:123456789012:function:init"
-      processPayment              = "arn:aws:lambda:us-east-1:123456789012:function:process"
-      getDetails                  = "arn:aws:lambda:us-east-1:123456789012:function:details"
-      testCert                    = "arn:aws:lambda:us-east-1:123456789012:function:test"
-      healthCheck                 = "arn:aws:lambda:us-east-1:123456789012:function:health"
-      validateClient              = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
-      getAllTransactions          = "arn:aws:lambda:us-east-1:123456789012:function:get-all"
-      getTransactionsByStatus     = "arn:aws:lambda:us-east-1:123456789012:function:get-by-status"
-      getTransactionPaymentStatus = "arn:aws:lambda:us-east-1:123456789012:function:get-payment-status"
-      getTransactionLog           = "arn:aws:lambda:us-east-1:123456789012:function:get-transaction-log"
-      getRevenueSummary           = "arn:aws:lambda:us-east-1:123456789012:function:get-revenue-summary"
+      initPayment       = "arn:aws:lambda:us-east-1:123456789012:function:init"
+      processPayment    = "arn:aws:lambda:us-east-1:123456789012:function:process"
+      getDetails        = "arn:aws:lambda:us-east-1:123456789012:function:details"
+      testCert          = "arn:aws:lambda:us-east-1:123456789012:function:test"
+      healthCheck       = "arn:aws:lambda:us-east-1:123456789012:function:health"
+      validateClient    = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
+      getTransactionLog = "arn:aws:lambda:us-east-1:123456789012:function:get-transaction-log"
+      getRevenueSummary = "arn:aws:lambda:us-east-1:123456789012:function:get-revenue-summary"
     }
   }
 
   assert {
-    condition     = length(aws_api_gateway_method.transactions_get) == 1
-    error_message = "dashboard GET /transactions route should exist in dev"
-  }
-
-  assert {
-    condition     = aws_api_gateway_method.transactions_get[0].authorization == "NONE"
-    error_message = "dashboard GET method should not require IAM auth; public access is granted via the resource policy"
-  }
-
-  assert {
-    condition     = length(local.public_dashboard_resource_arns) == 6
-    error_message = "enable_public_dashboard=true should add the anonymous dashboard paths to the resource policy"
-  }
-}
-
-# dev + enable_public_dashboard=false: routes still exist (env-gated), but the
-# anonymous resource-policy statement must NOT be added.
-run "dev_routes_stay_private_without_public_dashboard_flag" {
-  command = plan
-
-  variables {
-    environment = "dev"
-    stage_name  = "dev"
-    lambda_function_arns = {
-      initPayment                 = "arn:aws:lambda:us-east-1:123456789012:function:init"
-      processPayment              = "arn:aws:lambda:us-east-1:123456789012:function:process"
-      getDetails                  = "arn:aws:lambda:us-east-1:123456789012:function:details"
-      testCert                    = "arn:aws:lambda:us-east-1:123456789012:function:test"
-      healthCheck                 = "arn:aws:lambda:us-east-1:123456789012:function:health"
-      validateClient              = "arn:aws:lambda:us-east-1:123456789012:function:validate-client"
-      getAllTransactions          = "arn:aws:lambda:us-east-1:123456789012:function:get-all"
-      getTransactionsByStatus     = "arn:aws:lambda:us-east-1:123456789012:function:get-by-status"
-      getTransactionPaymentStatus = "arn:aws:lambda:us-east-1:123456789012:function:get-payment-status"
-      getTransactionLog           = "arn:aws:lambda:us-east-1:123456789012:function:get-transaction-log"
-      getRevenueSummary           = "arn:aws:lambda:us-east-1:123456789012:function:get-revenue-summary"
-    }
-  }
-
-  assert {
-    condition     = length(aws_api_gateway_method.transactions_get) == 1
-    error_message = "dashboard routes are env-gated, so they still exist in dev with the flag off"
-  }
-
-  assert {
-    condition     = length(local.public_dashboard_resource_arns) == 0
-    error_message = "enable_public_dashboard=false must add no anonymous statement to the resource policy"
+    condition     = aws_api_gateway_method.transaction_log_get.authorization == "AWS_IAM" && aws_api_gateway_method.revenue_summary_get.authorization == "AWS_IAM"
+    error_message = "the dashboard routes must exist in dev and require SigV4"
   }
 }
 
@@ -145,23 +81,8 @@ run "prod_environment_enables_only_sigv4_dashboard_routes" {
   }
 
   assert {
-    condition     = length(aws_api_gateway_method.transactions_get) == 0
-    error_message = "anonymous GET /transactions route must not exist in prod"
-  }
-
-  assert {
-    condition     = length(aws_api_gateway_method.transaction_payment_status_get) == 0
-    error_message = "anonymous GET /transaction-payment-status route must not exist in prod"
-  }
-
-  assert {
     condition     = aws_api_gateway_method.transaction_log_get.authorization == "AWS_IAM" && aws_api_gateway_method.revenue_summary_get.authorization == "AWS_IAM"
     error_message = "the dashboard routes must exist in prod and require SigV4"
-  }
-
-  assert {
-    condition     = length(local.public_dashboard_resource_arns) == 0
-    error_message = "prod must add no anonymous dashboard paths to the resource policy"
   }
 }
 

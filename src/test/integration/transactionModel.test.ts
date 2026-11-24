@@ -242,24 +242,6 @@ describeIfLocal("TransactionModel against real Postgres", () => {
         'select "payment_status", "fee", count* as "qty", sum"transaction_amount" as "subtotal" from "transactions" where "last_updated_at" >= $1 and "last_updated_at" < $2 group by "payment_status", "fee"',
       ]);
     });
-
-    it("getAggregatedPaymentStatus counts every row by payment status", async () => {
-      const before = await TransactionModel.getAggregatedPaymentStatus();
-      await createRow();
-
-      const { result, queries } = await captureSql(() =>
-        TransactionModel.getAggregatedPaymentStatus(),
-      );
-
-      expect(result).toEqual({
-        ...before,
-        pending: before.pending + 1,
-        total: before.total + 1,
-      });
-      expect(queries.map((q) => q.sql)).toEqual([
-        'select "payment_status", count* as "count" from "transactions" group by "payment_status"',
-      ]);
-    });
   });
 
   describe("claimForProcessing", () => {

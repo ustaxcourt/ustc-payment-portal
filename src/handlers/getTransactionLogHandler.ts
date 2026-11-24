@@ -8,8 +8,7 @@ import { logError } from "@utils/logError";
 import type { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import { createAppContext } from "../appContext";
 
-/** GET /transaction-log — timeframe defaults to the current Court day.
- *  Separate from /transactions, which the dev dashboard depends on. */
+/** GET /transaction-log — timeframe defaults to the current Court day. */
 export const getTransactionLogHandler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
