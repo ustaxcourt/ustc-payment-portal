@@ -1,5 +1,5 @@
 ---
-"@ustaxcourt/payment-portal": patch
+"@ustaxcourt/payment-portal": major
 ---
 
 Remove the unused `GET /transactions`, `GET /transactions/{paymentStatus}` and `GET /transaction-payment-status` endpoints.

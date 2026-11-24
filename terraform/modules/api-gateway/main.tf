@@ -77,47 +77,6 @@ resource "aws_lambda_permission" "revenue_summary_permission" {
   source_arn    = "${aws_api_gateway_rest_api.rest.execution_arn}/*/GET/revenue-summary"
 }
 
-// TODO: Remove moved blocks after next apply on Dev and PR enviroments
-moved {
-  from = aws_api_gateway_resource.transaction_log[0]
-  to   = aws_api_gateway_resource.transaction_log
-}
-
-moved {
-  from = aws_api_gateway_resource.revenue_summary[0]
-  to   = aws_api_gateway_resource.revenue_summary
-}
-
-moved {
-  from = aws_api_gateway_method.transaction_log_get[0]
-  to   = aws_api_gateway_method.transaction_log_get
-}
-
-moved {
-  from = aws_api_gateway_method.revenue_summary_get[0]
-  to   = aws_api_gateway_method.revenue_summary_get
-}
-
-moved {
-  from = aws_api_gateway_integration.transaction_log_integration[0]
-  to   = aws_api_gateway_integration.transaction_log_integration
-}
-
-moved {
-  from = aws_api_gateway_integration.revenue_summary_integration[0]
-  to   = aws_api_gateway_integration.revenue_summary_integration
-}
-
-moved {
-  from = aws_lambda_permission.transaction_log_permission[0]
-  to   = aws_lambda_permission.transaction_log_permission
-}
-
-moved {
-  from = aws_lambda_permission.revenue_summary_permission[0]
-  to   = aws_lambda_permission.revenue_summary_permission
-}
-
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 

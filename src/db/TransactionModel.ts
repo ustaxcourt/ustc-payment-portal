@@ -441,8 +441,6 @@ export default class TransactionModel extends Model {
     return totals;
   }
 
-  // Fees are hardcoded into the codebase, new ones are versioned according
-  // to fee key & activation date, with the latest date accepted as the active fee.
   private static attachFeeName(row: TransactionModel): TransactionModel {
     const feeName = feeNamesByKey[row.fee];
     if (!feeName) {
