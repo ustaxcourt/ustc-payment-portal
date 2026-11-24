@@ -1,15 +1,15 @@
-import { getSecretString } from "@clients/secretsClient";
-import { getPayGovAuthHeaders } from "@clients/payGovAuthHeaders";
+import * as https from "node:https";
 import type { AppContext } from "@appTypes/AppContext";
+import { getPayGovAuthHeaders } from "@clients/payGovAuthHeaders";
+import { getSecretString } from "@clients/secretsClient";
 import { getDetails } from "@useCases/getDetails";
-import { initPayment } from "@useCases/initPayment";
-import { processPayment } from "@useCases/processPayment";
 import { getRevenueSummary } from "@useCases/getRevenueSummary";
 import { getTransactionLog } from "@useCases/getTransactionLog";
-import * as https from "https";
-import fetch from "node-fetch";
+import { initPayment } from "@useCases/initPayment";
+import { processPayment } from "@useCases/processPayment";
 import { createRequestLogger } from "@utils/logger";
 import type { APIGatewayEvent } from "aws-lambda";
+import fetch from "node-fetch";
 
 let httpsAgentCache: https.Agent | undefined;
 
@@ -22,7 +22,7 @@ function isRetryablePaygovError(err: unknown): boolean {
 }
 
 function normalizePem(pem: string): string {
-  return pem.replace(/\r\n/g, "\n").trimEnd() + "\n";
+  return `${pem.replace(/\r\n/g, "\n").trimEnd()}\n`;
 }
 
 type LocalRequestContext = {
