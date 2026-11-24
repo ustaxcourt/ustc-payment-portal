@@ -1,3 +1,4 @@
+// migration-safety: acknowledged - existed before safety check
 import type { Knex } from "knex";
 
 /** Restores transaction_amount after fee amounts moved into application code. */
