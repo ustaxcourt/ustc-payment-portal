@@ -19,3 +19,4 @@ PAY-508: dependency updates for the week of 2026-11-16.
   `@playwright/browser-chromium`, `protobufjs`, `unix-dgram` and `fsevents` are
   blocked. No install script is needed in CI or at runtime for the blocked
   packages.
+- `@ustaxcourt/ustc-pay-gov-test-server` update to 0.4.1.
