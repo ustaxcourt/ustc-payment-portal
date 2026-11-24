@@ -51,11 +51,13 @@ variable "getRevenueSummary_s3_key" {
   type        = string
   default     = ""
 }
+
 variable "getTransactionLog_source_code_hash" {
   description = "Base64-encoded SHA256 hash for getTransactionLog artifact"
   type        = string
   default     = ""
 }
+
 variable "getRevenueSummary_source_code_hash" {
   description = "Base64-encoded SHA256 hash for getRevenueSummary artifact"
   type        = string

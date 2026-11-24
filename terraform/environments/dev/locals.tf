@@ -100,32 +100,32 @@ locals {
   } : {})
 
   lambda_env_by_function = {
-    initPayment                 = local.lambda_env_payment
-    processPayment              = local.lambda_env_payment
-    getDetails                  = local.lambda_env_payment
-    validateClient              = local.lambda_env_validate_client
-    testCert                    = local.lambda_env_payment
-    healthCheck                 = local.lambda_env_payment
-    getTransactionLog           = local.lambda_env_dashboard
-    getRevenueSummary           = local.lambda_env_dashboard
-    cancelExpired               = local.lambda_env_cancel_sweep
-    migrationRunner             = local.lambda_env_migration
+    initPayment       = local.lambda_env_payment
+    processPayment    = local.lambda_env_payment
+    getDetails        = local.lambda_env_payment
+    validateClient    = local.lambda_env_validate_client
+    testCert          = local.lambda_env_payment
+    healthCheck       = local.lambda_env_payment
+    getTransactionLog = local.lambda_env_dashboard
+    getRevenueSummary = local.lambda_env_dashboard
+    cancelExpired     = local.lambda_env_cancel_sweep
+    migrationRunner   = local.lambda_env_migration
   }
 
   # Use power-tuning-dev.yml to tune the payment, test, and health functions.
   # The result of the run will tell you what memory size to set for each function.
   # migrationRunner and get functions are static and not run by the tuner.
   lambda_memory_sizes = {
-    initPayment                 = 512
-    processPayment              = 256
-    getDetails                  = 512
-    validateClient              = 256
-    testCert                    = 768
-    healthCheck                 = 768
-    getTransactionLog           = 256
-    getRevenueSummary           = 256
-    cancelExpired               = 256
-    migrationRunner             = 256
+    initPayment       = 512
+    processPayment    = 256
+    getDetails        = 512
+    validateClient    = 256
+    testCert          = 768
+    healthCheck       = 768
+    getTransactionLog = 256
+    getRevenueSummary = 256
+    cancelExpired     = 256
+    migrationRunner   = 256
   }
   github_oidc_provider_arn = "arn:aws:iam::723609007960:oidc-provider/token.actions.githubusercontent.com"
   github_org               = "ustaxcourt"
